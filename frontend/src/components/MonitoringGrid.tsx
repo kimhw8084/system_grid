@@ -25,6 +25,7 @@ const MONITORING_ACTIVE_VIEW_KEY = 'sysgrid_monitoring_active_view_v1'
 const MONITORING_FAVORITES_STORAGE_KEY = 'sysgrid_monitoring_favorites_v1'
 const MONITORING_UI_STATE_KEY = 'sysgrid_monitoring_ui_state_v1'
 const MONITORING_WATCH_STORAGE_KEY = 'sysgrid_monitoring_watch_v1'
+const BULK_MENU_MAX_HEIGHT = 560
 
 const STATUSES = [
   { value: 'Existing', label: 'Existing', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
@@ -39,6 +40,19 @@ const DEFAULT_MONITORING_VIEWS = [
   { id: 'incident', name: 'Incident', config: { fontSize: 10, rowDensity: 6, hiddenColumns: ['purpose'], quickFilter: '', quickFilters: { status: '', severity: '', platform: '', owner: '' }, filterModel: {}, sortModel: [{ colId: 'severity', sort: 'desc' }] } },
   { id: 'recovery', name: 'Recovery', config: { fontSize: 11, rowDensity: 8, hiddenColumns: ['platform', 'check_interval'], quickFilter: '', quickFilters: { status: '', severity: '', platform: '', owner: '' }, filterModel: {}, sortModel: [] } }
 ]
+const DEFAULT_MONITORING_VIEW_IDS = new Set(DEFAULT_MONITORING_VIEWS.map((view) => view.id))
+
+const slugifyViewId = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || `view-${Date.now()}`
+
+const getMonitorGroupValue = (item: any, field: string) => {
+  if (field === 'notification_method') return item.notification_method || 'No notification path'
+  return item[field] || 'Unspecified'
+}
 
 const readMonitoringUiState = () => {
   if (typeof window === 'undefined') return null
@@ -86,6 +100,7 @@ export default function MonitoringGrid() {
   const [fontSize, setFontSize] = useState(persistedUiState?.fontSize ?? 11)
   const [rowDensity, setRowDensity] = useState(persistedUiState?.rowDensity ?? 10)
   const [showDisplayMenu, setShowDisplayMenu] = useState(false)
+  const [showViewsMenu, setShowViewsMenu] = useState(false)
   const [showRegistry, setShowRegistry] = useState(false)
   const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedUiState?.hiddenColumns ?? [])
   const [activeTab, setActiveTab] = useState<'active' | 'deleted'>(persistedUiState?.activeTab === 'deleted' ? 'deleted' : 'active')
@@ -154,10 +169,14 @@ export default function MonitoringGrid() {
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
   const selectionAnchorRef = useRef<number | null>(null)
   const displayMenuButtonRef = useRef<HTMLButtonElement | null>(null)
+  const viewsMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const bulkMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const [displayMenuStyle, setDisplayMenuStyle] = useState<React.CSSProperties>({})
+  const [viewsMenuStyle, setViewsMenuStyle] = useState<React.CSSProperties>({})
   const [bulkMenuStyle, setBulkMenuStyle] = useState<React.CSSProperties>({})
   const lastUndoRef = useRef<any>(null)
+  const [newViewName, setNewViewName] = useState('')
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
 
   const { data: settingsOptions } = useQuery({ 
     queryKey: ['settings-options'], 
@@ -235,7 +254,7 @@ export default function MonitoringGrid() {
   const toggleBulkWindow = () => {
     setShowBulkMenu((current) => {
       if (current) return false
-      setBulkMenuStyle(positionUtilityWindow(bulkMenuButtonRef.current, 340, 360, 1105))
+      setBulkMenuStyle(positionUtilityWindow(bulkMenuButtonRef.current, 340, BULK_MENU_MAX_HEIGHT, 1105))
       return true
     })
   }
@@ -326,12 +345,6 @@ export default function MonitoringGrid() {
     }
   }
 
-  const clearSelection = () => {
-    gridRef.current?.api?.deselectAll()
-    setSelectedIds([])
-    selectionAnchorRef.current = null
-  }
-
   const buildCurrentViewConfig = () => ({
     fontSize,
     rowDensity,
@@ -387,6 +400,34 @@ export default function MonitoringGrid() {
     toast.success(`Saved current table to ${nextViews.find((view) => view.id === viewId)?.name}`)
   }
 
+  const createViewFromCurrent = () => {
+    const trimmed = newViewName.trim()
+    if (!trimmed) {
+      toast.error('Enter a name for the new view')
+      return
+    }
+    const nextIdBase = slugifyViewId(trimmed)
+    let nextId = nextIdBase
+    let suffix = 2
+    while (savedViews.some((view) => view.id === nextId)) {
+      nextId = `${nextIdBase}-${suffix++}`
+    }
+    const nextView = {
+      id: nextId,
+      name: trimmed,
+      config: buildCurrentViewConfig()
+    }
+    const nextViews = [...savedViews, nextView]
+    setSavedViews(nextViews)
+    setActiveViewId(nextId)
+    setNewViewName('')
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
+      window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, nextId)
+    }
+    toast.success(`Saved new view ${trimmed}`)
+  }
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement
@@ -396,29 +437,33 @@ export default function MonitoringGrid() {
       if (showDisplayMenu && !target.closest('.display-menu-container')) {
         setShowDisplayMenu(false)
       }
+      if (showViewsMenu && !target.closest('.views-menu-container')) {
+        setShowViewsMenu(false)
+      }
       if (rowActionMenu && !target.closest('.row-action-menu-container')) {
         setRowActionMenu(null)
       }
     }
-    if (showBulkMenu || showDisplayMenu || rowActionMenu) {
+    if (showBulkMenu || showDisplayMenu || showViewsMenu || rowActionMenu) {
       document.addEventListener('click', handleClickOutside)
       return () => document.removeEventListener('click', handleClickOutside)
     }
-  }, [showBulkMenu, showDisplayMenu, rowActionMenu])
+  }, [showBulkMenu, showDisplayMenu, showViewsMenu, rowActionMenu])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setShowBulkMenu(false)
         setShowDisplayMenu(false)
+        setShowViewsMenu(false)
         setRowActionMenu(null)
       }
     }
-    if (showBulkMenu || showDisplayMenu || rowActionMenu) {
+    if (showBulkMenu || showDisplayMenu || showViewsMenu || rowActionMenu) {
       window.addEventListener('keydown', handleKeyDown)
       return () => window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [showBulkMenu, showDisplayMenu, rowActionMenu])
+  }, [showBulkMenu, showDisplayMenu, showViewsMenu, rowActionMenu])
 
   useEffect(() => {
     const handleContextMenu = (event: MouseEvent) => {
@@ -445,11 +490,21 @@ export default function MonitoringGrid() {
           zIndex: 1100
         })
       }
+      if (showViewsMenu && viewsMenuButtonRef.current) {
+        const rect = viewsMenuButtonRef.current.getBoundingClientRect()
+        setViewsMenuStyle({
+          position: 'fixed',
+          top: rect.bottom + 8,
+          left: Math.min(Math.max(16, rect.left), window.innerWidth - 396),
+          width: 380,
+          zIndex: 1100
+        })
+      }
       if (showBulkMenu && bulkMenuButtonRef.current) {
         const rect = bulkMenuButtonRef.current.getBoundingClientRect()
         setBulkMenuStyle({
           position: 'fixed',
-          top: rect.bottom + 8,
+          top: Math.min(Math.max(16, rect.bottom + 8), window.innerHeight - BULK_MENU_MAX_HEIGHT - 16),
           left: Math.min(Math.max(16, rect.right - 340), window.innerWidth - 356),
           width: 340,
           zIndex: 1105
@@ -458,7 +513,7 @@ export default function MonitoringGrid() {
     }
 
     updateMenuPositions()
-    if (showDisplayMenu || showBulkMenu) {
+    if (showDisplayMenu || showBulkMenu || showViewsMenu) {
       window.addEventListener('resize', updateMenuPositions)
       window.addEventListener('scroll', updateMenuPositions, true)
       return () => {
@@ -466,7 +521,7 @@ export default function MonitoringGrid() {
         window.removeEventListener('scroll', updateMenuPositions, true)
       }
     }
-  }, [showBulkMenu, showDisplayMenu])
+  }, [showBulkMenu, showDisplayMenu, showViewsMenu])
 
   const [searchTerm, setSearchTerm] = useState(persistedUiState?.searchTerm ?? '')
 
@@ -501,6 +556,25 @@ export default function MonitoringGrid() {
 
   const displayedItems = useMemo(() => {
     const filtered = items.filter((item: any) => {
+      if (searchTerm.trim()) {
+        const query = searchTerm.trim().toLowerCase()
+        const haystack = [
+          item.id,
+          item.device_name,
+          item.category,
+          item.status,
+          item.severity,
+          item.title,
+          item.platform,
+          item.notification_method,
+          item.purpose,
+          ...(item.owners || []).map((owner: any) => owner.name)
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+        if (!haystack.includes(query)) return false
+      }
       if (quickFilters.status && item.status !== quickFilters.status) return false
       if (quickFilters.severity && item.severity !== quickFilters.severity) return false
       if (quickFilters.platform && item.platform !== quickFilters.platform) return false
@@ -513,7 +587,7 @@ export default function MonitoringGrid() {
       if (aFavorite !== bFavorite) return bFavorite - aFavorite
       return a.id - b.id
     })
-  }, [favoriteIds, items, quickFilters])
+  }, [favoriteIds, items, quickFilters, searchTerm])
 
   const selectedItems = useMemo(
     () => displayedItems.filter((item: any) => selectedIds.includes(item.id)),
@@ -521,6 +595,165 @@ export default function MonitoringGrid() {
   )
 
   const compareItems = useMemo(() => selectedItems.slice(0, 3), [selectedItems])
+
+  const groupedSections = useMemo(() => {
+    if (groupBy === 'raw') return []
+    const sections = displayedItems.reduce((acc: Array<{ key: string; label: string; items: any[] }>, item: any) => {
+      const label = String(getMonitorGroupValue(item, groupBy))
+      const existing = acc.find((section) => section.key === label)
+      if (existing) {
+        existing.items.push(item)
+      } else {
+        acc.push({ key: label, label, items: [item] })
+      }
+      return acc
+    }, [])
+    return sections.sort((a, b) => a.label.localeCompare(b.label))
+  }, [displayedItems, groupBy])
+
+  useEffect(() => {
+    if (groupBy === 'raw') return
+    setCollapsedGroups((current) => {
+      const next = { ...current }
+      groupedSections.forEach((section) => {
+        if (!(section.key in next)) next[section.key] = false
+      })
+      Object.keys(next).forEach((key) => {
+        if (!groupedSections.some((section) => section.key === key)) delete next[key]
+      })
+      return next
+    })
+  }, [groupBy, groupedSections])
+
+  const groupedColumns = useMemo(() => {
+    const columns: Array<{ key: string; label: string; className?: string; render: (item: any) => React.ReactNode }> = []
+    columns.push({
+      key: 'pin',
+      label: '',
+      className: 'w-10 text-center',
+      render: (item: any) => (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            toggleFavorite(item.id)
+          }}
+          className={`rounded-md p-1 transition-all ${favoriteIds.includes(item.id) ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
+        >
+          <Star size={14} className={favoriteIds.includes(item.id) ? 'fill-current' : ''} />
+        </button>
+      )
+    })
+    columns.push({
+      key: 'watch',
+      label: '',
+      className: 'w-10 text-center',
+      render: (item: any) => (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            toggleWatch(item.id)
+          }}
+          className={`rounded-md p-1 transition-all ${watchIds.includes(item.id) ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
+        >
+          <Eye size={14} className={watchIds.includes(item.id) ? 'fill-current' : ''} />
+        </button>
+      )
+    })
+    columns.push({ key: 'id', label: 'ID', className: 'w-16 text-center', render: (item: any) => <span className="font-bold text-slate-500">{item.id}</span> })
+    columns.push({ key: 'recent_change', label: 'Δ', className: 'w-10 text-center', render: (item: any) => isRecentChange(item) ? <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.45)]" /> : null })
+    if (groupBy !== 'device_name' && !hiddenColumns.includes('device_name')) columns.push({ key: 'device_name', label: 'Target Asset', render: (item: any) => <span className="font-semibold text-slate-200">{item.device_name || 'Unassigned'}</span> })
+    if (groupBy !== 'category' && !hiddenColumns.includes('category')) columns.push({ key: 'category', label: 'Category', render: (item: any) => <span className="font-bold uppercase text-slate-300">{item.category || 'N/A'}</span> })
+    if (groupBy !== 'status' && !hiddenColumns.includes('status')) columns.push({ key: 'status', label: 'Status', render: (item: any) => <StatusPill value={item.status || 'Unknown'} fontSize={fontSize} /> })
+    if (!hiddenColumns.includes('owners')) columns.push({
+      key: 'owners',
+      label: 'Owners',
+      render: (item: any) => {
+        const owners = item.owners || []
+        if (!owners.length) return <span className="text-slate-500">N/A</span>
+        return (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              setOwnerPopup({ owners, title: item.title })
+            }}
+            className="border-b border-dashed border-slate-700 text-left hover:text-blue-300"
+          >
+            {owners.length > 1 ? `${owners[0].name} +${owners.length - 1}` : owners[0].name}
+          </button>
+        )
+      }
+    })
+    if (!hiddenColumns.includes('title')) columns.push({ key: 'title', label: 'Title', render: (item: any) => <span className="font-black uppercase tracking-tight text-slate-100">{item.title}</span> })
+    if (groupBy !== 'platform' && !hiddenColumns.includes('platform')) columns.push({ key: 'platform', label: 'Platform', render: (item: any) => <span className="font-bold uppercase text-slate-300">{item.platform || 'N/A'}</span> })
+    if (groupBy !== 'severity' && !hiddenColumns.includes('severity')) columns.push({ key: 'severity', label: 'Severity', render: (item: any) => <StatusPill value={item.severity || 'N/A'} fontSize={fontSize} /> })
+    if (groupBy !== 'notification_method' && !hiddenColumns.includes('notification_method')) columns.push({
+      key: 'notification_method',
+      label: 'Notify',
+      render: (item: any) => (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            setRecipientPopup({ recipients: item.notification_recipients || [], method: item.notification_method || 'N/A' })
+          }}
+          className="border-b border-dashed border-slate-700 font-bold uppercase text-slate-300 hover:text-blue-300"
+        >
+          {item.notification_method || 'N/A'}
+        </button>
+      )
+    })
+    if (!hiddenColumns.includes('purpose')) columns.push({ key: 'purpose', label: 'Purpose', render: (item: any) => <span className="line-clamp-2 text-slate-400">{item.purpose || 'No purpose documented'}</span> })
+    columns.push({
+      key: 'actions',
+      label: '',
+      className: 'w-12 text-center',
+      render: (item: any) => (
+        <button
+          type="button"
+          onClick={(event: any) => openRowActionMenu(event, item)}
+          className="row-action-menu-container rounded-full border border-white/10 bg-white/[0.03] p-1 text-slate-400 transition-all hover:bg-white/[0.08] hover:text-white"
+        >
+          <ChevronRight size={13} />
+        </button>
+      )
+    })
+    return columns
+  }, [favoriteIds, fontSize, groupBy, hiddenColumns, watchIds, collapsedGroups, groupedSections])
+
+  const handleGroupedRowClick = (item: any, event: React.MouseEvent) => {
+    if (shouldIgnoreRowSelection(event.target)) return
+    const currentIndex = displayedItems.findIndex((entry: any) => entry.id === item.id)
+    if (currentIndex < 0) return
+    if (event.shiftKey && selectionAnchorRef.current !== null) {
+      const start = Math.min(selectionAnchorRef.current, currentIndex)
+      const end = Math.max(selectionAnchorRef.current, currentIndex)
+      setSelectedIds(displayedItems.slice(start, end + 1).map((entry: any) => entry.id))
+      return
+    }
+    if (event.metaKey || event.ctrlKey) {
+      setSelectedIds((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id])
+      selectionAnchorRef.current = currentIndex
+      return
+    }
+    setSelectedIds([item.id])
+    selectionAnchorRef.current = currentIndex
+  }
+
+  const toggleGroupedCheckbox = (item: any, event: React.ChangeEvent<HTMLInputElement>) => {
+    event.stopPropagation()
+    const currentIndex = displayedItems.findIndex((entry: any) => entry.id === item.id)
+    if (event.nativeEvent.shiftKey && selectionAnchorRef.current !== null) {
+      const start = Math.min(selectionAnchorRef.current, currentIndex)
+      const end = Math.max(selectionAnchorRef.current, currentIndex)
+      setSelectedIds(displayedItems.slice(start, end + 1).map((entry: any) => entry.id))
+      return
+    }
+    setSelectedIds((current) => event.target.checked ? [...new Set([...current, item.id])] : current.filter((id) => id !== item.id))
+    selectionAnchorRef.current = currentIndex
+  }
 
   const isRecentChange = (item: any) => {
     const changedAt = item?.updated_at || item?.created_at
@@ -1089,6 +1322,14 @@ export default function MonitoringGrid() {
               placeholder="Scan matrix..."
             />
             <ToolbarGroup>
+              <div className="views-menu-container">
+                <ToolbarButton active={showViewsMenu} onClick={() => setShowViewsMenu(!showViewsMenu)} ref={viewsMenuButtonRef as any}>
+                  <span className="flex items-center gap-2">
+                    <Save size={14} />
+                    Views
+                  </span>
+                </ToolbarButton>
+              </div>
               <div className="display-menu-container">
                 <ToolbarButton active={showDisplayMenu} onClick={() => setShowDisplayMenu(!showDisplayMenu)} ref={displayMenuButtonRef as any}>
                   <span className="flex items-center gap-2">
@@ -1111,6 +1352,17 @@ export default function MonitoringGrid() {
         }
 	        right={
 	          <>
+              <ToolbarButton
+                onClick={openCompare}
+                disabled={selectedIds.length < 2 || selectedIds.length > 3}
+                active={compareOpen}
+                title="Compare selected monitors"
+              >
+                <span className="flex items-center gap-2">
+                  <GitCompare size={14} />
+                  Compare
+                </span>
+              </ToolbarButton>
 		            <ToolbarButton
                 onClick={toggleBulkWindow}
                 disabled={selectedIds.length <= 1}
@@ -1165,39 +1417,6 @@ export default function MonitoringGrid() {
           placeholder="All owners"
         />
       </div>
-
-      <AnimatePresence>
-        {selectedIds.length > 1 && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="sticky top-[72px] z-20 rounded-lg border border-blue-500/20 bg-slate-950/92 px-4 py-3 shadow-lg backdrop-blur-xl"
-          >
-	            <div className="flex flex-wrap items-center justify-between gap-3">
-	              <div className="flex items-center gap-3">
-	                <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">
-	                  {selectedIds.length} Selected
-	                </div>
-	              </div>
-		              <div className="flex flex-wrap items-center gap-2">
-	                  <ToolbarButton onClick={toggleBulkWindow} active={showBulkMenu}>
-	                    Bulk Actions
-	                  </ToolbarButton>
-                    <ToolbarButton onClick={openCompare} disabled={selectedIds.length < 2 || selectedIds.length > 3} active={compareOpen}>
-                      <span className="flex items-center gap-2">
-                        <GitCompare size={14} />
-                        Compare
-                      </span>
-                    </ToolbarButton>
-		                <ToolbarIconButton onClick={clearSelection} title="Clear selection">
-		                  <X size={16} />
-		                </ToolbarIconButton>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <AnimatePresence>
         {activeFilterChips.length > 0 && (
@@ -1293,40 +1512,6 @@ export default function MonitoringGrid() {
                         />
                       </div>
 
-	                    <div className="space-y-2">
-	                      <div className="flex items-center justify-between">
-	                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Saved Views</span>
-                        {activeViewId && (
-                          <span className="text-[9px] font-black uppercase tracking-[0.16em] text-blue-400">
-                            {savedViews.find((view) => view.id === activeViewId)?.name}
-                          </span>
-                        )}
-                      </div>
-                      <div className="space-y-2 rounded-lg border border-white/5 bg-black/20 p-3">
-                        {savedViews.map((view) => (
-                          <div key={view.id} className="flex items-center gap-2">
-                            <button
-                              onClick={() => applySavedView(view.id)}
-                              className={`flex-1 rounded-lg border px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.14em] transition-all ${
-                                activeViewId === view.id
-                                  ? 'border-blue-500/30 bg-blue-500/12 text-blue-300'
-                                  : 'border-white/8 bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]'
-                              }`}
-                            >
-                              {view.name}
-                            </button>
-                            <button
-                              onClick={() => saveCurrentToView(view.id)}
-                              title={`Save current layout to ${view.name}`}
-                              className="rounded-lg border border-white/8 bg-white/[0.03] p-2 text-slate-400 transition-all hover:bg-white/[0.06] hover:text-white"
-                            >
-                              <Save size={13} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
 	                  <div className="space-y-2">
                     <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Columns</span>
                     <div className="max-h-[240px] space-y-1 overflow-y-auto pr-1 custom-scrollbar">
@@ -1359,6 +1544,96 @@ export default function MonitoringGrid() {
             )}
           </AnimatePresence>
 
+          <AnimatePresence>
+            {showViewsMenu && !!viewsMenuStyle.top && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                style={viewsMenuStyle}
+                className="views-menu-container rounded-lg border border-white/10 bg-slate-950/95 p-4 shadow-2xl backdrop-blur-xl"
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Saved Views</p>
+                      <p className="pt-1 text-[11px] text-slate-400">Load, save, and overwrite full Monitoring layouts.</p>
+                    </div>
+                    <button onClick={() => setShowViewsMenu(false)} className="text-slate-500 hover:text-white">
+                      <X size={14} />
+                    </button>
+                  </div>
+
+                  <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Current View</p>
+                        <p className="pt-1 text-[11px] font-semibold text-slate-100">{activeViewId ? savedViews.find((view) => view.id === activeViewId)?.name : 'Unsaved working view'}</p>
+                      </div>
+                      {activeViewId && (
+                        <button
+                          type="button"
+                          onClick={() => saveCurrentToView(activeViewId)}
+                          className="rounded-lg border border-blue-500/20 bg-blue-600/15 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-blue-200 transition-all hover:bg-blue-600/25"
+                        >
+                          Overwrite Current
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        value={newViewName}
+                        onChange={(event) => setNewViewName(event.target.value)}
+                        placeholder="Save as new view..."
+                        className="flex-1 rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-[11px] font-semibold text-white outline-none transition-all placeholder:text-slate-600 focus:border-blue-500/40"
+                      />
+                      <button
+                        type="button"
+                        onClick={createViewFromCurrent}
+                        className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:bg-white/[0.08]"
+                      >
+                        Save New
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 rounded-lg border border-white/5 bg-black/20 p-3">
+                    {savedViews.map((view) => {
+                      const isDefaultView = DEFAULT_MONITORING_VIEW_IDS.has(view.id)
+                      return (
+                        <div key={view.id} className="flex items-center gap-2">
+                          <button
+                            onClick={() => applySavedView(view.id)}
+                            className={`flex-1 rounded-lg border px-3 py-2 text-left transition-all ${
+                              activeViewId === view.id
+                                ? 'border-blue-500/30 bg-blue-500/12'
+                                : 'border-white/8 bg-white/[0.03] hover:bg-white/[0.06]'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className={`text-[10px] font-black uppercase tracking-[0.14em] ${activeViewId === view.id ? 'text-blue-300' : 'text-slate-200'}`}>{view.name}</p>
+                                <p className="pt-1 text-[10px] text-slate-500">{view.config?.groupBy && view.config.groupBy !== 'raw' ? `Grouped by ${groupOptions.find((option) => option.value === view.config.groupBy)?.label || view.config.groupBy}` : 'Raw monitoring table'}</p>
+                              </div>
+                              <span className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-600">{isDefaultView ? 'Default' : 'Custom'}</span>
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => saveCurrentToView(view.id)}
+                            title={`Overwrite ${view.name}`}
+                            className="rounded-lg border border-white/8 bg-white/[0.03] p-2 text-slate-400 transition-all hover:bg-white/[0.06] hover:text-white"
+                          >
+                            <Save size={13} />
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
 	          <AnimatePresence>
 		            {showBulkMenu && !!bulkMenuStyle.top && (
                 <motion.div
@@ -1366,7 +1641,7 @@ export default function MonitoringGrid() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
                   style={bulkMenuStyle}
-                  className="bulk-menu-container rounded-xl border border-slate-700 bg-[#020617] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
+                  className="bulk-menu-container max-h-[560px] overflow-y-auto rounded-xl border border-slate-700 bg-[#020617] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
                 >
                   <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
                     <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500">Bulk Actions</p>
@@ -1574,46 +1849,127 @@ export default function MonitoringGrid() {
         document.body
       )}
 
-	      <div className="flex-1 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative">
-        {isLoading && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
-             <RefreshCcw size={32} className="text-blue-400 animate-spin" />
-             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Scanning Monitoring Matrix...</p>
-          </div>
-        )}
-	        <AgGridReact 
-          ref={gridRef}
-	          rowData={displayedItems || []} 
-	          columnDefs={columnDefs} 
-            groupDisplayType="singleColumn"
-            autoGroupColumnDef={autoGroupColumnDef}
-            groupDefaultExpanded={1}
-	          rowSelection="multiple"
-          headerHeight={fontSize + rowDensity + 10}
-          rowHeight={fontSize + rowDensity + 10}
-	          onSelectionChanged={(e) => {
-              const selectedNodes = e?.api?.getSelectedNodes?.() || []
-              setSelectedIds(selectedNodes.map((n: any) => n.data?.id).filter(Boolean) || [])
-            }}
-          onFilterChanged={(e) => setGridFilterModel(e.api.getFilterModel() || {})}
-	          onSortChanged={(e) => {
-	            const nextSortModel = e.api.getColumnState().filter((col: any) => col.sort).map((col: any) => ({ colId: col.colId, sort: col.sort }))
-	            setGridSortModel(nextSortModel)
-	          }}
-            onCellContextMenu={(e) => {
-              if (!e?.data) return
-              e.event?.preventDefault?.()
-              openRowActionMenuAtPoint(e.data, e.event.clientX, e.event.clientY)
-            }}
-	          onRowClicked={handleRowClicked}
-	          onRowDoubleClicked={handleRowDoubleClicked}
-          quickFilterText={searchTerm}
-          suppressRowClickSelection={true}
-          enableCellTextSelection={true}
-          autoSizeStrategy={autoSizeStrategy}
-	        />
+      {groupBy === 'raw' ? (
+	        <div className="flex-1 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative">
+          {isLoading && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
+               <RefreshCcw size={32} className="text-blue-400 animate-spin" />
+               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Scanning Monitoring Matrix...</p>
+            </div>
+          )}
+	          <AgGridReact 
+            ref={gridRef}
+	            rowData={displayedItems || []} 
+	            columnDefs={columnDefs} 
+	            rowSelection="multiple"
+            headerHeight={fontSize + rowDensity + 10}
+            rowHeight={fontSize + rowDensity + 10}
+	            onSelectionChanged={(e) => {
+                const selectedNodes = e?.api?.getSelectedNodes?.() || []
+                setSelectedIds(selectedNodes.map((n: any) => n.data?.id).filter(Boolean) || [])
+              }}
+            onFilterChanged={(e) => setGridFilterModel(e.api.getFilterModel() || {})}
+	            onSortChanged={(e) => {
+	              const nextSortModel = e.api.getColumnState().filter((col: any) => col.sort).map((col: any) => ({ colId: col.colId, sort: col.sort }))
+	              setGridSortModel(nextSortModel)
+	            }}
+              onCellContextMenu={(e) => {
+                if (!e?.data) return
+                e.event?.preventDefault?.()
+                openRowActionMenuAtPoint(e.data, e.event.clientX, e.event.clientY)
+              }}
+	            onRowClicked={handleRowClicked}
+	            onRowDoubleClicked={handleRowDoubleClicked}
+            quickFilterText={searchTerm}
+            suppressRowClickSelection={true}
+            enableCellTextSelection={true}
+            autoSizeStrategy={autoSizeStrategy}
+	          />
 
-	      </div>
+	        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="rounded-lg border border-white/5 bg-black/20 px-4 py-3">
+            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Grouped View</p>
+            <p className="pt-1 text-[12px] font-semibold text-slate-100">Grouped by {groupOptions.find((option) => option.value === groupBy)?.label || groupBy}</p>
+            <p className="pt-1 text-[11px] text-slate-400">Each group is its own collapsible operational table. Selection, compare, and bulk actions still work across groups.</p>
+          </div>
+          {groupedSections.map((section) => {
+            const isCollapsed = collapsedGroups[section.key]
+            const selectedCount = section.items.filter((item: any) => selectedIds.includes(item.id)).length
+            return (
+              <section key={section.key} className="glass-panel overflow-hidden rounded-lg border border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setCollapsedGroups((current) => ({ ...current, [section.key]: !current[section.key] }))}
+                  className="flex w-full items-center justify-between gap-4 border-b border-white/5 bg-white/[0.03] px-5 py-4 text-left transition-all hover:bg-white/[0.05]"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-400">{groupOptions.find((option) => option.value === groupBy)?.label}</span>
+                      <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-100">{section.label}</h3>
+                    </div>
+                    <p className="pt-1 text-[11px] text-slate-400">{section.items.length} monitors in this group{selectedCount ? ` · ${selectedCount} selected` : ''}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-lg border border-white/5 bg-black/30 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-slate-300">{section.items.length}</span>
+                    {isCollapsed ? <ChevronDown size={16} className="text-slate-500" /> : <ChevronUp size={16} className="text-slate-500" />}
+                  </div>
+                </button>
+                {!isCollapsed && (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full border-collapse">
+                      <thead>
+                        <tr className="border-b border-white/5 bg-black/20">
+                          <th className="w-12 px-3 py-3 text-center">
+                            <span className="sr-only">Select</span>
+                          </th>
+                          {groupedColumns.map((column) => (
+                            <th key={column.key} className={`px-3 py-3 text-left text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 ${column.className || ''}`}>
+                              {column.label}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {section.items.map((item: any) => {
+                          const selected = selectedIds.includes(item.id)
+                          return (
+                            <tr
+                              key={item.id}
+                              onClick={(event) => handleGroupedRowClick(item, event)}
+                              onDoubleClick={() => setDetailItem(item)}
+                              onContextMenu={(event) => {
+                                event.preventDefault()
+                                openRowActionMenuAtPoint(item, event.clientX, event.clientY)
+                              }}
+                              className={`cursor-pointer border-b border-white/5 transition-all ${selected ? 'bg-blue-500/10' : 'hover:bg-white/[0.03]'}`}
+                            >
+                              <td className="px-3 py-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={selected}
+                                  onChange={(event) => toggleGroupedCheckbox(item, event)}
+                                  className="h-4 w-4 rounded border-white/10 bg-black/40 accent-blue-500"
+                                />
+                              </td>
+                              {groupedColumns.map((column) => (
+                                <td key={column.key} className={`px-3 py-3 align-middle text-[11px] font-semibold text-slate-200 ${column.className || ''}`}>
+                                  {column.render(item)}
+                                </td>
+                              ))}
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            )
+          })}
+        </div>
+      )}
 
       <BulkActionModals
         isStatusOpen={isBulkStatusOpen}

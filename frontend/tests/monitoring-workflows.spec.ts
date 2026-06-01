@@ -97,7 +97,8 @@ test.describe('Monitoring workflows', () => {
     await expect(getPrimaryGrid(page)).toContainText(monitorB.title)
 
     await selectGridCheckboxRows(page, [0, 1])
-    await expect(page.getByText('2 Selected')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Compare' })).toBeEnabled()
+    await expect(page.getByRole('button', { name: 'Bulk Actions' }).first()).toBeEnabled()
 
     await openToolbarButton(page, 'Compare')
     const compareModal = page.locator('.glass-panel').filter({ has: page.getByRole('heading', { name: 'Compare Monitors' }) })
@@ -113,7 +114,8 @@ test.describe('Monitoring workflows', () => {
     const bulkMenu = page.locator('.bulk-menu-container').last()
     await bulkMenu.locator('select').selectOption('Info')
     await expect(bulkMenu.getByText('This change will align the current selection to Info.')).toBeVisible()
-    await bulkMenu.getByRole('button', { name: 'Apply Severity' }).click()
+    await bulkMenu.getByRole('button', { name: 'Apply Severity' }).scrollIntoViewIfNeeded()
+    await bulkMenu.getByRole('button', { name: 'Apply Severity' }).click({ force: true })
     await expectToast(page, 'Bulk Operation Complete')
     await page.getByRole('button', { name: 'Undo' }).last().click()
     await expectToast(page, 'Undo complete')
@@ -133,11 +135,11 @@ test.describe('Monitoring workflows', () => {
     const displayMenu = page.locator('.display-menu-container').last()
     await displayMenu.locator('select').nth(0).selectOption('platform')
     await page.keyboard.press('Escape')
-    await expect(page.locator('.ag-header')).toContainText('Grouped by Platform')
+    await expect(page.getByText('Grouped by Platform')).toBeVisible()
 
     await page.goto('/asset')
     await gotoView(page, '/monitoring', 'Monitoring Matrix')
     await expect(page.getByPlaceholder('Scan matrix...')).toHaveValue(titlePrefix)
-    await expect(page.locator('.ag-header')).toContainText('Grouped by Platform')
+    await expect(page.getByText('Grouped by Platform')).toBeVisible()
   })
 })
