@@ -518,7 +518,8 @@ export default function MonitoringGrid() {
     }
     if (options?.autoSizeIfEmpty) {
       requestAnimationFrame(() => {
-        api.autoSizeAllColumns(false)
+        // Use true to include header in auto-sizing
+        api.autoSizeAllColumns(true)
         syncColumnLayoutState(api)
       })
     }
@@ -529,7 +530,7 @@ export default function MonitoringGrid() {
     rowDensity,
     hiddenColumns,
     groupBy,
-    columnLayoutState,
+    columnLayoutState: gridRef.current?.api?.getColumnState() || columnLayoutState,
     quickFilter: searchTerm,
     quickFilters,
     filterModel: gridRef.current?.api?.getFilterModel?.() || gridFilterModel,
@@ -1139,7 +1140,7 @@ export default function MonitoringGrid() {
       suppressHide: true,
       cellRenderer: (p: any) => p.data && isRecentChange(p.data) ? (
         <div className="flex h-full w-full items-center justify-center">
-          <span title="Changed since your last visit" className="inline-block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.35)]" />
+          <span title="Changed since your last visit" className="inline-block h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.6)] animate-pulse" />
         </div>
       ) : null
     },
@@ -1292,7 +1293,7 @@ export default function MonitoringGrid() {
             <div className="relative">
               <div className={`w-2 h-2 rounded-full ${isDeleted ? 'bg-slate-700' : isActive ? 'bg-emerald-500' : 'bg-rose-500/50'}`} />
               {(isActive && !isDeleted) && (
-                <div className="absolute -inset-1 rounded-full bg-emerald-500 animate-pulse opacity-30" />
+                <div className="absolute -inset-1 rounded-full bg-emerald-500 animate-pulse opacity-40 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
               )}
             </div>
           </div>
@@ -1402,8 +1403,8 @@ export default function MonitoringGrid() {
   ], [fontSize, groupBy, hiddenColumns]) as any
 
   const autoSizeStrategy = useMemo(() => ({
-    type: 'fitGridWidth' as const,
-    defaultMinWidth: 80
+    type: 'fitCellContents' as const,
+    skipHeader: false
   }), []);
 
   const gridContext = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
@@ -2059,8 +2060,13 @@ export default function MonitoringGrid() {
             headerHeight={fontSize + rowDensity + 10}
             rowHeight={fontSize + rowDensity + 10}
             context={gridContext}
-            onGridReady={(event) => applyColumnLayoutState(event.api, { autoSizeIfEmpty: true })}
-            onFirstDataRendered={(event) => applyColumnLayoutState(event.api, { autoSizeIfEmpty: true })}
+            onGridReady={(event) => {
+              if (columnLayoutState.length > 0) {
+                applyColumnLayoutState(event.api);
+              } else {
+                event.api.autoSizeAllColumns(true);
+              }
+            }}
 	            onSelectionChanged={(e) => {
                 const selectedNodes = e?.api?.getSelectedNodes?.() || []
                 setSelectedIds(selectedNodes.map((n: any) => n.data?.id).filter(Boolean) || [])
@@ -2068,7 +2074,11 @@ export default function MonitoringGrid() {
             onColumnResized={(event) => {
               if (event.finished) syncColumnLayoutState(event.api)
             }}
-            onColumnMoved={(event) => syncColumnLayoutState(event.api)}
+            onColumnMoved={(event) => {
+               // Only sync if the move is complete (no direct finished flag, but we can check if it's from a drag)
+               if (!event.source.includes('drag')) syncColumnLayoutState(event.api)
+            }}
+            onDragStopped={(event) => syncColumnLayoutState(event.api)}
             onColumnPinned={(event) => syncColumnLayoutState(event.api)}
             onColumnVisible={(event) => syncColumnLayoutState(event.api)}
             onFilterChanged={(e) => setGridFilterModel(e.api.getFilterModel() || {})}
@@ -2144,29 +2154,29 @@ export default function MonitoringGrid() {
                   </div>
                 </button>
                 {!isCollapsed && (
-                  <div className="overflow-x-auto">
-                    <table className="grouped-monitoring-table border-collapse" style={{ minWidth: `${groupedTableMinWidth}px`, width: `${groupedTableMinWidth}px` }}>
+                  <div className="overflow-x-auto custom-scrollbar">
+                    <table className="grouped-monitoring-table border-collapse table-fixed" style={{ minWidth: `${groupedTableMinWidth}px`, width: `${groupedTableMinWidth}px` }}>
                       <colgroup>
                         {groupedColumns.map((column: any) => (
                           <col key={column.key} style={{ width: `${column.width}px` }} />
                         ))}
                       </colgroup>
                       <thead>
-                        <tr className="border-b border-white/5 bg-black/20" style={{ height: `${fontSize + rowDensity + 10}px` }}>
+                        <tr className="border-b border-white/5 bg-slate-900/50" style={{ height: `${fontSize + rowDensity + 10}px` }}>
                           {groupedColumns.map((column: any) => (
                             <th
                               key={column.key}
                               onClick={() => column.sortable && cycleGroupedSort(column.key)}
-                              className={`px-3 py-0 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 ${column.headerClass || ''} ${column.sortable ? 'cursor-pointer select-none hover:text-slate-200' : ''} ${column.pinned ? 'sticky z-[2] backdrop-blur-md' : ''}`}
+                              className={`px-0 py-0 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 ${column.headerClass || ''} ${column.sortable ? 'cursor-pointer select-none hover:text-slate-200' : ''} ${column.pinned ? 'sticky z-[2] backdrop-blur-md' : ''}`}
                               style={{
                                 fontSize: `${fontSize}px`,
                                 height: `${fontSize + rowDensity + 10}px`,
                                 left: groupedStickyOffsets[column.key]?.left,
                                 right: groupedStickyOffsets[column.key]?.right,
-                                background: column.pinned ? 'rgba(15, 23, 42, 0.98)' : undefined
+                                background: column.pinned ? '#1a1b26' : undefined
                               }}
                             >
-                              <span className="flex items-center justify-center gap-1">
+                              <span className="flex items-center justify-center gap-1 h-full border-r border-white/5">
                                 <span>{column.label}</span>
                                 {column.sort === 'asc' && <ChevronUp size={12} className="text-blue-400" />}
                                 {column.sort === 'desc' && <ChevronDown size={12} className="text-blue-400" />}
@@ -2187,13 +2197,13 @@ export default function MonitoringGrid() {
                                 event.preventDefault()
                                 openRowActionMenuAtPoint(item, event.clientX, event.clientY)
                               }}
-                              className={`cursor-pointer border-b border-white/5 transition-all ${selected ? 'bg-blue-500/10' : rowIndex % 2 === 0 ? 'bg-white/[0.02] hover:bg-white/[0.05]' : 'bg-transparent hover:bg-white/[0.04]'}`}
+                              className={`cursor-pointer border-b border-white/5 transition-all group ${selected ? 'bg-blue-600/20' : rowIndex % 2 === 0 ? 'bg-[#1a1b26] hover:bg-white/[0.05]' : 'bg-[#161720] hover:bg-white/[0.05]'}`}
                               style={{ height: `${fontSize + rowDensity + 10}px` }}
                             >
                               {groupedColumns.map((column: any) => (
                                 <td
                                   key={column.key}
-                                  className={`h-full overflow-hidden whitespace-nowrap px-3 py-0 align-middle font-semibold text-slate-200 text-ellipsis ${column.cellClass || ''} ${column.pinned ? 'sticky z-[1]' : ''}`}
+                                  className={`h-full overflow-hidden whitespace-nowrap px-0 py-0 align-middle font-bold text-slate-200 text-ellipsis ${column.cellClass || ''} ${column.pinned ? 'sticky z-[1]' : ''}`}
                                   style={{
                                     fontSize: `${fontSize}px`,
                                     height: `${fontSize + rowDensity + 10}px`,
@@ -2201,13 +2211,15 @@ export default function MonitoringGrid() {
                                     left: groupedStickyOffsets[column.key]?.left,
                                     right: groupedStickyOffsets[column.key]?.right,
                                     background: selected
-                                      ? 'rgba(59, 130, 246, 0.1)'
+                                      ? 'rgba(37, 99, 235, 0.2)'
                                       : column.pinned
-                                        ? rowIndex % 2 === 0 ? 'rgba(15, 23, 42, 0.98)' : 'rgba(2, 6, 23, 0.98)'
+                                        ? rowIndex % 2 === 0 ? '#1a1b26' : '#161720'
                                         : undefined
                                   }}
                                 >
-                                  {column.render(item)}
+                                  <div className="flex items-center justify-center h-full border-r border-white/5">
+                                    {column.render(item)}
+                                  </div>
                                 </td>
                               ))}
                             </tr>

@@ -34,12 +34,12 @@ export const PageHeader = ({
   className?: string
 }) => (
   <section className={join('flex items-start justify-between gap-6', className)}>
-    <div className="min-w-0 space-y-2">
-      {eyebrow && <div className="text-[9px] font-black uppercase tracking-[0.24em] text-blue-400">{eyebrow}</div>}
-      <div className="space-y-1">
-        <h1 className="text-3xl font-black tracking-tighter text-[var(--text-primary)]">{title}</h1>
+    <div className="min-w-0 space-y-1">
+      {eyebrow && <div className="text-[8px] font-black uppercase tracking-[0.24em] text-blue-400">{eyebrow}</div>}
+      <div className="space-y-0.5">
+        <h1 className="text-xl font-black tracking-tighter text-[var(--text-primary)]">{title}</h1>
         {subtitle && (
-          <p className="max-w-3xl text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
+          <p className="max-w-3xl text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-secondary)]">
             {subtitle}
           </p>
         )}
