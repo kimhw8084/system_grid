@@ -428,7 +428,7 @@ export default function MonitoringGrid() {
     )
   }
 
-  const handleRowClicked = (event: any) => {
+  const handleRowClicked = useCallback((event: any) => {
     if (!event?.node || shouldIgnoreRowSelection(event.event?.target)) return
     const mouseEvent = event.event as MouseEvent | undefined
     const isToggleSelection = Boolean(mouseEvent?.metaKey || mouseEvent?.ctrlKey)
@@ -458,12 +458,12 @@ export default function MonitoringGrid() {
     event.api.deselectAll()
     event.node.setSelected(true)
     selectionAnchorRef.current = event.node.rowIndex
-  }
+  }, [])
 
-  const handleRowDoubleClicked = (event: any) => {
+  const handleRowDoubleClicked = useCallback((event: any) => {
     if (!event?.data || shouldIgnoreRowSelection(event.event?.target)) return
     setDetailItem(event.data)
-  }
+  }, [])
 
   const openRecoveryDocuments = (item: any) => {
     setBkmPopup({
@@ -2215,7 +2215,13 @@ export default function MonitoringGrid() {
       )}
 
       {groupBy === 'raw' ? (
-	        <div className="monitoring-grid-shell monitoring-grid flex-1 w-full min-h-0 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative">
+	        <div 
+            className="monitoring-grid-shell monitoring-grid flex-1 w-full min-h-0 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative"
+            style={{ 
+              '--ag-font-size': `${fontSize}px`,
+              '--ag-font-family': "'Inter', sans-serif",
+            } as React.CSSProperties}
+          >
           {isLoading && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
                <RefreshCcw size={32} className="text-blue-400 animate-spin" />
@@ -2230,44 +2236,51 @@ export default function MonitoringGrid() {
             rowDensity={rowDensity}
             context={gridContext}
             onGridReady={(event: any) => {
+              // Immediately apply layout if we have it to prevent squish
               if (columnLayoutState.length > 0) {
-                applyColumnLayoutState(event.api);
+                event.api.applyColumnState({
+                  state: columnLayoutState,
+                  applyOrder: true,
+                  defaultState: { sort: null }
+                });
               }
             }}
-	            onSelectionChanged={(e: any) => {
+	            onSelectionChanged={useCallback((e: any) => {
                 const selectedNodes = e?.api?.getSelectedNodes?.() || []
                 setSelectedIds(selectedNodes.map((n: any) => n.data?.id).filter(Boolean) || [])
-              }}
-            onColumnResized={(event: any) => {
+              }, [])}
+            onColumnResized={useCallback((event: any) => {
               if (event.finished) syncColumnLayoutState(event.api)
-            }}
-            onColumnMoved={(event: any) => {
-               // Only sync if the move is complete (no direct finished flag, but we can check if it's from a drag)
+            }, [])}
+            onColumnMoved={useCallback((event: any) => {
                if (!event.source.includes('drag')) syncColumnLayoutState(event.api)
-            }}
-            onDragStopped={(event: any) => syncColumnLayoutState(event.api)}
-            onColumnPinned={(event: any) => syncColumnLayoutState(event.api)}
-            onColumnVisible={(event: any) => syncColumnLayoutState(event.api)}
-            onFilterChanged={(e: any) => setGridFilterModel(e.api.getFilterModel() || {})}
-	            onSortChanged={(e: any) => {
+            }, [])}
+            onDragStopped={useCallback((event: any) => syncColumnLayoutState(event.api), [])}
+            onColumnPinned={useCallback((event: any) => syncColumnLayoutState(event.api), [])}
+            onColumnVisible={useCallback((event: any) => syncColumnLayoutState(event.api), [])}
+            onFilterChanged={useCallback((e: any) => setGridFilterModel(e.api.getFilterModel() || {}), [])}
+	            onSortChanged={useCallback((e: any) => {
 	              const nextSortModel = e.api.getColumnState().filter((col: any) => col.sort).map((col: any) => ({ colId: col.colId, sort: col.sort }))
 	              setGridSortModel(nextSortModel)
-	            }}
-            onCellContextMenu={(e: any) => {
+	            }, [])}
+            onCellContextMenu={useCallback((e: any) => {
               if (!e?.data) return
               const mouseEvent = e.event as MouseEvent
               mouseEvent?.preventDefault?.()
               openRowActionMenuAtPoint(e.data, mouseEvent.clientX, mouseEvent.clientY)
-            }}
+            }, [openRowActionMenuAtPoint])}
 	            onRowClicked={handleRowClicked}
             onRowDoubleClicked={handleRowDoubleClicked}
-            getRowClass={(params: any) => params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd'}
-            onFirstDataRendered={(event: any) => {
-              // Only apply layout if we have a saved one, otherwise let AgGrid defaults handle it
+            getRowClass={useCallback((params: any) => params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd', [])}
+            onFirstDataRendered={useCallback((event: any) => {
               if (columnLayoutState.length > 0) {
-                applyColumnLayoutState(event.api)
+                event.api.applyColumnState({
+                  state: columnLayoutState,
+                  applyOrder: true,
+                  defaultState: { sort: null }
+                });
               }
-            }}
+            }, [columnLayoutState])}
 	          />
 
 	        </div>
@@ -2489,8 +2502,6 @@ export default function MonitoringGrid() {
           --ag-border-color: rgba(255, 255, 255, 0.05);
           --ag-foreground-color: #f1f5f9;
           --ag-header-foreground-color: #3b82f6;
-          --ag-font-family: 'Inter', sans-serif;
-          --ag-font-size: ${fontSize}px;
         }
         .ag-root-wrapper { border: none !important; }
         .ag-header-cell-label { 
