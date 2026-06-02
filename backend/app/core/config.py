@@ -40,10 +40,19 @@ class Settings(BaseSettings):
     def model_post_init(self, __context) -> None:
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         frontend_dir = os.path.join(os.path.dirname(base_dir), "frontend")
-        if not self.DATABASE_URL:
-            object.__setattr__(self, "DATABASE_URL", f"sqlite+aiosqlite:///{os.path.join(base_dir, 'system_grid.db')}")
-        if not self.CONFIG_DATABASE_URL:
-            object.__setattr__(self, "CONFIG_DATABASE_URL", f"sqlite+aiosqlite:///{os.path.join(base_dir, 'config.db')}")
+        
+        # Helper to resolve relative sqlite paths
+        def resolve_db_url(url: str, default_filename: str) -> str:
+            if not url:
+                return f"sqlite+aiosqlite:///{os.path.join(base_dir, default_filename)}"
+            if url.startswith("sqlite+aiosqlite:///./"):
+                relative_path = url.replace("sqlite+aiosqlite:///./", "")
+                return f"sqlite+aiosqlite:///{os.path.join(base_dir, relative_path)}"
+            return url
+
+        object.__setattr__(self, "DATABASE_URL", resolve_db_url(self.DATABASE_URL, "system_grid.db"))
+        object.__setattr__(self, "CONFIG_DATABASE_URL", resolve_db_url(self.CONFIG_DATABASE_URL, "config.db"))
+        
         if not self.TENANT_STORAGE_ROOT:
             object.__setattr__(self, "TENANT_STORAGE_ROOT", os.path.join(base_dir, "tenants"))
         if not self.BACKEND_ENV_FILE_PATH:

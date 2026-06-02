@@ -14,6 +14,7 @@ from faker import Faker
 # Add backend to path
 sys.path.insert(0, os.path.dirname(__file__))
 
+from app.core.config import settings
 from app.models.models import (
     Site, Room, Rack, Device, DeviceLocation, HardwareComponent,
     DeviceSoftware, NetworkInterface, Subnet, PortConnection,
@@ -29,8 +30,14 @@ from app.models.models import (
     EnvHistory, UserPoolVersion
 )
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "system_grid.db")
-engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
+DATABASE_URL = settings.DATABASE_URL
+# Strip the driver prefix and leading slashes for os.path operations if it's sqlite
+if DATABASE_URL.startswith("sqlite+aiosqlite:///"):
+    DB_PATH = DATABASE_URL.replace("sqlite+aiosqlite:///", "")
+else:
+    DB_PATH = os.path.join(os.path.dirname(__file__), "system_grid.db")
+
+engine = create_engine(DATABASE_URL.replace("sqlite+aiosqlite", "sqlite"), echo=False)
 fake = Faker()
 
 def seed():
