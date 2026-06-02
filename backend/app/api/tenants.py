@@ -3,15 +3,37 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy import select, update, insert, func, text
 from typing import List
 import os
-import subprocess
 import sys
-from ..database import get_config_db, get_db, ConfigSessionLocal, get_tenant_engine
+from ..database import get_config_db, get_db, ConfigSessionLocal, get_tenant_engine, is_sqlite_url, sqlite_path_from_url
 from ..models.config import Tenant, UserTenantAccess, MasterSystemSetting
 from ..schemas.config import TenantCreate, TenantResponse, MasterSettingBase, UserTenantSelection, UserTenantResponse, TenantAttach, PreflightRequest, PreflightResponse
 from ..core.config import settings
 from .utils import get_current_user_id
 
 router = APIRouter(prefix="/tenants", tags=["Multi-Tenancy"])
+
+def resolve_db_target(db_path: str | None = None, db_url: str | None = None) -> tuple[str, str]:
+    if db_url and db_url.strip():
+        return db_url.strip(), "Database URL"
+    if db_path and db_path.strip():
+        normalized_path = db_path.strip()
+        if not os.path.isabs(normalized_path):
+            normalized_path = os.path.abspath(os.path.join(settings.TENANT_STORAGE_ROOT, normalized_path))
+        return f"sqlite+aiosqlite:///{normalized_path}", "Database Path"
+    raise HTTPException(status_code=400, detail="Either db_path or db_url must be provided")
+
+async def tenant_online_status(db_url: str) -> bool:
+    if is_sqlite_url(db_url):
+        db_path = sqlite_path_from_url(db_url)
+        return bool(db_path and os.path.exists(db_path))
+
+    engine = get_tenant_engine(db_url)
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        return True
+    except Exception:
+        return False
 
 @router.get("/admin/settings", response_model=List[MasterSettingBase])
 async def get_master_settings(db: AsyncSession = Depends(get_config_db)):
@@ -55,11 +77,14 @@ async def backup_tenant(tenant_id: int, db: AsyncSession = Depends(get_config_db
     res_root = await db.execute(select(MasterSystemSetting).filter(MasterSystemSetting.key == "tenant_storage_root"))
     storage_root = res_root.scalar_one().value
     
+    if not is_sqlite_url(tenant.db_url):
+        raise HTTPException(status_code=400, detail="Manual backup is currently supported only for SQLite tenant databases.")
+
     backup_dir = os.path.join(storage_root, "backups", tenant.name.lower().replace(" ", "_"))
     os.makedirs(backup_dir, exist_ok=True)
     
     # Source path
-    db_path = tenant.db_url.replace("sqlite+aiosqlite:///", "")
+    db_path = sqlite_path_from_url(tenant.db_url)
     if not os.path.exists(db_path):
         raise HTTPException(400, "Source database file not found")
         
@@ -99,8 +124,7 @@ async def list_all_tenants(db: AsyncSession = Depends(get_config_db)):
     # Enrich with backup info and actual disk status
     enriched = []
     for t in tenants:
-        db_path = t.db_url.replace("sqlite+aiosqlite:///", "")
-        is_online = os.path.exists(db_path)
+        is_online = await tenant_online_status(t.db_url)
         
         # Check last backup
         last_backup = None
@@ -164,7 +188,8 @@ async def run_alembic_upgrade(db_url: str):
 async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_config_db), request: Request = None):
     # 1. Get storage root
     res = await db.execute(select(MasterSystemSetting).filter(MasterSystemSetting.key == "tenant_storage_root"))
-    storage_root = res.scalar_one().value
+    storage_root_setting = res.scalar_one_or_none()
+    storage_root = storage_root_setting.value if storage_root_setting else settings.TENANT_STORAGE_ROOT
     
     # Ensure root exists
     if not os.path.exists(storage_root):
@@ -232,21 +257,18 @@ async def preflight_check(req: PreflightRequest):
     """
     Checks if a database file exists and validates its schema compatibility.
     """
-    db_path = req.db_path.strip()
-    if not os.path.isabs(db_path):
-        # If relative, check in storage root
-        # We'll just enforce absolute paths for preflight from UI for now
-        pass
-        
-    if not os.path.exists(db_path):
-        return {
-            "status": "Error",
-            "is_valid": False,
-            "table_count": 0,
-            "message": f"File not found: {db_path}"
-        }
-        
-    db_url = f"sqlite+aiosqlite:///{db_path}"
+    db_url, target_kind = resolve_db_target(req.db_path, req.db_url)
+    if is_sqlite_url(db_url):
+        db_path = sqlite_path_from_url(db_url)
+        if not db_path or not os.path.exists(db_path):
+            return {
+                "status": "Error",
+                "is_valid": False,
+                "table_count": 0,
+                "message": f"File not found: {db_path}",
+                "target": target_kind
+            }
+
     engine = get_tenant_engine(db_url)
     
     try:
@@ -274,7 +296,8 @@ async def preflight_check(req: PreflightRequest):
                     "is_valid": False,
                     "schema_version": schema_version,
                     "table_count": table_count,
-                    "message": "Database exists but missing core SysGrid tables (e.g. 'devices')."
+                    "message": "Database exists but missing core SysGrid tables (e.g. 'devices').",
+                    "target": target_kind
                 }
                 
             return {
@@ -282,14 +305,16 @@ async def preflight_check(req: PreflightRequest):
                 "is_valid": True,
                 "schema_version": schema_version,
                 "table_count": table_count,
-                "message": "Database is compatible and ready to be linked." if has_devices else "Database is empty but valid for initialization."
+                "message": "Database is compatible and ready to be linked." if has_devices else "Database is empty but valid for initialization.",
+                "target": target_kind
             }
     except Exception as e:
         return {
             "status": "Corrupt",
             "is_valid": False,
             "table_count": 0,
-            "message": f"Connection failed: {str(e)}"
+            "message": f"Connection failed: {str(e)}",
+            "target": target_kind
         }
 
 @router.post("/admin/attach", response_model=TenantResponse)
@@ -297,11 +322,11 @@ async def attach_tenant(tenant_in: TenantAttach, db: AsyncSession = Depends(get_
     """
     Links an existing database file on disk to the registry.
     """
-    db_path = tenant_in.db_path.strip()
-    if not os.path.exists(db_path):
-        raise HTTPException(status_code=400, detail=f"Database file not found: {db_path}")
-        
-    db_url = f"sqlite+aiosqlite:///{db_path}"
+    db_url, _ = resolve_db_target(tenant_in.db_path, tenant_in.db_url)
+    if is_sqlite_url(db_url):
+        db_path = sqlite_path_from_url(db_url)
+        if not db_path or not os.path.exists(db_path):
+            raise HTTPException(status_code=400, detail=f"Database file not found: {db_path}")
     
     # 1. Check if already exists in registry
     res = await db.execute(select(Tenant).filter(func.lower(Tenant.name) == tenant_in.name.lower()))
@@ -347,7 +372,7 @@ async def get_my_tenants(db: AsyncSession = Depends(get_config_db), request: Req
     res = await db.execute(select(UserTenantAccess).filter(UserTenantAccess.user_id == user_id))
     if not res.scalars().first():
         # Get default tenant ID
-        res_default = await db.execute(select(Tenant).filter(Tenant.name == "Default Engine"))
+        res_default = await db.execute(select(Tenant).filter(Tenant.name == settings.DEFAULT_TENANT_NAME))
         default_tenant = res_default.scalar_one_or_none()
         if default_tenant:
             db.add(UserTenantAccess(user_id=user_id, tenant_id=default_tenant.id, role="ADMIN", is_selected=True))
@@ -362,8 +387,7 @@ async def get_my_tenants(db: AsyncSession = Depends(get_config_db), request: Req
     
     my_tenants = []
     for r in result.all():
-        db_path = r[4].replace("sqlite+aiosqlite:///", "")
-        is_online = os.path.exists(db_path)
+        is_online = await tenant_online_status(r[4])
         my_tenants.append({
             "id": r[0], 
             "name": r[1], 

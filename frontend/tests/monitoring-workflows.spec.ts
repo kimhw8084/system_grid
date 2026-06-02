@@ -139,7 +139,7 @@ test.describe('Monitoring workflows', () => {
     const displayMenu = page.locator('.display-menu-container').last()
     await displayMenu.locator('select').nth(0).selectOption('platform')
     await page.keyboard.press('Escape')
-    await expect(page.getByText('Grouped by Platform')).toBeVisible()
+    await expect(page.getByText('Sorted by Platform')).toBeVisible()
     await expect(page.getByRole('columnheader', { name: 'ID' }).first()).toBeVisible()
     await expect(page.getByRole('columnheader', { name: 'Target Asset' }).first()).toBeVisible()
     const groupedRowHeight = await page.locator('table tbody tr').first().evaluate((node) => Math.round(node.getBoundingClientRect().height))
@@ -149,7 +149,7 @@ test.describe('Monitoring workflows', () => {
     await page.goto('/asset')
     await gotoView(page, '/monitoring', 'Monitoring Matrix')
     await expect(page.getByPlaceholder('Scan matrix...')).toHaveValue(titlePrefix)
-    await expect(page.getByText('Grouped by Platform')).toBeVisible()
+    await expect(page.getByText('Sorted by Platform')).toBeVisible()
   })
 
   test('edits an existing monitor without save errors and persists the updated fields', async ({ page, request }) => {

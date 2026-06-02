@@ -150,17 +150,20 @@ export default function SettingsPage() {
   const [newTenantName, setNewTenantName] = useState("")
   const [attachName, setAttachName] = useState("")
   const [attachPath, setAttachPath] = useState("")
+  const [attachMode, setAttachMode] = useState<'path' | 'url'>('path')
   const [preflightResult, setPreflightResult] = useState<any>(null)
   const [storageRootEdit, setStorageRootEdit] = useState<string | null>(null)
   const [operatorFilter, setOperatorFilter] = useState("")
+  const [envSearch, setEnvSearch] = useState("")
+  const [envImpactFilter, setEnvImpactFilter] = useState<'ALL' | 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'>('ALL')
   
   const queryClient = useQueryClient()
 
   const preflightMutation = useMutation({
-    mutationFn: async (db_path: string) => {
+    mutationFn: async (target: string) => {
       const res = await apiFetch("/api/v1/tenants/admin/preflight", {
         method: "POST",
-        body: JSON.stringify({ db_path })
+        body: JSON.stringify(attachMode === 'url' ? { db_url: target } : { db_path: target })
       })
       return res.json()
     },
@@ -172,7 +175,7 @@ export default function SettingsPage() {
   })
 
   const attachMutation = useMutation({
-    mutationFn: async (data: { name: string, db_path: string }) => {
+    mutationFn: async (data: { name: string, db_path?: string, db_url?: string }) => {
       const res = await apiFetch("/api/v1/tenants/admin/attach", {
         method: "POST",
         body: JSON.stringify(data)
@@ -271,6 +274,19 @@ export default function SettingsPage() {
       if (!envSettings) return false;
       if (field) return String(localEnv[field]) !== String(envSettings[field]);
       return Object.keys(localEnv).some(k => String(localEnv[k]) !== String(envSettings[k]));
+  }
+
+  const getImpactTone = (impact?: string) => {
+    switch (impact) {
+      case 'CRITICAL':
+        return 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+      case 'HIGH':
+        return 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+      case 'MEDIUM':
+        return 'bg-sky-500/10 text-sky-400 border-sky-500/20'
+      default:
+        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+    }
   }
 
   const getPersistableEnvSettings = () =>
@@ -553,6 +569,53 @@ result_df = get_user_pool()`)
     "knowledge", "logs", "settings"
   ];
 
+  const envEntries = Object.entries(localEnv || {}).filter(([key]) => !key.startsWith('_'))
+  const totalEnvParams = envEntries.length
+  const dirtyEnvCount = envEntries.filter(([key]) => isDirty(key)).length
+  const criticalEnvCount = envEntries.filter(([key]) => envHelp[key]?.impact === 'CRITICAL').length
+  const filteredEnvEntries = envEntries.filter(([key, value]) => {
+    const metadata = localEnv._metadata?.[key]
+    const details = envHelp[key]
+    const query = envSearch.trim().toLowerCase()
+    const matchesQuery = !query || [
+      key,
+      value == null ? '' : String(value),
+      metadata?.category,
+      metadata?.file,
+      metadata?.param,
+      details?.details,
+      details?.impact
+    ]
+      .filter(Boolean)
+      .some((part) => String(part).toLowerCase().includes(query))
+
+    const matchesImpact = envImpactFilter === 'ALL' || details?.impact === envImpactFilter
+    return matchesQuery && matchesImpact
+  })
+  const visibleCategories = Array.from(
+    new Set(filteredEnvEntries.map(([key]) => localEnv._metadata?.[key]?.category).filter(Boolean))
+  )
+  const activeOperators = operators?.length || 0
+  const adminOperators = (operators || []).filter((op: any) => op.is_admin).length
+  const roleCount = roles?.length || 0
+  const onlineTenants = (allTenants || []).filter((tenant: any) => tenant.is_online).length
+  const offlineTenants = Math.max((allTenants?.length || 0) - onlineTenants, 0)
+  const hasTenantStorageRoot = !!masterSettings?.some((setting: any) => setting.key === 'tenant_storage_root')
+  const themeOptions = [
+    {
+      id: 'pure-clarity',
+      label: 'Light',
+      helper: 'Readable operator mode',
+      swatch: 'from-amber-100 via-white to-sky-100'
+    },
+    {
+      id: 'nordic-frost-v1',
+      label: 'Dark',
+      helper: 'High-density analyst mode',
+      swatch: 'from-slate-900 via-slate-800 to-cyan-900'
+    }
+  ]
+
   const togglePermission = (op: any, view: string) => {
     // Admin Lock-out Protection
     if (op.username === userProfile?.username && view === 'settings') {
@@ -675,15 +738,116 @@ result_df = get_user_pool()`)
                   <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">Global Environment & .env Management</p>
                </div>
 
+               <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
+                  <div className="p-6 rounded-2xl border border-[var(--glass-border)] bg-[var(--panel-item-bg)] shadow-2xl space-y-6">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.35em] text-blue-400">
+                        <Palette size={14} /> Operator Preferences
+                      </div>
+                      <h3 className="text-xl font-black uppercase tracking-tight text-[var(--text-primary)]">Theme Persistence</h3>
+                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">
+                        User-level theme selection is persisted locally and through `/settings/user/settings`.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {themeOptions.map((theme) => {
+                        const selected = currentTheme === theme.id
+                        return (
+                          <button
+                            key={theme.id}
+                            onClick={() => changeTheme(theme.id)}
+                            className={`group rounded-2xl border p-4 text-left transition-all ${selected ? 'border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/10' : 'border-[var(--glass-border)] bg-black/20 hover:border-blue-500/30 hover:bg-blue-500/5'}`}
+                          >
+                            <div className={`h-20 rounded-xl bg-gradient-to-br ${theme.swatch} border border-white/10`} />
+                            <div className="mt-4 flex items-start justify-between gap-3">
+                              <div>
+                                <div className="text-sm font-black uppercase tracking-widest text-[var(--text-primary)]">{theme.label}</div>
+                                <div className="mt-1 text-[9px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">{theme.helper}</div>
+                              </div>
+                              {selected && (
+                                <div className="p-2 rounded-xl bg-blue-600 text-white">
+                                  <Check size={14} />
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5 shadow-xl">
+                      <div className="text-[8px] font-black uppercase tracking-[0.35em] text-slate-500">Parameters</div>
+                      <div className="mt-3 text-3xl font-black text-[var(--text-primary)]">{totalEnvParams}</div>
+                      <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Loaded from merged config</div>
+                    </div>
+                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 shadow-xl">
+                      <div className="text-[8px] font-black uppercase tracking-[0.35em] text-amber-400">Modified</div>
+                      <div className="mt-3 text-3xl font-black text-amber-300">{dirtyEnvCount}</div>
+                      <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-amber-200/70">Pending unsaved changes</div>
+                    </div>
+                    <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-5 shadow-xl">
+                      <div className="text-[8px] font-black uppercase tracking-[0.35em] text-rose-400">Critical</div>
+                      <div className="mt-3 text-3xl font-black text-rose-300">{criticalEnvCount}</div>
+                      <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-rose-200/70">High-sensitivity parameters</div>
+                    </div>
+                    <div className={`rounded-2xl border p-5 shadow-xl ${isDisconnected ? 'border-rose-500/20 bg-rose-500/5' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
+                      <div className={`text-[8px] font-black uppercase tracking-[0.35em] ${isDisconnected ? 'text-rose-400' : 'text-emerald-400'}`}>Backend</div>
+                      <div className={`mt-3 text-3xl font-black ${isDisconnected ? 'text-rose-300' : 'text-emerald-300'}`}>{isDisconnected ? 'Down' : 'Live'}</div>
+                      <div className={`mt-2 text-[9px] font-black uppercase tracking-[0.18em] ${isDisconnected ? 'text-rose-200/70' : 'text-emerald-200/70'}`}>{getApiBaseUrl() || 'Relative proxy in use'}</div>
+                    </div>
+                  </div>
+               </div>
+
+               <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5 shadow-xl">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-[0.35em] text-blue-400">Config Surface</div>
+                      <h3 className="mt-2 text-lg font-black uppercase tracking-tight text-[var(--text-primary)]">Searchable Parameter Catalog</h3>
+                    </div>
+                    <div className="flex flex-col md:flex-row gap-3">
+                      <div className="relative min-w-[260px]">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                        <input
+                          value={envSearch}
+                          onChange={(e) => setEnvSearch(e.target.value)}
+                          placeholder="Search parameter, path, category, impact..."
+                          className="w-full rounded-xl border border-white/10 bg-black/20 pl-9 pr-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-primary)] outline-none transition-all focus:border-blue-500/50"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5">
+                        <Filter size={14} className="text-slate-500" />
+                        <select
+                          value={envImpactFilter}
+                          onChange={(e) => setEnvImpactFilter(e.target.value as any)}
+                          className="bg-transparent text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-primary)] outline-none"
+                        >
+                          <option value="ALL">All impact</option>
+                          <option value="CRITICAL">Critical</option>
+                          <option value="HIGH">High</option>
+                          <option value="MEDIUM">Medium</option>
+                          <option value="LOW">Low</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+               </div>
+
                <div className="space-y-12">
-                  {Array.from(new Set(Object.values(localEnv._metadata || {}).map((m: any) => m.category))).map((cat: any) => (
+                  {visibleCategories.map((cat: any) => (
                       <div key={cat} className="space-y-4">
-                          <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.4em] flex items-center gap-2">
-                             {cat === 'Infrastructure' ? <Cpu size={12} /> : cat === 'UI' ? <Layout size={12} /> : <Box size={12} />} 
-                             {cat}
-                          </h3>
+                          <div className="flex items-center justify-between gap-4">
+                            <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.4em] flex items-center gap-2">
+                               {cat === 'Infrastructure' ? <Cpu size={12} /> : cat === 'UI' ? <Layout size={12} /> : <Box size={12} />} 
+                               {cat}
+                            </h3>
+                            <div className="text-[8px] font-black uppercase tracking-[0.25em] text-slate-500">
+                              {filteredEnvEntries.filter(([key]) => localEnv._metadata?.[key]?.category === cat).length} visible
+                            </div>
+                          </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-                              {Object.entries(localEnv).filter(([key]) => !key.startsWith('_') && localEnv._metadata?.[key]?.category === cat).map(([key, value]: any) => (
+                              {filteredEnvEntries.filter(([key]) => localEnv._metadata?.[key]?.category === cat).map(([key, value]: any) => (
                                   <SettingField 
                                       key={key}
                                       icon={envHelp[key]?.details?.includes('URL') ? Link : envHelp[key]?.details?.includes('Path') ? FolderTree : Activity} 
@@ -695,27 +859,43 @@ result_df = get_user_pool()`)
                                       absPath={localEnv._metadata?.[key]?.file}
                                       paramName={localEnv._metadata?.[key]?.param}
                                   >
-                                      {typeof value === 'boolean' ? (
-                                          <div className="flex items-center gap-4 py-1">
-                                              <ToggleSwitch 
-                                                  checked={!!value} disabled={!editableFields[key]}
-                                                  onChange={(e: any) => setLocalEnv({...localEnv, [key]: e.target.checked})}
-                                                  activeColor="bg-emerald-600"
-                                              />
-                                              <span className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">{value ? 'Active' : 'Disabled'}</span>
-                                          </div>
-                                      ) : (
-                                          <input 
-                                              disabled={!editableFields[key]} value={value || ''} 
-                                              onChange={e => setLocalEnv({...localEnv, [key]: e.target.value})} 
-                                              className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-blue-400 outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
-                                          />
-                                      )}
+                                      <div className="space-y-3">
+                                        <div className={`inline-flex items-center rounded-lg border px-2 py-1 text-[8px] font-black uppercase tracking-[0.18em] ${getImpactTone(envHelp[key]?.impact)}`}>
+                                          {envHelp[key]?.impact || 'LOW'} Impact
+                                        </div>
+                                        {typeof value === 'boolean' ? (
+                                            <div className="flex items-center gap-4 py-1">
+                                                <ToggleSwitch 
+                                                    checked={!!value} disabled={!editableFields[key]}
+                                                    onChange={(e: any) => setLocalEnv({...localEnv, [key]: e.target.checked})}
+                                                    activeColor="bg-emerald-600"
+                                                />
+                                                <span className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">{value ? 'Active' : 'Disabled'}</span>
+                                            </div>
+                                        ) : (
+                                            <input 
+                                                disabled={!editableFields[key]} value={value || ''} 
+                                                onChange={e => setLocalEnv({...localEnv, [key]: e.target.value})} 
+                                                className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-blue-400 outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
+                                            />
+                                        )}
+                                      </div>
                                   </SettingField>
                               ))}
                           </div>
                       </div>
                   ))}
+                  {visibleCategories.length === 0 && (
+                    <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 p-10 text-center">
+                      <div className="mx-auto w-fit rounded-2xl bg-blue-500/10 p-3 text-blue-400">
+                        <Search size={22} />
+                      </div>
+                      <h3 className="mt-4 text-lg font-black uppercase tracking-widest text-[var(--text-primary)]">No Parameters Match</h3>
+                      <p className="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">
+                        Adjust the search or impact filter to expose additional configuration fields.
+                      </p>
+                    </div>
+                  )}
                </div>
             </motion.div>
           )}
@@ -738,6 +918,24 @@ result_df = get_user_pool()`)
                     <button className="px-6 py-2.5 bg-blue-600/10 border border-blue-500/30 text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-blue-600/20 transition-all">
                         <Users size={14} /> Total {operators?.length || 0} Operators
                     </button>
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5">
+                    <div className="text-[8px] font-black uppercase tracking-[0.35em] text-blue-400">Operators</div>
+                    <div className="mt-3 text-3xl font-black text-[var(--text-primary)]">{activeOperators}</div>
+                    <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Active identities in matrix</div>
+                  </div>
+                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+                    <div className="text-[8px] font-black uppercase tracking-[0.35em] text-emerald-400">Administrators</div>
+                    <div className="mt-3 text-3xl font-black text-emerald-300">{adminOperators}</div>
+                    <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-emerald-200/70">Protected full-access operators</div>
+                  </div>
+                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
+                    <div className="text-[8px] font-black uppercase tracking-[0.35em] text-amber-400">Role Catalog</div>
+                    <div className="mt-3 text-3xl font-black text-amber-300">{roleCount}</div>
+                    <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-amber-200/70">Role profiles available from backend</div>
                   </div>
                </div>
 
@@ -916,6 +1114,29 @@ result_df = get_user_pool()`)
                   </div>
                </div>
 
+               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5">
+                    <div className="text-[8px] font-black uppercase tracking-[0.35em] text-emerald-400">Registered</div>
+                    <div className="mt-3 text-3xl font-black text-[var(--text-primary)]">{allTenants?.length || 0}</div>
+                    <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Known database tenants</div>
+                  </div>
+                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+                    <div className="text-[8px] font-black uppercase tracking-[0.35em] text-emerald-400">Online</div>
+                    <div className="mt-3 text-3xl font-black text-emerald-300">{onlineTenants}</div>
+                    <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-emerald-200/70">Healthy attached databases</div>
+                  </div>
+                  <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-5">
+                    <div className="text-[8px] font-black uppercase tracking-[0.35em] text-rose-400">Offline</div>
+                    <div className="mt-3 text-3xl font-black text-rose-300">{offlineTenants}</div>
+                    <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-rose-200/70">Require operational attention</div>
+                  </div>
+                  <div className={`rounded-2xl border p-5 ${hasTenantStorageRoot ? 'border-blue-500/20 bg-blue-500/5' : 'border-amber-500/20 bg-amber-500/5'}`}>
+                    <div className={`text-[8px] font-black uppercase tracking-[0.35em] ${hasTenantStorageRoot ? 'text-blue-400' : 'text-amber-400'}`}>Storage Root</div>
+                    <div className={`mt-3 text-3xl font-black ${hasTenantStorageRoot ? 'text-blue-300' : 'text-amber-300'}`}>{hasTenantStorageRoot ? 'Set' : 'Unset'}</div>
+                    <div className={`mt-2 text-[9px] font-black uppercase tracking-[0.18em] ${hasTenantStorageRoot ? 'text-blue-200/70' : 'text-amber-200/70'}`}>Tenant storage registry path</div>
+                  </div>
+               </div>
+
                <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                   <div className="lg:col-span-2 xl:col-span-3 space-y-6">
                      <div className="bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-2xl overflow-hidden shadow-2xl">
@@ -1024,6 +1245,20 @@ result_df = get_user_pool()`)
                            </div>
                         </div>
                         <div className="space-y-4">
+                           <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-1">
+                              <button
+                                 onClick={() => { setAttachMode('path'); setAttachPath(""); setPreflightResult(null) }}
+                                 className={`flex-1 rounded-lg px-3 py-2 text-[9px] font-black uppercase tracking-[0.18em] transition-all ${attachMode === 'path' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                              >
+                                 File Path
+                              </button>
+                              <button
+                                 onClick={() => { setAttachMode('url'); setAttachPath(""); setPreflightResult(null) }}
+                                 className={`flex-1 rounded-lg px-3 py-2 text-[9px] font-black uppercase tracking-[0.18em] transition-all ${attachMode === 'url' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                              >
+                                 DB URL
+                              </button>
+                           </div>
                            <div className="space-y-2">
                               <label className="text-[8px] font-black uppercase text-slate-400 ml-1">Friendly Name</label>
                               <input 
@@ -1033,11 +1268,11 @@ result_df = get_user_pool()`)
                               />
                            </div>
                            <div className="space-y-2">
-                              <label className="text-[8px] font-black uppercase text-slate-400 ml-1">Absolute File Path</label>
+                              <label className="text-[8px] font-black uppercase text-slate-400 ml-1">{attachMode === 'url' ? 'Database URL' : 'Absolute File Path'}</label>
                               <div className="relative">
                                  <input 
                                     value={attachPath} onChange={e => { setAttachPath(e.target.value); setPreflightResult(null); }}
-                                    placeholder="/absolute/path/to/system_grid.db" 
+                                    placeholder={attachMode === 'url' ? 'postgresql+asyncpg://user:pass@host:5432/sysgrid' : '/absolute/path/to/system_grid.db'} 
                                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-mono text-slate-300 outline-none focus:border-emerald-500"
                                  />
                                  <button 
@@ -1064,7 +1299,7 @@ result_df = get_user_pool()`)
                                        <p className="text-[9px] font-bold text-slate-300 uppercase leading-relaxed">{preflightResult.message}</p>
                                        {preflightResult.is_valid && (
                                           <button 
-                                             onClick={() => attachMutation.mutate({ name: attachName, db_path: attachPath })}
+                                             onClick={() => attachMutation.mutate(attachMode === 'url' ? { name: attachName, db_url: attachPath } : { name: attachName, db_path: attachPath })}
                                              disabled={attachMutation.isPending || !attachName}
                                              className="w-full py-2.5 bg-emerald-600 text-white rounded-lg font-black uppercase text-[9px] tracking-widest hover:bg-emerald-500 transition-all mt-2"
                                           >
@@ -1132,6 +1367,26 @@ result_df = get_user_pool()`)
                 <div className="border-b border-[var(--glass-border)] pb-6">
                   <h2 className="text-3xl font-black uppercase tracking-tighter text-[var(--text-primary)] leading-none">System Inspect</h2>
                   <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">Outer Join .env Analysis (Raw Variables)</p>
+               </div>
+
+               <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-6 shadow-2xl">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="p-2 rounded-xl bg-blue-600/10 text-blue-400 border border-blue-500/20"><Server size={18} /></div>
+                    <div>
+                      <h3 className="text-sm font-black uppercase tracking-widest text-[var(--text-primary)]">Deployment Runtime</h3>
+                      <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Resolved backend paths, defaults, and admin bootstrap policy</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {Object.entries(localEnv._deployment || {}).map(([key, value]: any) => (
+                      <div key={key} className="rounded-xl border border-white/5 bg-black/20 p-4">
+                        <div className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500">{key.replace(/_/g, ' ')}</div>
+                        <div className="mt-2 text-[10px] font-mono text-blue-300 break-all">
+                          {Array.isArray(value) ? value.join(", ") : String(value)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                </div>
 
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

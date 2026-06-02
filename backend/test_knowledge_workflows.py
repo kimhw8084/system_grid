@@ -26,6 +26,22 @@ async def test_knowledge_search_expands_to_linked_entities_and_version_history(c
     assert vendor_res.status_code == 200, vendor_res.text
     vendor = vendor_res.json()
 
+    flow_res = await client.post("/api/v1/data-flows", json={
+        "name": "KNOWLEDGE-ARCH-FLOW",
+        "description": "Knowledge architecture linkage",
+        "category": "System",
+        "status": "Up to date",
+        "metadata": {
+            "owner_team": "Architecture",
+            "criticality": "Critical",
+        },
+        "nodes": [],
+        "edges": [],
+        "viewport": {"x": 0, "y": 0, "zoom": 1},
+    })
+    assert flow_res.status_code == 200, flow_res.text
+    flow = flow_res.json()
+
     create_res = await client.post("/api/v1/knowledge", json={
         "category": "BKM",
         "title": "KNOWLEDGE-RECOVERY",
@@ -35,6 +51,7 @@ async def test_knowledge_search_expands_to_linked_entities_and_version_history(c
             "ownership": {"owner": "ops_lead"},
             "verification": {"state": "Needs Review", "next_review_at": "2038-01-01"},
             "links": {
+                "data_flow_ids": [flow["id"]],
                 "service_ids": [service["id"]],
                 "vendor_ids": [vendor["id"]]
             }
@@ -49,6 +66,13 @@ async def test_knowledge_search_expands_to_linked_entities_and_version_history(c
     matches = search_res.json()
     assert any(item["id"] == created["id"] for item in matches)
 
+    architecture_search_res = await client.get("/api/v1/knowledge", params={"search": "KNOWLEDGE-ARCH-FLOW"})
+    assert architecture_search_res.status_code == 200, architecture_search_res.text
+    architecture_matches = architecture_search_res.json()
+    assert any(item["id"] == created["id"] for item in architecture_matches)
+    created_links = created["metadata_json"]["links"]
+    assert created_links["data_flow_ids"] == [flow["id"]]
+
     update_res = await client.put(f"/api/v1/knowledge/{created['id']}", json={
         "category": "BKM",
         "title": "KNOWLEDGE-RECOVERY-V2",
@@ -58,6 +82,7 @@ async def test_knowledge_search_expands_to_linked_entities_and_version_history(c
             "ownership": {"owner": "ops_lead"},
             "verification": {"state": "Verified", "verified_by": "ops_lead"},
             "links": {
+                "data_flow_ids": [flow["id"]],
                 "service_ids": [service["id"]],
                 "vendor_ids": [vendor["id"]]
             }

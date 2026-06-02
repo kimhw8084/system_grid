@@ -5,9 +5,24 @@ from sqlalchemy import select, delete, update
 from ..database import get_db
 from ..models import models
 from ..core.config import settings
-from .utils import filter_valid_columns, get_current_user_id
+from .utils import filter_valid_columns, get_current_user_id, build_default_operator_profile
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
+
+async def ensure_admin_operator(db: AsyncSession, user_id: str):
+    res_op = await db.execute(select(models.Operator).filter(models.Operator.username == user_id))
+    operator = res_op.scalar_one_or_none()
+    if not operator and settings.is_auto_admin_user(user_id):
+        operator = models.Operator(**build_default_operator_profile(user_id))
+        db.add(operator)
+        await db.commit()
+        await db.refresh(operator)
+    elif operator and settings.is_auto_admin_user(user_id) and not operator.is_admin:
+        operator.is_admin = True
+        operator.custom_permissions = {"all": 3}
+        await db.commit()
+        await db.refresh(operator)
+    return operator
 
 @router.get("/user/settings")
 async def get_user_settings(request: Request, db: AsyncSession = Depends(get_db)):
@@ -25,21 +40,11 @@ async def get_user_profile(request: Request, db: AsyncSession = Depends(get_db))
     operator = res.scalar_one_or_none()
     
     if not operator:
-        # Auto-register new user with no permissions by default (except for haewon.kim)
-        is_haewon = user_id in ["haewon.kim", "haewonkim", "admin_root"]
-        operator = models.Operator(
-            external_id=user_id,
-            username=user_id,
-            full_name="Haewon Kim" if is_haewon and "haewon" in user_id else (user_id.replace("_", " ").replace(".", " ").title() if user_id != "admin_root" else "System Administrator"),
-            registration_status="Registered",
-            is_admin=is_haewon,
-            custom_permissions={"all": 3} if is_haewon else {}
-        )
+        operator = models.Operator(**build_default_operator_profile(user_id))
         db.add(operator)
         await db.commit()
         await db.refresh(operator)
-    elif (user_id in ["haewon.kim", "haewonkim"] or user_id == "admin_root") and not operator.is_admin:
-        # Ensure haewonkim and admin_root always have admin/full access
+    elif settings.is_auto_admin_user(user_id) and not operator.is_admin:
         operator.is_admin = True
         operator.custom_permissions = {"all": 3}
         await db.commit()
@@ -337,20 +342,7 @@ async def get_global_settings(request: Request, db: AsyncSession = Depends(get_d
     """Fetch all settings from the unified GlobalSetting table."""
     user_id = get_current_user_id(request)
     # Security: Verify if user is admin before exposing raw env
-    res_op = await db.execute(select(models.Operator).filter(models.Operator.username == user_id))
-    operator = res_op.scalar_one_or_none()
-    if not operator and user_id in ["haewon.kim", "haewonkim", "admin_root"]:
-        operator = models.Operator(
-            external_id=user_id,
-            username=user_id,
-            full_name="System Administrator" if user_id == "admin_root" else "Haewon Kim",
-            registration_status="Registered",
-            is_admin=True,
-            custom_permissions={"all": 3}
-        )
-        db.add(operator)
-        await db.commit()
-        await db.refresh(operator)
+    operator = await ensure_admin_operator(db, user_id)
     if not operator or not operator.is_admin:
         raise HTTPException(status_code=403, detail="Privileged Access Required: Raw configuration analysis restricted to administrators.")
 
@@ -360,6 +352,19 @@ async def get_global_settings(request: Request, db: AsyncSession = Depends(get_d
     # Return as a simple key-value map for the UI, plus metadata if needed
     config = {s.key: s.value for s in settings_list}
     config["_metadata"] = {s.key: {"category": s.category, "description": s.description, "file": "Database", "param": s.key} for s in settings_list}
+    config["_deployment"] = {
+        "database_url": settings.DATABASE_URL,
+        "config_database_url": settings.CONFIG_DATABASE_URL,
+        "tenant_storage_root": settings.TENANT_STORAGE_ROOT,
+        "backend_env_file_path": settings.BACKEND_ENV_FILE_PATH,
+        "frontend_env_file_path": settings.FRONTEND_ENV_FILE_PATH,
+        "default_tenant_name": settings.DEFAULT_TENANT_NAME,
+        "default_user_id": settings.DEFAULT_USER_ID,
+        "auto_admin_user_ids": sorted(settings.auto_admin_user_ids),
+        "default_email_domain": settings.DEFAULT_EMAIL_DOMAIN,
+        "project_name": settings.PROJECT_NAME,
+        "environment": settings.ENVIRONMENT
+    }
     
     # Inject Raw Environment Data for Analysis tab
     raw_env = {"backend": {}, "frontend": {}}
@@ -380,12 +385,10 @@ async def get_global_settings(request: Request, db: AsyncSession = Depends(get_d
         return data
 
     # Backend .env
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    raw_env["backend"] = parse_env(os.path.join(base_dir, ".env"))
+    raw_env["backend"] = parse_env(settings.BACKEND_ENV_FILE_PATH)
     
     # Frontend .env
-    frontend_dir = os.path.join(os.path.dirname(base_dir), "frontend")
-    raw_env["frontend"] = parse_env(os.path.join(frontend_dir, ".env"))
+    raw_env["frontend"] = parse_env(settings.FRONTEND_ENV_FILE_PATH)
     
     config["_raw_env"] = raw_env
     return config
@@ -397,25 +400,26 @@ async def update_global_settings(data: dict, request: Request, db: AsyncSession 
     user_id = get_current_user_id(request)
     
     # Security: Verify if user is admin
-    res_op = await db.execute(select(models.Operator).filter(models.Operator.username == user_id))
-    operator = res_op.scalar_one_or_none()
-    if not operator and user_id in ["haewon.kim", "haewonkim", "admin_root"]:
-        operator = models.Operator(
-            external_id=user_id,
-            username=user_id,
-            full_name="System Administrator" if user_id == "admin_root" else "Haewon Kim",
-            registration_status="Registered",
-            is_admin=True,
-            custom_permissions={"all": 3}
-        )
-        db.add(operator)
-        await db.commit()
-        await db.refresh(operator)
+    operator = await ensure_admin_operator(db, user_id)
     if not operator or not operator.is_admin:
         raise HTTPException(status_code=403, detail="Privileged Access Required: Configuration updates restricted to administrators.")
 
+    protected_keys = {
+        "DATABASE_URL",
+        "CONFIG_DATABASE_URL",
+        "TENANT_STORAGE_ROOT",
+        "BACKEND_ENV_FILE_PATH",
+        "FRONTEND_ENV_FILE_PATH",
+        "DEFAULT_TENANT_NAME",
+        "DEFAULT_USER_ID",
+        "AUTO_ADMIN_USER_IDS",
+        "DEFAULT_EMAIL_DOMAIN"
+    }
+
     for key, value in data.items():
         if key.startswith("_"): continue # Skip metadata
+        if key in protected_keys:
+            raise HTTPException(status_code=400, detail=f"{key} is a deploy-time setting and must be changed through environment/bootstrap configuration, not runtime global settings.")
         res = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.key == key))
         setting = res.scalar_one_or_none()
         old_value = setting.value if setting else "None"
@@ -577,11 +581,11 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
     
     # Simple logic: create 5 dummy users
     dummy_users = [
-        {"id": 101, "username": "admin_alpha", "full_name": "Alpha Admin", "email": "alpha@sysgrid.local", "department": "Infrastructure"},
-        {"id": 102, "username": "dev_beta", "full_name": "Beta Developer", "email": "beta@sysgrid.local", "department": "R&D"},
-        {"id": 103, "username": "sec_gamma", "full_name": "Gamma Security", "email": "gamma@sysgrid.local", "department": "Security"},
-        {"id": 104, "username": "op_delta", "full_name": "Delta Operator", "email": "delta@sysgrid.local", "department": "Operations"},
-        {"id": 105, "username": "guest_epsilon", "full_name": "Epsilon Guest", "email": "epsilon@sysgrid.local", "department": "External"}
+        {"id": 101, "username": "admin_alpha", "full_name": "Alpha Admin", "email": f"alpha@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "Infrastructure"},
+        {"id": 102, "username": "dev_beta", "full_name": "Beta Developer", "email": f"beta@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "R&D"},
+        {"id": 103, "username": "sec_gamma", "full_name": "Gamma Security", "email": f"gamma@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "Security"},
+        {"id": 104, "username": "op_delta", "full_name": "Delta Operator", "email": f"delta@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "Operations"},
+        {"id": 105, "username": "guest_epsilon", "full_name": "Epsilon Guest", "email": f"epsilon@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "External"}
     ]
     
     new_version = models.UserPoolVersion(
@@ -648,9 +652,9 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
     from sqlalchemy.exc import IntegrityError
     # Global Defaults list
     global_defaults = [
-        ("app_name", "SYSGRID ENGINE", "App Name", False),
-        ("org_name", "Global Infrastructure Corp", "Organization", False),
-        ("site_id", "HQ-01", "Primary Site ID", False),
+        ("app_name", settings.DEFAULT_APP_NAME, "App Name", False),
+        ("org_name", settings.DEFAULT_ORG_NAME, "Organization", False),
+        ("site_id", settings.DEFAULT_SITE_ID, "Primary Site ID", False),
         ("retention_days", "30", "Data Retention Days", False),
         ("maintenance_mode", "false", "Maintenance Mode Status", False),
         ("default_timezone", "UTC", "Default System Timezone", False),
@@ -659,8 +663,8 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
         ("audit_log_level", "Full", "Audit Detail Level", False),
         ("ui_primary_color", "#3b82f6", "Primary Branding Color", False),
         ("ui_accent_color", "#10b981", "Accent Branding Color", False),
-        ("support_email", "admin@infra.local", "Admin Support Email", False),
-        ("VITE_APP_TITLE", "SYSGRID Tactical", "UI Title", True),
+        ("support_email", settings.DEFAULT_SUPPORT_EMAIL, "Admin Support Email", False),
+        ("VITE_APP_TITLE", settings.DEFAULT_UI_TITLE, "UI Title", True),
         ("VITE_POLLING_INTERVAL", "5000", "Polling Interval (ms)", True),
         ("VITE_ENABLE_WEBSOCKETS", "true", "Enable WebSockets", True),
         ("VITE_THEME_DEFAULT", "nordic-frost-v1", "Default UI Theme", True),

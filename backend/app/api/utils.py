@@ -1,6 +1,7 @@
 import os
 from fastapi import Request
 from datetime import datetime
+from ..core.config import settings
 
 def get_current_user_id(request: Request = None):
     """
@@ -16,9 +17,26 @@ def get_current_user_id(request: Request = None):
     
     # 2. Fallback to Environment Variable (Default identity)
     if not user_id:
-        user_id = os.getenv("USER_ID", "admin_root")
+        user_id = os.getenv("USER_ID", settings.DEFAULT_USER_ID)
         
     return user_id
+
+def build_default_operator_profile(user_id: str):
+    is_auto_admin = settings.is_auto_admin_user(user_id)
+    full_name = user_id.replace("_", " ").replace(".", " ").title() if user_id else "System User"
+    if user_id == settings.DEFAULT_USER_ID:
+        full_name = "System Administrator"
+
+    return {
+        "external_id": user_id,
+        "username": user_id,
+        "full_name": full_name,
+        "email": f"{user_id}@{settings.DEFAULT_EMAIL_DOMAIN}" if user_id else None,
+        "department": settings.DEFAULT_OPERATOR_DEPARTMENT,
+        "registration_status": "Registered",
+        "is_admin": is_auto_admin,
+        "custom_permissions": {"all": 3} if is_auto_admin else {}
+    }
 
 def filter_valid_columns(model, data: dict, exclude: set | None = None):
     """

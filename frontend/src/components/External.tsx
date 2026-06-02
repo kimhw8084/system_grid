@@ -16,6 +16,8 @@ import { ConfigRegistryModal } from "./ConfigRegistry"
 
 // --- Sub-components ---
 
+const toTitle = (value: string) => value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
+
 const parseMetadataObject = (value: any) => {
   if (!value) return {}
   if (typeof value !== 'string') return value
@@ -23,6 +25,58 @@ const parseMetadataObject = (value: any) => {
     return JSON.parse(value || '{}')
   } catch {
     return {}
+  }
+}
+
+const getMetaValue = (entity: any, key: string) => parseMetadataObject(entity?.metadata_json)?.[key]
+const getMetaText = (entity: any, key: string) => {
+  const value = getMetaValue(entity, key)
+  return typeof value === 'string' ? value.trim() : value
+}
+
+const getMetaDate = (entity: any, key: string) => {
+  const raw = getMetaText(entity, key)
+  if (!raw) return null
+  const parsed = new Date(raw)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+const getEntityInsights = (entity: any, links: any[] = []) => {
+  const metadata = parseMetadataObject(entity?.metadata_json)
+  const linked = links.filter((link: any) => link.external_entity_id === entity.id)
+  const criticality = String(metadata.criticality || 'Unrated')
+  const dependencyTier = String(metadata.dependency_tier || 'Unspecified')
+  const reviewStatus = String(metadata.review_status || 'Needs Review')
+  const lastReviewedAt = getMetaDate(entity, 'last_reviewed_at')
+  const nextReviewDue = getMetaDate(entity, 'next_review_due')
+  const staleDays = lastReviewedAt ? Math.floor((Date.now() - lastReviewedAt.getTime()) / 86_400_000) : null
+  const isStale = staleDays === null || staleDays > 90
+  const hasOwner = Boolean(entity.owner_organization && entity.owner_team)
+  const hasPoc = Boolean(entity.poc_json?.length)
+  const hasSecrets = Boolean(entity.secrets?.length)
+  const warnings = [
+    !hasOwner ? 'Owner coverage missing' : null,
+    !hasPoc ? 'POC roster missing' : null,
+    !hasSecrets && ['API', 'DB', 'Script'].includes(entity.type) ? 'Credential record missing' : null,
+    isStale ? 'Review overdue' : null,
+    linked.length === 0 ? 'No dependency mapping' : null,
+    !metadata.business_purpose ? 'Business purpose missing' : null,
+  ].filter(Boolean) as string[]
+
+  return {
+    metadata,
+    linked,
+    criticality,
+    dependencyTier,
+    reviewStatus,
+    lastReviewedAt,
+    nextReviewDue,
+    staleDays,
+    isStale,
+    hasOwner,
+    hasPoc,
+    hasSecrets,
+    warnings,
   }
 }
 
@@ -349,6 +403,20 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
     metadata_json: {},
     ...initialData
   })
+  const operationalFields = [
+    { key: 'business_purpose', label: 'Business Purpose', placeholder: 'Revenue feed, customer identity, payment routing...' },
+    { key: 'dependency_tier', label: 'Dependency Tier', placeholder: 'Tier 1 / Tier 2 / Tier 3' },
+    { key: 'criticality', label: 'Criticality', placeholder: 'Critical / High / Medium / Low' },
+    { key: 'review_status', label: 'Review Status', placeholder: 'Approved / Needs Review / Exception' },
+    { key: 'auth_method', label: 'Auth Method', placeholder: 'OAuth2 / Token / SFTP Key / Basic' },
+    { key: 'base_url', label: 'Primary Endpoint', placeholder: 'https://partner.example.com' },
+    { key: 'support_window', label: 'Support Window', placeholder: '24x7 / Business Hours / On-call' },
+    { key: 'contract_reference', label: 'Contract Reference', placeholder: 'MSA-2026-017' },
+    { key: 'source_of_truth', label: 'Source Of Truth', placeholder: 'CMDB / Vendor Portal / Contract Desk' },
+    { key: 'runbook_url', label: 'Runbook URL', placeholder: 'https://wiki.example.com/external-runbook' },
+    { key: 'last_reviewed_at', label: 'Last Reviewed', placeholder: '2026-06-01' },
+    { key: 'next_review_due', label: 'Next Review Due', placeholder: '2026-09-01' },
+  ]
 
   const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
   const types = getOptions('ExternalType').length > 0 ? getOptions('ExternalType') : [
@@ -475,6 +543,34 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
         </div>
 
         <div className="col-span-2">
+           <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
+             <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
+               <div className="flex items-center space-x-3">
+                 <Shield size={14} className="text-blue-400" />
+                 <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Operational Governance</span>
+               </div>
+               <span className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full">Portable Metadata Contract</span>
+             </div>
+             <div className="p-4 grid grid-cols-2 gap-4">
+               {operationalFields.map(field => (
+                 <div key={field.key}>
+                   <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">{field.label}</label>
+                   <input
+                     value={formData.metadata_json?.[field.key] || ''}
+                     onChange={e => setFormData({
+                       ...formData,
+                       metadata_json: { ...(formData.metadata_json || {}), [field.key]: e.target.value }
+                     })}
+                     placeholder={field.placeholder}
+                     className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-[11px] font-bold text-white outline-none focus:border-blue-500"
+                   />
+                 </div>
+               ))}
+             </div>
+           </div>
+        </div>
+
+        <div className="col-span-2">
            <MetadataEditor 
              value={formData.metadata_json} 
              onChange={v => setFormData({...formData, metadata_json: v})} 
@@ -496,17 +592,30 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
   )
 }
 
-const ExternalDetailsView = ({ entity }: { entity: any }) => {
-  const [tab, setTab] = useState('metadata')
+const ExternalDetailsView = ({ entity, links }: { entity: any, links: any[] }) => {
+  const [tab, setTab] = useState('overview')
+  const insights = useMemo(() => getEntityInsights(entity, links), [entity, links])
+  const governanceFacts = [
+    ['Criticality', insights.criticality],
+    ['Dependency Tier', insights.dependencyTier],
+    ['Review Status', insights.reviewStatus],
+    ['Auth Method', getMetaText(entity, 'auth_method') || 'Unspecified'],
+    ['Support Window', getMetaText(entity, 'support_window') || 'Unspecified'],
+    ['Contract', getMetaText(entity, 'contract_reference') || 'Unspecified'],
+    ['Source Of Truth', getMetaText(entity, 'source_of_truth') || 'Unspecified'],
+  ]
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex space-x-1 bg-black/40 p-1 rounded-lg w-fit">
           {[
-            { id: 'metadata', label: 'Metadata View', icon: List },
+            { id: 'overview', label: 'Overview', icon: LayoutGrid },
             { id: 'org', label: 'Organization & POCs', icon: Briefcase },
-            { id: 'secrets', label: 'Credentials', icon: Tag }
+            { id: 'dependencies', label: 'Dependencies', icon: Share2 },
+            { id: 'governance', label: 'Governance', icon: Shield },
+            { id: 'secrets', label: 'Credentials', icon: Tag },
+            { id: 'metadata', label: 'Metadata View', icon: List },
           ].map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center space-x-2 ${tab === t.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
               <t.icon size={12} /> <span>{t.label}</span>
@@ -516,6 +625,79 @@ const ExternalDetailsView = ({ entity }: { entity: any }) => {
       </div>
 
       <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-8 bg-black/20">
+        {tab === 'overview' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-4 gap-4">
+              {[
+                { label: 'Linked Dependencies', value: insights.linked.length, tone: 'text-blue-400' },
+                { label: 'Stored Credentials', value: entity.secrets?.length || 0, tone: 'text-emerald-400' },
+                { label: 'POCs', value: entity.poc_json?.length || 0, tone: 'text-amber-400' },
+                { label: 'Warnings', value: insights.warnings.length, tone: insights.warnings.length ? 'text-rose-400' : 'text-slate-400' },
+              ].map(card => (
+                <div key={card.label} className="bg-white/5 border border-white/5 p-5 rounded-xl space-y-2">
+                  <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">{card.label}</p>
+                  <p className={`text-3xl font-bold ${card.tone}`}>{card.value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              <div className="bg-slate-900/60 p-5 rounded-lg border border-white/10 space-y-4">
+                <h3 className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Mission Summary</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">Business Purpose</p>
+                    <p className="text-sm font-bold text-white">{getMetaText(entity, 'business_purpose') || entity.description || 'Not documented'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">Primary Endpoint</p>
+                    <p className="text-sm font-bold text-blue-400 break-all">{getMetaText(entity, 'base_url') || 'Not documented'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">Runbook</p>
+                    <p className="text-sm font-bold text-emerald-400 break-all">{getMetaText(entity, 'runbook_url') || 'Not documented'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">Next Review Due</p>
+                    <p className={`text-sm font-bold ${insights.isStale ? 'text-amber-400' : 'text-white'}`}>
+                      {insights.nextReviewDue ? insights.nextReviewDue.toLocaleDateString() : 'Not scheduled'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-900/60 p-5 rounded-lg border border-white/10 space-y-4">
+                <h3 className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Governance Snapshot</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {governanceFacts.map(([label, value]) => (
+                    <div key={label} className="border border-white/5 rounded-lg p-3 bg-black/30">
+                      <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">{label}</p>
+                      <p className="text-[10px] font-bold uppercase text-white mt-1">{value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
+              <div className="px-4 py-2 bg-white/5 border-b border-white/5">
+                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Attention Required</span>
+              </div>
+              <div className="p-4 flex flex-wrap gap-2">
+                {insights.warnings.length ? insights.warnings.map(warning => (
+                  <span key={warning} className="px-3 py-2 rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-400 text-[9px] font-bold uppercase tracking-widest">
+                    {warning}
+                  </span>
+                )) : (
+                  <span className="px-3 py-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 text-[9px] font-bold uppercase tracking-widest">
+                    Governance coverage healthy
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {tab === 'metadata' && (
           <div className="space-y-8">
              <MetadataViewer data={entity.metadata_json} />
@@ -580,6 +762,91 @@ const ExternalDetailsView = ({ entity }: { entity: any }) => {
             </div>
           </div>
         )}
+
+        {tab === 'dependencies' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-white/5 border border-white/5 p-4 rounded-lg">
+                <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">Mapped Assets</p>
+                <p className="text-2xl font-bold text-blue-400">{new Set(insights.linked.map((link: any) => link.device_id)).size}</p>
+              </div>
+              <div className="bg-white/5 border border-white/5 p-4 rounded-lg">
+                <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">Mapped Services</p>
+                <p className="text-2xl font-bold text-emerald-400">{insights.linked.filter((link: any) => link.service_id).length}</p>
+              </div>
+              <div className="bg-white/5 border border-white/5 p-4 rounded-lg">
+                <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">Audit Trail</p>
+                <button
+                  onClick={() => window.location.href = `/logs?target_table=external_entities&target_id=${entity.id}`}
+                  className="mt-2 text-[9px] font-bold uppercase tracking-widest text-indigo-400 hover:text-indigo-300"
+                >
+                  Open Logs
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
+              <div className="px-4 py-2 bg-white/5 border-b border-white/5">
+                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Dependency Matrix</span>
+              </div>
+              <div className="divide-y divide-white/5">
+                {insights.linked.length ? insights.linked.map((link: any) => (
+                  <div key={link.id} className="p-4 flex items-center justify-between gap-4 hover:bg-white/5">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold uppercase text-white">{link.device_name || 'Unknown asset'}{link.service_name ? ` // ${link.service_name}` : ''}</p>
+                      <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">{link.direction} · {link.protocol || 'Unknown protocol'} · {link.port || 'No port'} · {link.purpose || 'No purpose documented'}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => window.location.href = `/asset?id=${link.device_id}`} className="px-3 py-2 rounded-lg bg-blue-600/10 text-blue-400 border border-blue-500/20 text-[8px] font-bold uppercase tracking-widest">Asset</button>
+                      {link.service_id && <button onClick={() => window.location.href = `/services?id=${link.service_id}`} className="px-3 py-2 rounded-lg bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 text-[8px] font-bold uppercase tracking-widest">Service</button>}
+                    </div>
+                  </div>
+                )) : (
+                  <div className="p-8 text-center text-slate-600 font-bold uppercase tracking-widest text-[9px]">No dependency links mapped yet</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === 'governance' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                ['Last Reviewed', insights.lastReviewedAt ? insights.lastReviewedAt.toLocaleDateString() : 'Never'],
+                ['Review Age', insights.staleDays === null ? 'Unknown' : `${insights.staleDays} days`],
+                ['Review Due', insights.nextReviewDue ? insights.nextReviewDue.toLocaleDateString() : 'Not scheduled'],
+                ['Secrets Ready', insights.hasSecrets ? 'Yes' : 'No'],
+              ].map(([label, value]) => (
+                <div key={label} className="bg-white/5 border border-white/5 p-4 rounded-lg">
+                  <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">{label}</p>
+                  <p className="text-xl font-bold text-white mt-1">{value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
+              <div className="px-4 py-2 bg-white/5 border-b border-white/5">
+                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Governance Controls</span>
+              </div>
+              <div className="p-4 grid grid-cols-2 gap-3">
+                {[
+                  ['Owner coverage', insights.hasOwner ? 'Satisfied' : 'Missing'],
+                  ['POC coverage', insights.hasPoc ? 'Satisfied' : 'Missing'],
+                  ['Dependency map', insights.linked.length ? 'Satisfied' : 'Missing'],
+                  ['Review cycle', insights.isStale ? 'Overdue' : 'Healthy'],
+                  ['Business purpose', getMetaText(entity, 'business_purpose') ? 'Documented' : 'Missing'],
+                  ['Runbook linkage', getMetaText(entity, 'runbook_url') ? 'Documented' : 'Missing'],
+                ].map(([label, state]) => (
+                  <div key={label} className="border border-white/5 rounded-lg p-3 bg-black/30">
+                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">{label}</p>
+                    <p className={`text-[10px] font-bold uppercase mt-1 ${state === 'Missing' || state === 'Overdue' ? 'text-rose-400' : 'text-emerald-400'}`}>{state}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -621,11 +888,31 @@ export default function External() {
     queryKey: ['devices'], 
     queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) 
   })
+  const registrySummary = useMemo(() => {
+    const source = Array.isArray(allEntities) ? allEntities : []
+    const stale = source.filter((entity: any) => getEntityInsights(entity, links || []).isStale).length
+    const missingOwners = source.filter((entity: any) => !getEntityInsights(entity, links || []).hasOwner).length
+    const missingDependencies = source.filter((entity: any) => getEntityInsights(entity, links || []).linked.length === 0).length
+    const critical = source.filter((entity: any) => ['critical', 'tier 1'].includes(String(getEntityInsights(entity, links || []).criticality).toLowerCase()) || String(getEntityInsights(entity, links || []).dependencyTier).toLowerCase() === 'tier 1').length
+    return { total: source.length, stale, missingOwners, missingDependencies, critical }
+  }, [allEntities, links])
 
   const entities = useMemo(() => {
     if (!allEntities) return []
-    return allEntities.filter((e: any) => activeTab === 'active' ? !e.is_deleted : e.is_deleted)
-  }, [allEntities, activeTab])
+    return allEntities
+      .map((entity: any) => {
+        const insights = getEntityInsights(entity, links || [])
+        return {
+          ...entity,
+          criticality: insights.criticality,
+          dependency_tier: insights.dependencyTier,
+          review_status: insights.reviewStatus,
+          link_count: insights.linked.length,
+          warning_count: insights.warnings.length,
+        }
+      })
+      .filter((e: any) => activeTab === 'active' ? !e.is_deleted : e.is_deleted)
+  }, [allEntities, activeTab, links])
 
   useEffect(() => {
     if (gridRef.current?.api) {
@@ -834,6 +1121,19 @@ export default function External() {
          cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, 
          hide: hiddenColumns.includes("owner_team") 
        },
+       {
+         field: "criticality",
+         headerName: "Criticality",
+         width: 120,
+         filter: true,
+         cellClass: 'text-center',
+         headerClass: 'text-center',
+         cellRenderer: (p: any) => {
+           const tone = ['Critical', 'Tier 1'].includes(p.value) ? 'text-rose-400 border-rose-500/30 bg-rose-500/10' : p.value === 'High' ? 'text-amber-400 border-amber-500/30 bg-amber-500/10' : 'text-slate-300 border-white/10 bg-white/5'
+           return <span style={{ fontSize: `${fontSize}px` }} className={`px-2 py-0.5 rounded-md border font-bold uppercase ${tone}`}>{p.value || 'Unrated'}</span>
+         },
+         hide: hiddenColumns.includes("criticality")
+       },
        { 
          field: "status", 
          headerName: "Status", 
@@ -864,6 +1164,19 @@ export default function External() {
          },
          hide: hiddenColumns.includes("status")
        },
+       {
+         field: "review_status",
+         headerName: "Review",
+         width: 130,
+         filter: true,
+         cellClass: 'text-center',
+         headerClass: 'text-center',
+         cellRenderer: (p: any) => {
+           const tone = String(p.value).includes('Needs') || String(p.value).includes('Exception') ? 'text-amber-400' : 'text-emerald-400'
+           return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${tone}`}>{p.value || 'Needs Review'}</span>
+         },
+         hide: hiddenColumns.includes("review_status")
+       },
        { 
          field: "environment", 
          headerName: "Env", 
@@ -873,6 +1186,23 @@ export default function External() {
          headerClass: 'text-center',
          cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
          hide: hiddenColumns.includes("environment")
+       },
+       {
+         field: "link_count",
+         headerName: "Links",
+         width: 85,
+         cellClass: 'text-center font-bold text-blue-400',
+         headerClass: 'text-center',
+         hide: hiddenColumns.includes("link_count")
+       },
+       {
+         field: "warning_count",
+         headerName: "Warnings",
+         width: 100,
+         cellClass: 'text-center',
+         headerClass: 'text-center',
+         cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${p.value ? 'text-amber-400' : 'text-emerald-400'}`}>{p.value}</span>,
+         hide: hiddenColumns.includes("warning_count")
        },
     ]),
     { 
@@ -914,7 +1244,7 @@ export default function External() {
   return (
     <div className="h-full flex flex-col space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-6">
+       <div className="flex items-center space-x-6">
            <div>
               <h1 className="text-2xl font-bold uppercase tracking-tight ">Partner IQ</h1>
               <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Global Entity Reference & Interconnect Intelligence</p>
@@ -972,6 +1302,23 @@ export default function External() {
           </button>
         </div>
       </div>
+
+      {activeTab !== 'links' && (
+        <div className="grid grid-cols-5 gap-3">
+          {[
+            { label: 'Registry Entries', value: registrySummary.total, tone: 'text-blue-400' },
+            { label: 'Tier 1 / Critical', value: registrySummary.critical, tone: 'text-rose-400' },
+            { label: 'Review Overdue', value: registrySummary.stale, tone: 'text-amber-400' },
+            { label: 'Owner Missing', value: registrySummary.missingOwners, tone: 'text-fuchsia-400' },
+            { label: 'Unmapped Dependencies', value: registrySummary.missingDependencies, tone: 'text-slate-300' },
+          ].map(card => (
+            <div key={card.label} className="glass-panel rounded-lg border border-white/5 p-4 bg-black/20">
+              <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">{card.label}</p>
+              <p className={`text-2xl font-bold mt-2 ${card.tone}`}>{card.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       <AnimatePresence>
         {showStyleLab && (
@@ -1110,7 +1457,7 @@ export default function External() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {activeDetails && (
+       {activeDetails && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-lg border border-blue-500/30 flex flex-col">
                <div className="flex items-center justify-between border-b border-white/5 pb-6">
@@ -1136,7 +1483,7 @@ export default function External() {
                   <button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-colors p-2"><X size={28}/></button>
                </div>
                <div className="flex-1 overflow-y-auto custom-scrollbar pt-6">
-                  <ExternalDetailsView entity={activeDetails} />
+                  <ExternalDetailsView entity={activeDetails} links={links || []} />
                </div>
             </motion.div>
           </div>

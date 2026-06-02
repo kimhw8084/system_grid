@@ -389,12 +389,23 @@ class DataFlow(Base, BaseMixin):
     description = Column(Text)
     category = Column(String, default="System") # System, Service, Application
     status = Column(String, default="Up to date") # Up to date, Deprecated, Planned, etc.
+    metadata_json = Column(JSON, default=dict)
     nodes_json = Column(JSON, default=list)
     edges_json = Column(JSON, default=list)
     viewport_json = Column(JSON, default=dict)
     traces_json = Column(JSON, default=list) # [{id, name, steps: [{node_id, edge_id}]}]
     is_template = Column(Boolean, default=False)
     is_deleted = Column(Boolean, default=False)
+    history = relationship("DataFlowHistory", back_populates="data_flow", cascade="all, delete-orphan")
+
+class DataFlowHistory(Base, BaseMixin):
+    __tablename__ = "data_flow_history"
+    data_flow_id = Column(Integer, ForeignKey("data_flows.id", ondelete="CASCADE"))
+    version = Column(Integer, default=1)
+    snapshot = Column(JSON, default=dict)
+    change_summary = Column(Text)
+
+    data_flow = relationship("DataFlow", back_populates="history")
 
 class ExternalEntity(Base, BaseMixin):
     __tablename__ = "external_entities"

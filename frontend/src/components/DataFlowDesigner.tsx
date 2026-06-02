@@ -14,7 +14,8 @@ import {
   Cpu, Trash2, MousePointer2, Workflow, Target, Layers, ArrowDownUp, FileText,
   AlertOctagon, Compass, Box, Terminal, ListTodo, ChevronRight, ChevronDown,
   Diamond, StickyNote, GitMerge, MoreHorizontal, Settings, RefreshCw, HelpCircle,
-  ShieldCheck
+  ShieldCheck, RotateCcw, RotateCw, Eye, EyeOff, Printer, History,
+  Route, Link2
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -49,32 +50,57 @@ const FLOW_TYPES = [
 ]
 const ARCH_STATUSES = ['Up to date', 'Deprecated', 'Planned', 'In Review']
 const ARCH_CATEGORIES = ['System', 'Service', 'Application', 'Network', 'Security']
+const ARCH_COLOR_SEMANTICS = {
+  structure: '#38bdf8',
+  risk: '#f43f5e',
+  governance: '#f59e0b',
+  external: '#818cf8',
+  trace: '#facc15',
+}
 
 const DeviceNode = ({ data, selected }: any) => {
   const isImpacted = data.isImpacted && data.dependencyRiskEnabled;
   const services = data.logical_services || [];
   const visits = data.transactionVisits || [];
+  const overlay = data.operationalStatus || {};
+  const isDimmed = data.isDimmed;
   return (
-    <div className={`glass-panel min-w-[300px] rounded-lg border-2 transition-all duration-300 overflow-hidden relative shadow-2xl ${selected ? 'border-blue-500 bg-blue-500/10' : isImpacted ? 'border-rose-500 bg-rose-500/10' : 'border-white/10 bg-slate-900/60'}`}>
+    <div className={`glass-panel min-w-[320px] rounded-[22px] border transition-all duration-300 overflow-hidden relative shadow-[0_22px_60px_rgba(2,6,23,0.55)] ${selected ? 'border-sky-300 bg-sky-400/10 ring-1 ring-sky-300/35' : isImpacted ? 'border-rose-400/70 bg-rose-500/10 ring-1 ring-rose-400/20' : 'border-white/10 bg-slate-950/75'} ${isDimmed ? 'opacity-20 saturate-50 scale-[0.98]' : ''}`}>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.12),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.18),rgba(2,6,23,0.78))]" />
       {visits.length > 0 && (
         <div className="absolute -top-3 -left-3 flex -space-x-1 z-50">
           {visits.map((v: number) => <div key={v} className="w-6 h-6 rounded-full bg-amber-500 border-2 border-slate-950 flex items-center justify-center text-[10px] font-bold text-white shadow-xl animate-bounce" style={{ animationDelay: `${v * 0.1}s` }}>{v}</div>)}
         </div>
       )}
-      <div className={`px-4 py-3 border-b border-white/5 flex items-center justify-between ${isImpacted ? 'bg-rose-500/20' : 'bg-white/5'}`}>
-         <div className="flex items-center space-x-3"><div className={`p-2 rounded-lg ${isImpacted ? 'bg-rose-500 text-white' : 'bg-blue-600/20 text-blue-400'} border border-current/20 shadow-inner`}>{data.type === 'Switch' ? <Network size={16}/> : <Server size={16}/>}</div><div className="min-w-0"><p className="text-[12px] font-bold uppercase text-white tracking-tight leading-none truncate max-w-[180px]">{data.name}</p><p className="text-[8px] font-bold text-slate-500 uppercase mt-1 tracking-widest">{data.ip_address}</p></div></div>
+      {(overlay.incidentCount > 0 || overlay.maintenanceCount > 0 || overlay.monitorCount > 0) && (
+        <div className="absolute -top-3 right-3 flex gap-1 z-50">
+          {overlay.incidentCount > 0 && <div className="px-2 py-1 rounded-full bg-rose-500 text-white text-[8px] font-bold uppercase shadow-xl">{overlay.incidentCount} Incident</div>}
+          {overlay.maintenanceCount > 0 && <div className="px-2 py-1 rounded-full bg-amber-500 text-slate-950 text-[8px] font-bold uppercase shadow-xl">{overlay.maintenanceCount} Maintenance</div>}
+          {overlay.monitorCount > 0 && <div className="px-2 py-1 rounded-full bg-blue-500 text-white text-[8px] font-bold uppercase shadow-xl">{overlay.monitorCount} Monitor</div>}
+        </div>
+      )}
+      <div className={`relative px-5 py-4 border-b border-white/5 flex items-center justify-between ${isImpacted ? 'bg-rose-500/10' : 'bg-white/[0.04]'}`}>
+         <div className="flex items-center space-x-3 min-w-0"><div className={`p-2.5 rounded-2xl ${isImpacted ? 'bg-rose-500 text-white' : 'bg-sky-400/15 text-sky-300'} border border-current/20 shadow-inner`}>{data.type === 'Switch' ? <Network size={16}/> : <Server size={16}/>}</div><div className="min-w-0"><p className="text-[14px] font-black uppercase text-white tracking-[0.08em] leading-none truncate max-w-[190px]">{data.name}</p><p className="text-[8px] font-bold text-slate-400 uppercase mt-2 tracking-[0.35em]">{data.ip_address}</p></div></div>
+         <div className="text-right">
+           <p className="text-[7px] font-bold uppercase tracking-[0.35em] text-slate-500">Structure</p>
+           <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-sky-300">{data.system || data.environment || 'Core'}</p>
+         </div>
       </div>
-      <div className="p-4 space-y-4">
-         <div className="space-y-1">
-            <div className="relative flex items-center justify-between px-3 py-2 rounded-md bg-white/5 border border-dashed border-white/20 group hover:border-blue-500/40">
+      <div className="relative p-5 space-y-4">
+         <div className="flex items-center justify-between">
+            <p className="text-[8px] font-bold uppercase tracking-[0.35em] text-slate-500">Attached Surfaces</p>
+            <p className="text-[8px] font-bold uppercase tracking-[0.25em] text-slate-400">{services.length} mapped</p>
+         </div>
+         <div className="space-y-2">
+            <div className="relative flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/[0.04] border border-dashed border-white/15 group hover:border-sky-400/40">
                <Handle type="target" position={Position.Left} id="unidentified-target" className="!left-[-15px] w-2 h-2 !bg-blue-400 border-none !opacity-0 group-hover:!opacity-100" />
-               <div className="flex items-center space-x-2 truncate"><HelpCircle size={10} className="text-slate-400"/><span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter truncate">Unidentified Interface</span></div>
+               <div className="flex items-center space-x-2 truncate"><HelpCircle size={10} className="text-slate-400"/><span className="text-[9px] font-bold text-slate-300 uppercase tracking-[0.18em] truncate">Unidentified Interface</span></div>
                <Handle type="source" position={Position.Right} id="unidentified-source" className="!right-[-15px] w-2 h-2 !bg-blue-400 border-none !opacity-0 group-hover:!opacity-100" />
             </div>
             {services.map((s: any) => (
-               <div key={s.id} className="relative flex items-center justify-between px-3 py-2 rounded-md bg-emerald-500/5 border border-emerald-500/10 group hover:border-emerald-500/40">
+               <div key={s.id} className="relative flex items-center justify-between px-3 py-2.5 rounded-xl bg-emerald-500/[0.08] border border-emerald-400/15 group hover:border-emerald-400/35">
                   <Handle type="target" position={Position.Left} id={`svc-target-${s.id}`} className="!left-[-15px] w-2 h-2 !bg-emerald-500 border-none !opacity-0 group-hover:!opacity-100" />
-                  <div className="flex items-center space-x-2 truncate"><Database size={10} className="text-emerald-400"/><span className="text-[9px] font-bold text-emerald-400 uppercase tracking-tighter truncate">{s.name}</span></div>
+                  <div className="flex items-center space-x-2 truncate"><Database size={10} className="text-emerald-300"/><span className="text-[9px] font-bold text-emerald-200 uppercase tracking-[0.18em] truncate">{s.name}</span></div>
                   <Handle type="source" position={Position.Right} id={`svc-source-${s.id}`} className="!right-[-15px] w-2 h-2 !bg-emerald-500 border-none !opacity-0 group-hover:!opacity-100" />
                </div>
             ))}
@@ -84,10 +110,10 @@ const DeviceNode = ({ data, selected }: any) => {
   )
 }
 
-const ServiceNode = ({ data, selected }: any) => (<div className={`glass-panel px-4 py-3 rounded-lg border-2 transition-all duration-300 flex items-center space-x-3 w-full shadow-xl ${selected ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/10 bg-slate-900/60'}`}><div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400 border border-emerald-500/20"><Database size={16}/></div><div className="flex-1 min-w-0"><p className="text-[11px] font-bold uppercase text-emerald-400 truncate tracking-tight">{data.name}</p></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-emerald-500 border-none !left-[-4px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-emerald-500 border-none !right-[-4px]" /></div>)
-const ExternalNode = ({ data, selected }: any) => (<div className={`glass-panel min-w-[260px] rounded-lg border-2 transition-all duration-300 p-6 border-dashed shadow-2xl ${selected ? 'border-indigo-500 bg-indigo-500/10' : 'border-white/20 bg-slate-900/40'}`}><div className="flex items-center space-x-4"><div className="p-3 bg-indigo-500/20 rounded-lg text-indigo-400"><Globe size={20}/></div><div className="min-w-0"><p className="text-[12px] font-bold uppercase text-indigo-400 truncate tracking-tight">{data.name}</p></div></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-indigo-500 border-none !left-[-4px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-indigo-500 border-none !right-[-4px]" /></div>)
-const ConditionNode = ({ data, selected }: any) => (<div className={`w-20 h-20 rotate-45 border-2 flex items-center justify-center transition-all ${selected ? 'border-amber-500 bg-amber-500/20' : 'border-amber-500/40 bg-slate-900/60'}`}><div className="-rotate-45 flex flex-col items-center"><Diamond size={16} className="text-amber-500 mb-1"/><span className="text-[8px] font-bold uppercase text-white">{data.label || 'IF'}</span></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-amber-500 border-none !left-[-1px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-amber-500 border-none !right-[-1px]" /></div>)
-const NoteNode = ({ data, selected }: any) => (<div className={`glass-panel p-4 min-w-[200px] rounded-lg border-2 transition-all duration-300 ${selected ? 'border-blue-400 bg-blue-400/10' : 'border-white/10 bg-slate-900/60'}`}><div className="flex items-center gap-2 text-blue-400 mb-2"><StickyNote size={12}/><span className="text-[8px] font-bold uppercase tracking-widest">Note</span></div><p className="text-[10px] text-slate-300 font-bold">{data.label}</p></div>)
+const ServiceNode = ({ data, selected }: any) => (<div className={`glass-panel px-5 py-4 rounded-[20px] border transition-all duration-300 flex items-center space-x-3 w-full shadow-[0_18px_45px_rgba(2,6,23,0.4)] ${selected ? 'border-emerald-300 bg-emerald-500/10 ring-1 ring-emerald-300/30' : 'border-emerald-400/15 bg-slate-950/70'} ${data.isDimmed ? 'opacity-20 saturate-50 scale-[0.98]' : ''}`}><div className="p-2.5 bg-emerald-400/15 rounded-2xl text-emerald-300 border border-emerald-400/20"><Database size={16}/></div><div className="flex-1 min-w-0"><p className="text-[12px] font-black uppercase text-emerald-200 truncate tracking-[0.14em]">{data.name}</p><p className="text-[7px] font-bold uppercase tracking-[0.35em] text-emerald-400/80 mt-1">Service Surface</p></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-emerald-400 border-none !left-[-4px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-emerald-400 border-none !right-[-4px]" /></div>)
+const ExternalNode = ({ data, selected }: any) => (<div className={`glass-panel min-w-[280px] rounded-[22px] border transition-all duration-300 p-6 border-dashed shadow-[0_18px_50px_rgba(49,46,129,0.22)] ${selected ? 'border-indigo-300 bg-indigo-500/12 ring-1 ring-indigo-300/30' : 'border-indigo-300/20 bg-slate-950/60'} ${data.isDimmed ? 'opacity-20 saturate-50 scale-[0.98]' : ''}`}><div className="absolute inset-0 rounded-[22px] bg-[radial-gradient(circle_at_top_left,rgba(129,140,248,0.14),transparent_40%)]" /><div className="relative flex items-center space-x-4"><div className="p-3 bg-indigo-400/15 rounded-2xl text-indigo-300 border border-indigo-300/20"><Globe size={20}/></div><div className="min-w-0"><p className="text-[13px] font-black uppercase text-indigo-100 truncate tracking-[0.12em]">{data.name}</p>{data.environment && <p className="text-[8px] font-bold text-indigo-300/75 uppercase mt-2 tracking-[0.32em]">{data.environment}</p>}</div></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-indigo-400 border-none !left-[-4px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-indigo-400 border-none !right-[-4px]" /></div>)
+const ConditionNode = ({ data, selected }: any) => (<div className={`w-24 h-24 rotate-45 border flex items-center justify-center transition-all shadow-[0_14px_30px_rgba(245,158,11,0.2)] ${selected ? 'border-amber-300 bg-amber-400/20 ring-1 ring-amber-300/25' : 'border-amber-400/40 bg-slate-950/75'}`}><div className="-rotate-45 flex flex-col items-center px-1"><Diamond size={16} className="text-amber-300 mb-2"/><span className="text-[8px] font-black uppercase tracking-[0.22em] text-white text-center">{data.label || 'IF'}</span></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-amber-400 border-none !left-[-1px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-amber-400 border-none !right-[-1px]" /></div>)
+const NoteNode = ({ data, selected }: any) => (<div className={`glass-panel p-5 min-w-[220px] rounded-[20px] border transition-all duration-300 shadow-[0_14px_38px_rgba(30,41,59,0.35)] ${selected ? 'border-sky-300 bg-sky-500/10 ring-1 ring-sky-300/30' : 'border-white/10 bg-slate-950/70'}`}><div className="flex items-center gap-2 text-sky-300 mb-3"><StickyNote size={12}/><span className="text-[8px] font-bold uppercase tracking-[0.3em]">Operator Note</span></div><p className="text-[11px] text-slate-200 font-bold leading-relaxed">{data.label}</p></div>)
 
 const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style = {}, markerEnd, data, selected, source, target }: any) => {
   const { getEdges } = useReactFlow();
@@ -99,8 +125,8 @@ const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, t
   const isTraceActive = data?.isTraceActive;
   return (
     <>
-      <BaseEdge path={edgePath} markerEnd={markerEnd} style={{ ...style, stroke: isTraceActive ? '#f59e0b' : (data?.isImpacted ? '#f43f5e' : (data?.color || currentType.color)), strokeWidth: selected || isTraceActive ? 4 : (data?.isImpacted ? 3 : 2), strokeDasharray: isTraceActive ? '5 5' : (Array.isArray(currentType.dash) ? currentType.dash.join(' ') : 'none'), opacity: selected || data?.isImpacted || isTraceActive ? 1 : 0.6, transition: 'stroke 0.3s' }} />
-      <EdgeLabelRenderer><div style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all', zIndex: 1002 }} className="nodrag nopan"><motion.div whileHover={{ scale: 1.05 }} className={`px-2 py-1 rounded border transition-all flex items-center space-x-2 ${selected ? 'bg-slate-900 border-white' : 'bg-slate-950/90 border-white/10'} ${isTraceActive ? 'border-amber-500 ring-1 ring-amber-500/20' : ''}`}><div className={`w-1 h-1 rounded-full ${isTraceActive ? 'bg-amber-500' : ''}`} style={{ backgroundColor: data?.color || currentType.color }}/><span className={`text-[8px] font-bold uppercase tracking-widest ${isTraceActive ? 'text-amber-400' : 'text-white'}`}>{data?.label || currentType.label}</span></motion.div></div></EdgeLabelRenderer>
+      <BaseEdge path={edgePath} markerEnd={markerEnd} style={{ ...style, stroke: isTraceActive ? ARCH_COLOR_SEMANTICS.trace : (data?.isImpacted ? ARCH_COLOR_SEMANTICS.risk : (data?.color || currentType.color)), strokeWidth: selected || isTraceActive ? 4.5 : (data?.isImpacted ? 3.2 : 2.2), strokeDasharray: isTraceActive ? '6 6' : (Array.isArray(currentType.dash) ? currentType.dash.join(' ') : 'none'), opacity: data?.isDimmed ? 0.12 : (selected || data?.isImpacted || isTraceActive ? 1 : 0.72), filter: isTraceActive ? 'drop-shadow(0 0 10px rgba(250,204,21,0.35))' : 'drop-shadow(0 0 8px rgba(15,23,42,0.35))', transition: 'stroke 0.3s' }} />
+      <EdgeLabelRenderer><div style={{ position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, pointerEvents: 'all', zIndex: 1002 }} className="nodrag nopan"><motion.div whileHover={{ scale: 1.05 }} className={`px-3 py-1.5 rounded-full border transition-all flex items-center space-x-2 shadow-xl ${selected ? 'bg-slate-900 border-white/80' : 'bg-slate-950/95 border-white/10'} ${isTraceActive ? 'border-amber-400 ring-1 ring-amber-400/20' : ''}`}><div className={`w-1.5 h-1.5 rounded-full ${isTraceActive ? 'bg-amber-400' : ''}`} style={{ backgroundColor: data?.color || currentType.color }}/><span className={`text-[8px] font-black uppercase tracking-[0.22em] ${isTraceActive ? 'text-amber-300' : 'text-white'}`}>{data?.label || currentType.label}</span></motion.div></div></EdgeLabelRenderer>
     </>
   );
 };
@@ -108,37 +134,198 @@ const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, t
 const nodeTypes = { device: DeviceNode, external: ExternalNode, service: ServiceNode, condition: ConditionNode, note: NoteNode };
 const edgeTypes = { labeled: LabeledEdge };
 
+const getFlowMetadata = (flow: any) => flow?.metadata || {}
+const getFlowMeta = (flow: any, key: string) => getFlowMetadata(flow)?.[key]
+const parseMetaDate = (flow: any, key: string) => {
+  const raw = getFlowMeta(flow, key)
+  if (!raw) return null
+  const parsed = new Date(raw)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+const buildArchitectureInsights = (flow: any) => {
+  const metadata = getFlowMetadata(flow)
+  const nodes = flow?.nodes || []
+  const edges = flow?.edges || []
+  const lastReviewedAt = parseMetaDate(flow, 'last_reviewed_at')
+  const staleDays = lastReviewedAt ? Math.floor((Date.now() - lastReviewedAt.getTime()) / 86_400_000) : null
+  const isStale = staleDays === null || staleDays > 90
+  const warnings = [
+    !metadata.owner_team ? 'Owner team missing' : null,
+    !metadata.business_purpose ? 'Business purpose missing' : null,
+    !metadata.runbook_url ? 'Runbook missing' : null,
+    edges.length === 0 ? 'No dependency flows mapped' : null,
+    isStale ? 'Review overdue' : null,
+  ].filter(Boolean) as string[]
+  return {
+    metadata,
+    nodeCount: nodes.length,
+    edgeCount: edges.length,
+    staleDays,
+    isStale,
+    warnings,
+  }
+}
+
+const normalizeIdList = (value: any) => Array.isArray(value) ? value.map((item) => Number(item)).filter((item) => Number.isFinite(item)) : []
+
+const getFlowLinks = (flow: any) => {
+  const metadata = getFlowMetadata(flow)
+  return {
+    knowledge_ids: normalizeIdList(metadata?.links?.knowledge_ids),
+    monitoring_ids: normalizeIdList(metadata?.links?.monitoring_ids),
+    far_ids: normalizeIdList(metadata?.links?.far_ids),
+    vendor_ids: normalizeIdList(metadata?.links?.vendor_ids),
+    project_ids: normalizeIdList(metadata?.links?.project_ids),
+  }
+}
+
+const buildNodeOperationalStatus = (node: any, monitoringItems: any[], incidents: any[], maintenanceWindows: any[]) => {
+  const deviceId = node?.type === 'device' ? Number(node?.data?.id) : null
+  if (!deviceId) {
+    return {
+      monitorCount: 0,
+      incidentCount: 0,
+      maintenanceCount: 0,
+      severity: null,
+      hasAttention: false,
+    }
+  }
+  const monitorCount = monitoringItems.filter((item: any) => item.device_id === deviceId).length
+  const criticalMonitor = monitoringItems.some((item: any) => item.device_id === deviceId && String(item.severity || '').toLowerCase() === 'critical')
+  const incidentCount = incidents.filter((item: any) => Array.isArray(item.impacted_device_ids) && item.impacted_device_ids.includes(deviceId) && !['Resolved', 'Prevented'].includes(item.status)).length
+  const maintenanceCount = maintenanceWindows.filter((item: any) => item.device_id === deviceId && item.status !== 'Completed').length
+  const hasAttention = incidentCount > 0 || maintenanceCount > 0 || criticalMonitor
+  return {
+    monitorCount,
+    incidentCount,
+    maintenanceCount,
+    severity: incidentCount > 0 ? 'incident' : maintenanceCount > 0 ? 'maintenance' : criticalMonitor ? 'monitoring' : null,
+    hasAttention,
+  }
+}
+
+const buildPathAnalysis = (nodes: any[], edges: any[], selectedNodeId: string | null, selectedEdgeId: string | null) => {
+  const upstreamNodeIds = new Set<string>()
+  const downstreamNodeIds = new Set<string>()
+  const pathEdgeIds = new Set<string>()
+  const seedNodeId = selectedNodeId || edges.find((edge: any) => edge.id === selectedEdgeId)?.source || null
+  if (!seedNodeId) {
+    return { upstreamNodeIds, downstreamNodeIds, pathEdgeIds, focusNodeId: null }
+  }
+
+  const walk = (direction: 'upstream' | 'downstream', startId: string, targetNodes: Set<string>) => {
+    const queue = [startId]
+    const visited = new Set<string>([startId])
+    while (queue.length > 0) {
+      const currentId = queue.shift()!
+      edges.forEach((edge: any) => {
+        const nextId = direction === 'downstream'
+          ? (edge.source === currentId ? edge.target : null)
+          : (edge.target === currentId ? edge.source : null)
+        if (!nextId) return
+        pathEdgeIds.add(edge.id)
+        if (!visited.has(nextId)) {
+          visited.add(nextId)
+          targetNodes.add(nextId)
+          queue.push(nextId)
+        }
+      })
+    }
+  }
+
+  walk('upstream', seedNodeId, upstreamNodeIds)
+  walk('downstream', seedNodeId, downstreamNodeIds)
+  upstreamNodeIds.delete(seedNodeId)
+  downstreamNodeIds.delete(seedNodeId)
+  return { upstreamNodeIds, downstreamNodeIds, pathEdgeIds, focusNodeId: seedNodeId }
+}
+
+const buildVersionDiff = (currentEntry: any, previousEntry?: any) => {
+  const current = currentEntry?.snapshot || currentEntry || {}
+  const previous = previousEntry?.snapshot || previousEntry || {}
+  const currentNodes = current.nodes || []
+  const previousNodes = previous.nodes || []
+  const currentEdges = current.edges || []
+  const previousEdges = previous.edges || []
+  const currentMeta = current.metadata || {}
+  const previousMeta = previous.metadata || {}
+  const currentWarnings = buildArchitectureInsights(current).warnings
+  return {
+    nodeDelta: currentNodes.length - previousNodes.length,
+    edgeDelta: currentEdges.length - previousEdges.length,
+    metadataChanged: ['owner_team', 'criticality', 'dependency_tier', 'review_status', 'business_purpose', 'runbook_url']
+      .filter((key) => (currentMeta[key] || '') !== (previousMeta[key] || '')),
+    warningCount: currentWarnings.length,
+  }
+}
+
+const CanvasDomainBackdrop = ({ presentationMode }: { presentationMode: boolean }) => (
+  <div className="absolute inset-0 pointer-events-none overflow-hidden">
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(129,140,248,0.1),transparent_28%),linear-gradient(180deg,rgba(15,23,42,0.15),rgba(2,6,23,0.82))]" />
+    <div className={`absolute top-[16%] left-[14%] h-[72%] w-[19%] rounded-[36px] border ${presentationMode ? 'border-sky-300/22 bg-sky-400/8' : 'border-sky-400/12 bg-sky-400/[0.04]'} shadow-[0_0_80px_rgba(56,189,248,0.08)]`} />
+    <div className={`absolute top-[12%] left-[38%] h-[76%] w-[22%] rounded-[40px] border ${presentationMode ? 'border-emerald-300/20 bg-emerald-400/8' : 'border-emerald-400/12 bg-emerald-400/[0.035]'} shadow-[0_0_80px_rgba(16,185,129,0.08)]`} />
+    <div className={`absolute top-[14%] left-[64%] h-[70%] w-[22%] rounded-[40px] border ${presentationMode ? 'border-indigo-300/22 bg-indigo-400/8' : 'border-indigo-300/14 bg-indigo-400/[0.04]'} shadow-[0_0_80px_rgba(129,140,248,0.08)]`} />
+    <div className="absolute left-[18%] top-[13%] text-[9px] font-black uppercase tracking-[0.42em] text-sky-200/45">Ingress</div>
+    <div className="absolute left-[44%] top-[10%] text-[9px] font-black uppercase tracking-[0.42em] text-emerald-200/45">Core Services</div>
+    <div className="absolute left-[71%] top-[12%] text-[9px] font-black uppercase tracking-[0.42em] text-indigo-200/45">External</div>
+    <div className="absolute right-[7%] bottom-[10%] text-[8px] font-bold uppercase tracking-[0.35em] text-slate-400/35">Operations Overlay</div>
+  </div>
+)
+
+const FocusEmptyState = ({ focusNodeId, focusEdgeId, presentationMode }: { focusNodeId: string | null, focusEdgeId: string | null, presentationMode: boolean }) => {
+  if (focusNodeId || focusEdgeId) return null
+  return (
+    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+      <div className={`max-w-md rounded-[28px] border px-8 py-7 text-center shadow-[0_30px_80px_rgba(2,6,23,0.55)] ${presentationMode ? 'bg-slate-950/78 border-fuchsia-300/25' : 'bg-slate-950/68 border-white/10 backdrop-blur-xl'}`}>
+        <p className="text-[9px] font-black uppercase tracking-[0.45em] text-sky-300/80">Mission Focus</p>
+        <h3 className="mt-4 text-2xl font-black uppercase tracking-[0.08em] text-white">Select A Node Or Flow</h3>
+        <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.18em] leading-relaxed text-slate-300">Trace blast radius, inspect governance, follow live operational overlays, or open the service-level swimlane builder from a selected path.</p>
+      </div>
+    </div>
+  )
+}
+
 // --- Vertical Swimlane Flow Engine (Dynamic Participant Lanes) ---
 
-const ParticipantLaneHeader = ({ lane, onRemove, isPrimary, onAddNode }: any) => (
-  <div className="flex flex-col gap-3 pointer-events-auto">
+const ParticipantLaneHeader = ({ lane, onRemove, isPrimary, onAddNode, onMoveLeft, onMoveRight }: any) => (
+  <div className="flex flex-col gap-3 pointer-events-auto rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(15,23,42,0.68))] px-4 py-4 shadow-[0_18px_40px_rgba(2,6,23,0.28)]">
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2.5">
-        <div className="p-2 rounded-lg text-white shadow-lg" style={{ backgroundColor: lane.color }}>
+        <div className="p-2.5 rounded-2xl text-white shadow-lg border border-white/10" style={{ backgroundColor: lane.color }}>
           {lane.type === 'service' ? <Database size={14}/> : <Server size={14}/>}
         </div>
         <div>
-          <h4 className="text-[13px] font-bold uppercase tracking-tight text-white leading-tight break-words max-w-[180px]">{lane.label}</h4>
-          <p className="text-[7px] font-bold text-slate-600 uppercase tracking-widest mt-0.5">{lane.subLabel}</p>
+          <h4 className="text-[13px] font-black uppercase tracking-[0.12em] text-white leading-tight break-words max-w-[180px]">{lane.label}</h4>
+          <p className="text-[7px] font-bold text-slate-400 uppercase tracking-[0.35em] mt-1">{lane.subLabel}</p>
         </div>
       </div>
-      {!isPrimary && (
-        <button onClick={() => onRemove(lane.id)} className="p-1 hover:bg-rose-500/10 text-slate-700 hover:text-rose-500 transition-all rounded">
-          <X size={14}/>
-        </button>
-      )}
+      <div className="flex items-center gap-1">
+        {!isPrimary && (
+          <>
+            <button aria-label={`Move ${lane.label} lane left`} onClick={() => onMoveLeft(lane.id)} className="p-1 hover:bg-white/5 text-slate-500 hover:text-white transition-all rounded">
+              <ChevronLeft size={14}/>
+            </button>
+            <button aria-label={`Move ${lane.label} lane right`} onClick={() => onMoveRight(lane.id)} className="p-1 hover:bg-white/5 text-slate-500 hover:text-white transition-all rounded">
+              <ChevronRight size={14}/>
+            </button>
+            <button aria-label={`Remove ${lane.label} lane`} onClick={() => onRemove(lane.id)} className="p-1 hover:bg-rose-500/10 text-slate-700 hover:text-rose-500 transition-all rounded">
+              <X size={14}/>
+            </button>
+          </>
+        )}
+      </div>
     </div>
     
     <div className="flex items-center gap-1.5">
       <button 
         onClick={(e) => { e.stopPropagation(); onAddNode(lane.id, 'process'); }} 
-        className="flex-1 py-1.5 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/10 rounded-md text-[7px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5"
+        className="flex-1 py-2 bg-sky-400/10 hover:bg-sky-400/90 text-sky-200 hover:text-slate-950 border border-sky-300/15 rounded-xl text-[7px] font-bold uppercase tracking-[0.28em] transition-all flex items-center justify-center gap-1.5"
       >
         <Plus size={10}/> <span>Logic</span>
       </button>
       <button 
         onClick={(e) => { e.stopPropagation(); onAddNode(lane.id, 'diamond'); }} 
-        className="flex-1 py-1.5 bg-amber-600/10 hover:bg-amber-600 text-amber-400 hover:text-white border border-amber-500/10 rounded-md text-[7px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5"
+        className="flex-1 py-2 bg-amber-400/10 hover:bg-amber-400/90 text-amber-200 hover:text-slate-950 border border-amber-300/15 rounded-xl text-[7px] font-bold uppercase tracking-[0.28em] transition-all flex items-center justify-center gap-1.5"
       >
         <Diamond size={10}/> <span>Cond</span>
       </button>
@@ -151,16 +338,16 @@ const ProcessNode = ({ id, data, selected }: any) => {
   const laneColor = data.laneColor || '#3b82f6'
 
   return (
-    <div className={`glass-panel w-[260px] rounded-lg border-2 transition-all duration-300 shadow-xl overflow-hidden ${selected ? 'ring-2 ring-blue-500/20' : ''}`} style={{ borderColor: `${laneColor}30`, backgroundColor: '#0f172a' }}>
-      <div className="flex items-center justify-between px-3 py-2 bg-white/[0.02] border-b border-white/5">
+    <div className={`glass-panel w-[280px] rounded-[24px] border transition-all duration-300 shadow-[0_20px_55px_rgba(2,6,23,0.42)] overflow-hidden ${selected ? 'ring-2 ring-sky-300/20 scale-[1.01]' : ''}`} style={{ borderColor: `${laneColor}45`, backgroundColor: '#0f172a' }}>
+      <div className="flex items-center justify-between px-4 py-3 bg-white/[0.03] border-b border-white/5">
         <div className="flex items-center gap-2">
-          <div className="p-1 rounded text-white shadow-md" style={{ backgroundColor: laneColor }}>
+          <div className="p-1.5 rounded-xl text-white shadow-md border border-white/10" style={{ backgroundColor: laneColor }}>
             <Activity size={10}/>
           </div>
           <input 
             value={data.label || ''} 
             onChange={e => data.onChange(id, { label: e.target.value })}
-            className="bg-transparent border-none text-[9px] font-bold uppercase tracking-tight text-white outline-none w-32 nodrag"
+            className="bg-transparent border-none text-[10px] font-black uppercase tracking-[0.14em] text-white outline-none w-36 nodrag"
             placeholder="PROCESS STEP"
           />
         </div>
@@ -176,11 +363,11 @@ const ProcessNode = ({ id, data, selected }: any) => {
           </button>
         )}
       </div>
-      <div className="p-3 space-y-3">
+      <div className="p-4 space-y-3">
         <textarea 
           value={data.description || ''} 
           onChange={e => data.onChange(id, { description: e.target.value })} 
-          className="w-full bg-black/40 border border-white/10 rounded-md p-2 text-[9px] font-bold text-slate-400 uppercase outline-none focus:border-blue-500/40 resize-none min-h-[50px] transition-all nodrag" 
+          className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-[9px] font-bold text-slate-300 uppercase tracking-[0.14em] outline-none focus:border-sky-300/40 resize-none min-h-[58px] transition-all nodrag" 
           placeholder="TECHNICAL EXECUTION..." 
         />
         <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
@@ -255,13 +442,60 @@ const LogicLinkEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition,
 }
 
 const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }: any) => {
-  const { setViewport } = useReactFlow()
+  const { setViewport, fitView, getViewport } = useReactFlow()
   if (!edge || !sourceNode || !targetNode) return null
 
   const logicManifest = useMemo(() => edge?.data?.logic_json || {}, [edge])
   const [internalNodes, setInternalNodes] = useNodesState([])
   const [internalEdges, setInternalEdges] = useEdgesState([])
   const [lanes, setLanes] = useState<any[]>([])
+  const [isDirty, setIsDirty] = useState(false)
+  const [showExitPrompt, setShowExitPrompt] = useState(false)
+  const [historyStack, setHistoryStack] = useState<any[]>([])
+  const historyIndexRef = useRef(-1)
+
+  const recordSnapshot = useCallback((nextNodes: any[], nextEdges: any[], nextLanes: any[]) => {
+    setHistoryStack((current) => {
+      const base = current.slice(0, historyIndexRef.current + 1)
+      const snapshot = {
+        nodes: JSON.parse(JSON.stringify(nextNodes)),
+        edges: JSON.parse(JSON.stringify(nextEdges)),
+        lanes: JSON.parse(JSON.stringify(nextLanes)),
+      }
+      const updated = [...base, snapshot].slice(-40)
+      historyIndexRef.current = updated.length - 1
+      return updated
+    })
+  }, [])
+
+  const restoreSnapshot = useCallback((snapshot: any) => {
+    setInternalNodes((snapshot.nodes || []).map((n: any) => ({
+      ...n,
+      data: {
+        ...n.data,
+        onChange: (id: string, updates: any) => {
+          setIsDirty(true)
+          setInternalNodes((nds) => nds.map((node) => node.id === id ? { ...node, data: { ...node.data, ...updates } } : node))
+        },
+        onDelete: (id: string) => {
+          setInternalNodes((nds) => nds.filter((node) => node.id !== id))
+          setInternalEdges((eds) => eds.filter((currentEdge) => currentEdge.source !== id && currentEdge.target !== id))
+          setIsDirty(true)
+        },
+      },
+    })))
+    setInternalEdges((snapshot.edges || []).map((e: any) => ({
+      ...e,
+      data: {
+        ...e.data,
+        onLabelChange: (id: string, label: string) => {
+          setIsDirty(true)
+          setInternalEdges((eds) => eds.map((currentEdge) => currentEdge.id === id ? { ...currentEdge, data: { ...currentEdge.data, label } } : currentEdge))
+        },
+      },
+    })))
+    setLanes(snapshot.lanes || [])
+  }, [setInternalEdges, setInternalNodes])
 
   // Initialize Lanes from logicManifest or default to Source/Target
   useEffect(() => {
@@ -279,27 +513,57 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
   // Initialize Nodes/Edges
   useEffect(() => {
     const flowData = logicManifest.flow || { nodes: [], edges: [] }
-    setInternalNodes((flowData.nodes || []).map((n: any) => ({
+    const hydratedNodes = (flowData.nodes || []).map((n: any) => ({
       ...n,
       data: {
         ...n.data,
-        onChange: (id: string, updates: any) => setInternalNodes(nds => nds.map(node => node.id === id ? { ...node, data: { ...node.data, ...updates } } : node)),
+        onChange: (id: string, updates: any) => {
+          setIsDirty(true)
+          setInternalNodes(nds => nds.map(node => node.id === id ? { ...node, data: { ...node.data, ...updates } } : node))
+        },
         onDelete: (id: string) => { 
           setInternalNodes(nds => nds.filter(node => node.id !== id))
           setInternalEdges(eds => eds.filter(edge => edge.source !== id && edge.target !== id))
+          setIsDirty(true)
         }
       }
-    })))
-    setInternalEdges((flowData.edges || []).map((e: any) => ({
+    }))
+    const hydratedEdges = (flowData.edges || []).map((e: any) => ({
       ...e,
       data: {
         ...e.data,
-        onLabelChange: (id: string, label: string) => setInternalEdges(eds => eds.map(edge => edge.id === id ? { ...edge, data: { ...edge.data, label } } : edge))
+        onLabelChange: (id: string, label: string) => {
+          setIsDirty(true)
+          setInternalEdges(eds => eds.map(edge => edge.id === id ? { ...edge, data: { ...edge.data, label } } : edge))
+        }
       }
-    })))
+    }))
+    setInternalNodes(hydratedNodes)
+    setInternalEdges(hydratedEdges)
+    setIsDirty(false)
+    historyIndexRef.current = -1
+    recordSnapshot(hydratedNodes, hydratedEdges, logicManifest.lanes && logicManifest.lanes.length > 0 ? logicManifest.lanes : [
+      { id: 'source-primary', label: sourceNode.data.name, subLabel: 'SOURCE ASSET', color: '#6366f1', type: 'asset', x: 0 },
+      { id: 'target-primary', label: targetNode.data.name, subLabel: 'DESTINATION ASSET', color: '#f43f5e', type: 'asset', x: 350 },
+    ])
   }, [logicManifest])
 
+  useEffect(() => {
+    const savedViewport = logicManifest.viewport
+    const applyViewport = async () => {
+      if (savedViewport && typeof savedViewport.zoom === 'number') {
+        await setViewport(savedViewport, { duration: 0 })
+        return
+      }
+      if (lanes.length > 0) {
+        setTimeout(() => fitView({ duration: 0, padding: 0.2 }), 50)
+      }
+    }
+    void applyViewport()
+  }, [logicManifest.viewport, lanes.length, fitView, setViewport])
+
   const onNodesChangeInternal = useCallback((changes: NodeChange[]) => {
+    if (changes.length > 0) setIsDirty(true)
     setInternalNodes((nds) => {
       const nextNodes = applyNodeChanges(changes, nds);
       return nextNodes.map(node => {
@@ -316,6 +580,7 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
   }, [lanes, setInternalNodes]);
 
   const onEdgesChangeInternal = useCallback((changes: EdgeChange[]) => {
+    if (changes.length > 0) setIsDirty(true)
     setInternalEdges((eds) => applyEdgeChanges(changes, eds));
   }, [setInternalEdges]);
 
@@ -326,11 +591,17 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
       type: 'logicLink', 
       data: { 
         label: '', 
-        onLabelChange: (id: string, label: string) => setInternalEdges(eds => eds.map(e => e.id === id ? { ...e, data: { ...e.data, label } } : e))
+        onLabelChange: (id: string, label: string) => {
+          setIsDirty(true)
+          setInternalEdges(eds => eds.map(e => e.id === id ? { ...e, data: { ...e.data, label } } : e))
+        }
       } 
     } 
-    setInternalEdges((eds) => addEdge(newEdge, eds)) 
-  }, [])
+    const nextEdges = addEdge(newEdge, internalEdges)
+    setInternalEdges(nextEdges) 
+    recordSnapshot(internalNodes, nextEdges, lanes)
+    setIsDirty(true)
+  }, [internalEdges, internalNodes, lanes, recordSnapshot])
 
   const addNode = (laneId: string, type: 'process' | 'diamond') => {
     const laneIdx = lanes.findIndex(l => l.id === laneId)
@@ -353,14 +624,21 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
         description: '',
         input: '', 
         output: '', 
-        onChange: (id: string, updates: any) => setInternalNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, ...updates } } : n)), 
+        onChange: (id: string, updates: any) => {
+          setIsDirty(true)
+          setInternalNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, ...updates } } : n))
+        }, 
         onDelete: (id: string) => { 
           setInternalNodes(nds => nds.filter(n => n.id !== id))
           setInternalEdges(eds => eds.filter(e => e.source !== id && e.target !== id))
+          setIsDirty(true)
         } 
       } 
     } 
-    setInternalNodes(nds => [...nds, newNode]) 
+    const nextNodes = [...internalNodes, newNode]
+    setInternalNodes(nextNodes) 
+    recordSnapshot(nextNodes, internalEdges, lanes)
+    setIsDirty(true)
   }
 
   const addLane = (service: any) => {
@@ -373,26 +651,99 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
       serviceId: service.id
     }
     if (lanes.some(l => l.id === newLane.id)) return
-    setLanes([...lanes, newLane])
+    const nextLanes = [...lanes, newLane]
+    setLanes(nextLanes)
+    recordSnapshot(internalNodes, internalEdges, nextLanes)
+    setIsDirty(true)
   }
 
   const removeLane = (laneId: string) => {
-    setLanes(lanes.filter(l => l.id !== laneId))
-    setInternalNodes(nds => nds.filter(n => n.data.laneId !== laneId))
-    setInternalEdges(eds => eds.filter(e => {
-      const sourceNode = internalNodes.find(n => n.id === e.source)
-      const targetNode = internalNodes.find(n => n.id === e.target)
-      return sourceNode?.data?.laneId !== laneId && targetNode?.data?.laneId !== laneId
-    }))
+    const nextLanes = lanes.filter(l => l.id !== laneId)
+    const nextNodes = internalNodes.filter(n => n.data.laneId !== laneId)
+    const nextEdges = internalEdges.filter(e => {
+      const sourceManifestNode = internalNodes.find(n => n.id === e.source)
+      const targetManifestNode = internalNodes.find(n => n.id === e.target)
+      return sourceManifestNode?.data?.laneId !== laneId && targetManifestNode?.data?.laneId !== laneId
+    })
+    setLanes(nextLanes)
+    setInternalNodes(nextNodes)
+    setInternalEdges(nextEdges)
+    recordSnapshot(nextNodes, nextEdges, nextLanes)
+    setIsDirty(true)
   }
+
+  const moveLane = (laneId: string, direction: 'left' | 'right') => {
+    const index = lanes.findIndex((lane) => lane.id === laneId)
+    if (index === -1) return
+    const targetIndex = direction === 'left' ? index - 1 : index + 1
+    if (targetIndex < 1 || targetIndex > lanes.length - 1) return
+    const nextLanes = [...lanes]
+    const [lane] = nextLanes.splice(index, 1)
+    nextLanes.splice(targetIndex, 0, lane)
+    const repositionedNodes = internalNodes.map((node: any) => {
+      const laneIdx = nextLanes.findIndex((entry) => entry.id === node.data.laneId)
+      if (laneIdx === -1) return node
+      const nodeWidth = node.type === 'logicProcess' ? 300 : 160
+      const centerX = (laneIdx * 350) + 175 - (nodeWidth / 2)
+      return { ...node, position: { ...node.position, x: centerX } }
+    })
+    setLanes(nextLanes)
+    setInternalNodes(repositionedNodes)
+    recordSnapshot(repositionedNodes, internalEdges, nextLanes)
+    setIsDirty(true)
+  }
+
+  const canUndo = historyIndexRef.current > 0
+  const canRedo = historyIndexRef.current < historyStack.length - 1
+
+  const undo = () => {
+    if (!canUndo) return
+    const nextIndex = historyIndexRef.current - 1
+    historyIndexRef.current = nextIndex
+    restoreSnapshot(historyStack[nextIndex])
+    setIsDirty(true)
+  }
+
+  const redo = () => {
+    if (!canRedo) return
+    const nextIndex = historyIndexRef.current + 1
+    historyIndexRef.current = nextIndex
+    restoreSnapshot(historyStack[nextIndex])
+    setIsDirty(true)
+  }
+
+  const validation = useMemo(() => {
+    const incoming = new Map<string, number>()
+    const outgoing = new Map<string, number>()
+    internalEdges.forEach((currentEdge: any) => {
+      outgoing.set(currentEdge.source, (outgoing.get(currentEdge.source) || 0) + 1)
+      incoming.set(currentEdge.target, (incoming.get(currentEdge.target) || 0) + 1)
+    })
+    return {
+      orphanSteps: internalNodes.filter((node: any) => (incoming.get(node.id) || 0) === 0 && (outgoing.get(node.id) || 0) === 0).length,
+      deadEnds: internalNodes.filter((node: any) => node.type === 'logicProcess' && (outgoing.get(node.id) || 0) === 0).length,
+      missingEdgeLabels: internalEdges.filter((currentEdge: any) => !String(currentEdge.data?.label || '').trim()).length,
+      missingFailureBranch: internalNodes.filter((node: any) => node.type === 'logicDiamond' && (outgoing.get(node.id) || 0) < 2).length,
+    }
+  }, [internalEdges, internalNodes])
 
   const handleSaveFlow = () => {
     const manifest = {
       lanes,
-      flow: { nodes: internalNodes, edges: internalEdges }
+      flow: { nodes: internalNodes, edges: internalEdges },
+      viewport: getViewport(),
     }
     onSave(edge.id, { ...edge.data, logic_json: manifest })
+    setIsDirty(false)
     toast.success("Workflow Manifest Synchronized")
+  }
+
+  const requestClose = () => {
+    if (isDirty) {
+      setShowExitPrompt(true)
+      return
+    }
+    onClose()
   }
 
   const explorerNodeTypes = useMemo(() => ({ logicProcess: ProcessNode, logicDiamond: DiamondNode }), [])
@@ -406,16 +757,18 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
 
   const LanesLayer = () => {
     return (
-      <Panel position="top-left" className="w-full h-full pointer-events-none !m-0 p-0">
+      <Panel position="top-left" className="w-full h-full !pointer-events-auto !m-0 p-0">
         <div className="flex h-full pointer-events-none">
           {lanes.map((lane, idx) => (
             <div key={lane.id} className="relative border-r border-white/5 bg-white/[0.01] pointer-events-none" style={{ width: 350, minWidth: 350 }}>
-               <div className="p-8 pt-12 pointer-events-none">
+               <div className="p-8 pt-12 pointer-events-auto">
                   <ParticipantLaneHeader 
                     lane={lane} 
                     isPrimary={lane.id === 'source-primary' || lane.id === 'target-primary'} 
                     onRemove={removeLane} 
                     onAddNode={addNode}
+                    onMoveLeft={(id: string) => moveLane(id, 'left')}
+                    onMoveRight={(id: string) => moveLane(id, 'right')}
                   />
                </div>
             </div>
@@ -426,20 +779,40 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
   }
 
   return (
-    <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="w-[95%] h-[92%] glass-panel flex overflow-hidden rounded-2xl border border-white/10 shadow-3xl bg-[#020617] relative">
-        <div className="w-[300px] border-r border-white/10 bg-[#0f172a] flex flex-col z-30 shadow-2xl">
-          <div className="p-6 border-b border-white/5 bg-white/[0.02]">
+    <div className="fixed inset-0 z-[200] bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.15),transparent_28%),rgba(2,6,23,0.78)] backdrop-blur-sm flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="w-[95%] h-[92%] glass-panel flex overflow-hidden rounded-[30px] border border-white/10 shadow-[0_35px_120px_rgba(2,6,23,0.7)] bg-[#020617] relative">
+        <div className="w-[320px] border-r border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.96))] flex flex-col z-30 shadow-2xl">
+          <div className="p-7 border-b border-white/5 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))]">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-600 rounded-lg text-white shadow-lg"><Workflow size={16}/></div>
+              <div className="p-3 bg-sky-400/15 rounded-2xl text-sky-200 shadow-lg border border-sky-300/20"><Workflow size={16}/></div>
               <div>
-                <h3 className="text-sm font-bold text-white uppercase tracking-tight">Service Logic</h3>
-                <p className="text-[7px] font-bold text-slate-500 uppercase tracking-[0.4em] mt-1">Orchestrator</p>
+                <h3 className="text-base font-black text-white uppercase tracking-[0.14em]">Service Logic</h3>
+                <p className="text-[8px] font-bold text-sky-200/60 uppercase tracking-[0.42em] mt-1">Orchestrator</p>
               </div>
             </div>
           </div>
           
           <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={undo} disabled={!canUndo} className={`py-2 rounded-lg border text-[9px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${canUndo ? 'bg-white/5 hover:bg-white/10 border-white/10 text-white' : 'bg-slate-900 border-white/5 text-slate-600 cursor-not-allowed'}`}>
+                <RotateCcw size={12}/> Undo
+              </button>
+              <button onClick={redo} disabled={!canRedo} className={`py-2 rounded-lg border text-[9px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${canRedo ? 'bg-white/5 hover:bg-white/10 border-white/10 text-white' : 'bg-slate-900 border-white/5 text-slate-600 cursor-not-allowed'}`}>
+                <RotateCw size={12}/> Redo
+              </button>
+            </div>
+            <div className="rounded-[22px] border border-amber-400/10 bg-[linear-gradient(180deg,rgba(251,191,36,0.08),rgba(2,6,23,0.25))] p-4 space-y-2 shadow-[0_18px_40px_rgba(15,23,42,0.28)]">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-bold text-amber-400 uppercase tracking-widest">Validation</span>
+                <span className="text-[7px] font-bold text-slate-500 uppercase">Production Safety</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[8px] font-bold uppercase">
+                <div className="rounded bg-white/5 px-2 py-2 text-slate-300">Orphan Steps: {validation.orphanSteps}</div>
+                <div className="rounded bg-white/5 px-2 py-2 text-slate-300">Dead Ends: {validation.deadEnds}</div>
+                <div className="rounded bg-white/5 px-2 py-2 text-slate-300">Unlabeled Flows: {validation.missingEdgeLabels}</div>
+                <div className="rounded bg-white/5 px-2 py-2 text-slate-300">Missing Failure Branch: {validation.missingFailureBranch}</div>
+              </div>
+            </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between px-1">
                 <span className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">Available Participants</span>
@@ -450,7 +823,7 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
                   <button 
                     key={svc.id} 
                     onClick={() => addLane(svc)} 
-                    className="w-full p-3 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 hover:border-blue-500/20 transition-all text-left group"
+                    className="w-full p-3.5 rounded-[18px] border border-white/8 bg-white/[0.04] hover:bg-white/[0.08] hover:border-sky-400/25 transition-all text-left group shadow-[0_12px_24px_rgba(2,6,23,0.25)]"
                   >
                     <div className="flex items-center justify-between mb-1">
                       <p className="text-[11px] font-bold uppercase tracking-tight text-slate-400 group-hover:text-white transition-colors truncate">{svc.name}</p>
@@ -468,14 +841,15 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
             </div>
           </div>
 
-          <div className="p-5 border-t border-white/10 bg-black/40 space-y-2">
-            <button onClick={handleSaveFlow} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg shadow-lg transition-all active:scale-95">Sync Workflow</button>
-            <button onClick={onClose} className="w-full py-3 bg-white/5 hover:bg-white/10 text-slate-500 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all">Exit</button>
+          <div className="p-5 border-t border-white/10 bg-[linear-gradient(180deg,rgba(2,6,23,0.25),rgba(2,6,23,0.55))] space-y-2">
+            <button onClick={handleSaveFlow} disabled={!isDirty} className={`w-full py-3 text-[10px] font-bold uppercase tracking-widest rounded-lg shadow-lg transition-all active:scale-95 ${isDirty ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'}`}>Sync Workflow</button>
+            <button onClick={requestClose} className="w-full py-3 bg-white/5 hover:bg-white/10 text-slate-500 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all">Exit</button>
           </div>
         </div>
 
         <div className="flex-1 flex flex-col bg-[#020617] relative">
           <div className="flex-1 relative overflow-hidden bg-[#020617]">
+            <CanvasDomainBackdrop presentationMode={false} />
             <ReactFlow 
               nodes={internalNodes} 
               edges={internalEdges} 
@@ -501,11 +875,22 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
               connectionMode={ConnectionMode.Loose}
             >
               <LanesLayer />
-              <Background color="#1e293b" gap={40} size={1} className="opacity-20"/>
-              <Controls showZoom={true} showInteractive={true} showFitView={true} className="bg-slate-900 border border-white/10 rounded-lg overflow-hidden p-1 shadow-2xl" />
+              <Background color="#334155" gap={40} size={1.2} className="opacity-25"/>
+              <Controls showZoom={true} showInteractive={true} showFitView={true} className="bg-slate-950/90 border border-white/10 rounded-2xl overflow-hidden p-1 shadow-2xl" />
             </ReactFlow>
           </div>
         </div>
+        <ConfirmationModal
+          isOpen={showExitPrompt}
+          title="Unsaved Workflow"
+          message="Exit the service-level swimlane builder and lose unsaved changes?"
+          onConfirm={() => {
+            setShowExitPrompt(false)
+            setIsDirty(false)
+            onClose()
+          }}
+          onClose={() => setShowExitPrompt(false)}
+        />
       </motion.div>
     </div>
   )
@@ -517,21 +902,72 @@ const ServiceLevelFlow = (props: any) => (
   </ReactFlowProvider>
 )
 
+const defaultFlowMetadata = (flow?: any) => ({
+  owner_team: getFlowMeta(flow, 'owner_team') || '',
+  criticality: getFlowMeta(flow, 'criticality') || 'Medium',
+  dependency_tier: getFlowMeta(flow, 'dependency_tier') || 'Tier 2',
+  review_status: getFlowMeta(flow, 'review_status') || 'Needs Review',
+  runbook_url: getFlowMeta(flow, 'runbook_url') || '',
+  source_of_truth: getFlowMeta(flow, 'source_of_truth') || '',
+  business_purpose: getFlowMeta(flow, 'business_purpose') || '',
+  last_reviewed_at: getFlowMeta(flow, 'last_reviewed_at') || '',
+  next_review_due: getFlowMeta(flow, 'next_review_due') || '',
+  approved_at: getFlowMeta(flow, 'approved_at') || '',
+  approved_by: getFlowMeta(flow, 'approved_by') || '',
+  approval_notes: getFlowMeta(flow, 'approval_notes') || '',
+  links: {
+    knowledge_ids: normalizeIdList(getFlowMeta(flow, 'links')?.knowledge_ids),
+    monitoring_ids: normalizeIdList(getFlowMeta(flow, 'links')?.monitoring_ids),
+    far_ids: normalizeIdList(getFlowMeta(flow, 'links')?.far_ids),
+    vendor_ids: normalizeIdList(getFlowMeta(flow, 'links')?.vendor_ids),
+    project_ids: normalizeIdList(getFlowMeta(flow, 'links')?.project_ids),
+  },
+})
+
 
 const ConfigModal = ({ flow, isOpen, onClose, onSave, isNew }: any) => {
-  const [formData, setFormData] = useState({ name: flow?.name || '', description: flow?.description || '', category: flow?.category || 'System', status: flow?.status || 'Up to date' });
-  useEffect(() => { if (flow) setFormData({ name: flow.name || '', description: flow.description || '', category: flow.category || 'System', status: flow.status || 'Up to date' }); }, [flow]);
+  const parseLinkedIds = (value: string) => value.split(',').map((item) => Number(item.trim())).filter((item) => Number.isFinite(item))
+  const [formData, setFormData] = useState({
+    name: flow?.name || '',
+    description: flow?.description || '',
+    category: flow?.category || 'System',
+    status: flow?.status || 'Up to date',
+    metadata: defaultFlowMetadata(flow),
+  });
+  useEffect(() => {
+    if (flow) {
+      setFormData({
+        name: flow.name || '',
+        description: flow.description || '',
+        category: flow.category || 'System',
+        status: flow.status || 'Up to date',
+        metadata: defaultFlowMetadata(flow),
+      });
+    }
+  }, [flow]);
   if (!isOpen) return null;
   const handleSave = () => {
     if (!formData.name || !formData.description || !formData.category || !formData.status) {
       toast.error("All fields are required");
       return;
     }
-    onSave(formData);
+    onSave({
+      ...formData,
+      metadata: {
+        ...formData.metadata,
+        links: {
+          knowledge_ids: parseLinkedIds(String((formData.metadata as any).knowledge_ids_text || '')),
+          monitoring_ids: parseLinkedIds(String((formData.metadata as any).monitoring_ids_text || '')),
+          far_ids: parseLinkedIds(String((formData.metadata as any).far_ids_text || '')),
+          vendor_ids: parseLinkedIds(String((formData.metadata as any).vendor_ids_text || '')),
+          project_ids: parseLinkedIds(String((formData.metadata as any).project_ids_text || '')),
+        },
+      },
+    });
   };
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-xl p-8 rounded-lg border border-white/10 bg-[#0f172a]/95">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-xl max-h-[90vh] overflow-y-auto custom-scrollbar p-8 rounded-lg border border-white/10 bg-[#0f172a]/95">
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
           <div className="flex items-center space-x-4">
             <div className="p-3 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30">
@@ -568,6 +1004,56 @@ const ConfigModal = ({ flow, isOpen, onClose, onSave, isNew }: any) => {
               </select>
             </div>
           </div>
+          <div className="border-t border-white/5 pt-6 space-y-4">
+            <h3 className="text-[9px] font-bold uppercase text-slate-500 tracking-[0.2em] ml-1">Operational Governance</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                ['owner_team', 'Owner Team', 'e.g. Core Platform'],
+                ['criticality', 'Criticality', 'Critical / High / Medium / Low'],
+                ['dependency_tier', 'Dependency Tier', 'Tier 1 / Tier 2 / Tier 3'],
+                ['review_status', 'Review Status', 'Approved / Needs Review / Exception'],
+                ['runbook_url', 'Runbook URL', 'https://wiki.example.com/runbook'],
+                ['source_of_truth', 'Source Of Truth', 'CMDB / Architecture Board'],
+                ['business_purpose', 'Business Purpose', 'Revenue path, auth chain, sync pipeline'],
+                ['last_reviewed_at', 'Last Reviewed', '2026-06-01'],
+                ['next_review_due', 'Next Review Due', '2026-09-01'],
+                ['approved_by', 'Approved By', 'Architecture Board'],
+                ['approval_notes', 'Approval Notes', 'Board-approved production topology'],
+              ].map(([key, label, placeholder]) => (
+                <div key={key} className={key === 'business_purpose' ? 'col-span-2' : ''}>
+                  <label className="text-[8px] font-bold uppercase text-slate-600 tracking-[0.2em] ml-1">{label}</label>
+                  <input
+                    value={(formData.metadata as any)[key] || ''}
+                    onChange={e => setFormData({ ...formData, metadata: { ...formData.metadata, [key]: e.target.value } })}
+                    className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-5 py-3 text-xs font-bold text-white outline-none focus:border-blue-500/50"
+                    placeholder={placeholder}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="border-t border-white/5 pt-6 space-y-4">
+            <h3 className="text-[9px] font-bold uppercase text-slate-500 tracking-[0.2em] ml-1">Cross-Module Links</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                ['knowledge_ids_text', 'Knowledge IDs', getFlowLinks(flow).knowledge_ids.join(', ')],
+                ['monitoring_ids_text', 'Monitoring IDs', getFlowLinks(flow).monitoring_ids.join(', ')],
+                ['far_ids_text', 'FAR IDs', getFlowLinks(flow).far_ids.join(', ')],
+                ['vendor_ids_text', 'Vendor IDs', getFlowLinks(flow).vendor_ids.join(', ')],
+                ['project_ids_text', 'Project IDs', getFlowLinks(flow).project_ids.join(', ')],
+              ].map(([key, label, value]) => (
+                <div key={key}>
+                  <label className="text-[8px] font-bold uppercase text-slate-600 tracking-[0.2em] ml-1">{label}</label>
+                  <input
+                    value={(formData.metadata as any)[key] ?? value}
+                    onChange={e => setFormData({ ...formData, metadata: { ...formData.metadata, [key]: e.target.value } })}
+                    className="mt-1 w-full bg-black/40 border border-white/10 rounded-lg px-5 py-3 text-xs font-bold text-white outline-none focus:border-blue-500/50"
+                    placeholder="1, 2, 3"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
           <div className="pt-6 border-t border-white/5 flex gap-4">
              <button onClick={onClose} className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-slate-400 font-bold uppercase text-[11px] tracking-widest rounded-lg transition-all">Cancel</button>
              <button onClick={handleSave} className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold uppercase text-[11px] tracking-widest rounded-lg transition-all shadow-2xl shadow-blue-500/20">{isNew ? 'Create Architecture' : 'Save Changes'}</button>
@@ -581,6 +1067,15 @@ const ConfigModal = ({ flow, isOpen, onClose, onSave, isNew }: any) => {
 const ArchDashboard = ({ flows, onEdit, onAdd }: any) => {
   const [searchTerm, setSearchTerm] = useState(''); 
   const [statusFilter, setStatusFilter] = useState('All');
+  const summary = useMemo(() => {
+    const list = flows || []
+    return {
+      total: list.length,
+      critical: list.filter((flow: any) => ['Critical', 'Tier 1'].includes(getFlowMeta(flow, 'criticality')) || getFlowMeta(flow, 'dependency_tier') === 'Tier 1').length,
+      stale: list.filter((flow: any) => buildArchitectureInsights(flow).isStale).length,
+      warnings: list.filter((flow: any) => buildArchitectureInsights(flow).warnings.length > 0).length,
+    }
+  }, [flows])
   const filtered = useMemo(() => (flows || []).filter((f: any) => { 
     const match = (f.name || '').toLowerCase().includes(searchTerm.toLowerCase()); 
     const matchStatus = statusFilter === 'All' || f.status === statusFilter; 
@@ -591,6 +1086,9 @@ const ArchDashboard = ({ flows, onEdit, onAdd }: any) => {
     { field: "id", headerName: "ID", width: 80, cellClass: 'text-center font-bold text-slate-500', headerClass: 'text-center' },
     { field: "name", headerName: "Architecture Identifier", flex: 1.5, cellClass: 'font-bold uppercase text-blue-400', filter: true },
     { field: "category", headerName: "Domain", width: 140, cellClass: 'text-center font-bold uppercase text-slate-400', headerClass: 'text-center' },
+    { field: "metadata.owner_team", headerName: "Owner Team", width: 150, valueGetter: (p: any) => getFlowMeta(p.data, 'owner_team') || 'Unassigned', cellClass: 'text-center font-bold uppercase text-slate-300', headerClass: 'text-center' },
+    { field: "metadata.review_status", headerName: "Review", width: 130, valueGetter: (p: any) => getFlowMeta(p.data, 'review_status') || 'Needs Review', cellClass: 'text-center font-bold uppercase text-amber-400', headerClass: 'text-center' },
+    { field: "warnings", headerName: "Warnings", width: 100, valueGetter: (p: any) => buildArchitectureInsights(p.data).warnings.length, cellClass: 'text-center font-bold text-amber-400', headerClass: 'text-center' },
     { 
       field: "status", 
       headerName: "Governance State", 
@@ -619,21 +1117,34 @@ const ArchDashboard = ({ flows, onEdit, onAdd }: any) => {
   ], [onEdit]);
 
   return (
-    <div className="flex-1 p-8 overflow-y-auto custom-scrollbar bg-black/20">
+    <div className="flex-1 p-8 overflow-y-auto custom-scrollbar bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.07),transparent_22%),linear-gradient(180deg,rgba(2,6,23,0.4),rgba(2,6,23,0.7))]">
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex items-end justify-between">
           <div className="space-y-1">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-600 rounded-lg shadow-xl text-white"><Workflow size={24}/></div>
-              <h1 className="text-3xl font-bold text-white uppercase tracking-tighter leading-none">Architecture Matrix</h1>
+              <div className="p-3 bg-sky-400/15 rounded-2xl shadow-xl text-sky-200 border border-sky-300/20"><Workflow size={24}/></div>
+              <h1 className="text-4xl font-black text-white uppercase tracking-[0.08em] leading-none">Architecture Matrix</h1>
             </div>
-            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.4em] pl-1 mt-2">Core Registry & Governance</p>
+            <p className="text-sky-200/55 text-[10px] font-bold uppercase tracking-[0.45em] pl-1 mt-3">Core Registry & Governance</p>
           </div>
-          <button onClick={onAdd} className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg flex items-center space-x-3 transition-all shadow-xl active:scale-95">
+          <button onClick={onAdd} className="px-8 py-4 bg-sky-400 hover:bg-sky-300 text-slate-950 rounded-[18px] flex items-center space-x-3 transition-all shadow-[0_20px_50px_rgba(56,189,248,0.28)] active:scale-95">
             <Plus size={20}/><span className="text-sm font-bold uppercase tracking-widest">New Architecture</span>
           </button>
         </div>
-        <div className="glass-panel rounded-lg border border-white/5 overflow-hidden shadow-2xl bg-[#0f172a]/40 backdrop-blur-3xl flex flex-col h-[600px]">
+        <div className="grid grid-cols-4 gap-4">
+          {[
+            ['Registry Entries', summary.total, 'text-blue-400'],
+            ['Tier 1 / Critical', summary.critical, 'text-rose-400'],
+            ['Review Overdue', summary.stale, 'text-amber-400'],
+            ['Needs Attention', summary.warnings, 'text-fuchsia-400'],
+          ].map(([label, value, tone]) => (
+            <div key={label} className="glass-panel rounded-[22px] border border-white/8 p-5 bg-[linear-gradient(180deg,rgba(15,23,42,0.68),rgba(15,23,42,0.32))] shadow-[0_18px_44px_rgba(2,6,23,0.24)]">
+              <p className="text-[8px] font-black uppercase tracking-[0.35em] text-slate-500">{label}</p>
+              <p className={`text-3xl font-black mt-3 ${tone}`}>{value}</p>
+            </div>
+          ))}
+        </div>
+        <div className="glass-panel rounded-[28px] border border-white/8 overflow-hidden shadow-[0_28px_80px_rgba(2,6,23,0.4)] bg-[#0f172a]/40 backdrop-blur-3xl flex flex-col h-[600px]">
           <div className="p-6 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="relative flex-1 max-w-xl">
               <Search size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-600"/>
@@ -676,11 +1187,132 @@ const ArchDashboard = ({ flows, onEdit, onAdd }: any) => {
   );
 };
 
-const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onUpdateNode, onUpdateEdge, onAddServiceToNode, availableServices, onDeleteNode, onDeleteEdge, setIsServiceFlowOpen }: any) => {
+const ArchitectureHistoryPanel = ({ flow, historyEntries, isOpen, onClose, onRestore, onApprove }: any) => {
+  if (!isOpen) return null
+  return (
+    <div className="fixed inset-0 z-[180] bg-black/70 backdrop-blur-sm flex justify-end">
+      <motion.div initial={{ x: 420 }} animate={{ x: 0 }} exit={{ x: 420 }} className="w-[420px] h-full bg-[#020617] border-l border-white/10 shadow-3xl flex flex-col">
+        <div className="p-6 border-b border-white/5 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold uppercase text-white tracking-tight flex items-center gap-2"><History size={18} className="text-blue-400" /> Version History</h3>
+            <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-slate-500 mt-2">{flow?.name || 'Architecture'}</p>
+          </div>
+          <button aria-label="Close history" onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><X size={18} /></button>
+        </div>
+        <div className="p-4 border-b border-white/5">
+          <button onClick={onApprove} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+            <ShieldCheck size={14} /> Approve Current Version
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
+          {(historyEntries || []).map((entry: any, index: number) => {
+            const diff = buildVersionDiff(entry, historyEntries[index + 1])
+            return (
+              <div key={entry.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400">Version {entry.version}</p>
+                    <p className="text-[9px] font-bold uppercase text-white mt-1">{entry.change_summary || 'Architecture change'}</p>
+                    <p className="text-[8px] font-bold uppercase text-slate-500 mt-2">{entry.created_at ? new Date(entry.created_at).toLocaleString() : 'Unknown time'}</p>
+                  </div>
+                  <button onClick={() => onRestore(entry.id)} className="px-3 py-2 rounded-lg bg-white/5 hover:bg-blue-600 text-slate-300 hover:text-white border border-white/10 text-[8px] font-bold uppercase tracking-widest">
+                    Restore
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[8px] font-bold uppercase">
+                  <div className="rounded-lg bg-black/30 px-3 py-2 text-slate-300">Nodes: {entry.snapshot?.nodes?.length || 0} ({diff.nodeDelta >= 0 ? '+' : ''}{diff.nodeDelta})</div>
+                  <div className="rounded-lg bg-black/30 px-3 py-2 text-slate-300">Flows: {entry.snapshot?.edges?.length || 0} ({diff.edgeDelta >= 0 ? '+' : ''}{diff.edgeDelta})</div>
+                  <div className="rounded-lg bg-black/30 px-3 py-2 text-slate-300">Review: {entry.snapshot?.metadata?.review_status || 'Needs Review'}</div>
+                  <div className="rounded-lg bg-black/30 px-3 py-2 text-slate-300">Warnings: {diff.warningCount}</div>
+                </div>
+                {diff.metadataChanged.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {diff.metadataChanged.map((field: string) => (
+                      <span key={field} className="px-2 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[7px] font-bold uppercase tracking-widest">{field.replaceAll('_', ' ')}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+const ArchitectureReportModal = ({ flow, nodes, edges, historyEntries, relatedLinks, isOpen, onClose }: any) => {
+  if (!isOpen || !flow) return null
+  const insights = buildArchitectureInsights({ ...flow, nodes, edges })
+  const latestHistory = historyEntries?.[0]
+  return (
+    <div className="fixed inset-0 z-[170] bg-black/75 backdrop-blur-sm flex items-center justify-center p-6">
+      <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar rounded-2xl border border-white/10 bg-[#020617] shadow-3xl">
+        <div className="p-8 border-b border-white/5 flex items-center justify-between">
+          <div>
+            <h3 className="text-2xl font-bold uppercase text-white tracking-tight flex items-center gap-3"><FileText size={24} className="text-blue-400" /> Architecture Report</h3>
+            <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-slate-500 mt-3">{flow.name}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => window.print()} className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold uppercase tracking-widest flex items-center gap-2"><Printer size={14} /> Print</button>
+            <button aria-label="Close report" onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><X size={18} /></button>
+          </div>
+        </div>
+        <div className="p-8 space-y-6">
+          <div className="grid grid-cols-4 gap-4">
+            {[
+              ['Nodes', insights.nodeCount, 'text-blue-400'],
+              ['Flows', insights.edgeCount, 'text-emerald-400'],
+              ['Warnings', insights.warnings.length, 'text-amber-400'],
+              ['Version', latestHistory?.version || flow.current_version || 1, 'text-fuchsia-400'],
+            ].map(([label, value, tone]) => (
+              <div key={label} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">{label}</p>
+                <p className={`text-2xl font-bold mt-2 ${tone}`}>{value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-6">
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5 space-y-3">
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-white">Governance</h4>
+              <p className="text-[10px] font-bold uppercase text-slate-300">Owner Team: {getFlowMeta(flow, 'owner_team') || 'Unassigned'}</p>
+              <p className="text-[10px] font-bold uppercase text-slate-300">Criticality: {getFlowMeta(flow, 'criticality') || 'Medium'}</p>
+              <p className="text-[10px] font-bold uppercase text-slate-300">Review Status: {getFlowMeta(flow, 'review_status') || 'Needs Review'}</p>
+              <p className="text-[10px] font-bold uppercase text-slate-300">Business Purpose: {getFlowMeta(flow, 'business_purpose') || 'Not documented'}</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5 space-y-3">
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-white">Linked Operations</h4>
+              <p className="text-[10px] font-bold uppercase text-slate-300">Knowledge: {relatedLinks.knowledge.length}</p>
+              <p className="text-[10px] font-bold uppercase text-slate-300">Monitoring: {relatedLinks.monitoring.length}</p>
+              <p className="text-[10px] font-bold uppercase text-slate-300">FAR: {relatedLinks.far.length}</p>
+              <p className="text-[10px] font-bold uppercase text-slate-300">Vendors: {relatedLinks.vendors.length}</p>
+            </div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5 space-y-3">
+            <h4 className="text-[10px] font-bold uppercase tracking-widest text-white">Executive Attention</h4>
+            {insights.warnings.length > 0 ? insights.warnings.map((warning: string) => (
+              <div key={warning} className="px-3 py-2 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[10px] font-bold uppercase">{warning}</div>
+            )) : <div className="px-3 py-2 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 text-[10px] font-bold uppercase">No governance warnings</div>}
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, pathAnalysis, relatedLinks, nodeOperationalStatus, onBack, onUpdateNode, onUpdateEdge, onAddServiceToNode, availableServices, onDeleteNode, onDeleteEdge, setIsServiceFlowOpen }: any) => {
    const [edgeForm, setEdgeForm] = useState<any>(selectedEdge?.data || {}); const [nodeForm, setNodeForm] = useState<any>(selectedNode?.data || {});
    useEffect(() => { if (selectedEdge) setEdgeForm(selectedEdge.data || {}); }, [selectedEdge]); useEffect(() => { if (selectedNode) setNodeForm(selectedNode.data || {}); }, [selectedNode]);
    const handleEdgeChange = (f: string, v: any) => { const updated = { ...edgeForm, [f]: v }; setEdgeForm(updated); onUpdateEdge(selectedEdge.id, updated); };
    const handleNodeChange = (f: string, v: any) => { const updated = { ...nodeForm, [f]: v }; setNodeForm(updated); onUpdateNode(selectedNode.id, updated); };
+   const nodeLinks = selectedNode?.type === 'device'
+     ? [
+         { label: 'Asset', href: `/asset?id=${selectedNode.data.id}` },
+         ...(selectedNode.data.logical_services || []).map((service: any) => ({ label: service.name, href: `/services?id=${service.id}` })),
+       ]
+     : selectedNode?.type === 'external'
+       ? [{ label: 'External Entity', href: `/external?id=${selectedNode.data.id}` }]
+       : []
    return (
      <div className="w-[360px] glass-panel h-full border-l border-white/5 flex flex-col p-6 space-y-8 bg-[#0f172a]/95 backdrop-blur-3xl z-50 overflow-y-auto custom-scrollbar shadow-[-10px_0_40px_rgba(0,0,0,0.5)]">
        <div className="flex items-center justify-between border-b border-white/5 pb-4">
@@ -720,6 +1352,45 @@ const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onU
              </div>
            )}
            <div className="space-y-3">
+             <div className="rounded-lg border border-white/5 bg-black/30 p-4 space-y-3">
+               <div className="flex items-center justify-between">
+                 <h4 className="text-[9px] font-bold uppercase text-rose-400 tracking-widest flex items-center gap-2"><Route size={12}/> Blast Radius</h4>
+                 <span className="text-[7px] font-bold text-slate-600 uppercase">{impactedNodes?.size || 0} impacted</span>
+               </div>
+               <div className="grid grid-cols-2 gap-2 text-[8px] font-bold uppercase">
+                 <div className="rounded bg-white/5 px-2 py-2 text-slate-300">Upstream: {pathAnalysis?.upstreamNodeIds?.size || 0}</div>
+                 <div className="rounded bg-white/5 px-2 py-2 text-slate-300">Downstream: {pathAnalysis?.downstreamNodeIds?.size || 0}</div>
+               </div>
+               {selectedNode?.type === 'device' && (
+                 <div className="grid grid-cols-3 gap-2 text-[8px] font-bold uppercase">
+                   <div className="rounded bg-rose-500/10 px-2 py-2 text-rose-300">Incidents: {nodeOperationalStatus?.incidentCount || 0}</div>
+                   <div className="rounded bg-amber-500/10 px-2 py-2 text-amber-300">Maintenance: {nodeOperationalStatus?.maintenanceCount || 0}</div>
+                   <div className="rounded bg-blue-500/10 px-2 py-2 text-blue-300">Monitors: {nodeOperationalStatus?.monitorCount || 0}</div>
+                 </div>
+               )}
+             </div>
+             {nodeLinks.length > 0 && (
+               <div className="space-y-3">
+                 <div className="flex items-center justify-between px-1"><h4 className="text-[9px] font-bold uppercase text-indigo-400 tracking-widest flex items-center gap-2"><Link2 size={12}/> Linked Records</h4></div>
+                 <div className="grid grid-cols-1 gap-2">
+                   {nodeLinks.map((link: any) => (
+                     <a key={link.href} href={link.href} className="px-3 py-2 rounded-lg bg-white/5 hover:bg-indigo-600/10 border border-white/5 text-[9px] font-bold uppercase text-slate-300 hover:text-white transition-all flex items-center justify-between">
+                       <span>{link.label}</span>
+                       <ExternalLink size={12} />
+                     </a>
+                   ))}
+                 </div>
+               </div>
+             )}
+             <div className="space-y-3">
+               <div className="flex items-center justify-between px-1"><h4 className="text-[9px] font-bold uppercase text-fuchsia-400 tracking-widest flex items-center gap-2"><Compass size={12}/> Architecture Links</h4></div>
+               <div className="grid grid-cols-2 gap-2 text-[8px] font-bold uppercase">
+                 <a href="/knowledge" className="rounded bg-white/5 px-3 py-2 text-slate-300 hover:text-white transition-all">Knowledge ({relatedLinks.knowledge.length})</a>
+                 <a href="/monitoring" className="rounded bg-white/5 px-3 py-2 text-slate-300 hover:text-white transition-all">Monitoring ({relatedLinks.monitoring.length})</a>
+                 <a href="/far" className="rounded bg-white/5 px-3 py-2 text-slate-300 hover:text-white transition-all">FAR ({relatedLinks.far.length})</a>
+                 <a href="/vendors" className="rounded bg-white/5 px-3 py-2 text-slate-300 hover:text-white transition-all">Vendors ({relatedLinks.vendors.length})</a>
+               </div>
+             </div>
              <button onClick={() => onDeleteNode(selectedNode.id)} className="w-full py-3 bg-rose-500/5 hover:bg-rose-500 text-rose-500 hover:text-white font-bold uppercase text-[9px] tracking-widest rounded-lg transition-all border border-rose-500/10 flex items-center justify-center gap-2"><Trash2 size={12}/> Decommission Node</button>
            </div>
          </div>
@@ -734,28 +1405,64 @@ const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, onBack, onU
              </div>
            </div>
            <div className="space-y-3">
+             <div className="rounded-lg border border-white/5 bg-black/30 p-4 space-y-3">
+               <div className="flex items-center justify-between">
+                 <h4 className="text-[9px] font-bold uppercase text-emerald-400 tracking-widest flex items-center gap-2"><Route size={12}/> Service Path</h4>
+                 <span className="text-[7px] font-bold text-slate-600 uppercase">{pathAnalysis?.pathEdgeIds?.size || 0} linked flows</span>
+               </div>
+               <div className="grid grid-cols-2 gap-2 text-[8px] font-bold uppercase">
+                 <div className="rounded bg-white/5 px-2 py-2 text-slate-300">Upstream Nodes: {pathAnalysis?.upstreamNodeIds?.size || 0}</div>
+                 <div className="rounded bg-white/5 px-2 py-2 text-slate-300">Downstream Nodes: {pathAnalysis?.downstreamNodeIds?.size || 0}</div>
+               </div>
+             </div>
              <button onClick={() => setIsServiceFlowOpen(true)} className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold uppercase text-[10px] tracking-widest rounded-lg transition-all shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-2"><Workflow size={14}/> Service Logic Builder</button>
              <button onClick={() => onDeleteEdge(selectedEdge.id)} className="w-full py-2.5 bg-rose-500/5 hover:bg-rose-500 text-rose-500 hover:text-white font-bold uppercase text-[9px] tracking-widest rounded-lg transition-all border border-rose-500/10 flex items-center justify-center gap-2"><Trash2 size={12}/> Sever Connection</button>
            </div>
          </div>
-       ) : (<div className="flex-1 flex flex-col items-center justify-center space-y-4 opacity-30"><Layers size={48} className="text-slate-700"/><p className="text-[9px] font-bold uppercase text-slate-600 tracking-[0.3em] text-center px-8 leading-relaxed">Select a manifest entity to initialize control interface</p></div>)}
+       ) : (
+         <div className="flex-1 flex flex-col items-center justify-center px-6">
+           <div className="w-full rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.72))] p-8 text-center shadow-[0_24px_60px_rgba(2,6,23,0.4)]">
+             <Layers size={52} className="text-sky-300/40 mx-auto" />
+             <p className="mt-5 text-[8px] font-black uppercase text-sky-300/70 tracking-[0.42em]">Focus Console</p>
+             <p className="mt-4 text-[11px] font-bold uppercase text-slate-200 tracking-[0.16em] leading-relaxed">Select a node, edge, or service path to inspect impact, governance, and linked operational context.</p>
+           </div>
+         </div>
+       )}
      </div>
    )
 }
 
 function ArchDesignerInner() {
-  const { fitView, zoomTo, zoomIn, zoomOut } = useReactFlow();
+  const { fitView, setViewport, getViewport } = useReactFlow();
   const [view, setView] = useState<'dashboard' | 'editor'>('dashboard');
   const [nodes, setNodes, onNodesChange] = useNodesState([]); const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [activeFlow, setActiveFlow] = useState<any>(null); const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null); const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true); const [isConfigSidebarOpen, setIsConfigSidebarOpen] = useState(true); const [isConfigModalOpen, setIsConfigModalOpen] = useState(false); const [isServiceFlowOpen, setIsServiceFlowOpen] = useState(false);
   const [activeTransactionId, setActiveTransactionId] = useState<string | null>(null); const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); const [isConfirmExitOpen, setIsConfirmExitOpen] = useState(false); const [confirmExitIntent, setConfirmExitIntent] = useState<'dashboard' | null>(null); const [dependencyRiskEnabled, setDependencyRiskEnabled] = useState(false);
   const [inventorySearch, setInventorySearch] = useState(''); const [inventoryType, setInventoryType] = useState<'INTERNAL' | 'EXTERNAL'>('INTERNAL'); const [selectedSystem, setSelectedSystem] = useState<string | 'All'>('All');
+  const [editorViewport, setEditorViewport] = useState<any>({ x: 0, y: 0, zoom: 1 })
+  const [scenarioMode, setScenarioMode] = useState<'ALL' | 'CRITICAL_PATH' | 'PRODUCTION_ONLY' | 'ATTENTION_ONLY'>('ALL')
+  const [isPresentationMode, setIsPresentationMode] = useState(false)
+  const [showOperationalOverlay, setShowOperationalOverlay] = useState(true)
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const [isReportOpen, setIsReportOpen] = useState(false)
   const queryClient = useQueryClient();
   const { data: savedFlows } = useQuery({ queryKey: ['data-flows'], queryFn: async () => (await (await apiFetch('/api/v1/data-flows/')).json()) });
   const { data: assets } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) });
   const { data: externalEntities } = useQuery({ queryKey: ['external-entities', { include_deleted: false }], queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities')).json()) });
   const { data: logicalServices } = useQuery({ queryKey: ['logical-services'], queryFn: async () => (await (await apiFetch('/api/v1/logical-services/')).json()) });
+  const { data: monitoringItems } = useQuery({ queryKey: ['monitoring'], queryFn: async () => (await (await apiFetch('/api/v1/monitoring')).json()) });
+  const { data: incidents } = useQuery({ queryKey: ['incidents'], queryFn: async () => (await (await apiFetch('/api/v1/incidents')).json()) });
+  const { data: maintenanceWindows } = useQuery({ queryKey: ['maintenance'], queryFn: async () => (await (await apiFetch('/api/v1/maintenance')).json()) });
+  const { data: knowledgeEntries } = useQuery({ queryKey: ['knowledge'], queryFn: async () => (await (await apiFetch('/api/v1/knowledge')).json()) });
+  const { data: farModes } = useQuery({ queryKey: ['far-modes'], queryFn: async () => (await (await apiFetch('/api/v1/far/modes')).json()) });
+  const { data: vendors } = useQuery({ queryKey: ['vendors'], queryFn: async () => (await (await apiFetch('/api/v1/vendors')).json()) });
+  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: async () => (await (await apiFetch('/api/v1/projects')).json()) });
+  const { data: flowHistory } = useQuery({
+    queryKey: ['data-flow-history', activeFlow?.id],
+    enabled: !!activeFlow?.id,
+    queryFn: async () => (await (await apiFetch(`/api/v1/data-flows/${activeFlow.id}/history`)).json()),
+  });
   const transactions = useMemo(() => activeFlow?.traces || [], [activeFlow]);
   const activeTransaction = useMemo(() => transactions.find((t: any) => t.id === activeTransactionId), [transactions, activeTransactionId]);
   const systems = useMemo(() => { if (!assets) return []; const s = new Set<string>(); assets.forEach((a: any) => { if (a.system) s.add(a.system); }); return Array.from(s).sort(); }, [assets]);
@@ -763,36 +1470,118 @@ function ArchDesignerInner() {
   const filteredExternal = useMemo(() => (externalEntities || []).filter((e: any) => e.name?.toLowerCase().includes(inventorySearch.toLowerCase())), [externalEntities, inventorySearch]);
   const saveMutation = useMutation({
     mutationFn: async (data: any) => { const isUpdate = !!data.id; const url = isUpdate ? `/api/v1/data-flows/${data.id}` : '/api/v1/data-flows'; const response = await apiFetch(url, { method: isUpdate ? 'PUT' : 'POST', body: JSON.stringify(data) }); return response.json(); },
-    onSuccess: (savedFlow) => { setActiveFlow(savedFlow); setHasUnsavedChanges(false); queryClient.invalidateQueries({ queryKey: ['data-flows'] }); toast.success("Manifest Persistent in Core Registry"); if (view === 'dashboard') setView('editor'); },
+    onSuccess: (savedFlow) => { setActiveFlow(savedFlow); setHasUnsavedChanges(false); queryClient.invalidateQueries({ queryKey: ['data-flows'] }); queryClient.invalidateQueries({ queryKey: ['data-flow-history', savedFlow.id] }); toast.success("Manifest Persistent in Core Registry"); if (view === 'dashboard') setView('editor'); },
     onError: () => toast.error("Failure Syncing Manifest to Core")
   });
+  const approveMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiFetch(`/api/v1/data-flows/${activeFlow.id}/approve`, { method: 'POST', body: JSON.stringify({ approved_by: getFlowMeta(activeFlow, 'owner_team') || 'Architecture Board' }) })
+      return response.json()
+    },
+    onSuccess: (savedFlow) => {
+      setActiveFlow(savedFlow)
+      queryClient.invalidateQueries({ queryKey: ['data-flows'] })
+      queryClient.invalidateQueries({ queryKey: ['data-flow-history', savedFlow.id] })
+      toast.success('Architecture Approved')
+    },
+  })
+  const restoreMutation = useMutation({
+    mutationFn: async (historyId: number) => {
+      const response = await apiFetch(`/api/v1/data-flows/${activeFlow.id}/history/${historyId}/restore`, { method: 'POST' })
+      return response.json()
+    },
+    onSuccess: (savedFlow) => {
+      setActiveFlow(savedFlow)
+      setNodes(savedFlow.nodes || [])
+      setEdges(savedFlow.edges || [])
+      setHasUnsavedChanges(false)
+      queryClient.invalidateQueries({ queryKey: ['data-flows'] })
+      queryClient.invalidateQueries({ queryKey: ['data-flow-history', savedFlow.id] })
+      toast.success('Architecture Restored')
+    },
+  })
   const updateNodeData = (nodeId: string, updatedData: any) => { setNodes((nds) => nds.map((node) => node.id === nodeId ? { ...node, data: { ...node.data, ...updatedData } } : node)); setHasUnsavedChanges(true); };
   const updateEdgeData = (edgeId: string, updatedData: any) => { setEdges((eds) => eds.map((edge) => edge.id === edgeId ? { ...edge, data: { ...edge.data, ...updatedData } } : edge)); setHasUnsavedChanges(true); };
   const addServiceToNode = (nodeId: string, service: any) => { setNodes((nds) => nds.map((node) => { if (node.id === nodeId) { const currentServices = node.data.logical_services || []; if (currentServices.find((s: any) => s.id === service.id)) return node; return { ...node, data: { ...node.data, logical_services: [...currentServices, service] } }; } return node; })); setHasUnsavedChanges(true); };
   const deleteNode = (nodeId: string) => { setNodes((nds) => nds.filter((node) => node.id !== nodeId)); setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId)); setSelectedNodeId(null); setHasUnsavedChanges(true); };
   const deleteEdge = (edgeId: string) => { setEdges((eds) => eds.filter((edge) => edge.id !== edgeId)); setSelectedEdgeId(null); setHasUnsavedChanges(true); };
-  const handleSave = () => { if (!activeFlow) return; saveMutation.mutate({ ...activeFlow, nodes, edges, viewport: {} }); };
-  const impactAnalysis = useMemo(() => { if (!selectedNodeId) return { nodeIds: new Set<string>(), edgeIds: new Set<string>() }; const nodeIds = new Set<string>([selectedNodeId]); const edgeIds = new Set<string>(); const queue = [selectedNodeId]; while (queue.length > 0) { const currentId = queue.shift()!; edges.forEach(edge => { if (edge.source === currentId && !nodeIds.has(edge.target)) { nodeIds.add(edge.target); edgeIds.add(edge.id); queue.push(edge.target); } else if (edge.source === currentId) { edgeIds.add(edge.id); } }); } return { nodeIds, edgeIds }; }, [selectedNodeId, edges]);
+  const handleSave = () => { if (!activeFlow) return; saveMutation.mutate({ ...activeFlow, metadata: activeFlow.metadata || {}, nodes, edges, viewport: editorViewport || getViewport(), change_summary: 'Updated from architecture editor' }); };
+  const pathAnalysis = useMemo(() => buildPathAnalysis(nodes, edges, selectedNodeId, selectedEdgeId), [nodes, edges, selectedNodeId, selectedEdgeId])
+  const impactAnalysis = useMemo(() => {
+    if (!pathAnalysis.focusNodeId) return { nodeIds: new Set<string>(), edgeIds: new Set<string>() }
+    return {
+      nodeIds: new Set<string>([pathAnalysis.focusNodeId, ...Array.from(pathAnalysis.upstreamNodeIds), ...Array.from(pathAnalysis.downstreamNodeIds)]),
+      edgeIds: pathAnalysis.pathEdgeIds,
+    }
+  }, [pathAnalysis]);
   const impactedNodes = impactAnalysis.nodeIds;
-  const displayNodes = useMemo(() => nodes.map(n => ({ ...n, data: { ...n.data, isImpacted: impactAnalysis.nodeIds.has(n.id), dependencyRiskEnabled, activeTransactionId, transactionVisits: activeTransaction?.steps?.map((s: any, idx: number) => s.node_id === n.id ? idx + 1 : null).filter((v: any) => v !== null) || [] } })), [nodes, impactAnalysis, dependencyRiskEnabled, activeTransaction]);
-  const displayEdges = useMemo(() => edges.map(e => ({ ...e, data: { ...e.data, isImpacted: impactAnalysis.edgeIds.has(e.id) && dependencyRiskEnabled, isTraceActive: activeTransaction?.steps?.some((s: any) => s.edge_id === e.id), traceStep: activeTransaction?.steps?.findIndex((s: any) => s.edge_id === e.id) + 1 || null } })), [edges, impactAnalysis, dependencyRiskEnabled, activeTransaction]);
+  const architectureInsights = useMemo(() => buildArchitectureInsights({ ...activeFlow, nodes, edges }), [activeFlow, nodes, edges]);
+  const relatedLinks = useMemo(() => {
+    const links = getFlowLinks(activeFlow)
+    return {
+      knowledge: (knowledgeEntries || []).filter((entry: any) => links.knowledge_ids.includes(entry.id)),
+      monitoring: (monitoringItems || []).filter((entry: any) => links.monitoring_ids.includes(entry.id)),
+      far: (farModes || []).filter((entry: any) => links.far_ids.includes(entry.id)),
+      vendors: (vendors || []).filter((entry: any) => links.vendor_ids.includes(entry.id)),
+      projects: (projects || []).filter((entry: any) => links.project_ids.includes(entry.id)),
+    }
+  }, [activeFlow, knowledgeEntries, monitoringItems, farModes, vendors, projects])
+  const nodeOperationalMap = useMemo(() => new Map((nodes || []).map((node: any) => [node.id, buildNodeOperationalStatus(node, monitoringItems || [], incidents || [], maintenanceWindows || [])])), [nodes, monitoringItems, incidents, maintenanceWindows])
+  const displayNodes = useMemo(() => nodes.map((n: any) => {
+    const operationalStatus = nodeOperationalMap.get(n.id) || { hasAttention: false }
+    const isProduction = !n.data?.environment || n.data.environment === 'Production'
+    const isInPath = !pathAnalysis.focusNodeId || impactAnalysis.nodeIds.has(n.id)
+    const isAttention = operationalStatus.hasAttention
+    const isDimmed = scenarioMode === 'PRODUCTION_ONLY' ? !isProduction
+      : scenarioMode === 'ATTENTION_ONLY' ? !isAttention
+      : scenarioMode === 'CRITICAL_PATH' ? !isInPath
+      : false
+    return { ...n, data: { ...n.data, isImpacted: impactAnalysis.nodeIds.has(n.id), dependencyRiskEnabled, activeTransactionId, operationalStatus: showOperationalOverlay ? operationalStatus : {}, isDimmed, transactionVisits: activeTransaction?.steps?.map((s: any, idx: number) => s.node_id === n.id ? idx + 1 : null).filter((v: any) => v !== null) || [] } }
+  }), [nodes, impactAnalysis, dependencyRiskEnabled, activeTransaction, nodeOperationalMap, scenarioMode, pathAnalysis.focusNodeId, showOperationalOverlay]);
+  const displayEdges = useMemo(() => edges.map((e: any) => {
+    const sourceNode = nodes.find((node: any) => node.id === e.source)
+    const targetNode = nodes.find((node: any) => node.id === e.target)
+    const isDimmed = scenarioMode === 'CRITICAL_PATH' ? !impactAnalysis.edgeIds.has(e.id)
+      : scenarioMode === 'PRODUCTION_ONLY' ? [sourceNode, targetNode].some((node: any) => node?.data?.environment && node.data.environment !== 'Production')
+      : scenarioMode === 'ATTENTION_ONLY' ? [sourceNode, targetNode].every((node: any) => !(nodeOperationalMap.get(node?.id)?.hasAttention))
+      : false
+    return { ...e, data: { ...e.data, isImpacted: impactAnalysis.edgeIds.has(e.id) && dependencyRiskEnabled, isTraceActive: activeTransaction?.steps?.some((s: any) => s.edge_id === e.id), traceStep: activeTransaction?.steps?.findIndex((s: any) => s.edge_id === e.id) + 1 || null, isDimmed } }
+  }), [edges, nodes, impactAnalysis, dependencyRiskEnabled, activeTransaction, scenarioMode, nodeOperationalMap]);
   const onConnect = useCallback((params: Connection) => { setEdges((eds) => addEdge({ ...params, id: `edge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, type: 'labeled', data: { type: 'DATA', label: 'NEW_FLOW', protocol: 'HTTPS', step: eds.length + 1, logic_json: { lanes: [], flow: { nodes: [], edges: [] } } }, animated: true, markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' } }, eds)); setHasUnsavedChanges(true); toast.success("Connection Established"); }, [setEdges]);
   const handleAutoLayout = () => { const dagreGraph = new dagre.graphlib.Graph(); dagreGraph.setDefaultEdgeLabel(() => ({})); dagreGraph.setGraph({ rankdir: 'LR', nodesep: 80, ranksep: 150, marginx: 50, marginy: 50 }); nodes.forEach((node) => dagreGraph.setNode(node.id, { width: 320, height: 220 })); edges.forEach((edge) => dagreGraph.setEdge(edge.source, edge.target)); dagre.layout(dagreGraph); setNodes(nodes.map((node) => { const pos = dagreGraph.node(node.id); return { ...node, position: { x: pos.x - 160, y: pos.y - 110 } }; })); setHasUnsavedChanges(true); setTimeout(() => fitView({ duration: 800, padding: 40 }), 100); toast.success("Layout Optimized"); };
-  const handleEdit = (flow: any) => { setActiveFlow(flow); setNodes(flow.nodes || []); setEdges(flow.edges || []); setView('editor'); setHasUnsavedChanges(false); setTimeout(() => fitView({ padding: 40 }), 200); };
-  const handleNewArchitecture = () => { setActiveFlow({ name: '', description: '', category: 'System', status: 'Planned' }); setNodes([]); setEdges([]); setView('dashboard'); setIsConfigModalOpen(true); };
+  const handleEdit = (flow: any) => {
+    setActiveFlow(flow);
+    setNodes(flow.nodes || []);
+    setEdges(flow.edges || []);
+    setEditorViewport(flow.viewport || { x: 0, y: 0, zoom: 1 });
+    setView('editor');
+    setHasUnsavedChanges(false);
+    setTimeout(() => {
+      if (flow.viewport && typeof flow.viewport.zoom === 'number') {
+        setViewport(flow.viewport, { duration: 0 });
+      } else {
+        fitView({ padding: 40 });
+      }
+    }, 200);
+  };
+  const handleNewArchitecture = () => { setActiveFlow({ name: '', description: '', category: 'System', status: 'Planned', metadata: defaultFlowMetadata() }); setNodes([]); setEdges([]); setEditorViewport({ x: 0, y: 0, zoom: 1 }); setView('dashboard'); setIsConfigModalOpen(true); };
+  const updateFlowMetadata = (updates: Record<string, any>) => {
+    setActiveFlow((current: any) => current ? { ...current, metadata: { ...(current.metadata || {}), ...updates } } : current)
+    setHasUnsavedChanges(true)
+  }
 
   return (
-    <div className="flex-1 relative flex h-full overflow-hidden bg-[#020617]">
+    <div className="flex-1 relative flex h-full overflow-hidden bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.08),transparent_26%),linear-gradient(180deg,#020617,#020617)]">
        {view === 'dashboard' ? (
          <ArchDashboard flows={savedFlows} onEdit={handleEdit} onAdd={handleNewArchitecture} />
        ) : (
          <>
             {/* Standardized Centered Top Bar */}
             <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none">
-              <div className="glass-panel p-2 rounded-lg border border-white/10 flex items-center space-x-2 bg-slate-900/80 backdrop-blur-2xl shadow-2xl pointer-events-auto">
-                <div className="flex flex-col min-w-[180px] px-4">
-                  <span className="text-xs font-bold uppercase text-white tracking-widest truncate">{activeFlow?.name || 'Untitled Architecture'}</span>
-                  <span className="text-[7px] font-bold text-blue-500 uppercase tracking-[0.3em]">{activeFlow?.category || 'General'}</span>
+              <div className={`glass-panel p-2 rounded-[24px] border flex items-center space-x-2 shadow-[0_20px_60px_rgba(2,6,23,0.5)] pointer-events-auto ${isPresentationMode ? 'bg-slate-950/90 border-fuchsia-300/20 backdrop-blur-3xl' : 'bg-slate-900/82 border-white/10 backdrop-blur-2xl'}`}>
+                <div className="flex flex-col min-w-[240px] px-5 py-1">
+                  <span className={`${isPresentationMode ? 'text-xl' : 'text-sm'} font-black uppercase text-white tracking-[0.18em] truncate`}>{activeFlow?.name || 'Untitled Architecture'}</span>
+                  <span className={`${isPresentationMode ? 'text-[9px]' : 'text-[7px]'} font-bold text-sky-300 uppercase tracking-[0.42em] mt-1`}>{activeFlow?.category || 'General'}</span>
                 </div>
                 <div className="h-8 w-px bg-white/10" />
                 <div className="flex items-center space-x-1.5 p-1">
@@ -800,8 +1589,25 @@ function ArchDesignerInner() {
                     <Info size={14}/>
                     <span className="text-[9px] font-bold uppercase tracking-widest">Arch Info</span>
                   </button>
+                  <button onClick={() => setIsHistoryOpen(true)} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-lg border border-white/10 transition-all flex items-center gap-2">
+                    <History size={14}/>
+                    <span className="text-[9px] font-bold uppercase tracking-widest">History</span>
+                  </button>
+                  <button onClick={() => approveMutation.mutate()} disabled={!activeFlow?.id || approveMutation.isPending} className="px-4 py-2 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-300 hover:text-white rounded-lg border border-emerald-500/20 transition-all flex items-center gap-2 disabled:opacity-50">
+                    <ShieldCheck size={14}/>
+                    <span className="text-[9px] font-bold uppercase tracking-widest">Approve</span>
+                  </button>
                   <button onClick={handleAutoLayout} className="p-2.5 bg-white/5 hover:bg-emerald-500/10 rounded-lg text-slate-400 hover:text-emerald-400 transition-all border border-white/5" title="Auto Layout"><GitMerge size={16} className="rotate-90"/></button>
                   <button onClick={() => setDependencyRiskEnabled(!dependencyRiskEnabled)} className={`p-2.5 rounded-lg transition-all flex items-center gap-2 border ${dependencyRiskEnabled ? 'bg-rose-500 border-rose-400 text-white' : 'bg-white/5 border-white/5 text-slate-400'}`} title="Impact Mode"><AlertTriangle size={16}/></button>
+                  <button onClick={() => setShowOperationalOverlay(!showOperationalOverlay)} className={`p-2.5 rounded-lg transition-all border ${showOperationalOverlay ? 'bg-blue-500/20 border-blue-400 text-blue-200' : 'bg-white/5 border-white/5 text-slate-400'}`} title="Operational Overlay">{showOperationalOverlay ? <Eye size={16}/> : <EyeOff size={16}/>}</button>
+                  <select value={scenarioMode} onChange={e => setScenarioMode(e.target.value as any)} className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-slate-300 outline-none">
+                    <option value="ALL">All</option>
+                    <option value="CRITICAL_PATH">Critical Path</option>
+                    <option value="PRODUCTION_ONLY">Production</option>
+                    <option value="ATTENTION_ONLY">Attention</option>
+                  </select>
+                  <button onClick={() => setIsReportOpen(true)} className="p-2.5 bg-white/5 hover:bg-fuchsia-500/10 rounded-lg text-slate-400 hover:text-fuchsia-300 transition-all border border-white/5" title="Report Mode"><Printer size={16}/></button>
+                  <button onClick={() => setIsPresentationMode((current) => !current)} className={`p-2.5 rounded-lg transition-all border ${isPresentationMode ? 'bg-fuchsia-500 border-fuchsia-400 text-white' : 'bg-white/5 border-white/5 text-slate-400'}`} title="Presentation Mode"><Layout size={16}/></button>
                   <div className="h-6 w-px bg-white/10 mx-1" />
                   <button onClick={() => setConfirmExitIntent('dashboard')} className="px-4 py-2 bg-white/5 hover:bg-rose-600/10 rounded-lg text-slate-400 hover:text-rose-500 transition-all flex items-center gap-2 border border-white/5">
                     <ChevronLeft size={14}/>
@@ -810,16 +1616,54 @@ function ArchDesignerInner() {
                 </div>
               </div>
             </div>
+            <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[90] pointer-events-none">
+              <div className={`glass-panel px-5 py-4 rounded-[22px] border shadow-xl flex items-center gap-5 ${isPresentationMode ? 'bg-slate-950/88 border-fuchsia-300/15 backdrop-blur-3xl' : 'bg-slate-900/78 border-white/10 backdrop-blur-2xl'}`}>
+                <div>
+                  <p className="text-[7px] font-bold uppercase tracking-[0.3em] text-slate-500">Owner</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white">{getFlowMeta(activeFlow, 'owner_team') || 'Unassigned'}</p>
+                </div>
+                <div>
+                  <p className="text-[7px] font-bold uppercase tracking-[0.3em] text-slate-500">Criticality</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-rose-300">{getFlowMeta(activeFlow, 'criticality') || 'Medium'}</p>
+                </div>
+                <div>
+                  <p className="text-[7px] font-bold uppercase tracking-[0.3em] text-slate-500">Review</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-amber-300">{getFlowMeta(activeFlow, 'review_status') || 'Needs Review'}</p>
+                </div>
+                <div>
+                  <p className="text-[7px] font-bold uppercase tracking-[0.3em] text-slate-500">Scenario</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-fuchsia-300">{scenarioMode.replaceAll('_', ' ')}</p>
+                </div>
+                <div>
+                  <p className="text-[7px] font-bold uppercase tracking-[0.3em] text-slate-500">Topology</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-sky-300">{architectureInsights.nodeCount} Nodes / {architectureInsights.edgeCount} Flows</p>
+                </div>
+                <div className="max-w-[280px]">
+                  <p className="text-[7px] font-bold uppercase tracking-[0.3em] text-slate-500">Attention</p>
+                  <p className={`text-[10px] font-black uppercase tracking-[0.14em] ${architectureInsights.warnings.length ? 'text-amber-300' : 'text-emerald-300'}`}>
+                    {architectureInsights.warnings[0] || 'Governance healthy'}
+                  </p>
+                </div>
+              </div>
+            </div>
+            {isPresentationMode && (
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[90] pointer-events-none">
+                <div className="glass-panel px-6 py-4 rounded-[22px] border border-fuchsia-300/30 bg-slate-950/86 backdrop-blur-3xl shadow-[0_22px_60px_rgba(2,6,23,0.55)] pointer-events-auto">
+                  <p className="text-[10px] font-black uppercase tracking-[0.42em] text-fuchsia-200">Presentation Mode Active</p>
+                  <p className="mt-2 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-300">Boardroom-safe topology view with executive emphasis.</p>
+                </div>
+              </div>
+            )}
 
-            {!isSidebarOpen && (
+            {!isPresentationMode && !isSidebarOpen && (
               <button onClick={() => setIsSidebarOpen(true)} className="absolute left-0 top-1/2 -translate-y-1/2 z-40 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-1.5 py-8 rounded-r-xl border border-l-0 border-blue-500/30 transition-all group flex flex-col items-center gap-4">
                 <ChevronRight size={14} className="group-hover:scale-125 transition-transform"/>
                 <span className="[writing-mode:vertical-lr] text-[8px] font-bold uppercase tracking-[0.3em]">Inventory</span>
               </button>
             )}
-            <AnimatePresence>{isSidebarOpen && (
-              <motion.div initial={{ x: -400 }} animate={{ x: 0 }} exit={{ x: -400 }} className="w-[360px] border-r border-white/5 bg-[#0f172a]/95 backdrop-blur-3xl flex flex-col z-50 shadow-3xl">
-                 <div className="p-6 border-b border-white/5 flex items-center justify-between"><h2 className="text-lg font-bold uppercase text-white tracking-tighter flex items-center gap-3"><Box size={20} className="text-blue-500"/> Inventory</h2><div className="flex items-center gap-1"><button onClick={() => { setInventorySearch(''); setSelectedSystem('All'); }} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><RefreshCw size={16}/></button><button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><X size={18}/></button></div></div>
+            <AnimatePresence>{!isPresentationMode && isSidebarOpen && (
+              <motion.div initial={{ x: -400 }} animate={{ x: 0 }} exit={{ x: -400 }} className="w-[360px] border-r border-white/5 bg-[linear-gradient(180deg,rgba(15,23,42,0.97),rgba(2,6,23,0.95))] backdrop-blur-3xl flex flex-col z-50 shadow-[18px_0_70px_rgba(2,6,23,0.45)]">
+                 <div className="p-6 border-b border-white/5 flex items-center justify-between"><h2 className="text-lg font-black uppercase text-white tracking-[0.12em] flex items-center gap-3"><Box size={20} className="text-sky-300"/> Inventory</h2><div className="flex items-center gap-1"><button onClick={() => { setInventorySearch(''); setSelectedSystem('All'); }} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><RefreshCw size={16}/></button><button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><X size={18}/></button></div></div>
                  <div className="p-5 border-b border-white/5 space-y-4"><div className="flex bg-black/40 p-1 rounded-lg border border-white/5"><button onClick={() => setInventoryType('INTERNAL')} className={`flex-1 py-2 rounded-md text-[9px] font-bold uppercase tracking-widest transition-all ${inventoryType === 'INTERNAL' ? 'bg-blue-600 text-white' : 'text-slate-500'}`}>Internal</button><button onClick={() => setInventoryType('EXTERNAL')} className={`flex-1 py-2 rounded-md text-[9px] font-bold uppercase tracking-widest transition-all ${inventoryType === 'EXTERNAL' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}>External</button></div><div className="relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" /><input value={inventorySearch} onChange={e => setInventorySearch(e.target.value)} placeholder="Search..." className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500/50" /></div>{inventoryType === 'INTERNAL' && (<select value={selectedSystem} onChange={e => setSelectedSystem(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500">{<option value="All">All Systems</option>}{systems.map(s => <option key={s} value={s}>{s}</option>)}</select>)}</div>
                  <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
                    {inventoryType === 'INTERNAL' ? (
@@ -902,6 +1746,8 @@ function ArchDesignerInner() {
               </motion.div>
             )}</AnimatePresence>
             <div className="flex-1 relative h-full">
+               <CanvasDomainBackdrop presentationMode={isPresentationMode} />
+               <FocusEmptyState focusNodeId={selectedNodeId} focusEdgeId={selectedEdgeId} presentationMode={isPresentationMode} />
                <ReactFlow 
                 nodes={displayNodes} 
                 edges={displayEdges} 
@@ -910,6 +1756,7 @@ function ArchDesignerInner() {
                 onConnect={onConnect} 
                 onNodeClick={(_, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null); setIsConfigSidebarOpen(true); }} 
                 onEdgeClick={(_, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(null); setIsConfigSidebarOpen(true); }} 
+                onMoveEnd={(_, viewport) => setEditorViewport(viewport)}
                 nodeTypes={nodeTypes} 
                 edgeTypes={edgeTypes} 
                 fitView 
@@ -918,20 +1765,45 @@ function ArchDesignerInner() {
                 snapGrid={[20, 20]} 
                 connectionMode={ConnectionMode.Loose}
               >
-                 <Background color="#1e293b" gap={20} size={1} className="opacity-40" />
+                 <Background color={isPresentationMode ? "#475569" : "#334155"} gap={20} size={1.15} className={`${isPresentationMode ? 'opacity-55' : 'opacity-40'}`} />
                </ReactFlow>
             </div>
-            {!isConfigSidebarOpen && (
+            {!isPresentationMode && !isConfigSidebarOpen && (
               <button onClick={() => setIsConfigSidebarOpen(true)} className="absolute right-0 top-1/2 -translate-y-1/2 z-40 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-1.5 py-8 rounded-l-xl border border-r-0 border-blue-500/30 transition-all group flex flex-col items-center gap-4">
                 <ChevronLeft size={14} className="group-hover:scale-125 transition-transform"/>
                 <span className="[writing-mode:vertical-lr] text-[8px] font-bold uppercase tracking-[0.3em] rotate-180">Configuration</span>
               </button>
             )}
-            <AnimatePresence>{isConfigSidebarOpen && (<motion.div initial={{ x: 500 }} animate={{ x: 0 }} exit={{ x: 500 }} className="h-full z-50 shadow-3xl"><MissionControl selectedNode={nodes.find(n => n.id === selectedNodeId)} selectedEdge={edges.find(e => e.id === selectedEdgeId)} impactedNodes={impactedNodes} onBack={() => setIsConfigSidebarOpen(false)} onUpdateNode={updateNodeData} onUpdateEdge={updateEdgeData} onAddServiceToNode={addServiceToNode} onDeleteNode={deleteNode} onDeleteEdge={deleteEdge} availableServices={logicalServices} setIsServiceFlowOpen={setIsServiceFlowOpen}/></motion.div>)}</AnimatePresence>
+            <AnimatePresence>{!isPresentationMode && isConfigSidebarOpen && (<motion.div initial={{ x: 500 }} animate={{ x: 0 }} exit={{ x: 500 }} className="h-full z-50 shadow-3xl"><MissionControl selectedNode={nodes.find(n => n.id === selectedNodeId)} selectedEdge={edges.find(e => e.id === selectedEdgeId)} impactedNodes={impactedNodes} pathAnalysis={pathAnalysis} relatedLinks={relatedLinks} nodeOperationalStatus={nodeOperationalMap.get(selectedNodeId || '')} onBack={() => setIsConfigSidebarOpen(false)} onUpdateNode={updateNodeData} onUpdateEdge={updateEdgeData} onAddServiceToNode={addServiceToNode} onDeleteNode={deleteNode} onDeleteEdge={deleteEdge} availableServices={logicalServices} setIsServiceFlowOpen={setIsServiceFlowOpen}/></motion.div>)}</AnimatePresence>
          </>
        )}
        
        <ConfigModal isOpen={isConfigModalOpen} onClose={() => setIsConfigModalOpen(false)} flow={activeFlow} onSave={(data: any) => { if (!activeFlow?.id) { saveMutation.mutate({ ...data, nodes: [], edges: [] }); } else { setActiveFlow({ ...activeFlow, ...data }); setHasUnsavedChanges(true); } setIsConfigModalOpen(false); }} isNew={!activeFlow?.id} />
+       <AnimatePresence>
+         {isHistoryOpen && activeFlow && (
+           <ArchitectureHistoryPanel
+             flow={activeFlow}
+             historyEntries={flowHistory || []}
+             isOpen={isHistoryOpen}
+             onClose={() => setIsHistoryOpen(false)}
+             onRestore={(historyId: number) => restoreMutation.mutate(historyId)}
+             onApprove={() => approveMutation.mutate()}
+           />
+         )}
+       </AnimatePresence>
+       <AnimatePresence>
+         {isReportOpen && activeFlow && (
+           <ArchitectureReportModal
+             flow={activeFlow}
+             nodes={nodes}
+             edges={edges}
+             historyEntries={flowHistory || []}
+             relatedLinks={relatedLinks}
+             isOpen={isReportOpen}
+             onClose={() => setIsReportOpen(false)}
+           />
+         )}
+       </AnimatePresence>
        <AnimatePresence>
          {isServiceFlowOpen && selectedEdgeId && edges.find(e => e.id === selectedEdgeId) && (
            <ServiceLevelFlow 

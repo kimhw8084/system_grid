@@ -29,6 +29,7 @@ DEFAULT_KNOWLEDGE_METADATA = {
         "verified_by": ""
     },
     "links": {
+        "data_flow_ids": [],
         "service_ids": [],
         "monitoring_ids": [],
         "far_ids": [],
@@ -112,6 +113,7 @@ async def get_lookup_names(db: AsyncSession, ids: List[int], model, field_name: 
 async def expand_entry_search_text(entry: models.KnowledgeEntry, db: AsyncSession) -> str:
     metadata = normalize_metadata({"metadata_json": entry.metadata_json}, entry.metadata_json)
     links = metadata.get("links", {})
+    data_flow_names = await get_lookup_names(db, links.get("data_flow_ids", []), models.DataFlow, "name")
     service_names = await get_lookup_names(db, links.get("service_ids", []), models.LogicalService)
     monitoring_names = await get_lookup_names(db, links.get("monitoring_ids", []), models.MonitoringItem, "title")
     far_names = await get_lookup_names(db, links.get("far_ids", []), models.FarFailureMode, "title")
@@ -129,6 +131,7 @@ async def expand_entry_search_text(entry: models.KnowledgeEntry, db: AsyncSessio
         stringify_knowledge_blob(entry.impacted_systems),
         stringify_knowledge_blob(metadata),
         stringify_knowledge_blob(device_names.values()),
+        stringify_knowledge_blob(data_flow_names.values()),
         stringify_knowledge_blob(service_names.values()),
         stringify_knowledge_blob(monitoring_names.values()),
         stringify_knowledge_blob(far_names.values()),

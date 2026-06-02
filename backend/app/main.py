@@ -5,6 +5,7 @@ from sqlalchemy import select, text
 from .database import engine, Base, AsyncSessionLocal
 from .models import models
 from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings as settings_api, monitoring, troubleshoot, data_flows, intelligence, rca, investigations, far, projects, vendors, knowledge, tenants
+from .api.utils import build_default_operator_profile
 
 async def _auto_seed(db_session=None, creator_id=None):
     from sqlalchemy.exc import IntegrityError
@@ -23,9 +24,9 @@ async def _perform_seed(db, creator_id=None):
     if not res_global.scalars().first():
         print("AUTO-BOOT: Seeding missing Global Settings...")
         global_defaults = [
-            ("app_name", "SYSGRID ENGINE", "General", False),
-            ("org_name", "Global Infrastructure Corp", "General", False),
-            ("site_id", "HQ-01", "General", False),
+            ("app_name", settings.DEFAULT_APP_NAME, "General", False),
+            ("org_name", settings.DEFAULT_ORG_NAME, "General", False),
+            ("site_id", settings.DEFAULT_SITE_ID, "General", False),
             ("retention_days", "30", "Infrastructure", False),
             ("maintenance_mode", "false", "Infrastructure", False),
             ("default_timezone", "UTC", "General", False),
@@ -34,8 +35,8 @@ async def _perform_seed(db, creator_id=None):
             ("audit_log_level", "Full", "Infrastructure", False),
             ("ui_primary_color", "#3b82f6", "UI", False),
             ("ui_accent_color", "#10b981", "UI", False),
-            ("support_email", "admin@infra.local", "General", False),
-            ("VITE_APP_TITLE", "SYSGRID Tactical", "General", True),
+            ("support_email", settings.DEFAULT_SUPPORT_EMAIL, "General", False),
+            ("VITE_APP_TITLE", settings.DEFAULT_UI_TITLE, "General", True),
             ("VITE_POLLING_INTERVAL", "5000", "Infrastructure", True),
             ("VITE_ENABLE_WEBSOCKETS", "true", "Infrastructure", True),
             ("VITE_THEME_DEFAULT", "nordic-frost-v1", "UI", True),
@@ -117,27 +118,30 @@ async def _perform_seed(db, creator_id=None):
         await db.commit()
         await db.refresh(admin_role)
     
-    res = await db.execute(select(models.Operator).filter(models.Operator.username == "admin_root"))
+    res = await db.execute(select(models.Operator).filter(models.Operator.username == settings.DEFAULT_USER_ID))
     if not res.scalar_one_or_none():
+        default_operator = build_default_operator_profile(settings.DEFAULT_USER_ID)
         db.add(models.Operator(
-            external_id="1000",
-            username="admin_root",
-            full_name="System Administrator",
-            email="admin@sysgrid.local",
-            department="Infrastructure",
+            external_id=default_operator["external_id"],
+            username=default_operator["username"],
+            full_name=default_operator["full_name"],
+            email=default_operator["email"],
+            department=default_operator["department"],
             role_id=admin_role.id,
-            registration_status="Verified"
+            registration_status="Verified",
+            is_admin=True,
+            custom_permissions={"all": 3}
         ))
     
-    if creator_id and creator_id != "admin_root":
+    if creator_id and creator_id != settings.DEFAULT_USER_ID:
         res = await db.execute(select(models.Operator).filter(models.Operator.username == creator_id))
         if not res.scalar_one_or_none():
             db.add(models.Operator(
                 external_id=creator_id,
                 username=creator_id,
                 full_name=creator_id.replace(".", " ").replace("_", " ").title(),
-                email=f"{creator_id}@sysgrid.local",
-                department="Infrastructure",
+                email=f"{creator_id}@{settings.DEFAULT_EMAIL_DOMAIN}",
+                department=settings.DEFAULT_OPERATOR_DEPARTMENT,
                 role_id=admin_role.id,
                 registration_status="Verified",
                 is_admin=True,

@@ -9,22 +9,35 @@ from .api.utils import get_current_user_id
 
 # 1. Master Configuration Database (Always Local)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CONFIG_DB_PATH = os.path.join(BASE_DIR, "config.db")
-CONFIG_DATABASE_URL = f"sqlite+aiosqlite:///{CONFIG_DB_PATH}"
+CONFIG_DATABASE_URL = settings.CONFIG_DATABASE_URL
 
-config_engine = create_async_engine(
-    CONFIG_DATABASE_URL,
-    connect_args={"check_same_thread": False}
-)
+def is_sqlite_url(db_url: str) -> bool:
+    return db_url.startswith("sqlite")
 
-@event.listens_for(config_engine.sync_engine, "connect")
-def set_config_pragma(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.execute("PRAGMA synchronous=NORMAL")
-    cursor.execute("PRAGMA busy_timeout=5000")
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
+def sqlite_path_from_url(db_url: str) -> str | None:
+    prefixes = ("sqlite+aiosqlite:///", "sqlite:///")
+    for prefix in prefixes:
+        if db_url.startswith(prefix):
+            return db_url.replace(prefix, "", 1)
+    return None
+
+def build_engine(db_url: str):
+    engine_args = {"pool_pre_ping": True}
+    if is_sqlite_url(db_url):
+        engine_args["connect_args"] = {"check_same_thread": False, "timeout": 60}
+    return create_async_engine(db_url, **engine_args)
+
+config_engine = build_engine(CONFIG_DATABASE_URL)
+
+if is_sqlite_url(CONFIG_DATABASE_URL):
+    @event.listens_for(config_engine.sync_engine, "connect")
+    def set_config_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 ConfigSessionLocal = async_sessionmaker(
     bind=config_engine,
@@ -40,22 +53,19 @@ engine_cache = {}
 
 def get_tenant_engine(db_url: str):
     if db_url not in engine_cache:
-        engine_args = {
-            "pool_pre_ping": True,
-            "connect_args": {"check_same_thread": False, "timeout": 60}
-        }
-        new_engine = create_async_engine(db_url, **engine_args)
+        new_engine = build_engine(db_url)
         
         # Enable WAL mode for production reliability on S3/Network mounts
-        @event.listens_for(new_engine.sync_engine, "connect")
-        def set_sqlite_pragma(dbapi_connection, connection_record):
-            cursor = dbapi_connection.cursor()
-            cursor.execute("PRAGMA journal_mode=WAL")
-            cursor.execute("PRAGMA synchronous=NORMAL")
-            cursor.execute("PRAGMA busy_timeout=5000")
-            cursor.execute("PRAGMA cache_size=-64000")
-            cursor.execute("PRAGMA foreign_keys=ON")
-            cursor.close()
+        if is_sqlite_url(db_url):
+            @event.listens_for(new_engine.sync_engine, "connect")
+            def set_sqlite_pragma(dbapi_connection, connection_record):
+                cursor = dbapi_connection.cursor()
+                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute("PRAGMA synchronous=NORMAL")
+                cursor.execute("PRAGMA busy_timeout=5000")
+                cursor.execute("PRAGMA cache_size=-64000")
+                cursor.execute("PRAGMA foreign_keys=ON")
+                cursor.close()
             
         engine_cache[db_url] = new_engine
     return engine_cache[db_url]
@@ -141,7 +151,7 @@ async def init_config_db():
         # 1. Storage Root
         res = await db.execute(select(MasterSystemSetting).filter(MasterSystemSetting.key == "tenant_storage_root"))
         if not res.scalar_one_or_none():
-            default_root = os.path.join(BASE_DIR, "tenants")
+            default_root = settings.TENANT_STORAGE_ROOT
             if not os.path.exists(default_root):
                 os.makedirs(default_root, exist_ok=True)
             
@@ -153,10 +163,10 @@ async def init_config_db():
             await db.commit()
 
         # 2. Default Tenant (The existing system_grid.db)
-        res = await db.execute(select(Tenant).filter(Tenant.name == "Default Engine"))
+        res = await db.execute(select(Tenant).filter(Tenant.name == settings.DEFAULT_TENANT_NAME))
         default_tenant = res.scalar_one_or_none()
         if not default_tenant:
-            default_tenant = Tenant(name="Default Engine", db_url=settings.DATABASE_URL)
+            default_tenant = Tenant(name=settings.DEFAULT_TENANT_NAME, db_url=settings.DATABASE_URL)
             db.add(default_tenant)
             await db.commit()
             await db.refresh(default_tenant)
@@ -167,10 +177,10 @@ async def init_config_db():
             await db.refresh(default_tenant)
 
         # 3. Grant 'admin_root' access to Default Engine
-        res = await db.execute(select(UserTenantAccess).filter(UserTenantAccess.user_id == "admin_root"))
+        res = await db.execute(select(UserTenantAccess).filter(UserTenantAccess.user_id == settings.DEFAULT_USER_ID))
         if not res.scalar_one_or_none():
             db.add(UserTenantAccess(
-                user_id="admin_root",
+                user_id=settings.DEFAULT_USER_ID,
                 tenant_id=default_tenant.id,
                 role="ADMIN",
                 is_selected=True

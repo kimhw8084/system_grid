@@ -9,10 +9,12 @@ class TenantCreate(TenantBase):
     pass
 
 class TenantAttach(TenantBase):
-    db_path: str # Absolute path on disk
+    db_path: Optional[str] = None
+    db_url: Optional[str] = None
 
 class PreflightRequest(BaseModel):
-    db_path: str
+    db_path: Optional[str] = None
+    db_url: Optional[str] = None
 
 class PreflightResponse(BaseModel):
     status: str
@@ -20,6 +22,7 @@ class PreflightResponse(BaseModel):
     schema_version: Optional[str] = None
     table_count: int
     message: str
+    target: Optional[str] = None
 
 class TenantResponse(TenantBase):
     id: int

@@ -54,6 +54,7 @@ const emptyKnowledgeMetadata = () => ({
     verified_by: ''
   },
   links: {
+    data_flow_ids: [] as number[],
     service_ids: [] as number[],
     monitoring_ids: [] as number[],
     far_ids: [] as number[],
@@ -106,6 +107,69 @@ const isKnowledgeStale = (entry: any) => {
   const nextReview = entry.metadata_json?.verification?.next_review_at
   if (!nextReview) return false
   return new Date(nextReview).getTime() < Date.now()
+}
+
+const getKnowledgeLinkCount = (entry: any) => {
+  const links = entry.metadata_json?.links || {}
+  return (entry.linked_device_ids?.length || 0)
+    + (links.data_flow_ids?.length || 0)
+    + (links.service_ids?.length || 0)
+    + (links.monitoring_ids?.length || 0)
+    + (links.far_ids?.length || 0)
+    + (links.research_ids?.length || 0)
+    + (links.vendor_ids?.length || 0)
+    + (links.project_ids?.length || 0)
+}
+
+const getKnowledgeReadiness = (entry: any) => {
+  const metadata = entry.metadata_json || {}
+  let score = 0
+  const max = entry.category === 'BKM' ? 5 : 4
+
+  if (metadata.ownership?.owner?.trim?.()) score += 1
+  if (metadata.ownership?.review_team?.trim?.()) score += 1
+  if (metadata.verification?.next_review_at) score += 1
+  if (getKnowledgeLinkCount(entry) > 0) score += 1
+  if (entry.category === 'BKM' && isKnowledgeIncidentReady(entry)) score += 1
+
+  const label = score >= max ? 'Production Ready' : score >= Math.max(2, max - 1) ? 'Operational' : 'Needs Hardening'
+  return { score, max, label }
+}
+
+const buildKnowledgeBriefing = (entry: any, context: any) => {
+  const metadata = normalizeKnowledgeMetadata(entry.metadata_json)
+  const sections = [
+    `TITLE: ${entry.title}`,
+    `CATEGORY: ${entry.category}`,
+    `ENTRY TYPE: ${metadata.entry_type}`,
+    `CRITICALITY: ${metadata.criticality}`,
+    `OWNER: ${metadata.ownership.owner || 'UNOWNED'}`,
+    `REVIEW TEAM: ${metadata.ownership.review_team || 'UNSET'}`,
+    `VERIFICATION: ${metadata.verification.state}`,
+    `NEXT REVIEW: ${metadata.verification.next_review_at || 'UNSCHEDULED'}`,
+    `READINESS: ${getKnowledgeReadiness(entry).label} (${getKnowledgeReadiness(entry).score}/${getKnowledgeReadiness(entry).max})`,
+    `SUMMARY: ${entry.question_context || entry.content_json?.purpose || entry.content_json?.business_value?.business_problem || entry.content || 'N/A'}`
+  ]
+
+  const linkGroups = [
+    { label: 'Assets', items: (entry.linked_device_ids || []).map((id: number) => context.devices?.find((item: any) => item.id === id)?.name).filter(Boolean) },
+    { label: 'Architecture', items: (metadata.links.data_flow_ids || []).map((id: number) => context.dataFlows?.find((item: any) => item.id === id)?.name).filter(Boolean) },
+    { label: 'Services', items: (metadata.links.service_ids || []).map((id: number) => context.services?.find((item: any) => item.id === id)?.name).filter(Boolean) },
+    { label: 'Monitoring', items: (metadata.links.monitoring_ids || []).map((id: number) => context.monitoringItems?.find((item: any) => item.id === id)?.title).filter(Boolean) },
+    { label: 'FAR', items: (metadata.links.far_ids || []).map((id: number) => context.farModes?.find((item: any) => item.id === id)?.title).filter(Boolean) },
+    { label: 'Research', items: (metadata.links.research_ids || []).map((id: number) => context.investigations?.find((item: any) => item.id === id)?.title).filter(Boolean) },
+    { label: 'Vendors', items: (metadata.links.vendor_ids || []).map((id: number) => context.vendors?.find((item: any) => item.id === id)?.name).filter(Boolean) },
+    { label: 'Projects', items: (metadata.links.project_ids || []).map((id: number) => context.projects?.find((item: any) => item.id === id)?.name).filter(Boolean) }
+  ].filter(group => group.items.length)
+
+  if (linkGroups.length) {
+    sections.push(`LINKED RECORDS:`)
+    linkGroups.forEach(group => {
+      sections.push(`- ${group.label}: ${group.items.join(', ')}`)
+    })
+  }
+
+  return sections.join('\n')
 }
 
 const buildBkmTemplate = (overrides: any = {}) => ({
@@ -248,13 +312,14 @@ export default function Knowledge() {
 
   const entityMaps = useMemo(() => ({
     devices: new Map((devices || []).map((item: any) => [item.id, item])),
+    dataFlows: new Map((dataFlows || []).map((item: any) => [item.id, item])),
     services: new Map((services || []).map((item: any) => [item.id, item])),
     monitoring: new Map((monitoringItems || []).map((item: any) => [item.id, item])),
     far: new Map((farModes || []).map((item: any) => [item.id, item])),
     research: new Map((investigations || []).map((item: any) => [item.id, item])),
     vendors: new Map((vendors || []).map((item: any) => [item.id, item])),
     projects: new Map((projects || []).map((item: any) => [item.id, item]))
-  }), [devices, services, monitoringItems, farModes, investigations, vendors, projects])
+  }), [devices, dataFlows, services, monitoringItems, farModes, investigations, vendors, projects])
 
   const contextIds = useMemo(() => ({
     device_id: deviceParam ? parseInt(deviceParam, 10) : null,
@@ -271,6 +336,7 @@ export default function Knowledge() {
       const metadata = normalizeKnowledgeMetadata(entry.metadata_json)
       const linkNames = [
         ...(entry.linked_device_ids || []).map((id: number) => entityMaps.devices.get(id)?.name || ''),
+        ...(metadata.links.data_flow_ids || []).map((id: number) => entityMaps.dataFlows.get(id)?.name || ''),
         ...(metadata.links.service_ids || []).map((id: number) => entityMaps.services.get(id)?.name || ''),
         ...(metadata.links.monitoring_ids || []).map((id: number) => entityMaps.monitoring.get(id)?.title || ''),
         ...(metadata.links.far_ids || []).map((id: number) => entityMaps.far.get(id)?.title || ''),
@@ -303,7 +369,9 @@ export default function Knowledge() {
         ...entry,
         metadata_json: metadata,
         __searchBlob: searchBlob,
-        __suggestionScore: suggestionScore
+        __suggestionScore: suggestionScore,
+        __linkCount: getKnowledgeLinkCount({ ...entry, metadata_json: metadata }),
+        __readiness: getKnowledgeReadiness({ ...entry, metadata_json: metadata })
       }
     })
   }, [entries, entityMaps, contextIds])
@@ -339,6 +407,33 @@ export default function Knowledge() {
   }, [enhancedEntries, activeCategory, activeLens, searchTerm])
 
   const suggestionEntries = useMemo(() => filteredEntries.filter((entry: any) => entry.__suggestionScore > 0).slice(0, 4), [filteredEntries])
+  const summary = useMemo(() => {
+    const source = enhancedEntries || []
+    return {
+      total: source.length,
+      critical: source.filter((entry: any) => entry.metadata_json?.criticality === 'Critical').length,
+      incidentReady: source.filter((entry: any) => entry.category === 'BKM' && isKnowledgeIncidentReady(entry)).length,
+      reviewQueue: source.filter((entry: any) => ['Needs Review', 'Stale'].includes(entry.metadata_json?.verification?.state) || isKnowledgeStale(entry)).length,
+      unowned: source.filter((entry: any) => !entry.metadata_json?.ownership?.owner?.trim?.()).length,
+      architectureLinked: source.filter((entry: any) => (entry.metadata_json?.links?.data_flow_ids || []).length > 0).length,
+      answered: source.filter((entry: any) => entry.category === 'Q&A' && (entry.qa_threads?.length || 0) > 0).length,
+    }
+  }, [enhancedEntries])
+  const actionQueue = useMemo(() => {
+    return (enhancedEntries || [])
+      .filter((entry: any) => {
+        const needsReview = ['Needs Review', 'Stale'].includes(entry.metadata_json?.verification?.state) || isKnowledgeStale(entry)
+        const unowned = !entry.metadata_json?.ownership?.owner?.trim?.()
+        const unlinked = entry.__linkCount === 0
+        return needsReview || unowned || unlinked
+      })
+      .sort((a: any, b: any) => {
+        const aScore = (a.metadata_json?.criticality === 'Critical' ? 3 : 0) + (isKnowledgeStale(a) ? 2 : 0) + (!a.metadata_json?.ownership?.owner?.trim?.() ? 1 : 0) + (a.__linkCount === 0 ? 1 : 0)
+        const bScore = (b.metadata_json?.criticality === 'Critical' ? 3 : 0) + (isKnowledgeStale(b) ? 2 : 0) + (!b.metadata_json?.ownership?.owner?.trim?.() ? 1 : 0) + (b.__linkCount === 0 ? 1 : 0)
+        return bScore - aScore
+      })
+      .slice(0, 4)
+  }, [enhancedEntries])
 
   useEffect(() => {
     if (!idParam || !enhancedEntries) return
@@ -519,6 +614,40 @@ export default function Knowledge() {
          </div>
       </div>
 
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <KnowledgeSummaryCard
+            label="Knowledge Coverage"
+            value={summary.total}
+            detail={`${summary.critical} critical nodes`}
+            icon={<BookOpen size={18} className="text-blue-300" />}
+            tone="blue"
+          />
+          <KnowledgeSummaryCard
+            label="Incident Ready"
+            value={summary.incidentReady}
+            detail={`${summary.architectureLinked} linked to architecture`}
+            icon={<ShieldCheck size={18} className="text-rose-300" />}
+            tone="rose"
+          />
+          <KnowledgeSummaryCard
+            label="Review Queue"
+            value={summary.reviewQueue}
+            detail={`${summary.unowned} missing owner`}
+            icon={<AlertTriangle size={18} className="text-amber-300" />}
+            tone="amber"
+          />
+          <KnowledgeSummaryCard
+            label="Answered Q&A"
+            value={summary.answered}
+            detail={`${summary.total - summary.answered} pending collaboration`}
+            icon={<MessageSquare size={18} className="text-emerald-300" />}
+            tone="emerald"
+          />
+        </div>
+        <KnowledgeQueuePanel entries={actionQueue} onOpenEntry={openEntry} />
+      </div>
+
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
          {!!(deviceParam || serviceParam || monitoringParam || farParam || researchParam || vendorParam || projectParam) && (
@@ -622,6 +751,85 @@ export default function Knowledge() {
 
 // --- Sub-Components ---
 
+function KnowledgeSummaryCard({ label, value, detail, icon, tone }: any) {
+  const toneClasses: Record<string, string> = {
+    blue: 'from-blue-500/15 to-cyan-500/5 border-blue-500/15',
+    rose: 'from-rose-500/15 to-orange-500/5 border-rose-500/15',
+    amber: 'from-amber-500/15 to-yellow-500/5 border-amber-500/15',
+    emerald: 'from-emerald-500/15 to-teal-500/5 border-emerald-500/15',
+  }
+
+  return (
+    <div className={`rounded-[28px] border bg-gradient-to-br ${toneClasses[tone] || toneClasses.blue} p-5 shadow-2xl`}>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-[0.28em] text-slate-400">{label}</p>
+          <p className="mt-3 text-4xl font-black tracking-tighter text-white">{value}</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+          {icon}
+        </div>
+      </div>
+      <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">{detail}</p>
+    </div>
+  )
+}
+
+function KnowledgeQueuePanel({ entries, onOpenEntry }: any) {
+  return (
+    <div className="rounded-[28px] border border-white/5 bg-black/30 p-5 shadow-2xl">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white">Knowledge Action Queue</p>
+          <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Highest-value records to harden next</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-300">
+          {entries.length} items
+        </div>
+      </div>
+      <div className="mt-4 space-y-3">
+        {entries.length === 0 && (
+          <div className="rounded-2xl border border-emerald-500/10 bg-emerald-500/5 px-4 py-5 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-300">
+            No urgent governance debt detected
+          </div>
+        )}
+        {entries.map((entry: any) => {
+          const reasons = [
+            (!entry.metadata_json?.ownership?.owner?.trim?.() && 'Owner missing'),
+            ((['Needs Review', 'Stale'].includes(entry.metadata_json?.verification?.state) || isKnowledgeStale(entry)) && 'Review due'),
+            (entry.__linkCount === 0 && 'No linked systems'),
+          ].filter(Boolean)
+
+          return (
+            <button
+              key={`queue-${entry.id}`}
+              onClick={() => onOpenEntry(entry)}
+              className="w-full rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-4 text-left hover:border-blue-500/25 hover:bg-blue-500/[0.04] transition-all"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-[0.24em] text-slate-500">{entry.category} // {entry.metadata_json?.entry_type}</p>
+                  <p className="mt-2 text-sm font-black uppercase tracking-tight text-white">{entry.title}</p>
+                </div>
+                <span className="rounded-xl border border-white/10 bg-black/20 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-slate-300">
+                  {entry.__readiness.label}
+                </span>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {reasons.map((reason: string) => (
+                  <span key={`${entry.id}-${reason}`} className="rounded-lg border border-amber-500/15 bg-amber-500/10 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-amber-300">
+                    {reason}
+                  </span>
+                ))}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function KnowledgeCard({ entry, onClick }: any) {
   const isBKM = entry.category === 'BKM'
   const isQA = entry.category === 'Q&A'
@@ -629,6 +837,8 @@ function KnowledgeCard({ entry, onClick }: any) {
   const verification = entry.metadata_json?.verification?.state || 'Needs Review'
   const owner = entry.metadata_json?.ownership?.owner || 'Unowned'
   const critical = entry.metadata_json?.criticality === 'Critical'
+  const isStale = isKnowledgeStale(entry)
+  const readiness = entry.__readiness || getKnowledgeReadiness(entry)
 
   return (
     <motion.div 
@@ -636,7 +846,7 @@ function KnowledgeCard({ entry, onClick }: any) {
       animate={{ opacity: 1, y: 0 }}
       layoutId={`entry-${entry.id}`}
       onClick={onClick}
-      className={`glass-panel border border-white/5 p-6 rounded-2xl hover:border-blue-500/40 transition-all cursor-pointer group flex flex-col h-72 relative overflow-hidden ${
+      className={`glass-panel border border-white/5 p-6 rounded-2xl hover:border-blue-500/40 transition-all cursor-pointer group flex flex-col h-80 relative overflow-hidden ${
         isBKM ? 'bg-rose-500/[0.02] border-rose-500/10' : 
         isQA ? 'bg-amber-500/[0.02] border-amber-500/10' :
         isManual ? 'bg-emerald-500/[0.02] border-emerald-500/10' : ''
@@ -667,6 +877,16 @@ function KnowledgeCard({ entry, onClick }: any) {
          <span className="px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest border bg-blue-500/10 text-blue-300 border-blue-500/20">
            {verification}
          </span>
+         {isStale && (
+           <span className="px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest border bg-amber-500/10 text-amber-300 border-amber-500/20">
+             Stale
+           </span>
+         )}
+         {isBKM && isKnowledgeIncidentReady(entry) && (
+           <span className="px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest border bg-emerald-500/10 text-emerald-300 border-emerald-500/20">
+             Incident Ready
+           </span>
+         )}
        </div>
 
        <div className="flex-1 overflow-hidden relative z-10">
@@ -679,7 +899,8 @@ function KnowledgeCard({ entry, onClick }: any) {
        </div>
 
        <div className="pt-4 flex items-center justify-between border-t border-white/5 mt-4 relative z-10">
-          <div className="flex gap-1.5">
+          <div className="flex flex-col gap-2">
+             <div className="flex gap-1.5 flex-wrap">
              {entry.tags?.slice(0, 2).map((t: string) => (
                <span key={t} className="text-[8px] font-black bg-white/5 text-slate-400 border border-white/5 px-2 py-0.5 rounded-lg uppercase tracking-tighter">{t}</span>
              ))}
@@ -688,6 +909,11 @@ function KnowledgeCard({ entry, onClick }: any) {
                  <MessageSquare size={10} /> {entry.qa_threads.length}
                </span>
              )}
+             </div>
+             <div className="flex gap-3 text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">
+               <span>{entry.__linkCount || 0} links</span>
+               <span>{readiness.score}/{readiness.max} readiness</span>
+             </div>
           </div>
           <div className="flex flex-col items-end gap-1">
              <div className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{owner}</div>
@@ -993,6 +1219,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
                  const current = formData.linked_device_ids || []
                  setFormData({ ...formData, linked_device_ids: current.includes(id) ? current.filter((value: number) => value !== id) : [...current, id] })
                }} />
+               <KnowledgeLinkSelector title="Linked Architecture" icon={<Workflow size={14} className="text-emerald-400" />} items={context.dataFlows || []} selected={metadata.links.data_flow_ids || []} labelKey="name" sublabelKey="category" onToggle={(id: number) => toggleLink('data_flow_ids', id)} />
                <KnowledgeLinkSelector title="Linked Services" icon={<Cpu size={14} className="text-blue-400" />} items={context.services || []} selected={metadata.links.service_ids || []} labelKey="name" sublabelKey="service_type" onToggle={(id: number) => toggleLink('service_ids', id)} />
                <KnowledgeLinkSelector title="Linked Monitoring" icon={<Activity size={14} className="text-amber-400" />} items={context.monitoringItems || []} selected={metadata.links.monitoring_ids || []} labelKey="title" sublabelKey="category" onToggle={(id: number) => toggleLink('monitoring_ids', id)} />
                <KnowledgeLinkSelector title="Linked FAR" icon={<AlertTriangle size={14} className="text-rose-400" />} items={context.farModes || []} selected={metadata.links.far_ids || []} labelKey="title" sublabelKey="rpn" onToggle={(id: number) => toggleLink('far_ids', id)} formatSublabel={(item: any) => `RPN ${item.rpn}`} />
@@ -1630,14 +1857,17 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, onQuickUpdate, con
   const isQA = entry.category === 'Q&A'
   const isManual = entry.category === 'Manual'
   const [incidentMode, setIncidentMode] = useState(false)
+  const [showBriefing, setShowBriefing] = useState(false)
   const metadata = normalizeKnowledgeMetadata(entry.metadata_json)
   const versionHistory = [...(metadata.version_history || [])].sort((a, b) => (b.version || 0) - (a.version || 0))
   const [selectedVersion, setSelectedVersion] = useState(versionHistory[0]?.version || null)
   const currentVersion = versionHistory.find((item: any) => item.version === selectedVersion) || versionHistory[0]
   const previousVersion = versionHistory.find((item: any) => item.version === (currentVersion?.version || 0) - 1)
+  const readiness = getKnowledgeReadiness(entry)
 
   const linkGroups = [
     { label: 'Assets', items: (entry.linked_device_ids || []).map((id: number) => ({ id, title: context.devices?.find((item: any) => item.id === id)?.name, path: `/asset?id=${id}` })) },
+    { label: 'Architecture', items: (metadata.links.data_flow_ids || []).map((id: number) => ({ id, title: context.dataFlows?.find((item: any) => item.id === id)?.name, path: '/architecture' })) },
     { label: 'Services', items: (metadata.links.service_ids || []).map((id: number) => ({ id, title: context.services?.find((item: any) => item.id === id)?.name, path: `/services?id=${id}` })) },
     { label: 'Monitoring', items: (metadata.links.monitoring_ids || []).map((id: number) => ({ id, title: context.monitoringItems?.find((item: any) => item.id === id)?.title, path: `/monitoring?id=${id}` })) },
     { label: 'FAR', items: (metadata.links.far_ids || []).map((id: number) => ({ id, title: context.farModes?.find((item: any) => item.id === id)?.title, path: `/far?id=${id}` })) },
@@ -1706,6 +1936,14 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, onQuickUpdate, con
                 <h1 className="text-6xl font-black uppercase tracking-tighter text-white leading-[0.9] max-w-5xl">
                    {entry.title}
                 </h1>
+                <div className="flex flex-wrap gap-2">
+                   <span className="px-3 py-1.5 rounded-xl border border-white/10 bg-black/20 text-[9px] font-black uppercase tracking-[0.2em] text-slate-300">
+                     {readiness.label} // {readiness.score}/{readiness.max}
+                   </span>
+                   <span className="px-3 py-1.5 rounded-xl border border-white/10 bg-black/20 text-[9px] font-black uppercase tracking-[0.2em] text-slate-300">
+                     {getKnowledgeLinkCount(entry)} linked records
+                   </span>
+                </div>
                 <div className="flex flex-wrap gap-2 pt-2">
                    {entry.tags?.map((t: string) => (
                      <span key={t} className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black text-slate-400 uppercase flex items-center gap-2 hover:bg-white/10 transition-all cursor-default">
@@ -1720,6 +1958,9 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, onQuickUpdate, con
                     Incident Mode
                   </button>
                 )}
+                <button onClick={() => setShowBriefing(true)} className="px-5 py-4 rounded-2xl border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:text-white">
+                  <Share2 size={16} className="inline mr-2" /> Export Briefing
+                </button>
                 <button onClick={onEdit} className="p-4 bg-white/5 border border-white/10 rounded-2xl text-slate-500 hover:text-blue-400 hover:border-blue-500/30 transition-all shadow-xl group">
                    <Edit2 size={24} className="group-hover:rotate-12 transition-transform" />
                 </button>
@@ -1795,6 +2036,15 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, onQuickUpdate, con
                </div>
              )}
           </div>
+          <AnimatePresence>
+            {showBriefing && (
+              <KnowledgeBriefingModal
+                entry={entry}
+                context={context}
+                onClose={() => setShowBriefing(false)}
+              />
+            )}
+          </AnimatePresence>
 
           {/* Detailed Footer */}
           <div className="p-8 bg-black/60 border-t border-white/5 flex items-center justify-between">
@@ -1833,6 +2083,39 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, onQuickUpdate, con
              </div>
           </div>
        </motion.div>
+    </div>
+  )
+}
+
+function KnowledgeBriefingModal({ entry, context, onClose }: any) {
+  const briefing = buildKnowledgeBriefing(entry, context)
+
+  return (
+    <div className="absolute inset-0 z-[130] flex items-center justify-center bg-black/85 backdrop-blur-2xl p-8">
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-4xl rounded-[36px] border border-white/10 bg-slate-950/95 p-8 shadow-2xl">
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <h3 className="text-2xl font-black uppercase tracking-tighter text-white">Knowledge Briefing</h3>
+            <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">Operator-ready handoff summary</p>
+          </div>
+          <button onClick={onClose} aria-label="Close briefing" className="rounded-2xl border border-white/10 bg-white/5 p-3 text-slate-400 hover:text-white">
+            <X size={18} />
+          </button>
+        </div>
+        <textarea
+          readOnly
+          value={briefing}
+          className="mt-6 h-[420px] w-full rounded-[28px] border border-white/10 bg-black/40 p-6 text-sm font-medium leading-relaxed text-slate-200 outline-none"
+        />
+        <div className="mt-6 flex items-center justify-end gap-3">
+          <button
+            onClick={() => navigator.clipboard.writeText(briefing)}
+            className="rounded-2xl border border-blue-500/20 bg-blue-500/10 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-blue-300"
+          >
+            Copy Briefing
+          </button>
+        </div>
+      </motion.div>
     </div>
   )
 }
@@ -1919,8 +2202,28 @@ function VersionDiff({ currentVersion, previousVersion }: any) {
 
 function KnowledgeOpsRail({ entry, metadata, versionHistory, currentVersion, previousVersion, linkGroups, onFeedback, onOpenPath, onQuickUpdate, onSelectVersion, onRestoreVersion }: any) {
   const initialVersion = [...versionHistory].sort((a: any, b: any) => (a.version || 0) - (b.version || 0))[0]
+  const readiness = getKnowledgeReadiness(entry)
   return (
     <aside className="w-[380px] shrink-0 border-l border-white/5 bg-black/30 p-6 overflow-y-auto custom-scrollbar space-y-6">
+      <div className="rounded-[28px] border border-white/5 bg-white/[0.02] p-5 space-y-4">
+        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Operational Readiness</p>
+        <div className="rounded-2xl border border-white/5 bg-black/20 p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Status</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">{readiness.label}</span>
+          </div>
+          <div className="mt-4 h-2 rounded-full bg-white/5">
+            <div className="h-2 rounded-full bg-gradient-to-r from-blue-500 via-emerald-500 to-emerald-300" style={{ width: `${(readiness.score / readiness.max) * 100}%` }} />
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2 text-[9px] font-black uppercase tracking-[0.18em]">
+            <span className="rounded-xl border border-white/5 bg-white/5 px-3 py-2 text-slate-400">{getKnowledgeLinkCount(entry)} links</span>
+            <span className="rounded-xl border border-white/5 bg-white/5 px-3 py-2 text-slate-400">{versionHistory.length} versions</span>
+            <span className="rounded-xl border border-white/5 bg-white/5 px-3 py-2 text-slate-400">{metadata.feedback?.length || 0} feedback</span>
+            <span className="rounded-xl border border-white/5 bg-white/5 px-3 py-2 text-slate-400">{entry.category === 'BKM' && isKnowledgeIncidentReady(entry) ? 'incident-ready' : 'needs drill'}</span>
+          </div>
+        </div>
+      </div>
+
       <div className="rounded-[28px] border border-white/5 bg-white/[0.02] p-5 space-y-4">
         <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Ownership & Review</p>
         <div className="space-y-2 text-[10px] font-bold uppercase">
@@ -2409,6 +2712,14 @@ function QAViewer({ entry }: any) {
   const queryClient = useQueryClient()
   const [replyText, setReplyText] = useState('')
   const [activeReplyTo, setActiveReplyTo] = useState<any>(null)
+  const [replyMeta, setReplyMeta] = useState({
+    author: 'system_admin',
+    author_team: 'FAB_AUTO',
+    target_audience: 'Internal',
+    entry_type: 'Follow-up',
+    is_answer: false,
+    is_verified: false
+  })
 
   const qaMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -2423,16 +2734,29 @@ function QAViewer({ entry }: any) {
     }
   })
 
+  const qaUpdateMutation = useMutation({
+    mutationFn: async ({ qaId, patch }: any) => {
+      const res = await apiFetch(`/api/v1/knowledge/qa/${qaId}`, { method: 'PUT', body: JSON.stringify(patch) })
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge'] })
+      toast.success('Contribution Updated')
+    }
+  })
+
   const handleSubmit = (parentId: number | null = null) => {
     if (!replyText) return
     qaMutation.mutate({
       knowledge_id: entry.id,
       parent_qa_id: parentId,
       content: replyText,
-      author: 'system_admin',
-      author_team: 'FAB_AUTO',
-      target_audience: 'Internal',
-      entry_type: parentId ? 'Answer' : 'Follow-up'
+      author: replyMeta.author,
+      author_team: replyMeta.author_team,
+      target_audience: replyMeta.target_audience,
+      entry_type: parentId ? (replyMeta.is_answer ? 'Answer' : replyMeta.entry_type) : replyMeta.entry_type,
+      is_answer: parentId ? replyMeta.is_answer : false,
+      is_verified: replyMeta.is_verified
     })
   }
 
@@ -2463,7 +2787,25 @@ function QAViewer({ entry }: any) {
                 <div className="absolute left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-600/50 via-white/5 to-transparent rounded-full" />
                 
                 {entry.qa_threads?.filter((qa: any) => !qa.parent_qa_id).map((qa: any) => (
-                  <QANode key={qa.id} qa={qa} onReply={() => setActiveReplyTo(qa)} />
+                  <QANode
+                    key={qa.id}
+                    qa={qa}
+                    onReply={(targetQa: any) => setActiveReplyTo(targetQa)}
+                    onVerify={(targetQa: any) => qaUpdateMutation.mutate({
+                      qaId: targetQa.id,
+                      patch: {
+                        parent_qa_id: targetQa.parent_qa_id,
+                        content: targetQa.content,
+                        author: targetQa.author,
+                        author_team: targetQa.author_team,
+                        target_audience: targetQa.target_audience,
+                        entry_type: targetQa.entry_type,
+                        is_answer: true,
+                        is_verified: true,
+                        metadata_json: targetQa.metadata_json || {}
+                      }
+                    })}
+                  />
                 ))}
 
                 {entry.qa_threads?.length === 0 && (
@@ -2487,6 +2829,44 @@ function QAViewer({ entry }: any) {
                   <button onClick={() => setActiveReplyTo(null)} className="text-slate-500 hover:text-white"><X size={14}/></button>
                </div>
              )}
+             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                <input
+                  value={replyMeta.author}
+                  onChange={e => setReplyMeta(prev => ({ ...prev, author: e.target.value }))}
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white outline-none"
+                  placeholder="AUTHOR"
+                />
+                <input
+                  value={replyMeta.author_team}
+                  onChange={e => setReplyMeta(prev => ({ ...prev, author_team: e.target.value }))}
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white outline-none"
+                  placeholder="TEAM"
+                />
+                <StyledSelect
+                  value={replyMeta.target_audience}
+                  onChange={e => setReplyMeta(prev => ({ ...prev, target_audience: e.target.value }))}
+                  options={TARGET_AUDIENCES}
+                />
+                <StyledSelect
+                  value={replyMeta.entry_type}
+                  onChange={e => setReplyMeta(prev => ({ ...prev, entry_type: e.target.value }))}
+                  options={[
+                    { value: 'Follow-up', label: 'Follow-up' },
+                    { value: 'Observation', label: 'Observation' },
+                    { value: 'Answer', label: 'Answer' }
+                  ]}
+                />
+                <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                  <label className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-300">
+                    <input type="checkbox" checked={replyMeta.is_answer} onChange={e => setReplyMeta(prev => ({ ...prev, is_answer: e.target.checked }))} />
+                    Answer
+                  </label>
+                  <label className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-300">
+                    <input type="checkbox" checked={replyMeta.is_verified} onChange={e => setReplyMeta(prev => ({ ...prev, is_verified: e.target.checked }))} />
+                    Verified
+                  </label>
+                </div>
+             </div>
              <div className="flex gap-4">
                 <div className="flex-1 relative">
                    <textarea 
@@ -2499,6 +2879,7 @@ function QAViewer({ entry }: any) {
                 <button 
                   onClick={() => handleSubmit(activeReplyTo?.id)}
                   disabled={!replyText || qaMutation.isPending}
+                  aria-label="Send knowledge reply"
                   className="bg-blue-600 hover:bg-blue-500 text-white w-16 h-16 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
                 >
                    {qaMutation.isPending ? <RefreshCcw size={24} className="animate-spin"/> : <Send size={24}/>}
@@ -2510,7 +2891,7 @@ function QAViewer({ entry }: any) {
   )
 }
 
-function QANode({ qa, onReply }: any) {
+function QANode({ qa, onReply, onVerify }: any) {
   return (
     <div className="space-y-6">
        <div className="flex gap-8 group">
@@ -2535,12 +2916,22 @@ function QANode({ qa, onReply }: any) {
                qa.entry_type === 'Answer' ? 'bg-emerald-600/5' : 'bg-slate-900/50'
              }`}>
                 <p className="text-sm font-medium text-slate-200 leading-relaxed">{qa.content}</p>
-                <button 
-                  onClick={onReply}
-                  className="absolute bottom-4 right-6 text-[9px] font-black text-slate-600 uppercase tracking-widest hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2"
-                >
-                   <Reply size={12}/> Add Follow-up
-                </button>
+                <div className="absolute bottom-4 right-6 flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-all">
+                  {!qa.is_verified && (
+                    <button
+                      onClick={() => onVerify(qa)}
+                      className="text-[9px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2"
+                    >
+                      <CheckCircle2 size={12}/> Verify Answer
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => onReply(qa)}
+                    className="text-[9px] font-black text-slate-600 uppercase tracking-widest hover:text-blue-400 transition-all flex items-center gap-2"
+                  >
+                     <Reply size={12}/> Add Follow-up
+                  </button>
+                </div>
              </div>
 
              {/* Nested Replies */}
@@ -2548,7 +2939,7 @@ function QANode({ qa, onReply }: any) {
                <div className="mt-6 ml-8 space-y-6 relative">
                   <div className="absolute -left-6 top-0 bottom-4 w-px bg-white/10" />
                   {qa.replies.map((reply: any) => (
-                    <QANode key={reply.id} qa={reply} onReply={onReply} />
+                    <QANode key={reply.id} qa={reply} onReply={onReply} onVerify={onVerify} />
                   ))}
                </div>
              )}

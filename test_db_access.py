@@ -1,8 +1,10 @@
 import asyncio
+import pytest
 from sqlalchemy import select
 from backend.app.database import AsyncSessionLocal
 from backend.app.models import models
 
+@pytest.mark.anyio
 async def test():
     async with AsyncSessionLocal() as db:
         try:

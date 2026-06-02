@@ -8,6 +8,15 @@ from ..models import models
 from .utils import filter_valid_columns, parse_iso_date
 
 router = APIRouter(prefix="/vendors", tags=["Vendor & Contract Management"])
+IMMUTABLE_VENDOR_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id"}
+
+
+def mutable_model_data(model: type, data: dict):
+    return {
+        key: value
+        for key, value in filter_valid_columns(model, data).items()
+        if key not in IMMUTABLE_VENDOR_FIELDS
+    }
 
 async def get_vendor_full(vendor_id: int, db: AsyncSession):
     query = select(models.Vendor).filter(models.Vendor.id == vendor_id).options(
@@ -30,7 +39,7 @@ async def get_vendors(include_deleted: bool = False, db: AsyncSession = Depends(
 
 @router.post("")
 async def create_vendor(data: dict, db: AsyncSession = Depends(get_db)):
-    clean_data = filter_valid_columns(models.Vendor, data)
+    clean_data = mutable_model_data(models.Vendor, data)
     vendor = models.Vendor(**clean_data)
     db.add(vendor)
     try:
@@ -46,7 +55,7 @@ async def update_vendor(vendor_id: int, data: dict, db: AsyncSession = Depends(g
     vendor = result.scalar_one_or_none()
     if not vendor: raise HTTPException(404, "Vendor not found")
     
-    clean_data = filter_valid_columns(models.Vendor, data)
+    clean_data = mutable_model_data(models.Vendor, data)
     for k, v in clean_data.items():
         setattr(vendor, k, v)
         
@@ -67,7 +76,7 @@ async def delete_vendor(vendor_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.post("/{vendor_id}/personnel")
 async def add_personnel(vendor_id: int, data: dict, db: AsyncSession = Depends(get_db)):
-    clean_data = filter_valid_columns(models.VendorPersonnel, data)
+    clean_data = mutable_model_data(models.VendorPersonnel, data)
     clean_data["vendor_id"] = vendor_id
     personnel = models.VendorPersonnel(**clean_data)
     db.add(personnel)
@@ -85,8 +94,9 @@ async def update_personnel(personnel_id: int, data: dict, db: AsyncSession = Dep
     personnel = result.scalar_one_or_none()
     if not personnel: raise HTTPException(404, "Personnel not found")
     
-    clean_data = filter_valid_columns(models.VendorPersonnel, data)
-    if "vendor_id" in clean_data: del clean_data["vendor_id"]
+    clean_data = mutable_model_data(models.VendorPersonnel, data)
+    if "vendor_id" in clean_data:
+        del clean_data["vendor_id"]
     
     for k, v in clean_data.items():
         setattr(personnel, k, v)
@@ -125,7 +135,7 @@ async def create_contract(data: dict, db: AsyncSession = Depends(get_db)):
     if 'vendor_id' not in data:
         raise HTTPException(400, detail="vendor_id is required")
         
-    clean_data = filter_valid_columns(models.VendorContract, data)
+    clean_data = mutable_model_data(models.VendorContract, data)
     clean_data['vendor_id'] = data['vendor_id'] # Ensure it's passed through
     
     # Handle dates
@@ -151,7 +161,7 @@ async def update_contract(contract_id: int, data: dict, db: AsyncSession = Depen
     contract = result.scalar_one_or_none()
     if not contract: raise HTTPException(404, "Contract not found")
     
-    clean_data = filter_valid_columns(models.VendorContract, data)
+    clean_data = mutable_model_data(models.VendorContract, data)
     
     if 'effective_date' in data:
         clean_data['effective_date'] = parse_iso_date(data['effective_date'])
