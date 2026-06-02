@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react'
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -7,8 +7,8 @@ import {
   Trash2, Edit2, Shield, Cpu, Database, Network, 
   Globe, Bell, Info, ChevronRight, X, Check, Save,
   AlertCircle, Clock, Zap, Settings,
-  BookOpen, Eye, FileText, User, Mail, MessageSquare, Monitor, MoreVertical,
-  Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, Star, GitCompare, Undo2
+  BookOpen, Eye, EyeOff, FileText, User, Mail, MessageSquare, Monitor, MoreVertical,
+  Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, Star, GitCompare, Undo2, List
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from "ag-grid-react"
@@ -927,7 +927,8 @@ export default function MonitoringGrid() {
   const toggleGroupedCheckbox = (item: any, event: React.ChangeEvent<HTMLInputElement>) => {
     event.stopPropagation()
     const currentIndex = displayedItems.findIndex((entry: any) => entry.id === item.id)
-    if (event.nativeEvent.shiftKey && selectionAnchorRef.current !== null) {
+    const nativeEvent = event.nativeEvent as MouseEvent
+    if (nativeEvent.shiftKey && selectionAnchorRef.current !== null) {
       const start = Math.min(selectionAnchorRef.current, currentIndex)
       const end = Math.max(selectionAnchorRef.current, currentIndex)
       setSelectedIds(displayedItems.slice(start, end + 1).map((entry: any) => entry.id))
@@ -2206,8 +2207,9 @@ export default function MonitoringGrid() {
 	            }}
               onCellContextMenu={(e) => {
                 if (!e?.data) return
-                e.event?.preventDefault?.()
-                openRowActionMenuAtPoint(e.data, e.event.clientX, e.event.clientY)
+                const mouseEvent = e.event as MouseEvent
+                mouseEvent?.preventDefault?.()
+                openRowActionMenuAtPoint(e.data, mouseEvent.clientX, mouseEvent.clientY)
               }}
 	            onRowClicked={handleRowClicked}
             onRowDoubleClicked={handleRowDoubleClicked}

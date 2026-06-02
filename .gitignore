@@ -14,7 +14,12 @@ dist/
 .cline/
 .cursor*
 
-# Ignore all markdown files except README
-*.md
-!README.md
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright-report/
+frontend/test-results/
+frontend/playwright-report/
+check_load_error.mjs
 
