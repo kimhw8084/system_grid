@@ -56,7 +56,7 @@ const getAnchoredFloatingStyle = ({
   width,
   height,
   zIndex,
-  offset = 10
+  offset = 8
 }: {
   rect: DOMRect
   width: number
@@ -66,16 +66,33 @@ const getAnchoredFloatingStyle = ({
 }) => {
   const viewportWidth = window.innerWidth
   const viewportHeight = window.innerHeight
+  
+  // Vertical positioning: Prefer below the rect
   const spaceBelow = viewportHeight - rect.bottom - FLOATING_PANEL_EDGE
   const spaceAbove = rect.top - FLOATING_PANEL_EDGE
-  const preferBelow = spaceBelow >= Math.min(height, 280) || spaceBelow >= spaceAbove
-  const top = preferBelow
-    ? Math.min(rect.bottom + offset, viewportHeight - height - FLOATING_PANEL_EDGE)
-    : Math.max(FLOATING_PANEL_EDGE, rect.top - height - offset)
-  const left = Math.min(
-    Math.max(FLOATING_PANEL_EDGE, rect.right - width),
-    viewportWidth - width - FLOATING_PANEL_EDGE
-  )
+  const canFitBelow = spaceBelow >= height
+  const canFitAbove = spaceAbove >= height
+  
+  let top: number
+  if (canFitBelow) {
+    top = rect.bottom + offset
+  } else if (canFitAbove) {
+    top = rect.top - height - offset
+  } else {
+    // Center if it fits nowhere (fallback)
+    top = Math.max(FLOATING_PANEL_EDGE, (viewportHeight - height) / 2)
+  }
+
+  // Horizontal positioning: Align right edge of menu to right edge of rect if possible
+  let left = rect.right - width
+  if (left < FLOATING_PANEL_EDGE) {
+    left = rect.left
+  }
+  
+  // Ensure within viewport
+  left = Math.max(FLOATING_PANEL_EDGE, Math.min(left, viewportWidth - width - FLOATING_PANEL_EDGE))
+  top = Math.max(FLOATING_PANEL_EDGE, Math.min(top, viewportHeight - height - FLOATING_PANEL_EDGE))
+
   return {
     position: 'fixed' as const,
     top,
@@ -92,7 +109,7 @@ const getPointFloatingStyle = ({
   width,
   height,
   zIndex,
-  offset = 10
+  offset = 4
 }: {
   x: number
   y: number
@@ -103,16 +120,23 @@ const getPointFloatingStyle = ({
 }) => {
   const viewportWidth = window.innerWidth
   const viewportHeight = window.innerHeight
-  const spaceRight = viewportWidth - x - FLOATING_PANEL_EDGE
-  const spaceLeft = x - FLOATING_PANEL_EDGE
-  const spaceBelow = viewportHeight - y - FLOATING_PANEL_EDGE
-  const spaceAbove = y - FLOATING_PANEL_EDGE
-  const left = spaceRight >= width || spaceRight >= spaceLeft
-    ? Math.min(x + offset, viewportWidth - width - FLOATING_PANEL_EDGE)
-    : Math.max(FLOATING_PANEL_EDGE, x - width - offset)
-  const top = spaceBelow >= Math.min(height, 300) || spaceBelow >= spaceAbove
-    ? Math.min(y + offset, viewportHeight - height - FLOATING_PANEL_EDGE)
-    : Math.max(FLOATING_PANEL_EDGE, y - height - offset)
+
+  // Horizontal: prefer right of point
+  let left = x + offset
+  if (left + width > viewportWidth - FLOATING_PANEL_EDGE) {
+    left = x - width - offset
+  }
+
+  // Vertical: prefer below point
+  let top = y + offset
+  if (top + height > viewportHeight - FLOATING_PANEL_EDGE) {
+    top = y - height - offset
+  }
+
+  // Final containment
+  left = Math.max(FLOATING_PANEL_EDGE, Math.min(left, viewportWidth - width - FLOATING_PANEL_EDGE))
+  top = Math.max(FLOATING_PANEL_EDGE, Math.min(top, viewportHeight - height - FLOATING_PANEL_EDGE))
+
   return {
     position: 'fixed' as const,
     top,
@@ -782,6 +806,8 @@ export default function MonitoringGrid() {
       const aFavorite = favoriteIds.includes(a.id) ? 1 : 0
       const bFavorite = favoriteIds.includes(b.id) ? 1 : 0
       if (aFavorite !== bFavorite) return bFavorite - aFavorite
+      
+      // If no favorite difference, check grid sort model
       if (gridSortModel.length) {
         for (const sort of gridSortModel) {
           const direction = sort.sort === 'desc' ? -1 : 1
@@ -801,6 +827,13 @@ export default function MonitoringGrid() {
     })
     return sorted
   }, [displayedItems, favoriteIds, gridSortModel])
+
+  const displayedItemsInOrder = useMemo(() => {
+    if (groupBy !== 'raw') return sortedItemsForGrouped
+    // Even for raw, we want favorites pinned to top if there's no manual sort overriding it
+    // or we can just always use sortedItemsForGrouped for the rowData to keep it consistent.
+    return sortedItemsForGrouped
+  }, [sortedItemsForGrouped, groupBy])
 
   const selectedItems = useMemo(
     () => displayedItems.filter((item: any) => selectedIds.includes(item.id)),
@@ -1099,9 +1132,9 @@ export default function MonitoringGrid() {
     { 
       colId: "select",
       headerName: "", 
-      width: 50,
-      minWidth: 50,
-      maxWidth: 50,
+      width: 48,
+      minWidth: 48,
+      maxWidth: 48,
       checkboxSelection: true, 
       headerCheckboxSelection: true, 
       pinned: 'left', 
@@ -1119,28 +1152,29 @@ export default function MonitoringGrid() {
       headerName: "ID", 
       width: 70,
       minWidth: 70,
+      maxWidth: 90,
       pinned: 'left',
-      cellClass: 'text-center font-bold text-slate-500',
-      headerClass: 'text-center',
+      cellClass: 'text-center font-bold text-slate-500 border-r border-white/5',
+      headerClass: 'text-center border-r border-white/5',
       filter: 'agNumberColumnFilter',
     },
     {
       colId: "recent_change",
       headerName: "Chg",
       field: "recent_change",
-      width: 52,
-      minWidth: 52,
-      maxWidth: 52,
+      width: 60,
+      minWidth: 60,
+      maxWidth: 60,
       pinned: 'left',
       sortable: false,
       filter: false,
       resizable: false,
-      cellClass: 'text-center',
-      headerClass: 'text-center',
+      cellClass: 'text-center border-r border-white/5',
+      headerClass: 'text-center border-r border-white/5',
       suppressHide: true,
       cellRenderer: (p: any) => p.data && isRecentChange(p.data) ? (
         <div className="flex h-full w-full items-center justify-center">
-          <span title="Changed since your last visit" className="inline-block h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.6)] animate-pulse" />
+          <span title="Changed since your last visit" className="inline-block h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.8)] animate-pulse" />
         </div>
       ) : null
     },
@@ -1148,12 +1182,12 @@ export default function MonitoringGrid() {
       colId: "favorite",
       headerName: "Fav",
       field: "favorite",
-      width: 52,
-      minWidth: 52,
-      maxWidth: 52,
+      width: 60,
+      minWidth: 60,
+      maxWidth: 60,
       pinned: 'left',
-      cellClass: 'text-center',
-      headerClass: 'text-center',
+      cellClass: 'text-center border-r border-white/5',
+      headerClass: 'text-center border-r border-white/5',
       sortable: false,
       filter: false,
       resizable: false,
@@ -1178,12 +1212,12 @@ export default function MonitoringGrid() {
       colId: "watch",
       headerName: "Watch",
       field: "watch",
-      width: 66,
-      minWidth: 66,
-      maxWidth: 66,
+      width: 70,
+      minWidth: 70,
+      maxWidth: 70,
       pinned: 'left',
-      cellClass: 'text-center',
-      headerClass: 'text-center',
+      cellClass: 'text-center border-r border-white/5',
+      headerClass: 'text-center border-r border-white/5',
       sortable: false,
       filter: false,
       resizable: false,
@@ -2053,7 +2087,7 @@ export default function MonitoringGrid() {
           )}
 	          <AgGridReact 
             ref={gridRef}
-	            rowData={displayedItems || []} 
+	            rowData={displayedItemsInOrder || []} 
 	            columnDefs={columnDefs} 
 	            rowSelection="multiple"
             animateRows={true}
@@ -2197,7 +2231,7 @@ export default function MonitoringGrid() {
                                 event.preventDefault()
                                 openRowActionMenuAtPoint(item, event.clientX, event.clientY)
                               }}
-                              className={`cursor-pointer border-b border-white/5 transition-all group ${selected ? 'bg-blue-600/20' : rowIndex % 2 === 0 ? 'bg-[#1a1b26] hover:bg-white/[0.05]' : 'bg-[#161720] hover:bg-white/[0.05]'}`}
+                              className={`cursor-pointer border-b border-white/5 transition-all group ${selected ? 'bg-blue-600/20' : rowIndex % 2 === 0 ? 'bg-[#0f172a] hover:bg-white/[0.05]' : 'bg-[#020617] hover:bg-white/[0.05]'}`}
                               style={{ height: `${fontSize + rowDensity + 10}px` }}
                             >
                               {groupedColumns.map((column: any) => (
@@ -2213,11 +2247,11 @@ export default function MonitoringGrid() {
                                     background: selected
                                       ? 'rgba(37, 99, 235, 0.2)'
                                       : column.pinned
-                                        ? rowIndex % 2 === 0 ? '#1a1b26' : '#161720'
+                                        ? rowIndex % 2 === 0 ? '#0f172a' : '#020617'
                                         : undefined
                                   }}
                                 >
-                                  <div className="flex items-center justify-center h-full border-r border-white/5">
+                                  <div className={`flex items-center justify-center h-full ${column.key !== 'row_actions' ? 'border-r border-white/5' : ''}`}>
                                     {column.render(item)}
                                   </div>
                                 </td>
