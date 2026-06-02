@@ -35,8 +35,15 @@ fake = Faker()
 
 def seed():
     try:
-        if os.path.exists(DB_PATH):
-            os.remove(DB_PATH)
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+
+        # Robust cleanup of SQLite files
+        for ext in ["", "-wal", "-shm"]:
+            path = DB_PATH + ext
+            if os.path.exists(path):
+                os.remove(path)
+                print(f"CLEANUP: Deleted {path}")
 
         from alembic.config import Config as AlembicConfig
         from alembic import command as alembic_command
@@ -474,7 +481,9 @@ def seed():
             print("SUCCESS: Database seeded.")
             print(f"SUMMARY: 10 Racks, {len(all_workers) + len(core_net_devices)} Devices, 220 Services, 150+ Policies, 15 Incidents, 3 RCAs.")
     except Exception as e:
+        import traceback
         print(f"FAILURE: Seeding failed: {str(e)}")
+        traceback.print_exc()
         sys.exit(1)
 
 if __name__ == "__main__":
