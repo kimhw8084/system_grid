@@ -1911,10 +1911,6 @@ export default function Assets() {
     }
   ], [activeTab, hiddenColumns, fontSize]) as any
 
-  const autoSizeStrategy = useMemo(() => ({
-    type: 'fitCellContents' as const
-  }), []);
-
   const handleExportCSV = () => {
     if (gridRef.current?.api) {
       gridRef.current.api.exportDataAsCsv({
@@ -2075,25 +2071,23 @@ export default function Assets() {
 
       {/* STYLE LABORATORY BAR REMOVED AND MOVED TO SIDEBAR */}
       {viewMode === 'grid' ? (
-        <div className="flex-1 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative">
+        <div className="flex-1 w-full glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative">
           {isLoading && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
                <RefreshCcw size={32} className="animate-spin" />
                <p className="text-[10px] font-bold uppercase tracking-[0.3em]">Syncing asset registry...</p>
             </div>
           )}
-          <AgGridReact 
+          <AgGridReact
             ref={gridRef}
-            rowData={visibleAssets || []} 
-            columnDefs={columnDefs} 
+            rowData={visibleAssets || []}
+            columnDefs={columnDefs}
             rowSelection="multiple"
             headerHeight={fontSize + rowDensity + 10}
             rowHeight={fontSize + rowDensity + 10}
             onSelectionChanged={(e) => setSelectedIds(e?.api?.getSelectedNodes().map((n: any) => n.data?.id).filter(Boolean) || [])}
-            autoSizeStrategy={autoSizeStrategy}
             enableCellTextSelection={true}
           />
-
           <AnimatePresence>
             {showColumnPicker && (
               <motion.div

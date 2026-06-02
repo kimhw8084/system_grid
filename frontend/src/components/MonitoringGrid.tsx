@@ -64,29 +64,19 @@ const getAnchoredFloatingStyle = ({
   zIndex: number
   offset?: number
 }) => {
-  const viewportWidth = window.innerWidth
-  const viewportHeight = window.innerHeight
+  const vW = window.innerWidth
+  const vH = window.innerHeight
   
-  // Use rect directly from getBoundingClientRect() which is viewport-relative
-  const spaceBelow = viewportHeight - rect.bottom - FLOATING_PANEL_EDGE
-  const spaceAbove = rect.top - FLOATING_PANEL_EDGE
-  const canFitBelow = spaceBelow >= 120 // Min height to prefer below
-
-  let top: number
-  if (canFitBelow) {
-    top = rect.bottom + offset
-  } else if (spaceAbove >= height) {
-    top = rect.top - height - offset
-  } else {
-    top = Math.max(FLOATING_PANEL_EDGE, viewportHeight - height - FLOATING_PANEL_EDGE)
-  }
-
-  // Align right edges
+  // Pivot logic: align right edge of menu to right edge of trigger
   let left = rect.right - width
+  let top = rect.bottom + offset
+
+  // Viewport containment and flipping
+  if (left < FLOATING_PANEL_EDGE) left = rect.left
+  if (top + height > vH - FLOATING_PANEL_EDGE) top = rect.top - height - offset
   
-  // Ensure within viewport
-  left = Math.max(FLOATING_PANEL_EDGE, Math.min(left, viewportWidth - width - FLOATING_PANEL_EDGE))
-  top = Math.max(FLOATING_PANEL_EDGE, Math.min(top, viewportHeight - height - FLOATING_PANEL_EDGE))
+  left = Math.max(FLOATING_PANEL_EDGE, Math.min(left, vW - width - FLOATING_PANEL_EDGE))
+  top = Math.max(FLOATING_PANEL_EDGE, Math.min(top, vH - height - FLOATING_PANEL_EDGE))
 
   return {
     position: 'fixed' as const,
@@ -104,7 +94,7 @@ const getPointFloatingStyle = ({
   width,
   height,
   zIndex,
-  offset = 2
+  offset = 0
 }: {
   x: number
   y: number
@@ -113,24 +103,18 @@ const getPointFloatingStyle = ({
   zIndex: number
   offset?: number
 }) => {
-  const viewportWidth = window.innerWidth
-  const viewportHeight = window.innerHeight
+  const vW = window.innerWidth
+  const vH = window.innerHeight
 
-  // Horizontal: prefer right of point
-  let left = x + offset
-  if (left + width > viewportWidth - FLOATING_PANEL_EDGE) {
-    left = x - width - offset
-  }
+  // Industry standard cursor anchoring (corner/edge of box exactly on cursor)
+  let left = x
+  let top = y
 
-  // Vertical: prefer below point
-  let top = y + offset
-  if (top + height > viewportHeight - FLOATING_PANEL_EDGE) {
-    top = y - height - offset
-  }
+  if (left + width > vW - FLOATING_PANEL_EDGE) left = x - width
+  if (top + height > vH - FLOATING_PANEL_EDGE) top = y - height
 
-  // Final containment
-  left = Math.max(FLOATING_PANEL_EDGE, Math.min(left, viewportWidth - width - FLOATING_PANEL_EDGE))
-  top = Math.max(FLOATING_PANEL_EDGE, Math.min(top, viewportHeight - height - FLOATING_PANEL_EDGE))
+  left = Math.max(FLOATING_PANEL_EDGE, Math.min(left, vW - width - FLOATING_PANEL_EDGE))
+  top = Math.max(FLOATING_PANEL_EDGE, Math.min(top, vH - height - FLOATING_PANEL_EDGE))
 
   return {
     position: 'fixed' as const,
@@ -141,6 +125,61 @@ const getPointFloatingStyle = ({
     zIndex
   }
 }
+
+// Isolated component to prevent UI state changes (menus) from triggering AgGrid recalculations
+const GridMatrix = React.memo(({ 
+  gridRef, 
+  rowData, 
+  columnDefs, 
+  fontSize, 
+  rowDensity, 
+  context,
+  onGridReady,
+  onSelectionChanged,
+  onColumnResized,
+  onColumnMoved,
+  onDragStopped,
+  onColumnPinned,
+  onColumnVisible,
+  onFilterChanged,
+  onSortChanged,
+  onRowClicked,
+  onRowDoubleClicked,
+  autoSizeStrategy
+}: any) => (
+  <AgGridReact
+    ref={gridRef}
+    rowData={rowData}
+    columnDefs={columnDefs}
+    rowSelection="multiple"
+    animateRows={true}
+    headerHeight={fontSize + rowDensity + 10}
+    rowHeight={fontSize + rowDensity + 10}
+    context={context}
+    onGridReady={onGridReady}
+    onSelectionChanged={onSelectionChanged}
+    onColumnResized={onColumnResized}
+    onColumnMoved={onColumnMoved}
+    onDragStopped={onDragStopped}
+    onColumnPinned={onColumnPinned}
+    onColumnVisible={onColumnVisible}
+    onFilterChanged={onFilterChanged}
+    onSortChanged={onSortChanged}
+    onRowClicked={onRowClicked}
+    onRowDoubleClicked={onRowDoubleClicked}
+    autoSizeStrategy={autoSizeStrategy}
+    suppressScrollOnNewData={true}
+    suppressCellFocus={true}
+    overlayNoRowsTemplate="<span class='text-slate-500 font-bold uppercase tracking-widest text-[10px]'>No monitoring data found</span>"
+  />
+), (prev, next) => {
+  return prev.rowData === next.rowData && 
+         prev.columnDefs === next.columnDefs && 
+         prev.fontSize === next.fontSize && 
+         prev.rowDensity === next.rowDensity
+})
+GridMatrix.displayName = 'GridMatrix'
+
 
 const getMonitorGroupValue = (item: any, field: string) => {
   if (field === 'notification_method') return item.notification_method || 'No notification path'
@@ -345,13 +384,13 @@ export default function MonitoringGrid() {
     })
   }
 
-  const toggleFavorite = (monitorId: number) => {
+  const toggleFavorite = useCallback((monitorId: number) => {
     setFavoriteIds((current) => current.includes(monitorId) ? current.filter((id) => id !== monitorId) : [...current, monitorId])
-  }
+  }, [])
 
-  const toggleWatch = (monitorId: number) => {
+  const toggleWatch = useCallback((monitorId: number) => {
     setWatchIds((current) => current.includes(monitorId) ? current.filter((id) => id !== monitorId) : [...current, monitorId])
-  }
+  }, [])
 
   const openCompare = () => {
     if (selectedIds.length < 2 || selectedIds.length > 3) return
@@ -898,11 +937,11 @@ export default function MonitoringGrid() {
     selectionAnchorRef.current = currentIndex
   }
 
-  const isRecentChange = (item: any) => {
+  const isRecentChange = useCallback((item: any) => {
     const changedAt = item?.updated_at || item?.created_at
     if (!changedAt || !lastVisitedAt) return false
     return new Date(changedAt).getTime() > lastVisitedAt
-  }
+  }, [lastVisitedAt])
 
   const bulkPreview = useMemo(() => {
     const field = expandedBulkSection === 'notification' ? 'notification_method' : expandedBulkSection
@@ -1177,9 +1216,9 @@ export default function MonitoringGrid() {
       colId: "id",
       field: "id", 
       headerName: "ID", 
-      width: 80,
-      minWidth: 80,
-      maxWidth: 100,
+      width: 90,
+      minWidth: 90,
+      maxWidth: 120,
       pinned: 'left',
       cellClass: 'text-center font-bold text-slate-500 border-r border-white/5 flex items-center justify-center',
       headerClass: 'text-center border-r border-white/5',
@@ -1189,47 +1228,54 @@ export default function MonitoringGrid() {
       colId: "recent_change",
       headerName: "Chg",
       field: "recent_change",
-      width: 58,
-      minWidth: 58,
-      maxWidth: 58,
+      width: 80,
+      minWidth: 80,
+      maxWidth: 80,
       pinned: 'left',
       sortable: false,
       filter: false,
       resizable: false,
-      cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
+      suppressMovable: true,
+      cellClass: 'text-center border-r border-white/5 flex items-center justify-center !overflow-visible',
       headerClass: 'text-center border-r border-white/5',
       suppressHide: true,
       cellRenderer: (p: any) => p.data && isRecentChange(p.data) ? (
-        <span title="Changed since your last visit" className="inline-block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.8)] animate-pulse" />
+        <div className="relative flex items-center justify-center h-full w-full">
+          <div className="absolute h-10 w-10 rounded-full bg-[radial-gradient(circle,_rgba(251,191,36,0.2)_0%,_transparent_70%)] blur-md animate-pulse" />
+          <span className="relative z-[1] block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
+        </div>
       ) : null
     },
     {
       colId: "favorite",
       headerName: "Fav",
       field: "favorite",
-      width: 58,
-      minWidth: 58,
-      maxWidth: 58,
+      width: 80,
+      minWidth: 80,
+      maxWidth: 80,
       pinned: 'left',
       cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
       headerClass: 'text-center border-r border-white/5',
       sortable: false,
       filter: false,
       resizable: false,
+      suppressMovable: true,
       suppressHide: true,
       cellRenderer: (p: any) => {
         const isFavorite = p.context?.favoriteIds?.includes(p.data?.id)
         return (
-          <button
-            onClick={(event) => {
-              event.stopPropagation()
-              toggleFavorite(p.data.id)
-            }}
-            title={isFavorite ? 'Unpin monitor' : 'Pin monitor'}
-            className={`rounded-md p-1 transition-all flex items-center justify-center ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
-          >
-            <Star size={14} className={isFavorite ? 'fill-current' : ''} />
-          </button>
+          <div className="flex h-full w-full items-center justify-center">
+            <button
+              onClick={(event) => {
+                event.stopPropagation()
+                toggleFavorite(p.data.id)
+              }}
+              title={isFavorite ? 'Unpin monitor' : 'Pin monitor'}
+              className={`rounded-md p-1 transition-all flex items-center justify-center ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
+            >
+              <Star size={15} className={isFavorite ? 'fill-current' : ''} />
+            </button>
+          </div>
         )
       }
     },
@@ -1237,9 +1283,9 @@ export default function MonitoringGrid() {
       colId: "watch",
       headerName: "Watch",
       field: "watch",
-      width: 78,
-      minWidth: 78,
-      maxWidth: 78,
+      width: 85,
+      minWidth: 85,
+      maxWidth: 85,
       pinned: 'left',
       cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
       headerClass: 'text-center border-r border-white/5',
@@ -1250,16 +1296,18 @@ export default function MonitoringGrid() {
       cellRenderer: (p: any) => {
         const isWatched = p.context?.watchIds?.includes(p.data?.id)
         return (
-          <button
-            onClick={(event) => {
-              event.stopPropagation()
-              toggleWatch(p.data.id)
-            }}
-            title={isWatched ? 'Unfollow monitor' : 'Follow monitor'}
-            className={`rounded-md p-1 transition-all flex items-center justify-center ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
-          >
-            <Eye size={14} className={isWatched ? 'fill-current' : ''} />
-          </button>
+          <div className="flex h-full w-full items-center justify-center">
+            <button
+              onClick={(event) => {
+                event.stopPropagation()
+                toggleWatch(p.data.id)
+              }}
+              title={isWatched ? 'Unfollow monitor' : 'Follow monitor'}
+              className={`rounded-md p-1 transition-all flex items-center justify-center ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
+            >
+              <Eye size={15} className={isWatched ? 'fill-current' : ''} />
+            </button>
+          </div>
         )
       }
     },
@@ -2116,7 +2164,7 @@ export default function MonitoringGrid() {
       )}
 
       {groupBy === 'raw' ? (
-	        <div className="monitoring-grid-shell monitoring-grid flex-1 min-h-0 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative">
+	        <div className="monitoring-grid-shell monitoring-grid flex-1 w-full min-h-0 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative">
           {isLoading && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
                <RefreshCcw size={32} className="text-blue-400 animate-spin" />
@@ -2135,8 +2183,6 @@ export default function MonitoringGrid() {
             onGridReady={(event) => {
               if (columnLayoutState.length > 0) {
                 applyColumnLayoutState(event.api);
-              } else {
-                event.api.autoSizeAllColumns(true);
               }
             }}
 	            onSelectionChanged={(e) => {
@@ -2169,7 +2215,6 @@ export default function MonitoringGrid() {
             quickFilterText=""
             suppressRowClickSelection={true}
             enableCellTextSelection={true}
-            autoSizeStrategy={autoSizeStrategy}
 	          />
 
 	        </div>
@@ -2408,7 +2453,6 @@ export default function MonitoringGrid() {
             font-size: ${fontSize}px !important;
         }
 
-        }
 	        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
 	        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
           .row-action-trigger { opacity: 1; }
