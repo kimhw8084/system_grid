@@ -155,8 +155,8 @@ const GridMatrix = React.memo(({
     columnDefs={columnDefs}
     rowSelection="multiple"
     animateRows={true}
-    headerHeight={fontSize + rowDensity + 10}
-    rowHeight={fontSize + rowDensity + 10}
+    headerHeight={fontSize + rowDensity + 4}
+    rowHeight={fontSize + rowDensity + 4}
     context={context}
     onGridReady={onGridReady}
     onSelectionChanged={onSelectionChanged}
@@ -284,6 +284,9 @@ export default function MonitoringGrid() {
   const [isBulkSeverityOpen, setIsBulkSeverityOpen] = useState(false)
   const [isBulkNotifyOpen, setIsBulkNotifyOpen] = useState(false)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
+  const [detailDeleteConfirm, setDetailDeleteConfirm] = useState(false)
+  const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<number | null>(null)
   const [rowActionMenu, setRowActionMenu] = useState<{ item: any; style: React.CSSProperties } | null>(null)
   const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
   const [gridSortModel, setGridSortModel] = useState<any[]>(persistedUiState?.gridSortModel ?? [{ colId: 'favorite', sort: 'desc' }])
@@ -581,23 +584,13 @@ export default function MonitoringGrid() {
     setColumnLayoutState(nextLayout)
   }
 
-  const applyColumnLayoutState = (api: any, options?: { autoSizeIfEmpty?: boolean }) => {
-    if (!api) return
-    if (columnLayoutState.length) {
-      api.applyColumnState({
-        state: columnLayoutState,
-        applyOrder: true,
-        defaultState: { sort: null }
-      })
-      return
-    }
-    if (options?.autoSizeIfEmpty) {
-      requestAnimationFrame(() => {
-        // Use true to include header in auto-sizing
-        api.autoSizeAllColumns(true)
-        syncColumnLayoutState(api)
-      })
-    }
+  const applyColumnLayoutState = (api: any) => {
+    if (!api || !columnLayoutState.length) return
+    api.applyColumnState({
+      state: columnLayoutState,
+      applyOrder: true,
+      defaultState: { sort: null }
+    })
   }
 
   const buildCurrentViewConfig = () => ({
@@ -699,6 +692,7 @@ export default function MonitoringGrid() {
       const target = e.target as HTMLElement
       if (showBulkMenu && !target.closest('.bulk-menu-container') && !target.closest('.bulk-menu-trigger')) {
         setShowBulkMenu(false)
+        setBulkDeleteConfirm(false)
       }
       if (showDisplayMenu && !target.closest('.display-menu-container')) {
         setShowDisplayMenu(false)
@@ -708,6 +702,7 @@ export default function MonitoringGrid() {
       }
       if (rowActionMenu && !target.closest('.row-action-menu-container')) {
         setRowActionMenu(null)
+        setRowDeleteConfirmId(null)
       }
     }
     if (showBulkMenu || showDisplayMenu || showViewsMenu || rowActionMenu) {
@@ -720,9 +715,11 @@ export default function MonitoringGrid() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setShowBulkMenu(false)
+        setBulkDeleteConfirm(false)
         setShowDisplayMenu(false)
         setShowViewsMenu(false)
         setRowActionMenu(null)
+        setRowDeleteConfirmId(null)
       }
     }
     if (showBulkMenu || showDisplayMenu || showViewsMenu || rowActionMenu) {
@@ -1997,7 +1994,6 @@ export default function MonitoringGrid() {
                   <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
                     <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500">Bulk Actions</p>
                     <p className="pt-1 text-[12px] font-semibold text-slate-100">{selectedIds.length} monitors selected</p>
-                    <p className="pt-1 text-[11px] leading-5 text-slate-400">Apply one controlled change across the current selection without leaving the table.</p>
                   </div>
 
                   {activeTab === 'deleted' ? (
@@ -2006,13 +2002,11 @@ export default function MonitoringGrid() {
                       className="w-full rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-left transition-all hover:bg-emerald-500/15"
                     >
                       <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">Restore Selection</p>
-                      <p className="pt-1 text-[11px] leading-5 text-emerald-100/80">Move the selected monitors back into the active matrix.</p>
                     </button>
                   ) : (
                     <div className="space-y-2">
                       <BulkActionCard
                         title="Set Status"
-                        description="Move all selected monitors to the same lifecycle state."
                         active={expandedBulkSection === 'status'}
                         onClick={() => setExpandedBulkSection(expandedBulkSection === 'status' ? null : 'status')}
                       />
@@ -2023,7 +2017,6 @@ export default function MonitoringGrid() {
                           options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
                           placeholder="Choose status"
                           actionLabel="Apply Status"
-                          preview={bulkPreview}
                           onApply={() => bulkMutation.mutate({ action: 'update', payload: { status: bulkDraft.status } })}
                           disabled={!bulkDraft.status}
                         />
@@ -2031,7 +2024,6 @@ export default function MonitoringGrid() {
 
                       <BulkActionCard
                         title="Set Severity"
-                        description="Normalize severity across the current group for coordinated response."
                         active={expandedBulkSection === 'severity'}
                         onClick={() => setExpandedBulkSection(expandedBulkSection === 'severity' ? null : 'severity')}
                       />
@@ -2042,7 +2034,6 @@ export default function MonitoringGrid() {
                           options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
                           placeholder="Choose severity"
                           actionLabel="Apply Severity"
-                          preview={bulkPreview}
                           onApply={() => bulkMutation.mutate({ action: 'update', payload: { severity: bulkDraft.severity } })}
                           disabled={!bulkDraft.severity}
                         />
@@ -2050,7 +2041,6 @@ export default function MonitoringGrid() {
 
                       <BulkActionCard
                         title="Set Notification"
-                        description="Switch the outbound notification path for every selected monitor."
                         active={expandedBulkSection === 'notification'}
                         onClick={() => setExpandedBulkSection(expandedBulkSection === 'notification' ? null : 'notification')}
                       />
@@ -2061,7 +2051,6 @@ export default function MonitoringGrid() {
                           options={notificationMethods.map((method: any) => ({ value: method.value, label: method.label }))}
                           placeholder="Choose notification path"
                           actionLabel="Apply Notification"
-                          preview={bulkPreview}
                           onApply={() => bulkMutation.mutate({ action: 'update', payload: { notification_method: bulkDraft.notification_method } })}
                           disabled={!bulkDraft.notification_method}
                         />
@@ -2072,14 +2061,24 @@ export default function MonitoringGrid() {
                   <div className="mx-1 my-3 h-px bg-slate-800" />
                   <button
                     onClick={() => {
-                      const title = activeTab === 'deleted' ? 'Purge Monitors' : 'De-activate Matrix'
-                      const msg = activeTab === 'deleted' ? 'PURGE PERMANENTLY?' : 'De-activate selected monitors?'
-                      openConfirm(title, msg, () => bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' }))
+                      if (!bulkDeleteConfirm) {
+                        setBulkDeleteConfirm(true)
+                        return
+                      }
+                      bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' })
                     }}
-                    className="w-full rounded-lg border border-rose-900/70 bg-rose-950/70 px-4 py-3 text-left transition-all hover:bg-rose-950"
+                    onMouseLeave={() => setBulkDeleteConfirm(false)}
+                    className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
+                      bulkDeleteConfirm 
+                        ? 'border-rose-500 bg-rose-600 animate-pulse' 
+                        : 'border-rose-900/70 bg-rose-950/70 hover:bg-rose-950'
+                    }`}
                   >
-                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-300">{activeTab === 'deleted' ? 'Purge Selection' : 'De-activate Selection'}</p>
-                    <p className="pt-1 text-[11px] leading-5 text-rose-100/75">{activeTab === 'deleted' ? 'Permanently remove the selected monitors from the deleted registry.' : 'Move the selected monitors out of the active matrix and into the deleted scope.'}</p>
+                    <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
+                      {bulkDeleteConfirm 
+                        ? (activeTab === 'deleted' ? 'Confirm Permanent Purge?' : 'Confirm De-activation?') 
+                        : (activeTab === 'deleted' ? 'Purge Selection' : 'De-activate Selection')}
+                    </p>
                   </button>
                 </motion.div>
 	            )}
@@ -2172,20 +2171,40 @@ export default function MonitoringGrid() {
                     </button>
                   </div>
 		                <div className="mx-2 my-2 h-px bg-slate-800" />
+                {activeTab === 'deleted' && (
+                  <button
+                    onClick={() => {
+                      bulkMutation.mutate({ action: 'restore', ids: [rowActionMenu.item.id] })
+                      setRowActionMenu(null)
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300 transition-all hover:bg-emerald-950/80"
+                  >
+                    <Undo2 size={14} />
+                    Restore Monitor
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     const item = rowActionMenu.item
-                    setRowActionMenu(null)
-                    if (activeTab === 'active') {
-                      openConfirm('De-activate', 'Move to deleted matrix?', () => bulkMutation.mutate({ action: 'delete', ids: [item.id] }))
-                    } else {
-                      openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [item.id] }))
+                    if (rowDeleteConfirmId !== item.id) {
+                      setRowDeleteConfirmId(item.id)
+                      return
                     }
+                    bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [item.id] })
+                    setRowActionMenu(null)
+                    setRowDeleteConfirmId(null)
                   }}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-rose-300 transition-all hover:bg-rose-950/80"
+                  onMouseLeave={() => setRowDeleteConfirmId(null)}
+                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] transition-all ${
+                    rowDeleteConfirmId === rowActionMenu.item.id
+                      ? 'bg-rose-600 text-white animate-pulse'
+                      : 'text-rose-300 hover:bg-rose-950/80'
+                  }`}
                 >
                   <Trash2 size={14} />
-                  {activeTab === 'active' ? 'De-activate' : 'Purge'}
+                  {rowDeleteConfirmId === rowActionMenu.item.id
+                    ? (activeTab === 'active' ? 'Confirm De-activate?' : 'Confirm Purge?')
+                    : (activeTab === 'active' ? 'De-activate' : 'Purge')}
                 </button>
                 </div>
               </motion.div>
@@ -2244,8 +2263,9 @@ export default function MonitoringGrid() {
             onRowDoubleClicked={handleRowDoubleClicked}
             getRowClass={(params: any) => params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd'}
             onFirstDataRendered={(event: any) => {
-              if (columnLayoutState.length === 0) {
-                applyColumnLayoutState(event.api, { autoSizeIfEmpty: true })
+              // Only apply layout if we have a saved one, otherwise let AgGrid defaults handle it
+              if (columnLayoutState.length > 0) {
+                applyColumnLayoutState(event.api)
               }
             }}
 	          />
@@ -2312,7 +2332,7 @@ export default function MonitoringGrid() {
                         ))}
                       </colgroup>
                       <thead>
-                        <tr className="border-b border-white/5 bg-slate-900/50" style={{ height: `${fontSize + rowDensity + 10}px` }}>
+                        <tr className="border-b border-white/5 bg-slate-900/50" style={{ height: `${fontSize + rowDensity + 4}px` }}>
                           {groupedColumns.map((column: any) => (
                             <th
                               key={column.key}
@@ -2320,7 +2340,7 @@ export default function MonitoringGrid() {
                               className={`px-0 py-0 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 ${column.headerClass || ''} ${column.sortable ? 'cursor-pointer select-none hover:text-slate-200' : ''} ${column.pinned ? 'sticky z-[2] backdrop-blur-md' : ''}`}
                               style={{
                                 fontSize: `${fontSize}px`,
-                                height: `${fontSize + rowDensity + 10}px`,
+                                height: `${fontSize + rowDensity + 4}px`,
                                 left: groupedStickyOffsets[column.key]?.left,
                                 right: groupedStickyOffsets[column.key]?.right,
                                 background: column.pinned ? '#1a1b26' : undefined
@@ -2348,7 +2368,7 @@ export default function MonitoringGrid() {
                                 openRowActionMenuAtPoint(item, event.clientX, event.clientY)
                               }}
                               className={`cursor-pointer border-b border-white/5 transition-all group ${selected ? 'bg-blue-600/20' : rowIndex % 2 === 0 ? 'bg-[#0f172a] hover:bg-white/[0.05]' : 'bg-[#020617] hover:bg-white/[0.05]'}`}
-                              style={{ height: `${fontSize + rowDensity + 10}px` }}
+                              style={{ height: `${fontSize + rowDensity + 4}px` }}
                             >
                               {groupedColumns.map((column: any) => (
                                 <td
@@ -2356,8 +2376,8 @@ export default function MonitoringGrid() {
                                   className={`h-full overflow-hidden whitespace-nowrap px-0 py-0 align-middle font-bold text-slate-200 text-ellipsis ${column.cellClass || ''} ${column.pinned ? 'sticky z-[1]' : ''}`}
                                   style={{
                                     fontSize: `${fontSize}px`,
-                                    height: `${fontSize + rowDensity + 10}px`,
-                                    maxHeight: `${fontSize + rowDensity + 10}px`,
+                                    height: `${fontSize + rowDensity + 4}px`,
+                                    maxHeight: `${fontSize + rowDensity + 4}px`,
                                     left: groupedStickyOffsets[column.key]?.left,
                                     right: groupedStickyOffsets[column.key]?.right,
                                     background: selected
@@ -2424,20 +2444,22 @@ export default function MonitoringGrid() {
         {detailItem && (
           <MonitoringDetailModal
             item={detailItem}
-            onClose={() => setDetailItem(null)}
-            onEdit={(monitor: any) => { setDetailItem(null); setEditingItem(monitor); setIsFormOpen(true) }}
-            onOpenHistory={(monitor: any) => { setDetailItem(null); setHistoryItem(monitor) }}
-            onOpenBkm={(monitor: any) => { setDetailItem(null); setBkmPopup({ ids: monitor.recovery_docs || [], titles: monitor.recovery_doc_titles || [], monitorId: monitor.id }) }}
+            onClose={() => { setDetailItem(null); setDetailDeleteConfirm(false); }}
+            onEdit={(monitor: any) => { setDetailItem(null); setEditingItem(monitor); setIsFormOpen(true); setDetailDeleteConfirm(false); }}
+            onOpenHistory={(monitor: any) => { setDetailItem(null); setHistoryItem(monitor); setDetailDeleteConfirm(false); }}
+            onOpenBkm={(monitor: any) => { setDetailItem(null); setBkmPopup({ ids: monitor.recovery_docs || [], titles: monitor.recovery_doc_titles || [], monitorId: monitor.id }); setDetailDeleteConfirm(false); }}
             onDelete={(monitor: any) => {
-              setDetailItem(null)
-              if (activeTab === 'active') {
-                openConfirm('De-activate', 'Move to deleted matrix?', () => bulkMutation.mutate({ action: 'delete', ids: [monitor.id] }))
-              } else {
-                openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [monitor.id] }))
+              if (!detailDeleteConfirm) {
+                setDetailDeleteConfirm(true)
+                return
               }
+              bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [monitor.id] })
+              setDetailItem(null)
+              setDetailDeleteConfirm(false)
             }}
             onOpenAsset={(deviceId: number) => navigate(`/asset?id=${deviceId}`)}
             onOpenKnowledge={(knowledgeId: number) => navigate(`/knowledge?id=${knowledgeId}`)}
+            deleteConfirm={detailDeleteConfirm}
           />
         )}
         {historyItem && <MonitoringHistoryModal item={historyItem} onClose={() => setHistoryItem(null)} />}
@@ -2495,7 +2517,7 @@ export default function MonitoringGrid() {
   )
 }
 
-function BulkActionCard({ title, description, active, onClick }: { title: string; description: string; active: boolean; onClick: () => void }) {
+function BulkActionCard({ title, active, onClick }: { title: string; active: boolean; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
@@ -2503,36 +2525,18 @@ function BulkActionCard({ title, description, active, onClick }: { title: string
         active ? 'border-blue-500/40 bg-blue-950/40' : 'border-slate-800 bg-slate-950 hover:border-slate-700 hover:bg-slate-900'
       }`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-100">{title}</p>
-          <p className="pt-1 text-[11px] leading-5 text-slate-400">{description}</p>
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-100">{title}</p>
         <ChevronRight size={14} className={active ? 'text-blue-300' : 'text-slate-500'} />
       </div>
     </button>
   )
 }
 
-function InlineBulkEditor({ value, onChange, options, placeholder, actionLabel, onApply, disabled, preview }: any) {
+function InlineBulkEditor({ value, onChange, options, placeholder, actionLabel, onApply, disabled }: any) {
   return (
     <div className="rounded-xl border border-slate-800 bg-[#0b1220] p-3">
       <div className="grid gap-3">
-        {preview && (
-          <div className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5">
-            <p className="text-[10px] text-slate-300">
-              {preview.nextValue
-                ? `This change will align the current selection to ${preview.nextValue}.`
-                : 'Choose a target value to preview the change.'}
-            </p>
-            {preview.nextValue && (
-              <p className="pt-1 text-[10px] text-slate-500">
-                Current mix: {preview.currentCounts.map(([label, count]: [string, any]) => `${label} (${count})`).join(', ')}.
-                New target: {preview.nextValue}.
-              </p>
-            )}
-          </div>
-        )}
         <StyledSelect
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -2628,7 +2632,7 @@ function CompareRow({ label, value, multiline = false }: { label: string; value:
   )
 }
 
-function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose, onApply, count, severities, notificationMethods }: any) {
+function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose, onApply, severities, notificationMethods }: any) {
     const [val, setVal] = useState('')
     
     useEffect(() => { setVal(''); }, [isStatusOpen, isSeverityOpen, isNotifyOpen]);
@@ -2637,14 +2641,10 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     if (isStatusOpen) return (
         <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
            <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-blue-500/30 space-y-6">
-              <div>
-                <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
-                   <Tag size={24}/> <span>Update Status</span>
-                </h2>
-                <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-2">Updating {count} monitors</p>
-              </div>
+              <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
+                  <Tag size={24}/> <span>Set Status</span>
+              </h2>
               <StyledSelect
-                label="Target Status"
                 value={val}
                 onChange={e => setVal(e.target.value)}
                 options={STATUSES}
@@ -2661,14 +2661,10 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     if (isSeverityOpen) return (
         <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
            <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-rose-500/30 space-y-6">
-              <div>
-                <h2 className="text-xl font-black uppercase tracking-tighter text-rose-400 flex items-center space-x-3">
-                   <Shield size={24}/> <span>Update Severity</span>
-                </h2>
-                <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-2">Updating {count} monitors</p>
-              </div>
+              <h2 className="text-xl font-black uppercase tracking-tighter text-rose-400 flex items-center space-x-3">
+                  <Shield size={24}/> <span>Set Severity</span>
+              </h2>
               <StyledSelect
-                label="Target Severity"
                 value={val}
                 onChange={e => setVal(e.target.value)}
                 options={severities.map((s:any) => ({ value: s.value, label: s.label }))}
@@ -2685,14 +2681,10 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     if (isNotifyOpen) return (
         <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
            <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-amber-500/30 space-y-6">
-              <div>
-                <h2 className="text-xl font-black uppercase tracking-tighter text-amber-400 flex items-center space-x-3">
-                   <Bell size={24}/> <span>Update Notification</span>
-                </h2>
-                <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-2">Updating {count} monitors</p>
-              </div>
+              <h2 className="text-xl font-black uppercase tracking-tighter text-amber-400 flex items-center space-x-3">
+                  <Bell size={24}/> <span>Set Notification</span>
+              </h2>
               <StyledSelect
-                label="Target Method"
                 value={val}
                 onChange={e => setVal(e.target.value)}
                 options={notificationMethods.map((m:any) => ({ value: m.value, label: m.label }))}
@@ -2977,7 +2969,7 @@ function BkmDetailModal({ bkmId, onClose }: any) {
   )
 }
 
-function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm, onDelete, onOpenAsset, onOpenKnowledge }: any) {
+function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm, onDelete, onOpenAsset, onOpenKnowledge, deleteConfirm }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
   const [expandedLogic, setExpandedLogic] = useState<number | null>(item.logic_json?.[0]?.id || null)
@@ -3029,8 +3021,14 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
             <ToolbarButton onClick={() => onEdit?.(item)}>Edit Monitor</ToolbarButton>
             <ToolbarButton onClick={() => onOpenHistory?.(item)}>History</ToolbarButton>
             <ToolbarButton onClick={() => onOpenBkm?.(item)}>Recovery</ToolbarButton>
-            <ToolbarButton variant="danger" onClick={() => onDelete?.(item)}>
-              {item.is_deleted ? 'Purge' : 'De-activate'}
+            <ToolbarButton 
+              variant="danger" 
+              onClick={() => onDelete?.(item)}
+              className={deleteConfirm ? 'animate-pulse bg-rose-600 border-rose-500 text-white' : ''}
+            >
+              {deleteConfirm 
+                ? (item.is_deleted ? 'Confirm Purge?' : 'Confirm De-activate?') 
+                : (item.is_deleted ? 'Purge' : 'De-activate')}
             </ToolbarButton>
           </div>
         </div>
