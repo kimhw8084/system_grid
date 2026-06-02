@@ -56,7 +56,7 @@ const getAnchoredFloatingStyle = ({
   width,
   height,
   zIndex,
-  offset = 8
+  offset = 4
 }: {
   rect: DOMRect
   width: number
@@ -67,27 +67,22 @@ const getAnchoredFloatingStyle = ({
   const viewportWidth = window.innerWidth
   const viewportHeight = window.innerHeight
   
-  // Vertical positioning: Prefer below the rect
+  // Use rect directly from getBoundingClientRect() which is viewport-relative
   const spaceBelow = viewportHeight - rect.bottom - FLOATING_PANEL_EDGE
   const spaceAbove = rect.top - FLOATING_PANEL_EDGE
-  const canFitBelow = spaceBelow >= height
-  const canFitAbove = spaceAbove >= height
-  
+  const canFitBelow = spaceBelow >= 120 // Min height to prefer below
+
   let top: number
   if (canFitBelow) {
     top = rect.bottom + offset
-  } else if (canFitAbove) {
+  } else if (spaceAbove >= height) {
     top = rect.top - height - offset
   } else {
-    // Center if it fits nowhere (fallback)
-    top = Math.max(FLOATING_PANEL_EDGE, (viewportHeight - height) / 2)
+    top = Math.max(FLOATING_PANEL_EDGE, viewportHeight - height - FLOATING_PANEL_EDGE)
   }
 
-  // Horizontal positioning: Align right edge of menu to right edge of rect if possible
+  // Align right edges
   let left = rect.right - width
-  if (left < FLOATING_PANEL_EDGE) {
-    left = rect.left
-  }
   
   // Ensure within viewport
   left = Math.max(FLOATING_PANEL_EDGE, Math.min(left, viewportWidth - width - FLOATING_PANEL_EDGE))
@@ -95,8 +90,8 @@ const getAnchoredFloatingStyle = ({
 
   return {
     position: 'fixed' as const,
-    top,
-    left,
+    top: Math.floor(top),
+    left: Math.floor(left),
     width,
     maxHeight: `calc(100vh - ${FLOATING_PANEL_EDGE * 2}px)`,
     zIndex
@@ -109,7 +104,7 @@ const getPointFloatingStyle = ({
   width,
   height,
   zIndex,
-  offset = 4
+  offset = 2
 }: {
   x: number
   y: number
@@ -139,8 +134,8 @@ const getPointFloatingStyle = ({
 
   return {
     position: 'fixed' as const,
-    top,
-    left,
+    top: Math.floor(top),
+    left: Math.floor(left),
     width,
     maxHeight: `calc(100vh - ${FLOATING_PANEL_EDGE * 2}px)`,
     zIndex
@@ -1096,36 +1091,68 @@ export default function MonitoringGrid() {
       setIsBulkStatusOpen(false)
       setIsBulkSeverityOpen(false)
       setIsBulkNotifyOpen(false)
+      
       if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
       else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
       else if (action === 'update') lastUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
       else lastUndoRef.current = null
+
       if (lastUndoRef.current) {
         toast.custom((t) => (
-          <div className="rounded-xl border border-slate-700 bg-[#020617] px-4 py-3 shadow-2xl">
-            <p className="text-[11px] font-semibold text-slate-100">Bulk operation applied.</p>
-            <p className="pt-1 text-[10px] text-slate-400">Undo restores the selection to its previous state.</p>
-            <button
-              onClick={async () => {
-                toast.dismiss(t.id)
-                try {
-                  await runUndo()
-                  toast.success('Undo complete')
-                } catch (error: any) {
-                  toast.error(error.message || 'Undo failed')
-                }
-              }}
-              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-600/15 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-blue-200"
-            >
-              <Undo2 size={12} />
-              Undo
-            </button>
+          <div className={`${t.visible ? 'animate-in fade-in slide-in-from-bottom-4' : 'animate-out fade-out slide-out-to-bottom-4'} relative overflow-hidden rounded-xl border border-slate-700 bg-[#020617] p-0 shadow-2xl`}>
+            <div className="px-5 py-4">
+              <div className="flex items-start justify-between gap-6">
+                <div className="space-y-1">
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-100">Bulk Operation Applied</p>
+                  <p className="text-[10px] font-bold text-slate-400">Successfully modified {idsToUse.length} item{idsToUse.length > 1 ? 's' : ''}.</p>
+                </div>
+                <button 
+                  onClick={() => toast.dismiss(t.id)}
+                  className="rounded-lg p-1 text-slate-500 hover:bg-white/5 hover:text-white transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              
+              <div className="mt-4 flex items-center gap-3">
+                <button
+                  onClick={async () => {
+                    toast.dismiss(t.id)
+                    try {
+                      await runUndo()
+                      toast.success('Undo complete', { id: 'undo-success' })
+                    } catch (error: any) {
+                      toast.error(error.message || 'Undo failed', { id: 'undo-error' })
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-600/15 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-blue-200 hover:bg-blue-600/25 transition-colors"
+                >
+                  <Undo2 size={12} />
+                  Undo Change
+                </button>
+                <button
+                  onClick={() => toast.dismiss(t.id)}
+                  className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 hover:text-slate-300"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+            
+            {/* Progress Gauge */}
+            <div className="absolute bottom-0 left-0 h-1 bg-blue-500/20 w-full">
+              <motion.div 
+                initial={{ width: '100%' }}
+                animate={{ width: 0 }}
+                transition={{ duration: 7.5, ease: 'linear' }}
+                className="h-full bg-blue-500"
+              />
+            </div>
           </div>
-        ), { duration: 8000 })
+        ), { duration: 7500, id: 'bulk-toast' })
       }
-      toast.success('Bulk Operation Complete')
     },
-    onError: (e: any) => toast.error(`Operation failed: ${e.message}`)
+    onError: (e: any) => toast.error(`Operation failed: ${e.message}`, { id: 'bulk-error' })
   })
 
   const columnDefs = useMemo(() => [
@@ -1150,11 +1177,11 @@ export default function MonitoringGrid() {
       colId: "id",
       field: "id", 
       headerName: "ID", 
-      width: 70,
-      minWidth: 70,
-      maxWidth: 90,
+      width: 80,
+      minWidth: 80,
+      maxWidth: 100,
       pinned: 'left',
-      cellClass: 'text-center font-bold text-slate-500 border-r border-white/5',
+      cellClass: 'text-center font-bold text-slate-500 border-r border-white/5 flex items-center justify-center',
       headerClass: 'text-center border-r border-white/5',
       filter: 'agNumberColumnFilter',
     },
@@ -1162,31 +1189,29 @@ export default function MonitoringGrid() {
       colId: "recent_change",
       headerName: "Chg",
       field: "recent_change",
-      width: 60,
-      minWidth: 60,
-      maxWidth: 60,
+      width: 58,
+      minWidth: 58,
+      maxWidth: 58,
       pinned: 'left',
       sortable: false,
       filter: false,
       resizable: false,
-      cellClass: 'text-center border-r border-white/5',
+      cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
       headerClass: 'text-center border-r border-white/5',
       suppressHide: true,
       cellRenderer: (p: any) => p.data && isRecentChange(p.data) ? (
-        <div className="flex h-full w-full items-center justify-center">
-          <span title="Changed since your last visit" className="inline-block h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.8)] animate-pulse" />
-        </div>
+        <span title="Changed since your last visit" className="inline-block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.8)] animate-pulse" />
       ) : null
     },
     {
       colId: "favorite",
       headerName: "Fav",
       field: "favorite",
-      width: 60,
-      minWidth: 60,
-      maxWidth: 60,
+      width: 58,
+      minWidth: 58,
+      maxWidth: 58,
       pinned: 'left',
-      cellClass: 'text-center border-r border-white/5',
+      cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
       headerClass: 'text-center border-r border-white/5',
       sortable: false,
       filter: false,
@@ -1201,7 +1226,7 @@ export default function MonitoringGrid() {
               toggleFavorite(p.data.id)
             }}
             title={isFavorite ? 'Unpin monitor' : 'Pin monitor'}
-            className={`rounded-md p-1 transition-all ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
+            className={`rounded-md p-1 transition-all flex items-center justify-center ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
           >
             <Star size={14} className={isFavorite ? 'fill-current' : ''} />
           </button>
@@ -1212,11 +1237,11 @@ export default function MonitoringGrid() {
       colId: "watch",
       headerName: "Watch",
       field: "watch",
-      width: 70,
-      minWidth: 70,
-      maxWidth: 70,
+      width: 78,
+      minWidth: 78,
+      maxWidth: 78,
       pinned: 'left',
-      cellClass: 'text-center border-r border-white/5',
+      cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
       headerClass: 'text-center border-r border-white/5',
       sortable: false,
       filter: false,
@@ -1231,7 +1256,7 @@ export default function MonitoringGrid() {
               toggleWatch(p.data.id)
             }}
             title={isWatched ? 'Unfollow monitor' : 'Follow monitor'}
-            className={`rounded-md p-1 transition-all ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
+            className={`rounded-md p-1 transition-all flex items-center justify-center ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
           >
             <Eye size={14} className={isWatched ? 'fill-current' : ''} />
           </button>
@@ -1241,10 +1266,11 @@ export default function MonitoringGrid() {
     { 
       field: "device_name", 
       headerName: "Target Asset", 
-      width: 140, 
+      width: 160, 
+      minWidth: 140,
       filter: true,
       rowGroup: groupBy === 'device_name',
-      cellClass: "font-bold text-center", 
+      cellClass: "font-bold text-center flex items-center justify-center", 
       headerClass: 'text-center',
       cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
       hide: hiddenColumns.includes("device_name") || groupBy === 'device_name'
@@ -1252,10 +1278,11 @@ export default function MonitoringGrid() {
     { 
       field: "title", 
       headerName: "Title", 
-      minWidth: 180,
+      minWidth: 220,
+      width: 280,
       flex: 2.2, 
       filter: true,
-      cellClass: "font-bold text-left uppercase tracking-tight", 
+      cellClass: "font-bold text-left uppercase tracking-tight flex items-center", 
       headerClass: 'text-left',
       cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
       hide: hiddenColumns.includes("title")
@@ -1263,10 +1290,11 @@ export default function MonitoringGrid() {
     { 
       field: "status", 
       headerName: "Status", 
-      width: 110,
+      width: 130,
+      minWidth: 110,
       filter: true,
       rowGroup: groupBy === 'status',
-      cellClass: 'text-center',
+      cellClass: 'text-center flex items-center justify-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => <StatusPill value={p.value || 'Unknown'} fontSize={fontSize} />,
       hide: hiddenColumns.includes("status") || groupBy === 'status'
@@ -1274,8 +1302,10 @@ export default function MonitoringGrid() {
     { 
       field: "owners", 
       headerName: "Owners", 
+      width: 140,
+      minWidth: 120,
       filter: true,
-      cellClass: "text-center font-bold uppercase", 
+      cellClass: "text-center font-bold uppercase flex items-center justify-center", 
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const owners = p.value || []
@@ -1296,10 +1326,11 @@ export default function MonitoringGrid() {
     { 
       field: "category", 
       headerName: "Category", 
-      width: 110,
+      width: 140,
+      minWidth: 120,
       filter: true,
       rowGroup: groupBy === 'category',
-      cellClass: 'text-center',
+      cellClass: 'text-center flex items-center justify-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const colors: any = {
@@ -1316,8 +1347,9 @@ export default function MonitoringGrid() {
     { 
       field: "is_active", 
       headerName: "Live", 
-      width: 60,
-      cellClass: 'text-center',
+      width: 70,
+      minWidth: 70,
+      cellClass: 'text-center flex items-center justify-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const isActive = p.value
@@ -1337,8 +1369,9 @@ export default function MonitoringGrid() {
     { 
       field: "monitored_service_names", 
       headerName: "Services", 
-      width: 90, 
-      cellClass: "text-center", 
+      width: 110, 
+      minWidth: 100,
+      cellClass: "text-center flex items-center justify-center", 
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const names = p.value || []
@@ -1361,10 +1394,11 @@ export default function MonitoringGrid() {
     { 
       field: "platform", 
       headerName: "Platform", 
-      width: 100, 
+      width: 120, 
+      minWidth: 100,
       filter: true,
       rowGroup: groupBy === 'platform',
-      cellClass: 'text-center font-bold uppercase text-slate-300', 
+      cellClass: 'text-center font-bold uppercase text-slate-300 flex items-center justify-center', 
       headerClass: 'text-center',
       cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
       hide: hiddenColumns.includes("platform") || groupBy === 'platform'
@@ -1372,10 +1406,11 @@ export default function MonitoringGrid() {
     { 
       field: "severity", 
       headerName: "Severity", 
-      width: 110,
+      width: 130,
+      minWidth: 110,
       filter: true,
       rowGroup: groupBy === 'severity',
-      cellClass: 'text-center',
+      cellClass: 'text-center flex items-center justify-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => <StatusPill value={p.value || 'N/A'} fontSize={fontSize} />,
       hide: hiddenColumns.includes("severity") || groupBy === 'severity'
@@ -1383,8 +1418,9 @@ export default function MonitoringGrid() {
     { 
       field: "check_interval", 
       headerName: "Freq", 
-      width: 70, 
-      cellClass: 'text-center font-bold uppercase', 
+      width: 80, 
+      minWidth: 80,
+      cellClass: 'text-center font-bold uppercase flex items-center justify-center', 
       headerClass: 'text-center',
       cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value ? `${p.value}s` : 'N/A'}</span>,
       hide: hiddenColumns.includes("check_interval")
@@ -1392,10 +1428,11 @@ export default function MonitoringGrid() {
     { 
       field: "notification_method", 
       headerName: "Notify", 
-      width: 100, 
+      width: 130, 
+      minWidth: 110,
       filter: true,
       rowGroup: groupBy === 'notification_method',
-      cellClass: 'text-center', 
+      cellClass: 'text-center flex items-center justify-center', 
       headerClass: 'text-center',
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center h-full">
@@ -1412,9 +1449,10 @@ export default function MonitoringGrid() {
     { 
       field: "purpose", 
       headerName: "Purpose", 
+      minWidth: 180,
       flex: 1, 
       filter: true,
-      cellClass: "font-bold text-slate-500 uppercase text-left truncate px-4", 
+      cellClass: "font-bold text-slate-500 uppercase text-left truncate px-4 flex items-center", 
       headerClass: 'text-left',
       cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
       hide: hiddenColumns.includes("purpose")
@@ -1426,7 +1464,7 @@ export default function MonitoringGrid() {
       minWidth: 210,
       maxWidth: 210,
       pinned: 'right',
-      cellClass: 'text-right pr-3',
+      cellClass: 'text-right pr-3 flex items-center justify-end',
       headerClass: 'text-center',
       resizable: false,
       sortable: false,
@@ -1598,7 +1636,7 @@ export default function MonitoringGrid() {
               </ToolbarButton>
 		            <ToolbarButton
                 onClick={toggleBulkWindow}
-                disabled={selectedIds.length <= 1}
+                disabled={selectedIds.length === 0}
                 active={showBulkMenu}
                 title="Bulk actions"
                 className="bulk-menu-trigger"
