@@ -36,9 +36,9 @@ const STATUSES = [
 ]
 
 const DEFAULT_MONITORING_VIEWS = [
-  { id: 'ops', name: 'Ops', config: { fontSize: 11, rowDensity: 10, hiddenColumns: [], quickFilter: '', quickFilters: { status: '', severity: '', platform: '', owner: '' }, filterModel: {}, sortModel: [] } },
-  { id: 'incident', name: 'Incident', config: { fontSize: 10, rowDensity: 6, hiddenColumns: ['purpose'], quickFilter: '', quickFilters: { status: '', severity: '', platform: '', owner: '' }, filterModel: {}, sortModel: [{ colId: 'severity', sort: 'desc' }] } },
-  { id: 'recovery', name: 'Recovery', config: { fontSize: 11, rowDensity: 8, hiddenColumns: ['platform', 'check_interval'], quickFilter: '', quickFilters: { status: '', severity: '', platform: '', owner: '' }, filterModel: {}, sortModel: [] } }
+  { id: 'ops', name: 'Ops', config: { fontSize: 11, rowDensity: 4, hiddenColumns: [], quickFilter: '', quickFilters: { status: '', severity: '', platform: '', owner: '' }, filterModel: {}, sortModel: [] } },
+  { id: 'incident', name: 'Incident', config: { fontSize: 11, rowDensity: 4, hiddenColumns: ['purpose'], quickFilter: '', quickFilters: { status: '', severity: '', platform: '', owner: '' }, filterModel: {}, sortModel: [{ colId: 'severity', sort: 'desc' }] } },
+  { id: 'recovery', name: 'Recovery', config: { fontSize: 11, rowDensity: 4, hiddenColumns: ['platform', 'check_interval'], quickFilter: '', quickFilters: { status: '', severity: '', platform: '', owner: '' }, filterModel: {}, sortModel: [] } }
 ]
 const DEFAULT_MONITORING_VIEW_IDS = new Set(DEFAULT_MONITORING_VIEWS.map((view) => view.id))
 
@@ -145,7 +145,9 @@ const GridMatrix = React.memo(({
   onSortChanged,
   onRowClicked,
   onRowDoubleClicked,
-  autoSizeStrategy
+  onCellContextMenu,
+  getRowClass,
+  onFirstDataRendered
 }: any) => (
   <AgGridReact
     ref={gridRef}
@@ -167,16 +169,22 @@ const GridMatrix = React.memo(({
     onSortChanged={onSortChanged}
     onRowClicked={onRowClicked}
     onRowDoubleClicked={onRowDoubleClicked}
-    autoSizeStrategy={autoSizeStrategy}
+    onCellContextMenu={onCellContextMenu}
+    getRowClass={getRowClass}
+    onFirstDataRendered={onFirstDataRendered}
     suppressScrollOnNewData={true}
     suppressCellFocus={true}
+    suppressRowClickSelection={true}
+    enableCellTextSelection={true}
     overlayNoRowsTemplate="<span class='text-slate-500 font-bold uppercase tracking-widest text-[10px]'>No monitoring data found</span>"
   />
 ), (prev, next) => {
   return prev.rowData === next.rowData && 
          prev.columnDefs === next.columnDefs && 
          prev.fontSize === next.fontSize && 
-         prev.rowDensity === next.rowDensity
+         prev.rowDensity === next.rowDensity &&
+         prev.context?.favoriteIds === next.context?.favoriteIds &&
+         prev.context?.watchIds === next.context?.watchIds
 })
 GridMatrix.displayName = 'GridMatrix'
 
@@ -251,7 +259,7 @@ export default function MonitoringGrid() {
   
   // --- STYLE LABORATORY STATE ---
   const [fontSize, setFontSize] = useState(persistedUiState?.fontSize ?? 11)
-  const [rowDensity, setRowDensity] = useState(persistedUiState?.rowDensity ?? 10)
+  const [rowDensity, setRowDensity] = useState(persistedUiState?.rowDensity ?? 4)
   const [showDisplayMenu, setShowDisplayMenu] = useState(false)
   const [showViewsMenu, setShowViewsMenu] = useState(false)
   const [showRegistry, setShowRegistry] = useState(false)
@@ -278,7 +286,7 @@ export default function MonitoringGrid() {
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
   const [rowActionMenu, setRowActionMenu] = useState<{ item: any; style: React.CSSProperties } | null>(null)
   const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
-  const [gridSortModel, setGridSortModel] = useState<any[]>([])
+  const [gridSortModel, setGridSortModel] = useState<any[]>(persistedUiState?.gridSortModel ?? [{ colId: 'favorite', sort: 'desc' }])
   const [savedViews, setSavedViews] = useState<any[]>(() => {
     if (typeof window === 'undefined') return DEFAULT_MONITORING_VIEWS
     try {
@@ -385,7 +393,16 @@ export default function MonitoringGrid() {
   }
 
   const toggleFavorite = useCallback((monitorId: number) => {
-    setFavoriteIds((current) => current.includes(monitorId) ? current.filter((id) => id !== monitorId) : [...current, monitorId])
+    setFavoriteIds((current) => {
+       const next = current.includes(monitorId) ? current.filter((id) => id !== monitorId) : [...current, monitorId]
+       // Force AgGrid to re-sort if we're sorting by favorite
+       requestAnimationFrame(() => {
+         if (gridRef.current?.api) {
+           gridRef.current.api.onSortChanged()
+         }
+       })
+       return next
+    })
   }, [])
 
   const toggleWatch = useCallback((monitorId: number) => {
@@ -602,14 +619,14 @@ export default function MonitoringGrid() {
     if (!nextView) return
     const config = nextView.config || {}
     setFontSize(config.fontSize ?? 11)
-    setRowDensity(config.rowDensity ?? 10)
+    setRowDensity(config.rowDensity ?? 4)
     setHiddenColumns(config.hiddenColumns ?? [])
     setGroupBy(config.groupBy ?? 'raw')
     setColumnLayoutState(config.columnLayoutState ?? [])
     setSearchTerm(config.quickFilter ?? '')
     setQuickFilters(config.quickFilters ?? { status: '', severity: '', platform: '', owner: '' })
     setGridFilterModel(config.filterModel ?? {})
-    setGridSortModel(config.sortModel ?? [])
+    setGridSortModel(config.sortModel ?? [{ colId: 'favorite', sort: 'desc' }])
     setActiveViewId(viewId)
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, viewId)
@@ -1195,7 +1212,10 @@ export default function MonitoringGrid() {
     onError: (e: any) => toast.error(`Operation failed: ${e.message}`, { id: 'bulk-error' })
   })
 
-  const columnDefs = useMemo(() => [
+  const columnDefs = useMemo(() => {
+    const layoutById = new Map(columnLayoutState.map((column: any) => [column.colId, column]))
+    
+    const defs = [
     { 
       colId: "select",
       headerName: "", 
@@ -1257,11 +1277,12 @@ export default function MonitoringGrid() {
       pinned: 'left',
       cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
       headerClass: 'text-center border-r border-white/5',
-      sortable: false,
+      sortable: true,
       filter: false,
       resizable: false,
       suppressMovable: true,
       suppressHide: true,
+      valueGetter: (p: any) => p.context?.favoriteIds?.includes(p.data?.id) ? 1 : 0,
       cellRenderer: (p: any) => {
         const isFavorite = p.context?.favoriteIds?.includes(p.data?.id)
         return (
@@ -1521,12 +1542,22 @@ export default function MonitoringGrid() {
       cellRenderer: (p: any) => p.data ? renderPrimaryRowActions(p.data) : null,
       suppressHide: true
     }
-  ], [fontSize, groupBy, hiddenColumns]) as any
-
-  const autoSizeStrategy = useMemo(() => ({
-    type: 'fitCellContents' as const,
-    skipHeader: false
-  }), []);
+  ]
+  
+  // Inject saved layout state (widths, pinned, sort) into definitions before first render
+  return defs.map((col: any) => {
+    const colId = col.colId || col.field
+    const layout = layoutById.get(colId)
+    if (!layout) return col
+    return {
+      ...col,
+      width: layout.width ?? col.width,
+      pinned: layout.pinned ?? col.pinned,
+      hide: layout.hide ?? col.hide,
+      flex: layout.flex ?? col.flex
+    }
+  })
+}, [fontSize, groupBy, hiddenColumns, columnLayoutState]) as any
 
   const gridContext = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
 
@@ -2172,51 +2203,51 @@ export default function MonitoringGrid() {
                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Scanning Monitoring Matrix...</p>
             </div>
           )}
-	          <AgGridReact 
-            ref={gridRef}
+	          <GridMatrix
+            gridRef={gridRef}
 	            rowData={displayedItemsInOrder || []} 
 	            columnDefs={columnDefs} 
-	            rowSelection="multiple"
-            animateRows={true}
-            headerHeight={fontSize + rowDensity + 10}
-            rowHeight={fontSize + rowDensity + 10}
+            fontSize={fontSize}
+            rowDensity={rowDensity}
             context={gridContext}
-            onGridReady={(event) => {
+            onGridReady={(event: any) => {
               if (columnLayoutState.length > 0) {
                 applyColumnLayoutState(event.api);
               }
             }}
-	            onSelectionChanged={(e) => {
+	            onSelectionChanged={(e: any) => {
                 const selectedNodes = e?.api?.getSelectedNodes?.() || []
                 setSelectedIds(selectedNodes.map((n: any) => n.data?.id).filter(Boolean) || [])
               }}
-            onColumnResized={(event) => {
+            onColumnResized={(event: any) => {
               if (event.finished) syncColumnLayoutState(event.api)
             }}
-            onColumnMoved={(event) => {
+            onColumnMoved={(event: any) => {
                // Only sync if the move is complete (no direct finished flag, but we can check if it's from a drag)
                if (!event.source.includes('drag')) syncColumnLayoutState(event.api)
             }}
-            onDragStopped={(event) => syncColumnLayoutState(event.api)}
-            onColumnPinned={(event) => syncColumnLayoutState(event.api)}
-            onColumnVisible={(event) => syncColumnLayoutState(event.api)}
-            onFilterChanged={(e) => setGridFilterModel(e.api.getFilterModel() || {})}
-	            onSortChanged={(e) => {
+            onDragStopped={(event: any) => syncColumnLayoutState(event.api)}
+            onColumnPinned={(event: any) => syncColumnLayoutState(event.api)}
+            onColumnVisible={(event: any) => syncColumnLayoutState(event.api)}
+            onFilterChanged={(e: any) => setGridFilterModel(e.api.getFilterModel() || {})}
+	            onSortChanged={(e: any) => {
 	              const nextSortModel = e.api.getColumnState().filter((col: any) => col.sort).map((col: any) => ({ colId: col.colId, sort: col.sort }))
 	              setGridSortModel(nextSortModel)
 	            }}
-              onCellContextMenu={(e) => {
-                if (!e?.data) return
-                const mouseEvent = e.event as MouseEvent
-                mouseEvent?.preventDefault?.()
-                openRowActionMenuAtPoint(e.data, mouseEvent.clientX, mouseEvent.clientY)
-              }}
+            onCellContextMenu={(e: any) => {
+              if (!e?.data) return
+              const mouseEvent = e.event as MouseEvent
+              mouseEvent?.preventDefault?.()
+              openRowActionMenuAtPoint(e.data, mouseEvent.clientX, mouseEvent.clientY)
+            }}
 	            onRowClicked={handleRowClicked}
             onRowDoubleClicked={handleRowDoubleClicked}
-            getRowClass={(params) => params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd'}
-            quickFilterText=""
-            suppressRowClickSelection={true}
-            enableCellTextSelection={true}
+            getRowClass={(params: any) => params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd'}
+            onFirstDataRendered={(event: any) => {
+              if (columnLayoutState.length === 0) {
+                applyColumnLayoutState(event.api, { autoSizeIfEmpty: true })
+              }
+            }}
 	          />
 
 	        </div>
