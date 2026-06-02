@@ -106,24 +106,28 @@ const getPointFloatingStyle = ({
   const vW = window.innerWidth
   const vH = window.innerHeight
 
-  // Industry standard cursor anchoring (corner/edge of box exactly on cursor)
-  let left = x
-  let top = y
-
-  if (left + width > vW - FLOATING_PANEL_EDGE) left = x - width
-  if (top + height > vH - FLOATING_PANEL_EDGE) top = y - height
-
-  left = Math.max(FLOATING_PANEL_EDGE, Math.min(left, vW - width - FLOATING_PANEL_EDGE))
-  top = Math.max(FLOATING_PANEL_EDGE, Math.min(top, vH - height - FLOATING_PANEL_EDGE))
-
-  return {
+  const style: any = {
     position: 'fixed' as const,
-    top: Math.floor(top),
-    left: Math.floor(left),
     width,
     maxHeight: `calc(100vh - ${FLOATING_PANEL_EDGE * 2}px)`,
     zIndex
   }
+
+  // Horizontal positioning
+  if (x + width > vW - FLOATING_PANEL_EDGE) {
+    style.right = vW - x
+  } else {
+    style.left = Math.max(FLOATING_PANEL_EDGE, x)
+  }
+
+  // Vertical positioning
+  if (y + height > vH - FLOATING_PANEL_EDGE) {
+    style.bottom = vH - y
+  } else {
+    style.top = Math.max(FLOATING_PANEL_EDGE, y)
+  }
+
+  return style
 }
 
 // Isolated component to prevent UI state changes (menus) from triggering AgGrid recalculations
@@ -633,13 +637,9 @@ export default function MonitoringGrid() {
             defaultState: { sort: null }
           })
         } else {
-          applyColumnLayoutState(gridRef.current.api, { autoSizeIfEmpty: true })
+          applyColumnLayoutState(gridRef.current.api)
         }
         gridRef.current.api.setFilterModel(config.filterModel ?? {})
-        gridRef.current.api.applyColumnState({
-          state: (config.sortModel ?? []).map((sort: any) => ({ colId: sort.colId, sort: sort.sort })),
-          defaultState: { sort: null }
-        })
       }
     })
   }
@@ -1022,14 +1022,6 @@ export default function MonitoringGrid() {
     if (!activeViewId || !gridRef.current?.api) return
     applySavedView(activeViewId)
   }, [activeViewId, items.length])
-
-  useEffect(() => {
-    if (!gridRef.current?.api || groupBy !== 'raw') return
-    gridRef.current.api.applyColumnState({
-      state: gridSortModel.map((sort: any) => ({ colId: sort.colId, sort: sort.sort })),
-      defaultState: { sort: null }
-    })
-  }, [gridSortModel, groupBy])
 
   useEffect(() => {
     if (!gridRef.current?.api || !selectedIds.length) return
@@ -1560,13 +1552,13 @@ export default function MonitoringGrid() {
 
   useEffect(() => {
     if (gridRef.current?.api) {
-      gridRef.current.api.refreshCells({ columns: ['favorite'] })
+      gridRef.current.api.refreshCells({ columns: ['favorite'], force: true })
     }
   }, [favoriteIds])
 
   useEffect(() => {
     if (gridRef.current?.api) {
-      gridRef.current.api.refreshCells({ columns: ['watch'] })
+      gridRef.current.api.refreshCells({ columns: ['watch'], force: true })
     }
   }, [watchIds])
 
@@ -2272,15 +2264,6 @@ export default function MonitoringGrid() {
 	            onRowClicked={handleRowClicked}
             onRowDoubleClicked={handleRowDoubleClicked}
             getRowClass={useCallback((params: any) => params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd', [])}
-            onFirstDataRendered={useCallback((event: any) => {
-              if (columnLayoutState.length > 0) {
-                event.api.applyColumnState({
-                  state: columnLayoutState,
-                  applyOrder: true,
-                  defaultState: { sort: null }
-                });
-              }
-            }, [columnLayoutState])}
 	          />
 
 	        </div>
@@ -2807,7 +2790,7 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
     onSuccess: (_data, newIds) => {
       const titleMap = new Map((knowledgeEntries || []).map((entry: any) => [entry.id, entry.title]))
       setLinkedIds(newIds)
-      setLinkedTitles(newIds.map((id: number) => titleMap.get(id) || `KB-${id}`))
+      setLinkedTitles(newIds.map((id: number) => String(titleMap.get(id) || `KB-${id}`)))
       queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
       toast.success('Recovery procedures updated')
     },
