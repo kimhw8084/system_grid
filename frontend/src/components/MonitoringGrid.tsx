@@ -530,7 +530,7 @@ export default function MonitoringGrid() {
         title="Open details"
         className="rounded-lg p-1 text-blue-400 transition-all hover:bg-blue-400/10 active:scale-90"
       >
-        <Eye size={13} />
+        <Maximize2 size={13} />
       </button>
       <button
         type="button"
@@ -1332,6 +1332,7 @@ export default function MonitoringGrid() {
     {
       headerName: "Intelligence",
       headerClass: 'text-center border-r border-white/5 bg-slate-900/40',
+      marryChildren: true,
       children: [
         {
           colId: "recent_change",
@@ -2245,6 +2246,43 @@ export default function MonitoringGrid() {
                 </div>
                 <div className="max-h-[calc(100vh-180px)] overflow-y-auto p-2.5 custom-scrollbar">
                   <div className="px-3 py-1">
+                    <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Quick Access</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 px-2 pb-3 border-b border-slate-800 mb-2">
+                    <button
+                      onClick={() => {
+                        setDetailItem(rowActionMenu.item)
+                        setRowActionMenu(null)
+                      }}
+                      className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-blue-400 transition-all hover:border-blue-500/30 hover:bg-blue-600/10 active:scale-95"
+                    >
+                      <Maximize2 size={14} />
+                      Details
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingItem(rowActionMenu.item)
+                        setIsFormOpen(true)
+                        setRowActionMenu(null)
+                      }}
+                      className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-emerald-400 transition-all hover:border-emerald-500/30 hover:bg-emerald-600/10 active:scale-95"
+                    >
+                      <Edit2 size={14} />
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => {
+                        setHistoryItem(rowActionMenu.item)
+                        setRowActionMenu(null)
+                      }}
+                      className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-amber-400 transition-all hover:border-amber-500/30 hover:bg-amber-600/10 active:scale-95"
+                    >
+                      <Clock size={14} />
+                      History
+                    </button>
+                  </div>
+
+                  <div className="px-3 py-1">
                     <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Related Destinations</p>
                   </div>
                   <div className="grid grid-cols-2 gap-2 px-2 pb-1">
@@ -2608,12 +2646,13 @@ export default function MonitoringGrid() {
           --ag-header-foreground-color: #3b82f6;
         }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { 
+        .ag-header-cell-label, .ag-header-group-cell-label { 
             font-weight: 700 !important; 
             text-transform: uppercase !important; 
             letter-spacing: 0.1em !important; 
             font-size: ${fontSize}px !important; 
             justify-content: center !important; 
+            white-space: nowrap !important;
         }
         .ag-cell { 
             display: flex; 
