@@ -32,7 +32,6 @@ import { ErrorDetailModal } from "./components/shared/ErrorDetailModal"
 
 import { GlobalSearch } from "./components/shared/GlobalSearch"
 import { TenantSelector } from "./components/shared/TenantSelector"
-import { AuditHUD } from "./components/shared/AuditHUD"
 import { ShellHeader, ToolbarButton } from "./components/shared/LayoutPrimitives"
 
 const APP_VERSION = metadata.version
@@ -736,7 +735,6 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <MainLayout />
-        <AuditHUD />
       </BrowserRouter>
     </QueryClientProvider>
 

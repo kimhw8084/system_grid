@@ -11,7 +11,6 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
 import { useNavigate, Link } from 'react-router-dom'
-import { FEATURE_AUDIT_ITEMS } from './shared/featureAudit'
 
 const StatCard = ({ title, total, metrics, icon: Icon, color, onClick, delay = 0 }: any) => {
   const navigate = useNavigate();
@@ -164,37 +163,6 @@ const ProjectSection = ({ title, projects = [], color, delay }: any) => (
     </div>
   </div>
 )
-
-const FeatureAuditSummary = () => {
-  const [validatedCount, setValidatedCount] = useState(0)
-
-  useEffect(() => {
-    const readCount = () => {
-      try {
-        const raw = localStorage.getItem('sysgrid_feature_audit_v2')
-        if (!raw) return setValidatedCount(0)
-        const parsed = JSON.parse(raw)
-        const validated = Object.values(parsed).filter((entry: any) => entry?.status === 'validated').length
-        setValidatedCount(validated)
-      } catch {
-        setValidatedCount(0)
-      }
-    }
-
-    readCount()
-    window.addEventListener('storage', readCount)
-    return () => window.removeEventListener('storage', readCount)
-  }, [])
-
-  return (
-    <div className="mt-3 flex items-center gap-2">
-      <span className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500">Feature Audit</span>
-      <span className="rounded-md border border-blue-500/20 bg-blue-500/10 px-2 py-1 text-[8px] font-black uppercase tracking-[0.15em] text-blue-400">
-        {validatedCount}/{FEATURE_AUDIT_ITEMS.length} validated
-      </span>
-    </div>
-  )
-}
 
 
 export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void }) {
@@ -380,7 +348,6 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                     <h3 className="mt-1 text-xl font-black uppercase tracking-tight text-white">
                       {userProfile?.full_name || userProfile?.username || 'Operator'}
                     </h3>
-                    <FeatureAuditSummary />
                  </div>
                  <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-3 text-blue-400">
                     <Target size={18} />

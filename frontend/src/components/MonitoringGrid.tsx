@@ -264,12 +264,12 @@ export default function MonitoringGrid() {
   const gridRef = React.useRef<any>(null)
   
   // --- STYLE LABORATORY STATE ---
-  const [fontSize, setFontSize] = useState(persistedUiState?.fontSize ?? 11)
-  const [rowDensity, setRowDensity] = useState(persistedUiState?.rowDensity ?? 4)
+  const [fontSize, setFontSize] = useState(11)
+  const [rowDensity, setRowDensity] = useState(4)
   const [showDisplayMenu, setShowDisplayMenu] = useState(false)
   const [showViewsMenu, setShowViewsMenu] = useState(false)
   const [showRegistry, setShowRegistry] = useState(false)
-  const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedUiState?.hiddenColumns ?? [])
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState<'active' | 'deleted'>(persistedUiState?.activeTab === 'deleted' ? 'deleted' : 'active')
 
   // Modals state
@@ -284,7 +284,7 @@ export default function MonitoringGrid() {
   const [activeBkm, setActiveBkm] = useState<any>(null)
   const [compareOpen, setCompareOpen] = useState(false)
   
-  const [selectedIds, setSelectedIds] = useState<number[]>(persistedUiState?.selectedIds ?? [])
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
   const [isBulkSeverityOpen, setIsBulkSeverityOpen] = useState(false)
@@ -296,7 +296,7 @@ export default function MonitoringGrid() {
   const [rowActionMenu, setRowActionMenu] = useState<{ item: any; style: React.CSSProperties } | null>(null)
   const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
   const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
-  const [gridSortModel, setGridSortModel] = useState<any[]>(persistedUiState?.gridSortModel ?? [{ colId: 'favorite', sort: 'desc' }])
+  const [gridSortModel, setGridSortModel] = useState<any[]>([{ colId: 'favorite', sort: 'desc' }])
   const [savedViews, setSavedViews] = useState<any[]>(() => {
     if (typeof window === 'undefined') return DEFAULT_MONITORING_VIEWS
     try {
@@ -304,7 +304,16 @@ export default function MonitoringGrid() {
       if (!raw) return DEFAULT_MONITORING_VIEWS
       const parsed = JSON.parse(raw)
       if (!Array.isArray(parsed)) return DEFAULT_MONITORING_VIEWS
-      return DEFAULT_MONITORING_VIEWS.map((view) => parsed.find((entry: any) => entry.id === view.id) || view)
+      
+      // Merge system defaults with persisted versions (to get latest config)
+      // and append any custom views that are not in the default list
+      const systemIds = new Set(DEFAULT_MONITORING_VIEWS.map(v => v.id))
+      const customViews = parsed.filter((v: any) => !systemIds.has(v.id))
+      
+      return [
+        ...DEFAULT_MONITORING_VIEWS.map((view) => parsed.find((entry: any) => entry.id === view.id) || view),
+        ...customViews
+      ]
     } catch {
       return DEFAULT_MONITORING_VIEWS
     }
@@ -339,12 +348,13 @@ export default function MonitoringGrid() {
       return []
     }
   })
-  const [quickFilters, setQuickFilters] = useState(persistedUiState?.quickFilters ?? { status: '', severity: '', platform: '', owner: '' })
-  const [groupBy, setGroupBy] = useState<string>(persistedUiState?.groupBy ?? 'raw')
-  const [columnLayoutState, setColumnLayoutState] = useState<any[]>(persistedUiState?.columnLayoutState ?? [])
+  const [quickFilters, setQuickFilters] = useState({ status: '', severity: '', platform: '', owner: '' })
+  const [groupBy, setGroupBy] = useState<string>('raw')
+  const [columnLayoutState, setColumnLayoutState] = useState<any[]>([])
   const [bulkDraft, setBulkDraft] = useState({ status: '', severity: '', notification_method: '' })
-  const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'severity' | 'notification' | null>(persistedUiState?.expandedBulkSection ?? null)
+  const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'severity' | 'notification' | null>(null)
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
+  const [pendingIds, setPendingIds] = useState<number[]>([])
   const selectionAnchorRef = useRef<number | null>(null)
   const displayMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const viewsMenuButtonRef = useRef<HTMLButtonElement | null>(null)
@@ -406,7 +416,13 @@ export default function MonitoringGrid() {
     }
   }, [columnLayoutState])
 
-  const getRowClass = useCallback((params: any) => params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd', [])
+  const getRowClass = useCallback((params: any) => {
+    let classes = params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd'
+    if (params.data && pendingIds.includes(params.data.id)) {
+      classes += ' row-ghost opacity-40 grayscale pointer-events-none'
+    }
+    return classes
+  }, [pendingIds])
 
   const { data: settingsOptions } = useQuery({ 
     queryKey: ['settings-options'], 
@@ -477,6 +493,7 @@ export default function MonitoringGrid() {
 
   const handleRowClicked = useCallback((event: any) => {
     if (!event?.node || shouldIgnoreRowSelection(event.event?.target)) return
+    if (event.data && pendingIds.includes(event.data.id)) return
     const mouseEvent = event.event as MouseEvent | undefined
     const isToggleSelection = Boolean(mouseEvent?.metaKey || mouseEvent?.ctrlKey)
     const isRangeSelection = Boolean(mouseEvent?.shiftKey)
@@ -489,7 +506,7 @@ export default function MonitoringGrid() {
       const end = Math.max(selectionAnchorRef.current, currentIndex)
       event.api.deselectAll()
       event.api.forEachNodeAfterFilterAndSort((node: any) => {
-        if (node.rowIndex >= start && node.rowIndex <= end) {
+        if (node.rowIndex >= start && node.rowIndex <= end && !pendingIds.includes(node.data?.id)) {
           node.setSelected(true)
         }
       })
@@ -505,12 +522,13 @@ export default function MonitoringGrid() {
     event.api.deselectAll()
     event.node.setSelected(true)
     selectionAnchorRef.current = event.node.rowIndex
-  }, [])
+  }, [pendingIds])
 
   const handleRowDoubleClicked = useCallback((event: any) => {
     if (!event?.data || shouldIgnoreRowSelection(event.event?.target)) return
+    if (pendingIds.includes(event.data.id)) return
     setDetailItem(event.data)
-  }, [])
+  }, [pendingIds])
 
   const openRecoveryDocuments = (item: any) => {
     setBkmPopup({
@@ -520,63 +538,66 @@ export default function MonitoringGrid() {
     })
   }
 
-  const renderPrimaryRowActions = (item: any) => (
-    <div className="flex items-center justify-end gap-1.5 pr-2">
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation()
-          setDetailItem(item)
-        }}
-        title="Open details"
-        className="rounded-lg p-1 text-blue-400 transition-all hover:bg-blue-400/10 active:scale-90"
-      >
-        <Maximize2 size={13} />
-      </button>
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation()
-          setEditingItem(item)
-          setIsFormOpen(true)
-        }}
-        title="Edit configuration"
-        className="rounded-lg p-1 text-emerald-400 transition-all hover:bg-emerald-400/10 active:scale-90"
-      >
-        <Edit2 size={13} />
-      </button>
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation()
-          setHistoryItem(item)
-        }}
-        title="View history"
-        className="rounded-lg p-1 text-amber-400 transition-all hover:bg-amber-400/10 active:scale-90"
-      >
-        <Clock size={13} />
-      </button>
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation()
-          openRecoveryDocuments(item)
-        }}
-        title="Knowledge documents"
-        className="rounded-lg p-1 text-purple-400 transition-all hover:bg-purple-400/10 active:scale-90"
-      >
-        <BookOpen size={13} />
-      </button>
-      <button
-        type="button"
-        onClick={(event: any) => openRowActionMenu(event, item)}
-        title="More actions"
-        className="row-action-trigger row-action-menu-container rounded-lg p-1 text-slate-400 transition-all hover:bg-slate-400/10 hover:text-white active:scale-90"
-      >
-        <MoreVertical size={13} />
-      </button>
-    </div>
-  )
+  const renderPrimaryRowActions = (item: any) => {
+    const isPending = pendingIds.includes(item.id)
+    return (
+      <div className={`flex items-center justify-end gap-1.5 pr-2 ${isPending ? 'opacity-20 grayscale pointer-events-none' : ''}`}>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            setDetailItem(item)
+          }}
+          title="Open details"
+          className="rounded-lg p-1 text-blue-400 transition-all hover:bg-blue-400/10 active:scale-90"
+        >
+          <Maximize2 size={13} />
+        </button>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            setEditingItem(item)
+            setIsFormOpen(true)
+          }}
+          title="Edit configuration"
+          className="rounded-lg p-1 text-emerald-400 transition-all hover:bg-emerald-400/10 active:scale-90"
+        >
+          <Edit2 size={13} />
+        </button>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            setHistoryItem(item)
+          }}
+          title="View history"
+          className="rounded-lg p-1 text-amber-400 transition-all hover:bg-amber-400/10 active:scale-90"
+        >
+          <Clock size={13} />
+        </button>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            openRecoveryDocuments(item)
+          }}
+          title="Knowledge documents"
+          className="rounded-lg p-1 text-purple-400 transition-all hover:bg-purple-400/10 active:scale-90"
+        >
+          <BookOpen size={13} />
+        </button>
+        <button
+          type="button"
+          onClick={(event: any) => openRowActionMenu(event, item)}
+          title="More actions"
+          className="row-action-trigger row-action-menu-container rounded-lg p-1 text-slate-400 transition-all hover:bg-slate-400/10 hover:text-white active:scale-90"
+        >
+          <MoreVertical size={13} />
+        </button>
+      </div>
+    )
+  }
 
   const handleExportCSV = () => {
     if (gridRef.current?.api) {
@@ -735,7 +756,12 @@ export default function MonitoringGrid() {
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(MONITORING_ACTIVE_VIEW_KEY)
     }
-    setHiddenColumns(persistedUiState?.hiddenColumns ?? [])
+    setFontSize(11)
+    setRowDensity(4)
+    setHiddenColumns([])
+    setGroupBy('raw')
+    setColumnLayoutState([])
+    setSearchTerm('')
     setQuickFilters({ status: '', severity: '', platform: '', owner: '' })
     setGridSortModel([{ colId: 'favorite', sort: 'desc' }])
     if (gridRef.current?.api) {
@@ -864,7 +890,7 @@ export default function MonitoringGrid() {
     }
   }, [showBulkMenu, showDisplayMenu, showViewsMenu])
 
-  const [searchTerm, setSearchTerm] = useState(persistedUiState?.searchTerm ?? '')
+  const [searchTerm, setSearchTerm] = useState('')
 
   const { data: allItems, isLoading } = useQuery({
     queryKey: ['monitoring-items'],
@@ -1017,6 +1043,7 @@ export default function MonitoringGrid() {
 
   const handleGroupedRowClick = (item: any, event: React.MouseEvent) => {
     if (shouldIgnoreRowSelection(event.target)) return
+    if (pendingIds.includes(item.id)) return
     const currentIndex = displayedItems.findIndex((entry: any) => entry.id === item.id)
     if (currentIndex < 0) return
     if (event.shiftKey && selectionAnchorRef.current !== null) {
@@ -1036,6 +1063,7 @@ export default function MonitoringGrid() {
 
   const toggleGroupedCheckbox = (item: any, event: React.ChangeEvent<HTMLInputElement>) => {
     event.stopPropagation()
+    if (pendingIds.includes(item.id)) return
     const currentIndex = displayedItems.findIndex((entry: any) => entry.id === item.id)
     const nativeEvent = event.nativeEvent as MouseEvent
     if (nativeEvent.shiftKey && selectionAnchorRef.current !== null) {
@@ -1213,6 +1241,14 @@ export default function MonitoringGrid() {
   }
 
   const bulkMutation = useMutation({
+    onMutate: ({ action, ids: overrideIds }: any) => {
+      const idsToUse = overrideIds ?? selectedIds
+      setPendingIds(prev => [...new Set([...prev, ...idsToUse])])
+    },
+    onSettled: (data: any, error: any, variables: any) => {
+      const idsToUse = variables.ids ?? selectedIds
+      setPendingIds(prev => prev.filter(id => !idsToUse.includes(id)))
+    },
     mutationFn: async ({ action, payload = {}, ids: overrideIds }: any) => {
       const idsToUse = overrideIds ?? selectedIds
       const previousSnapshots = (allItems || []).filter((item: any) => idsToUse.includes(item.id)).map((item: any) => ({ ...item }))
@@ -1345,12 +1381,34 @@ export default function MonitoringGrid() {
       cellClass: 'text-center border-r border-white/5 flex items-center justify-center !overflow-visible',
       headerClass: 'text-center border-r border-white/5',
       hide: !isIntelligenceExpanded,
-      cellRenderer: (p: any) => p.data && isRecentChange(p.data) ? (
-        <div className="relative flex items-center justify-center h-full w-full">
-          <div className="absolute h-10 w-10 rounded-full bg-[radial-gradient(circle,_rgba(251,191,36,0.2)_0%,_transparent_70%)] blur-md animate-pulse" />
-          <span className="relative z-[1] block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
-        </div>
-      ) : null
+      cellRenderer: (p: any) => {
+        if (!p.data || !isRecentChange(p.data)) return null
+        const dateStr = new Date(p.data.updated_at || p.data.created_at).toLocaleString()
+        const author = p.data.created_by_user_id || 'System'
+        return (
+          <div className="group relative flex items-center justify-center h-full w-full">
+            <div className="absolute h-10 w-10 rounded-full bg-[radial-gradient(circle,_rgba(251,191,36,0.2)_0%,_transparent_70%)] blur-md animate-pulse" />
+            <span className="relative z-[1] block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
+            
+            {/* Hover Peek Intelligence */}
+            <div className="invisible group-hover:visible absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-[2000] w-52 p-3 rounded-xl border border-white/10 bg-slate-950/90 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl pointer-events-none transition-all duration-300 transform scale-95 group-hover:scale-100 opacity-0 group-hover:opacity-100">
+               <div className="flex items-center gap-2 mb-2">
+                 <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-400">Recent Intelligence</p>
+               </div>
+               <div className="space-y-1">
+                 <p className="text-[11px] text-slate-100 font-bold leading-tight">{dateStr}</p>
+                 <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/5">
+                    <User size={10} className="text-slate-500" />
+                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">@{author}</p>
+                 </div>
+               </div>
+               {/* Arrow */}
+               <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-950/90" />
+            </div>
+          </div>
+        )
+      }
     },
     {
       colId: "favorite",
@@ -2519,6 +2577,7 @@ export default function MonitoringGrid() {
                       <tbody>
                         {section.items.map((item: any, rowIndex: number) => {
                           const selected = selectedIds.includes(item.id)
+                          const isPending = pendingIds.includes(item.id)
                           return (
                             <tr
                               key={item.id}
@@ -2528,7 +2587,7 @@ export default function MonitoringGrid() {
                                 event.preventDefault()
                                 openRowActionMenuAtPoint(item, event.clientX, event.clientY)
                               }}
-                              className={`cursor-pointer border-b border-white/5 transition-all group ${selected ? 'bg-blue-600/20' : rowIndex % 2 === 0 ? 'bg-[#0f172a] hover:bg-white/[0.05]' : 'bg-[#020617] hover:bg-white/[0.05]'}`}
+                              className={`cursor-pointer border-b border-white/5 transition-all group ${selected ? 'bg-blue-600/20' : rowIndex % 2 === 0 ? 'bg-[#0f172a] hover:bg-white/[0.05]' : 'bg-[#020617] hover:bg-white/[0.05]'} ${isPending ? 'row-ghost opacity-40 grayscale pointer-events-none' : ''}`}
                               style={{ height: `${fontSize + rowDensity + 4}px` }}
                             >
                               {groupedColumns.map((column: any) => (
