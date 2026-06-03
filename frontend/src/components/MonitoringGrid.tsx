@@ -138,6 +138,7 @@ const GridMatrix = React.memo(({
   fontSize, 
   rowDensity, 
   context,
+  getRowId,
   onGridReady,
   onSelectionChanged,
   onColumnResized,
@@ -157,7 +158,7 @@ const GridMatrix = React.memo(({
     ref={gridRef}
     rowData={rowData}
     columnDefs={columnDefs}
-    getRowId={useCallback((params: any) => String(params.data.id), [])}
+    getRowId={getRowId}
     rowSelection="multiple"
     animateRows={true}
     headerHeight={fontSize + rowDensity + 4}
@@ -348,6 +349,58 @@ export default function MonitoringGrid() {
   const [newViewName, setNewViewName] = useState('')
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
 
+  const handleSelectionChanged = useCallback((e: any) => {
+    const selectedNodes = e?.api?.getSelectedNodes?.() || []
+    setSelectedIds(selectedNodes.map((n: any) => n.data?.id).filter(Boolean) || [])
+  }, [])
+
+  const handleColumnResized = useCallback((event: any) => {
+    if (event.finished) syncColumnLayoutState(event.api)
+  }, [])
+
+  const handleColumnMoved = useCallback((event: any) => {
+    if (!event.source.includes('drag')) syncColumnLayoutState(event.api)
+  }, [])
+
+  const handleDragStopped = useCallback((event: any) => syncColumnLayoutState(event.api), [])
+  const handleColumnPinned = useCallback((event: any) => syncColumnLayoutState(event.api), [])
+  const handleColumnVisible = useCallback((event: any) => syncColumnLayoutState(event.api), [])
+  const handleFilterChanged = useCallback((e: any) => setGridFilterModel(e.api.getFilterModel() || {}), [])
+  
+  const handleSortChanged = useCallback((e: any) => {
+    const nextSortModel = e.api.getColumnState().filter((col: any) => col.sort).map((col: any) => ({ colId: col.colId, sort: col.sort }))
+    setGridSortModel(nextSortModel)
+  }, [])
+
+  const handleRowId = useCallback((params: any) => String(params.data.id), [])
+
+  const openRowActionMenuAtPoint = useCallback((item: any, x: number, y: number) => {
+    setRowActionMenu({
+      item,
+      style: getPointFloatingStyle({ x, y, width: 336, height: 432, zIndex: 1115 })
+    })
+  }, [])
+
+  const handleCellContextMenu = useCallback((e: any) => {
+    if (!e?.data) return
+    const mouseEvent = e.event as MouseEvent
+    mouseEvent?.preventDefault?.()
+    openRowActionMenuAtPoint(e.data, mouseEvent.clientX, mouseEvent.clientY)
+  }, [openRowActionMenuAtPoint])
+
+  const handleGridReady = useCallback((event: any) => {
+    // Immediately apply layout if we have it to prevent squish
+    if (columnLayoutState.length > 0) {
+      event.api.applyColumnState({
+        state: columnLayoutState,
+        applyOrder: true,
+        defaultState: { sort: null }
+      });
+    }
+  }, [columnLayoutState])
+
+  const getRowClass = useCallback((params: any) => params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd', [])
+
   const { data: settingsOptions } = useQuery({ 
     queryKey: ['settings-options'], 
     queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) 
@@ -368,13 +421,6 @@ export default function MonitoringGrid() {
     setRowActionMenu({
       item,
       style: getAnchoredFloatingStyle({ rect, width: 336, height: 432, zIndex: 1115 })
-    })
-  }
-
-  const openRowActionMenuAtPoint = (item: any, x: number, y: number) => {
-    setRowActionMenu({
-      item,
-      style: getPointFloatingStyle({ x, y, width: 336, height: 432, zIndex: 1115 })
     })
   }
 
@@ -401,11 +447,13 @@ export default function MonitoringGrid() {
   }
 
   const toggleFavorite = useCallback((monitorId: number) => {
-    setFavoriteIds((current) => current.includes(monitorId) ? current.filter((id) => id !== monitorId) : [...current, monitorId])
+    const id = Number(monitorId)
+    setFavoriteIds((current) => current.includes(id) ? current.filter((i) => i !== id) : [...current, id])
   }, [])
 
   const toggleWatch = useCallback((monitorId: number) => {
-    setWatchIds((current) => current.includes(monitorId) ? current.filter((id) => id !== monitorId) : [...current, monitorId])
+    const id = Number(monitorId)
+    setWatchIds((current) => current.includes(id) ? current.filter((i) => i !== id) : [...current, id])
   }, [])
 
   const openCompare = () => {
@@ -1227,92 +1275,101 @@ export default function MonitoringGrid() {
       filter: 'agNumberColumnFilter',
     },
     {
-      colId: "recent_change",
-      headerName: "Chg",
-      field: "recent_change",
-      width: 80,
-      minWidth: 80,
-      maxWidth: 80,
-      pinned: 'left',
-      sortable: false,
-      filter: false,
-      resizable: false,
-      suppressMovable: true,
-      cellClass: 'text-center border-r border-white/5 flex items-center justify-center !overflow-visible',
-      headerClass: 'text-center border-r border-white/5',
-      suppressHide: true,
-      cellRenderer: (p: any) => p.data && isRecentChange(p.data) ? (
-        <div className="relative flex items-center justify-center h-full w-full">
-          <div className="absolute h-10 w-10 rounded-full bg-[radial-gradient(circle,_rgba(251,191,36,0.2)_0%,_transparent_70%)] blur-md animate-pulse" />
-          <span className="relative z-[1] block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
-        </div>
-      ) : null
-    },
-    {
-      colId: "favorite",
-      headerName: "Fav",
-      field: "favorite",
-      width: 80,
-      minWidth: 80,
-      maxWidth: 80,
-      pinned: 'left',
-      cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
-      headerClass: 'text-center border-r border-white/5',
-      sortable: true,
-      filter: false,
-      resizable: false,
-      suppressMovable: true,
-      suppressHide: true,
-      valueGetter: (p: any) => p.context?.favoriteIds?.includes(p.data?.id) ? 1 : 0,
-      cellRenderer: (p: any) => {
-        const isFavorite = p.context?.favoriteIds?.includes(p.data?.id)
-        return (
-          <div className="flex h-full w-full items-center justify-center">
-            <button
-              onClick={(event) => {
-                event.stopPropagation()
-                toggleFavorite(p.data.id)
-              }}
-              title={isFavorite ? 'Unpin monitor' : 'Pin monitor'}
-              className={`rounded-md p-1 transition-all flex items-center justify-center ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
-            >
-              <Star size={15} className={isFavorite ? 'fill-current' : ''} />
-            </button>
-          </div>
-        )
-      }
-    },
-    {
-      colId: "watch",
-      headerName: "Watch",
-      field: "watch",
-      width: 85,
-      minWidth: 85,
-      maxWidth: 85,
-      pinned: 'left',
-      cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
-      headerClass: 'text-center border-r border-white/5',
-      sortable: false,
-      filter: false,
-      resizable: false,
-      suppressHide: true,
-      cellRenderer: (p: any) => {
-        const isWatched = p.context?.watchIds?.includes(p.data?.id)
-        return (
-          <div className="flex h-full w-full items-center justify-center">
-            <button
-              onClick={(event) => {
-                event.stopPropagation()
-                toggleWatch(p.data.id)
-              }}
-              title={isWatched ? 'Unfollow monitor' : 'Follow monitor'}
-              className={`rounded-md p-1 transition-all flex items-center justify-center ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
-            >
-              <Eye size={15} className={isWatched ? 'fill-current' : ''} />
-            </button>
-          </div>
-        )
-      }
+      headerName: "Intelligence",
+      headerClass: 'text-center border-r border-white/5 bg-slate-900/40',
+      marryChildren: true,
+      children: [
+        {
+          colId: "recent_change",
+          headerName: "Chg",
+          field: "recent_change",
+          width: 80,
+          minWidth: 80,
+          maxWidth: 80,
+          pinned: 'left',
+          sortable: false,
+          filter: false,
+          resizable: false,
+          suppressMovable: true,
+          cellClass: 'text-center border-r border-white/5 flex items-center justify-center !overflow-visible',
+          headerClass: 'text-center border-r border-white/5',
+          suppressHide: true,
+          columnGroupShow: 'open',
+          cellRenderer: (p: any) => p.data && isRecentChange(p.data) ? (
+            <div className="relative flex items-center justify-center h-full w-full">
+              <div className="absolute h-10 w-10 rounded-full bg-[radial-gradient(circle,_rgba(251,191,36,0.2)_0%,_transparent_70%)] blur-md animate-pulse" />
+              <span className="relative z-[1] block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
+            </div>
+          ) : null
+        },
+        {
+          colId: "favorite",
+          headerName: "Fav",
+          field: "favorite",
+          width: 80,
+          minWidth: 80,
+          maxWidth: 80,
+          pinned: 'left',
+          cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
+          headerClass: 'text-center border-r border-white/5',
+          sortable: true,
+          filter: false,
+          resizable: false,
+          suppressMovable: true,
+          suppressHide: true,
+          valueGetter: (p: any) => p.context?.favoriteIds?.includes(p.data?.id) ? 1 : 0,
+          cellRenderer: (p: any) => {
+            const isFavorite = p.context?.favoriteIds?.includes(p.data?.id)
+            return (
+              <div className="flex h-full w-full items-center justify-center">
+                <button
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    toggleFavorite(p.data.id)
+                  }}
+                  title={isFavorite ? 'Unpin monitor' : 'Pin monitor'}
+                  className={`rounded-md p-1 transition-all flex items-center justify-center ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
+                >
+                  <Star size={15} className={isFavorite ? 'fill-current' : ''} />
+                </button>
+              </div>
+            )
+          }
+        },
+        {
+          colId: "watch",
+          headerName: "Watch",
+          field: "watch",
+          width: 85,
+          minWidth: 85,
+          maxWidth: 85,
+          pinned: 'left',
+          cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
+          headerClass: 'text-center border-r border-white/5',
+          sortable: false,
+          filter: false,
+          resizable: false,
+          suppressHide: true,
+          columnGroupShow: 'open',
+          cellRenderer: (p: any) => {
+            const isWatched = p.context?.watchIds?.includes(p.data?.id)
+            return (
+              <div className="flex h-full w-full items-center justify-center">
+                <button
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    toggleWatch(p.data.id)
+                  }}
+                  title={isWatched ? 'Unfollow monitor' : 'Follow monitor'}
+                  className={`rounded-md p-1 transition-all flex items-center justify-center ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
+                >
+                  <Eye size={15} className={isWatched ? 'fill-current' : ''} />
+                </button>
+              </div>
+            )
+          }
+        }
+      ]
     },
     { 
       field: "device_name", 
@@ -1527,6 +1584,23 @@ export default function MonitoringGrid() {
   
   // Inject saved layout state (widths, pinned, sort) into definitions before first render
   return defs.map((col: any) => {
+    if (col.children) {
+      return {
+        ...col,
+        children: col.children.map((child: any) => {
+          const colId = child.colId || child.field
+          const layout = layoutById.get(colId)
+          if (!layout) return child
+          return {
+            ...child,
+            width: layout.width ?? child.width,
+            pinned: layout.pinned ?? child.pinned,
+            hide: child.hide !== undefined ? child.hide : layout.hide,
+            flex: layout.flex ?? child.flex
+          }
+        })
+      }
+    }
     const colId = col.colId || col.field
     const layout = layoutById.get(colId)
     if (!layout) return col
@@ -1534,7 +1608,7 @@ export default function MonitoringGrid() {
       ...col,
       width: layout.width ?? col.width,
       pinned: layout.pinned ?? col.pinned,
-      hide: layout.hide ?? col.hide,
+      hide: col.hide !== undefined ? col.hide : layout.hide,
       flex: layout.flex ?? col.flex
     }
   })
@@ -1552,7 +1626,18 @@ export default function MonitoringGrid() {
 
   const groupedColumns = useMemo(() => {
     const layoutById = new Map(columnLayoutState.map((column: any) => [column.colId, column]))
-    return columnDefs
+    
+    // Flatten columnDefs to handle groups
+    const flatDefs: any[] = []
+    columnDefs.forEach((col: any) => {
+      if (col.children) {
+        col.children.forEach((child: any) => flatDefs.push(child))
+      } else {
+        flatDefs.push(col)
+      }
+    })
+
+    return flatDefs
       .filter((column: any) => !column.hide)
       .map((column: any) => {
         const colId = column.colId || column.field
@@ -2057,7 +2142,7 @@ export default function MonitoringGrid() {
 	          </AnimatePresence>
 
 	          <AnimatePresence>
-            {rowActionMenu && !!rowActionMenu.style.top && (
+            {rowActionMenu && (
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -2207,43 +2292,20 @@ export default function MonitoringGrid() {
             fontSize={fontSize}
             rowDensity={rowDensity}
             context={gridContext}
-            onGridReady={(event: any) => {
-              // Immediately apply layout if we have it to prevent squish
-              if (columnLayoutState.length > 0) {
-                event.api.applyColumnState({
-                  state: columnLayoutState,
-                  applyOrder: true,
-                  defaultState: { sort: null }
-                });
-              }
-            }}
-	            onSelectionChanged={useCallback((e: any) => {
-                const selectedNodes = e?.api?.getSelectedNodes?.() || []
-                setSelectedIds(selectedNodes.map((n: any) => n.data?.id).filter(Boolean) || [])
-              }, [])}
-            onColumnResized={useCallback((event: any) => {
-              if (event.finished) syncColumnLayoutState(event.api)
-            }, [])}
-            onColumnMoved={useCallback((event: any) => {
-               if (!event.source.includes('drag')) syncColumnLayoutState(event.api)
-            }, [])}
-            onDragStopped={useCallback((event: any) => syncColumnLayoutState(event.api), [])}
-            onColumnPinned={useCallback((event: any) => syncColumnLayoutState(event.api), [])}
-            onColumnVisible={useCallback((event: any) => syncColumnLayoutState(event.api), [])}
-            onFilterChanged={useCallback((e: any) => setGridFilterModel(e.api.getFilterModel() || {}), [])}
-	            onSortChanged={useCallback((e: any) => {
-	              const nextSortModel = e.api.getColumnState().filter((col: any) => col.sort).map((col: any) => ({ colId: col.colId, sort: col.sort }))
-	              setGridSortModel(nextSortModel)
-	            }, [])}
-            onCellContextMenu={useCallback((e: any) => {
-              if (!e?.data) return
-              const mouseEvent = e.event as MouseEvent
-              mouseEvent?.preventDefault?.()
-              openRowActionMenuAtPoint(e.data, mouseEvent.clientX, mouseEvent.clientY)
-            }, [openRowActionMenuAtPoint])}
+            getRowId={handleRowId}
+            onGridReady={handleGridReady}
+	            onSelectionChanged={handleSelectionChanged}
+            onColumnResized={handleColumnResized}
+            onColumnMoved={handleColumnMoved}
+            onDragStopped={handleDragStopped}
+            onColumnPinned={handleColumnPinned}
+            onColumnVisible={handleColumnVisible}
+            onFilterChanged={handleFilterChanged}
+	            onSortChanged={handleSortChanged}
+            onCellContextMenu={handleCellContextMenu}
 	            onRowClicked={handleRowClicked}
             onRowDoubleClicked={handleRowDoubleClicked}
-            getRowClass={useCallback((params: any) => params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd', [])}
+            getRowClass={getRowClass}
 	          />
 
 	        </div>
