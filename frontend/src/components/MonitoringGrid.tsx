@@ -157,6 +157,7 @@ const GridMatrix = React.memo(({
     ref={gridRef}
     rowData={rowData}
     columnDefs={columnDefs}
+    getRowId={useCallback((params: any) => String(params.data.id), [])}
     rowSelection="multiple"
     animateRows={true}
     headerHeight={fontSize + rowDensity + 4}
@@ -180,7 +181,7 @@ const GridMatrix = React.memo(({
     suppressCellFocus={true}
     suppressRowClickSelection={true}
     enableCellTextSelection={true}
-    overlayNoRowsTemplate="<span class='text-slate-500 font-bold uppercase tracking-widest text-[10px]'>No monitoring data found</span>"
+    overlayNoRowsTemplate="<span class='text-slate-500 font-black uppercase tracking-widest text-[10px]'>No monitoring data found</span>"
   />
 ), (prev, next) => {
   return prev.rowData === next.rowData && 
@@ -400,16 +401,7 @@ export default function MonitoringGrid() {
   }
 
   const toggleFavorite = useCallback((monitorId: number) => {
-    setFavoriteIds((current) => {
-       const next = current.includes(monitorId) ? current.filter((id) => id !== monitorId) : [...current, monitorId]
-       // Force AgGrid to re-sort if we're sorting by favorite
-       requestAnimationFrame(() => {
-         if (gridRef.current?.api) {
-           gridRef.current.api.onSortChanged()
-         }
-       })
-       return next
-    })
+    setFavoriteIds((current) => current.includes(monitorId) ? current.filter((id) => id !== monitorId) : [...current, monitorId])
   }, [])
 
   const toggleWatch = useCallback((monitorId: number) => {
@@ -1549,18 +1541,6 @@ export default function MonitoringGrid() {
 }, [fontSize, groupBy, hiddenColumns, columnLayoutState]) as any
 
   const gridContext = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
-
-  useEffect(() => {
-    if (gridRef.current?.api) {
-      gridRef.current.api.refreshCells({ columns: ['favorite'], force: true })
-    }
-  }, [favoriteIds])
-
-  useEffect(() => {
-    if (gridRef.current?.api) {
-      gridRef.current.api.refreshCells({ columns: ['watch'], force: true })
-    }
-  }, [watchIds])
 
   const autoGroupColumnDef = useMemo(() => ({
     headerName: groupBy === 'raw' ? 'View' : `Grouped by ${groupOptions.find((option) => option.value === groupBy)?.label || groupBy}`,
