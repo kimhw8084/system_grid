@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react"
+import { createPortal } from "react-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Plus, Trash2, X, Check, Edit2, Layout, Database, RefreshCcw, Settings, ChevronDown, ChevronRight, PlusCircle } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -187,10 +188,10 @@ export const ConfigRegistryModal = ({ isOpen, onClose, sections, title }: any) =
         queryFn: async () => (await (await apiFetch("/api/v1/settings/options")).json()) 
     })
 
-    return (
+    const modal = (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6 sm:p-10">
+                <div className="fixed inset-0 z-[3250] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6 sm:p-10">
                     <motion.div 
                         initial={{ scale: 0.95, opacity: 0, y: 20 }} 
                         animate={{ scale: 1, opacity: 1, y: 0 }} 
@@ -230,4 +231,6 @@ export const ConfigRegistryModal = ({ isOpen, onClose, sections, title }: any) =
             )}
         </AnimatePresence>
     )
+
+    return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }

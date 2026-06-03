@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Save, Plus, Activity, Zap, ShieldCheck, Search, Monitor, Clipboard, Check } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -38,8 +39,8 @@ export function RootCauseFormModal({ isOpen, onClose, onSave, modeId, initialDat
 
   if (!isOpen) return null
 
-  return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
+  const modal = (
+    <div className="fixed inset-0 z-[3250] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg p-10 rounded-lg border border-amber-500/30 space-y-8">
            <div className="flex items-center justify-between border-b border-white/5 pb-6">
               <div className="flex items-center gap-4">
@@ -96,6 +97,7 @@ export function RootCauseFormModal({ isOpen, onClose, onSave, modeId, initialDat
         </motion.div>
     </div>
   )
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
 export function MitigationFormModal({ isOpen, onClose, onSave, modeId, causeId, type, bkms, monitoring }: any) {
@@ -139,8 +141,8 @@ export function MitigationFormModal({ isOpen, onClose, onSave, modeId, causeId, 
 
   if (!isOpen) return null
 
-  return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
+  const modal = (
+    <div className="fixed inset-0 z-[3250] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-2xl p-10 rounded-lg border border-blue-500/30 space-y-8">
            <div className="flex items-center justify-between border-b border-white/5 pb-6">
               <div className="flex items-center gap-4">
@@ -213,6 +215,7 @@ export function MitigationFormModal({ isOpen, onClose, onSave, modeId, causeId, 
         </motion.div>
     </div>
   )
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
 export function PreventionFormModal({ isOpen, onClose, onSave, modeId, causeId }: any) {
@@ -243,8 +246,8 @@ export function PreventionFormModal({ isOpen, onClose, onSave, modeId, causeId }
 
   if (!isOpen) return null
 
-  return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-md p-10">
+  const modal = (
+    <div className="fixed inset-0 z-[3250] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-10">
         <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-5xl max-h-[90vh] overflow-y-auto p-12 rounded-lg border border-emerald-500/30 custom-scrollbar shadow-2xl">
            <div className="flex items-center justify-between border-b border-white/5 pb-8">
               <div className="flex items-center space-x-6">
@@ -269,4 +272,5 @@ export function PreventionFormModal({ isOpen, onClose, onSave, modeId, causeId }
         </motion.div>
     </div>
   )
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }

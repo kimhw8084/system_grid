@@ -294,6 +294,7 @@ export default function MonitoringGrid() {
   const [detailDeleteConfirm, setDetailDeleteConfirm] = useState(false)
   const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<number | null>(null)
   const [rowActionMenu, setRowActionMenu] = useState<{ item: any; style: React.CSSProperties } | null>(null)
+  const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
   const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
   const [gridSortModel, setGridSortModel] = useState<any[]>(persistedUiState?.gridSortModel ?? [{ colId: 'favorite', sort: 'desc' }])
   const [savedViews, setSavedViews] = useState<any[]>(() => {
@@ -1330,99 +1331,92 @@ export default function MonitoringGrid() {
       suppressHide: true
     },
     {
-      headerName: "Intelligence",
-      headerClass: 'text-center border-r border-white/5 bg-slate-900/40',
-      marryChildren: true,
-      children: [
-        {
-          colId: "recent_change",
-          headerName: "Chg",
-          field: "recent_change",
-          width: 80,
-          minWidth: 80,
-          maxWidth: 80,
-          pinned: 'left',
-          sortable: false,
-          filter: false,
-          resizable: false,
-          suppressMovable: true,
-          cellClass: 'text-center border-r border-white/5 flex items-center justify-center !overflow-visible',
-          headerClass: 'text-center border-r border-white/5',
-          columnGroupShow: 'open',
-          cellRenderer: (p: any) => p.data && isRecentChange(p.data) ? (
-            <div className="relative flex items-center justify-center h-full w-full">
-              <div className="absolute h-10 w-10 rounded-full bg-[radial-gradient(circle,_rgba(251,191,36,0.2)_0%,_transparent_70%)] blur-md animate-pulse" />
-              <span className="relative z-[1] block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
-            </div>
-          ) : null
-        },
-        {
-          colId: "favorite",
-          headerName: "Fav",
-          field: "favorite",
-          width: 80,
-          minWidth: 80,
-          maxWidth: 80,
-          pinned: 'left',
-          cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
-          headerClass: 'text-center border-r border-white/5',
-          sortable: true,
-          filter: false,
-          resizable: false,
-          suppressMovable: true,
-          suppressHide: true,
-          valueGetter: (p: any) => p.context?.favoriteIds?.includes(p.data?.id) ? 1 : 0,
-          cellRenderer: (p: any) => {
-            const isFavorite = p.context?.favoriteIds?.includes(p.data?.id)
-            return (
-              <div className="flex h-full w-full items-center justify-center">
-                <button
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    toggleFavorite(p.data.id)
-                  }}
-                  title={isFavorite ? 'Unpin monitor' : 'Pin monitor'}
-                  className={`rounded-md p-1 transition-all flex items-center justify-center ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
-                >
-                  <Star size={15} className={isFavorite ? 'fill-current' : ''} />
-                </button>
-              </div>
-            )
-          }
-        },
-        {
-          colId: "watch",
-          headerName: "Watch",
-          field: "watch",
-          width: 85,
-          minWidth: 85,
-          maxWidth: 85,
-          pinned: 'left',
-          cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
-          headerClass: 'text-center border-r border-white/5',
-          sortable: false,
-          filter: false,
-          resizable: false,
-          columnGroupShow: 'open',
-          cellRenderer: (p: any) => {
-            const isWatched = p.context?.watchIds?.includes(p.data?.id)
-            return (
-              <div className="flex h-full w-full items-center justify-center">
-                <button
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    toggleWatch(p.data.id)
-                  }}
-                  title={isWatched ? 'Unfollow monitor' : 'Follow monitor'}
-                  className={`rounded-md p-1 transition-all flex items-center justify-center ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
-                >
-                  <Eye size={15} className={isWatched ? 'fill-current' : ''} />
-                </button>
-              </div>
-            )
-          }
-        }
-      ]
+      colId: "recent_change",
+      headerName: "Chg",
+      field: "recent_change",
+      width: 80,
+      minWidth: 80,
+      maxWidth: 80,
+      pinned: 'left',
+      sortable: false,
+      filter: false,
+      resizable: false,
+      suppressMovable: true,
+      cellClass: 'text-center border-r border-white/5 flex items-center justify-center !overflow-visible',
+      headerClass: 'text-center border-r border-white/5',
+      hide: !isIntelligenceExpanded,
+      cellRenderer: (p: any) => p.data && isRecentChange(p.data) ? (
+        <div className="relative flex items-center justify-center h-full w-full">
+          <div className="absolute h-10 w-10 rounded-full bg-[radial-gradient(circle,_rgba(251,191,36,0.2)_0%,_transparent_70%)] blur-md animate-pulse" />
+          <span className="relative z-[1] block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
+        </div>
+      ) : null
+    },
+    {
+      colId: "favorite",
+      headerName: "Fav",
+      field: "favorite",
+      width: 80,
+      minWidth: 80,
+      maxWidth: 80,
+      pinned: 'left',
+      cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
+      headerClass: 'text-center border-r border-white/5',
+      sortable: true,
+      filter: false,
+      resizable: false,
+      suppressMovable: true,
+      suppressHide: true,
+      valueGetter: (p: any) => p.context?.favoriteIds?.includes(p.data?.id) ? 1 : 0,
+      cellRenderer: (p: any) => {
+        const isFavorite = p.context?.favoriteIds?.includes(p.data?.id)
+        return (
+          <div className="flex h-full w-full items-center justify-center">
+            <button
+              onClick={(event) => {
+                event.stopPropagation()
+                toggleFavorite(p.data.id)
+              }}
+              title={isFavorite ? 'Unpin monitor' : 'Pin monitor'}
+              className={`rounded-md p-1 transition-all flex items-center justify-center ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
+            >
+              <Star size={15} className={isFavorite ? 'fill-current' : ''} />
+            </button>
+          </div>
+        )
+      }
+    },
+    {
+      colId: "watch",
+      headerName: "Watch",
+      field: "watch",
+      width: 85,
+      minWidth: 85,
+      maxWidth: 85,
+      pinned: 'left',
+      cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
+      headerClass: 'text-center border-r border-white/5',
+      sortable: false,
+      filter: false,
+      resizable: false,
+      hide: !isIntelligenceExpanded,
+      cellRenderer: (p: any) => {
+        const isWatched = p.context?.watchIds?.includes(p.data?.id)
+        return (
+          <div className="flex h-full w-full items-center justify-center">
+            <button
+              onClick={(event) => {
+                event.stopPropagation()
+                toggleWatch(p.data.id)
+              }}
+              title={isWatched ? 'Unfollow monitor' : 'Follow monitor'}
+              className={`rounded-md p-1 transition-all flex items-center justify-center ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
+            >
+              <Eye size={15} className={isWatched ? 'fill-current' : ''} />
+            </button>
+          </div>
+        )
+      }
     },
     { 
       field: "device_name", 
@@ -1664,7 +1658,7 @@ export default function MonitoringGrid() {
       flex: layout.flex ?? col.flex
     }
   })
-}, [fontSize, groupBy, hiddenColumns, columnLayoutState]) as any
+}, [fontSize, groupBy, hiddenColumns, columnLayoutState, isIntelligenceExpanded]) as any
 
   const gridContext = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
 
@@ -1802,11 +1796,23 @@ export default function MonitoringGrid() {
                 <Clipboard size={16} />
               </ToolbarIconButton>
               <ToolbarIconButton onClick={() => setShowRegistry(true)} title="Registry configuration">
-                <Settings size={16} />
+               <Settings size={16} />
               </ToolbarIconButton>
-            </ToolbarGroup>
-          </>
-        }
+              </ToolbarGroup>
+              <ToolbarGroup>
+              <ToolbarButton
+               active={isIntelligenceExpanded}
+               onClick={() => setIsIntelligenceExpanded(!isIntelligenceExpanded)}
+               title={isIntelligenceExpanded ? 'Hide Intelligence Columns' : 'Show Intelligence Columns'}
+              >
+               <span className="flex items-center gap-2">
+                 {isIntelligenceExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                 Intelligence
+               </span>
+              </ToolbarButton>
+              </ToolbarGroup>
+              </>
+              }
 	        right={
 	          <>
               <ToolbarButton
@@ -2712,8 +2718,8 @@ function InlineBulkEditor({ value, onChange, options, placeholder, actionLabel, 
 function OwnersModal({ owners, title, onClose }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
-  return (
-    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
+  const modal = (
+    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
       <motion.div onClick={(e) => e.stopPropagation()} initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg rounded-xl border border-slate-700 bg-[#020617] p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -2740,13 +2746,14 @@ function OwnersModal({ owners, title, onClose }: any) {
       </motion.div>
     </div>
   )
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
 function CompareMonitorsModal({ items, onClose }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
-  return (
-    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
+  const modal = (
+    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
       <motion.div onClick={(e) => e.stopPropagation()} initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-6xl rounded-xl border border-slate-700 bg-[#020617] p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -2775,6 +2782,7 @@ function CompareMonitorsModal({ items, onClose }: any) {
       </motion.div>
     </div>
   )
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
 function CompareRow({ label, value, multiline = false }: { label: string; value: string; multiline?: boolean }) {
@@ -2792,65 +2800,74 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     useEffect(() => { setVal(''); }, [isStatusOpen, isSeverityOpen, isNotifyOpen]);
     useEscapeDismiss(onClose)
 
-    if (isStatusOpen) return (
-        <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
-           <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-blue-500/30 space-y-6">
-              <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
-                  <Tag size={24}/> <span>Set Status</span>
-              </h2>
-              <StyledSelect
-                value={val}
-                onChange={e => setVal(e.target.value)}
-                options={STATUSES}
-                placeholder="Select Status..."
-              />
-              <div className="flex space-x-3 pt-2">
-                 <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
-                 <button disabled={!val} onClick={() => onApply('status', val)} className="flex-1 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Apply</button>
-              </div>
-           </motion.div>
-        </div>
-    )
+    if (isStatusOpen) {
+        const modal = (
+            <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
+               <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-blue-500/30 space-y-6">
+                  <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
+                      <Tag size={24}/> <span>Set Status</span>
+                  </h2>
+                  <StyledSelect
+                    value={val}
+                    onChange={e => setVal(e.target.value)}
+                    options={STATUSES}
+                    placeholder="Select Status..."
+                  />
+                  <div className="flex space-x-3 pt-2">
+                     <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
+                     <button disabled={!val} onClick={() => onApply('status', val)} className="flex-1 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Apply</button>
+                  </div>
+               </motion.div>
+            </div>
+        )
+        return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
+    }
 
-    if (isSeverityOpen) return (
-        <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
-           <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-rose-500/30 space-y-6">
-              <h2 className="text-xl font-black uppercase tracking-tighter text-rose-400 flex items-center space-x-3">
-                  <Shield size={24}/> <span>Set Severity</span>
-              </h2>
-              <StyledSelect
-                value={val}
-                onChange={e => setVal(e.target.value)}
-                options={severities.map((s:any) => ({ value: s.value, label: s.label }))}
-                placeholder="Select Severity..."
-              />
-              <div className="flex space-x-3 pt-2">
-                 <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
-                 <button disabled={!val} onClick={() => onApply('severity', val)} className="flex-1 py-3 bg-rose-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-rose-500/20 active:scale-95 transition-all">Apply</button>
-              </div>
-           </motion.div>
-        </div>
-    )
+    if (isSeverityOpen) {
+        const modal = (
+            <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
+               <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-rose-500/30 space-y-6">
+                  <h2 className="text-xl font-black uppercase tracking-tighter text-rose-400 flex items-center space-x-3">
+                      <Shield size={24}/> <span>Set Severity</span>
+                  </h2>
+                  <StyledSelect
+                    value={val}
+                    onChange={e => setVal(e.target.value)}
+                    options={severities.map((s:any) => ({ value: s.value, label: s.label }))}
+                    placeholder="Select Severity..."
+                  />
+                  <div className="flex space-x-3 pt-2">
+                     <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
+                     <button disabled={!val} onClick={() => onApply('severity', val)} className="flex-1 py-3 bg-rose-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-rose-500/20 active:scale-95 transition-all">Apply</button>
+                  </div>
+               </motion.div>
+            </div>
+        )
+        return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
+    }
 
-    if (isNotifyOpen) return (
-        <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
-           <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-amber-500/30 space-y-6">
-              <h2 className="text-xl font-black uppercase tracking-tighter text-amber-400 flex items-center space-x-3">
-                  <Bell size={24}/> <span>Set Notification</span>
-              </h2>
-              <StyledSelect
-                value={val}
-                onChange={e => setVal(e.target.value)}
-                options={notificationMethods.map((m:any) => ({ value: m.value, label: m.label }))}
-                placeholder="Select Method..."
-              />
-              <div className="flex space-x-3 pt-2">
-                 <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
-                 <button disabled={!val} onClick={() => onApply('notification_method', val)} className="flex-1 py-3 bg-amber-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-amber-500/20 active:scale-95 transition-all">Apply</button>
-              </div>
-           </motion.div>
-        </div>
-    )
+    if (isNotifyOpen) {
+        const modal = (
+            <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
+               <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-amber-500/30 space-y-6">
+                  <h2 className="text-xl font-black uppercase tracking-tighter text-amber-400 flex items-center space-x-3">
+                      <Bell size={24}/> <span>Set Notification</span>
+                  </h2>
+                  <StyledSelect
+                    value={val}
+                    onChange={e => setVal(e.target.value)}
+                    options={notificationMethods.map((m:any) => ({ value: m.value, label: m.label }))}
+                    placeholder="Select Method..."
+                  />
+                  <div className="flex space-x-3 pt-2">
+                     <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
+                     <button disabled={!val} onClick={() => onApply('notification_method', val)} className="flex-1 py-3 bg-amber-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-amber-500/20 active:scale-95 transition-all">Apply</button>
+                  </div>
+               </motion.div>
+            </div>
+        )
+        return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
+    }
 
     return null;
 }
@@ -2859,8 +2876,8 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
 
 function ServicesModal({ names, title, onClose }: any) {
   useEscapeDismiss(onClose)
-  return (
-    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
+  const modal = (
+    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
       <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-6 rounded-lg border-blue-500/20">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-black uppercase text-blue-400">Monitored Services</h3>
@@ -2878,12 +2895,13 @@ function ServicesModal({ names, title, onClose }: any) {
       </motion.div>
     </div>
   )
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
 function RecipientsModal({ recipients, method, onClose }: any) {
   useEscapeDismiss(onClose)
-  return (
-    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
+  const modal = (
+    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
       <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-6 rounded-lg border-emerald-500/20">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-black uppercase text-emerald-400">Recipient Matrix</h3>
@@ -2905,6 +2923,7 @@ function RecipientsModal({ recipients, method, onClose }: any) {
       </motion.div>
     </div>
   )
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
 function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
@@ -2962,8 +2981,8 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
     mutation.mutate(nextIds)
   }
 
-  return (
-    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
+  const modal = (
+    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
       <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg p-6 rounded-lg border-amber-500/20 flex flex-col max-h-[85vh]">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
@@ -3048,6 +3067,7 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
       </motion.div>
     </div>
   )
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
 function BkmDetailModal({ bkmId, onClose }: any) {
@@ -3059,8 +3079,8 @@ function BkmDetailModal({ bkmId, onClose }: any) {
     enabled: !!bkmId
   })
 
-  return (
-    <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-8">
+  const modal = (
+    <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-8">
       <motion.div onClick={e => e.stopPropagation()} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-4xl h-[80vh] flex flex-col p-8 rounded-lg border-amber-500/30">
         <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-6">
            <div className="flex items-center space-x-4">
@@ -3121,6 +3141,7 @@ function BkmDetailModal({ bkmId, onClose }: any) {
       </motion.div>
     </div>
   )
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
 function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm, onDelete, onOpenAsset, onOpenKnowledge, deleteConfirm }: any) {
@@ -3144,7 +3165,7 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
   })
 
   const modal = (
-    <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-4 sm:p-8">
+    <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-4 sm:p-8">
       <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-6xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col p-6 sm:p-8 rounded-lg border-blue-500/20 overflow-hidden shadow-[0_0_120px_rgba(37,99,235,0.12)]">
         <div className="mb-6 border-b border-white/10 pb-6">
           <div className="flex items-start justify-between gap-4">
@@ -3562,7 +3583,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
   }
 
   const modal = (
-    <div onClick={onClose} className="fixed inset-0 z-[3210] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-4 sm:p-6">
+    <div onClick={onClose} className="fixed inset-0 z-[3210] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-4 sm:p-6">
       <motion.div
         onClick={e => e.stopPropagation()}
         initial={{ scale: 0.9, opacity: 0 }}

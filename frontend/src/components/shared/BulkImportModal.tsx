@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react"
+import { createPortal } from "react-dom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { 
   Upload, Check, X, AlertCircle, FileText, Download, 
@@ -117,9 +118,9 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
     setSelectedRowIndices(next)
   }
 
-  return (
+  const modal = (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+      <div className="fixed inset-0 z-[3250] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-4">
         <motion.div 
           initial={{ scale: 0.98, opacity: 0, y: 10 }} 
           animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -448,5 +449,7 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
       </div>
     </AnimatePresence>
   )
+
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 

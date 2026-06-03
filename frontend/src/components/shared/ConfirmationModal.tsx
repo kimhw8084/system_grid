@@ -1,4 +1,5 @@
 import React from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AlertTriangle, X, Check, Trash2, HelpCircle } from 'lucide-react'
 
@@ -52,8 +53,8 @@ export const ConfirmationModal = ({
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-[rgba(2,6,23,0.6)] backdrop-blur-[12px] p-6">
+  const modal = (
+    <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
       <motion.div 
         initial={{ scale: 0.95, opacity: 0 }} 
         animate={{ scale: 1, opacity: 1 }} 
@@ -90,4 +91,6 @@ export const ConfirmationModal = ({
       </motion.div>
     </div>
   )
+
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
