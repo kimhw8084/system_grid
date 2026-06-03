@@ -94,7 +94,7 @@ const getPointFloatingStyle = ({
   width,
   height,
   zIndex,
-  offset = 0
+  offset = 2
 }: {
   x: number
   y: number
@@ -114,17 +114,17 @@ const getPointFloatingStyle = ({
   }
 
   // Horizontal positioning
-  if (x + width > vW - FLOATING_PANEL_EDGE) {
-    style.right = vW - x
+  if (x + width + offset > vW - FLOATING_PANEL_EDGE) {
+    style.right = vW - x + offset
   } else {
-    style.left = Math.max(FLOATING_PANEL_EDGE, x)
+    style.left = Math.max(FLOATING_PANEL_EDGE, x + offset)
   }
 
   // Vertical positioning
-  if (y + height > vH - FLOATING_PANEL_EDGE) {
-    style.bottom = vH - y
+  if (y + height + offset > vH - FLOATING_PANEL_EDGE) {
+    style.bottom = vH - y + offset
   } else {
-    style.top = Math.max(FLOATING_PANEL_EDGE, y)
+    style.top = Math.max(FLOATING_PANEL_EDGE, y + offset)
   }
 
   return style
@@ -358,25 +358,39 @@ export default function MonitoringGrid() {
   const notificationMethods = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "NotificationMethod") : [], [settingsOptions])
   const ownerRoles = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "MonitoringOwnerRole") : [], [settingsOptions])
 
-  const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
+  const openConfirm = useCallback((title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
     setConfirmModal({ isOpen: true, title, message, onConfirm, variant })
-  }
+  }, [])
 
-  const openRowActionMenu = (event: React.MouseEvent, item: any) => {
+  const openRowActionMenu = useCallback((event: React.MouseEvent, item: any) => {
     event.stopPropagation()
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
     setRowActionMenu({
       item,
       style: getAnchoredFloatingStyle({ rect, width: 336, height: 432, zIndex: 1115 })
     })
-  }
+  }, [])
 
-  const openRowActionMenuAtPoint = (item: any, x: number, y: number) => {
+  const openRowActionMenuAtPoint = useCallback((item: any, x: number, y: number) => {
     setRowActionMenu({
       item,
       style: getPointFloatingStyle({ x, y, width: 336, height: 432, zIndex: 1115 })
     })
-  }
+  }, [])
+
+  const toggleFavorite = useCallback((monitorId: any) => {
+    if (monitorId == null) return
+    const id = Number(monitorId)
+    if (isNaN(id)) return
+    setFavoriteIds((current) => current.includes(id) ? current.filter((i) => i !== id) : [...current, id])
+  }, [])
+
+  const toggleWatch = useCallback((monitorId: any) => {
+    if (monitorId == null) return
+    const id = Number(monitorId)
+    if (isNaN(id)) return
+    setWatchIds((current) => current.includes(id) ? current.filter((i) => i !== id) : [...current, id])
+  }, [])
 
   const positionUtilityWindow = (button: HTMLButtonElement | null, width: number, height: number, zIndex: number) => {
     if (!button) {
@@ -399,14 +413,6 @@ export default function MonitoringGrid() {
       return true
     })
   }
-
-  const toggleFavorite = useCallback((monitorId: number) => {
-    setFavoriteIds((current) => current.includes(monitorId) ? current.filter((id) => id !== monitorId) : [...current, monitorId])
-  }, [])
-
-  const toggleWatch = useCallback((monitorId: number) => {
-    setWatchIds((current) => current.includes(monitorId) ? current.filter((id) => id !== monitorId) : [...current, monitorId])
-  }, [])
 
   const openCompare = () => {
     if (selectedIds.length < 2 || selectedIds.length > 3) return
@@ -461,737 +467,49 @@ export default function MonitoringGrid() {
     setDetailItem(event.data)
   }, [])
 
-  const openRecoveryDocuments = (item: any) => {
-    setBkmPopup({
-      ids: item.recovery_docs || [],
-      titles: item.recovery_doc_titles || [],
-      monitorId: item.id
-    })
-  }
-
-  const renderPrimaryRowActions = (item: any) => (
-    <div className="flex items-center justify-end gap-1.5 pr-2">
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation()
-          setDetailItem(item)
-        }}
-        title="Open details"
-        className="rounded-lg p-1 text-blue-400 transition-all hover:bg-blue-400/10 active:scale-90"
-      >
-        <Eye size={13} />
-      </button>
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation()
-          setEditingItem(item)
-          setIsFormOpen(true)
-        }}
-        title="Edit configuration"
-        className="rounded-lg p-1 text-emerald-400 transition-all hover:bg-emerald-400/10 active:scale-90"
-      >
-        <Edit2 size={13} />
-      </button>
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation()
-          setHistoryItem(item)
-        }}
-        title="View history"
-        className="rounded-lg p-1 text-amber-400 transition-all hover:bg-amber-400/10 active:scale-90"
-      >
-        <Clock size={13} />
-      </button>
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation()
-          openRecoveryDocuments(item)
-        }}
-        title="Knowledge documents"
-        className="rounded-lg p-1 text-purple-400 transition-all hover:bg-purple-400/10 active:scale-90"
-      >
-        <BookOpen size={13} />
-      </button>
-      <button
-        type="button"
-        onClick={(event: any) => openRowActionMenu(event, item)}
-        title="More actions"
-        className="row-action-trigger row-action-menu-container rounded-lg p-1 text-slate-400 transition-all hover:bg-slate-400/10 hover:text-white active:scale-90"
-      >
-        <MoreVertical size={13} />
-      </button>
-    </div>
-  )
-
-  const handleExportCSV = () => {
-    if (gridRef.current?.api) {
-      gridRef.current.api.exportDataAsCsv({
-        fileName: `SysGrid_Monitoring_${new Date().toISOString().split('T')[0]}.csv`,
-        allColumns: false,
-        onlySelected: false
-      })
-    }
-  }
-
-  const handleCopyToClipboard = () => {
-    if (gridRef.current?.api) {
-      const csvData = gridRef.current.api.getDataAsCsv({
-        allColumns: false,
-        onlySelected: true,
-        suppressQuotes: true
-      })
-      if (csvData) {
-        navigator.clipboard.writeText(csvData)
-          .then(() => toast.success("Table data copied to clipboard"))
-          .catch(() => toast.error("Failed to copy data"))
-      }
-    }
-  }
-
-  const cycleGroupedSort = (colId: string) => {
-    setGridSortModel((current) => {
-      const active = current.find((entry: any) => entry.colId === colId)
-      if (!active) return [{ colId, sort: 'asc' }]
-      if (active.sort === 'asc') return [{ colId, sort: 'desc' }]
-      return []
-    })
-  }
-
-  const getColumnLayoutSnapshot = (api: any) => {
-    if (!api?.getColumnState) return []
-    return api.getColumnState().map((column: any) => ({
-      colId: column.colId,
-      width: column.width,
-      hide: column.hide,
-      pinned: column.pinned,
-      flex: column.flex,
-      sort: column.sort,
-      sortIndex: column.sortIndex
-    }))
-  }
-
-  const syncColumnLayoutState = (api: any) => {
-    const nextLayout = getColumnLayoutSnapshot(api)
-    if (!nextLayout.length) return
-    setColumnLayoutState(nextLayout)
-  }
-
-  const applyColumnLayoutState = (api: any) => {
-    if (!api || !columnLayoutState.length) return
-    api.applyColumnState({
-      state: columnLayoutState,
-      applyOrder: true,
-      defaultState: { sort: null }
-    })
-  }
-
-  const buildCurrentViewConfig = () => ({
-    fontSize,
-    rowDensity,
-    hiddenColumns,
-    groupBy,
-    columnLayoutState: gridRef.current?.api?.getColumnState() || columnLayoutState,
-    quickFilter: searchTerm,
-    quickFilters,
-    filterModel: gridRef.current?.api?.getFilterModel?.() || gridFilterModel,
-    sortModel: gridRef.current?.api?.getColumnState?.()
-      ?.filter((col: any) => col.sort)
-      .map((col: any) => ({ colId: col.colId, sort: col.sort })) || gridSortModel
-  })
-
-  const applySavedView = (viewId: string) => {
-    const nextView = savedViews.find((view) => view.id === viewId)
-    if (!nextView) return
-    const config = nextView.config || {}
-    setFontSize(config.fontSize ?? 11)
-    setRowDensity(config.rowDensity ?? 4)
-    setHiddenColumns(config.hiddenColumns ?? [])
-    setGroupBy(config.groupBy ?? 'raw')
-    setColumnLayoutState(config.columnLayoutState ?? [])
-    setSearchTerm(config.quickFilter ?? '')
-    setQuickFilters(config.quickFilters ?? { status: '', severity: '', platform: '', owner: '' })
-    setGridFilterModel(config.filterModel ?? {})
-    setGridSortModel(config.sortModel ?? [{ colId: 'favorite', sort: 'desc' }])
-    setActiveViewId(viewId)
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, viewId)
-    }
-    requestAnimationFrame(() => {
-      if (gridRef.current?.api) {
-        if (Array.isArray(config.columnLayoutState) && config.columnLayoutState.length) {
-          gridRef.current.api.applyColumnState({
-            state: config.columnLayoutState,
-            applyOrder: true,
-            defaultState: { sort: null }
-          })
-        } else {
-          applyColumnLayoutState(gridRef.current.api)
-        }
-        gridRef.current.api.setFilterModel(config.filterModel ?? {})
-      }
-    })
-  }
-
-  const saveCurrentToView = (viewId: string) => {
-    const nextViews = savedViews.map((view) => (
-      view.id === viewId
-        ? { ...view, config: buildCurrentViewConfig() }
-        : view
-    ))
-    setSavedViews(nextViews)
-    setActiveViewId(viewId)
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
-      window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, viewId)
-    }
-    toast.success(`Saved current table to ${nextViews.find((view) => view.id === viewId)?.name}`)
-  }
-
-  const createViewFromCurrent = () => {
-    const trimmed = newViewName.trim()
-    if (!trimmed) {
-      toast.error('Enter a name for the new view')
-      return
-    }
-    const nextIdBase = slugifyViewId(trimmed)
-    let nextId = nextIdBase
-    let suffix = 2
-    while (savedViews.some((view) => view.id === nextId)) {
-      nextId = `${nextIdBase}-${suffix++}`
-    }
-    const nextView = {
-      id: nextId,
-      name: trimmed,
-      config: buildCurrentViewConfig()
-    }
-    const nextViews = [...savedViews, nextView]
-    setSavedViews(nextViews)
-    setActiveViewId(nextId)
-    setNewViewName('')
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
-      window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, nextId)
-    }
-    toast.success(`Saved new view ${trimmed}`)
-  }
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      if (showBulkMenu && !target.closest('.bulk-menu-container') && !target.closest('.bulk-menu-trigger')) {
-        setShowBulkMenu(false)
-        setBulkDeleteConfirm(false)
-      }
-      if (showDisplayMenu && !target.closest('.display-menu-container')) {
-        setShowDisplayMenu(false)
-      }
-      if (showViewsMenu && !target.closest('.views-menu-container')) {
-        setShowViewsMenu(false)
-      }
-      if (rowActionMenu && !target.closest('.row-action-menu-container')) {
-        setRowActionMenu(null)
-        setRowDeleteConfirmId(null)
-      }
-    }
-    if (showBulkMenu || showDisplayMenu || showViewsMenu || rowActionMenu) {
-      document.addEventListener('click', handleClickOutside)
-      return () => document.removeEventListener('click', handleClickOutside)
-    }
-  }, [showBulkMenu, showDisplayMenu, showViewsMenu, rowActionMenu])
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setShowBulkMenu(false)
-        setBulkDeleteConfirm(false)
-        setShowDisplayMenu(false)
-        setShowViewsMenu(false)
-        setRowActionMenu(null)
-        setRowDeleteConfirmId(null)
-      }
-    }
-    if (showBulkMenu || showDisplayMenu || showViewsMenu || rowActionMenu) {
-      window.addEventListener('keydown', handleKeyDown)
-      return () => window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [showBulkMenu, showDisplayMenu, showViewsMenu, rowActionMenu])
-
-  useEffect(() => {
-    const handleContextMenu = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null
-      if (!target) return
-      if (target.closest('.ag-root-wrapper') || target.closest('.row-action-menu-container')) {
-        event.preventDefault()
-      }
-    }
-
-    document.addEventListener('contextmenu', handleContextMenu)
-    return () => document.removeEventListener('contextmenu', handleContextMenu)
+  const onSelectionChanged = useCallback((e: any) => {
+    const selectedNodes = e?.api?.getSelectedNodes?.() || []
+    setSelectedIds(selectedNodes.map((n: any) => n.data?.id).filter(Boolean) || [])
   }, [])
 
-  useEffect(() => {
-    const updateMenuPositions = () => {
-      if (showDisplayMenu && displayMenuButtonRef.current) {
-        setDisplayMenuStyle(getAnchoredFloatingStyle({
-          rect: displayMenuButtonRef.current.getBoundingClientRect(),
-          width: 320,
-          height: 420,
-          zIndex: 1100
-        }))
-      }
-      if (showViewsMenu && viewsMenuButtonRef.current) {
-        setViewsMenuStyle(getAnchoredFloatingStyle({
-          rect: viewsMenuButtonRef.current.getBoundingClientRect(),
-          width: 380,
-          height: 460,
-          zIndex: 1100
-        }))
-      }
-      if (showBulkMenu && bulkMenuButtonRef.current) {
-        setBulkMenuStyle(getAnchoredFloatingStyle({
-          rect: bulkMenuButtonRef.current.getBoundingClientRect(),
-          width: 340,
-          height: BULK_MENU_MAX_HEIGHT,
-          zIndex: 1105
-        }))
-      }
-    }
-
-    updateMenuPositions()
-    if (showDisplayMenu || showBulkMenu || showViewsMenu) {
-      window.addEventListener('resize', updateMenuPositions)
-      window.addEventListener('scroll', updateMenuPositions, true)
-      return () => {
-        window.removeEventListener('resize', updateMenuPositions)
-        window.removeEventListener('scroll', updateMenuPositions, true)
-      }
-    }
-  }, [showBulkMenu, showDisplayMenu, showViewsMenu])
-
-  const [searchTerm, setSearchTerm] = useState(persistedUiState?.searchTerm ?? '')
-
-  const { data: allItems, isLoading } = useQuery({
-    queryKey: ['monitoring-items'],
-    queryFn: async () => (await apiFetch('/api/v1/monitoring?include_deleted=true')).json()
-  })
-
-  useEffect(() => {
-    if (allItems) {
-       // @ts-ignore
-       window.__DEBUG_ALL_ITEMS__ = allItems
-    }
-  }, [allItems])
-
-  const items = useMemo(() => {
-    if (!allItems || !Array.isArray(allItems)) return []
-    return allItems.filter((i: any) => activeTab === 'active' ? !i.is_deleted : i.is_deleted)
-  }, [allItems, activeTab])
-
-  const platformOptions = useMemo(() => {
-    const values = Array.from(new Set((items || []).map((item: any) => item.platform).filter(Boolean)))
-    return values.sort().map((value) => ({ value, label: value }))
-  }, [items])
-
-  const ownerOptions = useMemo(() => {
-    const values = Array.from(new Set((items || []).flatMap((item: any) => (item.owners || []).map((owner: any) => owner.name)).filter(Boolean)))
-    return values.sort().map((value) => ({ value, label: value }))
-  }, [items])
-
-  const groupOptions = [
-    { value: 'raw', label: 'Raw Rows' },
-    { value: 'category', label: 'Category' },
-    { value: 'platform', label: 'Platform' },
-    { value: 'status', label: 'Status' },
-    { value: 'severity', label: 'Severity' },
-    { value: 'notification_method', label: 'Notification Path' }
-  ]
-
-  const displayedItems = useMemo(() => {
-    const filtered = items.filter((item: any) => {
-      if (searchTerm.trim()) {
-        const query = searchTerm.trim().toLowerCase()
-        const haystack = [
-          String(item.id || ''),
-          item.device_name,
-          item.category,
-          item.status,
-          item.severity,
-          item.title,
-          item.platform,
-          item.notification_method,
-          item.purpose,
-          ...(item.owners || []).map((owner: any) => owner.name)
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase()
-        
-        if (!haystack.includes(query)) return false
-      }
-      if (quickFilters.status && item.status !== quickFilters.status) return false
-      if (quickFilters.severity && item.severity !== quickFilters.severity) return false
-      if (quickFilters.platform && item.platform !== quickFilters.platform) return false
-      if (quickFilters.owner && !(item.owners || []).some((owner: any) => owner.name === quickFilters.owner)) return false
-      return true
-    })
-    return filtered
-  }, [items, quickFilters, searchTerm])
-
-  const sortedItemsForGrouped = useMemo(() => {
-    const sorted = [...displayedItems].sort((a: any, b: any) => {
-      const aFavorite = favoriteIds.includes(a.id) ? 1 : 0
-      const bFavorite = favoriteIds.includes(b.id) ? 1 : 0
-      if (aFavorite !== bFavorite) return bFavorite - aFavorite
-      
-      // If no favorite difference, check grid sort model
-      if (gridSortModel.length) {
-        for (const sort of gridSortModel) {
-          const direction = sort.sort === 'desc' ? -1 : 1
-          const aValue = sort.colId === 'owners'
-            ? (a.owners || []).map((owner: any) => owner.name).join(', ')
-            : a[sort.colId]
-          const bValue = sort.colId === 'owners'
-            ? (b.owners || []).map((owner: any) => owner.name).join(', ')
-            : b[sort.colId]
-          const aComparable = aValue == null ? '' : String(aValue).toLowerCase()
-          const bComparable = bValue == null ? '' : String(bValue).toLowerCase()
-          if (aComparable < bComparable) return -1 * direction
-          if (aComparable > bComparable) return 1 * direction
-        }
-      }
-      return a.id - b.id
-    })
-    return sorted
-  }, [displayedItems, favoriteIds, gridSortModel])
-
-  const displayedItemsInOrder = useMemo(() => {
-    if (groupBy !== 'raw') return sortedItemsForGrouped
-    // Even for raw, we want favorites pinned to top if there's no manual sort overriding it
-    // or we can just always use sortedItemsForGrouped for the rowData to keep it consistent.
-    return sortedItemsForGrouped
-  }, [sortedItemsForGrouped, groupBy])
-
-  const selectedItems = useMemo(
-    () => displayedItems.filter((item: any) => selectedIds.includes(item.id)),
-    [displayedItems, selectedIds]
-  )
-
-  const compareItems = useMemo(() => selectedItems.slice(0, 3), [selectedItems])
-
-  const groupedSections = useMemo(() => {
-    if (groupBy === 'raw') return []
-    const sections = sortedItemsForGrouped.reduce((acc: Array<{ key: string; label: string; items: any[] }>, item: any) => {
-      const label = String(getMonitorGroupValue(item, groupBy))
-      const existing = acc.find((section) => section.key === label)
-      if (existing) {
-        existing.items.push(item)
-      } else {
-        acc.push({ key: label, label, items: [item] })
-      }
-      return acc
-    }, [])
-    return sections.sort((a, b) => a.label.localeCompare(b.label))
-  }, [sortedItemsForGrouped, groupBy])
-
-  useEffect(() => {
-    if (groupBy === 'raw') return
-    setCollapsedGroups((current) => {
-      const next = { ...current }
-      groupedSections.forEach((section) => {
-        if (!(section.key in next)) next[section.key] = false
-      })
-      Object.keys(next).forEach((key) => {
-        if (!groupedSections.some((section) => section.key === key)) delete next[key]
-      })
-      return next
-    })
-  }, [groupBy, groupedSections])
-
-  const handleGroupedRowClick = (item: any, event: React.MouseEvent) => {
-    if (shouldIgnoreRowSelection(event.target)) return
-    const currentIndex = displayedItems.findIndex((entry: any) => entry.id === item.id)
-    if (currentIndex < 0) return
-    if (event.shiftKey && selectionAnchorRef.current !== null) {
-      const start = Math.min(selectionAnchorRef.current, currentIndex)
-      const end = Math.max(selectionAnchorRef.current, currentIndex)
-      setSelectedIds(displayedItems.slice(start, end + 1).map((entry: any) => entry.id))
-      return
-    }
-    if (event.metaKey || event.ctrlKey) {
-      setSelectedIds((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id])
-      selectionAnchorRef.current = currentIndex
-      return
-    }
-    setSelectedIds([item.id])
-    selectionAnchorRef.current = currentIndex
-  }
-
-  const toggleGroupedCheckbox = (item: any, event: React.ChangeEvent<HTMLInputElement>) => {
-    event.stopPropagation()
-    const currentIndex = displayedItems.findIndex((entry: any) => entry.id === item.id)
-    const nativeEvent = event.nativeEvent as MouseEvent
-    if (nativeEvent.shiftKey && selectionAnchorRef.current !== null) {
-      const start = Math.min(selectionAnchorRef.current, currentIndex)
-      const end = Math.max(selectionAnchorRef.current, currentIndex)
-      setSelectedIds(displayedItems.slice(start, end + 1).map((entry: any) => entry.id))
-      return
-    }
-    setSelectedIds((current) => event.target.checked ? [...new Set([...current, item.id])] : current.filter((id) => id !== item.id))
-    selectionAnchorRef.current = currentIndex
-  }
-
-  const isRecentChange = useCallback((item: any) => {
-    const changedAt = item?.updated_at || item?.created_at
-    if (!changedAt || !lastVisitedAt) return false
-    return new Date(changedAt).getTime() > lastVisitedAt
-  }, [lastVisitedAt])
-
-  const bulkPreview = useMemo(() => {
-    const field = expandedBulkSection === 'notification' ? 'notification_method' : expandedBulkSection
-    if (!field) return null
-    const nextValue = expandedBulkSection === 'notification' ? bulkDraft.notification_method : bulkDraft[expandedBulkSection]
-    const currentCounts = selectedItems.reduce((acc: Record<string, number>, item: any) => {
-      const key = item[field] || 'Unspecified'
-      acc[key] = (acc[key] || 0) + 1
-      return acc
-    }, {})
-    return {
-      field,
-      nextValue,
-      currentCounts: Object.entries(currentCounts)
-    }
-  }, [bulkDraft, expandedBulkSection, selectedItems])
-
-  useEffect(() => {
-    if (!idParam || !allItems) return
-    const target = allItems.find((item: any) => String(item.id) === idParam)
-    if (!target) return
-    setActiveTab(target.is_deleted ? 'deleted' : 'active')
-    setDetailItem(target)
-  }, [idParam, allItems])
-
-  useEffect(() => {
-    selectionAnchorRef.current = null
-  }, [activeTab, items])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(savedViews))
-  }, [savedViews])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(MONITORING_FAVORITES_STORAGE_KEY, JSON.stringify(favoriteIds))
-  }, [favoriteIds])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(MONITORING_WATCH_STORAGE_KEY, JSON.stringify(watchIds))
-  }, [watchIds])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(MONITORING_UI_STATE_KEY, JSON.stringify({
-      activeTab,
-      fontSize,
-      rowDensity,
-      hiddenColumns,
-      quickFilters,
-      groupBy,
-      columnLayoutState,
-      selectedIds,
-      expandedBulkSection,
-      lastVisitedAt,
-      searchTerm
-    }))
-  }, [activeTab, columnLayoutState, expandedBulkSection, fontSize, groupBy, hiddenColumns, lastVisitedAt, quickFilters, rowDensity, searchTerm, selectedIds])
-
-  useEffect(() => {
-    if (!activeViewId || !gridRef.current?.api) return
-    applySavedView(activeViewId)
-  }, [activeViewId, items.length])
-
-  useEffect(() => {
-    if (!gridRef.current?.api || !selectedIds.length) return
-    gridRef.current.api.forEachNode((node: any) => {
-      node.setSelected(selectedIds.includes(node.data?.id))
-    })
-    const firstSelectedIndex = displayedItems.findIndex((item: any) => selectedIds.includes(item.id))
-    if (firstSelectedIndex >= 0) {
-      gridRef.current.api.ensureIndexVisible(firstSelectedIndex, 'middle')
-    }
-  }, [displayedItems, selectedIds])
-
-  useEffect(() => {
-    if (selectedIds.length === 0) {
-      setShowBulkMenu(false)
-    }
-  }, [selectedIds.length])
-
-  useEffect(() => {
-    return () => {
-      if (typeof window === 'undefined') return
-      const current = readMonitoringUiState() || {}
-      window.localStorage.setItem(MONITORING_UI_STATE_KEY, JSON.stringify({
-        ...current,
-        lastVisitedAt: Date.now()
-      }))
-    }
+  const onColumnResized = useCallback((event: any) => {
+    if (event.finished) syncColumnLayoutState(event.api)
   }, [])
 
-  const activeFilterChips = useMemo(() => {
-    const chips: Array<{ id: string; label: string; onRemove: () => void }> = []
-    if (searchTerm.trim()) {
-      chips.push({
-        id: 'search',
-        label: `Search: ${searchTerm.trim()}`,
-        onRemove: () => setSearchTerm('')
-      })
+  const onColumnMoved = useCallback((event: any) => {
+    if (!event.source.includes('drag')) syncColumnLayoutState(event.api)
+  }, [])
+
+  const onDragStopped = useCallback((event: any) => syncColumnLayoutState(event.api), [])
+  const onColumnPinned = useCallback((event: any) => syncColumnLayoutState(event.api), [])
+  const onColumnVisible = useCallback((event: any) => syncColumnLayoutState(event.api), [])
+  const onFilterChanged = useCallback((e: any) => setGridFilterModel(e.api.getFilterModel() || {}), [])
+  
+  const onSortChanged = useCallback((e: any) => {
+    const nextSortModel = e.api.getColumnState().filter((col: any) => col.sort).map((col: any) => ({ colId: col.colId, sort: col.sort }))
+    setGridSortModel(nextSortModel)
+  }, [])
+
+  const onCellContextMenu = useCallback((e: any) => {
+    if (!e?.data) return
+    const mouseEvent = e.event as MouseEvent
+    mouseEvent?.preventDefault?.()
+    openRowActionMenuAtPoint(e.data, mouseEvent.clientX, mouseEvent.clientY)
+  }, [openRowActionMenuAtPoint])
+
+  const onGridReady = useCallback((event: any) => {
+    if (columnLayoutState.length > 0) {
+      event.api.applyColumnState({
+        state: columnLayoutState,
+        applyOrder: true,
+        defaultState: { sort: null }
+      });
     }
-    Object.entries(gridFilterModel || {}).forEach(([field, model]) => {
-      if (!model) return
-      const labelValue = Array.isArray((model as any).values)
-        ? (model as any).values.join(', ')
-        : (model as any).filter || (model as any).filterTo || (model as any).type || 'Active'
-      chips.push({
-        id: `filter-${field}`,
-        label: `${field}: ${labelValue}`,
-        onRemove: () => {
-          if (gridRef.current?.api) {
-            const nextModel = { ...(gridRef.current.api.getFilterModel() || {}) }
-            delete nextModel[field]
-            gridRef.current.api.setFilterModel(nextModel)
-            setGridFilterModel(nextModel)
-          }
-        }
-      })
-    })
-    Object.entries(quickFilters).forEach(([field, value]) => {
-      if (!value) return
-      chips.push({
-        id: `quick-${field}`,
-        label: `${field}: ${value}`,
-        onRemove: () => setQuickFilters((current) => ({ ...current, [field]: '' }))
-      })
-    })
-    return chips
-  }, [gridFilterModel, quickFilters, searchTerm])
+  }, [columnLayoutState])
 
-  const { data: devices } = useQuery({
-    queryKey: ['devices'],
-    queryFn: async () => (await apiFetch('/api/v1/devices/')).json()
-  })
-
-  const runUndo = async () => {
-    const undo = lastUndoRef.current
-    if (!undo) return
-    if (undo.mode === 'bulk') {
-      const res = await apiFetch('/api/v1/monitoring/bulk-action', {
-        method: 'POST',
-        body: JSON.stringify({ ids: undo.ids, action: undo.action, payload: undo.payload || {} })
-      })
-      if (!res.ok) throw new Error(await res.text())
-    } else if (undo.mode === 'restore_snapshots') {
-      for (const snapshot of undo.snapshots) {
-        const res = await apiFetch(`/api/v1/monitoring/${snapshot.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(sanitizeMonitoringPayload(snapshot))
-        })
-        if (!res.ok) throw new Error(await res.text())
-      }
-    }
-    lastUndoRef.current = null
-    queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
-  }
-
-  const bulkMutation = useMutation({
-    mutationFn: async ({ action, payload = {}, ids: overrideIds }: any) => {
-      const idsToUse = overrideIds ?? selectedIds
-      const previousSnapshots = (allItems || []).filter((item: any) => idsToUse.includes(item.id)).map((item: any) => ({ ...item }))
-      const res = await apiFetch('/api/v1/monitoring/bulk-action', {
-        method: 'POST',
-        body: JSON.stringify({ ids: idsToUse, action, payload })
-      })
-      if (!res.ok) throw new Error(await res.text())
-      const result = await res.json()
-      return { result, action, payload, idsToUse, previousSnapshots }
-    },
-    onSuccess: ({ action, payload, idsToUse, previousSnapshots }: any) => {
-      queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
-      setSelectedIds([])
-      setShowBulkMenu(false)
-      setExpandedBulkSection(null)
-      setBulkDraft({ status: '', severity: '', notification_method: '' })
-      setIsBulkStatusOpen(false)
-      setIsBulkSeverityOpen(false)
-      setIsBulkNotifyOpen(false)
-      
-      if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
-      else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
-      else if (action === 'update') lastUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
-      else lastUndoRef.current = null
-
-      if (lastUndoRef.current) {
-        toast.custom((t) => (
-          <div className={`${t.visible ? 'animate-in fade-in slide-in-from-bottom-4' : 'animate-out fade-out slide-out-to-bottom-4'} relative overflow-hidden rounded-xl border border-slate-700 bg-[#020617] p-0 shadow-2xl`}>
-            <div className="px-5 py-4">
-              <div className="flex items-start justify-between gap-6">
-                <div className="space-y-1">
-                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-100">Bulk Operation Applied</p>
-                  <p className="text-[10px] font-bold text-slate-400">Successfully modified {idsToUse.length} item{idsToUse.length > 1 ? 's' : ''}.</p>
-                </div>
-                <button 
-                  onClick={() => toast.dismiss(t.id)}
-                  className="rounded-lg p-1 text-slate-500 hover:bg-white/5 hover:text-white transition-colors"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-              
-              <div className="mt-4 flex items-center gap-3">
-                <button
-                  onClick={async () => {
-                    toast.dismiss(t.id)
-                    try {
-                      await runUndo()
-                      toast.success('Undo complete', { id: 'undo-success' })
-                    } catch (error: any) {
-                      toast.error(error.message || 'Undo failed', { id: 'undo-error' })
-                    }
-                  }}
-                  className="inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-600/15 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-blue-200 hover:bg-blue-600/25 transition-colors"
-                >
-                  <Undo2 size={12} />
-                  Undo Change
-                </button>
-                <button
-                  onClick={() => toast.dismiss(t.id)}
-                  className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 hover:text-slate-300"
-                >
-                  Dismiss
-                </button>
-              </div>
-            </div>
-            
-            {/* Progress Gauge */}
-            <div className="absolute bottom-0 left-0 h-1 bg-blue-500/20 w-full">
-              <motion.div 
-                initial={{ width: '100%' }}
-                animate={{ width: 0 }}
-                transition={{ duration: 7.5, ease: 'linear' }}
-                className="h-full bg-blue-500"
-              />
-            </div>
-          </div>
-        ), { duration: 7500, id: 'bulk-toast' })
-      }
-    },
-    onError: (e: any) => toast.error(`Operation failed: ${e.message}`, { id: 'bulk-error' })
-  })
+  const getRowClass = useCallback((params: any) => 
+    params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd', 
+  [])
 
   const columnDefs = useMemo(() => {
     const layoutById = new Map(columnLayoutState.map((column: any) => [column.colId, column]))
@@ -1263,9 +581,13 @@ export default function MonitoringGrid() {
       resizable: false,
       suppressMovable: true,
       suppressHide: true,
-      valueGetter: (p: any) => p.context?.favoriteIds?.includes(p.data?.id) ? 1 : 0,
+      valueGetter: (p: any) => {
+        const id = p.data?.id ? Number(p.data.id) : null
+        return (id != null && p.context?.favoriteIds?.includes(id)) ? 1 : 0
+      },
       cellRenderer: (p: any) => {
-        const isFavorite = p.context?.favoriteIds?.includes(p.data?.id)
+        const id = p.data?.id ? Number(p.data.id) : null
+        const isFavorite = id != null && p.context?.favoriteIds?.includes(id)
         return (
           <div className="flex h-full w-full items-center justify-center">
             <button
@@ -1297,7 +619,8 @@ export default function MonitoringGrid() {
       resizable: false,
       suppressHide: true,
       cellRenderer: (p: any) => {
-        const isWatched = p.context?.watchIds?.includes(p.data?.id)
+        const id = p.data?.id ? Number(p.data.id) : null
+        const isWatched = id != null && p.context?.watchIds?.includes(id)
         return (
           <div className="flex h-full w-full items-center justify-center">
             <button
@@ -1538,7 +861,7 @@ export default function MonitoringGrid() {
       flex: layout.flex ?? col.flex
     }
   })
-}, [fontSize, groupBy, hiddenColumns, columnLayoutState]) as any
+}, [fontSize, groupBy, hiddenColumns, columnLayoutState, favoriteIds, watchIds]) as any
 
   const gridContext = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
 
@@ -2057,7 +1380,7 @@ export default function MonitoringGrid() {
 	          </AnimatePresence>
 
 	          <AnimatePresence>
-            {rowActionMenu && !!rowActionMenu.style.top && (
+            {rowActionMenu && (
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -2207,43 +1530,19 @@ export default function MonitoringGrid() {
             fontSize={fontSize}
             rowDensity={rowDensity}
             context={gridContext}
-            onGridReady={(event: any) => {
-              // Immediately apply layout if we have it to prevent squish
-              if (columnLayoutState.length > 0) {
-                event.api.applyColumnState({
-                  state: columnLayoutState,
-                  applyOrder: true,
-                  defaultState: { sort: null }
-                });
-              }
-            }}
-	            onSelectionChanged={useCallback((e: any) => {
-                const selectedNodes = e?.api?.getSelectedNodes?.() || []
-                setSelectedIds(selectedNodes.map((n: any) => n.data?.id).filter(Boolean) || [])
-              }, [])}
-            onColumnResized={useCallback((event: any) => {
-              if (event.finished) syncColumnLayoutState(event.api)
-            }, [])}
-            onColumnMoved={useCallback((event: any) => {
-               if (!event.source.includes('drag')) syncColumnLayoutState(event.api)
-            }, [])}
-            onDragStopped={useCallback((event: any) => syncColumnLayoutState(event.api), [])}
-            onColumnPinned={useCallback((event: any) => syncColumnLayoutState(event.api), [])}
-            onColumnVisible={useCallback((event: any) => syncColumnLayoutState(event.api), [])}
-            onFilterChanged={useCallback((e: any) => setGridFilterModel(e.api.getFilterModel() || {}), [])}
-	            onSortChanged={useCallback((e: any) => {
-	              const nextSortModel = e.api.getColumnState().filter((col: any) => col.sort).map((col: any) => ({ colId: col.colId, sort: col.sort }))
-	              setGridSortModel(nextSortModel)
-	            }, [])}
-            onCellContextMenu={useCallback((e: any) => {
-              if (!e?.data) return
-              const mouseEvent = e.event as MouseEvent
-              mouseEvent?.preventDefault?.()
-              openRowActionMenuAtPoint(e.data, mouseEvent.clientX, mouseEvent.clientY)
-            }, [openRowActionMenuAtPoint])}
-	            onRowClicked={handleRowClicked}
-            onRowDoubleClicked={handleRowDoubleClicked}
-            getRowClass={useCallback((params: any) => params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd', [])}
+            onGridReady={onGridReady}
+	            onSelectionChanged={onSelectionChanged}
+            onColumnResized={onColumnResized}
+            onColumnMoved={onColumnMoved}
+            onDragStopped={onDragStopped}
+            onColumnPinned={onColumnPinned}
+            onColumnVisible={onColumnVisible}
+            onFilterChanged={onFilterChanged}
+	            onSortChanged={onSortChanged}
+            onCellContextMenu={onCellContextMenu}
+	            onRowClicked={onRowClicked}
+            onRowDoubleClicked={onRowDoubleClicked}
+            getRowClass={getRowClass}
 	          />
 
 	        </div>
