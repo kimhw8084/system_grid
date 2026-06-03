@@ -149,38 +149,50 @@ const GridMatrix = React.memo(({
   onCellContextMenu,
   getRowClass,
   onFirstDataRendered
-}: any) => (
-  <AgGridReact
-    ref={gridRef}
-    rowData={rowData}
-    columnDefs={columnDefs}
-    getRowId={getRowId}
-    rowSelection="multiple"
-    animateRows={true}
-    headerHeight={fontSize + rowDensity + 4}
-    rowHeight={fontSize + rowDensity + 4}
-    context={context}
-    onGridReady={onGridReady}
-    onSelectionChanged={onSelectionChanged}
-    onColumnResized={onColumnResized}
-    onColumnMoved={onColumnMoved}
-    onDragStopped={onDragStopped}
-    onColumnPinned={onColumnPinned}
-    onColumnVisible={onColumnVisible}
-    onFilterChanged={onFilterChanged}
-    onSortChanged={onSortChanged}
-    onRowClicked={onRowClicked}
-    onRowDoubleClicked={onRowDoubleClicked}
-    onCellContextMenu={onCellContextMenu}
-    getRowClass={getRowClass}
-    onFirstDataRendered={onFirstDataRendered}
-    suppressScrollOnNewData={true}
-    suppressCellFocus={true}
-    suppressRowClickSelection={true}
-    enableCellTextSelection={true}
-    overlayNoRowsTemplate="<span class='text-slate-500 font-black uppercase tracking-widest text-[10px]'>No monitoring data found</span>"
-  />
-), (prev, next) => {
+}: any) => {
+  const defaultColDef = useMemo(() => ({
+    sortable: true,
+    resizable: true,
+    filter: true,
+    suppressMovable: false
+  }), []);
+
+  return (
+    <AgGridReact
+      ref={gridRef}
+      rowData={rowData}
+      columnDefs={columnDefs}
+      defaultColDef={defaultColDef}
+      getRowId={getRowId}
+      rowSelection="multiple"
+      animateRows={true}
+      headerHeight={fontSize + rowDensity + 10}
+      rowHeight={fontSize + rowDensity + 4}
+      context={context}
+      onGridReady={onGridReady}
+      onSelectionChanged={onSelectionChanged}
+      onColumnResized={onColumnResized}
+      onColumnMoved={onColumnMoved}
+      onDragStopped={onDragStopped}
+      onColumnPinned={onColumnPinned}
+      onColumnVisible={onColumnVisible}
+      onFilterChanged={onFilterChanged}
+      onSortChanged={onSortChanged}
+      onRowClicked={onRowClicked}
+      onRowDoubleClicked={onRowDoubleClicked}
+      onCellContextMenu={onCellContextMenu}
+      getRowClass={getRowClass}
+      onFirstDataRendered={onFirstDataRendered}
+      suppressScrollOnNewData={true}
+      suppressCellFocus={true}
+      suppressRowClickSelection={true}
+      enableCellTextSelection={true}
+      suppressMovableColumns={false}
+      ensureDomOrder={true}
+      overlayNoRowsTemplate="<span class='text-slate-500 font-black uppercase tracking-widest text-[10px]'>No monitoring data found</span>"
+    />
+  )
+}, (prev, next) => {
   return prev.rowData === next.rowData && 
          prev.columnDefs === next.columnDefs && 
          prev.fontSize === next.fontSize && 
@@ -1374,7 +1386,6 @@ export default function MonitoringGrid() {
       sortable: false,
       filter: false,
       resizable: false,
-      suppressMovable: true,
       cellClass: 'text-center border-r border-white/5 flex items-center justify-center !overflow-visible',
       headerClass: 'text-center border-r border-white/5',
       hide: !isIntelligenceExpanded,
@@ -1420,7 +1431,6 @@ export default function MonitoringGrid() {
       sortable: true,
       filter: false,
       resizable: false,
-      suppressMovable: true,
       suppressHide: true,
       valueGetter: (p: any) => p.context?.favoriteIds?.includes(p.data?.id) ? 1 : 0,
       cellRenderer: (p: any) => {
@@ -1684,7 +1694,7 @@ export default function MonitoringGrid() {
   ]
   
   // Inject saved layout state (widths, pinned, sort) into definitions before first render
-  return defs.map((col: any) => {
+  const mergedDefs = defs.map((col: any) => {
     if (col.children) {
       return {
         ...col,
@@ -1713,6 +1723,18 @@ export default function MonitoringGrid() {
       flex: layout.flex ?? col.flex
     }
   })
+
+  // Ensure column order is maintained from state to prevent "jumping" during re-renders
+  if (columnLayoutState.length > 0) {
+    const orderMap = new Map(columnLayoutState.map((col: any, index: number) => [col.colId, index]))
+    return [...mergedDefs].sort((a: any, b: any) => {
+      const aId = a.colId || a.field
+      const bId = b.colId || b.field
+      return (orderMap.get(aId) ?? 1000) - (orderMap.get(bId) ?? 1000)
+    })
+  }
+
+  return mergedDefs
 }, [fontSize, groupBy, hiddenColumns, columnLayoutState, isIntelligenceExpanded]) as any
 
   const gridContext = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
