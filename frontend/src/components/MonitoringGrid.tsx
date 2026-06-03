@@ -310,6 +310,12 @@ export default function MonitoringGrid() {
   })
   const [activeViewId, setActiveViewId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null
+    // Reset to system default (no view) on the very first load of a browser session
+    const isFirstLoad = !window.sessionStorage.getItem('sysgrid_monitoring_session_init')
+    if (isFirstLoad) {
+      window.sessionStorage.setItem('sysgrid_monitoring_session_init', 'true')
+      return null
+    }
     return window.localStorage.getItem(MONITORING_ACTIVE_VIEW_KEY)
   })
   const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
@@ -417,11 +423,7 @@ export default function MonitoringGrid() {
 
   const openRowActionMenu = (event: React.MouseEvent, item: any) => {
     event.stopPropagation()
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
-    setRowActionMenu({
-      item,
-      style: getAnchoredFloatingStyle({ rect, width: 336, height: 432, zIndex: 1115 })
-    })
+    openRowActionMenuAtPoint(item, event.clientX, event.clientY)
   }
 
   const positionUtilityWindow = (button: HTMLButtonElement | null, width: number, height: number, zIndex: number) => {
@@ -727,6 +729,47 @@ export default function MonitoringGrid() {
     toast.success(`Saved new view ${trimmed}`)
   }
 
+  const applySystemDefault = () => {
+    setActiveViewId(null)
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(MONITORING_ACTIVE_VIEW_KEY)
+    }
+    setHiddenColumns(persistedUiState?.hiddenColumns ?? [])
+    setQuickFilters({ status: '', severity: '', platform: '', owner: '' })
+    setGridSortModel([{ colId: 'favorite', sort: 'desc' }])
+    if (gridRef.current?.api) {
+       gridRef.current.api.setFilterModel({})
+       gridRef.current.api.applyColumnState({
+         defaultState: { sort: null, flex: 1, pinned: null, hide: false },
+         applyOrder: true
+       })
+    }
+    toast.success('Restored system default view')
+  }
+
+  const deleteView = (viewId: string) => {
+    const view = savedViews.find((v) => v.id === viewId)
+    if (!view) return
+    openConfirm(
+      `Delete View: ${view.name}?`,
+      "Are you sure you want to permanently remove this saved layout?",
+      () => {
+        const nextViews = savedViews.filter((v) => v.id !== viewId)
+        setSavedViews(nextViews)
+        if (activeViewId === viewId) {
+          setActiveViewId(null)
+          if (typeof window !== 'undefined') {
+             window.localStorage.removeItem(MONITORING_ACTIVE_VIEW_KEY)
+          }
+        }
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
+        }
+        toast.success(`Deleted view ${view.name}`)
+      }
+    )
+  }
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement
@@ -847,6 +890,18 @@ export default function MonitoringGrid() {
   const ownerOptions = useMemo(() => {
     const values = Array.from(new Set((items || []).flatMap((item: any) => (item.owners || []).map((owner: any) => owner.name)).filter(Boolean)))
     return values.sort().map((value) => ({ value, label: value }))
+  }, [items])
+
+  useEffect(() => {
+    if (gridRef.current?.api) {
+      gridRef.current.api.refreshCells({ columns: ['favorite', 'watch'], force: true })
+    }
+  }, [favoriteIds, watchIds])
+
+  useEffect(() => {
+    if (gridRef.current?.api && items?.length > 0) {
+      gridRef.current.api.autoSizeColumns(['platform'])
+    }
   }, [items])
 
   const groupOptions = [
@@ -1170,7 +1225,6 @@ export default function MonitoringGrid() {
     },
     onSuccess: ({ action, payload, idsToUse, previousSnapshots }: any) => {
       queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
-      setSelectedIds([])
       setShowBulkMenu(false)
       setExpandedBulkSection(null)
       setBulkDraft({ status: '', severity: '', notification_method: '' })
@@ -1254,8 +1308,8 @@ export default function MonitoringGrid() {
       checkboxSelection: true, 
       headerCheckboxSelection: true, 
       pinned: 'left', 
-      cellClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
-      headerClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      cellClass: 'flex items-center justify-center border-r border-white/5', 
+      headerClass: 'flex items-center justify-center border-r border-white/5', 
       suppressSizeToFit: true,
       resizable: false,
       sortable: false,
@@ -1273,11 +1327,11 @@ export default function MonitoringGrid() {
       cellClass: 'text-center font-bold text-slate-500 border-r border-white/5 flex items-center justify-center',
       headerClass: 'text-center border-r border-white/5',
       filter: 'agNumberColumnFilter',
+      suppressHide: true
     },
     {
       headerName: "Intelligence",
       headerClass: 'text-center border-r border-white/5 bg-slate-900/40',
-      marryChildren: true,
       children: [
         {
           colId: "recent_change",
@@ -1293,7 +1347,6 @@ export default function MonitoringGrid() {
           suppressMovable: true,
           cellClass: 'text-center border-r border-white/5 flex items-center justify-center !overflow-visible',
           headerClass: 'text-center border-r border-white/5',
-          suppressHide: true,
           columnGroupShow: 'open',
           cellRenderer: (p: any) => p.data && isRecentChange(p.data) ? (
             <div className="relative flex items-center justify-center h-full w-full">
@@ -1349,7 +1402,6 @@ export default function MonitoringGrid() {
           sortable: false,
           filter: false,
           resizable: false,
-          suppressHide: true,
           columnGroupShow: 'open',
           cellRenderer: (p: any) => {
             const isWatched = p.context?.watchIds?.includes(p.data?.id)
@@ -1502,7 +1554,6 @@ export default function MonitoringGrid() {
     { 
       field: "platform", 
       headerName: "Platform", 
-      width: 120, 
       minWidth: 100,
       filter: true,
       rowGroup: groupBy === 'platform',
@@ -2003,6 +2054,23 @@ export default function MonitoringGrid() {
                   </div>
 
                   <div className="space-y-2 rounded-lg border border-white/5 bg-black/20 p-3">
+                    <button
+                      onClick={applySystemDefault}
+                      className={`w-full rounded-lg border px-3 py-2 text-left transition-all ${
+                        activeViewId === null
+                          ? 'border-emerald-500/30 bg-emerald-500/12'
+                          : 'border-white/8 bg-white/[0.03] hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className={`text-[10px] font-black uppercase tracking-[0.14em] ${activeViewId === null ? 'text-emerald-300' : 'text-slate-200'}`}>System Default</p>
+                          <p className="pt-1 text-[10px] text-slate-500">Standard table layout with no active view</p>
+                        </div>
+                        <span className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-600">Core</span>
+                      </div>
+                    </button>
+
                     {savedViews.map((view) => {
                       const isDefaultView = DEFAULT_MONITORING_VIEW_IDS.has(view.id)
                       return (
@@ -2023,13 +2091,24 @@ export default function MonitoringGrid() {
                               <span className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-600">{isDefaultView ? 'Default' : 'Custom'}</span>
                             </div>
                           </button>
-                          <button
-                            onClick={() => saveCurrentToView(view.id)}
-                            title={`Overwrite ${view.name}`}
-                            className="rounded-lg border border-white/8 bg-white/[0.03] p-2 text-slate-400 transition-all hover:bg-white/[0.06] hover:text-white"
-                          >
-                            <Save size={13} />
-                          </button>
+                          <div className="flex flex-col gap-1">
+                            <button
+                              onClick={() => saveCurrentToView(view.id)}
+                              title={`Overwrite ${view.name}`}
+                              className="rounded-lg border border-white/8 bg-white/[0.03] p-1.5 text-slate-400 transition-all hover:bg-white/[0.06] hover:text-white"
+                            >
+                              <Save size={12} />
+                            </button>
+                            {!isDefaultView && (
+                              <button
+                                onClick={() => deleteView(view.id)}
+                                title={`Delete ${view.name}`}
+                                className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-1.5 text-rose-500 transition-all hover:bg-rose-500/20"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       )
                     })}
