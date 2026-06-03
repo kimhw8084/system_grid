@@ -35,11 +35,7 @@ const STATUSES = [
   { value: 'Deleted', label: 'Deleted', color: 'bg-slate-800 text-slate-500 border-white/5' }
 ]
 
-const DEFAULT_MONITORING_VIEWS = [
-  { id: 'ops', name: 'Ops', config: { fontSize: 11, rowDensity: 4, hiddenColumns: [], quickFilter: '', quickFilters: { status: '', severity: '', platform: '', owner: '' }, filterModel: {}, sortModel: [] } },
-  { id: 'incident', name: 'Incident', config: { fontSize: 11, rowDensity: 4, hiddenColumns: ['purpose'], quickFilter: '', quickFilters: { status: '', severity: '', platform: '', owner: '' }, filterModel: {}, sortModel: [{ colId: 'severity', sort: 'desc' }] } },
-  { id: 'recovery', name: 'Recovery', config: { fontSize: 11, rowDensity: 4, hiddenColumns: ['platform', 'check_interval'], quickFilter: '', quickFilters: { status: '', severity: '', platform: '', owner: '' }, filterModel: {}, sortModel: [] } }
-]
+const DEFAULT_MONITORING_VIEWS = []
 const DEFAULT_MONITORING_VIEW_IDS = new Set(DEFAULT_MONITORING_VIEWS.map((view) => view.id))
 
 const slugifyViewId = (value: string) =>
@@ -265,7 +261,7 @@ export default function MonitoringGrid() {
   
   // --- STYLE LABORATORY STATE ---
   const [fontSize, setFontSize] = useState(11)
-  const [rowDensity, setRowDensity] = useState(4)
+  const [rowDensity, setRowDensity] = useState(8)
   const [showDisplayMenu, setShowDisplayMenu] = useState(false)
   const [showViewsMenu, setShowViewsMenu] = useState(false)
   const [showRegistry, setShowRegistry] = useState(false)
@@ -308,7 +304,8 @@ export default function MonitoringGrid() {
       // Merge system defaults with persisted versions (to get latest config)
       // and append any custom views that are not in the default list
       const systemIds = new Set(DEFAULT_MONITORING_VIEWS.map(v => v.id))
-      const customViews = parsed.filter((v: any) => !systemIds.has(v.id))
+      const legacyIds = new Set(['ops', 'incident', 'recovery'])
+      const customViews = parsed.filter((v: any) => !systemIds.has(v.id) && !legacyIds.has(v.id))
       
       return [
         ...DEFAULT_MONITORING_VIEWS.map((view) => parsed.find((entry: any) => entry.id === view.id) || view),
@@ -680,7 +677,7 @@ export default function MonitoringGrid() {
     if (!nextView) return
     const config = nextView.config || {}
     setFontSize(config.fontSize ?? 11)
-    setRowDensity(config.rowDensity ?? 4)
+    setRowDensity(config.rowDensity ?? 8)
     setHiddenColumns(config.hiddenColumns ?? [])
     setGroupBy(config.groupBy ?? 'raw')
     setColumnLayoutState(config.columnLayoutState ?? [])
@@ -757,7 +754,7 @@ export default function MonitoringGrid() {
       window.localStorage.removeItem(MONITORING_ACTIVE_VIEW_KEY)
     }
     setFontSize(11)
-    setRowDensity(4)
+    setRowDensity(8)
     setHiddenColumns([])
     setGroupBy('raw')
     setColumnLayoutState([])
