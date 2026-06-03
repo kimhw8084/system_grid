@@ -277,7 +277,7 @@ export default function MonitoringGrid() {
   const [showDisplayMenu, setShowDisplayMenu] = useState(false)
   const [showViewsMenu, setShowViewsMenu] = useState(false)
   const [showRegistry, setShowRegistry] = useState(false)
-  const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedUiState?.hiddenColumns ?? ['created_at', 'updated_at'])
   const [activeTab, setActiveTab] = useState<'active' | 'deleted'>(persistedUiState?.activeTab === 'deleted' ? 'deleted' : 'active')
 
   // Modals state
@@ -1271,6 +1271,9 @@ export default function MonitoringGrid() {
     },
     onSuccess: ({ action, payload, idsToUse, previousSnapshots }: any) => {
       queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
+      idsToUse.forEach((id: number) => {
+        queryClient.invalidateQueries({ queryKey: ['monitoring-history', id] })
+      })
       setShowBulkMenu(false)
       setExpandedBulkSection(null)
       setBulkDraft({ status: '', severity: '', notification_method: '' })
@@ -1635,6 +1638,36 @@ export default function MonitoringGrid() {
       hide: hiddenColumns.includes("severity") || groupBy === 'severity'
     },
     { 
+      field: "created_at", 
+      headerName: "Created", 
+      width: 180,
+      filter: 'agDateColumnFilter',
+      cellClass: 'text-center font-bold text-slate-500 flex items-center justify-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? (
+        <div className="flex items-center gap-2">
+           <Clock size={12} className="opacity-40" />
+           <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleString()}</span>
+        </div>
+      ) : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 uppercase">N/A</span>,
+      hide: hiddenColumns.includes("created_at")
+    },
+    { 
+      field: "updated_at", 
+      headerName: "Updated", 
+      width: 180,
+      filter: 'agDateColumnFilter',
+      cellClass: 'text-center font-bold text-slate-500 flex items-center justify-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => p.value ? (
+        <div className="flex items-center gap-2">
+           <Clock size={12} className="opacity-40" />
+           <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleString()}</span>
+        </div>
+      ) : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 uppercase">N/A</span>,
+      hide: hiddenColumns.includes("updated_at")
+    },
+    { 
       field: "check_interval", 
       headerName: "Freq", 
       width: 80, 
@@ -1894,7 +1927,7 @@ export default function MonitoringGrid() {
 	          <>
               <ToolbarButton
                 onClick={openCompare}
-                disabled={selectedIds.length < 2 || selectedIds.length > 3}
+                disabled={selectedIds.length < 2 || selectedIds.length > 5}
                 active={compareOpen}
                 title="Compare selected monitors"
               >
@@ -2676,6 +2709,9 @@ export default function MonitoringGrid() {
             onClose={() => setIsFormOpen(false)} 
             onSuccess={() => {
               queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
+              if (editingItem?.id) {
+                queryClient.invalidateQueries({ queryKey: ['monitoring-history', editingItem.id] })
+              }
               setIsFormOpen(false)
             }}
           />
@@ -2830,29 +2866,50 @@ function OwnersModal({ owners, title, onClose }: any) {
 function CompareMonitorsModal({ items, onClose }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
+
+  const fields = useMemo(() => [
+    { label: 'Status', getValue: (item: any) => item.status || 'Unknown' },
+    { label: 'Severity', getValue: (item: any) => item.severity || 'N/A' },
+    { label: 'Platform', getValue: (item: any) => item.platform || 'N/A' },
+    { label: 'Notify', getValue: (item: any) => item.notification_method || 'None' },
+    { label: 'Owners', getValue: (item: any) => (item.owners || []).map((owner: any) => owner.name).join(', ') || 'None' },
+    { label: 'Recovery', getValue: (item: any) => item.recovery_doc_titles?.join(', ') || 'None linked' },
+    { label: 'Purpose', getValue: (item: any) => item.purpose || 'No purpose documented', multiline: true },
+    { label: 'Created', getValue: (item: any) => item.created_at ? new Date(item.created_at).toLocaleString() : 'N/A' },
+    { label: 'Updated', getValue: (item: any) => item.updated_at ? new Date(item.updated_at).toLocaleString() : 'N/A' },
+  ], [])
+
+  const diffFields = useMemo(() => fields.filter(f => {
+    const values = items.map(f.getValue)
+    return new Set(values).size > 1
+  }).map(f => f.label), [items, fields])
+
+  const gridCols = items.length === 2 ? 'md:grid-cols-2' : items.length === 3 ? 'md:grid-cols-3' : items.length === 4 ? 'md:grid-cols-4' : 'md:grid-cols-5'
+
   const modal = (
     <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
-      <motion.div onClick={(e) => e.stopPropagation()} initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-6xl rounded-xl border border-slate-700 bg-[#020617] p-6">
+      <motion.div onClick={(e) => e.stopPropagation()} initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel w-full ${items.length > 3 ? 'max-w-[95vw]' : 'max-w-6xl'} rounded-xl border border-slate-700 bg-[#020617] p-6 max-h-[90vh] overflow-y-auto custom-scrollbar`}>
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h3 className="text-sm font-black uppercase tracking-[0.18em] text-slate-100">Compare Monitors</h3>
-            <p className="pt-1 text-[11px] text-slate-400">Read the selected monitors side-by-side before you bulk-edit or de-activate them.</p>
           </div>
           <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18} /></button>
         </div>
-        <div className={`grid gap-4 ${items.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
+        <div className={`grid gap-4 ${gridCols}`}>
           {items.map((item: any) => (
             <div key={item.id} className="rounded-xl border border-slate-800 bg-slate-950 p-4">
               <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">ID {item.id} · {item.device_name || 'No asset'}</p>
-              <h4 className="pt-2 text-sm font-semibold text-slate-100">{item.title}</h4>
+              <h4 className="pt-2 text-sm font-semibold text-slate-100 truncate">{item.title}</h4>
               <div className="mt-3 space-y-2 text-[11px] text-slate-300">
-                <CompareRow label="Status" value={item.status || 'Unknown'} />
-                <CompareRow label="Severity" value={item.severity || 'N/A'} />
-                <CompareRow label="Platform" value={item.platform || 'N/A'} />
-                <CompareRow label="Notify" value={item.notification_method || 'None'} />
-                <CompareRow label="Owners" value={(item.owners || []).map((owner: any) => owner.name).join(', ') || 'None'} />
-                <CompareRow label="Recovery" value={item.recovery_doc_titles?.join(', ') || 'None linked'} />
-                <CompareRow label="Purpose" value={item.purpose || 'No purpose documented'} multiline />
+                {fields.map(f => (
+                  <CompareRow 
+                    key={f.label} 
+                    label={f.label} 
+                    value={f.getValue(item)} 
+                    multiline={f.multiline} 
+                    isDifferent={diffFields.includes(f.label)}
+                  />
+                ))}
               </div>
             </div>
           ))}
@@ -2863,11 +2920,14 @@ function CompareMonitorsModal({ items, onClose }: any) {
   return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
-function CompareRow({ label, value, multiline = false }: { label: string; value: string; multiline?: boolean }) {
+function CompareRow({ label, value, multiline = false, isDifferent = false }: { label: string; value: string; multiline?: boolean; isDifferent?: boolean }) {
   return (
-    <div className={`rounded-lg border border-slate-800 bg-[#0b1220] px-3 py-2 ${multiline ? '' : 'flex items-center justify-between gap-3'}`}>
-      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</p>
-      <p className={`pt-1 text-slate-200 ${multiline ? 'leading-5' : 'text-right'}`}>{value}</p>
+    <div className={`rounded-lg border px-3 py-2 ${isDifferent ? 'border-amber-500/50 bg-amber-500/5 shadow-[0_0_15px_rgba(245,158,11,0.05)]' : 'border-slate-800 bg-[#0b1220]'} ${multiline ? '' : 'flex items-center justify-between gap-3'}`}>
+      <div className="flex items-center gap-2">
+        <p className={`text-[8px] font-black uppercase tracking-[0.16em] ${isDifferent ? 'text-amber-400' : 'text-slate-500'}`}>{label}</p>
+        {isDifferent && <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />}
+      </div>
+      <p className={`pt-1 ${isDifferent ? 'text-amber-200 font-bold' : 'text-slate-200'} ${multiline ? 'leading-5' : 'text-right'}`}>{value}</p>
     </div>
   )
 }
@@ -3049,6 +3109,7 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
       setLinkedIds(newIds)
       setLinkedTitles(newIds.map((id: number) => String(titleMap.get(id) || `KB-${id}`)))
       queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
+      queryClient.invalidateQueries({ queryKey: ['monitoring-history', monitorId] })
       toast.success('Recovery procedures updated')
     },
     onError: (e: any) => toast.error(e.message || 'Failed to update recovery procedures')
