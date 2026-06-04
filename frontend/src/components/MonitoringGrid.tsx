@@ -17,7 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from "ag-grid-react"
 import toast from 'react-hot-toast'
 import { apiFetch } from '../api/apiClient'
-import { StyledSelect } from './shared/StyledSelect'
+import { AppDropdown } from './shared/AppDropdown'
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { StatusPill } from './shared/StatusPill'
@@ -347,10 +347,10 @@ const ObservabilityHUD = ({ items }: any) => {
 
   return (
     <div className="grid grid-cols-4 gap-6 mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
-       <div className="bg-black/40 border border-white/5 p-6 rounded-2xl backdrop-blur-xl shadow-xl group hover:border-blue-500/20 transition-all">
+       <div className="bg-black/40 border border-white/5 p-6 rounded-lg backdrop-blur-xl shadow-xl group hover:border-blue-500/20 transition-all">
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-blue-400 transition-colors">Global Pulse</p>
           <div className="flex items-center gap-4">
-             <div className="w-12 h-12 bg-blue-600/10 rounded-xl flex items-center justify-center text-blue-400 border border-blue-500/20">
+             <div className="w-12 h-12 bg-blue-600/10 rounded-lg flex items-center justify-center text-blue-400 border border-blue-500/20">
                 <Activity size={24} className="animate-pulse" />
              </div>
              <div>
@@ -359,10 +359,10 @@ const ObservabilityHUD = ({ items }: any) => {
              </div>
           </div>
        </div>
-       <div className="bg-black/40 border border-white/5 p-6 rounded-2xl backdrop-blur-xl shadow-xl group hover:border-rose-500/20 transition-all">
+       <div className="bg-black/40 border border-white/5 p-6 rounded-lg backdrop-blur-xl shadow-xl group hover:border-rose-500/20 transition-all">
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-rose-400 transition-colors">Alert Flux</p>
           <div className="flex items-center gap-4">
-             <div className="w-12 h-12 bg-rose-600/10 rounded-xl flex items-center justify-center text-rose-500 border border-rose-500/20">
+             <div className="w-12 h-12 bg-rose-600/10 rounded-lg flex items-center justify-center text-rose-500 border border-rose-500/20">
                 <Bell size={24} className={stats.critical > 0 ? 'animate-bounce' : ''} />
              </div>
              <div>
@@ -371,10 +371,10 @@ const ObservabilityHUD = ({ items }: any) => {
              </div>
           </div>
        </div>
-       <div className="bg-black/40 border border-white/5 p-6 rounded-2xl backdrop-blur-xl shadow-xl group hover:border-emerald-500/20 transition-all">
+       <div className="bg-black/40 border border-white/5 p-6 rounded-lg backdrop-blur-xl shadow-xl group hover:border-emerald-500/20 transition-all">
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-emerald-400 transition-colors">Discovery Momentum</p>
           <div className="flex items-center gap-4">
-             <div className="w-12 h-12 bg-emerald-600/10 rounded-xl flex items-center justify-center text-emerald-400 border border-emerald-500/20">
+             <div className="w-12 h-12 bg-emerald-600/10 rounded-lg flex items-center justify-center text-emerald-400 border border-emerald-500/20">
                 <Zap size={24} />
              </div>
              <div>
@@ -383,7 +383,7 @@ const ObservabilityHUD = ({ items }: any) => {
              </div>
           </div>
        </div>
-       <div className="bg-indigo-600/10 border border-indigo-500/20 p-6 rounded-2xl backdrop-blur-xl shadow-xl flex items-center justify-between group hover:bg-indigo-600/20 transition-all">
+       <div className="bg-indigo-600/10 border border-indigo-500/20 p-6 rounded-lg backdrop-blur-xl shadow-xl flex items-center justify-between group hover:bg-indigo-600/20 transition-all">
           <div>
              <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-1">Health Stability</p>
              <h4 className="text-2xl font-black text-white tracking-tighter">{stats.critical === 0 ? 'Optimal' : 'Degraded'}</h4>
@@ -1395,7 +1395,7 @@ export default function MonitoringGrid() {
 
       if (lastUndoRef.current) {
         toast.custom((t) => (
-          <div className={`${t.visible ? 'animate-in fade-in slide-in-from-bottom-4' : 'animate-out fade-out slide-out-to-bottom-4'} relative overflow-hidden rounded-xl border border-slate-700 bg-[#020617] p-0 shadow-2xl`}>
+          <div className={`${t.visible ? 'animate-in fade-in slide-in-from-bottom-4' : 'animate-out fade-out slide-out-to-bottom-4'} relative overflow-hidden rounded-lg border border-slate-700 bg-[#020617] p-0 shadow-2xl`}>
             <div className="px-5 py-4">
               <div className="flex items-start justify-between gap-6">
                 <div className="space-y-1">
@@ -1510,7 +1510,7 @@ export default function MonitoringGrid() {
             <span className="relative z-[1] block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
             
             {/* Hover Peek Intelligence */}
-            <div className="invisible group-hover:visible absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-[2000] w-52 p-3 rounded-xl border border-white/10 bg-slate-950/90 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl pointer-events-none transition-all duration-300 transform scale-95 group-hover:scale-100 opacity-0 group-hover:opacity-100">
+            <div className="invisible group-hover:visible absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-[2000] w-52 p-3 rounded-lg border border-white/10 bg-slate-950/90 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl pointer-events-none transition-all duration-300 transform scale-95 group-hover:scale-100 opacity-0 group-hover:opacity-100">
                <div className="flex items-center gap-2 mb-2">
                  <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-400">Recent Intelligence</p>
@@ -1554,7 +1554,7 @@ export default function MonitoringGrid() {
                 toggleFavorite(p.data.id)
               }}
               title={isFavorite ? 'Unpin monitor' : 'Pin monitor'}
-              className={`rounded-md p-1 transition-all flex items-center justify-center ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
+              className={`rounded-lg p-1 transition-all flex items-center justify-center ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
             >
               <Star size={15} className={isFavorite ? 'fill-current' : ''} />
             </button>
@@ -1587,7 +1587,7 @@ export default function MonitoringGrid() {
                 toggleWatch(p.data.id)
               }}
               title={isWatched ? 'Unfollow monitor' : 'Follow monitor'}
-              className={`rounded-md p-1 transition-all flex items-center justify-center ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
+              className={`rounded-lg p-1 transition-all flex items-center justify-center ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
             >
               <Eye size={15} className={isWatched ? 'fill-current' : ''} />
             </button>
@@ -1986,30 +1986,30 @@ export default function MonitoringGrid() {
 		      />
 
       <div className="grid gap-3 md:grid-cols-4">
-        <StyledSelect
+        <AppDropdown
           value={quickFilters.status}
-          onChange={(e) => setQuickFilters((current) => ({ ...current, status: e.target.value }))}
+          onChange={(val) => setQuickFilters((current) => ({ ...current, status: val }))}
           options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
           label="Status Filter"
           placeholder="All statuses"
         />
-        <StyledSelect
+        <AppDropdown
           value={quickFilters.severity}
-          onChange={(e) => setQuickFilters((current) => ({ ...current, severity: e.target.value }))}
+          onChange={(val) => setQuickFilters((current) => ({ ...current, severity: val }))}
           options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
           label="Severity Filter"
           placeholder="All severities"
         />
-        <StyledSelect
+        <AppDropdown
           value={quickFilters.platform}
-          onChange={(e) => setQuickFilters((current) => ({ ...current, platform: e.target.value }))}
+          onChange={(val) => setQuickFilters((current) => ({ ...current, platform: val }))}
           options={platformOptions}
           label="Platform Filter"
           placeholder="All platforms"
         />
-        <StyledSelect
+        <AppDropdown
           value={quickFilters.owner}
-          onChange={(e) => setQuickFilters((current) => ({ ...current, owner: e.target.value }))}
+          onChange={(val) => setQuickFilters((current) => ({ ...current, owner: val }))}
           options={ownerOptions}
           label="Owner Filter"
           placeholder="All owners"
@@ -2102,9 +2102,9 @@ export default function MonitoringGrid() {
 	                  </div>
 
 	                    <div className="space-y-2">
-                        <StyledSelect
+                        <AppDropdown
                           value={groupBy}
-                          onChange={(e) => setGroupBy(e.target.value)}
+                          onChange={(val) => setGroupBy(val)}
                           options={groupOptions}
                           label="Group By"
                         />
@@ -2267,7 +2267,7 @@ export default function MonitoringGrid() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
                   style={bulkMenuStyle}
-                  className="bulk-menu-container max-h-[560px] overflow-y-auto rounded-xl border border-slate-700 bg-[#020617] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
+                  className="bulk-menu-container max-h-[560px] overflow-y-auto rounded-lg border border-slate-700 bg-[#020617] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
                 >
                   <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
                     <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500">Bulk Actions</p>
@@ -2369,7 +2369,7 @@ export default function MonitoringGrid() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
                 style={rowActionMenu.style}
-                className="row-action-menu-container overflow-hidden rounded-xl border border-slate-700 bg-[#020617] shadow-[0_24px_80px_rgba(0,0,0,0.62)]"
+                className="row-action-menu-container overflow-hidden rounded-lg border border-slate-700 bg-[#020617] shadow-[0_24px_80px_rgba(0,0,0,0.62)]"
               >
                 <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
                   <div className="min-w-0">
@@ -2774,7 +2774,7 @@ function BulkActionCard({ title, active, onClick }: { title: string; active: boo
   return (
     <button
       onClick={onClick}
-      className={`w-full rounded-xl border px-4 py-3 text-left transition-all ${
+      className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
         active ? 'border-blue-500/40 bg-blue-950/40' : 'border-slate-800 bg-slate-950 hover:border-slate-700 hover:bg-slate-900'
       }`}
     >
@@ -2788,11 +2788,11 @@ function BulkActionCard({ title, active, onClick }: { title: string; active: boo
 
 function InlineBulkEditor({ value, onChange, options, placeholder, actionLabel, onApply, disabled }: any) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-[#0b1220] p-3">
+    <div className="rounded-lg border border-slate-800 bg-[#0b1220] p-3">
       <div className="grid gap-3">
-        <StyledSelect
+        <AppDropdown
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(val) => onChange(val)}
           options={options}
           placeholder={placeholder}
         />
@@ -2840,7 +2840,7 @@ function CompareMonitorsModal({ items, onClose }: any) {
 
   const modal = (
     <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
-      <motion.div onClick={(e) => e.stopPropagation()} initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel w-full ${items.length > 3 ? 'max-w-[95vw]' : 'max-w-6xl'} rounded-xl border border-slate-700 bg-[#020617] p-6 max-h-[90vh] overflow-y-auto custom-scrollbar`}>
+      <motion.div onClick={(e) => e.stopPropagation()} initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel w-full ${items.length > 3 ? 'max-w-[95vw]' : 'max-w-6xl'} rounded-lg border border-slate-700 bg-[#020617] p-6 max-h-[90vh] overflow-y-auto custom-scrollbar`}>
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h3 className="text-sm font-black uppercase tracking-[0.18em] text-slate-100">Compare Monitors</h3>
@@ -2849,7 +2849,7 @@ function CompareMonitorsModal({ items, onClose }: any) {
         </div>
         <div className={`grid gap-4 ${gridCols}`}>
           {items.map((item: any) => (
-            <div key={item.id} className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+            <div key={item.id} className="rounded-lg border border-slate-800 bg-slate-950 p-4">
               <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">ID {item.id} · {item.device_name || 'No asset'}</p>
               <h4 className="pt-2 text-sm font-semibold text-slate-100 truncate">{item.title}</h4>
               <div className="mt-3 space-y-2 text-[11px] text-slate-300">
@@ -2914,9 +2914,9 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
                   <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
                       <Tag size={24}/> <span>Set Status</span>
                   </h2>
-                  <StyledSelect
+                  <AppDropdown
                     value={val}
-                    onChange={e => setVal(e.target.value)}
+                    onChange={v => setVal(v)}
                     options={STATUSES}
                     placeholder="Select Status..."
                   />
@@ -2937,9 +2937,9 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
                   <h2 className="text-xl font-black uppercase tracking-tighter text-rose-400 flex items-center space-x-3">
                       <Shield size={24}/> <span>Set Severity</span>
                   </h2>
-                  <StyledSelect
+                  <AppDropdown
                     value={val}
-                    onChange={e => setVal(e.target.value)}
+                    onChange={v => setVal(v)}
                     options={severities.map((s:any) => ({ value: s.value, label: s.label }))}
                     placeholder="Select Severity..."
                   />
@@ -2960,9 +2960,9 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
                   <h2 className="text-xl font-black uppercase tracking-tighter text-amber-400 flex items-center space-x-3">
                       <Bell size={24}/> <span>Set Notification</span>
                   </h2>
-                  <StyledSelect
+                  <AppDropdown
                     value={val}
-                    onChange={e => setVal(e.target.value)}
+                    onChange={v => setVal(v)}
                     options={notificationMethods.map((m:any) => ({ value: m.value, label: m.label }))}
                     placeholder="Select Method..."
                   />

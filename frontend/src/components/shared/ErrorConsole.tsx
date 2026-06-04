@@ -37,7 +37,7 @@ export function ErrorConsole() {
         initial={{ scale: 0.95, opacity: 0 }} 
         animate={{ scale: 1, opacity: 1 }} 
         exit={{ scale: 0.95, opacity: 0 }}
-        className="bg-[#020617] w-full max-w-[1400px] h-[85vh] rounded-2xl border border-rose-500/20 shadow-[0_0_100px_rgba(244,63,94,0.15)] flex flex-col overflow-hidden"
+        className="bg-[#020617] w-full max-w-[1400px] h-[85vh] rounded-lg border border-rose-500/20 shadow-[0_0_100px_rgba(244,63,94,0.15)] flex flex-col overflow-hidden"
       >
         {/* Header */}
         <div className="px-8 py-5 border-b border-white/10 bg-white/5 flex items-center justify-between">
@@ -195,14 +195,14 @@ export function ErrorConsole() {
                       {!selectedError.acknowledged && (
                         <button 
                           onClick={() => acknowledgeError(selectedError.id)}
-                          className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all"
+                          className="px-6 py-3 bg-emerald-600 text-white rounded-lg font-black uppercase text-[10px] tracking-widest shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all"
                         >
                            Acknowledge Fault
                         </button>
                       )}
                       <button 
                         onClick={() => copyToClipboard(`MESSAGE: ${selectedError.message}\nVIEW: ${selectedError.view}\nTIMESTAMP: ${selectedError.timestamp}\nSTACK: ${selectedError.stack}\nDATA: ${JSON.stringify(selectedError.data, null, 2)}`)}
-                        className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-xl"
+                        className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-lg border border-white/10 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-xl"
                       >
                          <Copy size={16} /> Copy Full Traceback
                       </button>
@@ -215,7 +215,7 @@ export function ErrorConsole() {
                          <Database size={14} className="text-indigo-400" />
                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Request Metadata</span>
                       </div>
-                      <div className="bg-white/2 rounded-xl p-6 border border-white/5 space-y-4 font-mono">
+                      <div className="bg-white/2 rounded-lg p-6 border border-white/5 space-y-4 font-mono">
                          <div className="flex justify-between">
                             <span className="text-[10px] text-slate-500 uppercase font-bold">Endpoint</span>
                             <span className="text-[10px] text-indigo-400 font-bold">{selectedError.url || 'N/A'}</span>
@@ -236,7 +236,7 @@ export function ErrorConsole() {
                          <Cpu size={14} className="text-emerald-400" />
                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Execution Context</span>
                       </div>
-                      <div className="bg-white/2 rounded-xl p-6 border border-white/5 space-y-4 font-mono">
+                      <div className="bg-white/2 rounded-lg p-6 border border-white/5 space-y-4 font-mono">
                          <div className="flex justify-between">
                             <span className="text-[10px] text-slate-500 uppercase font-bold">Type</span>
                             <span className="text-[10px] text-emerald-400 font-bold">{selectedError.type}</span>
@@ -258,7 +258,7 @@ export function ErrorConsole() {
                       <TerminalSquare size={14} className="text-rose-500" />
                       <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Full Traceback Dump</span>
                    </div>
-                   <div className="bg-black border border-white/10 rounded-2xl p-8 font-mono overflow-x-auto shadow-2xl relative">
+                   <div className="bg-black border border-white/10 rounded-lg p-8 font-mono overflow-x-auto shadow-2xl relative">
                       <div className="absolute top-4 right-4 flex gap-2">
                          <div className="w-3 h-3 rounded-full bg-rose-500/50" />
                          <div className="w-3 h-3 rounded-full bg-amber-500/50" />
@@ -276,7 +276,7 @@ export function ErrorConsole() {
                         <Filter size={14} className="text-blue-400" />
                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Response Payload (JSON)</span>
                     </div>
-                    <div className="bg-slate-950/50 border border-white/5 rounded-2xl p-8 font-mono shadow-inner">
+                    <div className="bg-slate-950/50 border border-white/5 rounded-lg p-8 font-mono shadow-inner">
                         <pre className="text-[11px] text-blue-300 overflow-auto">
                           {JSON.stringify(selectedError.data, null, 2)}
                         </pre>

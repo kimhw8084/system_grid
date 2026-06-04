@@ -251,7 +251,7 @@ export function PreventionFormModal({ isOpen, onClose, onSave, modeId, causeId }
         <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-5xl max-h-[90vh] overflow-y-auto p-12 rounded-lg border border-emerald-500/30 custom-scrollbar shadow-2xl">
            <div className="flex items-center justify-between border-b border-white/5 pb-8">
               <div className="flex items-center space-x-6">
-                <div className="w-16 h-16 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-xl shadow-emerald-600/20">
+                <div className="w-16 h-16 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-xl shadow-emerald-600/20">
                    <ShieldCheck size={32}/>
                 </div>
                 <div>

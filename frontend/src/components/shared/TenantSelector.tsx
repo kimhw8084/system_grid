@@ -44,7 +44,7 @@ export function TenantSelector() {
     <div className="relative z-[60]">
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-3 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-xl hover:bg-blue-500/20 transition-all group"
+        className="flex items-center gap-3 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg hover:bg-blue-500/20 transition-all group"
       >
         <div className="p-1.5 bg-blue-600 rounded-lg text-white shadow-lg shadow-blue-500/20">
            <Database size={14} />
@@ -66,7 +66,7 @@ export function TenantSelector() {
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="absolute top-full mt-2 right-0 w-64 bg-[#0f172a] border border-blue-500/20 rounded-2xl shadow-2xl z-50 overflow-hidden backdrop-blur-xl"
+              className="absolute top-full mt-2 right-0 w-64 bg-[#0f172a] border border-blue-500/20 rounded-lg shadow-2xl z-50 overflow-hidden backdrop-blur-xl"
             >
               <div className="p-4 border-b border-white/5 bg-white/2">
                  <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">Switch Environment</h4>
@@ -81,7 +81,7 @@ export function TenantSelector() {
                       setIsOpen(false)
                     }}
                     disabled={!tenant.is_online}
-                    className={`w-full flex items-center justify-between p-3 rounded-xl transition-all ${tenant.is_selected ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : tenant.is_online ? 'hover:bg-white/5 text-slate-400 hover:text-white' : 'opacity-40 cursor-not-allowed'}`}
+                    className={`w-full flex items-center justify-between p-3 rounded-lg transition-all ${tenant.is_selected ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : tenant.is_online ? 'hover:bg-white/5 text-slate-400 hover:text-white' : 'opacity-40 cursor-not-allowed'}`}
                   >
                     <div className="flex items-center gap-3">
                        <div className="relative">

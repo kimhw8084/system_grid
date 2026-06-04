@@ -125,12 +125,12 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
           initial={{ scale: 0.98, opacity: 0, y: 10 }} 
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.98, opacity: 0, y: 10 }}
-          className="glass-panel w-full max-w-6xl h-[90vh] overflow-hidden flex flex-col rounded-2xl border border-white/10 shadow-2xl bg-[#0f172a]/95"
+          className="glass-panel w-full max-w-6xl h-[90vh] overflow-hidden flex flex-col rounded-lg border border-white/10 shadow-2xl bg-[#0f172a]/95"
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-white/5 p-6 bg-white/[0.02]">
             <div className="flex items-center space-x-5">
-               <div className="p-3 bg-blue-600 rounded-xl text-white shadow-xl shadow-blue-500/20">
+               <div className="p-3 bg-blue-600 rounded-lg text-white shadow-xl shadow-blue-500/20">
                   <Database size={24} />
                </div>
                <div>
@@ -184,7 +184,7 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
                  <div className="flex flex-col items-center text-center space-y-4">
                     <h3 className="text-lg font-bold uppercase text-white tracking-widest">Ingestion Method</h3>
                     
-                    <div className="flex bg-black/40 p-1 rounded-xl border border-white/5 w-full max-w-lg">
+                    <div className="flex bg-black/40 p-1 rounded-lg border border-white/5 w-full max-w-lg">
                       <button 
                         onClick={() => setUploadMode('file')}
                         className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold uppercase text-[9px] tracking-widest transition-all ${uploadMode === 'file' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
@@ -205,7 +205,7 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
                       <div className="w-full max-w-xl space-y-5">
                         <div 
                           onClick={() => fileInputRef.current?.click()}
-                          className="relative block w-full aspect-[21/9] border-2 border-dashed border-white/5 rounded-2xl hover:border-blue-500/30 hover:bg-blue-500/5 transition-all cursor-pointer group"
+                          className="relative block w-full aspect-[21/9] border-2 border-dashed border-white/5 rounded-lg hover:border-blue-500/30 hover:bg-blue-500/5 transition-all cursor-pointer group"
                         >
                            <input 
                               type="file" 
@@ -221,7 +221,7 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
                                     animate={{ scale: 1, opacity: 1 }}
                                     className="flex flex-col items-center gap-3"
                                  >
-                                    <div className="p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
+                                    <div className="p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
                                       <Check className="text-emerald-500" size={32} />
                                     </div>
                                     <div className="text-center">
@@ -237,7 +237,7 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
                                  </motion.div>
                               ) : (
                                  <>
-                                    <div className="p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10 group-hover:scale-105 transition-transform">
+                                    <div className="p-4 bg-blue-500/5 rounded-lg border border-blue-500/10 group-hover:scale-105 transition-transform">
                                       <Upload className="text-blue-500" size={36} />
                                     </div>
                                     <div className="text-center space-y-1">
@@ -268,7 +268,7 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
                           value={pastedData}
                           onChange={(e) => setPastedData(e.target.value)}
                           placeholder="Hostname, IP, System..."
-                          className="flex-1 w-full bg-black/40 border border-white/5 rounded-xl p-5 font-mono text-[11px] text-blue-400 focus:border-blue-500/30 outline-none transition-all resize-none min-h-[260px]"
+                          className="flex-1 w-full bg-black/40 border border-white/5 rounded-lg p-5 font-mono text-[11px] text-blue-400 focus:border-blue-500/30 outline-none transition-all resize-none min-h-[260px]"
                         />
                       </div>
                     )}
@@ -300,7 +300,7 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
                       { label: 'Logic Error', val: auditResults.invalid_rows, color: 'text-rose-400', icon: X, bg: 'bg-rose-500/5' },
                       { label: 'Violations', val: auditResults.total_errors, color: 'text-amber-500', icon: AlertCircle, bg: 'bg-amber-500/5' }
                     ].map(s => (
-                      <div key={s.label} className={`p-4 ${s.bg} border border-white/5 rounded-xl flex flex-col items-center gap-1 shadow-lg`}>
+                      <div key={s.label} className={`p-4 ${s.bg} border border-white/5 rounded-lg flex flex-col items-center gap-1 shadow-lg`}>
                          <s.icon size={16} className={s.color} />
                          <span className={`text-xl font-bold ${s.color}`}>{s.val}</span>
                          <span className="text-[7px] font-bold uppercase text-slate-500 tracking-widest">{s.label}</span>
@@ -317,7 +317,7 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
                       <span className="text-[8px] font-bold text-slate-600 uppercase">Selected: {selectedRowIndices.size}</span>
                     </div>
 
-                    <div className="bg-black/40 border border-white/5 rounded-xl overflow-hidden shadow-xl">
+                    <div className="bg-black/40 border border-white/5 rounded-lg overflow-hidden shadow-xl">
                        <div className="max-h-[30vh] overflow-y-auto custom-scrollbar">
                           <table className="w-full text-left border-collapse">
                              <thead className="sticky top-0 bg-[#0d0e12] z-10">
@@ -376,7 +376,7 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
                         </h4>
                       </div>
 
-                      <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl overflow-hidden shadow-xl">
+                      <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg overflow-hidden shadow-xl">
                         <div className="max-h-[25vh] overflow-y-auto custom-scrollbar">
                             <table className="w-full text-left border-collapse">
                               <thead className="sticky top-0 bg-[#1a0a0c] z-10">
