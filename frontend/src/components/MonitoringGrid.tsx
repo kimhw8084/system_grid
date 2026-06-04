@@ -11,7 +11,7 @@ import {
   Globe, Bell, Info, ChevronRight, X, Check, Save,
   AlertCircle, Clock, Zap, Settings,
   BookOpen, Eye, EyeOff, FileText, User, Mail, MessageSquare, Monitor, MoreVertical,
-  Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, Star, GitCompare, Undo2, List
+  Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, Star, GitCompare, Undo2, List, LayoutGrid
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from "ag-grid-react"
@@ -1915,7 +1915,7 @@ export default function MonitoringGrid() {
               <div className="views-menu-container">
                 <ToolbarButton active={showViewsMenu} onClick={() => setShowViewsMenu(!showViewsMenu)} ref={viewsMenuButtonRef as any}>
                   <span className="flex items-center gap-2">
-                    <Save size={14} />
+                    <LayoutGrid size={14} />
                     Views
                   </span>
                 </ToolbarButton>
@@ -3646,6 +3646,18 @@ function FieldError({ message }: { message?: string }) {
   return <p className="px-1 text-[clamp(10px,0.78vw,11px)] font-black text-rose-400">{message}</p>
 }
 
+function PanelTitle({ children }: { children: React.ReactNode }) {
+  return <h3 className="text-sm font-black tracking-tight text-slate-100">{children}</h3>
+}
+
+function PanelSubtitle({ children }: { children: React.ReactNode }) {
+  return <p className="mt-1 text-[10px] font-semibold text-slate-400">{children}</p>
+}
+
+function PanelHint({ children }: { children: React.ReactNode }) {
+  return <p className="text-[10px] font-semibold text-slate-500">{children}</p>
+}
+
 const monitoringInputClass = (error?: string) =>
   `w-full rounded-lg px-4 py-[clamp(11px,0.95vw,14px)] text-[clamp(12px,0.95vw,14px)] font-bold text-white outline-none transition-all ${
     error
@@ -4138,8 +4150,8 @@ export function MonitoringForm({ item, devices, categories, severities, platform
         exit={{ scale: 0.9, opacity: 0 }}
         className={`glass-panel w-full overflow-hidden flex flex-col rounded-lg border-blue-500/20 shadow-[0_0_80px_rgba(37,99,235,0.08)] ${isMaximized ? 'max-w-none h-[calc(100vh-3rem)]' : 'max-w-7xl h-full sm:h-[90vh]'}`}
       >
-        <div className="border-b border-white/10 px-5 py-4 sm:px-8 sm:py-5">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="border-b border-white/10 px-6 py-4 sm:px-8">
+          <div className="flex items-start justify-between gap-6">
             <div className="flex min-w-0 items-center gap-3">
               <div className="flex items-center gap-2 self-start">
                 <button onClick={onClose} className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500/90 text-transparent transition-all hover:text-rose-950" title="Close">
@@ -4149,15 +4161,15 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                   {isMaximized ? <Minimize2 size={8} strokeWidth={3} /> : <Maximize2 size={8} strokeWidth={3} />}
                 </button>
               </div>
-              <div className="ml-1 flex h-[clamp(44px,4vw,52px)] w-[clamp(44px,4vw,52px)] items-center justify-center rounded-lg border border-blue-500/20 bg-blue-600/10 text-blue-400">
+              <div className="ml-2 flex h-12 w-12 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-600/10 text-blue-400">
                 <Zap size={20} />
               </div>
               <div className="min-w-0">
-                <h2 className="text-[clamp(24px,2.4vw,34px)] font-black leading-none tracking-[-0.04em] text-white">
+                <h2 className="text-xl font-black tracking-tighter text-white">
                   {item ? 'Update Monitoring' : 'Add Monitoring'}
                 </h2>
                 <div className="mt-1 flex items-center space-x-2">
-                   <span className="text-[clamp(11px,0.9vw,13px)] font-semibold text-slate-400">
+                   <span className="text-[10px] font-bold text-slate-400">
                      Configure monitoring targets, logic, and alert routing.
                    </span>
                    <span className="w-1 h-1 rounded-full bg-slate-700" />
@@ -4166,7 +4178,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
               </div>
             </div>
 
-            <div className="flex w-full flex-wrap bg-black/40 rounded-lg p-1 border border-white/5 xl:w-auto">
+            <div className="flex shrink-0 items-center gap-1 rounded-lg border border-white/5 bg-white/5 p-1">
               {[
                 { id: 'context', label: 'Context' },
                 { id: 'logic', label: 'Logic' },
@@ -4175,7 +4187,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex-1 px-4 py-[clamp(10px,0.9vw,12px)] rounded-lg text-[clamp(11px,0.85vw,13px)] font-black transition-all xl:flex-none xl:px-6 ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+                  className={`rounded-lg px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
                 >
                   <span className="flex items-center gap-2">
                     <span>{tab.label}</span>
@@ -4232,7 +4244,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                <div className="col-span-12 xl:col-span-5 space-y-5">
                  <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
                    <div className="mb-4 flex items-center justify-between">
-                     <h3 className="text-[11px] font-black text-slate-500">Target identification</h3>
+                     <PanelTitle>Target identification</PanelTitle>
                      <span className="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[8px] font-black text-slate-500">
                        Asset + Scope
                      </span>
@@ -4283,10 +4295,10 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                  <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
                    <div className="mb-4 flex items-center justify-between">
                      <div>
-                       <h3 className="text-[11px] font-black text-slate-500">Ownership</h3>
-                       <p className="mt-1 text-[9px] font-black text-slate-600">
+                       <PanelTitle>Ownership</PanelTitle>
+                       <PanelSubtitle>
                          Choose a team owner or named operators, never both.
-                       </p>
+                       </PanelSubtitle>
                      </div>
                      <span className="rounded-full bg-blue-500/10 px-2 py-1 text-[8px] font-black text-blue-300">
                        {ownershipMode === 'team' ? 'Team Mode' : `${formData.owners?.length || 0} Operators`}
@@ -4434,8 +4446,8 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                  </section>
 
                  <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
-                   <div className="mb-4">
-                     <h3 className="text-[11px] font-black text-slate-500">Operational context</h3>
+                    <div className="mb-4">
+                     <PanelTitle>Operational context</PanelTitle>
                    </div>
                    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                      <div className="space-y-2">
@@ -4467,9 +4479,9 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                 <div className="col-span-12 xl:col-span-4 space-y-5">
                    <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
                    <div className="flex items-center justify-between">
-                      <h3 className="text-[11px] font-black text-slate-500 flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 text-sm font-black tracking-tight text-slate-100">
                          <Settings size={14}/> <span>Logic Entries</span>
-                      </h3>
+                      </div>
                       <button 
                          onClick={addLogicEntry}
                           className="px-3 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[9px] font-black uppercase hover:bg-emerald-600/40 transition-all flex items-center space-x-1"
@@ -4617,10 +4629,10 @@ export function MonitoringForm({ item, devices, categories, severities, platform
              <div className="grid grid-cols-12 gap-5 p-2">
                 <div className="col-span-12 xl:col-span-4 space-y-5">
                    <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
-                     <h3 className="text-[11px] font-black text-slate-500">Alert routing rules</h3>
+                     <PanelTitle>Alert routing rules</PanelTitle>
                      <div className="mt-4 rounded-lg border border-white/5 bg-white/[0.03] p-4">
-                     <p className="text-[10px] font-black text-slate-500">Severity level</p>
-                     <p className="pt-2 text-[10px] font-bold text-slate-300">Pinned in header for cross-tab context.</p>
+                     <PanelSubtitle>Severity level</PanelSubtitle>
+                     <p className="pt-2 text-[10px] font-semibold text-slate-300">Pinned in the header for cross-tab context.</p>
                      </div>
 
                      <div className="mt-4 space-y-4 rounded-lg border border-white/10 bg-black/20 p-4">
@@ -4678,9 +4690,9 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                 <div className="col-span-12 xl:col-span-8 space-y-5">
                    <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
                      <div className="mb-4 flex items-center justify-between border-b border-white/5 pb-3">
-                       <h3 className="text-[11px] font-black text-slate-500 flex items-center space-x-2">
+                       <div className="flex items-center space-x-2 text-sm font-black tracking-tight text-slate-100">
                           <Activity size={14}/> <span>Recovery Procedures</span>
-                       </h3>
+                       </div>
                        {formData.severity === 'Critical' && (
                          <span className="rounded-full border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-[8px] font-black text-rose-300">
                            Required for Critical
@@ -4692,8 +4704,8 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                       <div className={`space-y-6 rounded-lg border-2 p-6 ${formErrors.recovery_docs ? 'border-rose-500/40 bg-rose-500/10' : 'border-dashed border-white/10 bg-black/20'}`}>
                          <div className="flex items-center justify-between">
                             <div className="space-y-1">
-                               <p className="text-[12px] font-black text-white">Link recovery documents</p>
-                               <p className="text-[9px] text-slate-500 font-bold">Documentation linked here will be presented to the on-call engineer during an alert.</p>
+                               <PanelTitle>Link recovery documents</PanelTitle>
+                               <PanelSubtitle>Documentation linked here will be presented to the on-call engineer during an alert.</PanelSubtitle>
                             </div>
                             <div className="flex items-center space-x-2 bg-blue-600/10 px-3 py-1 rounded-lg border border-blue-600/20">
                                <List size={12} className="text-blue-400" />
@@ -4750,8 +4762,8 @@ export function MonitoringForm({ item, devices, categories, severities, platform
 	                         <AlertCircle size={16} />
 	                      </div>
 	                      <div className="space-y-1">
-	                         <p className="text-[10px] font-black text-slate-500">Operational note</p>
-	                         <p className="text-[9px] text-slate-400 font-bold leading-relaxed">Link high-quality recovery documentation to reduce MTTR and give the on-call engineer a clear starting point.</p>
+	                         <PanelHint>Operational note</PanelHint>
+	                         <p className="text-[10px] font-semibold leading-relaxed text-slate-400">Link high-quality recovery documentation to reduce MTTR and give the on-call engineer a clear starting point.</p>
 	                      </div>
 	                   </div>
                    </section>
