@@ -291,6 +291,7 @@ class MonitoringItem(Base, BaseMixin):
     logic = Column(Text) # For log-based: regex or query
     logic_json = Column(JSON, default=list) # Structured logic entries
     monitored_services = Column(JSON, default=list) # List of LogicalService IDs
+    owner_team = Column(String) # Managed via MonitoringTeam setting option
     
     # Reliability & Frequency Controls
     check_interval = Column(Integer, default=60) # Seconds
@@ -317,11 +318,13 @@ class MonitoringHistory(Base, BaseMixin):
 class MonitoringOwner(Base, BaseMixin):
     __tablename__ = "monitoring_owners"
     monitoring_item_id = Column(Integer, ForeignKey("monitoring_items.id", ondelete="CASCADE"))
+    operator_id = Column(Integer, ForeignKey("operators.id", ondelete="CASCADE"), nullable=True)
     name = Column(String)
-    external_id = Column(String) # Owner ID
+    external_id = Column(String) # Owner external ID snapshot
     role = Column(String) # From MonitoringOwnerRole enum
     
     monitoring_item = relationship("MonitoringItem", back_populates="owners")
+    operator = relationship("Operator")
 
 class FirewallRule(Base, BaseMixin):
     __tablename__ = "firewall_rules"

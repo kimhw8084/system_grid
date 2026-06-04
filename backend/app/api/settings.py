@@ -8,6 +8,7 @@ from ..core.config import settings
 from .utils import filter_valid_columns, get_current_user_id, build_default_operator_profile
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
+LOCKED_MONITORING_OPTION_CATEGORIES = {"MonitoringSeverity", "MonitoringOwnerRole"}
 
 async def ensure_admin_operator(db: AsyncSession, user_id: str):
     res_op = await db.execute(select(models.Operator).filter(models.Operator.username == user_id))
@@ -147,6 +148,8 @@ async def get_options(category: str = None, db: AsyncSession = Depends(get_db)):
 
 @router.post("/options")
 async def create_option(data: dict, db: AsyncSession = Depends(get_db)):
+    if data.get("category") in LOCKED_MONITORING_OPTION_CATEGORIES:
+        raise HTTPException(status_code=400, detail="This monitoring category is code-managed and cannot be edited in settings")
     clean_data = filter_valid_columns(models.SettingOption, data)
     if 'id' in clean_data and not clean_data['id']:
         del clean_data['id']
@@ -162,6 +165,8 @@ async def update_option(opt_id: int, data: dict, db: AsyncSession = Depends(get_
     result = await db.execute(select(models.SettingOption).filter(models.SettingOption.id == opt_id))
     opt = result.scalar_one_or_none()
     if not opt: raise HTTPException(404, "Option not found")
+    if opt.category in LOCKED_MONITORING_OPTION_CATEGORIES:
+        raise HTTPException(status_code=400, detail="This monitoring category is code-managed and cannot be edited in settings")
     
     old_value = opt.value
     new_value = data.get('value', opt.value)
@@ -222,6 +227,8 @@ async def delete_option(opt_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.SettingOption).filter(models.SettingOption.id == opt_id))
     opt = result.scalar_one_or_none()
     if not opt: raise HTTPException(404, "Option not found")
+    if opt.category in LOCKED_MONITORING_OPTION_CATEGORIES:
+        raise HTTPException(status_code=400, detail="This monitoring category is code-managed and cannot be edited in settings")
     
     # Check usage
     in_use = False
@@ -275,6 +282,15 @@ async def delete_option(opt_id: int, db: AsyncSession = Depends(get_db)):
         if res.scalars().first(): in_use = True
     elif opt.category == "ServiceType":
         res = await db.execute(select(models.LogicalService).filter(models.LogicalService.service_type == opt.value))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "MonitoringCategory":
+        res = await db.execute(select(models.MonitoringItem).filter(models.MonitoringItem.category == opt.value))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "MonitoringPlatform":
+        res = await db.execute(select(models.MonitoringItem).filter(models.MonitoringItem.platform == opt.value))
+        if res.scalars().first(): in_use = True
+    elif opt.category == "MonitoringTeam":
+        res = await db.execute(select(models.MonitoringItem).filter(models.MonitoringItem.owner_team == opt.value))
         if res.scalars().first(): in_use = True
     elif opt.category == "VendorDeviceType":
         # Check in VendorPersonnel pcs JSON
@@ -686,6 +702,7 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
                 continue
     
     # 2. Idempotent check for SettingOptions (Metadata)
+    await db.execute(delete(models.SettingOption).where(models.SettingOption.category.in_(LOCKED_MONITORING_OPTION_CATEGORIES)))
     res_opt = await db.execute(select(models.SettingOption))
     if not res_opt.scalars().first():
         # Main initialization for first run
@@ -735,6 +752,19 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
             ("ImpactCategory", "Cleanroom Violation", "Environmental spec breach"),
             ("ImpactCategory", "Robot / OHT Stalled", "Automated material handling failure"),
             ("ImpactCategory", "Data Integrity Risk", "Traceability or history data at risk"),
+            ("MonitoringCategory", "Infrastructure", "Base host, VM, and platform health checks"),
+            ("MonitoringCategory", "Application", "App-tier, API, and business transaction checks"),
+            ("MonitoringCategory", "Database", "Database performance and integrity checks"),
+            ("MonitoringCategory", "Network", "Network reachability and traffic checks"),
+            ("MonitoringCategory", "Security", "Authentication and threat-detection checks"),
+            ("MonitoringPlatform", "Zabbix", "Managed monitor defined in Zabbix"),
+            ("MonitoringPlatform", "Prometheus", "Managed monitor defined in Prometheus"),
+            ("MonitoringPlatform", "Datadog", "Managed monitor defined in Datadog"),
+            ("MonitoringPlatform", "Grafana", "Managed monitor defined in Grafana"),
+            ("MonitoringPlatform", "PagerDuty", "Managed monitor defined in PagerDuty"),
+            ("MonitoringTeam", "Operations", "Primary operations ownership"),
+            ("MonitoringTeam", "SRE", "Site reliability ownership"),
+            ("MonitoringTeam", "Security", "Security response ownership"),
         ]
         for cat, val, desc in defaults:
             db.add(models.SettingOption(category=cat, label=val, value=val, description=desc))
@@ -786,7 +816,27 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
         ]
         for val, keys in hardware_profiles:
             db.add(models.SettingOption(category="HardwareProfile", label=val, value=val, metadata_keys=keys))
-    
+
+    monitoring_defaults = [
+        ("MonitoringCategory", "Infrastructure", "Base host, VM, and platform health checks", None),
+        ("MonitoringCategory", "Application", "App-tier, API, and business transaction checks", None),
+        ("MonitoringCategory", "Database", "Database performance and integrity checks", None),
+        ("MonitoringCategory", "Network", "Network reachability and traffic checks", None),
+        ("MonitoringCategory", "Security", "Authentication and threat-detection checks", None),
+        ("MonitoringPlatform", "Zabbix", "Managed monitor defined in Zabbix", None),
+        ("MonitoringPlatform", "Prometheus", "Managed monitor defined in Prometheus", None),
+        ("MonitoringPlatform", "Datadog", "Managed monitor defined in Datadog", None),
+        ("MonitoringPlatform", "Grafana", "Managed monitor defined in Grafana", None),
+        ("MonitoringPlatform", "PagerDuty", "Managed monitor defined in PagerDuty", None),
+        ("MonitoringTeam", "Operations", "Primary operations ownership", []),
+        ("MonitoringTeam", "SRE", "Site reliability ownership", []),
+        ("MonitoringTeam", "Security", "Security response ownership", []),
+    ]
+    for cat, val, desc, metadata_keys in monitoring_defaults:
+        res = await db.execute(select(models.SettingOption).filter(models.SettingOption.category == cat, models.SettingOption.value == val))
+        if not res.scalar_one_or_none():
+            db.add(models.SettingOption(category=cat, label=val, value=val, description=desc, metadata_keys=metadata_keys or []))
+
     try:
         await db.commit()
     except IntegrityError:

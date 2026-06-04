@@ -1,5 +1,5 @@
-from pydantic import BaseModel, ConfigDict
-from typing import List, Optional, Any, Dict
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from typing import List, Optional, Any, Dict, Literal
 from datetime import datetime
 
 class BaseSchema(BaseModel):
@@ -128,12 +128,24 @@ class MaintenanceWindowCreate(MaintenanceWindowBase): pass
 class MaintenanceWindowResponse(MaintenanceWindowBase, BaseSchema): pass
 
 class MonitoringOwnerBase(BaseModel):
-    name: str
-    external_id: str
+    operator_id: int
+    name: Optional[str] = None
+    external_id: Optional[str] = None
     role: str
 
 class MonitoringOwnerCreate(MonitoringOwnerBase): pass
 class MonitoringOwnerResponse(MonitoringOwnerBase, BaseSchema): pass
+
+class MonitoringLogicEntry(BaseModel):
+    id: int
+    type: Literal["Threshold", "Regex", "Query", "Health Check", "Log Pattern", "Synthetic", "Custom"]
+    description: str = ""
+    logic_info: str = ""
+
+    @field_validator("description", "logic_info")
+    @classmethod
+    def strip_logic_text(cls, value: str) -> str:
+        return value.strip()
 
 class MonitoringItemBase(BaseModel):
     device_id: Optional[int] = None
@@ -148,8 +160,9 @@ class MonitoringItemBase(BaseModel):
     notification_method: Optional[str] = None # Email, Slack, PagerDuty
     notification_recipients: Optional[List[str]] = []
     logic: Optional[str] = None # For log-based: regex or query
-    logic_json: Optional[List[Dict[str, Any]]] = []
+    logic_json: List[MonitoringLogicEntry] = Field(default_factory=list)
     monitored_services: List[int] = []
+    owner_team: Optional[str] = None
     
     # New Fields
     check_interval: Optional[int] = 60
@@ -161,8 +174,33 @@ class MonitoringItemBase(BaseModel):
     recovery_docs: Optional[List[int]] = []
     version: Optional[int] = 1
 
+    @field_validator("category", "status", "title", "platform", "monitoring_url", "purpose", "impact", "notification_method", "logic", "owner_team", mode="before")
+    @classmethod
+    def normalize_optional_strings(cls, value: Any) -> Any:
+        if value is None:
+            return value
+        if isinstance(value, str):
+            stripped = value.strip()
+            return stripped or None
+        return value
+
+    @field_validator("notification_recipients", mode="before")
+    @classmethod
+    def normalize_recipients(cls, value: Any) -> List[str]:
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise ValueError("notification_recipients must be a list")
+        return [str(entry).strip() for entry in value if str(entry).strip()]
+
+    @model_validator(mode="after")
+    def ensure_title_present(self):
+        if not self.title:
+            raise ValueError("title is required")
+        return self
+
 class MonitoringItemCreate(MonitoringItemBase):
-    owners: List[MonitoringOwnerCreate] = []
+    owners: List[MonitoringOwnerCreate] = Field(default_factory=list)
 
 class MonitoringItemResponse(MonitoringItemBase, BaseSchema):
     is_deleted: bool = False

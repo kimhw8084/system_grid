@@ -13,12 +13,24 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editValue, setEditValue] = useState("")
   const [editMetadata, setEditMetadata] = useState("")
+  const [newTeamMembers, setNewTeamMembers] = useState<string[]>([])
+  const [editTeamMembers, setEditTeamMembers] = useState<string[]>([])
+  const { data: operators } = useQuery({
+    queryKey: ["operators"],
+    queryFn: async () => (await (await apiFetch("/api/v1/settings/operators")).json()),
+    enabled: category === "MonitoringTeam"
+  })
 
   const addMutation = useMutation({
     mutationFn: async () => {
       const res = await apiFetch("/api/v1/settings/options", {
         method: "POST",
-        body: JSON.stringify({ category, label: newValue, value: newValue, metadata_keys: [] })
+        body: JSON.stringify({
+          category,
+          label: newValue,
+          value: newValue,
+          metadata_keys: category === "MonitoringTeam" ? newTeamMembers : []
+        })
       })
       if (!res.ok) {
         const err = await res.json()
@@ -29,14 +41,15 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
     onSuccess: () => { 
         queryClient.invalidateQueries({ queryKey: ["settings-options"] }); 
         queryClient.invalidateQueries({ queryKey: ["settings"] }); 
-        setNewValue(""); 
+        setNewValue("");
+        setNewTeamMembers([])
         toast.success(`Added ${newValue}`) 
     },
     onError: (e: any) => toast.error(e.message)
   })
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, value, metadata_keys }: any) => {
+        mutationFn: async ({ id, value, metadata_keys }: any) => {
         const res = await apiFetch(`/api/v1/settings/options/${id}`, {
             method: "PUT",
             body: JSON.stringify({ label: value, value: value, metadata_keys: metadata_keys })
@@ -50,11 +63,15 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
     onSuccess: () => { 
         queryClient.invalidateQueries({ queryKey: ["settings-options"] }); 
         queryClient.invalidateQueries({ queryKey: ["settings"] }); 
-        setEditingId(null); 
+        setEditingId(null);
+        setEditTeamMembers([])
         toast.success("Option Updated") 
     },
     onError: (e: any) => toast.error(e.message)
   })
+
+  const isMetadataCategory = category === 'ServiceType' || category === 'ExternalType' || category === 'HardwareProfile'
+  const isTeamCategory = category === 'MonitoringTeam'
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -114,8 +131,8 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                         <div className="flex items-center justify-between">
                             {editingId === opt.id ? (
                                 <div className="flex items-center space-x-2 flex-1">
-                                    <input autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} className="flex-1 bg-black/40 border border-blue-500/50 rounded px-2 py-1 text-[10px] outline-none text-white font-bold" onKeyDown={e => e.key === 'Enter' && updateMutation.mutate({ id: opt.id, value: editValue, metadata_keys: editMetadata.split(',').map(s => s.trim()).filter(Boolean) })} />
-                                    <button onClick={() => updateMutation.mutate({ id: opt.id, value: editValue, metadata_keys: editMetadata.split(',').map(s => s.trim()).filter(Boolean) })} className="text-emerald-400 hover:text-emerald-300"><Check size={16}/></button>
+                                    <input autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} className="flex-1 bg-black/40 border border-blue-500/50 rounded px-2 py-1 text-[10px] outline-none text-white font-bold" onKeyDown={e => e.key === 'Enter' && updateMutation.mutate({ id: opt.id, value: editValue, metadata_keys: isTeamCategory ? editTeamMembers : editMetadata.split(',').map(s => s.trim()).filter(Boolean) })} />
+                                    <button onClick={() => updateMutation.mutate({ id: opt.id, value: editValue, metadata_keys: isTeamCategory ? editTeamMembers : editMetadata.split(',').map(s => s.trim()).filter(Boolean) })} className="text-emerald-400 hover:text-emerald-300"><Check size={16}/></button>
                                     <button onClick={() => setEditingId(null)} className="text-slate-500 hover:text-white"><X size={16}/></button>
                                 </div>
                             ) : (
@@ -125,7 +142,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                                         <span className="text-[11px] font-bold text-slate-200 uppercase truncate tracking-tight">{opt.label}</span>
                                     </div>
                                     <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all">
-                                        <button onClick={() => { setEditingId(opt.id); setEditValue(opt.label); setEditMetadata(opt.metadata_keys?.join(', ') || ""); }} className="p-1.5 hover:bg-blue-500/20 text-slate-500 hover:text-blue-400 rounded-lg transition-all">
+                                        <button onClick={() => { setEditingId(opt.id); setEditValue(opt.label); setEditMetadata(opt.metadata_keys?.join(', ') || ""); setEditTeamMembers(opt.metadata_keys || []); }} className="p-1.5 hover:bg-blue-500/20 text-slate-500 hover:text-blue-400 rounded-lg transition-all">
                                             <Edit2 size={12} />
                                         </button>
                                         <button onClick={() => deleteMutation.mutate(opt.id)} className="p-1.5 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg transition-all">
@@ -135,12 +152,31 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                                 </>
                             )}
                         </div>
-                        {(category === 'ServiceType' || category === 'ExternalType' || category === 'HardwareProfile') && (
+                        {(isMetadataCategory || isTeamCategory) && (
                             <div className="mt-2 pl-6 border-l border-white/5">
                                 {editingId === opt.id ? (
                                     <div className="space-y-1">
-                                        <label className="text-[7px] font-bold text-slate-500 uppercase tracking-widest">Metadata Keys (CSV)</label>
-                                        <input value={editMetadata} onChange={e => setEditMetadata(e.target.value)} placeholder="port, dbname..." className="w-full bg-black/40 border border-white/5 rounded px-2 py-1 text-[9px] outline-none focus:border-blue-500/30 text-white" />
+                                        <label className="text-[7px] font-bold text-slate-500 uppercase tracking-widest">{isTeamCategory ? 'Team Members' : 'Metadata Keys (CSV)'}</label>
+                                        {isTeamCategory ? (
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {(operators || []).map((operator: any) => {
+                                                    const externalId = operator.external_id
+                                                    const active = editTeamMembers.includes(externalId)
+                                                    return (
+                                                        <button
+                                                            key={operator.id}
+                                                            type="button"
+                                                            onClick={() => setEditTeamMembers((current) => active ? current.filter((value) => value !== externalId) : [...current, externalId])}
+                                                            className={`rounded-md border px-2 py-1 text-[8px] font-bold uppercase tracking-tight transition-all ${active ? 'border-blue-500/40 bg-blue-500/15 text-blue-300' : 'border-white/10 bg-black/30 text-slate-400'}`}
+                                                        >
+                                                            {operator.full_name || operator.username || externalId}
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <input value={editMetadata} onChange={e => setEditMetadata(e.target.value)} placeholder="port, dbname..." className="w-full bg-black/40 border border-white/5 rounded px-2 py-1 text-[9px] outline-none focus:border-blue-500/30 text-white" />
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="flex flex-wrap gap-1">
@@ -174,6 +210,27 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                     <Plus size={18} />
                     </button>
                 </div>
+                {isTeamCategory && (
+                    <div className="max-w-3xl mx-auto space-y-2">
+                        <label className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Member Operators</label>
+                        <div className="flex flex-wrap gap-1.5">
+                            {(operators || []).map((operator: any) => {
+                                const externalId = operator.external_id
+                                const active = newTeamMembers.includes(externalId)
+                                return (
+                                    <button
+                                        key={operator.id}
+                                        type="button"
+                                        onClick={() => setNewTeamMembers((current) => active ? current.filter((value) => value !== externalId) : [...current, externalId])}
+                                        className={`rounded-md border px-2 py-1 text-[8px] font-bold uppercase tracking-tight transition-all ${active ? 'border-blue-500/40 bg-blue-500/15 text-blue-300' : 'border-white/10 bg-black/30 text-slate-400'}`}
+                                    >
+                                        {operator.full_name || operator.username || externalId}
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
           </motion.div>
         )}

@@ -2,6 +2,9 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import CodeMirror from '@uiw/react-codemirror'
+import { sql } from '@codemirror/lang-sql'
+import { javascript } from '@codemirror/lang-javascript'
 import { 
   Activity, Plus, Search, Filter, ExternalLink, 
   Trash2, Edit2, Shield, Cpu, Database, Network, 
@@ -34,6 +37,55 @@ const STATUSES = [
   { value: 'Decommissioned', label: 'Decommissioned', color: 'bg-slate-500/20 text-slate-400 border-white/20' },
   { value: 'Deleted', label: 'Deleted', color: 'bg-slate-800 text-slate-500 border-white/5' }
 ]
+
+const MONITORING_SEVERITIES = [
+  { value: 'Critical', label: 'Critical', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
+  { value: 'Warning', label: 'Warning', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  { value: 'Info', label: 'Info', color: 'bg-sky-500/20 text-sky-400 border-sky-500/30' }
+]
+
+const MONITORING_OWNER_ROLES = [
+  { value: 'Primary Support', label: 'Primary Support' },
+  { value: 'Escalation', label: 'Escalation' },
+  { value: 'Observer', label: 'Observer' }
+]
+
+const CHECK_INTERVAL_MIN = 15
+const CHECK_INTERVAL_MAX = 86400
+const ALERT_DURATION_MIN = 0
+const ALERT_DURATION_MAX = 86400
+const NOTIFICATION_THROTTLE_MIN = 60
+const NOTIFICATION_THROTTLE_MAX = 604800
+
+interface MonitoringLogicEntry {
+  id: number
+  type: 'Threshold' | 'Regex' | 'Query' | 'Health Check' | 'Log Pattern' | 'Synthetic' | 'Custom'
+  description: string
+  logic_info: string
+}
+
+interface MonitoringOwner {
+  operator_id: number
+  role: string
+  name?: string | null
+  external_id?: string | null
+}
+
+interface OperatorRecord {
+  id: number
+  full_name?: string | null
+  username?: string | null
+  external_id?: string | null
+  team?: string | null
+  email?: string | null
+}
+
+interface MonitoringTeamOption {
+  id: number
+  value: string
+  label: string
+  metadata_keys?: string[]
+}
 
 const DEFAULT_MONITORING_VIEWS = []
 const DEFAULT_MONITORING_VIEW_IDS = new Set(DEFAULT_MONITORING_VIEWS.map((view) => view.id))
@@ -527,11 +579,17 @@ export default function MonitoringGrid() {
     queryKey: ['settings-options'], 
     queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) 
   })
+  const { data: operators } = useQuery({
+    queryKey: ['operators'],
+    queryFn: async () => (await (await apiFetch('/api/v1/settings/operators')).json())
+  })
 
   const categories = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "MonitoringCategory") : [], [settingsOptions])
-  const severities = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "MonitoringSeverity") : [], [settingsOptions])
+  const platforms = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "MonitoringPlatform") : [], [settingsOptions])
+  const teams = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "MonitoringTeam") : [], [settingsOptions])
   const notificationMethods = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "NotificationMethod") : [], [settingsOptions])
-  const ownerRoles = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "MonitoringOwnerRole") : [], [settingsOptions])
+  const severities = MONITORING_SEVERITIES
+  const ownerRoles = MONITORING_OWNER_ROLES
 
   const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
     setConfirmModal({ isOpen: true, title, message, onConfirm, variant })
@@ -2624,6 +2682,9 @@ export default function MonitoringGrid() {
             devices={devices}
             categories={categories}
             severities={severities}
+            platforms={platforms}
+            teams={teams}
+            operators={operators || []}
             notificationMethods={notificationMethods}
             ownerRoles={ownerRoles}
             onClose={() => setIsFormOpen(false)} 
@@ -2670,9 +2731,9 @@ export default function MonitoringGrid() {
             title="Monitoring Matrix Enumerations"
             sections={[
                 { title: "Categories", category: "MonitoringCategory", icon: Layers },
-                { title: "Severity Levels", category: "MonitoringSeverity", icon: AlertCircle },
+                { title: "Platforms", category: "MonitoringPlatform", icon: Globe },
+                { title: "Teams", category: "MonitoringTeam", icon: User },
                 { title: "Notification Methods", category: "NotificationMethod", icon: Bell },
-                { title: "Owner Roles", category: "MonitoringOwnerRole", icon: User },
             ]}
         />
       </AnimatePresence>
@@ -3499,30 +3560,59 @@ const LOGIC_SUGGESTIONS: any = {
   'Custom': 'Enter full custom logic script or detailed specifications here...'
 }
 
-export function MonitoringForm({ item, devices, categories, severities, notificationMethods, ownerRoles, onClose, onSuccess }: any) {
+const getLogicExtensions = (logicType?: MonitoringLogicEntry['type']) => {
+  if (logicType === 'Query') return [sql()]
+  return [javascript()]
+}
+
+export function MonitoringForm({ item, devices, categories, severities, platforms, teams, operators, notificationMethods, ownerRoles, onClose, onSuccess }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
   const [activeTab, setActiveTab] = useState<'context' | 'logic' | 'alerting'>('context')
   const [recoverySearch, setRecoverySearch] = useState('')
-  const [showLineNumbers, setShowLineNumbers] = useState(true)
   const [activeLogicId, setActiveLogicId] = useState<number | null>(null)
   const [isMaximized, setIsMaximized] = useState(false)
+  const initialItemPayload = sanitizeMonitoringPayload(item)
+  const { logic_json: initialLogicJson = [], ...initialItemFields } = initialItemPayload || {}
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    category: string
+    status: string
+    title: string
+    spec: string
+    platform: string
+    monitoring_url: string
+    purpose: string
+    impact: string
+    notification_method: string
+    notification_recipients: string[]
+    logic: string
+    logic_json: MonitoringLogicEntry[]
+    device_id: number | null
+    monitored_services: number[]
+    owner_team: string
+    check_interval: number
+    alert_duration: number
+    notification_throttle: number
+    severity: string
+    is_active: boolean
+    recovery_docs: number[]
+    owners: MonitoringOwner[]
+  }>({
     category: 'Infrastructure',
     status: 'Planned',
     title: '',
     spec: '',
-    platform: 'Zabbix',
+    platform: platforms?.[0]?.value || 'Zabbix',
     monitoring_url: '',
     purpose: '',
     impact: '',
     notification_method: 'Email',
     notification_recipients: [],
     logic: '',
-    logic_json: [],
     device_id: null,
     monitored_services: [],
+    owner_team: '',
     check_interval: 60,
     alert_duration: 0,
     notification_throttle: 3600,
@@ -3530,15 +3620,41 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
     is_active: true,
     recovery_docs: [],
     owners: [],
-    ...sanitizeMonitoringPayload(item)
+    ...initialItemFields,
+    logic_json: initialLogicJson as MonitoringLogicEntry[]
   })
 
-  const [newOwner, setNewOwner] = useState({ name: '', external_id: '', role: ownerRoles?.[0]?.value || 'Primary Support' })
+  const [newOwner, setNewOwner] = useState<{ operator_id: string; role: string }>({ operator_id: '', role: ownerRoles?.[0]?.value || 'Primary Support' })
+  const [recipientInput, setRecipientInput] = useState('')
+
+  const selectedTeam = useMemo(
+    () => (teams || []).find((team: MonitoringTeamOption) => team.value === formData.owner_team),
+    [teams, formData.owner_team]
+  )
+
+  const teamOperators = useMemo(() => {
+    const memberIds = new Set((selectedTeam?.metadata_keys || []).map((value) => String(value)))
+    if (!memberIds.size) return operators as OperatorRecord[]
+    return (operators as OperatorRecord[]).filter((operator) => operator.external_id && memberIds.has(String(operator.external_id)))
+  }, [operators, selectedTeam])
 
   const addOwner = () => {
-    if (newOwner.name && newOwner.external_id) {
-       setFormData({ ...formData, owners: [...formData.owners, newOwner] })
-       setNewOwner({ name: '', external_id: '', role: ownerRoles?.[0]?.value || 'Primary Support' })
+    const operatorId = Number(newOwner.operator_id)
+    const selectedOperator = (operators as OperatorRecord[]).find((operator) => operator.id === operatorId)
+    if (selectedOperator && !formData.owners.some((owner) => owner.operator_id === operatorId)) {
+       setFormData({
+         ...formData,
+         owners: [
+           ...formData.owners,
+           {
+             operator_id: operatorId,
+             role: newOwner.role,
+             name: selectedOperator.full_name || selectedOperator.username || selectedOperator.external_id,
+             external_id: selectedOperator.external_id
+           }
+         ]
+       })
+       setNewOwner({ operator_id: '', role: ownerRoles?.[0]?.value || 'Primary Support' })
     }
   }
 
@@ -3565,8 +3681,6 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
       setActiveLogicId(formData.logic_json[0].id)
     }
   }, [formData.logic_json])
-
-  const [recipientInput, setRecipientInput] = useState('')
 
   // Fetch services for selected device
   const { data: deviceServices } = useQuery({
@@ -3634,25 +3748,25 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
 
   const addLogicEntry = () => {
     const id = Date.now()
-    const newEntries = [...(formData.logic_json || []), { type: 'Threshold', description: '', logic_info: '', id }]
+    const newEntries: MonitoringLogicEntry[] = [...(formData.logic_json || []), { type: 'Threshold', description: '', logic_info: '', id }]
     setFormData({ ...formData, logic_json: newEntries })
     setActiveLogicId(id)
   }
 
   const removeLogicEntry = (id: number) => {
-    const filtered = formData.logic_json.filter((e: any) => e.id !== id)
+    const filtered = formData.logic_json.filter((e: MonitoringLogicEntry) => e.id !== id)
     setFormData({ ...formData, logic_json: filtered })
     if (activeLogicId === id) {
       setActiveLogicId(filtered.length > 0 ? filtered[0].id : null)
     }
   }
 
-  const updateLogicEntry = (id: number, field: string, value: string) => {
-    const newEntries = formData.logic_json.map((e: any) => e.id === id ? { ...e, [field]: value } : e)
+  const updateLogicEntry = (id: number, field: keyof MonitoringLogicEntry, value: string) => {
+    const newEntries = formData.logic_json.map((e: MonitoringLogicEntry) => e.id === id ? { ...e, [field]: value } : e)
     setFormData({ ...formData, logic_json: newEntries })
   }
 
-  const activeLogicEntry = formData.logic_json?.find((e: any) => e.id === activeLogicId)
+  const activeLogicEntry = formData.logic_json?.find((e: MonitoringLogicEntry) => e.id === activeLogicId)
 
   const addRecipient = () => {
     if (recipientInput && !formData.notification_recipients.includes(recipientInput)) {
@@ -3663,6 +3777,15 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
 
   const removeRecipient = (r: string) => {
     setFormData({ ...formData, notification_recipients: formData.notification_recipients.filter((item: string) => item !== r) })
+  }
+
+  const handleSave = () => {
+    if (formData.severity === 'Critical' && formData.recovery_docs.length === 0) {
+      toast.error('Critical monitors require at least one linked recovery document')
+      setActiveTab('alerting')
+      return
+    }
+    mutation.mutate(formData)
   }
 
   const modal = (
@@ -3719,6 +3842,31 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 pr-4 sm:px-8">
+           <div className="sticky top-0 z-20 mb-6 rounded-xl border border-blue-500/20 bg-slate-950/90 p-4 shadow-[0_10px_40px_rgba(2,6,23,0.45)] backdrop-blur">
+             <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.8fr)_repeat(2,minmax(180px,0.6fr))]">
+               <div className="space-y-2">
+                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Title</label>
+                 <input
+                   value={formData.title}
+                   onChange={e => setFormData({ ...formData, title: e.target.value })}
+                   placeholder="e.g. CORE-DB: High CPU Load Alert"
+                   className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all shadow-inner"
+                 />
+               </div>
+               <StyledSelect
+                 label="Status"
+                 value={formData.status}
+                 onChange={(e: any) => setFormData({ ...formData, status: e.target.value })}
+                 options={STATUSES.map(s => ({ value: s.value, label: s.value }))}
+               />
+               <StyledSelect
+                 label="Severity"
+                 value={formData.severity}
+                 onChange={(e: any) => setFormData({ ...formData, severity: e.target.value })}
+                 options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
+               />
+             </div>
+           </div>
            {activeTab === 'context' ? (
              <div className="grid grid-cols-12 gap-8 p-2">
                 <div className="col-span-12 sm:col-span-4 space-y-6">
@@ -3763,43 +3911,41 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                       )}
                    </div>
 
-                   <div className="grid grid-cols-2 gap-4">
-                      <StyledSelect 
-                        label="Category"
-                        value={formData.category}
-                        onChange={(e: any) => setFormData({...formData, category: e.target.value})}
-                        options={categories.map((c:any) => ({ value: c.value, label: c.label }))}
-                      />
-                      <StyledSelect 
-                        label="Status"
-                        value={formData.status}
-                        onChange={(e: any) => setFormData({...formData, status: e.target.value})}
-                        options={STATUSES.map(s => ({ value: s.value, label: s.value }))}
-                      />
-                   </div>
+                   <StyledSelect 
+                     label="Category"
+                     value={formData.category}
+                     onChange={(e: any) => setFormData({...formData, category: e.target.value})}
+                     options={categories.map((c:any) => ({ value: c.value, label: c.label }))}
+                   />
                    
                    <div className="space-y-4 p-4 bg-white/5 rounded-lg border border-white/5">
                       <div className="flex items-center justify-between px-1">
                          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Ownership</h3>
                          <span className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full">{formData.owners?.length || 0} Assigned</span>
                       </div>
+
+                      <StyledSelect
+                        label="Owner Team"
+                        value={formData.owner_team}
+                        onChange={(e: any) => setFormData({ ...formData, owner_team: e.target.value, owners: [] })}
+                        options={(teams || []).map((team: MonitoringTeamOption) => ({ value: team.value, label: team.label }))}
+                        placeholder="Select Team..."
+                      />
                       
                       <div className="grid grid-cols-12 gap-2">
-                         <div className="col-span-4">
-                            <input 
-                              value={newOwner.name}
-                              onChange={e => setNewOwner({...newOwner, name: e.target.value})}
-                              placeholder="Name..."
-                              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] font-bold outline-none focus:border-blue-500"
-                            />
-                         </div>
-                         <div className="col-span-3">
-                            <input 
-                              value={newOwner.external_id}
-                              onChange={e => setNewOwner({...newOwner, external_id: e.target.value})}
-                              placeholder="ID..."
-                              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] font-bold outline-none focus:border-blue-500"
-                            />
+                         <div className="col-span-7">
+                            <select
+                              value={newOwner.operator_id}
+                              onChange={e => setNewOwner({ ...newOwner, operator_id: e.target.value })}
+                              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] font-bold outline-none focus:border-blue-500 appearance-none"
+                            >
+                               <option value="">Select operator...</option>
+                               {teamOperators.map((operator: OperatorRecord) => (
+                                 <option key={operator.id} value={operator.id}>
+                                   {(operator.full_name || operator.username || operator.external_id)}{operator.external_id ? ` [${operator.external_id}]` : ''}
+                                 </option>
+                               ))}
+                            </select>
                          </div>
                          <div className="col-span-4">
                             <select 
@@ -3807,7 +3953,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                               onChange={e => setNewOwner({...newOwner, role: e.target.value})}
                               className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] font-bold outline-none focus:border-blue-500 appearance-none"
                             >
-                               {ownerRoles.map((r:any) => <option key={r.id} value={r.value}>{r.label}</option>)}
+                               {ownerRoles.map((r:any) => <option key={r.value} value={r.value}>{r.label}</option>)}
                             </select>
                          </div>
                          <div className="col-span-1">
@@ -3833,27 +3979,13 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                 </div>
 
                 <div className="col-span-12 sm:col-span-8 space-y-6">
-                   <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Title</label>
-                        <input 
-                          value={formData.title}
-                          onChange={e => setFormData({...formData, title: e.target.value})}
-                          placeholder="e.g. CORE-DB: High CPU Load Alert"
-                          className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all shadow-inner"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Platform</label>
-                        <input 
-                          value={formData.platform}
-                          onChange={e => setFormData({...formData, platform: e.target.value})}
-                          placeholder="e.g. Zabbix, Prometheus"
-                          className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all"
-                        />
-                      </div>
-                   </div>
+                   <StyledSelect
+                     label="Platform"
+                     value={formData.platform}
+                     onChange={(e: any) => setFormData({ ...formData, platform: e.target.value })}
+                     options={(platforms || []).map((platform: any) => ({ value: platform.value, label: platform.label }))}
+                     placeholder="Select Platform..."
+                   />
 
                    <div className="space-y-2">
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Monitoring URL</label>
@@ -3913,7 +4045,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                    </div>
 
                    <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
-                      {formData.logic_json?.map((entry: any) => (
+                      {formData.logic_json?.map((entry: MonitoringLogicEntry) => (
                         <div 
                           key={entry.id}
                           onClick={() => setActiveLogicId(entry.id)}
@@ -3947,24 +4079,30 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                       <div className="grid grid-cols-1 gap-4">
                          <div className="space-y-1.5">
                             <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 px-1">Check Frequency (Seconds)</label>
+                            <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600 px-1">Allowed {CHECK_INTERVAL_MIN} to {CHECK_INTERVAL_MAX}</p>
                             <div className="relative">
                                <Clock size={12} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                                <input 
                                  type="number"
                                  value={formData.check_interval}
-                                 onChange={e => setFormData({...formData, check_interval: parseInt(e.target.value)})}
+                                 min={CHECK_INTERVAL_MIN}
+                                 max={CHECK_INTERVAL_MAX}
+                                 onChange={e => setFormData({...formData, check_interval: Number(e.target.value)})}
                                  className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-[12px] font-bold text-white outline-none focus:border-blue-500"
                                />
                             </div>
                          </div>
                          <div className="space-y-1.5">
                             <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 px-1">Alert Duration (Seconds Delay)</label>
+                            <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600 px-1">Allowed {ALERT_DURATION_MIN} to {ALERT_DURATION_MAX}</p>
                             <div className="relative">
                                <AlertCircle size={12} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                                <input 
                                  type="number"
                                  value={formData.alert_duration}
-                                 onChange={e => setFormData({...formData, alert_duration: parseInt(e.target.value)})}
+                                 min={ALERT_DURATION_MIN}
+                                 max={ALERT_DURATION_MAX}
+                                 onChange={e => setFormData({...formData, alert_duration: Number(e.target.value)})}
                                  className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-[12px] font-bold text-white outline-none focus:border-blue-500"
                                />
                             </div>
@@ -3998,33 +4136,25 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                         <div className="flex-1 flex flex-col space-y-2 min-h-0">
                            <div className="flex items-center justify-between px-1">
                               <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Logic Information</label>
-                              <button 
-                                onClick={() => setShowLineNumbers(!showLineNumbers)}
-                                className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border transition-all ${showLineNumbers ? 'bg-blue-600/20 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-white/5 text-slate-500'}`}
-                              >
-                                {showLineNumbers ? 'Hide Line Numbers' : 'Show Line Numbers'}
-                              </button>
+                              <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">
+                                Syntax-aware editor
+                              </span>
                            </div>
                            
-                           <div className="flex-1 bg-black/40 border border-white/10 rounded-lg overflow-hidden flex font-mono text-[12px] shadow-inner relative group min-h-[200px]">
-                              {showLineNumbers && (
-                                <div className="bg-white/5 border-r border-white/10 px-3 py-4 text-slate-600 text-right select-none whitespace-pre leading-relaxed min-w-[40px]">
-                                   {activeLogicEntry.logic_info.split('\n').map((_, i) => i + 1).join('\n')}
-                                </div>
-                              )}
-                              <textarea 
+                           <div className="flex-1 bg-black/40 border border-white/10 rounded-lg overflow-hidden shadow-inner min-h-[260px]">
+                              <CodeMirror
                                 value={activeLogicEntry.logic_info}
-                                onChange={e => updateLogicEntry(activeLogicEntry.id, 'logic_info', e.target.value)}
+                                height="320px"
+                                extensions={getLogicExtensions(activeLogicEntry.type)}
+                                basicSetup={{ lineNumbers: true, foldGutter: true }}
                                 placeholder={LOGIC_SUGGESTIONS[activeLogicEntry.type] || 'Enter logic parameters...'}
-                                className="flex-1 bg-transparent p-4 outline-none text-blue-300 resize-none leading-relaxed custom-scrollbar placeholder:text-slate-700"
-                                spellCheck={false}
+                                onChange={(value) => updateLogicEntry(activeLogicEntry.id, 'logic_info', value)}
                               />
-                              
-                              <div className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                 <span className="text-[8px] font-black text-slate-500 uppercase bg-black/60 px-2 py-1 rounded-lg border border-white/5">
-                                    {activeLogicEntry.logic_info.length} Chars | {activeLogicEntry.logic_info.split('\n').length} Lines
-                                 </span>
-                              </div>
+                           </div>
+                           <div className="flex justify-end">
+                              <span className="text-[8px] font-black text-slate-500 uppercase bg-black/60 px-2 py-1 rounded-lg border border-white/5">
+                                 {activeLogicEntry.logic_info.length} Chars | {activeLogicEntry.logic_info.split('\n').length} Lines
+                              </span>
                            </div>
                         </div>
                      </>
@@ -4045,12 +4175,10 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                 <div className="col-span-12 sm:col-span-4 space-y-6">
                    <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 border-l-2 border-blue-600 pl-3">Alert Routing Rules</h3>
                    
-                   <StyledSelect 
-                     label="Severity Level"
-                     value={formData.severity}
-                     onChange={(e: any) => setFormData({...formData, severity: e.target.value})}
-                     options={severities.map((s:any) => ({ value: s.value, label: s.label }))}
-                   />
+                   <div className="rounded-lg border border-white/5 bg-white/[0.03] p-4">
+                     <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Severity Level</p>
+                     <p className="pt-2 text-[10px] font-bold text-slate-300">Pinned in header for cross-tab context.</p>
+                   </div>
 
                    <div className="space-y-4 p-4 bg-white/5 rounded-lg border border-white/5">
                       <div className="space-y-1.5">
@@ -4059,9 +4187,12 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
                          <input 
                            type="number"
                            value={formData.notification_throttle}
-                           onChange={e => setFormData({...formData, notification_throttle: parseInt(e.target.value)})}
+                           min={NOTIFICATION_THROTTLE_MIN}
+                           max={NOTIFICATION_THROTTLE_MAX}
+                           onChange={e => setFormData({...formData, notification_throttle: Number(e.target.value)})}
                            className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500"
                          />
+                         <p className="pt-2 text-[8px] font-bold uppercase tracking-widest text-slate-600">Allowed {NOTIFICATION_THROTTLE_MIN} to {NOTIFICATION_THROTTLE_MAX}</p>
                       </div>
                    </div>
 
@@ -4197,7 +4328,7 @@ export function MonitoringForm({ item, devices, categories, severities, notifica
            <div className="flex flex-wrap items-center justify-end gap-3 pr-1">
               <button onClick={onClose} className="px-6 sm:px-8 py-3 bg-white/5 hover:bg-white/10 text-slate-400 rounded-lg font-black uppercase tracking-widest text-[9px] sm:text-[10px] transition-all">Abort</button>
               <button 
-                onClick={() => mutation.mutate(formData)}
+                onClick={handleSave}
                 disabled={mutation.isPending}
                 className="px-8 sm:px-12 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-black uppercase tracking-widest text-[9px] sm:text-[10px] transition-all shadow-xl shadow-blue-500/20 active:scale-95 disabled:bg-slate-700 flex items-center space-x-2"
               >
