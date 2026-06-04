@@ -1419,6 +1419,50 @@ const AssetComparisonView = ({ assets, selectedIds, onBack, onSync }: { assets: 
 	  )
 	}
 
+const AssetInsightBar = ({ assets }: any) => {
+  const insights = useMemo(() => {
+    if (!assets?.length) return null
+    const critical = assets.filter((a: any) => a.status === 'Critical' || a.status === 'Down' || a.status === 'Failed').length
+    const systems = [...new Set(assets.map((a: any) => a.system))].filter(Boolean).length
+    const recent = assets.filter((a: any) => {
+      const updated = new Date(a.updated_at)
+      const diff = new Date().getTime() - updated.getTime()
+      return diff < 86400000 // 24 hours
+    }).length
+
+    return { critical, systems, recent }
+  }, [assets])
+
+  if (!insights) return null
+
+  return (
+    <div className="grid grid-cols-4 gap-6 mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
+       <div className="bg-black/40 border border-white/5 p-6 rounded-2xl backdrop-blur-xl shadow-xl group hover:border-rose-500/20 transition-all">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-rose-400 transition-colors">Operational Health</p>
+          <div className="flex items-center gap-4">
+             <div className={`w-3 h-3 rounded-full ${insights.critical > 0 ? 'bg-rose-500 animate-pulse shadow-[0_0_12px_rgba(244,63,94,0.5)]' : 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]'}`} />
+             <h4 className="text-2xl font-black text-white tracking-tighter">{insights.critical > 0 ? `${insights.critical} Critical Alerts` : 'System Nominal'}</h4>
+          </div>
+       </div>
+       <div className="bg-black/40 border border-white/5 p-6 rounded-2xl backdrop-blur-xl shadow-xl group hover:border-blue-500/20 transition-all">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-blue-400 transition-colors">Ecosystem Breadth</p>
+          <h4 className="text-2xl font-black text-blue-400 tracking-tighter">{insights.systems} Active Systems</h4>
+       </div>
+       <div className="bg-black/40 border border-white/5 p-6 rounded-2xl backdrop-blur-xl shadow-xl group hover:border-emerald-500/20 transition-all">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-emerald-400 transition-colors">Human Activity</p>
+          <h4 className="text-2xl font-black text-emerald-400 tracking-tighter">{insights.recent} Updates (24H)</h4>
+       </div>
+       <div className="bg-blue-600/10 border border-blue-500/20 p-6 rounded-2xl backdrop-blur-xl shadow-xl flex items-center justify-between group hover:bg-blue-600/20 transition-all">
+          <div>
+             <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-1">Registry Density</p>
+             <h4 className="text-2xl font-black text-white tracking-tighter">{assets.length} Global Nodes</h4>
+          </div>
+          <Server size={28} className="text-blue-500 opacity-20 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+       </div>
+    </div>
+  )
+}
+
 export default function Assets() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -1450,6 +1494,9 @@ export default function Assets() {
   const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
   const [isBulkEnvOpen, setIsBulkEnvOpen] = useState(false)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
+
+  // Human Discovery State
+  const [quickLookId, setQuickLookId] = useState<number | null>(null)
 
   // Shared Service Modal States (Moved from AssetDetailsView to top-level for screen-wide focus)
   const [activeServiceDetails, setActiveServiceDetails] = useState<any>(null)
@@ -1936,13 +1983,86 @@ export default function Assets() {
     }
   }
 
+const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
+  if (!asset) return null
   return (
-    <div className="h-full flex flex-col space-y-4">
-      <div className="flex items-center justify-between">
+    <motion.div
+      initial={{ x: '100%' }}
+      animate={{ x: 0 }}
+      exit={{ x: '100%' }}
+      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      className="absolute top-0 right-0 bottom-0 w-[450px] bg-slate-950 border-l border-blue-500/30 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] z-[100] flex flex-col backdrop-blur-2xl"
+    >
+       <div className="p-8 border-b border-white/5 flex items-center justify-between bg-blue-600/5">
+          <div className="flex items-center gap-4">
+             <div className="p-3 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/20">
+                <Search size={24} />
+             </div>
+             <div>
+                <h3 className="text-xl font-black text-white uppercase tracking-tight">{asset.name}</h3>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{asset.system} // {asset.type}</p>
+             </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-all">
+             <X size={24} />
+          </button>
+       </div>
+
+       <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-8">
+          <div className="grid grid-cols-2 gap-4">
+             <div className="p-4 bg-black/40 border border-white/5 rounded-xl">
+                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Status</p>
+                <div className="flex items-center gap-2">
+                   <div className={`w-2 h-2 rounded-full ${asset.status === 'Active' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                   <span className={`text-xs font-black uppercase ${asset.status === 'Active' ? 'text-emerald-400' : 'text-amber-400'}`}>{asset.status}</span>
+                </div>
+             </div>
+             <div className="p-4 bg-black/40 border border-white/5 rounded-xl">
+                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Environment</p>
+                <span className="text-xs font-black uppercase text-blue-400">{asset.environment}</span>
+             </div>
+          </div>
+
+          <div className="space-y-4">
+             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] border-b border-white/5 pb-2">Network Vector</h4>
+             <div className="space-y-3">
+                <div className="flex justify-between items-center py-2 border-b border-white/[0.02]">
+                   <span className="text-[10px] font-bold text-slate-400 uppercase">Primary IP</span>
+                   <span className="text-[11px] font-mono font-bold text-white">{asset.primary_ip || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-white/[0.02]">
+                   <span className="text-[10px] font-bold text-slate-400 uppercase">Mgmt URL</span>
+                   <span className="text-[11px] font-mono font-bold text-blue-400 truncate max-w-[200px]">{asset.management_url || 'N/A'}</span>
+                </div>
+             </div>
+          </div>
+
+          <div className="space-y-4">
+             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] border-b border-white/5 pb-2">Hardware Registry</h4>
+             <p className="text-xs font-bold text-slate-300 leading-relaxed uppercase italic">"{asset.hardware_summary || 'No hardware description captured.'}"</p>
+          </div>
+
+          <div className="pt-8">
+             <button 
+               onClick={() => onEdit(asset)}
+               className="w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase text-[11px] tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-500 transition-all flex items-center justify-center gap-3"
+             >
+                <Edit2 size={16} />
+                Engage Full Configuration
+             </button>
+          </div>
+       </div>
+    </motion.div>
+  )
+}
+
+  return (
+    <div className="h-full flex flex-col space-y-4 relative overflow-hidden">
+      <div className="flex items-center justify-between shrink-0">
         <div className="flex items-center space-x-6">
            <div>
-              <h1 className="text-2xl font-bold uppercase tracking-tight ">Assets</h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Infrastructure Asset Registry</p>
+              <h1 className="text-3xl font-black uppercase tracking-tighter text-white">Infrastructure <span className="text-blue-500">Registry</span></h1>
+              <p className="text-[10px] text-slate-500 uppercase tracking-[0.4em] font-black mt-1 italic">Central Global Asset Inventory</p>
            </div>
 
            <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 ml-2">
@@ -2069,9 +2189,11 @@ export default function Assets() {
         )}
       </div>
 
+        {viewMode === 'grid' && <AssetInsightBar assets={devices || []} />}
+
       {/* STYLE LABORATORY BAR REMOVED AND MOVED TO SIDEBAR */}
       {viewMode === 'grid' ? (
-        <div className="flex-1 w-full glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative">
+        <div className="flex-1 w-full glass-panel rounded-xl overflow-hidden ag-theme-alpine-dark relative shadow-2xl border border-white/5">
           {isLoading && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
                <RefreshCcw size={32} className="animate-spin" />
@@ -2085,9 +2207,24 @@ export default function Assets() {
             rowSelection="multiple"
             headerHeight={fontSize + rowDensity + 10}
             rowHeight={fontSize + rowDensity + 10}
-            onSelectionChanged={(e) => setSelectedIds(e?.api?.getSelectedNodes().map((n: any) => n.data?.id).filter(Boolean) || [])}
+            onSelectionChanged={(e) => {
+              const nodes = e?.api?.getSelectedNodes() || []
+              setSelectedIds(nodes.map((n: any) => n.data?.id).filter(Boolean))
+              if (nodes.length === 1) setQuickLookId(nodes[0].data?.id)
+              else setQuickLookId(null)
+            }}
             enableCellTextSelection={true}
           />
+
+          <AnimatePresence>
+            {quickLookId && (
+              <QuickLookPanel 
+                asset={devices?.find((d:any) => d.id === quickLookId)} 
+                onClose={() => { setQuickLookId(null); gridRef.current?.api?.deselectAll(); }} 
+                onEdit={(a: any) => { setQuickLookId(null); setActiveModal(a); }}
+              />
+            )}
+          </AnimatePresence>
           <AnimatePresence>
             {showColumnPicker && (
               <motion.div

@@ -41,8 +41,20 @@ async def reorder_projects(order_data: List[dict], db: AsyncSession = Depends(ge
 
 @router.post("", response_model=schemas.ProjectResponse)
 async def create_project(data: schemas.ProjectCreate, db: AsyncSession = Depends(get_db)):
-    db_project = models.Project(**data.model_dump())
+    project_data = data.model_dump()
+    tasks_data = project_data.pop("tasks", [])
+    
+    db_project = models.Project(**project_data)
     db.add(db_project)
+    await db.flush() # Get project ID
+    
+    for t_data in tasks_data:
+        clean_task_data = filter_valid_columns(models.ProjectTask, t_data)
+        clean_task_data.pop("id", None)
+        clean_task_data.pop("project_id", None)
+        new_task = models.ProjectTask(**clean_task_data, project_id=db_project.id)
+        db.add(new_task)
+        
     await db.commit()
     # Re-fetch with all relations for response to avoid greenlet errors
     return await get_project(db_project.id, db)

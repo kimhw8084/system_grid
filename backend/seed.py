@@ -464,13 +464,76 @@ def seed():
                 mon = MonitoringItem(device_id=app.id, category="Infrastructure", title=f"Monitor {i}", status="Existing", is_active=True)
                 db.add(mon)
 
-            # 17. Projects
-            for i in range(4):
-                p = Project(name=f"Project {i}", type="Strategic", priority="High", status="In Progress")
+            # 17. Projects (Apple-Style High Fidelity)
+            project_data = [
+                {
+                    "name": "Project Catalyst: Autonomous Fabric v2",
+                    "type": "Strategic",
+                    "priority": "Highest",
+                    "status": "In Progress",
+                    "problem_statement": "The current network fabric suffers from deterministic latency spikes during high-load cross-rack replication, causing intermittent drift in real-time telemetry sync. This bottleneck prevents the scaling of autonomous node orchestration beyond 150 instances.",
+                    "objective": "Implement an AI-driven, non-blocking L3 CLOS topology with predictive congestion management. Target < 2ms tail latency and 99.999% availability for the control plane under peak synthetic load.",
+                    "owners": ["haewon.kim", "sarah.connor"],
+                    "tasks": [
+                        {"name": "Blueprint Validation", "status": "Completed", "progress": 100},
+                        {"name": "Hardware Provisioning (Nexus 9K)", "status": "In Progress", "progress": 65},
+                        {"name": "OSPFv3 Convergence Tuning", "status": "To Do", "progress": 0},
+                        {"name": "Telemetry Integration", "status": "To Do", "progress": 0}
+                    ]
+                },
+                {
+                    "name": "Operation Iron Shield: Zero-Trust Enclave",
+                    "type": "Tactical",
+                    "priority": "High",
+                    "status": "Planning",
+                    "problem_statement": "Legacy lateral movement risks identified in the DMZ segment. Current firewall rules are too permissive for micro-services, increasing the blast radius of a potential breach in the staging environment.",
+                    "objective": "Enforce strict identity-based micro-segmentation using Palo Alto PAN-OS and Vault-driven secret injection. Eliminate long-lived credentials across all production-facing logical services.",
+                    "owners": ["haewon.kim"],
+                    "tasks": [
+                        {"name": "Audit Existing Rules", "status": "In Progress", "progress": 30},
+                        {"name": "Vault Policy Mapping", "status": "To Do", "progress": 0},
+                        {"name": "Service Discovery Integration", "status": "To Do", "progress": 0}
+                    ]
+                },
+                {
+                    "name": "Project Echo: Global Monitoring Mesh",
+                    "type": "Operational",
+                    "priority": "Medium",
+                    "status": "Testing",
+                    "problem_statement": "Monitoring siloization between HW and App teams leads to high MTTR. Current alerts lack cross-layer correlation, causing 'alert fatigue' during transient network events.",
+                    "objective": "Deploy a unified Grafana/Prometheus mesh with cross-dependency correlation. Reduce alert volume by 40% through intelligent noise suppression and automated ticket generation for known failure modes.",
+                    "owners": ["sarah.connor"],
+                    "tasks": [
+                        {"name": "Data Source Aggregation", "status": "Completed", "progress": 100},
+                        {"name": "Correlation Logic Implementation", "status": "Completed", "progress": 100},
+                        {"name": "Load Testing / Stress Test", "status": "In Progress", "progress": 80}
+                    ]
+                }
+            ]
+
+            for p_info in project_data:
+                p = Project(
+                    name=p_info["name"], 
+                    type=p_info["type"], 
+                    priority=p_info["priority"], 
+                    status=p_info["status"],
+                    problem_statement=p_info["problem_statement"],
+                    objective=p_info["objective"],
+                    owners=p_info["owners"],
+                    start_date=datetime.now() - timedelta(days=30),
+                    end_date=datetime.now() + timedelta(days=90)
+                )
                 db.add(p)
                 db.flush()
-                for j in range(5):
-                    db.add(ProjectTask(project_id=p.id, name=f"Task {j}", status="To Do"))
+                for t_info in p_info["tasks"]:
+                    db.add(ProjectTask(
+                        project_id=p.id, 
+                        name=t_info["name"], 
+                        status=t_info["status"],
+                        progress=t_info["progress"],
+                        start_date=datetime.now(),
+                        end_date=datetime.now() + timedelta(days=7)
+                    ))
 
             # 18. RBAC
             admin_role = Role(name="Administrator", permissions={"all": "manage"})

@@ -937,6 +937,12 @@ function FailureDetailView({ mode, onClose, onUpdate }: { mode: any, onClose: ()
     return sameSystem.findIndex((m: any) => m.id === mode.id) + 1;
   }, [allModes, mode.id, mode.system_name]);
 
+  const humanSummary = useMemo(() => {
+    if (mode.rpn > 150) return "This is a high-criticality risk with significant operational exposure. Immediate mitigation is prioritized.";
+    if (mode.rpn > 80) return "This failure mode represents a moderate operational risk. Standard monitoring is recommended.";
+    return "This is a low-impact failure mode with established containment vectors.";
+  }, [mode.rpn]);
+
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-xl p-6 font-bold uppercase tracking-tight">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-[1200px] h-[90vh] flex flex-col rounded-lg border border-rose-500/30 bg-[#02040a] overflow-hidden shadow-2xl relative">
@@ -953,6 +959,7 @@ function FailureDetailView({ mode, onClose, onUpdate }: { mode: any, onClose: ()
                       <div className="px-2 py-0.5 rounded-lg bg-blue-600/10 border border-blue-500/20 text-[9px] font-bold text-blue-400  uppercase tracking-widest">RANK #{systemRank}</div>
                   </div>
                   <h2 className="text-3xl font-bold text-white  tracking-tighter leading-none uppercase">{mode.title}</h2>
+                  <p className="text-xs text-rose-400 italic font-medium lowercase tracking-normal mt-1">"{humanSummary}"</p>
               </div>
 
               <div className="flex items-center gap-4">
@@ -1147,25 +1154,25 @@ function FARWizard({ initialData, onComplete }: any) {
        <div className="col-span-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
              <div className="space-y-1">
-                <label className="text-[9px] font-bold text-slate-500 ">System Realm *</label>
+                <label className="text-[9px] font-bold text-slate-500 ">Operational Domain *</label>
                 <StyledSelect options={systems.map((s: any) => ({ label: s.label, value: s.value }))} value={formData.system_name} onChange={e => setFormData({ ...formData, system_name: e.target.value })} />
              </div>
              <div className="space-y-1">
-                <label className="text-[9px] font-bold text-slate-500 ">Failure Type *</label>
+                <label className="text-[9px] font-bold text-slate-500 ">Root Classification *</label>
                 <StyledSelect options={FAILURE_TYPES} value={formData.failure_type} onChange={e => setFormData({ ...formData, failure_type: e.target.value })} />
              </div>
           </div>
           <div className="space-y-1">
-             <label className="text-[9px] font-bold text-slate-500 ">Failure Mode Identity *</label>
+             <label className="text-[9px] font-bold text-slate-500 ">Incidence Signature *</label>
              <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="E.G., DATABASE_CONNECTION_TIMEOUT" className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-rose-500  placeholder:text-slate-700" />
           </div>
           <div className="space-y-1">
-             <label className="text-[9px] font-bold text-slate-500 ">Impact Statement (Effect)</label>
+             <label className="text-[9px] font-bold text-slate-500 ">Consequence Assessment (Effect)</label>
              <textarea value={formData.effect} onChange={e => setFormData({ ...formData, effect: e.target.value })} placeholder="Describe the systemic consequences..." className="w-full bg-black/40 border border-white/10 rounded-lg p-4 text-xs font-bold text-white min-h-[60px] outline-none focus:border-rose-500 custom-scrollbar  placeholder:text-slate-700" />
           </div>
           <div className="bg-black/20 p-4 rounded-lg border border-white/5 space-y-3">
              <div className="flex items-center justify-between">
-                <label className="text-[9px] font-bold text-slate-500 ">Affected Infrastructure</label>
+                <label className="text-[9px] font-bold text-slate-500 ">Blast Radius Entities</label>
                 <div className="relative">
                    <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-600" />
                    <input value={assetSearch} onChange={e => setAssetSearch(e.target.value)} placeholder="SCAN..." className="bg-black/40 border border-white/10 rounded-lg pl-7 pr-2 py-1 text-[9px] font-bold outline-none focus:border-rose-500 w-32" />

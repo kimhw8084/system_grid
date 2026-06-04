@@ -25,12 +25,12 @@ test.describe('Projects workflows', () => {
     await expect(page.getByText('Project Configuration')).toBeVisible()
     await page.locator('.glass-panel button:has(svg.lucide-x)').first().click()
 
-    await page.getByPlaceholder('Filter vectors...').fill(first.name)
-    await expect(page.getByText('Clear search and filters to reorder projects safely')).toBeVisible()
+    await page.getByPlaceholder('Search Projects...').fill(first.name)
+    await expect(page.getByText('Clear search and filters to reorder projects')).toBeVisible()
 
-    await page.getByPlaceholder('Filter vectors...').fill('')
-    await page.getByTitle('Decommission Project').click()
-    await page.getByRole('button', { name: 'Decommission', exact: true }).click()
+    await page.getByPlaceholder('Search Projects...').fill('')
+    await page.getByTitle('Archive Project').click()
+    await page.getByRole('button', { name: 'Archive Project', exact: true }).click()
     await expect(page.getByText('Project Decommissioned')).toBeVisible()
     await expect(page.locator('h1').filter({ hasText: second.name })).toBeVisible()
     await expect(page).not.toHaveURL(new RegExp(`id=${first.id}`))

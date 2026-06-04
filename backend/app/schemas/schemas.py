@@ -418,7 +418,7 @@ class ProjectTaskBase(BaseModel):
     status: str = "To Do"
     owner: Optional[str] = None
     assigned_objects: Optional[List[Any]] = []
-    project_id: int
+    project_id: Optional[int] = None
     parent_task_id: Optional[int] = None
     dependencies_json: Optional[List[int]] = []
     metadata_json: Optional[Dict[str, Any]] = {}
@@ -478,7 +478,8 @@ class ProjectBase(BaseModel):
     order_index: int = 0
     metadata_json: Optional[Dict[str, Any]] = {}
 
-class ProjectCreate(ProjectBase): pass
+class ProjectCreate(ProjectBase):
+    tasks: Optional[List[ProjectTaskUpdate]] = []
 
 class ProjectUpdate(ProjectBase):
     tasks: Optional[List[ProjectTaskUpdate]] = []

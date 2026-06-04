@@ -150,16 +150,30 @@ const GridMatrix = React.memo(({
   getRowClass,
   onFirstDataRendered
 }: any) => {
+  const apiRef = useRef<any>(null)
+
   const defaultColDef = useMemo(() => ({
     sortable: true,
     resizable: true,
     filter: true,
     suppressMovable: false
-  }), []);
+  }), [])
+
+  useEffect(() => {
+    if (apiRef.current) {
+      apiRef.current.refreshCells({ force: true })
+    }
+  }, [context])
 
   return (
     <AgGridReact
-      ref={gridRef}
+      ref={(ref) => {
+        apiRef.current = ref?.api
+        if (gridRef) {
+          if (typeof gridRef === 'function') gridRef(ref)
+          else gridRef.current = ref
+        }
+      }}
       rowData={rowData}
       columnDefs={columnDefs}
       defaultColDef={defaultColDef}
@@ -261,6 +275,69 @@ const useBodyModalFlag = () => {
       }
     }
   }, [])
+}
+
+const ObservabilityHUD = ({ items }: any) => {
+  const stats = useMemo(() => {
+    if (!items?.length) return null
+    const active = items.filter((i: any) => i.status === 'Existing').length
+    const critical = items.filter((i: any) => i.severity === 'Critical' || i.severity === 'S1').length
+    const recent = items.filter((i: any) => {
+      const updated = new Date(i.updated_at)
+      return new Date().getTime() - updated.getTime() < 3600000 // 1 hour
+    }).length
+    return { active, critical, recent }
+  }, [items])
+
+  if (!stats) return null
+
+  return (
+    <div className="grid grid-cols-4 gap-6 mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
+       <div className="bg-black/40 border border-white/5 p-6 rounded-2xl backdrop-blur-xl shadow-xl group hover:border-blue-500/20 transition-all">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-blue-400 transition-colors">Global Pulse</p>
+          <div className="flex items-center gap-4">
+             <div className="w-12 h-12 bg-blue-600/10 rounded-xl flex items-center justify-center text-blue-400 border border-blue-500/20">
+                <Activity size={24} className="animate-pulse" />
+             </div>
+             <div>
+                <h4 className="text-2xl font-black text-white tracking-tighter">{stats.active} Active Traces</h4>
+                <p className="text-[9px] font-bold text-slate-500 uppercase">Live Infrastructure Monitoring</p>
+             </div>
+          </div>
+       </div>
+       <div className="bg-black/40 border border-white/5 p-6 rounded-2xl backdrop-blur-xl shadow-xl group hover:border-rose-500/20 transition-all">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-rose-400 transition-colors">Alert Flux</p>
+          <div className="flex items-center gap-4">
+             <div className="w-12 h-12 bg-rose-600/10 rounded-xl flex items-center justify-center text-rose-500 border border-rose-500/20">
+                <Bell size={24} className={stats.critical > 0 ? 'animate-bounce' : ''} />
+             </div>
+             <div>
+                <h4 className="text-2xl font-black text-white tracking-tighter">{stats.critical} Critical Events</h4>
+                <p className="text-[9px] font-bold text-slate-500 uppercase">Immediate Intervention Required</p>
+             </div>
+          </div>
+       </div>
+       <div className="bg-black/40 border border-white/5 p-6 rounded-2xl backdrop-blur-xl shadow-xl group hover:border-emerald-500/20 transition-all">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-emerald-400 transition-colors">Discovery Momentum</p>
+          <div className="flex items-center gap-4">
+             <div className="w-12 h-12 bg-emerald-600/10 rounded-xl flex items-center justify-center text-emerald-400 border border-emerald-500/20">
+                <Zap size={24} />
+             </div>
+             <div>
+                <h4 className="text-2xl font-black text-white tracking-tighter">{stats.recent} New Signals</h4>
+                <p className="text-[9px] font-bold text-slate-500 uppercase">Captured in current session</p>
+             </div>
+          </div>
+       </div>
+       <div className="bg-indigo-600/10 border border-indigo-500/20 p-6 rounded-2xl backdrop-blur-xl shadow-xl flex items-center justify-between group hover:bg-indigo-600/20 transition-all">
+          <div>
+             <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-1">Health Stability</p>
+             <h4 className="text-2xl font-black text-white tracking-tighter">{stats.critical === 0 ? 'Optimal' : 'Degraded'}</h4>
+          </div>
+          <Shield size={28} className="text-indigo-500 opacity-20 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+       </div>
+    </div>
+  )
 }
 
 export default function MonitoringGrid() {
@@ -375,9 +452,22 @@ export default function MonitoringGrid() {
   const [newViewName, setNewViewName] = useState('')
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
 
-  const handleSelectionChanged = useCallback((e: any) => {
+  const groupSelectionsRef = useRef<Record<string, number[]>>({})
+
+  useEffect(() => {
+    setSelectedIds([])
+    groupSelectionsRef.current = {}
+  }, [groupBy])
+
+  const handleSelectionChanged = useCallback((e: any, groupKey: string = 'raw') => {
     const selectedNodes = e?.api?.getSelectedNodes?.() || []
-    setSelectedIds(selectedNodes.map((n: any) => n.data?.id).filter(Boolean) || [])
+    const ids = selectedNodes.map((n: any) => n.data?.id).filter(Boolean)
+    
+    groupSelectionsRef.current[groupKey] = ids
+    
+    // Aggregate all selections from all groups
+    const allSelected = Array.from(new Set(Object.values(groupSelectionsRef.current).flat()))
+    setSelectedIds(allSelected)
   }, [])
 
   const handleColumnResized = useCallback((event: any) => {
@@ -485,7 +575,7 @@ export default function MonitoringGrid() {
   }, [])
 
   const openCompare = () => {
-    if (selectedIds.length < 2 || selectedIds.length > 3) return
+    if (selectedIds.length < 2 || selectedIds.length > 5) return
     setCompareOpen(true)
   }
 
@@ -631,15 +721,6 @@ export default function MonitoringGrid() {
           .catch(() => toast.error("Failed to copy data"))
       }
     }
-  }
-
-  const cycleGroupedSort = (colId: string) => {
-    setGridSortModel((current) => {
-      const active = current.find((entry: any) => entry.colId === colId)
-      if (!active) return [{ colId, sort: 'asc' }]
-      if (active.sort === 'asc') return [{ colId, sort: 'desc' }]
-      return []
-    })
   }
 
   const getColumnLayoutSnapshot = (api: any) => {
@@ -1019,7 +1100,7 @@ export default function MonitoringGrid() {
     [displayedItems, selectedIds]
   )
 
-  const compareItems = useMemo(() => selectedItems.slice(0, 3), [selectedItems])
+  const compareItems = useMemo(() => selectedItems.slice(0, 5), [selectedItems])
 
   const groupedSections = useMemo(() => {
     if (groupBy === 'raw') return []
@@ -1049,41 +1130,6 @@ export default function MonitoringGrid() {
       return next
     })
   }, [groupBy, groupedSections])
-
-  const handleGroupedRowClick = (item: any, event: React.MouseEvent) => {
-    if (shouldIgnoreRowSelection(event.target)) return
-    if (pendingIds.includes(item.id)) return
-    const currentIndex = displayedItems.findIndex((entry: any) => entry.id === item.id)
-    if (currentIndex < 0) return
-    if (event.shiftKey && selectionAnchorRef.current !== null) {
-      const start = Math.min(selectionAnchorRef.current, currentIndex)
-      const end = Math.max(selectionAnchorRef.current, currentIndex)
-      setSelectedIds(displayedItems.slice(start, end + 1).map((entry: any) => entry.id))
-      return
-    }
-    if (event.metaKey || event.ctrlKey) {
-      setSelectedIds((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id])
-      selectionAnchorRef.current = currentIndex
-      return
-    }
-    setSelectedIds([item.id])
-    selectionAnchorRef.current = currentIndex
-  }
-
-  const toggleGroupedCheckbox = (item: any, event: React.ChangeEvent<HTMLInputElement>) => {
-    event.stopPropagation()
-    if (pendingIds.includes(item.id)) return
-    const currentIndex = displayedItems.findIndex((entry: any) => entry.id === item.id)
-    const nativeEvent = event.nativeEvent as MouseEvent
-    if (nativeEvent.shiftKey && selectionAnchorRef.current !== null) {
-      const start = Math.min(selectionAnchorRef.current, currentIndex)
-      const end = Math.max(selectionAnchorRef.current, currentIndex)
-      setSelectedIds(displayedItems.slice(start, end + 1).map((entry: any) => entry.id))
-      return
-    }
-    setSelectedIds((current) => event.target.checked ? [...new Set([...current, item.id])] : current.filter((id) => id !== item.id))
-    selectionAnchorRef.current = currentIndex
-  }
 
   const isRecentChange = useCallback((item: any) => {
     const changedAt = item?.updated_at || item?.created_at
@@ -1389,6 +1435,7 @@ export default function MonitoringGrid() {
       sortable: false,
       filter: false,
       resizable: false,
+      suppressHide: true,
       cellClass: 'text-center border-r border-white/5 flex items-center justify-center !overflow-visible',
       headerClass: 'text-center border-r border-white/5',
       hide: !isIntelligenceExpanded,
@@ -1467,6 +1514,7 @@ export default function MonitoringGrid() {
       sortable: false,
       filter: false,
       resizable: false,
+      suppressHide: true,
       hide: !isIntelligenceExpanded,
       cellRenderer: (p: any) => {
         const isWatched = p.context?.watchIds?.includes(p.data?.id)
@@ -1492,11 +1540,10 @@ export default function MonitoringGrid() {
       width: 160, 
       minWidth: 140,
       filter: true,
-      rowGroup: groupBy === 'device_name',
       cellClass: "font-bold text-center flex items-center justify-center", 
       headerClass: 'text-center',
       cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
-      hide: hiddenColumns.includes("device_name") || groupBy === 'device_name'
+      hide: hiddenColumns.includes("device_name")
     },
     { 
       field: "title", 
@@ -1516,11 +1563,10 @@ export default function MonitoringGrid() {
       width: 130,
       minWidth: 110,
       filter: true,
-      rowGroup: groupBy === 'status',
       cellClass: 'text-center flex items-center justify-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => <StatusPill value={p.value || 'Unknown'} fontSize={fontSize} />,
-      hide: hiddenColumns.includes("status") || groupBy === 'status'
+      hide: hiddenColumns.includes("status")
     },
     { 
       field: "owners", 
@@ -1552,7 +1598,6 @@ export default function MonitoringGrid() {
       width: 140,
       minWidth: 120,
       filter: true,
-      rowGroup: groupBy === 'category',
       cellClass: 'text-center flex items-center justify-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -1565,7 +1610,7 @@ export default function MonitoringGrid() {
         }
         return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${colors[p.value] || 'text-slate-400'}`}>{p.value || 'N/A'}</span>
       },
-      hide: hiddenColumns.includes("category") || groupBy === 'category'
+      hide: hiddenColumns.includes("category")
     },
     { 
       field: "is_active", 
@@ -1619,11 +1664,10 @@ export default function MonitoringGrid() {
       headerName: "Platform", 
       minWidth: 100,
       filter: true,
-      rowGroup: groupBy === 'platform',
       cellClass: 'text-center font-bold uppercase text-slate-300 flex items-center justify-center', 
       headerClass: 'text-center',
       cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
-      hide: hiddenColumns.includes("platform") || groupBy === 'platform'
+      hide: hiddenColumns.includes("platform")
     },
     { 
       field: "severity", 
@@ -1631,11 +1675,51 @@ export default function MonitoringGrid() {
       width: 130,
       minWidth: 110,
       filter: true,
-      rowGroup: groupBy === 'severity',
       cellClass: 'text-center flex items-center justify-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => <StatusPill value={p.value || 'N/A'} fontSize={fontSize} />,
-      hide: hiddenColumns.includes("severity") || groupBy === 'severity'
+      hide: hiddenColumns.includes("severity")
+    },
+    { 
+      field: "check_interval", 
+      headerName: "Freq", 
+      width: 80, 
+      minWidth: 80,
+      cellClass: 'text-center font-bold uppercase flex items-center justify-center', 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value ? `${p.value}s` : 'N/A'}</span>,
+      hide: hiddenColumns.includes("check_interval")
+    },
+    { 
+      field: "notification_method", 
+      headerName: "Notify", 
+      width: 130, 
+      minWidth: 110,
+      filter: true,
+      cellClass: 'text-center flex items-center justify-center', 
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => (
+        <div className="flex items-center justify-center h-full">
+           <button 
+             onClick={() => setRecipientPopup({ recipients: p.data.notification_recipients || [], method: p.value })}
+             className="flex items-center space-x-1 hover:text-blue-400 transition-colors"
+           >
+              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase text-slate-300 border-b border-dashed border-slate-700">{p.value || 'N/A'}</span>
+           </button>
+        </div>
+      ),
+      hide: hiddenColumns.includes("notification_method")
+    },
+    { 
+      field: "purpose", 
+      headerName: "Purpose", 
+      minWidth: 180,
+      flex: 1, 
+      filter: true,
+      cellClass: "font-bold text-slate-500 uppercase text-left truncate px-4 flex items-center", 
+      headerClass: 'text-left',
+      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      hide: hiddenColumns.includes("purpose")
     },
     { 
       field: "created_at", 
@@ -1666,48 +1750,6 @@ export default function MonitoringGrid() {
         </div>
       ) : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 uppercase">N/A</span>,
       hide: hiddenColumns.includes("updated_at")
-    },
-    { 
-      field: "check_interval", 
-      headerName: "Freq", 
-      width: 80, 
-      minWidth: 80,
-      cellClass: 'text-center font-bold uppercase flex items-center justify-center', 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value ? `${p.value}s` : 'N/A'}</span>,
-      hide: hiddenColumns.includes("check_interval")
-    },
-    { 
-      field: "notification_method", 
-      headerName: "Notify", 
-      width: 130, 
-      minWidth: 110,
-      filter: true,
-      rowGroup: groupBy === 'notification_method',
-      cellClass: 'text-center flex items-center justify-center', 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center h-full">
-           <button 
-             onClick={() => setRecipientPopup({ recipients: p.data.notification_recipients || [], method: p.value })}
-             className="flex items-center space-x-1 hover:text-blue-400 transition-colors"
-           >
-              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase text-slate-300 border-b border-dashed border-slate-700">{p.value || 'N/A'}</span>
-           </button>
-        </div>
-      ),
-      hide: hiddenColumns.includes("notification_method") || groupBy === 'notification_method'
-    },
-    { 
-      field: "purpose", 
-      headerName: "Purpose", 
-      minWidth: 180,
-      flex: 1, 
-      filter: true,
-      cellClass: "font-bold text-slate-500 uppercase text-left truncate px-4 flex items-center", 
-      headerClass: 'text-left',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
-      hide: hiddenColumns.includes("purpose")
     },
     {
       colId: "row_actions",
@@ -1768,113 +1810,37 @@ export default function MonitoringGrid() {
   }
 
   return mergedDefs
-}, [fontSize, groupBy, hiddenColumns, columnLayoutState, isIntelligenceExpanded]) as any
+}, [fontSize, hiddenColumns, columnLayoutState, isIntelligenceExpanded]) as any
 
   const gridContext = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
 
-  const autoGroupColumnDef = useMemo(() => ({
-    headerName: groupBy === 'raw' ? 'View' : `Grouped by ${groupOptions.find((option) => option.value === groupBy)?.label || groupBy}`,
-    minWidth: 220,
-    cellRendererParams: {
-      suppressCount: false
-    }
-  }), [groupBy])
-
-  const groupedColumns = useMemo(() => {
-    const layoutById = new Map(columnLayoutState.map((column: any) => [column.colId, column]))
-    
-    // Flatten columnDefs to handle groups
-    const flatDefs: any[] = []
-    columnDefs.forEach((col: any) => {
-      if (col.children) {
-        col.children.forEach((child: any) => flatDefs.push(child))
-      } else {
-        flatDefs.push(col)
-      }
-    })
-
-    return flatDefs
-      .filter((column: any) => !column.hide)
-      .map((column: any) => {
-        const colId = column.colId || column.field
-        const layout = layoutById.get(colId)
-        return {
-          key: colId,
-          label: column.headerName || '',
-          width: layout?.width || column.width || column.minWidth || 120,
-          headerClass: column.headerClass || '',
-          cellClass: column.cellClass || '',
-          pinned: layout?.pinned || column.pinned || null,
-          sortable: column.sortable !== false && !column.checkboxSelection && !['recent_change', 'favorite', 'watch', 'row_actions'].includes(colId),
-          sort: gridSortModel.find((entry: any) => entry.colId === colId)?.sort || null,
-          render: (item: any) => {
-            if (column.checkboxSelection) {
-              const checked = selectedIds.includes(item.id)
-              return (
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(event) => toggleGroupedCheckbox(item, event)}
-                  onClick={(event) => event.stopPropagation()}
-                  className="h-4 w-4 rounded border-white/10 bg-black/40 accent-blue-500"
-                />
-              )
-            }
-            if (typeof column.cellRenderer === 'function') {
-              return column.cellRenderer({ value: item[column.field], data: item, context: gridContext })
-            }
-            return item[column.field]
-          }
-        }
-      })
-  }, [columnDefs, columnLayoutState, gridSortModel, selectedIds, gridContext])
-
-  const groupedTableMinWidth = useMemo(
-    () => groupedColumns.reduce((total: number, column: any) => total + (Number(column.width) || 120), 0),
-    [groupedColumns]
-  )
-
-  const groupedStickyOffsets = useMemo(() => {
-    const offsets: Record<string, { left?: number; right?: number }> = {}
-    let left = 0
-    groupedColumns.forEach((column: any) => {
-      if (column.pinned === 'left') {
-        offsets[column.key] = { ...(offsets[column.key] || {}), left }
-        left += Number(column.width) || 0
-      }
-    })
-    let right = 0
-    ;[...groupedColumns].reverse().forEach((column: any) => {
-      if (column.pinned === 'right') {
-        offsets[column.key] = { ...(offsets[column.key] || {}), right }
-        right += Number(column.width) || 0
-      }
-    })
-    return offsets
-  }, [groupedColumns])
-
   return (
-    <div className="h-full min-h-0 flex flex-col space-y-4">
-      <PageHeader
-        eyebrow="Operations"
-        title="Monitoring Matrix"
-        subtitle="High-reliability infrastructure observability"
-        actions={
-          <ToolbarSegmented
-            value={activeTab}
-            onChange={(next) => {
-              setActiveTab(next as 'active' | 'deleted')
-              setSelectedIds([])
-            }}
-            options={[
-              { label: 'Active', value: 'active' },
-              { label: 'Deleted', value: 'deleted' }
-            ]}
-          />
-        }
-      />
+   <div className="h-full min-h-0 flex flex-col space-y-6">
+     <PageHeader
+       eyebrow="Observability"
+       title={
+         <div className="flex items-center gap-3">
+            <Activity className="text-blue-500" />
+            <span>Observability <span className="text-blue-500">Studio</span></span>
+         </div>
+       }
+       subtitle="Holistic infrastructure health and signal attribution"
+       actions={
+         <ToolbarSegmented
+           value={activeTab}
+           onChange={(next) => {
+             setActiveTab(next as 'active' | 'deleted')
+             setSelectedIds([])
+           }}
+           options={[
+             { label: 'Live Signals', value: 'active' },
+             { label: 'Archived', value: 'deleted' }
+           ]}
+         />
+         }
+         />
 
-	      <PageToolbar
+         <PageToolbar
         left={
           <>
             <ToolbarSearch
@@ -2527,7 +2493,7 @@ export default function MonitoringGrid() {
             context={gridContext}
             getRowId={handleRowId}
             onGridReady={handleGridReady}
-	            onSelectionChanged={handleSelectionChanged}
+	            onSelectionChanged={(e) => handleSelectionChanged(e, 'raw')}
             onColumnResized={handleColumnResized}
             onColumnMoved={handleColumnMoved}
             onDragStopped={handleDragStopped}
@@ -2595,80 +2561,34 @@ export default function MonitoringGrid() {
                   </div>
                 </button>
                 {!isCollapsed && (
-                  <div className="overflow-x-auto custom-scrollbar">
-                    <table className="grouped-monitoring-table border-collapse table-fixed" style={{ minWidth: `${groupedTableMinWidth}px`, width: `${groupedTableMinWidth}px` }}>
-                      <colgroup>
-                        {groupedColumns.map((column: any) => (
-                          <col key={column.key} style={{ width: `${column.width}px` }} />
-                        ))}
-                      </colgroup>
-                      <thead>
-                        <tr className="border-b border-white/5 bg-slate-900/50" style={{ height: `${fontSize + rowDensity + 4}px` }}>
-                          {groupedColumns.map((column: any) => (
-                            <th
-                              key={column.key}
-                              onClick={() => column.sortable && cycleGroupedSort(column.key)}
-                              className={`px-0 py-0 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 ${column.headerClass || ''} ${column.sortable ? 'cursor-pointer select-none hover:text-slate-200' : ''} ${column.pinned ? 'sticky z-[2] backdrop-blur-md' : ''}`}
-                              style={{
-                                fontSize: `${fontSize}px`,
-                                height: `${fontSize + rowDensity + 4}px`,
-                                left: groupedStickyOffsets[column.key]?.left,
-                                right: groupedStickyOffsets[column.key]?.right,
-                                background: column.pinned ? '#1a1b26' : undefined
-                              }}
-                            >
-                              <span className="flex items-center justify-center gap-1 h-full border-r border-white/5">
-                                <span>{column.label}</span>
-                                {column.sort === 'asc' && <ChevronUp size={12} className="text-blue-400" />}
-                                {column.sort === 'desc' && <ChevronDown size={12} className="text-blue-400" />}
-                              </span>
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {section.items.map((item: any, rowIndex: number) => {
-                          const selected = selectedIds.includes(item.id)
-                          const isPending = pendingIds.includes(item.id)
-                          return (
-                            <tr
-                              key={item.id}
-                              onClick={(event) => handleGroupedRowClick(item, event)}
-                              onDoubleClick={() => setDetailItem(item)}
-                              onContextMenu={(event) => {
-                                event.preventDefault()
-                                openRowActionMenuAtPoint(item, event.clientX, event.clientY)
-                              }}
-                              className={`cursor-pointer border-b border-white/5 transition-all group ${selected ? 'bg-blue-600/20' : rowIndex % 2 === 0 ? 'bg-[#0f172a] hover:bg-white/[0.05]' : 'bg-[#020617] hover:bg-white/[0.05]'} ${isPending ? 'row-ghost opacity-40 grayscale pointer-events-none' : ''}`}
-                              style={{ height: `${fontSize + rowDensity + 4}px` }}
-                            >
-                              {groupedColumns.map((column: any) => (
-                                <td
-                                  key={column.key}
-                                  className={`h-full overflow-hidden whitespace-nowrap px-0 py-0 align-middle font-bold text-slate-200 text-ellipsis ${column.cellClass || ''} ${column.pinned ? 'sticky z-[1]' : ''}`}
-                                  style={{
-                                    fontSize: `${fontSize}px`,
-                                    height: `${fontSize + rowDensity + 4}px`,
-                                    maxHeight: `${fontSize + rowDensity + 4}px`,
-                                    left: groupedStickyOffsets[column.key]?.left,
-                                    right: groupedStickyOffsets[column.key]?.right,
-                                    background: selected
-                                      ? 'rgba(37, 99, 235, 0.2)'
-                                      : column.pinned
-                                        ? rowIndex % 2 === 0 ? '#0f172a' : '#020617'
-                                        : undefined
-                                  }}
-                                >
-                                  <div className={`flex items-center justify-center h-full ${column.key !== 'row_actions' ? 'border-r border-white/5' : ''}`}>
-                                    {column.render(item)}
-                                  </div>
-                                </td>
-                              ))}
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
+                  <div 
+                    className="monitoring-grid-shell monitoring-grid w-full glass-panel rounded-b-lg overflow-hidden ag-theme-alpine-dark relative"
+                    style={{ 
+                      '--ag-font-size': `${fontSize}px`,
+                      '--ag-font-family': "'Inter', sans-serif",
+                      height: `${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px`
+                    } as React.CSSProperties}
+                  >
+                    <GridMatrix
+                      rowData={section.items} 
+                      columnDefs={columnDefs} 
+                      fontSize={fontSize}
+                      rowDensity={rowDensity}
+                      context={gridContext}
+                      getRowId={handleRowId}
+                      onSelectionChanged={(e) => handleSelectionChanged(e, section.key)}
+                      onColumnResized={handleColumnResized}
+                      onColumnMoved={handleColumnMoved}
+                      onDragStopped={handleDragStopped}
+                      onColumnPinned={handleColumnPinned}
+                      onColumnVisible={handleColumnVisible}
+                      onFilterChanged={handleFilterChanged}
+                      onSortChanged={handleSortChanged}
+                      onCellContextMenu={handleCellContextMenu}
+                      onRowClicked={handleRowClicked}
+                      onRowDoubleClicked={handleRowDoubleClicked}
+                      getRowClass={getRowClass}
+                    />
                   </div>
                 )}
               </section>
@@ -2879,10 +2799,17 @@ function CompareMonitorsModal({ items, onClose }: any) {
     { label: 'Updated', getValue: (item: any) => item.updated_at ? new Date(item.updated_at).toLocaleString() : 'N/A' },
   ], [])
 
-  const diffFields = useMemo(() => fields.filter(f => {
-    const values = items.map(f.getValue)
-    return new Set(values).size > 1
-  }).map(f => f.label), [items, fields])
+  const diffMap = useMemo(() => {
+    const map: Record<string, any[]> = {}
+    fields.forEach(f => {
+      const vals = items.map(f.getValue)
+      const unique = Array.from(new Set(vals))
+      if (unique.length > 1) {
+        map[f.label] = unique
+      }
+    })
+    return map
+  }, [items, fields])
 
   const gridCols = items.length === 2 ? 'md:grid-cols-2' : items.length === 3 ? 'md:grid-cols-3' : items.length === 4 ? 'md:grid-cols-4' : 'md:grid-cols-5'
 
@@ -2901,15 +2828,20 @@ function CompareMonitorsModal({ items, onClose }: any) {
               <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">ID {item.id} · {item.device_name || 'No asset'}</p>
               <h4 className="pt-2 text-sm font-semibold text-slate-100 truncate">{item.title}</h4>
               <div className="mt-3 space-y-2 text-[11px] text-slate-300">
-                {fields.map(f => (
-                  <CompareRow 
-                    key={f.label} 
-                    label={f.label} 
-                    value={f.getValue(item)} 
-                    multiline={f.multiline} 
-                    isDifferent={diffFields.includes(f.label)}
-                  />
-                ))}
+                {fields.map(f => {
+                  const val = f.getValue(item)
+                  const diffSet = diffMap[f.label]
+                  const colorIndex = diffSet ? diffSet.indexOf(val) : -1
+                  return (
+                    <CompareRow 
+                      key={f.label} 
+                      label={f.label} 
+                      value={val} 
+                      multiline={f.multiline} 
+                      colorIndex={colorIndex}
+                    />
+                  )
+                })}
               </div>
             </div>
           ))}
@@ -2920,14 +2852,26 @@ function CompareMonitorsModal({ items, onClose }: any) {
   return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
-function CompareRow({ label, value, multiline = false, isDifferent = false }: { label: string; value: string; multiline?: boolean; isDifferent?: boolean }) {
+function CompareRow({ label, value, multiline = false, colorIndex = -1 }: { label: string; value: string; multiline?: boolean; colorIndex?: number }) {
+  const isDiff = colorIndex !== -1
+  
+  const diffStyles = [
+    { border: 'border-amber-500/40', bg: 'bg-amber-500/5', text: 'text-amber-400', val: 'text-amber-200' },
+    { border: 'border-sky-500/40', bg: 'bg-sky-500/5', text: 'text-sky-400', val: 'text-sky-200' },
+    { border: 'border-emerald-500/40', bg: 'bg-emerald-500/5', text: 'text-emerald-400', val: 'text-emerald-200' },
+    { border: 'border-rose-500/40', bg: 'bg-rose-500/5', text: 'text-rose-400', val: 'text-rose-200' },
+    { border: 'border-purple-500/40', bg: 'bg-purple-500/5', text: 'text-purple-400', val: 'text-purple-200' },
+  ]
+
+  const style = isDiff ? diffStyles[colorIndex % diffStyles.length] : { border: 'border-slate-800', bg: 'bg-[#0b1220]', text: 'text-slate-500', val: 'text-slate-200' }
+
   return (
-    <div className={`rounded-lg border px-3 py-2 ${isDifferent ? 'border-amber-500/50 bg-amber-500/5 shadow-[0_0_15px_rgba(245,158,11,0.05)]' : 'border-slate-800 bg-[#0b1220]'} ${multiline ? '' : 'flex items-center justify-between gap-3'}`}>
+    <div className={`rounded-lg border px-3 py-2 ${style.border} ${style.bg} ${isDiff ? 'shadow-[0_0_15px_rgba(0,0,0,0.1)]' : ''} ${multiline ? '' : 'flex items-center justify-between gap-3'}`}>
       <div className="flex items-center gap-2">
-        <p className={`text-[8px] font-black uppercase tracking-[0.16em] ${isDifferent ? 'text-amber-400' : 'text-slate-500'}`}>{label}</p>
-        {isDifferent && <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />}
+        <p className={`text-[8px] font-black uppercase tracking-[0.16em] ${style.text}`}>{label}</p>
+        {isDiff && <div className={`w-1 h-1 rounded-full ${style.text.replace('text-', 'bg-')} animate-pulse`} />}
       </div>
-      <p className={`pt-1 ${isDifferent ? 'text-amber-200 font-bold' : 'text-slate-200'} ${multiline ? 'leading-5' : 'text-right'}`}>{value}</p>
+      <p className={`pt-1 font-bold ${style.val} ${multiline ? 'leading-5' : 'text-right'}`}>{value}</p>
     </div>
   )
 }

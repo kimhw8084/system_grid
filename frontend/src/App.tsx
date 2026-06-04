@@ -642,10 +642,10 @@ function MainLayout() {
               <ToolbarButton onClick={() => setShowPatchNotes(true)}>Patch Notes</ToolbarButton>
               <button
                 onClick={() => setIsSearchOpen(true)}
-                className="group flex min-w-[300px] items-center gap-3 rounded-lg border border-white/5 bg-white/5 px-4 py-2 text-slate-500 transition-all hover:border-blue-500/30 hover:text-white"
+                className="group flex min-w-[320px] items-center gap-3 rounded-lg border border-white/5 bg-white/5 px-4 py-2 text-slate-500 transition-all hover:border-blue-500/30 hover:text-white"
               >
                 <Search size={16} className="transition-colors group-hover:text-blue-400" />
-                <span className="flex-1 text-left text-[10px] font-black uppercase tracking-widest">Global ID Search...</span>
+                <span className="flex-1 text-left text-[11px] font-bold tracking-tight">Search assets, projects, or incidents...</span>
                 <div className="flex items-center gap-1 opacity-40 transition-opacity group-hover:opacity-100">
                   <span className="rounded border border-white/10 bg-black/40 px-1.5 py-0.5 text-[8px]">⌘</span>
                   <span className="rounded border border-white/10 bg-black/40 px-1.5 py-0.5 text-[8px]">K</span>
@@ -684,7 +684,7 @@ function MainLayout() {
           }
         />
 
-        <div className={`flex-1 overflow-hidden relative flex flex-col ${location.pathname === '/architecture' || location.pathname === '/logs' ? '' : 'p-8'}`}>
+        <div className={`flex-1 overflow-hidden relative flex flex-col ${location.pathname === '/architecture' || location.pathname === '/logs' || location.pathname === '/projects' ? '' : 'p-8'}`}>
           <ErrorBoundary>
             <Routes>
               <Route path="/" element={<Dashboard onNavigate={(p:any) => navigate("/" + p)} />} />
