@@ -3634,7 +3634,7 @@ const getMonitoringTabErrorCounts = (errors: MonitoringFormErrors) => ({
 
 function FieldLabel({ label, required = false }: { label: string; required?: boolean }) {
   return (
-    <label className="text-[10px] font-black text-slate-500 px-1">
+    <label className="px-1 text-[clamp(10px,0.82vw,12px)] font-black text-slate-500">
       {label}
       {required && <span className="ml-1 text-rose-400">*</span>}
     </label>
@@ -3643,11 +3643,11 @@ function FieldLabel({ label, required = false }: { label: string; required?: boo
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null
-  return <p className="text-[10px] font-black text-rose-400 px-1">{message}</p>
+  return <p className="px-1 text-[clamp(10px,0.78vw,11px)] font-black text-rose-400">{message}</p>
 }
 
 const monitoringInputClass = (error?: string) =>
-  `w-full rounded-lg px-4 py-3 text-[12px] font-bold text-white outline-none transition-all ${
+  `w-full rounded-lg px-4 py-[clamp(11px,0.95vw,14px)] text-[clamp(12px,0.95vw,14px)] font-bold text-white outline-none transition-all ${
     error
       ? 'border border-rose-500/60 bg-rose-500/10 shadow-[0_0_0_1px_rgba(244,63,94,0.18)] focus:border-rose-400'
       : 'border border-white/10 bg-slate-950/70 focus:border-blue-500/40'
@@ -3701,7 +3701,7 @@ function MonitoringSelectField({
           onClick={() => setIsOpen((current) => !current)}
           className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10 shadow-[0_0_0_1px_rgba(244,63,94,0.18)]' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
         >
-          <span className={`text-[11px] font-black ${selected ? 'text-slate-100' : 'text-slate-500'}`}>
+          <span className={`text-[clamp(11px,0.9vw,13px)] font-black ${selected ? 'text-slate-100' : 'text-slate-500'}`}>
             {selected?.label || placeholder || 'Select option'}
           </span>
           <ChevronDown size={14} className={`text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -4138,10 +4138,10 @@ export function MonitoringForm({ item, devices, categories, severities, platform
         exit={{ scale: 0.9, opacity: 0 }}
         className={`glass-panel w-full overflow-hidden flex flex-col rounded-lg border-blue-500/20 shadow-[0_0_80px_rgba(37,99,235,0.08)] ${isMaximized ? 'max-w-none h-[calc(100vh-3rem)]' : 'max-w-7xl h-full sm:h-[90vh]'}`}
       >
-        <div className="border-b border-white/10 px-6 py-4 sm:px-8">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
+        <div className="border-b border-white/10 px-5 py-4 sm:px-8 sm:py-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex items-center gap-2 self-start">
                 <button onClick={onClose} className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500/90 text-transparent transition-all hover:text-rose-950" title="Close">
                   <X size={10} strokeWidth={3} />
                 </button>
@@ -4149,22 +4149,24 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                   {isMaximized ? <Minimize2 size={8} strokeWidth={3} /> : <Maximize2 size={8} strokeWidth={3} />}
                 </button>
               </div>
-              <div className="ml-2 p-3 bg-blue-600/10 rounded-lg text-blue-400 border border-blue-500/20">
+              <div className="ml-1 flex h-[clamp(44px,4vw,52px)] w-[clamp(44px,4vw,52px)] items-center justify-center rounded-lg border border-blue-500/20 bg-blue-600/10 text-blue-400">
                 <Zap size={20} />
               </div>
-              <div>
-                <h2 className="text-xl font-black tracking-tighter text-white">
+              <div className="min-w-0">
+                <h2 className="text-[clamp(24px,2.4vw,34px)] font-black leading-none tracking-[-0.04em] text-white">
                   {item ? 'Update Monitoring' : 'Add Monitoring'}
                 </h2>
                 <div className="mt-1 flex items-center space-x-2">
-                   <span className="text-[9px] font-black text-slate-500">Monitoring editor</span>
+                   <span className="text-[clamp(11px,0.9vw,13px)] font-semibold text-slate-400">
+                     Configure monitoring targets, logic, and alert routing.
+                   </span>
                    <span className="w-1 h-1 rounded-full bg-slate-700" />
                    <StatusPill value={formData.status} />
                 </div>
               </div>
             </div>
 
-            <div className="flex bg-black/40 rounded-lg p-1 border border-white/5">
+            <div className="flex w-full flex-wrap bg-black/40 rounded-lg p-1 border border-white/5 xl:w-auto">
               {[
                 { id: 'context', label: 'Context' },
                 { id: 'logic', label: 'Logic' },
@@ -4173,7 +4175,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`px-4 sm:px-6 py-2 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+                  className={`flex-1 px-4 py-[clamp(10px,0.9vw,12px)] rounded-lg text-[clamp(11px,0.85vw,13px)] font-black transition-all xl:flex-none xl:px-6 ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
                 >
                   <span className="flex items-center gap-2">
                     <span>{tab.label}</span>
