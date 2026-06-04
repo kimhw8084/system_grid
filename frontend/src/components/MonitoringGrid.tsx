@@ -20,6 +20,20 @@ import { apiFetch } from '../api/apiClient'
 import { AppDropdown } from './shared/AppDropdown'
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
+import { MONITORING_WORKSPACE_STANDARD } from './shared/OperationalWorkspace'
+import {
+  WorkspaceFieldError as FieldError,
+  WorkspaceFieldLabel as FieldLabel,
+  WorkspaceHoverPreview as HoverPreview,
+  WorkspacePanelHint as PanelHint,
+  WorkspacePanelSubtitle as PanelSubtitle,
+  WorkspacePanelTitle as PanelTitle,
+  WorkspaceSectionCard,
+  WorkspaceSelectField as MonitoringSelectField,
+  WorkspaceStickyIdentityBar,
+  WorkspaceTabStrip,
+  getWorkspaceInputClass,
+} from './shared/OperationalWorkspacePrimitives'
 import { StatusPill } from './shared/StatusPill'
 import { PageHeader, PageToolbar, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch, ToolbarSegmented } from './shared/LayoutPrimitives'
 
@@ -91,6 +105,7 @@ interface MonitoringTeamOption {
 
 const DEFAULT_MONITORING_VIEWS = []
 const DEFAULT_MONITORING_VIEW_IDS = new Set(DEFAULT_MONITORING_VIEWS.map((view) => view.id))
+const MONITORING_SUPPORTS_COMPARE = MONITORING_WORKSPACE_STANDARD.sharedCapabilities.includes('compare')
 
 const slugifyViewId = (value: string) =>
   value
@@ -1950,17 +1965,19 @@ export default function MonitoringGrid() {
               }
 	        right={
 	          <>
-              <ToolbarButton
-                onClick={openCompare}
-                disabled={selectedIds.length < 2 || selectedIds.length > 5}
-                active={compareOpen}
-                title="Compare selected monitors"
-              >
-                <span className="flex items-center gap-2">
-                  <GitCompare size={14} />
-                  Compare
-                </span>
-              </ToolbarButton>
+              {MONITORING_SUPPORTS_COMPARE && (
+                <ToolbarButton
+                  onClick={openCompare}
+                  disabled={selectedIds.length < 2 || selectedIds.length > 5}
+                  active={compareOpen}
+                  title="Compare selected monitors"
+                >
+                  <span className="flex items-center gap-2">
+                    <GitCompare size={14} />
+                    Compare
+                  </span>
+                </ToolbarButton>
+              )}
 		            <ToolbarButton
                 onClick={toggleBulkWindow}
                 disabled={selectedIds.length === 0}
@@ -3566,167 +3583,7 @@ const getMonitoringTabErrorCounts = (errors: MonitoringFormErrors) => ({
   alerting: Object.keys(errors).filter((key) => ['severity', 'notification_method', 'notification_throttle', 'recovery_docs'].includes(key)).length,
 })
 
-function FieldLabel({ label, required = false }: { label: string; required?: boolean }) {
-  return (
-    <label className="px-1 text-[clamp(10px,0.82vw,12px)] font-black text-slate-500">
-      {label}
-      {required && <span className="ml-1 text-rose-400">*</span>}
-    </label>
-  )
-}
-
-function FieldError({ message }: { message?: string }) {
-  if (!message) return null
-  return <p className="px-1 text-[clamp(10px,0.78vw,11px)] font-black text-rose-400">{message}</p>
-}
-
-function PanelTitle({ children }: { children: React.ReactNode }) {
-  return <h3 className="text-[clamp(11px,0.9vw,13px)] font-black uppercase tracking-widest text-slate-100">{children}</h3>
-}
-
-function PanelSubtitle({ children }: { children: React.ReactNode }) {
-  return <p className="mt-0.5 text-[9px] font-bold text-slate-500 uppercase tracking-tight">{children}</p>
-}
-
-function PanelHint({ children }: { children: React.ReactNode }) {
-  return <p className="text-[10px] font-semibold text-slate-500">{children}</p>
-}
-
-function HoverPreview({
-  summary,
-  tooltip,
-  tone = 'default',
-  fontSize
-}: {
-  summary: string
-  tooltip: string
-  tone?: 'default' | 'blue'
-  fontSize?: number
-}) {
-  return (
-    <span
-      title={tooltip}
-      style={fontSize ? { fontSize: `${fontSize}px` } : undefined}
-      className={`cursor-help border-b border-dashed ${tone === 'blue' ? 'border-blue-500/30 text-blue-300 hover:text-blue-200' : 'border-slate-700 text-slate-200 hover:text-white'} transition-colors`}
-    >
-      {summary}
-    </span>
-  )
-}
-
-const monitoringInputClass = (error?: string) =>
-  `w-full rounded-lg px-4 py-[clamp(8px,0.75vw,11px)] text-[clamp(11px,0.85vw,13px)] font-bold text-white outline-none transition-all ${
-    error
-      ? 'border border-rose-500/60 bg-rose-500/10 shadow-[0_0_0_1px_rgba(244,63,94,0.18)] focus:border-rose-400'
-      : 'border border-white/10 bg-slate-950/70 focus:border-blue-500/40'
-  }`
-
-function MonitoringSelectField({
-  label,
-  required = false,
-  value,
-  options,
-  onChange,
-  placeholder,
-  error,
-  searchable = false,
-  disabled = false,
-}: {
-  label: string
-  required?: boolean
-  value: string | number | null
-  options: Array<{ value: string | number; label: string; description?: string }>
-  onChange: (value: string) => void
-  placeholder?: string
-  error?: string
-  searchable?: boolean
-  disabled?: boolean
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const containerRef = useRef<HTMLDivElement | null>(null)
-  const selected = options.find((option) => String(option.value) === String(value))
-  const filteredOptions = searchable
-    ? options.filter((option) => `${option.label} ${option.description || ''}`.toLowerCase().includes(search.toLowerCase()))
-    : options
-
-  useEffect(() => {
-    if (!isOpen) return
-    const handleClick = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) setIsOpen(false)
-    }
-    window.addEventListener('mousedown', handleClick)
-    
-    // Auto-scroll logic
-    const timer = setTimeout(() => {
-      containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    }, 50)
-
-    return () => {
-      window.removeEventListener('mousedown', handleClick)
-      clearTimeout(timer)
-    }
-  }, [isOpen])
-
-  return (
-    <div className="space-y-1.5" ref={containerRef}>
-      <FieldLabel label={label} required={required} />
-      <div className="relative">
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => setIsOpen((current) => !current)}
-          className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10 shadow-[0_0_0_1px_rgba(244,63,94,0.18)]' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
-        >
-          <span className={`text-[clamp(10px,0.85vw,12px)] font-black truncate pr-4 ${selected ? 'text-slate-100' : 'text-slate-500'}`}>
-            {selected?.label || placeholder || 'Select option'}
-          </span>
-          <ChevronDown size={12} className={`shrink-0 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-        </button>
-        {isOpen && !disabled && (
-          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 rounded-lg border border-white/10 bg-[#020617] p-2 shadow-[0_24px_60px_rgba(2,6,23,0.48)]">
-            {searchable && (
-              <div className="mb-2">
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder={`Search ${label.toLowerCase()}...`}
-                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[10px] font-black text-slate-100 outline-none focus:border-blue-500/40"
-                />
-              </div>
-            )}
-            <div className="max-h-52 overflow-y-auto custom-scrollbar space-y-1 pr-1">
-              {filteredOptions.map((option) => {
-                const active = String(option.value) === String(value)
-                return (
-                  <button
-                    key={String(option.value)}
-                    type="button"
-                    onClick={() => {
-                      onChange(String(option.value))
-                      setIsOpen(false)
-                      setSearch('')
-                    }}
-                    className={`w-full rounded-lg border px-3 py-2 text-left transition-all ${active ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10 hover:bg-white/[0.03]'}`}
-                  >
-                    <p className={`text-[9px] font-black ${active ? 'text-blue-300' : 'text-slate-200'}`}>{option.label}</p>
-                    {option.description && <p className="mt-0.5 text-[8px] font-black text-slate-500 truncate">{option.description}</p>}
-                  </button>
-                )
-              })}
-              {filteredOptions.length === 0 && (
-                <div className="rounded-lg border border-white/5 bg-black/20 px-3 py-4 text-center text-[9px] font-black text-slate-500">
-                  No matching options
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-      <FieldError message={error} />
-    </div>
-  )
-}
+const monitoringInputClass = (error?: string) => getWorkspaceInputClass(error)
 
 function MonitoringAssetField({
   devices,
@@ -4153,31 +4010,20 @@ export function MonitoringForm({ item, devices, categories, severities, platform
               </div>
             </div>
 
-            <div className="flex shrink-0 items-center gap-1 rounded-lg border border-white/5 bg-white/5 p-1">
-              {[
-                { id: 'context', label: 'Context' },
-                { id: 'logic', label: 'Logic' },
-                { id: 'alerting', label: 'Alerting' }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`rounded-lg px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
-                >
-                  <span className="flex items-center gap-2">
-                    <span>{tab.label}</span>
-                    {(tabErrors as any)[tab.id] > 0 && (
-                      <span className="rounded-full bg-rose-500/20 px-1.5 py-0.5 text-[8px] text-rose-300">{(tabErrors as any)[tab.id]}</span>
-                    )}
-                  </span>
-                </button>
-              ))}
-            </div>
+            <WorkspaceTabStrip
+              activeTab={activeTab}
+              onChange={(id) => setActiveTab(id as 'context' | 'logic' | 'alerting')}
+              tabs={[
+                { id: 'context', label: 'Context', badgeCount: tabErrors.context },
+                { id: 'logic', label: 'Logic', badgeCount: tabErrors.logic },
+                { id: 'alerting', label: 'Alerting', badgeCount: tabErrors.alerting },
+              ]}
+            />
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 pr-4 sm:px-8">
-           <div className="sticky top-0 z-20 mb-6 rounded-lg border border-blue-500/20 bg-slate-800 p-4 shadow-[0_10px_40px_rgba(2,6,23,0.45)]">
+           <WorkspaceStickyIdentityBar>
              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.8fr)_repeat(2,minmax(180px,0.6fr))]">
                <div className="space-y-2">
                  <FieldLabel label="Title" required />
@@ -4206,7 +4052,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                  error={formErrors.severity}
                />
              </div>
-           </div>
+           </WorkspaceStickyIdentityBar>
            {generalError && (
              <div className="mb-6 rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3">
                <p className="text-[10px] font-black text-rose-300">
@@ -4217,7 +4063,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
            {activeTab === 'context' ? (
              <div className="grid grid-cols-12 gap-5 p-2">
                <div className="col-span-12 xl:col-span-5 space-y-5">
-                 <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+                 <WorkspaceSectionCard>
                    <div className="mb-3 flex items-center justify-between">
                      <PanelTitle>Target identification</PanelTitle>
                      <span className="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[8px] font-black text-slate-500">
@@ -4265,9 +4111,9 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                        error={formErrors.category}
                      />
                    </div>
-                 </section>
+                 </WorkspaceSectionCard>
 
-                 <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+                 <WorkspaceSectionCard>
                    <div className="mb-3 flex items-center justify-between">
                      <div>
                        <PanelTitle>Ownership</PanelTitle>
@@ -4388,11 +4234,11 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                        </div>
                      </div>
                    )}
-                 </section>
+                 </WorkspaceSectionCard>
                </div>
 
                <div className="col-span-12 xl:col-span-7 space-y-4">
-                 <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+                 <WorkspaceSectionCard>
                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                      <MonitoringSelectField
                        label="Platform"
@@ -4418,9 +4264,9 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                        <FieldError message={formErrors.monitoring_url} />
                      </div>
                    </div>
-                 </section>
+                 </WorkspaceSectionCard>
 
-                 <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+                 <WorkspaceSectionCard>
                     <div className="mb-3">
                      <PanelTitle>Operational context</PanelTitle>
                    </div>
@@ -4446,13 +4292,13 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                        />
                      </div>
                    </div>
-                 </section>
+                 </WorkspaceSectionCard>
                </div>
              </div>
            ) : activeTab === 'logic' ? (
              <div className="grid grid-cols-12 gap-5 p-2 h-full min-h-[500px]">
                 <div className="col-span-12 xl:col-span-4 space-y-4">
-                   <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+                   <WorkspaceSectionCard>
                    <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2 text-[clamp(11px,0.9vw,13px)] font-black tracking-tight text-slate-100 uppercase">
                          <Settings size={12}/> <span>Logic Entries</span>
@@ -4498,9 +4344,9 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                         </div>
                       )}
                    </div>
-                   </section>
+                   </WorkspaceSectionCard>
 
-                   <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+                   <WorkspaceSectionCard>
                       <div className="grid grid-cols-1 gap-3">
                          <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
@@ -4539,12 +4385,12 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                             <FieldError message={formErrors.alert_duration} />
                          </div>
                       </div>
-                   </section>
+                   </WorkspaceSectionCard>
                 </div>
 
                 <div className="col-span-12 xl:col-span-8 flex flex-col space-y-4 h-full">
                    {activeLogicEntry ? (
-                     <section className="flex h-full flex-col rounded-lg border border-white/10 bg-white/[0.03] p-4">
+                     <WorkspaceSectionCard className="flex h-full flex-col">
                         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                            <MonitoringSelectField
                              label="Logic Type"
@@ -4594,7 +4440,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                               </span>
                            </div>
                         </div>
-                     </section>
+                     </WorkspaceSectionCard>
                    ) : (
                      <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-lg space-y-4 bg-black/10">
                         <Activity size={32} className="text-slate-700 animate-pulse" />
@@ -4609,7 +4455,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
            ) : (
              <div className="grid grid-cols-12 gap-5 p-2">
                 <div className="col-span-12 xl:col-span-4 space-y-4">
-                   <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+                   <WorkspaceSectionCard>
                      <PanelTitle>Alert routing rules</PanelTitle>
                      <div className="mt-3 rounded-lg border border-white/5 bg-white/[0.03] p-3">
                         <PanelSubtitle>Severity level</PanelSubtitle>
@@ -4670,11 +4516,11 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                           <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">No recipients defined</p>
                         )}
                      </div>
-                   </section>
+                   </WorkspaceSectionCard>
                 </div>
 
                 <div className="col-span-12 xl:col-span-8 space-y-4">
-                   <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+                   <WorkspaceSectionCard>
                      <div className="mb-3 flex items-center justify-between border-b border-white/5 pb-2">
                        <div className="flex items-center space-x-2 text-[clamp(11px,0.9vw,13px)] font-black tracking-tight text-slate-100 uppercase">
                           <Activity size={12}/> <span>Recovery Procedures</span>
@@ -4752,7 +4598,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                  <p className="text-[9px] font-semibold leading-relaxed text-slate-500 line-clamp-2">Link high-quality recovery documentation to reduce MTTR and give the on-call engineer a clear starting point.</p>
                               </div>
                            </div>
-                   </section>
+                   </WorkspaceSectionCard>
                 </div>
              </div>
            )}
