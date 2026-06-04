@@ -2,6 +2,22 @@ import React, { useEffect, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { OPERATIONAL_WORKSPACE_VISUALS } from './OperationalWorkspace'
 
+export type WorkspaceModalSize = 'compact' | 'standard' | 'wide' | 'workspace'
+
+export function getWorkspaceModalFrameClass(size: WorkspaceModalSize) {
+  if (size === 'compact') return 'p-4 sm:p-6'
+  if (size === 'standard') return 'p-4 sm:p-6'
+  if (size === 'wide') return 'p-4 sm:p-8'
+  return 'p-4 sm:p-6'
+}
+
+export function getWorkspaceModalShellClass(size: WorkspaceModalSize) {
+  if (size === 'compact') return 'w-full max-w-md max-h-[82vh]'
+  if (size === 'standard') return 'w-full max-w-2xl max-h-[86vh]'
+  if (size === 'wide') return 'w-full max-w-6xl h-full sm:h-auto sm:max-h-[88vh]'
+  return 'w-full max-w-[min(96vw,1520px)] h-[min(92vh,1100px)]'
+}
+
 export function WorkspaceFieldLabel({
   label,
   required = false,

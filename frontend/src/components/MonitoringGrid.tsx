@@ -34,6 +34,8 @@ import {
   WorkspaceSelectField as MonitoringSelectField,
   WorkspaceStickyIdentityBar,
   WorkspaceValidationBanner,
+  getWorkspaceModalFrameClass,
+  getWorkspaceModalShellClass,
   getWorkspaceInputClass,
 } from './shared/OperationalWorkspacePrimitives'
 import { StatusPill } from './shared/StatusPill'
@@ -2858,8 +2860,8 @@ function CompareMonitorsModal({ items, onClose }: any) {
   const gridCols = items.length === 2 ? 'md:grid-cols-2' : items.length === 3 ? 'md:grid-cols-3' : items.length === 4 ? 'md:grid-cols-4' : 'md:grid-cols-5'
 
   const modal = (
-    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
-      <motion.div onClick={(e) => e.stopPropagation()} initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel w-full ${items.length > 3 ? 'max-w-[95vw]' : 'max-w-6xl'} rounded-lg border border-slate-700 bg-[#020617] p-6 max-h-[90vh] overflow-y-auto custom-scrollbar`}>
+    <div onClick={onClose} className={`fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('wide')}`}>
+      <motion.div onClick={(e) => e.stopPropagation()} initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('wide')} overflow-y-auto custom-scrollbar rounded-lg border border-slate-700 bg-[#020617] p-6`}>
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h3 className="text-sm font-black uppercase tracking-[0.18em] text-slate-100">Compare Monitors</h3>
@@ -2928,8 +2930,8 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
 
     if (isStatusOpen) {
         const modal = (
-            <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
-               <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-blue-500/30 space-y-6">
+            <div onClick={onClose} className={`fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('compact')}`}>
+               <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('compact')} p-10 rounded-lg border border-blue-500/30 space-y-6`}>
                   <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
                       <Tag size={24}/> <span>Set Status</span>
                   </h2>
@@ -2951,8 +2953,8 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
 
     if (isSeverityOpen) {
         const modal = (
-            <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
-               <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-rose-500/30 space-y-6">
+            <div onClick={onClose} className={`fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('compact')}`}>
+               <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('compact')} p-10 rounded-lg border border-rose-500/30 space-y-6`}>
                   <h2 className="text-xl font-black uppercase tracking-tighter text-rose-400 flex items-center space-x-3">
                       <Shield size={24}/> <span>Set Severity</span>
                   </h2>
@@ -2974,8 +2976,8 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
 
     if (isNotifyOpen) {
         const modal = (
-            <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
-               <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-amber-500/30 space-y-6">
+            <div onClick={onClose} className={`fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('compact')}`}>
+               <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('compact')} p-10 rounded-lg border border-amber-500/30 space-y-6`}>
                   <h2 className="text-xl font-black uppercase tracking-tighter text-amber-400 flex items-center space-x-3">
                       <Bell size={24}/> <span>Set Notification</span>
                   </h2>
@@ -3001,8 +3003,8 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
 function RecipientsModal({ recipients, method, onClose }: any) {
   useEscapeDismiss(onClose)
   const modal = (
-    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
-      <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-6 rounded-lg border-emerald-500/20">
+    <div onClick={onClose} className={`fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('compact')}`}>
+      <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('compact')} p-6 rounded-lg border-emerald-500/20`}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-black uppercase text-emerald-400">Recipient Matrix</h3>
           <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18}/></button>
@@ -3083,8 +3085,8 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
   }
 
   const modal = (
-    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
-      <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg p-6 rounded-lg border-amber-500/20 flex flex-col max-h-[85vh]">
+    <div onClick={onClose} className={`fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('standard')}`}>
+      <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('standard')} p-6 rounded-lg border-amber-500/20 flex flex-col`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
              <BookOpen size={20} className="text-amber-500" />
@@ -3181,8 +3183,8 @@ function BkmDetailModal({ bkmId, onClose }: any) {
   })
 
   const modal = (
-    <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-8">
-      <motion.div onClick={e => e.stopPropagation()} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-4xl h-[80vh] flex flex-col p-8 rounded-lg border-amber-500/30">
+    <div onClick={onClose} className={`fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('wide')}`}>
+      <motion.div onClick={e => e.stopPropagation()} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('wide')} flex flex-col p-8 rounded-lg border-amber-500/30`}>
         <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-6">
            <div className="flex items-center space-x-4">
               <div className="p-3 bg-amber-500/10 rounded-lg text-amber-500 border border-amber-500/20">
@@ -3266,8 +3268,8 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
   })
 
   const modal = (
-    <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-4 sm:p-8">
-      <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-6xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col p-6 sm:p-8 rounded-lg border-blue-500/20 overflow-hidden shadow-[0_0_120px_rgba(37,99,235,0.12)]">
+    <div onClick={onClose} className={`fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('workspace')}`}>
+      <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('workspace')} flex flex-col p-6 sm:p-8 rounded-lg border-blue-500/20 overflow-hidden shadow-[0_0_120px_rgba(37,99,235,0.12)]`}>
         <div className="mb-6 border-b border-white/10 pb-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4">
@@ -3976,13 +3978,13 @@ export function MonitoringForm({ item, devices, categories, severities, platform
   }
 
   const modal = (
-    <div onClick={onClose} className="fixed inset-0 z-[3210] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-4 sm:p-6">
+    <div onClick={onClose} className={`fixed inset-0 z-[3210] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('workspace')}`}>
       <motion.div
         onClick={e => e.stopPropagation()}
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className={`glass-panel w-full overflow-hidden flex flex-col rounded-lg border-blue-500/20 shadow-[0_0_80px_rgba(37,99,235,0.08)] ${isMaximized ? 'max-w-none h-[calc(100vh-3rem)]' : 'max-w-7xl h-full sm:h-[90vh]'}`}
+        className={`glass-panel w-full overflow-hidden flex flex-col rounded-lg border-blue-500/20 shadow-[0_0_80px_rgba(37,99,235,0.08)] ${isMaximized ? 'max-w-none h-[calc(100vh-3rem)]' : getWorkspaceModalShellClass('workspace')}`}
       >
         <WorkspaceModalHeader
           icon={<Zap size={20} />}
@@ -4670,8 +4672,8 @@ function MonitoringHistoryModal({ item, onClose }: any) {
   const diffs = getDiff(newer, older)
 
   const modal = (
-    <div onClick={onClose} className="fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-4 sm:p-10">
-      <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-7xl h-full flex flex-col p-6 sm:p-8 rounded-lg border-white/10 shadow-[0_0_90px_rgba(15,23,42,0.35)]">
+    <div onClick={onClose} className={`fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('wide')}`}>
+      <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('wide')} flex flex-col p-6 sm:p-8 rounded-lg border-white/10 shadow-[0_0_90px_rgba(15,23,42,0.35)]`}>
         <div className="flex items-center justify-between mb-8">
            <div className="flex items-center space-x-6">
               <div className="w-14 h-14 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-blue-400">
