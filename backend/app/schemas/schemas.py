@@ -283,25 +283,6 @@ class IncidentLogResponse(IncidentLogBase, BaseSchema):
 SAFE_EXTERNAL_URL_SCHEMES = {"http", "https", "sftp", "ftps", "ssh"}
 EXTERNAL_RESERVED_METADATA_KEYS = {
     "business_purpose",
-    "criticality",
-    "dependency_tier",
-    "data_classification",
-    "integration_mode",
-    "primary_endpoint_url",
-    "secondary_endpoint_url",
-    "auth_method",
-    "protocol_family",
-    "port_override",
-    "supports_inbound",
-    "supports_outbound",
-    "source_system",
-    "source_record_id",
-    "risk_rating",
-    "contains_customer_data",
-    "contains_credentials",
-    "stores_pii",
-    "internet_exposed",
-    "third_party_assessment_status",
 }
 
 
@@ -564,19 +545,13 @@ class ExternalEntityBase(BaseModel):
                 raise ValueError("Team owner cannot be set when ownership mode is individual")
         if self.source_system and not self.source_record_id:
             raise ValueError("Source record ID is required when source system is set")
-        if self.integration_mode == "API" and not self.primary_endpoint_url:
-            raise ValueError("Primary endpoint URL is required for API integrations")
-        if self.primary_endpoint_url and not self.auth_method:
-            raise ValueError("Authentication method is required when an endpoint is defined")
-        if (self.criticality == "Critical" or self.dependency_tier == "Tier 1") and not self.business_purpose:
-            raise ValueError("Business purpose is required for critical or tier 1 external entities")
-        if (self.criticality == "Critical" or self.dependency_tier == "Tier 1") and not self.contacts_json:
-            raise ValueError("At least one accountable contact is required for critical or tier 1 external entities")
+        if not self.business_purpose:
+            raise ValueError("Business purpose is required")
+        if not self.contacts_json:
+            raise ValueError("At least one accountable contact is required")
         primary_count = sum(1 for contact in self.contacts_json if contact.is_primary)
         if primary_count > 1:
             raise ValueError("Only one primary contact is allowed")
-        if (self.internet_exposed or self.stores_pii) and not self.third_party_assessment_status:
-            raise ValueError("Assessment status is required when the entity is internet-exposed or stores PII")
         return self
 
 class ExternalEntityCreate(ExternalEntityBase): pass

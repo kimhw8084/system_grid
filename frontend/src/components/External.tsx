@@ -40,14 +40,6 @@ const ACCOUNTABLE_OWNER_OPTIONS = [
 ]
 
 const CONTACT_ROLE_OPTIONS = ['Primary', 'Operational', 'Escalation', 'Security', 'Business']
-const CRITICALITY_OPTIONS = ['Critical', 'High', 'Medium', 'Low']
-const DEPENDENCY_TIER_OPTIONS = ['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4']
-const DATA_CLASSIFICATION_OPTIONS = ['Public', 'Internal', 'Confidential', 'Restricted']
-const INTEGRATION_MODE_OPTIONS = ['API', 'SFTP', 'VPN', 'Database', 'Manual', 'Other']
-const AUTH_METHOD_OPTIONS = ['OAuth2', 'Token', 'Basic', 'mTLS', 'SFTP Key', 'VPN', 'Manual', 'Other']
-const PROTOCOL_FAMILY_OPTIONS = ['HTTP', 'HTTPS', 'TCP', 'UDP', 'SFTP', 'SSH', 'Database', 'Other']
-const RISK_RATING_OPTIONS = ['Critical', 'High', 'Medium', 'Low']
-const THIRD_PARTY_ASSESSMENT_OPTIONS = ['Required', 'In Progress', 'Approved', 'Rejected', 'Not Required']
 const SECRET_TYPE_OPTIONS = ['VaultReference', 'SharedSecret', 'Token', 'KeyPair', 'Certificate']
 const SECRET_STATUS_OPTIONS = ['Active', 'RotationDue', 'Disabled']
 const VAULT_PROVIDER_OPTIONS = ['1Password', 'Bitwarden', 'HashiCorp Vault', 'AWS Secrets Manager', 'Azure Key Vault', 'Other']
@@ -68,28 +60,7 @@ const extensionMetadataKeysByType: Record<string, string[]> = {
 
 const reservedMetadataKeys = new Set([
   'business_purpose',
-  'criticality',
-  'dependency_tier',
-  'data_classification',
-  'integration_mode',
-  'primary_endpoint_url',
-  'secondary_endpoint_url',
-  'auth_method',
-  'protocol_family',
-  'port_override',
-  'supports_inbound',
-  'supports_outbound',
-  'source_system',
-  'source_record_id',
-  'risk_rating',
-  'contains_customer_data',
-  'contains_credentials',
-  'stores_pii',
-  'internet_exposed',
-  'third_party_assessment_status',
 ])
-
-const safeUrlPattern = /^(https?:\/\/|sftp:\/\/|ftps:\/\/|ssh:\/\/)/i
 
 const normalizeLegacyContacts = (entity: any) => {
   if (Array.isArray(entity?.contacts_json) && entity.contacts_json.length) return entity.contacts_json
@@ -109,8 +80,6 @@ const getEntityInsights = (entity: any, links: any[] = []) => {
   const metadata = parseMetadataObject(entity?.metadata_json)
   const linked = links.filter((link: any) => link.external_entity_id === entity.id)
   const contacts = normalizeLegacyContacts(entity)
-  const criticality = String(entity.criticality || 'Low')
-  const dependencyTier = String(entity.dependency_tier || 'Tier 3')
   const hasOwner = entity.ownership_mode === 'individual'
     ? Boolean(entity.internal_operator_id)
     : Boolean(entity.internal_team_id)
@@ -130,8 +99,6 @@ const getEntityInsights = (entity: any, links: any[] = []) => {
     metadata,
     contacts,
     linked,
-    criticality,
-    dependencyTier,
     externalOwnerLabel: entity.owner_organization || entity.owner_team || 'Unassigned',
     internalOwnerLabel: entity.ownership_mode === 'individual'
       ? entity.internal_operator_name || entity.internal_operator_external_id || 'Unassigned'
@@ -545,10 +512,8 @@ const ExternalForm = ({ initialData, onSave, isSaving, options, teams, operators
     const normalizedContacts = normalizeLegacyContacts(initialData)
     return {
       name: initialData.name || '',
-      external_key: initialData.external_key || '',
       aliases_json: initialData.aliases_json || [],
       type: initialData.type || 'API',
-      subtype: initialData.subtype || '',
       owner_organization: initialData.owner_organization || '',
       owner_team: initialData.owner_team || '',
       ownership_mode: initialData.ownership_mode || 'team',
@@ -560,25 +525,6 @@ const ExternalForm = ({ initialData, onSave, isSaving, options, teams, operators
       notes: initialData.notes || '',
       contacts_json: normalizedContacts,
       business_purpose: initialData.business_purpose || '',
-      criticality: initialData.criticality || 'Low',
-      dependency_tier: initialData.dependency_tier || 'Tier 3',
-      data_classification: initialData.data_classification || '',
-      integration_mode: initialData.integration_mode || (initialData.type === 'API' ? 'API' : ''),
-      primary_endpoint_url: initialData.primary_endpoint_url || '',
-      secondary_endpoint_url: initialData.secondary_endpoint_url || '',
-      auth_method: initialData.auth_method || '',
-      protocol_family: initialData.protocol_family || '',
-      port_override: initialData.port_override ?? '',
-      supports_inbound: !!initialData.supports_inbound,
-      supports_outbound: !!initialData.supports_outbound,
-      source_system: initialData.source_system || '',
-      source_record_id: initialData.source_record_id || '',
-      risk_rating: initialData.risk_rating || 'Low',
-      contains_customer_data: !!initialData.contains_customer_data,
-      contains_credentials: !!initialData.contains_credentials,
-      stores_pii: !!initialData.stores_pii,
-      internet_exposed: !!initialData.internet_exposed,
-      third_party_assessment_status: initialData.third_party_assessment_status || '',
       metadata_json: parseMetadataObject(initialData.metadata_json),
     }
   })
@@ -604,16 +550,8 @@ const ExternalForm = ({ initialData, onSave, isSaving, options, teams, operators
     { value: 'Sandbox', label: 'Sandbox' },
     { value: 'Legacy', label: 'Legacy' }
   ]
-  const allowedMetadataKeys = extensionMetadataKeysByType[formData.type] || []
-
-  useEffect(() => {
-    if (!formData.external_key && formData.name) {
-      setFormData((prev: any) => ({
-        ...prev,
-        external_key: prev.name.toLowerCase().trim().replace(/[^a-z0-9._:-]+/g, '-').replace(/^-+|-+$/g, ''),
-      }))
-    }
-  }, [formData.name, formData.external_key])
+  const selectedTypeOption = types.find((type: any) => type.value === formData.type)
+  const allowedMetadataKeys = selectedTypeOption?.metadata_keys || extensionMetadataKeysByType[formData.type] || []
 
   useEffect(() => {
     if (!allowedMetadataKeys.length) return
@@ -642,18 +580,11 @@ const ExternalForm = ({ initialData, onSave, isSaving, options, teams, operators
   const validate = () => {
     const nextErrors: Record<string, string> = {}
     if (!formData.name.trim()) nextErrors.name = 'Name is required'
-    if (!formData.external_key.trim()) nextErrors.external_key = 'External key is required'
     if (formData.ownership_mode === 'team' && !formData.internal_team_id) nextErrors.internal_team_id = 'Accountable team is required'
     if (formData.ownership_mode === 'individual' && !formData.internal_operator_id) nextErrors.internal_operator_id = 'Accountable operator is required'
     if (!formData.business_purpose.trim()) nextErrors.business_purpose = 'Business purpose is required'
-    if (formData.integration_mode === 'API' && !formData.primary_endpoint_url.trim()) nextErrors.primary_endpoint_url = 'Primary endpoint is required for API integrations'
-    if (formData.primary_endpoint_url && !safeUrlPattern.test(formData.primary_endpoint_url)) nextErrors.primary_endpoint_url = 'Endpoint must use a safe supported URL scheme'
-    if (formData.secondary_endpoint_url && !safeUrlPattern.test(formData.secondary_endpoint_url)) nextErrors.secondary_endpoint_url = 'Secondary endpoint must use a safe supported URL scheme'
-    if (formData.primary_endpoint_url && !formData.auth_method) nextErrors.auth_method = 'Authentication method is required when an endpoint is set'
-    if (formData.port_override && (Number(formData.port_override) < 1 || Number(formData.port_override) > 65535)) nextErrors.port_override = 'Port must be between 1 and 65535'
     if (!formData.contacts_json.length) nextErrors.contacts_json = 'At least one contact is required'
     if (formData.contacts_json.filter((contact: any) => contact.is_primary).length > 1) nextErrors.contacts_json = 'Only one primary contact is allowed'
-    if ((formData.internet_exposed || formData.stores_pii) && !formData.third_party_assessment_status) nextErrors.third_party_assessment_status = 'Assessment status is required'
     if (metadataError) nextErrors.metadata_json = metadataError
     setErrors(nextErrors)
     return Object.keys(nextErrors).length === 0
@@ -664,34 +595,16 @@ const ExternalForm = ({ initialData, onSave, isSaving, options, teams, operators
       <div className="grid grid-cols-2 gap-8">
         <div className="space-y-4">
           <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3">Identity & Classification</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Entity Name *</label>
-              <input value={formData.name} onChange={e => updateField('name', e.target.value)} className={inputClass('name')} placeholder="customer-feed-api" />
-              {errors.name && <p className="mt-1 px-1 text-[9px] font-bold text-rose-400">{errors.name}</p>}
-            </div>
-            <div>
-              <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">External Key *</label>
-              <input value={formData.external_key} onChange={e => updateField('external_key', e.target.value.toLowerCase())} className={inputClass('external_key')} placeholder="customer-feed-api" />
-              {errors.external_key && <p className="mt-1 px-1 text-[9px] font-bold text-rose-400">{errors.external_key}</p>}
-            </div>
+          <div>
+            <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Entity Name *</label>
+            <input value={formData.name} onChange={e => updateField('name', e.target.value)} className={inputClass('name')} placeholder="customer-feed-api" />
+            {errors.name && <p className="mt-1 px-1 text-[9px] font-bold text-rose-400">{errors.name}</p>}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <StyledSelect label="Type" value={formData.type} onChange={e => updateField('type', e.target.value)} options={types} />
-            <input value={formData.subtype} onChange={e => updateField('subtype', e.target.value)} className={inputClass('subtype')} placeholder="Partner API / Managed Database" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
             <StyledSelect label="Operational Status" value={formData.status} onChange={e => updateField('status', e.target.value)} options={statusOptions} />
-            <StyledSelect label="Environment" value={formData.environment} onChange={e => updateField('environment', e.target.value)} options={envOptions} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <StyledSelect label="Criticality" value={formData.criticality} onChange={e => updateField('criticality', e.target.value)} options={CRITICALITY_OPTIONS.map((value) => ({ value, label: value }))} />
-            <StyledSelect label="Dependency Tier" value={formData.dependency_tier} onChange={e => updateField('dependency_tier', e.target.value)} options={DEPENDENCY_TIER_OPTIONS.map((value) => ({ value, label: value }))} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <StyledSelect label="Risk Rating" value={formData.risk_rating} onChange={e => updateField('risk_rating', e.target.value)} options={RISK_RATING_OPTIONS.map((value) => ({ value, label: value }))} />
-            <StyledSelect label="Data Classification" value={formData.data_classification} onChange={e => updateField('data_classification', e.target.value)} options={DATA_CLASSIFICATION_OPTIONS.map((value) => ({ value, label: value }))} placeholder="Select classification" />
-          </div>
+          <StyledSelect label="Environment" value={formData.environment} onChange={e => updateField('environment', e.target.value)} options={envOptions} />
         </div>
 
         <div className="space-y-4">
@@ -746,70 +659,6 @@ const ExternalForm = ({ initialData, onSave, isSaving, options, teams, operators
         </div>
 
         <div className="col-span-2">
-          <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-              <div className="flex items-center space-x-3">
-                <Shield size={14} className="text-blue-400" />
-                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Operational Profile</span>
-              </div>
-              <span className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full">Structured Schema</span>
-            </div>
-            <div className="p-4 grid grid-cols-2 gap-4">
-              <StyledSelect label="Integration Mode" value={formData.integration_mode} onChange={e => updateField('integration_mode', e.target.value)} options={INTEGRATION_MODE_OPTIONS.map((value) => ({ value, label: value }))} />
-              <StyledSelect label="Auth Method" value={formData.auth_method} onChange={e => updateField('auth_method', e.target.value)} options={AUTH_METHOD_OPTIONS.map((value) => ({ value, label: value }))} error={!!errors.auth_method} placeholder="Select method" />
-              <div>
-                <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Primary Endpoint</label>
-                <input value={formData.primary_endpoint_url} onChange={e => updateField('primary_endpoint_url', e.target.value)} className={inputClass('primary_endpoint_url')} placeholder="https://partner.example.com" />
-                {errors.primary_endpoint_url && <p className="mt-1 px-1 text-[9px] font-bold text-rose-400">{errors.primary_endpoint_url}</p>}
-              </div>
-              <div>
-                <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Secondary Endpoint</label>
-                <input value={formData.secondary_endpoint_url} onChange={e => updateField('secondary_endpoint_url', e.target.value)} className={inputClass('secondary_endpoint_url')} placeholder="https://backup.partner.example.com" />
-                {errors.secondary_endpoint_url && <p className="mt-1 px-1 text-[9px] font-bold text-rose-400">{errors.secondary_endpoint_url}</p>}
-              </div>
-              <StyledSelect label="Protocol Family" value={formData.protocol_family} onChange={e => updateField('protocol_family', e.target.value)} options={PROTOCOL_FAMILY_OPTIONS.map((value) => ({ value, label: value }))} placeholder="Select protocol" />
-              <div>
-                <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Port Override</label>
-                <input value={formData.port_override} onChange={e => updateField('port_override', e.target.value)} className={inputClass('port_override')} placeholder="443" />
-                {errors.port_override && <p className="mt-1 px-1 text-[9px] font-bold text-rose-400">{errors.port_override}</p>}
-              </div>
-              <div>
-                <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Source System</label>
-                <input value={formData.source_system} onChange={e => updateField('source_system', e.target.value)} className={inputClass('source_system')} placeholder="CMDB / IAM / Partner Portal" />
-              </div>
-              <div>
-                <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Source Record ID</label>
-                <input value={formData.source_record_id} onChange={e => updateField('source_record_id', e.target.value)} className={inputClass('source_record_id')} placeholder="record-1234" />
-              </div>
-              <label className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-500">
-                <input type="checkbox" checked={!!formData.supports_inbound} onChange={e => updateField('supports_inbound', e.target.checked)} />
-                Supports Inbound
-              </label>
-              <label className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-500">
-                <input type="checkbox" checked={!!formData.supports_outbound} onChange={e => updateField('supports_outbound', e.target.checked)} />
-                Supports Outbound
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-span-2">
-          <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Risk & Compliance</span>
-            </div>
-            <div className="p-4 grid grid-cols-3 gap-4">
-              <label className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-500"><input type="checkbox" checked={!!formData.contains_customer_data} onChange={e => updateField('contains_customer_data', e.target.checked)} />Customer Data</label>
-              <label className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-500"><input type="checkbox" checked={!!formData.contains_credentials} onChange={e => updateField('contains_credentials', e.target.checked)} />Credential Handling</label>
-              <label className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-500"><input type="checkbox" checked={!!formData.stores_pii} onChange={e => updateField('stores_pii', e.target.checked)} />Stores PII</label>
-              <label className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-500"><input type="checkbox" checked={!!formData.internet_exposed} onChange={e => updateField('internet_exposed', e.target.checked)} />Internet Exposed</label>
-              <StyledSelect label="Third-Party Assessment" value={formData.third_party_assessment_status} onChange={e => updateField('third_party_assessment_status', e.target.value)} options={THIRD_PARTY_ASSESSMENT_OPTIONS.map((value) => ({ value, label: value }))} error={!!errors.third_party_assessment_status} placeholder="Select assessment" />
-            </div>
-            {errors.third_party_assessment_status && <p className="px-5 pb-4 text-[9px] font-bold text-rose-400">{errors.third_party_assessment_status}</p>}
-          </div>
-        </div>
-
-        <div className="col-span-2">
           <MetadataEditor value={formData.metadata_json} onChange={v => updateField('metadata_json', v)} onError={setMetadataError} allowedKeys={allowedMetadataKeys} />
           {errors.metadata_json && <p className="mt-2 px-1 text-[9px] font-bold text-rose-400">{errors.metadata_json}</p>}
         </div>
@@ -824,7 +673,6 @@ const ExternalForm = ({ initialData, onSave, isSaving, options, teams, operators
               ...formData,
               internal_team_id: formData.ownership_mode === 'team' && formData.internal_team_id ? parseInt(formData.internal_team_id, 10) : null,
               internal_operator_id: formData.ownership_mode === 'individual' && formData.internal_operator_id ? parseInt(formData.internal_operator_id, 10) : null,
-              port_override: formData.port_override ? parseInt(formData.port_override, 10) : null,
             })
           }}
           className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center space-x-3"
@@ -840,13 +688,11 @@ const ExternalForm = ({ initialData, onSave, isSaving, options, teams, operators
 const ExternalDetailsView = ({ entity, links }: { entity: any, links: any[] }) => {
   const [tab, setTab] = useState('overview')
   const insights = useMemo(() => getEntityInsights(entity, links), [entity, links])
-  const profileFacts = [
-    ['Criticality', insights.criticality],
-    ['Dependency Tier', insights.dependencyTier],
-    ['Auth Method', entity.auth_method || 'Unspecified'],
-    ['Integration Mode', entity.integration_mode || 'Unspecified'],
-    ['Endpoint', entity.primary_endpoint_url || 'Unspecified'],
-    ['Source System', entity.source_system || 'Unspecified'],
+  const summaryFacts = [
+    ['Business purpose', entity.business_purpose || 'Not documented'],
+    ['Type', entity.type || 'Unspecified'],
+    ['Environment', entity.environment || 'Unspecified'],
+    ['External organization', entity.owner_organization || 'Unassigned'],
   ]
 
   return (
@@ -857,7 +703,6 @@ const ExternalDetailsView = ({ entity, links }: { entity: any, links: any[] }) =
             { id: 'overview', label: 'Overview', icon: LayoutGrid },
             { id: 'org', label: 'Ownership & Contacts', icon: Briefcase },
             { id: 'dependencies', label: 'Dependencies', icon: Share2 },
-            { id: 'risk', label: 'Risk', icon: Shield },
             { id: 'secrets', label: 'Credentials', icon: Tag },
             { id: 'metadata', label: 'Extensions', icon: List },
           ].map(t => (
@@ -894,24 +739,24 @@ const ExternalDetailsView = ({ entity, links }: { entity: any, links: any[] }) =
                     <p className="text-sm font-bold text-white">{entity.business_purpose || entity.description || 'Not documented'}</p>
                   </div>
                   <div>
-                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">Primary Endpoint</p>
-                    <p className="text-sm font-bold text-blue-400 break-all">{entity.primary_endpoint_url || 'Not documented'}</p>
+                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">External Organization</p>
+                    <p className="text-sm font-bold text-blue-400 break-all">{entity.owner_organization || 'Not documented'}</p>
                   </div>
                   <div>
-                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">Auth Method</p>
-                    <p className="text-sm font-bold text-emerald-400 break-all">{entity.auth_method || 'Not documented'}</p>
+                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">External Team</p>
+                    <p className="text-sm font-bold text-emerald-400 break-all">{entity.owner_team || 'Not documented'}</p>
                   </div>
                   <div>
-                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">Source Record</p>
-                    <p className="text-sm font-bold text-white">{entity.source_record_id || 'Not documented'}</p>
+                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">Accountable Owner</p>
+                    <p className="text-sm font-bold text-white">{insights.internalOwnerLabel}</p>
                   </div>
                 </div>
               </div>
 
               <div className="bg-slate-900/60 p-5 rounded-lg border border-white/10 space-y-4">
-                <h3 className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Profile Snapshot</h3>
+                <h3 className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Registry Snapshot</h3>
                 <div className="grid grid-cols-2 gap-3">
-                  {profileFacts.map(([label, value]) => (
+                  {summaryFacts.map(([label, value]) => (
                     <div key={label} className="border border-white/5 rounded-lg p-3 bg-black/30">
                       <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">{label}</p>
                       <p className="text-[10px] font-bold text-white mt-1 break-words">{value}</p>
@@ -1055,44 +900,6 @@ const ExternalDetailsView = ({ entity, links }: { entity: any, links: any[] }) =
           </div>
         )}
 
-        {tab === 'risk' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                ['Risk Rating', entity.risk_rating || 'Low'],
-                ['Assessment', entity.third_party_assessment_status || 'Unspecified'],
-                ['Secrets Ready', insights.hasSecrets ? 'Yes' : 'No'],
-                ['Internet Exposed', entity.internet_exposed ? 'Yes' : 'No'],
-              ].map(([label, value]) => (
-                <div key={label} className="bg-white/5 border border-white/5 p-4 rounded-lg">
-                  <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">{label}</p>
-                  <p className="text-xl font-bold text-white mt-1">{value}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
-              <div className="px-4 py-2 bg-white/5 border-b border-white/5">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Risk Controls</span>
-              </div>
-              <div className="p-4 grid grid-cols-2 gap-3">
-                {[
-                  ['Owner coverage', insights.hasOwner ? 'Satisfied' : 'Missing'],
-                  ['Contact coverage', insights.hasPoc ? 'Satisfied' : 'Missing'],
-                  ['Dependency map', insights.linked.length ? 'Satisfied' : 'Missing'],
-                  ['Business purpose', entity.business_purpose ? 'Documented' : 'Missing'],
-                  ['Assessment status', (entity.third_party_assessment_status || (!entity.internet_exposed && !entity.stores_pii)) ? 'Documented' : 'Missing'],
-                  ['Credential coverage', insights.hasSecrets ? 'Satisfied' : 'Missing'],
-                ].map(([label, state]) => (
-                  <div key={label} className="border border-white/5 rounded-lg p-3 bg-black/30">
-                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">{label}</p>
-                    <p className={`text-[10px] font-bold uppercase mt-1 ${state === 'Missing' ? 'text-rose-400' : 'text-emerald-400'}`}>{state}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
@@ -1146,9 +953,8 @@ export default function External() {
     const source = Array.isArray(allEntities) ? allEntities : []
     const missingOwners = source.filter((entity: any) => !getEntityInsights(entity, links || []).hasOwner).length
     const missingDependencies = source.filter((entity: any) => getEntityInsights(entity, links || []).linked.length === 0).length
-    const critical = source.filter((entity: any) => ['critical', 'tier 1'].includes(String(getEntityInsights(entity, links || []).criticality).toLowerCase()) || String(getEntityInsights(entity, links || []).dependencyTier).toLowerCase() === 'tier 1').length
-    const highRisk = source.filter((entity: any) => ['critical', 'high'].includes(String(entity.risk_rating || '').toLowerCase())).length
-    return { total: source.length, missingOwners, missingDependencies, critical, highRisk }
+    const missingContacts = source.filter((entity: any) => !getEntityInsights(entity, links || []).hasPoc).length
+    return { total: source.length, missingOwners, missingDependencies, missingContacts }
   }, [allEntities, links])
 
   const entities = useMemo(() => {
@@ -1158,8 +964,6 @@ export default function External() {
         const insights = getEntityInsights(entity, links || [])
         return {
           ...entity,
-          criticality: insights.criticality,
-          dependency_tier: insights.dependencyTier,
           internal_owner: insights.internalOwnerLabel,
           link_count: insights.linked.length,
           warning_count: insights.warnings.length,
@@ -1375,19 +1179,6 @@ export default function External() {
          cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold">N/A</span>, 
          hide: hiddenColumns.includes("internal_owner") 
        },
-       {
-         field: "criticality",
-         headerName: "Criticality",
-         width: 120,
-         filter: true,
-         cellClass: 'text-center',
-         headerClass: 'text-center',
-         cellRenderer: (p: any) => {
-           const tone = ['Critical', 'Tier 1'].includes(p.value) ? 'text-rose-400 border-rose-500/30 bg-rose-500/10' : p.value === 'High' ? 'text-amber-400 border-amber-500/30 bg-amber-500/10' : 'text-slate-300 border-white/10 bg-white/5'
-           return <span style={{ fontSize: `${fontSize}px` }} className={`px-2 py-0.5 rounded-md border font-bold uppercase ${tone}`}>{p.value || 'Unrated'}</span>
-         },
-         hide: hiddenColumns.includes("criticality")
-       },
        { 
          field: "status", 
          headerName: "Status", 
@@ -1417,19 +1208,6 @@ export default function External() {
            )
          },
          hide: hiddenColumns.includes("status")
-       },
-       {
-         field: "risk_rating",
-         headerName: "Risk",
-         width: 130,
-         filter: true,
-         cellClass: 'text-center',
-         headerClass: 'text-center',
-         cellRenderer: (p: any) => {
-           const tone = String(p.value).toLowerCase() === 'critical' ? 'text-rose-400' : String(p.value).toLowerCase() === 'high' ? 'text-amber-400' : 'text-emerald-400'
-           return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${tone}`}>{p.value || 'Low'}</span>
-         },
-         hide: hiddenColumns.includes("risk_rating")
        },
        { 
          field: "environment", 
@@ -1558,11 +1336,10 @@ export default function External() {
       </div>
 
       {activeTab !== 'links' && (
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-4 gap-3">
           {[
             { label: 'Registry Entries', value: registrySummary.total, tone: 'text-blue-400' },
-            { label: 'Tier 1 / Critical', value: registrySummary.critical, tone: 'text-rose-400' },
-            { label: 'High Risk', value: registrySummary.highRisk, tone: 'text-amber-400' },
+            { label: 'Contacts Missing', value: registrySummary.missingContacts, tone: 'text-amber-400' },
             { label: 'Owner Missing', value: registrySummary.missingOwners, tone: 'text-fuchsia-400' },
             { label: 'Unmapped Dependencies', value: registrySummary.missingDependencies, tone: 'text-slate-300' },
           ].map(card => (

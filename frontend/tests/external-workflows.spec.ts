@@ -38,14 +38,6 @@ test.describe('External workflows', () => {
         }
       ],
       business_purpose: 'Customer event ingestion',
-      dependency_tier: 'Tier 1',
-      criticality: 'Critical',
-      integration_mode: 'API',
-      primary_endpoint_url: 'https://partner.example.com',
-      auth_method: 'Token',
-      risk_rating: 'High',
-      internet_exposed: true,
-      third_party_assessment_status: 'Approved',
       metadata_json: { version: 'v1', custom_note: 'retain-me' }
     })
 
@@ -65,8 +57,6 @@ test.describe('External workflows', () => {
     const detailsPanel = page.locator('.glass-panel').filter({ has: page.getByRole('heading', { name: externalEntity.name }) })
     await expect(detailsPanel.getByText('Mission Summary')).toBeVisible()
     await expect(detailsPanel.getByText('Customer event ingestion')).toBeVisible()
-    await expect(detailsPanel.getByText('Tier 1', { exact: true })).toBeVisible()
-    await expect(detailsPanel.getByText('Approved', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: /Dependencies/i })).toBeVisible()
 
     await page.getByRole('button', { name: /Credentials/i }).click()
@@ -78,10 +68,6 @@ test.describe('External workflows', () => {
     await expect(page.getByText('Credential Added')).toBeVisible()
     await expect(page.locator('table')).toContainText(`Partner token ${stamp}`)
     await expect(page.locator('table')).toContainText(`vault://partner/${stamp}/token`)
-
-    await page.getByRole('button', { name: /Risk/i }).click()
-    await expect(page.getByText('Risk Controls')).toBeVisible()
-    await expect(page.getByText('Assessment status')).toBeVisible()
 
     await page.getByRole('button', { name: /Ownership & Contacts/i }).click()
     const pocCard = page.locator('div').filter({ hasText: /Jane Doe/i }).first()
