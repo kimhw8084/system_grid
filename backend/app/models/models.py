@@ -933,6 +933,26 @@ class UserPoolVersion(Base, BaseMixin):
     created_by = Column(String)
     is_active = Column(Boolean, default=False)
 
+class Team(Base, BaseMixin):
+    __tablename__ = "teams"
+    name = Column(String, unique=True, index=True)
+    description = Column(Text, nullable=True)
+    source = Column(String, default="manual") # manual, synced
+    is_archived = Column(Boolean, default=False)
+    metadata_json = Column(JSON, default=dict)
+
+    operators = relationship("Operator", back_populates="team_rel")
+    audits = relationship("TeamAudit", back_populates="team", cascade="all, delete-orphan")
+
+class TeamAudit(Base, BaseMixin):
+    __tablename__ = "team_audit"
+    team_id = Column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), nullable=True)
+    action = Column(String, index=True)
+    actor = Column(String)
+    details = Column(JSON, default=dict)
+
+    team = relationship("Team", back_populates="audits")
+
 class Role(Base, BaseMixin):
     __tablename__ = "roles"
     name = Column(String, unique=True, index=True)
@@ -947,12 +967,15 @@ class Operator(Base, BaseMixin):
     email = Column(String)
     department = Column(String)
     team = Column(String)
+    team_id = Column(Integer, ForeignKey("teams.id", ondelete="SET NULL"), nullable=True)
+    team_source = Column(String, default="manual") # manual, synced, manual_override
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=True)
     custom_permissions = Column(JSON, default=dict) # Override role permissions
     registration_status = Column(String, default="Pending")
     is_admin = Column(Boolean, default=False)
     
     role = relationship("Role", back_populates="operators")
+    team_rel = relationship("Team", back_populates="operators")
 
 class GlobalSetting(Base, BaseMixin):
     __tablename__ = "global_settings"

@@ -25,6 +25,40 @@ async def ensure_admin_operator(db: AsyncSession, user_id: str):
         await db.refresh(operator)
     return operator
 
+async def record_team_audit(db: AsyncSession, team_id: int | None, action: str, actor: str, details: dict | None = None):
+    db.add(models.TeamAudit(
+        team_id=team_id,
+        action=action,
+        actor=actor,
+        details=details or {}
+    ))
+
+async def resolve_team_assignment(
+    db: AsyncSession,
+    *,
+    team_id: int | None = None,
+    team_name: str | None = None,
+    source: str = "manual",
+    create_missing: bool = False,
+):
+    normalized_name = team_name.strip() if isinstance(team_name, str) and team_name.strip() else None
+    team = None
+    if team_id:
+        res = await db.execute(select(models.Team).filter(models.Team.id == team_id))
+        team = res.scalar_one_or_none()
+    elif normalized_name:
+        res = await db.execute(select(models.Team).filter(models.Team.name == normalized_name))
+        team = res.scalar_one_or_none()
+
+    if not team and normalized_name and create_missing:
+        team = models.Team(name=normalized_name, source=source)
+        db.add(team)
+        await db.flush()
+    elif not team and (team_id or normalized_name):
+        raise HTTPException(status_code=400, detail="Team not found")
+
+    return team
+
 @router.get("/user/settings")
 async def get_user_settings(request: Request, db: AsyncSession = Depends(get_db)):
     user_id = get_current_user_id(request)
@@ -509,11 +543,126 @@ async def get_env_history(field: str, db: AsyncSession = Depends(get_db)):
 @router.get("/operators")
 async def get_operators(db: AsyncSession = Depends(get_db)):
     from sqlalchemy.orm import selectinload
-    res = await db.execute(select(models.Operator).options(selectinload(models.Operator.role)))
+    res = await db.execute(select(models.Operator).options(selectinload(models.Operator.role), selectinload(models.Operator.team_rel)))
     return res.scalars().all()
 
+@router.get("/teams")
+async def get_teams(db: AsyncSession = Depends(get_db)):
+    from sqlalchemy.orm import selectinload
+    res = await db.execute(
+        select(models.Team)
+        .options(selectinload(models.Team.operators))
+        .order_by(models.Team.is_archived.asc(), models.Team.name.asc())
+    )
+    teams = res.scalars().all()
+    return [
+        {
+            "id": team.id,
+            "name": team.name,
+            "description": team.description,
+            "source": team.source,
+            "is_archived": team.is_archived,
+            "metadata_json": team.metadata_json or {},
+            "created_at": team.created_at,
+            "updated_at": team.updated_at,
+            "operators": [
+                {
+                    "id": operator.id,
+                    "external_id": operator.external_id,
+                    "username": operator.username,
+                    "full_name": operator.full_name,
+                    "team_id": operator.team_id,
+                    "team": operator.team,
+                    "team_source": operator.team_source,
+                }
+                for operator in team.operators
+            ],
+        }
+        for team in teams
+    ]
+
+@router.get("/teams/{team_id}/audit")
+async def get_team_audit(team_id: int, db: AsyncSession = Depends(get_db)):
+    team_res = await db.execute(select(models.Team).filter(models.Team.id == team_id))
+    team = team_res.scalar_one_or_none()
+    if not team:
+        raise HTTPException(404, "Team not found")
+    audit_res = await db.execute(
+        select(models.TeamAudit)
+        .filter(models.TeamAudit.team_id == team_id)
+        .order_by(models.TeamAudit.created_at.desc())
+    )
+    return audit_res.scalars().all()
+
+@router.post("/teams")
+async def create_team(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+    name = (data.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Team name is required")
+    existing_res = await db.execute(select(models.Team).filter(models.Team.name == name))
+    if existing_res.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Team already exists")
+    team = models.Team(
+        name=name,
+        description=(data.get("description") or "").strip() or None,
+        source=data.get("source") or "manual",
+        is_archived=bool(data.get("is_archived", False)),
+        metadata_json=data.get("metadata_json") or {}
+    )
+    db.add(team)
+    await db.flush()
+    await record_team_audit(db, team.id, "team_created", get_current_user_id(request), {"name": team.name})
+    await db.commit()
+    await db.refresh(team)
+    return team
+
+@router.patch("/teams/{team_id}")
+async def update_team(team_id: int, data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+    team_res = await db.execute(select(models.Team).filter(models.Team.id == team_id))
+    team = team_res.scalar_one_or_none()
+    if not team:
+        raise HTTPException(404, "Team not found")
+
+    old_name = team.name
+    next_name = (data.get("name") or team.name).strip()
+    if not next_name:
+        raise HTTPException(status_code=400, detail="Team name is required")
+    if next_name != old_name:
+        dupe_res = await db.execute(select(models.Team).filter(models.Team.name == next_name, models.Team.id != team_id))
+        if dupe_res.scalar_one_or_none():
+            raise HTTPException(status_code=409, detail="Team already exists")
+        team.name = next_name
+        await db.execute(update(models.Operator).where(models.Operator.team_id == team_id).values(team=next_name))
+
+    if "description" in data:
+        team.description = (data.get("description") or "").strip() or None
+    if "is_archived" in data:
+        team.is_archived = bool(data.get("is_archived"))
+    if "metadata_json" in data:
+        team.metadata_json = data.get("metadata_json") or {}
+
+    await record_team_audit(db, team.id, "team_updated", get_current_user_id(request), {"from": old_name, "to": team.name})
+    await db.commit()
+    await db.refresh(team)
+    return team
+
+@router.delete("/teams/{team_id}")
+async def delete_team(team_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    team_res = await db.execute(select(models.Team).filter(models.Team.id == team_id))
+    team = team_res.scalar_one_or_none()
+    if not team:
+        raise HTTPException(404, "Team not found")
+    members_res = await db.execute(select(models.Operator).filter(models.Operator.team_id == team_id))
+    members = members_res.scalars().all()
+    if members:
+        raise HTTPException(status_code=400, detail="Cannot delete team with assigned operators")
+    await record_team_audit(db, team.id, "team_deleted", get_current_user_id(request), {"name": team.name})
+    await db.execute(delete(models.Team).where(models.Team.id == team_id))
+    await db.commit()
+    return {"status": "success"}
+
 @router.post("/operators")
-async def create_operator(data: dict, db: AsyncSession = Depends(get_db)):
+async def create_operator(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     # Simple create or update logic for manual addition
     from sqlalchemy.exc import IntegrityError
     external_id = str(data.get("external_id"))
@@ -521,20 +670,35 @@ async def create_operator(data: dict, db: AsyncSession = Depends(get_db)):
     op = res.scalar_one_or_none()
     
     # Allowed fields for direct update
-    allowed_fields = ["full_name", "email", "department", "team", "registration_status", "is_admin", "custom_permissions", "role_id"]
+    allowed_fields = ["full_name", "email", "department", "registration_status", "is_admin", "custom_permissions", "role_id"]
+    team = await resolve_team_assignment(
+        db,
+        team_id=data.get("team_id"),
+        team_name=data.get("team"),
+        source=data.get("team_source") or "manual",
+        create_missing=bool(data.get("team"))
+    )
 
     if op:
         for key, value in data.items():
             if key in allowed_fields:
                 setattr(op, key, value)
+        op.team_id = team.id if team else None
+        op.team = team.name if team else None
+        op.team_source = data.get("team_source") or ("manual" if team else op.team_source)
     else:
         # For new operators, we take what we have
         # But we filter it just in case
         clean_data = {k: v for k, v in data.items() if hasattr(models.Operator, k) and k not in ["id", "created_at", "updated_at"]}
+        clean_data["team_id"] = team.id if team else None
+        clean_data["team"] = team.name if team else None
+        clean_data["team_source"] = data.get("team_source") or ("manual" if team else "manual")
         op = models.Operator(**clean_data)
         db.add(op)
     
     try:
+        if team:
+            await record_team_audit(db, team.id, "member_added", get_current_user_id(request), {"external_id": external_id, "username": op.username})
         await db.commit()
         await db.refresh(op)
     except IntegrityError:
@@ -543,17 +707,36 @@ async def create_operator(data: dict, db: AsyncSession = Depends(get_db)):
     return op
 
 @router.patch("/operators/{op_id}")
-async def update_operator(op_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+async def update_operator(op_id: int, data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     res = await db.execute(select(models.Operator).filter(models.Operator.id == op_id))
     op = res.scalar_one_or_none()
     if not op: raise HTTPException(404, "Operator not found")
+    old_team_id = op.team_id
+    old_team_name = op.team
     
     # Allowed fields for direct update
-    allowed_fields = ["full_name", "email", "department", "team", "registration_status", "is_admin", "custom_permissions", "role_id"]
+    allowed_fields = ["full_name", "email", "department", "registration_status", "is_admin", "custom_permissions", "role_id"]
+    team = None
+    if "team_id" in data or "team" in data:
+        team = await resolve_team_assignment(
+            db,
+            team_id=data.get("team_id"),
+            team_name=data.get("team"),
+            source=data.get("team_source") or "manual_override",
+            create_missing=bool(data.get("team"))
+        )
     
     for key, value in data.items():
         if key in allowed_fields:
             setattr(op, key, value)
+    if "team_id" in data or "team" in data:
+        op.team_id = team.id if team else None
+        op.team = team.name if team else None
+        op.team_source = data.get("team_source") or ("manual_override" if team else "manual")
+        if old_team_id and old_team_id != op.team_id:
+            await record_team_audit(db, old_team_id, "member_removed", get_current_user_id(request), {"external_id": op.external_id, "username": op.username, "from": old_team_name})
+        if op.team_id and old_team_id != op.team_id:
+            await record_team_audit(db, op.team_id, "member_added", get_current_user_id(request), {"external_id": op.external_id, "username": op.username, "to": op.team})
             
     await db.commit()
     await db.refresh(op)
@@ -597,17 +780,18 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
     
     # Simple logic: create 5 dummy users
     dummy_users = [
-        {"id": 101, "username": "admin_alpha", "full_name": "Alpha Admin", "email": f"alpha@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "Infrastructure"},
-        {"id": 102, "username": "dev_beta", "full_name": "Beta Developer", "email": f"beta@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "R&D"},
-        {"id": 103, "username": "sec_gamma", "full_name": "Gamma Security", "email": f"gamma@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "Security"},
-        {"id": 104, "username": "op_delta", "full_name": "Delta Operator", "email": f"delta@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "Operations"},
+        {"id": 101, "username": "admin_alpha", "full_name": "Alpha Admin", "email": f"alpha@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "Infrastructure", "team": "Platform Ops"},
+        {"id": 102, "username": "dev_beta", "full_name": "Beta Developer", "email": f"beta@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "R&D", "team": "Application Engineering"},
+        {"id": 103, "username": "sec_gamma", "full_name": "Gamma Security", "email": f"gamma@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "Security", "team": "Security Response"},
+        {"id": 104, "username": "op_delta", "full_name": "Delta Operator", "email": f"delta@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "Operations", "team": "Platform Ops"},
         {"id": 105, "username": "guest_epsilon", "full_name": "Epsilon Guest", "email": f"epsilon@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "External"}
     ]
+    diff_summary = {"added": 0, "removed": 0, "changed": 0, "script": data.get("script"), "team_conflicts": [], "team_updates": []}
     
     new_version = models.UserPoolVersion(
         version_label=version_label,
         snapshot_data=dummy_users,
-        diff_summary={"added": 5, "removed": 0, "changed": 0, "script": data.get("script")},
+        diff_summary=diff_summary,
         created_by=user_id,
         is_active=True
     )
@@ -619,6 +803,12 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
     
     # Sync to Operators table
     for u in dummy_users:
+        team = await resolve_team_assignment(
+            db,
+            team_name=u.get("team"),
+            source="synced",
+            create_missing=bool(u.get("team"))
+        ) if u.get("team") else None
         res = await db.execute(select(models.Operator).filter(models.Operator.external_id == str(u["id"])))
         op = res.scalar_one_or_none()
         if not op:
@@ -628,14 +818,38 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
                 full_name=u["full_name"],
                 email=u["email"],
                 department=u["department"],
-                registration_status="Verified"
+                registration_status="Verified",
+                team=team.name if team else None,
+                team_id=team.id if team else None,
+                team_source="synced" if team else "manual"
             ))
+            if team:
+                diff_summary["team_updates"].append({"external_id": str(u["id"]), "team": team.name, "mode": "created"})
+                await record_team_audit(db, team.id, "member_added_via_sync", user_id, {"external_id": str(u["id"]), "username": u["username"]})
+            diff_summary["added"] += 1
         else:
             op.username = u["username"]
             op.full_name = u["full_name"]
             op.email = u["email"]
             op.department = u["department"]
             op.registration_status = "Verified"
+            if team:
+                if op.team_source == "manual_override" and op.team and op.team != team.name:
+                    diff_summary["team_conflicts"].append({
+                        "external_id": op.external_id,
+                        "local_team": op.team,
+                        "synced_team": team.name
+                    })
+                else:
+                    if op.team_id != team.id:
+                        if op.team_id:
+                            await record_team_audit(db, op.team_id, "member_removed_via_sync", user_id, {"external_id": op.external_id, "username": op.username})
+                        await record_team_audit(db, team.id, "member_added_via_sync", user_id, {"external_id": op.external_id, "username": op.username})
+                        diff_summary["team_updates"].append({"external_id": op.external_id, "team": team.name, "mode": "updated"})
+                    op.team = team.name
+                    op.team_id = team.id
+                    op.team_source = "synced"
+            diff_summary["changed"] += 1
             
     await db.commit()
     return {"status": "success", "version": version_label}
@@ -651,6 +865,12 @@ async def restore_user_pool(version_id: int, db: AsyncSession = Depends(get_db))
     
     # Sync version data back to operators (Simplified)
     for u in version.snapshot_data:
+        team = await resolve_team_assignment(
+            db,
+            team_name=u.get("team"),
+            source="synced",
+            create_missing=bool(u.get("team"))
+        ) if u.get("team") else None
         res = await db.execute(select(models.Operator).filter(models.Operator.external_id == str(u["id"])))
         op = res.scalar_one_or_none()
         if op:
@@ -658,6 +878,9 @@ async def restore_user_pool(version_id: int, db: AsyncSession = Depends(get_db))
              op.full_name = u["full_name"]
              op.email = u["email"]
              op.department = u["department"]
+             op.team = team.name if team else None
+             op.team_id = team.id if team else None
+             op.team_source = "synced" if team else op.team_source
              
     await db.commit()
     return {"status": "success"}
