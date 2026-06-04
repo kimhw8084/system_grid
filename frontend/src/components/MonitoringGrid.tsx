@@ -4218,21 +4218,13 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                />
              </div>
            </div>
-           {(generalError || Object.keys(formErrors).length > 0) && (
+           {generalError && (
              <div className="mb-6 rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3">
                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-rose-300">
-                 {generalError || 'Resolve the highlighted required fields and rule violations before saving.'}
+                 {generalError}
                </p>
              </div>
            )}
-           <div className="mb-6 flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-4 py-3">
-             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-               Fields marked <span className="text-rose-400">*</span> are required.
-             </p>
-             <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">
-               Validation is shown inline before save.
-             </p>
-           </div>
            {activeTab === 'context' ? (
              <div className="grid grid-cols-12 gap-5 p-2">
                <div className="col-span-12 xl:col-span-5 space-y-5">
