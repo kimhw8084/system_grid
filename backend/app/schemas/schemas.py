@@ -1,6 +1,8 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing import List, Optional, Any, Dict, Literal
 from datetime import datetime
+from urllib.parse import urlparse
+import re
 
 class BaseSchema(BaseModel):
     id: Optional[int] = None
@@ -278,10 +280,121 @@ class IncidentLogResponse(IncidentLogBase, BaseSchema):
     device_names: Optional[List[str]] = []
 
 # External Intelligence
+SAFE_EXTERNAL_URL_SCHEMES = {"http", "https", "sftp", "ftps", "ssh"}
+EXTERNAL_RESERVED_METADATA_KEYS = {
+    "business_purpose",
+    "criticality",
+    "dependency_tier",
+    "data_classification",
+    "integration_mode",
+    "primary_endpoint_url",
+    "secondary_endpoint_url",
+    "auth_method",
+    "protocol_family",
+    "port_override",
+    "supports_inbound",
+    "supports_outbound",
+    "source_system",
+    "source_record_id",
+    "risk_rating",
+    "contains_customer_data",
+    "contains_credentials",
+    "stores_pii",
+    "internet_exposed",
+    "third_party_assessment_status",
+}
+
+
+def _validate_external_url(value: Optional[str], field_name: str) -> Optional[str]:
+    if value is None:
+        return None
+    trimmed = value.strip()
+    if not trimmed:
+        return None
+    parsed = urlparse(trimmed)
+    if parsed.scheme.lower() not in SAFE_EXTERNAL_URL_SCHEMES:
+        raise ValueError(f"{field_name} must use a safe supported scheme")
+    if parsed.scheme.lower() in {"http", "https", "sftp", "ftps"} and not parsed.netloc:
+        raise ValueError(f"{field_name} must include a host")
+    if any(token in trimmed.lower() for token in ["<script", "javascript:", "data:text/html", "vbscript:"]):
+        raise ValueError(f"{field_name} contains an unsafe value")
+    return trimmed
+
+
+class ExternalContact(BaseModel):
+    role: Literal["Primary", "Operational", "Escalation", "Security", "Business"] = "Operational"
+    full_name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    external_person_id: Optional[str] = None
+    is_primary: bool = False
+    is_escalation: bool = False
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Contact full name is required")
+        return cleaned
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if not cleaned:
+            return None
+        if "@" not in cleaned or "." not in cleaned.split("@")[-1]:
+            raise ValueError("Contact email must be valid")
+        return cleaned
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if not cleaned:
+            return None
+        if not re.fullmatch(r"[\d\+\-\(\) ]{7,24}", cleaned):
+            raise ValueError("Contact phone must be a valid phone number")
+        return cleaned
+
+
 class ExternalEntitySecretBase(BaseModel):
+    secret_label: str
+    secret_type: Literal["SharedSecret", "Token", "KeyPair", "Certificate", "VaultReference"] = "VaultReference"
     username: Optional[str] = None
-    password: Optional[str] = None
+    vault_provider: Optional[Literal["1Password", "Bitwarden", "HashiCorp Vault", "AWS Secrets Manager", "Azure Key Vault", "Other"]] = None
+    vault_path: Optional[str] = None
     note: Optional[str] = None
+    credential_status: Literal["Active", "RotationDue", "Disabled"] = "Active"
+    rotation_frequency_days: Optional[int] = None
+    password_last_rotated_at: Optional[str] = None
+
+    @field_validator("secret_label")
+    @classmethod
+    def validate_secret_label(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Secret label is required")
+        return cleaned
+
+    @field_validator("vault_path")
+    @classmethod
+    def validate_vault_path(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+    @model_validator(mode="after")
+    def validate_secret_contract(self):
+        if self.secret_type == "VaultReference" and not self.vault_path:
+            raise ValueError("Vault path is required for vault-referenced credentials")
+        return self
 
 class ExternalEntitySecretCreate(ExternalEntitySecretBase):
     external_entity_id: int
@@ -291,29 +404,190 @@ class ExternalEntitySecretResponse(ExternalEntitySecretBase, BaseSchema):
 
 class ExternalEntityBase(BaseModel):
     name: str
+    external_key: Optional[str] = None
+    aliases_json: List[str] = Field(default_factory=list)
     type: str
+    subtype: Optional[str] = None
     owner_organization: Optional[str] = None
     owner_team: Optional[str] = None
+    ownership_mode: Literal["team", "individual"] = "team"
+    internal_team_id: Optional[int] = None
+    internal_operator_id: Optional[int] = None
     status: Optional[str] = "Planned"
     environment: Optional[str] = "Production"
     description: Optional[str] = None
-    poc_json: Optional[List[Dict[str, Any]]] = []
-    metadata_json: Optional[Dict[str, Any]] = {}
+    notes: Optional[str] = None
+    contacts_json: List[ExternalContact] = Field(default_factory=list)
+    business_purpose: Optional[str] = None
+    criticality: Literal["Critical", "High", "Medium", "Low"] = "Low"
+    dependency_tier: Literal["Tier 1", "Tier 2", "Tier 3", "Tier 4"] = "Tier 3"
+    data_classification: Optional[Literal["Public", "Internal", "Confidential", "Restricted"]] = None
+    integration_mode: Optional[Literal["API", "SFTP", "VPN", "Database", "Manual", "Other"]] = None
+    primary_endpoint_url: Optional[str] = None
+    secondary_endpoint_url: Optional[str] = None
+    auth_method: Optional[Literal["OAuth2", "Token", "Basic", "mTLS", "SFTP Key", "VPN", "Manual", "Other"]] = None
+    protocol_family: Optional[Literal["HTTP", "HTTPS", "TCP", "UDP", "SFTP", "SSH", "Database", "Other"]] = None
+    port_override: Optional[int] = None
+    supports_inbound: bool = False
+    supports_outbound: bool = False
+    source_system: Optional[str] = None
+    source_record_id: Optional[str] = None
+    risk_rating: Literal["Critical", "High", "Medium", "Low"] = "Low"
+    contains_customer_data: bool = False
+    contains_credentials: bool = False
+    stores_pii: bool = False
+    internet_exposed: bool = False
+    third_party_assessment_status: Optional[Literal["Required", "In Progress", "Approved", "Rejected", "Not Required"]] = None
+    metadata_json: Dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Name is required")
+        return cleaned
+
+    @field_validator("external_key")
+    @classmethod
+    def validate_external_key(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = value.strip().lower()
+        if not cleaned:
+            return None
+        if not re.fullmatch(r"[a-z0-9][a-z0-9._:-]*", cleaned):
+            raise ValueError("External key must use lowercase letters, numbers, dot, underscore, colon, or dash")
+        return cleaned
+
+    @field_validator("aliases_json")
+    @classmethod
+    def validate_aliases(cls, value: List[str]) -> List[str]:
+        seen = set()
+        cleaned: List[str] = []
+        for item in value:
+            alias = item.strip()
+            if alias and alias not in seen:
+                seen.add(alias)
+                cleaned.append(alias)
+        return cleaned
+
+    @field_validator("primary_endpoint_url", "secondary_endpoint_url")
+    @classmethod
+    def validate_endpoint_urls(cls, value: Optional[str], info):
+        return _validate_external_url(value, info.field_name)
+
+    @field_validator("port_override")
+    @classmethod
+    def validate_port_override(cls, value: Optional[int]) -> Optional[int]:
+        if value is None:
+            return None
+        if value < 1 or value > 65535:
+            raise ValueError("Port override must be between 1 and 65535")
+        return value
+
+    @field_validator("metadata_json")
+    @classmethod
+    def validate_metadata_json(cls, value: Dict[str, Any]) -> Dict[str, Any]:
+        for key, raw in value.items():
+            if key in EXTERNAL_RESERVED_METADATA_KEYS:
+                raise ValueError(f"{key} is now a first-class field and cannot remain in metadata")
+            if not isinstance(raw, (str, int, float, bool)) and raw is not None:
+                raise ValueError("Metadata values must be scalar")
+        return value
+
+    @model_validator(mode="after")
+    def validate_contract(self):
+        if self.external_key is None:
+            self.external_key = re.sub(r"[^a-z0-9._:-]+", "-", self.name.lower()).strip("-") or "external-entity"
+        if self.ownership_mode == "team":
+            if self.internal_team_id is None:
+                raise ValueError("Internal accountable team is required")
+            if self.internal_operator_id is not None:
+                raise ValueError("Individual owner cannot be set when ownership mode is team")
+        if self.ownership_mode == "individual":
+            if self.internal_operator_id is None:
+                raise ValueError("Internal accountable operator is required")
+            if self.internal_team_id is not None:
+                raise ValueError("Team owner cannot be set when ownership mode is individual")
+        if self.source_system and not self.source_record_id:
+            raise ValueError("Source record ID is required when source system is set")
+        if self.integration_mode == "API" and not self.primary_endpoint_url:
+            raise ValueError("Primary endpoint URL is required for API integrations")
+        if self.primary_endpoint_url and not self.auth_method:
+            raise ValueError("Authentication method is required when an endpoint is defined")
+        if (self.criticality == "Critical" or self.dependency_tier == "Tier 1") and not self.business_purpose:
+            raise ValueError("Business purpose is required for critical or tier 1 external entities")
+        if (self.criticality == "Critical" or self.dependency_tier == "Tier 1") and not self.contacts_json:
+            raise ValueError("At least one accountable contact is required for critical or tier 1 external entities")
+        primary_count = sum(1 for contact in self.contacts_json if contact.is_primary)
+        if primary_count > 1:
+            raise ValueError("Only one primary contact is allowed")
+        if (self.internet_exposed or self.stores_pii) and not self.third_party_assessment_status:
+            raise ValueError("Assessment status is required when the entity is internet-exposed or stores PII")
+        return self
 
 class ExternalEntityCreate(ExternalEntityBase): pass
+class ExternalEntityUpdate(ExternalEntityBase): pass
 class ExternalEntityResponse(ExternalEntityBase, BaseSchema):
     is_deleted: bool = False
     secrets: List[ExternalEntitySecretResponse] = []
+    internal_team_name: Optional[str] = None
+    internal_operator_name: Optional[str] = None
+    internal_operator_external_id: Optional[str] = None
 
 class ExternalLinkBase(BaseModel):
     external_entity_id: int
     device_id: int
     service_id: Optional[int] = None
-    direction: str = "Upstream"
-    purpose: Optional[str] = None
-    protocol: Optional[str] = "TCP"
-    port: Optional[str] = None
-    credentials: Optional[Dict[str, Any]] = None
+    direction: Literal["Inbound", "Outbound", "Bidirectional"] = "Outbound"
+    purpose: str
+    protocol: Literal["HTTPS", "HTTP", "TCP", "UDP", "SFTP", "SSH", "Database", "Other"] = "TCP"
+    port: Optional[int] = None
+    host_or_fqdn: Optional[str] = None
+    path_or_resource: Optional[str] = None
+    network_zone: Optional[Literal["Internet", "DMZ", "Partner", "Internal", "Restricted"]] = None
+    transport_security: Optional[Literal["TLS", "mTLS", "VPN", "None", "Other"]] = None
+    link_status: Literal["Active", "Planned", "Disabled"] = "Active"
+    credential_reference: Optional[str] = None
+    credentials: Dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("purpose")
+    @classmethod
+    def validate_purpose(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Purpose is required")
+        return cleaned
+
+    @field_validator("port")
+    @classmethod
+    def validate_port(cls, value: Optional[int]) -> Optional[int]:
+        if value is None:
+            return None
+        if value < 1 or value > 65535:
+            raise ValueError("Port must be between 1 and 65535")
+        return value
+
+    @field_validator("host_or_fqdn")
+    @classmethod
+    def validate_host_or_fqdn(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if not cleaned:
+            return None
+        if any(token in cleaned.lower() for token in ["<script", "javascript:", "data:text/html", "vbscript:"]):
+            raise ValueError("Host or FQDN contains an unsafe value")
+        return cleaned
+
+    @field_validator("credentials")
+    @classmethod
+    def validate_credentials(cls, value: Dict[str, Any]) -> Dict[str, Any]:
+        for key, raw in value.items():
+            if not isinstance(raw, (str, int, float, bool)) and raw is not None:
+                raise ValueError("Credential metadata values must be scalar")
+        return value
 
 class ExternalLinkCreate(ExternalLinkBase): pass
 class ExternalLinkResponse(ExternalLinkBase, BaseSchema):

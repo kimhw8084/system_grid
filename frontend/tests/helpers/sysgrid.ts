@@ -65,6 +65,32 @@ export async function createConnection(request: APIRequestContext, payload: Reco
 }
 
 export async function createExternalEntity(request: APIRequestContext, payload: Record<string, any>) {
+  if (!payload.internal_team_id && !payload.internal_operator_id) {
+    const operators = await get(request, '/settings/operators')
+    payload = {
+      ownership_mode: 'individual',
+      internal_operator_id: operators[0]?.id,
+      contacts_json: [
+        {
+          role: 'Primary',
+          full_name: 'Primary Contact',
+          email: 'primary.contact@example.com',
+          phone: '+1-555-0100',
+          external_person_id: 'primary-contact',
+          is_primary: true,
+          is_escalation: false,
+        },
+      ],
+      business_purpose: 'External dependency support',
+      criticality: 'Low',
+      dependency_tier: 'Tier 3',
+      integration_mode: payload.type === 'API' ? 'API' : 'Manual',
+      auth_method: payload.type === 'API' ? 'Token' : 'Manual',
+      primary_endpoint_url: payload.type === 'API' ? 'https://partner.example.com' : undefined,
+      risk_rating: 'Low',
+      ...payload,
+    }
+  }
   return post(request, '/intelligence/entities', payload)
 }
 

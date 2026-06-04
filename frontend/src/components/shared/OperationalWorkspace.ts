@@ -16,6 +16,9 @@ export type WorkspaceCapability =
 export interface WorkspaceDefinition {
   workspaceName: string
   standardSurface: string[]
+  requiredBaseline: string[]
+  gridBehaviorContract: string[]
+  modalBehaviorContract: string[]
   sharedCapabilities: WorkspaceCapability[]
   monitoringSpecificFeatures: string[]
 }
@@ -49,6 +52,27 @@ export const MONITORING_WORKSPACE_STANDARD: WorkspaceDefinition = {
     'Add/edit modal with sticky identity header, tabbed sections, inline validation, and consistent action footer',
     'History and compare flows for versioned operational records',
   ],
+  requiredBaseline: [
+    'Consistent page header and toolbar shell',
+    'Saved views and display controls where the view is table-centric',
+    'Add/edit modal with sticky identity fields and inline validation',
+    'Hover previews for dense linked data where scan speed matters',
+    'History and archive/restore behavior when the entity lifecycle supports it',
+  ],
+  gridBehaviorContract: [
+    'Saved views persist search, filters, grouping, sort, and column visibility together',
+    'Display controls manage density and column presentation without mutating record data',
+    'Grouping and right-click actions are available only where the entity benefits from operational table workflows',
+    'Bulk actions operate on explicit selection state and never on hidden implicit scope',
+    'Hover previews expose dense linked data without forcing modal navigation',
+  ],
+  modalBehaviorContract: [
+    'Add/edit uses a sticky identity header for the primary record fields',
+    'Tabbed sections keep validation visible with field errors and tab-level counts',
+    'Required fields are marked in the form, not only rejected by the backend',
+    'The footer keeps cancel and save actions in a consistent location across views',
+    'History, compare, and archive/restore appear only when the backing entity supports them',
+  ],
   sharedCapabilities: [
     'savedViews',
     'displayControls',
@@ -72,6 +96,13 @@ export const MONITORING_WORKSPACE_STANDARD: WorkspaceDefinition = {
     'Monitoring URL sanitization and safety rules',
   ],
 }
+
+export const OPERATIONAL_WORKSPACE_MINIMUM_STANDARD = [
+  'Shared page header and toolbar shell',
+  'Shared table/workspace state model for search, filters, views, and selection',
+  'Shared add/edit modal shell with sticky identity, tabs, validation, and footer actions',
+  'Per-view adapter contract for schema, actions, validation rules, and linked selectors',
+] as const
 
 // Adapter shape for future view migrations after schema stabilization.
 export interface OperationalWorkspaceAdapter {

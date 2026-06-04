@@ -413,24 +413,61 @@ class DataFlowHistory(Base, BaseMixin):
 class ExternalEntity(Base, BaseMixin):
     __tablename__ = "external_entities"
     name = Column(String, index=True)
+    external_key = Column(String, unique=True, index=True)
+    aliases_json = Column(JSON, default=list)
     type = Column(String) # Driven by ExternalType registry (e.g. Equipment, Physical Server, Virtual Server, Switch, Storage, DB, API, Script)
+    subtype = Column(String)
     owner_organization = Column(String)
-    owner_team = Column(String)
+    owner_team = Column(String) # Legacy external-side team label
+    ownership_mode = Column(String, default="team")
+    internal_team_id = Column(Integer, ForeignKey("teams.id", ondelete="SET NULL"), nullable=True)
+    internal_operator_id = Column(Integer, ForeignKey("operators.id", ondelete="SET NULL"), nullable=True)
     status = Column(String, default="Planned")
     environment = Column(String, default="Production")
     description = Column(Text)
+    notes = Column(Text)
+    contacts_json = Column(JSON, default=list)
+    business_purpose = Column(Text)
+    criticality = Column(String, default="Low")
+    dependency_tier = Column(String, default="Tier 3")
+    data_classification = Column(String)
+    integration_mode = Column(String)
+    primary_endpoint_url = Column(String)
+    secondary_endpoint_url = Column(String)
+    auth_method = Column(String)
+    protocol_family = Column(String)
+    port_override = Column(Integer)
+    supports_inbound = Column(Boolean, default=False)
+    supports_outbound = Column(Boolean, default=False)
+    source_system = Column(String)
+    source_record_id = Column(String)
+    risk_rating = Column(String, default="Low")
+    contains_customer_data = Column(Boolean, default=False)
+    contains_credentials = Column(Boolean, default=False)
+    stores_pii = Column(Boolean, default=False)
+    internet_exposed = Column(Boolean, default=False)
+    third_party_assessment_status = Column(String)
     poc_json = Column(JSON, default=list) # Multi-add POCs: [{first_name, last_name, id, email, phone}]
     metadata_json = Column(JSON, default=dict) # Driven by ExternalType registry keys
     is_deleted = Column(Boolean, default=False)
     
     secrets = relationship("ExternalEntitySecret", back_populates="external_entity", cascade="all, delete-orphan")
+    internal_team = relationship("Team", foreign_keys=[internal_team_id])
+    internal_operator = relationship("Operator", foreign_keys=[internal_operator_id])
 
 class ExternalEntitySecret(Base, BaseMixin):
     __tablename__ = "external_entity_secrets"
     external_entity_id = Column(Integer, ForeignKey("external_entities.id", ondelete="CASCADE"))
+    secret_label = Column(String)
+    secret_type = Column(String, default="SharedSecret")
     username = Column(String)
     password = Column(String)
+    vault_provider = Column(String)
+    vault_path = Column(String)
     note = Column(Text)
+    credential_status = Column(String, default="Active")
+    rotation_frequency_days = Column(Integer)
+    password_last_rotated_at = Column(String)
     external_entity = relationship("ExternalEntity", back_populates="secrets")
 
 class ExternalLink(Base, BaseMixin):
@@ -442,6 +479,12 @@ class ExternalLink(Base, BaseMixin):
     purpose = Column(String)
     protocol = Column(String) # TCP, UDP, HTTPS, etc.
     port = Column(String)
+    host_or_fqdn = Column(String)
+    path_or_resource = Column(String)
+    network_zone = Column(String)
+    transport_security = Column(String)
+    link_status = Column(String, default="Active")
+    credential_reference = Column(String)
     credentials = Column(JSON) # Store as { "username": "...", "password": "...", "note": "..." }
     
     external_entity = relationship("ExternalEntity")

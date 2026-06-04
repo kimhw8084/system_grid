@@ -34,53 +34,127 @@ const getMetaText = (entity: any, key: string) => {
   return typeof value === 'string' ? value.trim() : value
 }
 
-const getMetaDate = (entity: any, key: string) => {
-  const raw = getMetaText(entity, key)
-  if (!raw) return null
-  const parsed = new Date(raw)
-  return Number.isNaN(parsed.getTime()) ? null : parsed
+const ACCOUNTABLE_OWNER_OPTIONS = [
+  { value: 'team', label: 'Team' },
+  { value: 'individual', label: 'Individual' },
+]
+
+const CONTACT_ROLE_OPTIONS = ['Primary', 'Operational', 'Escalation', 'Security', 'Business']
+const CRITICALITY_OPTIONS = ['Critical', 'High', 'Medium', 'Low']
+const DEPENDENCY_TIER_OPTIONS = ['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4']
+const DATA_CLASSIFICATION_OPTIONS = ['Public', 'Internal', 'Confidential', 'Restricted']
+const INTEGRATION_MODE_OPTIONS = ['API', 'SFTP', 'VPN', 'Database', 'Manual', 'Other']
+const AUTH_METHOD_OPTIONS = ['OAuth2', 'Token', 'Basic', 'mTLS', 'SFTP Key', 'VPN', 'Manual', 'Other']
+const PROTOCOL_FAMILY_OPTIONS = ['HTTP', 'HTTPS', 'TCP', 'UDP', 'SFTP', 'SSH', 'Database', 'Other']
+const RISK_RATING_OPTIONS = ['Critical', 'High', 'Medium', 'Low']
+const THIRD_PARTY_ASSESSMENT_OPTIONS = ['Required', 'In Progress', 'Approved', 'Rejected', 'Not Required']
+const SECRET_TYPE_OPTIONS = ['VaultReference', 'SharedSecret', 'Token', 'KeyPair', 'Certificate']
+const SECRET_STATUS_OPTIONS = ['Active', 'RotationDue', 'Disabled']
+const VAULT_PROVIDER_OPTIONS = ['1Password', 'Bitwarden', 'HashiCorp Vault', 'AWS Secrets Manager', 'Azure Key Vault', 'Other']
+const LINK_DIRECTION_OPTIONS = ['Inbound', 'Outbound', 'Bidirectional']
+const LINK_PROTOCOL_OPTIONS = ['HTTPS', 'HTTP', 'TCP', 'UDP', 'SFTP', 'SSH', 'Database', 'Other']
+const LINK_NETWORK_ZONE_OPTIONS = ['Internet', 'DMZ', 'Partner', 'Internal', 'Restricted']
+const LINK_TRANSPORT_SECURITY_OPTIONS = ['TLS', 'mTLS', 'VPN', 'None', 'Other']
+
+const extensionMetadataKeysByType: Record<string, string[]> = {
+  Equipment: ['manufacturer', 'model', 'serial_number'],
+  'Physical Server': ['rack_id', 'unit_position', 'os'],
+  'Virtual Server': ['hypervisor', 'vcpu', 'vram', 'os'],
+  Switch: ['management_url', 'ports', 'firmware'],
+  DB: ['engine', 'instance_name'],
+  API: ['version'],
+  Script: ['runtime', 'path', 'schedule'],
+}
+
+const reservedMetadataKeys = new Set([
+  'business_purpose',
+  'criticality',
+  'dependency_tier',
+  'data_classification',
+  'integration_mode',
+  'primary_endpoint_url',
+  'secondary_endpoint_url',
+  'auth_method',
+  'protocol_family',
+  'port_override',
+  'supports_inbound',
+  'supports_outbound',
+  'source_system',
+  'source_record_id',
+  'risk_rating',
+  'contains_customer_data',
+  'contains_credentials',
+  'stores_pii',
+  'internet_exposed',
+  'third_party_assessment_status',
+])
+
+const safeUrlPattern = /^(https?:\/\/|sftp:\/\/|ftps:\/\/|ssh:\/\/)/i
+
+const normalizeLegacyContacts = (entity: any) => {
+  if (Array.isArray(entity?.contacts_json) && entity.contacts_json.length) return entity.contacts_json
+  if (!Array.isArray(entity?.poc_json)) return []
+  return entity.poc_json.map((contact: any, index: number) => ({
+    role: index === 0 ? 'Primary' : 'Operational',
+    full_name: [contact.first_name, contact.last_name].filter(Boolean).join(' ').trim() || contact.id || 'Unspecified Contact',
+    email: contact.email || '',
+    phone: contact.phone || '',
+    external_person_id: contact.id || '',
+    is_primary: index === 0,
+    is_escalation: false,
+  }))
 }
 
 const getEntityInsights = (entity: any, links: any[] = []) => {
   const metadata = parseMetadataObject(entity?.metadata_json)
   const linked = links.filter((link: any) => link.external_entity_id === entity.id)
-  const criticality = String(metadata.criticality || 'Unrated')
-  const dependencyTier = String(metadata.dependency_tier || 'Unspecified')
-  const reviewStatus = String(metadata.review_status || 'Needs Review')
-  const lastReviewedAt = getMetaDate(entity, 'last_reviewed_at')
-  const nextReviewDue = getMetaDate(entity, 'next_review_due')
-  const staleDays = lastReviewedAt ? Math.floor((Date.now() - lastReviewedAt.getTime()) / 86_400_000) : null
-  const isStale = staleDays === null || staleDays > 90
-  const hasOwner = Boolean(entity.owner_organization && entity.owner_team)
-  const hasPoc = Boolean(entity.poc_json?.length)
+  const contacts = normalizeLegacyContacts(entity)
+  const criticality = String(entity.criticality || 'Low')
+  const dependencyTier = String(entity.dependency_tier || 'Tier 3')
+  const hasOwner = entity.ownership_mode === 'individual'
+    ? Boolean(entity.internal_operator_id)
+    : Boolean(entity.internal_team_id)
+  const hasPoc = Boolean(contacts.length)
   const hasSecrets = Boolean(entity.secrets?.length)
+  const extensionKeys = Object.keys(metadata || {})
   const warnings = [
     !hasOwner ? 'Owner coverage missing' : null,
-    !hasPoc ? 'POC roster missing' : null,
-    !hasSecrets && ['API', 'DB', 'Script'].includes(entity.type) ? 'Credential record missing' : null,
-    isStale ? 'Review overdue' : null,
+    !hasPoc ? 'Contact roster missing' : null,
+    !hasSecrets && ['API', 'DB', 'Script'].includes(entity.type) ? 'Credential reference missing' : null,
     linked.length === 0 ? 'No dependency mapping' : null,
-    !metadata.business_purpose ? 'Business purpose missing' : null,
+    !entity.business_purpose ? 'Business purpose missing' : null,
+    (entity.internet_exposed || entity.stores_pii) && !entity.third_party_assessment_status ? 'Assessment status missing' : null,
   ].filter(Boolean) as string[]
 
   return {
     metadata,
+    contacts,
     linked,
     criticality,
     dependencyTier,
-    reviewStatus,
-    lastReviewedAt,
-    nextReviewDue,
-    staleDays,
-    isStale,
+    externalOwnerLabel: entity.owner_organization || entity.owner_team || 'Unassigned',
+    internalOwnerLabel: entity.ownership_mode === 'individual'
+      ? entity.internal_operator_name || entity.internal_operator_external_id || 'Unassigned'
+      : entity.internal_team_name || 'Unassigned',
     hasOwner,
     hasPoc,
     hasSecrets,
+    extensionKeys,
     warnings,
   }
 }
 
-const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v: any) => void, onError?: (err: string | null) => void }) => {
+const MetadataEditor = ({
+  value,
+  onChange,
+  onError,
+  allowedKeys = [],
+}: {
+  value: any
+  onChange: (v: any) => void
+  onError?: (err: string | null) => void
+  allowedKeys?: string[]
+}) => {
   const [mode, setMode] = useState<'table' | 'json'>('table')
   const [tableRows, setTableRows] = useState(() => {
     const obj = parseMetadataObject(value)
@@ -99,11 +173,15 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
     const obj: any = {}
     const keys = new Set()
     let hasDuplicate = false
+    let invalidReservedKey: string | null = null
+    let invalidTypeKey: string | null = null
 
     rows.forEach(r => {
       if (r.key) {
         if (keys.has(r.key)) hasDuplicate = true
         keys.add(r.key)
+        if (reservedMetadataKeys.has(r.key)) invalidReservedKey = r.key
+        if (allowedKeys.length > 0 && !allowedKeys.includes(r.key)) invalidTypeKey = r.key
         obj[r.key] = r.value
       }
     })
@@ -111,6 +189,14 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
     if (hasDuplicate) {
         setError("Duplicate keys detected")
         onError?.("Duplicate keys detected")
+        return false
+    } else if (invalidReservedKey) {
+        setError(`${invalidReservedKey} is now a structured field`)
+        onError?.(`${invalidReservedKey} is now a structured field`)
+        return false
+    } else if (invalidTypeKey) {
+        setError(`${invalidTypeKey} is not allowed for this external type`)
+        onError?.(`${invalidTypeKey} is not allowed for this external type`)
         return false
     } else {
         setError(null)
@@ -124,6 +210,19 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
   const syncFromJSON = (json: string) => {
     try {
         const obj = JSON.parse(json)
+        const keys = Object.keys(obj)
+        const reservedKey = keys.find((key) => reservedMetadataKeys.has(key))
+        if (reservedKey) {
+          setError(`${reservedKey} is now a structured field`)
+          onError?.(`${reservedKey} is now a structured field`)
+          return false
+        }
+        const invalidTypeKey = allowedKeys.length > 0 ? keys.find((key) => !allowedKeys.includes(key)) : null
+        if (invalidTypeKey) {
+          setError(`${invalidTypeKey} is not allowed for this external type`)
+          onError?.(`${invalidTypeKey} is not allowed for this external type`)
+          return false
+        }
         const rows = Object.entries(obj).map(([k, v]) => ({ key: k, value: String(v) }))
         setTableRows(rows)
         setError(null)
@@ -221,10 +320,10 @@ const MetadataViewer = ({ data }: { data: any }) => {
 
 const POCManager = ({ pocs, onChange }: { pocs: any[], onChange: (newPocs: any[]) => void }) => {
   const addPOC = () => {
-    onChange([...pocs, { first_name: '', last_name: '', id: '', email: '', phone: '' }])
+    onChange([...pocs, { role: 'Operational', full_name: '', email: '', phone: '', external_person_id: '', is_primary: pocs.length === 0, is_escalation: false }])
   }
 
-  const updatePOC = (index: number, field: string, value: string) => {
+  const updatePOC = (index: number, field: string, value: any) => {
     const newPocs = [...pocs]
     newPocs[index] = { ...newPocs[index], [field]: value }
     onChange(newPocs)
@@ -254,16 +353,20 @@ const POCManager = ({ pocs, onChange }: { pocs: any[], onChange: (newPocs: any[]
             <button onClick={() => removePOC(idx)} className="absolute top-2 right-2 text-slate-600 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"><X size={14}/></button>
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">First Name</label>
-                <input value={poc.first_name} onChange={e => updatePOC(idx, 'first_name', e.target.value)} className="w-full bg-slate-900 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-amber-500/50" placeholder="Jane" />
+                <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Full Name</label>
+                <input value={poc.full_name} onChange={e => updatePOC(idx, 'full_name', e.target.value)} className="w-full bg-slate-900 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-amber-500/50" placeholder="Jane Doe" />
               </div>
               <div>
-                <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Last Name</label>
-                <input value={poc.last_name} onChange={e => updatePOC(idx, 'last_name', e.target.value)} className="w-full bg-slate-900 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-amber-500/50" placeholder="Doe" />
+                <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Role</label>
+                <StyledSelect
+                  value={poc.role}
+                  onChange={e => updatePOC(idx, 'role', e.target.value)}
+                  options={CONTACT_ROLE_OPTIONS.map((role) => ({ value: role, label: role }))}
+                />
               </div>
               <div>
-                <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Entity ID</label>
-                <input value={poc.id} onChange={e => updatePOC(idx, 'id', e.target.value)} className="w-full bg-slate-900 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-amber-500/50" placeholder="JD-1234" />
+                <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">External Contact ID</label>
+                <input value={poc.external_person_id} onChange={e => updatePOC(idx, 'external_person_id', e.target.value)} className="w-full bg-slate-900 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-amber-500/50" placeholder="JD-1234" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 pt-1">
@@ -275,6 +378,16 @@ const POCManager = ({ pocs, onChange }: { pocs: any[], onChange: (newPocs: any[]
                 <Phone size={10} className="text-slate-500" />
                 <input value={poc.phone} onChange={e => updatePOC(idx, 'phone', e.target.value)} className="flex-1 bg-transparent text-[10px] font-bold text-slate-300 outline-none" placeholder="+1-555-0199" />
               </div>
+            </div>
+            <div className="flex items-center gap-4 pt-1">
+              <label className="flex items-center gap-2 text-[8px] font-bold uppercase tracking-widest text-slate-500">
+                <input type="checkbox" checked={!!poc.is_primary} onChange={e => onChange(pocs.map((entry, entryIndex) => ({ ...entry, is_primary: entryIndex === idx ? e.target.checked : false })))} />
+                Primary Contact
+              </label>
+              <label className="flex items-center gap-2 text-[8px] font-bold uppercase tracking-widest text-slate-500">
+                <input type="checkbox" checked={!!poc.is_escalation} onChange={e => updatePOC(idx, 'is_escalation', e.target.checked)} />
+                Escalation Contact
+              </label>
             </div>
           </div>
         ))}
@@ -290,14 +403,24 @@ const ExternalSecretsTab = ({ entityId }: { entityId: number }) => {
     queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities?include_deleted=true')).json())
   })
   const entity = (entities as any[])?.find((e: any) => e.id === entityId)
-  const [newSecret, setNewSecret] = useState({ username: '', password: '', note: '' })
-  const [visiblePasswords, setVisiblePasswords] = useState<Record<number, boolean>>({})
+  const [newSecret, setNewSecret] = useState({
+    secret_label: '',
+    secret_type: 'VaultReference',
+    username: '',
+    vault_provider: '',
+    vault_path: '',
+    note: '',
+    credential_status: 'Active',
+    rotation_frequency_days: '',
+  })
+  const [error, setError] = useState('')
 
   const addMutation = useMutation({
     mutationFn: async (data: any) => apiFetch(`/api/v1/intelligence/entities/${entityId}/secrets`, { method: 'POST', body: JSON.stringify(data) }),
     onSuccess: () => { 
       queryClient.invalidateQueries({ queryKey: ['external-entities'] })
-      setNewSecret({ username: '', password: '', note: '' })
+      setNewSecret({ secret_label: '', secret_type: 'VaultReference', username: '', vault_provider: '', vault_path: '', note: '', credential_status: 'Active', rotation_frequency_days: '' })
+      setError('')
       toast.success('Credential Added') 
     }
   })
@@ -310,37 +433,69 @@ const ExternalSecretsTab = ({ entityId }: { entityId: number }) => {
     }
   })
 
-  const togglePassword = (id: number) => {
-    setVisiblePasswords(prev => ({ ...prev, [id]: !prev[id] }))
-  }
-
   return (
     <div className="space-y-6">
       <div className="bg-black/40 border border-white/5 rounded-lg p-6 space-y-4">
         <h3 className="text-[10px] font-bold uppercase text-blue-400 tracking-widest flex items-center gap-2">
-          <Shield size={12}/> Register Access Credential
+          <Shield size={12}/> Register Credential Reference
         </h3>
         <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Credential Label</label>
+            <input value={newSecret.secret_label} onChange={e => setNewSecret({...newSecret, secret_label: e.target.value})} placeholder="Partner production token" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+          </div>
+          <div>
+            <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Credential Type</label>
+            <StyledSelect value={newSecret.secret_type} onChange={e => setNewSecret({...newSecret, secret_type: e.target.value})} options={SECRET_TYPE_OPTIONS.map((value) => ({ value, label: value }))} />
+          </div>
+          <div>
+            <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Status</label>
+            <StyledSelect value={newSecret.credential_status} onChange={e => setNewSecret({...newSecret, credential_status: e.target.value})} options={SECRET_STATUS_OPTIONS.map((value) => ({ value, label: value }))} />
+          </div>
           <div>
             <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Username / ID</label>
             <input value={newSecret.username} onChange={e => setNewSecret({...newSecret, username: e.target.value})} placeholder="E.G. ADMIN_SVC" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
           </div>
           <div>
-            <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Access Password</label>
-            <input type="password" value={newSecret.password} onChange={e => setNewSecret({...newSecret, password: e.target.value})} placeholder="••••••••" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+            <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Vault Provider</label>
+            <StyledSelect value={newSecret.vault_provider} onChange={e => setNewSecret({...newSecret, vault_provider: e.target.value})} options={VAULT_PROVIDER_OPTIONS.map((value) => ({ value, label: value }))} placeholder="Select provider" />
           </div>
           <div>
+            <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Vault Path</label>
+            <input value={newSecret.vault_path} onChange={e => setNewSecret({...newSecret, vault_path: e.target.value})} placeholder="vault://partner/prod/token" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+          </div>
+          <div>
+            <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Rotation Frequency (Days)</label>
+            <input value={newSecret.rotation_frequency_days} onChange={e => setNewSecret({...newSecret, rotation_frequency_days: e.target.value})} placeholder="90" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+          </div>
+          <div className="col-span-2">
             <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">Purpose / Note</label>
-            <input value={newSecret.note} onChange={e => setNewSecret({...newSecret, note: e.target.value})} placeholder="E.G. READ-ONLY API ACCESS" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+            <input value={newSecret.note} onChange={e => setNewSecret({...newSecret, note: e.target.value})} placeholder="Readonly feed access" className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
           </div>
         </div>
+        {error && <p className="text-[9px] font-bold text-rose-400">{error}</p>}
         <button 
-          disabled={!newSecret.username || !newSecret.password}
-          onClick={() => addMutation.mutate(newSecret)}
+          disabled={!newSecret.secret_label || (newSecret.secret_type === 'VaultReference' && !newSecret.vault_path)}
+          onClick={() => {
+            if (!newSecret.secret_label.trim()) {
+              setError('Credential label is required')
+              return
+            }
+            if (newSecret.secret_type === 'VaultReference' && !newSecret.vault_path.trim()) {
+              setError('Vault path is required for vault-referenced credentials')
+              return
+            }
+            addMutation.mutate({
+              ...newSecret,
+              vault_provider: newSecret.vault_provider || null,
+              vault_path: newSecret.vault_path || null,
+              rotation_frequency_days: newSecret.rotation_frequency_days ? parseInt(newSecret.rotation_frequency_days, 10) : null,
+            })
+          }}
           className="w-full py-3 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all disabled:opacity-30 flex items-center justify-center gap-2"
         >
           {addMutation.isPending ? <RefreshCcw size={14} className="animate-spin" /> : <Plus size={14} />}
-          Inject Secret into Vault
+          Register Credential Reference
         </button>
       </div>
 
@@ -352,25 +507,18 @@ const ExternalSecretsTab = ({ entityId }: { entityId: number }) => {
         <table className="w-full text-left">
           <thead>
             <tr className="bg-white/5 border-b border-white/5">
-              <th className="px-4 py-3 text-[9px] font-bold uppercase tracking-widest text-slate-500">Username</th>
-              <th className="px-4 py-3 text-[9px] font-bold uppercase tracking-widest text-slate-500">Password</th>
-              <th className="px-4 py-3 text-[9px] font-bold uppercase tracking-widest text-slate-500">Purpose</th>
+              <th className="px-4 py-3 text-[9px] font-bold uppercase tracking-widest text-slate-500">Label</th>
+              <th className="px-4 py-3 text-[9px] font-bold uppercase tracking-widest text-slate-500">Vault Path</th>
+              <th className="px-4 py-3 text-[9px] font-bold uppercase tracking-widest text-slate-500">Status</th>
               <th className="px-4 py-3 text-right text-[9px] font-bold uppercase tracking-widest text-slate-500">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
             {entity?.secrets?.map((s: any) => (
               <tr key={s.id} className="hover:bg-white/5 transition-colors group">
-                <td className="px-4 py-3 text-[10px] font-bold text-white uppercase">{s.username}</td>
-                <td className="px-4 py-3 font-mono text-[10px]">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-blue-400/80">{visiblePasswords[s.id] ? s.password : '••••••••••••'}</span>
-                    <button onClick={() => togglePassword(s.id)} className="text-slate-500 hover:text-blue-400 transition-colors">
-                      {visiblePasswords[s.id] ? <EyeOff size={12}/> : <Eye size={12}/>}
-                    </button>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-[10px] text-slate-400 font-medium ">{s.note || 'N/A'}</td>
+                <td className="px-4 py-3 text-[10px] font-bold text-white">{s.secret_label}</td>
+                <td className="px-4 py-3 font-mono text-[10px] text-blue-400/80">{s.vault_path || 'Legacy inline secret'}</td>
+                <td className="px-4 py-3 text-[10px] text-slate-400 font-medium ">{s.credential_status || 'Active'}</td>
                 <td className="px-4 py-3 text-right">
                   <button onClick={() => deleteMutation.mutate(s.id)} className="p-1.5 text-slate-600 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100">
                     <Trash2 size={14}/>
@@ -390,45 +538,53 @@ const ExternalSecretsTab = ({ entityId }: { entityId: number }) => {
   )
 }
 
-const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    type: 'API',
-    owner_organization: '',
-    owner_team: '',
-    status: 'Planned',
-    environment: 'Production',
-    description: '',
-    poc_json: [],
-    metadata_json: {},
-    ...initialData
+const ExternalForm = ({ initialData, onSave, isSaving, options, teams, operators }: any) => {
+  const [metadataError, setMetadataError] = useState<string | null>(null)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [formData, setFormData] = useState(() => {
+    const normalizedContacts = normalizeLegacyContacts(initialData)
+    return {
+      name: initialData.name || '',
+      external_key: initialData.external_key || '',
+      aliases_json: initialData.aliases_json || [],
+      type: initialData.type || 'API',
+      subtype: initialData.subtype || '',
+      owner_organization: initialData.owner_organization || '',
+      owner_team: initialData.owner_team || '',
+      ownership_mode: initialData.ownership_mode || 'team',
+      internal_team_id: initialData.internal_team_id ? String(initialData.internal_team_id) : '',
+      internal_operator_id: initialData.internal_operator_id ? String(initialData.internal_operator_id) : '',
+      status: initialData.status || 'Planned',
+      environment: initialData.environment || 'Production',
+      description: initialData.description || '',
+      notes: initialData.notes || '',
+      contacts_json: normalizedContacts,
+      business_purpose: initialData.business_purpose || '',
+      criticality: initialData.criticality || 'Low',
+      dependency_tier: initialData.dependency_tier || 'Tier 3',
+      data_classification: initialData.data_classification || '',
+      integration_mode: initialData.integration_mode || (initialData.type === 'API' ? 'API' : ''),
+      primary_endpoint_url: initialData.primary_endpoint_url || '',
+      secondary_endpoint_url: initialData.secondary_endpoint_url || '',
+      auth_method: initialData.auth_method || '',
+      protocol_family: initialData.protocol_family || '',
+      port_override: initialData.port_override ?? '',
+      supports_inbound: !!initialData.supports_inbound,
+      supports_outbound: !!initialData.supports_outbound,
+      source_system: initialData.source_system || '',
+      source_record_id: initialData.source_record_id || '',
+      risk_rating: initialData.risk_rating || 'Low',
+      contains_customer_data: !!initialData.contains_customer_data,
+      contains_credentials: !!initialData.contains_credentials,
+      stores_pii: !!initialData.stores_pii,
+      internet_exposed: !!initialData.internet_exposed,
+      third_party_assessment_status: initialData.third_party_assessment_status || '',
+      metadata_json: parseMetadataObject(initialData.metadata_json),
+    }
   })
-  const operationalFields = [
-    { key: 'business_purpose', label: 'Business Purpose', placeholder: 'Revenue feed, customer identity, payment routing...' },
-    { key: 'dependency_tier', label: 'Dependency Tier', placeholder: 'Tier 1 / Tier 2 / Tier 3' },
-    { key: 'criticality', label: 'Criticality', placeholder: 'Critical / High / Medium / Low' },
-    { key: 'review_status', label: 'Review Status', placeholder: 'Approved / Needs Review / Exception' },
-    { key: 'auth_method', label: 'Auth Method', placeholder: 'OAuth2 / Token / SFTP Key / Basic' },
-    { key: 'base_url', label: 'Primary Endpoint', placeholder: 'https://partner.example.com' },
-    { key: 'support_window', label: 'Support Window', placeholder: '24x7 / Business Hours / On-call' },
-    { key: 'contract_reference', label: 'Contract Reference', placeholder: 'MSA-2026-017' },
-    { key: 'source_of_truth', label: 'Source Of Truth', placeholder: 'CMDB / Vendor Portal / Contract Desk' },
-    { key: 'runbook_url', label: 'Runbook URL', placeholder: 'https://wiki.example.com/external-runbook' },
-    { key: 'last_reviewed_at', label: 'Last Reviewed', placeholder: '2026-06-01' },
-    { key: 'next_review_due', label: 'Next Review Due', placeholder: '2026-09-01' },
-  ]
 
   const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
-  const types = getOptions('ExternalType').length > 0 ? getOptions('ExternalType') : [
-    { value: 'Equipment', label: 'Equipment', metadata_keys: ["manufacturer", "model", "serial_number"] },
-    { value: 'Physical Server', label: 'Physical Server', metadata_keys: ["rack_id", "unit_position", "os"] },
-    { value: 'Virtual Server', label: 'Virtual Server', metadata_keys: ["hypervisor", "vcpu", "vram", "os"] },
-    { value: 'Switch', label: 'Switch', metadata_keys: ["management_url", "ports", "firmware"] },
-    { value: 'DB', label: 'DB', metadata_keys: ["engine", "port", "instance_name"] },
-    { value: 'API', label: 'API', metadata_keys: ["base_url", "auth_type", "version"] },
-    { value: 'Script', label: 'Script', metadata_keys: ["runtime", "path", "schedule"] }
-  ]
-
+  const types = getOptions('ExternalType').length > 0 ? getOptions('ExternalType') : Object.keys(extensionMetadataKeysByType).map((value) => ({ value, label: value }))
   const statusOptions = getOptions('Status').length > 0 ? getOptions('Status') : [
     { value: 'Planned', label: 'Planned' },
     { value: 'Active', label: 'Active' },
@@ -439,7 +595,6 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
     { value: 'Provisioning', label: 'Provisioning' },
     { value: 'Reserved', label: 'Reserved' }
   ]
-
   const envOptions = getOptions('Environment').length > 0 ? getOptions('Environment') : [
     { value: 'Production', label: 'Production' },
     { value: 'Staging', label: 'Staging' },
@@ -449,139 +604,229 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
     { value: 'Sandbox', label: 'Sandbox' },
     { value: 'Legacy', label: 'Legacy' }
   ]
+  const allowedMetadataKeys = extensionMetadataKeysByType[formData.type] || []
 
-  // Fix: Metadata key replacement logic
   useEffect(() => {
-    const selectedType = types.find((t: any) => t.value === formData.type);
-    if (selectedType?.metadata_keys) {
-      const nextMeta: any = { ...(formData.metadata_json || {}) };
-      let changed = false;
-      selectedType.metadata_keys.forEach((key: string) => {
-        if (!(key in nextMeta)) {
-          nextMeta[key] = "";
-          changed = true;
-        }
-      });
-      if (changed) {
-        setFormData(prev => ({ ...prev, metadata_json: nextMeta }));
-      }
+    if (!formData.external_key && formData.name) {
+      setFormData((prev: any) => ({
+        ...prev,
+        external_key: prev.name.toLowerCase().trim().replace(/[^a-z0-9._:-]+/g, '-').replace(/^-+|-+$/g, ''),
+      }))
     }
-  }, [formData.type, types]);
+  }, [formData.name, formData.external_key])
+
+  useEffect(() => {
+    if (!allowedMetadataKeys.length) return
+    setFormData((prev: any) => {
+      const nextMeta = { ...prev.metadata_json }
+      let changed = false
+      for (const key of allowedMetadataKeys) {
+        if (!(key in nextMeta)) {
+          nextMeta[key] = ''
+          changed = true
+        }
+      }
+      const filteredMeta = Object.fromEntries(Object.entries(nextMeta).filter(([key]) => allowedMetadataKeys.includes(key)))
+      if (JSON.stringify(filteredMeta) !== JSON.stringify(prev.metadata_json)) changed = true
+      return changed ? { ...prev, metadata_json: filteredMeta } : prev
+    })
+  }, [formData.type])
+
+  const updateField = (key: string, value: any) => {
+    setFormData((prev: any) => ({ ...prev, [key]: value }))
+    setErrors((prev) => ({ ...prev, [key]: '' }))
+  }
+
+  const inputClass = (field: string) => `w-full bg-slate-900 border ${errors[field] ? 'border-rose-500/50 bg-rose-500/5' : 'border-white/10'} rounded-lg px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all`
+
+  const validate = () => {
+    const nextErrors: Record<string, string> = {}
+    if (!formData.name.trim()) nextErrors.name = 'Name is required'
+    if (!formData.external_key.trim()) nextErrors.external_key = 'External key is required'
+    if (formData.ownership_mode === 'team' && !formData.internal_team_id) nextErrors.internal_team_id = 'Accountable team is required'
+    if (formData.ownership_mode === 'individual' && !formData.internal_operator_id) nextErrors.internal_operator_id = 'Accountable operator is required'
+    if (!formData.business_purpose.trim()) nextErrors.business_purpose = 'Business purpose is required'
+    if (formData.integration_mode === 'API' && !formData.primary_endpoint_url.trim()) nextErrors.primary_endpoint_url = 'Primary endpoint is required for API integrations'
+    if (formData.primary_endpoint_url && !safeUrlPattern.test(formData.primary_endpoint_url)) nextErrors.primary_endpoint_url = 'Endpoint must use a safe supported URL scheme'
+    if (formData.secondary_endpoint_url && !safeUrlPattern.test(formData.secondary_endpoint_url)) nextErrors.secondary_endpoint_url = 'Secondary endpoint must use a safe supported URL scheme'
+    if (formData.primary_endpoint_url && !formData.auth_method) nextErrors.auth_method = 'Authentication method is required when an endpoint is set'
+    if (formData.port_override && (Number(formData.port_override) < 1 || Number(formData.port_override) > 65535)) nextErrors.port_override = 'Port must be between 1 and 65535'
+    if (!formData.contacts_json.length) nextErrors.contacts_json = 'At least one contact is required'
+    if (formData.contacts_json.filter((contact: any) => contact.is_primary).length > 1) nextErrors.contacts_json = 'Only one primary contact is allowed'
+    if ((formData.internet_exposed || formData.stores_pii) && !formData.third_party_assessment_status) nextErrors.third_party_assessment_status = 'Assessment status is required'
+    if (metadataError) nextErrors.metadata_json = metadataError
+    setErrors(nextErrors)
+    return Object.keys(nextErrors).length === 0
+  }
 
   return (
     <div className="space-y-8 py-6">
       <div className="grid grid-cols-2 gap-8">
         <div className="space-y-4">
-           <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3">Identity & Classification</h3>
-           <div>
-              <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Entity Name (UID) *</label>
-              <input 
-                value={formData.name} 
-                onChange={e => setFormData({...formData, name: e.target.value})} 
-                className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all" 
-                placeholder="E.G. CUSTOMER-FEED-API" 
-              />
-           </div>
-           <StyledSelect
-                label="Type"
-                value={formData.type}
-                onChange={e => setFormData({...formData, type: e.target.value})}
-                options={types}
-           />
-           <div className="grid grid-cols-2 gap-4">
-             <StyledSelect
-                  label="Operational Status"
-                  value={formData.status}
-                  onChange={e => setFormData({...formData, status: e.target.value})}
-                  options={statusOptions}
-             />
-             <StyledSelect
-                  label="Environment"
-                  value={formData.environment}
-                  onChange={e => setFormData({...formData, environment: e.target.value})}
-                  options={envOptions}
-             />
-           </div>
+          <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3">Identity & Classification</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Entity Name *</label>
+              <input value={formData.name} onChange={e => updateField('name', e.target.value)} className={inputClass('name')} placeholder="customer-feed-api" />
+              {errors.name && <p className="mt-1 px-1 text-[9px] font-bold text-rose-400">{errors.name}</p>}
+            </div>
+            <div>
+              <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">External Key *</label>
+              <input value={formData.external_key} onChange={e => updateField('external_key', e.target.value.toLowerCase())} className={inputClass('external_key')} placeholder="customer-feed-api" />
+              {errors.external_key && <p className="mt-1 px-1 text-[9px] font-bold text-rose-400">{errors.external_key}</p>}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <StyledSelect label="Type" value={formData.type} onChange={e => updateField('type', e.target.value)} options={types} />
+            <input value={formData.subtype} onChange={e => updateField('subtype', e.target.value)} className={inputClass('subtype')} placeholder="Partner API / Managed Database" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <StyledSelect label="Operational Status" value={formData.status} onChange={e => updateField('status', e.target.value)} options={statusOptions} />
+            <StyledSelect label="Environment" value={formData.environment} onChange={e => updateField('environment', e.target.value)} options={envOptions} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <StyledSelect label="Criticality" value={formData.criticality} onChange={e => updateField('criticality', e.target.value)} options={CRITICALITY_OPTIONS.map((value) => ({ value, label: value }))} />
+            <StyledSelect label="Dependency Tier" value={formData.dependency_tier} onChange={e => updateField('dependency_tier', e.target.value)} options={DEPENDENCY_TIER_OPTIONS.map((value) => ({ value, label: value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <StyledSelect label="Risk Rating" value={formData.risk_rating} onChange={e => updateField('risk_rating', e.target.value)} options={RISK_RATING_OPTIONS.map((value) => ({ value, label: value }))} />
+            <StyledSelect label="Data Classification" value={formData.data_classification} onChange={e => updateField('data_classification', e.target.value)} options={DATA_CLASSIFICATION_OPTIONS.map((value) => ({ value, label: value }))} placeholder="Select classification" />
+          </div>
         </div>
 
         <div className="space-y-4">
-           <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-emerald-600 pl-3">Organizational Authority</h3>
-           <div>
-              <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Owner Organization</label>
-              <input 
-                value={formData.owner_organization} 
-                onChange={e => setFormData({...formData, owner_organization: e.target.value})} 
-                className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-emerald-500 transition-all" 
-                placeholder="GLOBAL LOGISTICS INC." 
+          <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-emerald-600 pl-3">Ownership & Scope</h3>
+          <div>
+            <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">External Organization</label>
+            <input value={formData.owner_organization} onChange={e => updateField('owner_organization', e.target.value)} className={inputClass('owner_organization')} placeholder="PartnerCo" />
+          </div>
+          <div>
+            <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">External Team Label</label>
+            <input value={formData.owner_team} onChange={e => updateField('owner_team', e.target.value)} className={inputClass('owner_team')} placeholder="B2B Platform" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <StyledSelect label="Accountable Owner Mode" value={formData.ownership_mode} onChange={e => updateField('ownership_mode', e.target.value)} options={ACCOUNTABLE_OWNER_OPTIONS} />
+            {formData.ownership_mode === 'team' ? (
+              <StyledSelect
+                label="Accountable Team *"
+                value={formData.internal_team_id}
+                onChange={e => updateField('internal_team_id', e.target.value)}
+                options={(teams || []).filter((team: any) => !team.is_archived).map((team: any) => ({ value: String(team.id), label: team.name }))}
+                error={!!errors.internal_team_id}
+                placeholder="Select team"
               />
-           </div>
-           <div>
-              <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Owner Team</label>
-              <input 
-                value={formData.owner_team} 
-                onChange={e => setFormData({...formData, owner_team: e.target.value})} 
-                className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-emerald-500 transition-all" 
-                placeholder="CORE-INFRA-TEAM" 
+            ) : (
+              <StyledSelect
+                label="Accountable Operator *"
+                value={formData.internal_operator_id}
+                onChange={e => updateField('internal_operator_id', e.target.value)}
+                options={(operators || []).map((operator: any) => ({ value: String(operator.id), label: operator.full_name || operator.username || operator.external_id }))}
+                error={!!errors.internal_operator_id}
+                placeholder="Select operator"
               />
-           </div>
-           <div>
-              <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Functional Description</label>
-              <textarea 
-                value={formData.description} 
-                onChange={e => setFormData({...formData, description: e.target.value})} 
-                className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs outline-none focus:border-blue-500 h-24 resize-none" 
-                placeholder="Technical rationale for this external entity integration..." 
-              />
-           </div>
+            )}
+          </div>
+          {(errors.internal_team_id || errors.internal_operator_id) && (
+            <p className="px-1 text-[9px] font-bold text-rose-400">{errors.internal_team_id || errors.internal_operator_id}</p>
+          )}
+          <div>
+            <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Business Purpose *</label>
+            <textarea value={formData.business_purpose} onChange={e => updateField('business_purpose', e.target.value)} className={`${inputClass('business_purpose')} h-24 resize-none`} placeholder="What business capability depends on this external entity?" />
+            {errors.business_purpose && <p className="mt-1 px-1 text-[9px] font-bold text-rose-400">{errors.business_purpose}</p>}
+          </div>
+          <div>
+            <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Functional Description</label>
+            <textarea value={formData.description} onChange={e => updateField('description', e.target.value)} className={`${inputClass('description')} h-24 resize-none`} placeholder="Operational context for this external dependency" />
+          </div>
         </div>
 
         <div className="col-span-2">
-           <POCManager 
-             pocs={formData.poc_json || []} 
-             onChange={newPocs => setFormData({...formData, poc_json: newPocs})} 
-           />
+          <POCManager pocs={formData.contacts_json || []} onChange={newPocs => updateField('contacts_json', newPocs)} />
+          {(errors.contacts_json || metadataError) && <p className="mt-2 px-1 text-[9px] font-bold text-rose-400">{errors.contacts_json}</p>}
         </div>
 
         <div className="col-span-2">
-           <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
-             <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-               <div className="flex items-center space-x-3">
-                 <Shield size={14} className="text-blue-400" />
-                 <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Operational Governance</span>
-               </div>
-               <span className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full">Portable Metadata Contract</span>
-             </div>
-             <div className="p-4 grid grid-cols-2 gap-4">
-               {operationalFields.map(field => (
-                 <div key={field.key}>
-                   <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-1 block">{field.label}</label>
-                   <input
-                     value={formData.metadata_json?.[field.key] || ''}
-                     onChange={e => setFormData({
-                       ...formData,
-                       metadata_json: { ...(formData.metadata_json || {}), [field.key]: e.target.value }
-                     })}
-                     placeholder={field.placeholder}
-                     className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-[11px] font-bold text-white outline-none focus:border-blue-500"
-                   />
-                 </div>
-               ))}
-             </div>
-           </div>
+          <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
+              <div className="flex items-center space-x-3">
+                <Shield size={14} className="text-blue-400" />
+                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Operational Profile</span>
+              </div>
+              <span className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full">Structured Schema</span>
+            </div>
+            <div className="p-4 grid grid-cols-2 gap-4">
+              <StyledSelect label="Integration Mode" value={formData.integration_mode} onChange={e => updateField('integration_mode', e.target.value)} options={INTEGRATION_MODE_OPTIONS.map((value) => ({ value, label: value }))} />
+              <StyledSelect label="Auth Method" value={formData.auth_method} onChange={e => updateField('auth_method', e.target.value)} options={AUTH_METHOD_OPTIONS.map((value) => ({ value, label: value }))} error={!!errors.auth_method} placeholder="Select method" />
+              <div>
+                <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Primary Endpoint</label>
+                <input value={formData.primary_endpoint_url} onChange={e => updateField('primary_endpoint_url', e.target.value)} className={inputClass('primary_endpoint_url')} placeholder="https://partner.example.com" />
+                {errors.primary_endpoint_url && <p className="mt-1 px-1 text-[9px] font-bold text-rose-400">{errors.primary_endpoint_url}</p>}
+              </div>
+              <div>
+                <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Secondary Endpoint</label>
+                <input value={formData.secondary_endpoint_url} onChange={e => updateField('secondary_endpoint_url', e.target.value)} className={inputClass('secondary_endpoint_url')} placeholder="https://backup.partner.example.com" />
+                {errors.secondary_endpoint_url && <p className="mt-1 px-1 text-[9px] font-bold text-rose-400">{errors.secondary_endpoint_url}</p>}
+              </div>
+              <StyledSelect label="Protocol Family" value={formData.protocol_family} onChange={e => updateField('protocol_family', e.target.value)} options={PROTOCOL_FAMILY_OPTIONS.map((value) => ({ value, label: value }))} placeholder="Select protocol" />
+              <div>
+                <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Port Override</label>
+                <input value={formData.port_override} onChange={e => updateField('port_override', e.target.value)} className={inputClass('port_override')} placeholder="443" />
+                {errors.port_override && <p className="mt-1 px-1 text-[9px] font-bold text-rose-400">{errors.port_override}</p>}
+              </div>
+              <div>
+                <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Source System</label>
+                <input value={formData.source_system} onChange={e => updateField('source_system', e.target.value)} className={inputClass('source_system')} placeholder="CMDB / IAM / Partner Portal" />
+              </div>
+              <div>
+                <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Source Record ID</label>
+                <input value={formData.source_record_id} onChange={e => updateField('source_record_id', e.target.value)} className={inputClass('source_record_id')} placeholder="record-1234" />
+              </div>
+              <label className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                <input type="checkbox" checked={!!formData.supports_inbound} onChange={e => updateField('supports_inbound', e.target.checked)} />
+                Supports Inbound
+              </label>
+              <label className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                <input type="checkbox" checked={!!formData.supports_outbound} onChange={e => updateField('supports_outbound', e.target.checked)} />
+                Supports Outbound
+              </label>
+            </div>
+          </div>
         </div>
 
         <div className="col-span-2">
-           <MetadataEditor 
-             value={formData.metadata_json} 
-             onChange={v => setFormData({...formData, metadata_json: v})} 
-           />
+          <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Risk & Compliance</span>
+            </div>
+            <div className="p-4 grid grid-cols-3 gap-4">
+              <label className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-500"><input type="checkbox" checked={!!formData.contains_customer_data} onChange={e => updateField('contains_customer_data', e.target.checked)} />Customer Data</label>
+              <label className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-500"><input type="checkbox" checked={!!formData.contains_credentials} onChange={e => updateField('contains_credentials', e.target.checked)} />Credential Handling</label>
+              <label className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-500"><input type="checkbox" checked={!!formData.stores_pii} onChange={e => updateField('stores_pii', e.target.checked)} />Stores PII</label>
+              <label className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-500"><input type="checkbox" checked={!!formData.internet_exposed} onChange={e => updateField('internet_exposed', e.target.checked)} />Internet Exposed</label>
+              <StyledSelect label="Third-Party Assessment" value={formData.third_party_assessment_status} onChange={e => updateField('third_party_assessment_status', e.target.value)} options={THIRD_PARTY_ASSESSMENT_OPTIONS.map((value) => ({ value, label: value }))} error={!!errors.third_party_assessment_status} placeholder="Select assessment" />
+            </div>
+            {errors.third_party_assessment_status && <p className="px-5 pb-4 text-[9px] font-bold text-rose-400">{errors.third_party_assessment_status}</p>}
+          </div>
+        </div>
+
+        <div className="col-span-2">
+          <MetadataEditor value={formData.metadata_json} onChange={v => updateField('metadata_json', v)} onError={setMetadataError} allowedKeys={allowedMetadataKeys} />
+          {errors.metadata_json && <p className="mt-2 px-1 text-[9px] font-bold text-rose-400">{errors.metadata_json}</p>}
         </div>
       </div>
 
       <div className="flex space-x-4 pt-4 border-t border-white/5">
-        <button 
-          disabled={isSaving || !formData.name} 
-          onClick={() => onSave(formData)} 
+        <button
+          disabled={isSaving}
+          onClick={() => {
+            if (!validate()) return
+            onSave({
+              ...formData,
+              internal_team_id: formData.ownership_mode === 'team' && formData.internal_team_id ? parseInt(formData.internal_team_id, 10) : null,
+              internal_operator_id: formData.ownership_mode === 'individual' && formData.internal_operator_id ? parseInt(formData.internal_operator_id, 10) : null,
+              port_override: formData.port_override ? parseInt(formData.port_override, 10) : null,
+            })
+          }}
           className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center space-x-3"
         >
           {isSaving && <RefreshCcw size={18} className="animate-spin" />}
@@ -595,14 +840,13 @@ const ExternalForm = ({ initialData, onSave, isSaving, options }: any) => {
 const ExternalDetailsView = ({ entity, links }: { entity: any, links: any[] }) => {
   const [tab, setTab] = useState('overview')
   const insights = useMemo(() => getEntityInsights(entity, links), [entity, links])
-  const governanceFacts = [
+  const profileFacts = [
     ['Criticality', insights.criticality],
     ['Dependency Tier', insights.dependencyTier],
-    ['Review Status', insights.reviewStatus],
-    ['Auth Method', getMetaText(entity, 'auth_method') || 'Unspecified'],
-    ['Support Window', getMetaText(entity, 'support_window') || 'Unspecified'],
-    ['Contract', getMetaText(entity, 'contract_reference') || 'Unspecified'],
-    ['Source Of Truth', getMetaText(entity, 'source_of_truth') || 'Unspecified'],
+    ['Auth Method', entity.auth_method || 'Unspecified'],
+    ['Integration Mode', entity.integration_mode || 'Unspecified'],
+    ['Endpoint', entity.primary_endpoint_url || 'Unspecified'],
+    ['Source System', entity.source_system || 'Unspecified'],
   ]
 
   return (
@@ -611,11 +855,11 @@ const ExternalDetailsView = ({ entity, links }: { entity: any, links: any[] }) =
         <div className="flex space-x-1 bg-black/40 p-1 rounded-lg w-fit">
           {[
             { id: 'overview', label: 'Overview', icon: LayoutGrid },
-            { id: 'org', label: 'Organization & POCs', icon: Briefcase },
+            { id: 'org', label: 'Ownership & Contacts', icon: Briefcase },
             { id: 'dependencies', label: 'Dependencies', icon: Share2 },
-            { id: 'governance', label: 'Governance', icon: Shield },
+            { id: 'risk', label: 'Risk', icon: Shield },
             { id: 'secrets', label: 'Credentials', icon: Tag },
-            { id: 'metadata', label: 'Metadata View', icon: List },
+            { id: 'metadata', label: 'Extensions', icon: List },
           ].map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center space-x-2 ${tab === t.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
               <t.icon size={12} /> <span>{t.label}</span>
@@ -631,7 +875,7 @@ const ExternalDetailsView = ({ entity, links }: { entity: any, links: any[] }) =
               {[
                 { label: 'Linked Dependencies', value: insights.linked.length, tone: 'text-blue-400' },
                 { label: 'Stored Credentials', value: entity.secrets?.length || 0, tone: 'text-emerald-400' },
-                { label: 'POCs', value: entity.poc_json?.length || 0, tone: 'text-amber-400' },
+                { label: 'Contacts', value: insights.contacts.length, tone: 'text-amber-400' },
                 { label: 'Warnings', value: insights.warnings.length, tone: insights.warnings.length ? 'text-rose-400' : 'text-slate-400' },
               ].map(card => (
                 <div key={card.label} className="bg-white/5 border border-white/5 p-5 rounded-xl space-y-2">
@@ -647,32 +891,30 @@ const ExternalDetailsView = ({ entity, links }: { entity: any, links: any[] }) =
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">Business Purpose</p>
-                    <p className="text-sm font-bold text-white">{getMetaText(entity, 'business_purpose') || entity.description || 'Not documented'}</p>
+                    <p className="text-sm font-bold text-white">{entity.business_purpose || entity.description || 'Not documented'}</p>
                   </div>
                   <div>
                     <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">Primary Endpoint</p>
-                    <p className="text-sm font-bold text-blue-400 break-all">{getMetaText(entity, 'base_url') || 'Not documented'}</p>
+                    <p className="text-sm font-bold text-blue-400 break-all">{entity.primary_endpoint_url || 'Not documented'}</p>
                   </div>
                   <div>
-                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">Runbook</p>
-                    <p className="text-sm font-bold text-emerald-400 break-all">{getMetaText(entity, 'runbook_url') || 'Not documented'}</p>
+                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">Auth Method</p>
+                    <p className="text-sm font-bold text-emerald-400 break-all">{entity.auth_method || 'Not documented'}</p>
                   </div>
                   <div>
-                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">Next Review Due</p>
-                    <p className={`text-sm font-bold ${insights.isStale ? 'text-amber-400' : 'text-white'}`}>
-                      {insights.nextReviewDue ? insights.nextReviewDue.toLocaleDateString() : 'Not scheduled'}
-                    </p>
+                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">Source Record</p>
+                    <p className="text-sm font-bold text-white">{entity.source_record_id || 'Not documented'}</p>
                   </div>
                 </div>
               </div>
 
               <div className="bg-slate-900/60 p-5 rounded-lg border border-white/10 space-y-4">
-                <h3 className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Governance Snapshot</h3>
+                <h3 className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Profile Snapshot</h3>
                 <div className="grid grid-cols-2 gap-3">
-                  {governanceFacts.map(([label, value]) => (
+                  {profileFacts.map(([label, value]) => (
                     <div key={label} className="border border-white/5 rounded-lg p-3 bg-black/30">
                       <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">{label}</p>
-                      <p className="text-[10px] font-bold uppercase text-white mt-1">{value}</p>
+                      <p className="text-[10px] font-bold text-white mt-1 break-words">{value}</p>
                     </div>
                   ))}
                 </div>
@@ -711,32 +953,36 @@ const ExternalDetailsView = ({ entity, links }: { entity: any, links: any[] }) =
         {tab === 'org' && (
           <div className="space-y-6">
             <div className="bg-slate-900/60 p-5 rounded-lg border border-white/10 relative overflow-hidden group">
-               <h3 className="text-[9px] font-bold uppercase text-slate-500 tracking-widest mb-3 flex items-center gap-2"><Target size={12}/> Organizational Context</h3>
-               <div className="grid grid-cols-2 gap-6 relative z-10">
+               <h3 className="text-[9px] font-bold uppercase text-slate-500 tracking-widest mb-3 flex items-center gap-2"><Target size={12}/> Ownership Context</h3>
+               <div className="grid grid-cols-3 gap-6 relative z-10">
                   <div className="flex flex-col border-l-2 border-white/5 pl-4">
-                     <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-0.5">Owner Organization</span>
-                     <span className="text-sm font-bold text-white tracking-tight ">{entity.owner_organization || 'UNASSIGNED'}</span>
+                     <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-0.5">External Organization</span>
+                     <span className="text-sm font-bold text-white tracking-tight ">{entity.owner_organization || 'Unassigned'}</span>
                   </div>
                   <div className="flex flex-col border-l-2 border-emerald-500/30 pl-4">
-                     <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-0.5">Responsible Team</span>
-                     <span className="text-sm font-bold text-emerald-400 tracking-tight ">{entity.owner_team || 'UNASSIGNED'}</span>
+                     <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-0.5">External Team</span>
+                     <span className="text-sm font-bold text-emerald-400 tracking-tight ">{entity.owner_team || 'Unassigned'}</span>
+                  </div>
+                  <div className="flex flex-col border-l-2 border-blue-500/30 pl-4">
+                     <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-0.5">Accountable Owner</span>
+                     <span className="text-sm font-bold text-blue-300 tracking-tight ">{insights.internalOwnerLabel}</span>
                   </div>
                </div>
             </div>
 
             <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
               <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Personnel Matrix (POC)</span>
-                <span className="text-[8px] font-bold text-amber-500 uppercase bg-amber-500/10 px-2 py-0.5 rounded-full">{entity.poc_json?.length || 0} Contacts</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Contact Matrix</span>
+                <span className="text-[8px] font-bold text-amber-500 uppercase bg-amber-500/10 px-2 py-0.5 rounded-full">{insights.contacts.length || 0} Contacts</span>
               </div>
               <div className="p-3 grid grid-cols-2 gap-3">
-                   {entity.poc_json && entity.poc_json.length > 0 ? entity.poc_json.map((poc: any, idx: number) => (
+                   {insights.contacts && insights.contacts.length > 0 ? insights.contacts.map((poc: any, idx: number) => (
                      <div key={idx} className="bg-black/40 p-3 rounded-lg border border-white/5 flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                           <div className="w-7 h-7 rounded-lg bg-amber-600/10 flex items-center justify-center text-amber-400 border border-amber-500/20 font-bold text-[10px]">{poc.first_name?.[0]}{poc.last_name?.[0]}</div>
+                           <div className="w-7 h-7 rounded-lg bg-amber-600/10 flex items-center justify-center text-amber-400 border border-amber-500/20 font-bold text-[10px]">{poc.full_name?.split(' ').map((part: string) => part[0]).slice(0, 2).join('')}</div>
                            <div>
-                              <p className="text-[10px] font-bold uppercase text-white leading-none">{poc.first_name} {poc.last_name}</p>
-                              <p className="text-[8px] font-bold text-amber-500 uppercase tracking-widest mt-0.5">{poc.id || 'NO_ID'}</p>
+                              <p className="text-[10px] font-bold text-white leading-none">{poc.full_name}</p>
+                              <p className="text-[8px] font-bold text-amber-500 uppercase tracking-widest mt-0.5">{poc.role}{poc.external_person_id ? ` · ${poc.external_person_id}` : ''}</p>
                            </div>
                         </div>
                         <div className="flex items-center space-x-3">
@@ -756,7 +1002,7 @@ const ExternalDetailsView = ({ entity, links }: { entity: any, links: any[] }) =
                         </div>
                      </div>
                    )) : (
-                     <div className="col-span-2 py-6 text-center text-slate-600 font-bold uppercase  tracking-widest text-[9px]">No authorized POCs defined</div>
+                     <div className="col-span-2 py-6 text-center text-slate-600 font-bold uppercase tracking-widest text-[9px]">No contacts defined</div>
                    )}
               </div>
             </div>
@@ -809,14 +1055,14 @@ const ExternalDetailsView = ({ entity, links }: { entity: any, links: any[] }) =
           </div>
         )}
 
-        {tab === 'governance' && (
+        {tab === 'risk' && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               {[
-                ['Last Reviewed', insights.lastReviewedAt ? insights.lastReviewedAt.toLocaleDateString() : 'Never'],
-                ['Review Age', insights.staleDays === null ? 'Unknown' : `${insights.staleDays} days`],
-                ['Review Due', insights.nextReviewDue ? insights.nextReviewDue.toLocaleDateString() : 'Not scheduled'],
+                ['Risk Rating', entity.risk_rating || 'Low'],
+                ['Assessment', entity.third_party_assessment_status || 'Unspecified'],
                 ['Secrets Ready', insights.hasSecrets ? 'Yes' : 'No'],
+                ['Internet Exposed', entity.internet_exposed ? 'Yes' : 'No'],
               ].map(([label, value]) => (
                 <div key={label} className="bg-white/5 border border-white/5 p-4 rounded-lg">
                   <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">{label}</p>
@@ -827,20 +1073,20 @@ const ExternalDetailsView = ({ entity, links }: { entity: any, links: any[] }) =
 
             <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
               <div className="px-4 py-2 bg-white/5 border-b border-white/5">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Governance Controls</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Risk Controls</span>
               </div>
               <div className="p-4 grid grid-cols-2 gap-3">
                 {[
                   ['Owner coverage', insights.hasOwner ? 'Satisfied' : 'Missing'],
-                  ['POC coverage', insights.hasPoc ? 'Satisfied' : 'Missing'],
+                  ['Contact coverage', insights.hasPoc ? 'Satisfied' : 'Missing'],
                   ['Dependency map', insights.linked.length ? 'Satisfied' : 'Missing'],
-                  ['Review cycle', insights.isStale ? 'Overdue' : 'Healthy'],
-                  ['Business purpose', getMetaText(entity, 'business_purpose') ? 'Documented' : 'Missing'],
-                  ['Runbook linkage', getMetaText(entity, 'runbook_url') ? 'Documented' : 'Missing'],
+                  ['Business purpose', entity.business_purpose ? 'Documented' : 'Missing'],
+                  ['Assessment status', (entity.third_party_assessment_status || (!entity.internet_exposed && !entity.stores_pii)) ? 'Documented' : 'Missing'],
+                  ['Credential coverage', insights.hasSecrets ? 'Satisfied' : 'Missing'],
                 ].map(([label, state]) => (
                   <div key={label} className="border border-white/5 rounded-lg p-3 bg-black/30">
                     <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">{label}</p>
-                    <p className={`text-[10px] font-bold uppercase mt-1 ${state === 'Missing' || state === 'Overdue' ? 'text-rose-400' : 'text-emerald-400'}`}>{state}</p>
+                    <p className={`text-[10px] font-bold uppercase mt-1 ${state === 'Missing' ? 'text-rose-400' : 'text-emerald-400'}`}>{state}</p>
                   </div>
                 ))}
               </div>
@@ -873,6 +1119,14 @@ export default function External() {
     queryKey: ['settings-options'], 
     queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) 
   })
+  const { data: teams } = useQuery({
+    queryKey: ['teams'],
+    queryFn: async () => (await (await apiFetch('/api/v1/settings/teams')).json())
+  })
+  const { data: operators } = useQuery({
+    queryKey: ['operators'],
+    queryFn: async () => (await (await apiFetch('/api/v1/settings/operators')).json())
+  })
 
   const { data: allEntities, isLoading } = useQuery({
     queryKey: ['external-entities', { include_deleted: true }],
@@ -890,11 +1144,11 @@ export default function External() {
   })
   const registrySummary = useMemo(() => {
     const source = Array.isArray(allEntities) ? allEntities : []
-    const stale = source.filter((entity: any) => getEntityInsights(entity, links || []).isStale).length
     const missingOwners = source.filter((entity: any) => !getEntityInsights(entity, links || []).hasOwner).length
     const missingDependencies = source.filter((entity: any) => getEntityInsights(entity, links || []).linked.length === 0).length
     const critical = source.filter((entity: any) => ['critical', 'tier 1'].includes(String(getEntityInsights(entity, links || []).criticality).toLowerCase()) || String(getEntityInsights(entity, links || []).dependencyTier).toLowerCase() === 'tier 1').length
-    return { total: source.length, stale, missingOwners, missingDependencies, critical }
+    const highRisk = source.filter((entity: any) => ['critical', 'high'].includes(String(entity.risk_rating || '').toLowerCase())).length
+    return { total: source.length, missingOwners, missingDependencies, critical, highRisk }
   }, [allEntities, links])
 
   const entities = useMemo(() => {
@@ -906,7 +1160,7 @@ export default function External() {
           ...entity,
           criticality: insights.criticality,
           dependency_tier: insights.dependencyTier,
-          review_status: insights.reviewStatus,
+          internal_owner: insights.internalOwnerLabel,
           link_count: insights.linked.length,
           warning_count: insights.warnings.length,
         }
@@ -1112,14 +1366,14 @@ export default function External() {
          hide: hiddenColumns.includes("type")
        },
        { 
-         field: "owner_team", 
-         headerName: "Owner Team", 
+         field: "internal_owner", 
+         headerName: "Accountable Owner", 
          width: 150, 
          filter: true,
-         cellClass: 'text-center font-bold uppercase text-slate-400', 
+         cellClass: 'text-center font-bold text-slate-400', 
          headerClass: 'text-center', 
-         cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, 
-         hide: hiddenColumns.includes("owner_team") 
+         cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold">N/A</span>, 
+         hide: hiddenColumns.includes("internal_owner") 
        },
        {
          field: "criticality",
@@ -1165,17 +1419,17 @@ export default function External() {
          hide: hiddenColumns.includes("status")
        },
        {
-         field: "review_status",
-         headerName: "Review",
+         field: "risk_rating",
+         headerName: "Risk",
          width: 130,
          filter: true,
          cellClass: 'text-center',
          headerClass: 'text-center',
          cellRenderer: (p: any) => {
-           const tone = String(p.value).includes('Needs') || String(p.value).includes('Exception') ? 'text-amber-400' : 'text-emerald-400'
-           return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${tone}`}>{p.value || 'Needs Review'}</span>
+           const tone = String(p.value).toLowerCase() === 'critical' ? 'text-rose-400' : String(p.value).toLowerCase() === 'high' ? 'text-amber-400' : 'text-emerald-400'
+           return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${tone}`}>{p.value || 'Low'}</span>
          },
-         hide: hiddenColumns.includes("review_status")
+         hide: hiddenColumns.includes("risk_rating")
        },
        { 
          field: "environment", 
@@ -1308,7 +1562,7 @@ export default function External() {
           {[
             { label: 'Registry Entries', value: registrySummary.total, tone: 'text-blue-400' },
             { label: 'Tier 1 / Critical', value: registrySummary.critical, tone: 'text-rose-400' },
-            { label: 'Review Overdue', value: registrySummary.stale, tone: 'text-amber-400' },
+            { label: 'High Risk', value: registrySummary.highRisk, tone: 'text-amber-400' },
             { label: 'Owner Missing', value: registrySummary.missingOwners, tone: 'text-fuchsia-400' },
             { label: 'Unmapped Dependencies', value: registrySummary.missingDependencies, tone: 'text-slate-300' },
           ].map(card => (
@@ -1441,7 +1695,7 @@ export default function External() {
                   </h2>
                   <button onClick={() => setActiveModal(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
                </div>
-               <ExternalForm initialData={activeModal} onSave={mutation.mutate} isSaving={mutation.isPending} options={options} />
+               <ExternalForm initialData={activeModal} onSave={mutation.mutate} isSaving={mutation.isPending} options={options} teams={teams || []} operators={operators || []} />
             </motion.div>
           </div>
         )}
@@ -1468,7 +1722,7 @@ export default function External() {
                       <span className="w-1 h-1 rounded-full bg-white/20" />
                       <p className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">ORG: {activeDetails.owner_organization || 'UNASSIGNED'}</p>
                       <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">TEAM: {activeDetails.owner_team || 'UNASSIGNED'}</p>
+                      <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">OWNER: {activeDetails.internal_operator_name || activeDetails.internal_team_name || 'UNASSIGNED'}</p>
                       <span className="w-1 h-1 rounded-full bg-white/20" />
                       <p className={`text-[9px] font-bold uppercase tracking-widest ${
                         activeDetails.status === 'Active' ? 'text-emerald-400' : 'text-amber-400'
@@ -1533,9 +1787,11 @@ export default function External() {
 
 function LinkForm({ entities, devices, onClose, onSave, isPending }: any) {
   const [formData, setFormData] = useState({
-    external_entity_id: '', device_id: '', service_id: '', direction: 'Upstream', purpose: '', protocol: 'TCP', port: '',
-    credentials: { username: '', password: '', note: '' }
+    external_entity_id: '', device_id: '', service_id: '', direction: 'Outbound', purpose: '', protocol: 'TCP', port: '',
+    host_or_fqdn: '', path_or_resource: '', network_zone: '', transport_security: '', link_status: 'Active', credential_reference: '',
+    credentials: { username: '', vault_path: '', note: '' }
   })
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   const { data: services } = useQuery({
     queryKey: ['device-services', formData.device_id],
@@ -1579,7 +1835,7 @@ function LinkForm({ entities, devices, onClose, onSave, isPending }: any) {
                     label="Flow Direction"
                     value={formData.direction}
                     onChange={e => setFormData({...formData, direction: e.target.value})}
-                    options={[{value: 'Upstream', label: 'Upstream (Input)'}, {value: 'Downstream', label: 'Downstream (Output)'}]}
+                    options={LINK_DIRECTION_OPTIONS.map((value) => ({ value, label: value }))}
                  />
               </div>
 
@@ -1615,12 +1871,8 @@ function LinkForm({ entities, devices, onClose, onSave, isPending }: any) {
                  </div>
                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Protocol</label>
-                       <input 
-                         value={formData.protocol} onChange={e => setFormData({...formData, protocol: e.target.value})}
-                         className="w-full bg-black/40 border border-white/10 rounded-lg px-6 py-4 text-xs font-mono font-black text-white outline-none focus:border-indigo-500 transition-all"
-                         placeholder="TCP / HTTPS / SFTP"
-                       />
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Protocol</label>
+                       <StyledSelect value={formData.protocol} onChange={e => setFormData({...formData, protocol: e.target.value})} options={LINK_PROTOCOL_OPTIONS.map((value) => ({ value, label: value }))} />
                     </div>
                     <div className="space-y-2">
                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Port</label>
@@ -1631,6 +1883,23 @@ function LinkForm({ entities, devices, onClose, onSave, isPending }: any) {
                        />
                     </div>
                  </div>
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Host / FQDN</label>
+                       <input value={formData.host_or_fqdn} onChange={e => setFormData({...formData, host_or_fqdn: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg px-6 py-4 text-xs font-black text-white outline-none focus:border-indigo-500 transition-all" placeholder="partner.example.com" />
+                    </div>
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Path / Resource</label>
+                       <input value={formData.path_or_resource} onChange={e => setFormData({...formData, path_or_resource: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg px-6 py-4 text-xs font-black text-white outline-none focus:border-indigo-500 transition-all" placeholder="/v1/ingest" />
+                    </div>
+                 </div>
+                 <div className="grid grid-cols-3 gap-4">
+                    <StyledSelect label="Network Zone" value={formData.network_zone} onChange={e => setFormData({...formData, network_zone: e.target.value})} options={LINK_NETWORK_ZONE_OPTIONS.map((value) => ({ value, label: value }))} placeholder="Select zone" />
+                    <StyledSelect label="Transport Security" value={formData.transport_security} onChange={e => setFormData({...formData, transport_security: e.target.value})} options={LINK_TRANSPORT_SECURITY_OPTIONS.map((value) => ({ value, label: value }))} placeholder="Select security" />
+                    <StyledSelect label="Link Status" value={formData.link_status} onChange={e => setFormData({...formData, link_status: e.target.value})} options={['Active', 'Planned', 'Disabled'].map((value) => ({ value, label: value }))} />
+                 </div>
+                 {errors.purpose && <p className="text-[9px] font-bold text-rose-400">{errors.purpose}</p>}
+                 {errors.port && <p className="text-[9px] font-bold text-rose-400">{errors.port}</p>}
               </div>
 
               <div className="p-8 bg-indigo-600/5 border border-indigo-500/10 rounded-lg space-y-6">
@@ -1644,15 +1913,10 @@ function LinkForm({ entities, devices, onClose, onSave, isPending }: any) {
                       className="w-full bg-black/60 border border-white/5 rounded-lg px-5 py-4 text-[11px] font-black text-white outline-none focus:border-indigo-500 transition-all"
                       placeholder="Username"
                     />
-                    <input 
-                      type="password"
-                      value={formData.credentials.password} onChange={e => setFormData({...formData, credentials: {...formData.credentials, password: e.target.value}})}
-                      className="w-full bg-black/60 border border-white/5 rounded-lg px-5 py-4 text-[11px] font-black text-white outline-none focus:border-indigo-500 transition-all"
-                      placeholder="Password"
-                    />
+                    <input value={formData.credentials.vault_path} onChange={e => setFormData({...formData, credentials: {...formData.credentials, vault_path: e.target.value}})} className="w-full bg-black/60 border border-white/5 rounded-lg px-5 py-4 text-[11px] font-black text-white outline-none focus:border-indigo-500 transition-all" placeholder="Vault path" />
                     <textarea 
                       className="col-span-2 w-full bg-black/60 border border-white/5 rounded-lg px-5 py-4 text-[10px] font-bold text-slate-400 outline-none focus:border-indigo-500 transition-all h-24 resize-none"
-                      placeholder="Security Notes / Store Reference..."
+                      placeholder="Security notes / credential reference..."
                       value={formData.credentials.note}
                       onChange={e => setFormData({...formData, credentials: {...formData.credentials, note: e.target.value}})}
                     />
@@ -1664,12 +1928,20 @@ function LinkForm({ entities, devices, onClose, onSave, isPending }: any) {
         <div className="p-10 border-t border-white/5 bg-white/5 shrink-0 flex items-center space-x-4">
            <button onClick={onClose} className="px-10 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-white transition-all">Abort</button>
            <button 
-             onClick={() => onSave({
-               ...formData,
-               external_entity_id: parseInt(formData.external_entity_id),
-               device_id: parseInt(formData.device_id),
-               service_id: formData.service_id ? parseInt(formData.service_id) : null
-             })}
+             onClick={() => {
+               const nextErrors: Record<string, string> = {}
+               if (!formData.purpose.trim()) nextErrors.purpose = 'Interconnect purpose is required'
+               if (formData.port && (Number(formData.port) < 1 || Number(formData.port) > 65535)) nextErrors.port = 'Port must be between 1 and 65535'
+               setErrors(nextErrors)
+               if (Object.keys(nextErrors).length) return
+               onSave({
+                 ...formData,
+                 external_entity_id: parseInt(formData.external_entity_id),
+                 device_id: parseInt(formData.device_id),
+                 service_id: formData.service_id ? parseInt(formData.service_id) : null,
+                 port: formData.port ? parseInt(formData.port, 10) : null,
+               })
+             }}
              disabled={!formData.external_entity_id || !formData.device_id || isPending}
              className="flex-1 py-5 bg-indigo-600 text-white rounded-[20px] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 active:scale-95 transition-all flex items-center justify-center space-x-3"
            >

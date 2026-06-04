@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete, update, or_
 from sqlalchemy.orm import selectinload
 from typing import List, Optional, Any, Dict
 from ..database import get_db
@@ -23,6 +23,43 @@ async def log_audit(db: AsyncSession, action: str, table: str, target_id: int, d
     db.add(log)
     await db.commit()
 
+
+async def _validate_internal_ownership(db: AsyncSession, payload: schemas.ExternalEntityBase):
+    if payload.internal_team_id is not None:
+        team_res = await db.execute(select(models.Team).filter(models.Team.id == payload.internal_team_id))
+        if not team_res.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Selected accountable team does not exist")
+    if payload.internal_operator_id is not None:
+        op_res = await db.execute(select(models.Operator).filter(models.Operator.id == payload.internal_operator_id))
+        if not op_res.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Selected accountable operator does not exist")
+
+
+async def _enrich_entity_response(db: AsyncSession, entity: models.ExternalEntity) -> schemas.ExternalEntityResponse:
+    response = schemas.ExternalEntityResponse.model_validate(entity)
+    if entity.internal_team_id:
+        team_res = await db.execute(select(models.Team.name).filter(models.Team.id == entity.internal_team_id))
+        response.internal_team_name = team_res.scalar_one_or_none()
+    if entity.internal_operator_id:
+        op_res = await db.execute(
+            select(models.Operator.full_name, models.Operator.username, models.Operator.external_id)
+            .filter(models.Operator.id == entity.internal_operator_id)
+        )
+        operator = op_res.first()
+        if operator:
+            response.internal_operator_name = operator[0] or operator[1] or operator[2]
+            response.internal_operator_external_id = operator[2]
+    return response
+
+
+async def _validate_unique_external_key(db: AsyncSession, external_key: str, entity_id: Optional[int] = None):
+    query = select(models.ExternalEntity).filter(models.ExternalEntity.external_key == external_key)
+    if entity_id is not None:
+        query = query.filter(models.ExternalEntity.id != entity_id)
+    res = await db.execute(query)
+    if res.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="External key already exists")
+
 # --- External Entities ---
 
 @router.get("/entities", response_model=List[schemas.ExternalEntityResponse])
@@ -31,10 +68,13 @@ async def get_entities(include_deleted: bool = False, db: AsyncSession = Depends
     if not include_deleted:
         query = query.filter(models.ExternalEntity.is_deleted == False)
     result = await db.execute(query)
-    return result.scalars().all()
+    entities = result.scalars().all()
+    return [await _enrich_entity_response(db, entity) for entity in entities]
 
 @router.post("/entities", response_model=schemas.ExternalEntityResponse)
 async def create_entity(data: schemas.ExternalEntityCreate, db: AsyncSession = Depends(get_db)):
+    await _validate_internal_ownership(db, data)
+    await _validate_unique_external_key(db, data.external_key or "")
     db_obj = models.ExternalEntity(**data.model_dump())
     db.add(db_obj)
     await db.commit()
@@ -45,15 +85,18 @@ async def create_entity(data: schemas.ExternalEntityCreate, db: AsyncSession = D
         .filter(models.ExternalEntity.id == db_obj.id)
         .options(selectinload(models.ExternalEntity.secrets))
     )
-    return result.scalar_one()
+    return await _enrich_entity_response(db, result.scalar_one())
 
 @router.put("/entities/{entity_id}", response_model=schemas.ExternalEntityResponse)
-async def update_entity(entity_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+async def update_entity(entity_id: int, data: schemas.ExternalEntityUpdate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.ExternalEntity).filter(models.ExternalEntity.id == entity_id).options(selectinload(models.ExternalEntity.secrets)))
     obj = result.scalar_one_or_none()
     if not obj: raise HTTPException(404, "Entity not found")
-    
-    clean_data = filter_valid_columns(models.ExternalEntity, data, exclude=IMMUTABLE_EXTERNAL_ENTITY_FIELDS)
+
+    await _validate_internal_ownership(db, data)
+    await _validate_unique_external_key(db, data.external_key or "", entity_id)
+
+    clean_data = filter_valid_columns(models.ExternalEntity, data.model_dump(), exclude=IMMUTABLE_EXTERNAL_ENTITY_FIELDS)
     for k, v in clean_data.items():
         setattr(obj, k, v)
     
@@ -65,7 +108,7 @@ async def update_entity(entity_id: int, data: dict, db: AsyncSession = Depends(g
         .filter(models.ExternalEntity.id == entity_id)
         .options(selectinload(models.ExternalEntity.secrets))
     )
-    return refreshed.scalar_one()
+    return await _enrich_entity_response(db, refreshed.scalar_one())
 
 @router.post("/entities/{entity_id}/restore")
 async def restore_entity(entity_id: int, db: AsyncSession = Depends(get_db)):
@@ -89,6 +132,9 @@ async def delete_entity(entity_id: int, purge: bool = False, db: AsyncSession = 
         link_check = await db.execute(select(models.ExternalLink).filter(models.ExternalLink.external_entity_id == entity_id))
         if link_check.scalars().first():
             raise HTTPException(400, "Cannot purge entity with active connectivity links")
+        secret_check = await db.execute(select(models.ExternalEntitySecret).filter(models.ExternalEntitySecret.external_entity_id == entity_id))
+        if secret_check.scalars().first():
+            raise HTTPException(400, "Cannot purge entity with registered credentials")
         await db.delete(obj)
         await log_audit(db, "PURGE", "external_entities", entity_id, f"Permanently purged external entity: {obj.name}")
     else:
@@ -157,7 +203,34 @@ async def get_links(db: AsyncSession = Depends(get_db)):
 
 @router.post("/links", response_model=schemas.ExternalLinkResponse)
 async def create_link(data: schemas.ExternalLinkCreate, db: AsyncSession = Depends(get_db)):
+    entity_res = await db.execute(select(models.ExternalEntity).filter(models.ExternalEntity.id == data.external_entity_id))
+    if not entity_res.scalar_one_or_none():
+        raise HTTPException(404, "External entity not found")
+    device_res = await db.execute(select(models.Device).filter(models.Device.id == data.device_id))
+    if not device_res.scalar_one_or_none():
+        raise HTTPException(404, "Device not found")
+    if data.service_id is not None:
+        service_res = await db.execute(select(models.LogicalService).filter(models.LogicalService.id == data.service_id))
+        service = service_res.scalar_one_or_none()
+        if not service:
+            raise HTTPException(404, "Logical service not found")
+        if service.device_id != data.device_id:
+            raise HTTPException(400, "Selected service does not belong to the selected asset")
+    duplicate_res = await db.execute(
+        select(models.ExternalLink).filter(
+            models.ExternalLink.external_entity_id == data.external_entity_id,
+            models.ExternalLink.device_id == data.device_id,
+            models.ExternalLink.service_id == data.service_id,
+            models.ExternalLink.protocol == data.protocol,
+            models.ExternalLink.port == (str(data.port) if data.port is not None else None),
+            models.ExternalLink.path_or_resource == data.path_or_resource,
+            models.ExternalLink.link_status == "Active",
+        )
+    )
+    if duplicate_res.scalar_one_or_none():
+        raise HTTPException(409, "An active link with the same shape already exists")
     db_obj = models.ExternalLink(**data.model_dump())
+    db_obj.port = str(data.port) if data.port is not None else None
     db.add(db_obj)
     await db.commit()
     await db.refresh(db_obj)

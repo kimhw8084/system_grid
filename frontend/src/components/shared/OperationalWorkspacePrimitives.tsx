@@ -223,3 +223,83 @@ export function WorkspaceTabStrip({
     </div>
   )
 }
+
+export function WorkspaceValidationBanner({ message }: { message?: string }) {
+  if (!message) return null
+  return (
+    <div className="mb-6 rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3">
+      <p className="text-[10px] font-black text-rose-300">{message}</p>
+    </div>
+  )
+}
+
+export function WorkspaceModalHeader({
+  icon,
+  title,
+  subtitle,
+  status,
+  closeControl,
+  maximizeControl,
+  tabs,
+  activeTab,
+  onTabChange,
+}: {
+  icon: React.ReactNode
+  title: string
+  subtitle: React.ReactNode
+  status?: React.ReactNode
+  closeControl: React.ReactNode
+  maximizeControl?: React.ReactNode
+  tabs?: Array<{ id: string; label: string; badgeCount?: number }>
+  activeTab?: string
+  onTabChange?: (id: string) => void
+}) {
+  return (
+    <div className="border-b border-white/10 px-6 py-4 sm:px-8">
+      <div className="flex items-start justify-between gap-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex items-center gap-2 self-start">
+            {closeControl}
+            {maximizeControl}
+          </div>
+          <div className="ml-2 flex h-12 w-12 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-600/10 text-blue-400">
+            {icon}
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-xl font-black tracking-tighter text-white">{title}</h2>
+            <div className="mt-1 flex items-center space-x-2">
+              <span className="text-[10px] font-bold text-slate-400">{subtitle}</span>
+              {status && (
+                <>
+                  <span className="w-1 h-1 rounded-full bg-slate-700" />
+                  {status}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {tabs && activeTab && onTabChange && (
+          <WorkspaceTabStrip tabs={tabs} activeTab={activeTab} onChange={onTabChange} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+export function WorkspaceModalFooter({
+  left,
+  right,
+}: {
+  left?: React.ReactNode
+  right: React.ReactNode
+}) {
+  return (
+    <div className="border-t border-white/10 px-6 py-5 sm:px-8 sm:py-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center space-x-2 pl-1">{left}</div>
+        <div className="flex flex-wrap items-center justify-end gap-3 pr-1">{right}</div>
+      </div>
+    </div>
+  )
+}

@@ -25,13 +25,15 @@ import {
   WorkspaceFieldError as FieldError,
   WorkspaceFieldLabel as FieldLabel,
   WorkspaceHoverPreview as HoverPreview,
+  WorkspaceModalFooter,
+  WorkspaceModalHeader,
   WorkspacePanelHint as PanelHint,
   WorkspacePanelSubtitle as PanelSubtitle,
   WorkspacePanelTitle as PanelTitle,
   WorkspaceSectionCard,
   WorkspaceSelectField as MonitoringSelectField,
   WorkspaceStickyIdentityBar,
-  WorkspaceTabStrip,
+  WorkspaceValidationBanner,
   getWorkspaceInputClass,
 } from './shared/OperationalWorkspacePrimitives'
 import { StatusPill } from './shared/StatusPill'
@@ -3982,45 +3984,29 @@ export function MonitoringForm({ item, devices, categories, severities, platform
         exit={{ scale: 0.9, opacity: 0 }}
         className={`glass-panel w-full overflow-hidden flex flex-col rounded-lg border-blue-500/20 shadow-[0_0_80px_rgba(37,99,235,0.08)] ${isMaximized ? 'max-w-none h-[calc(100vh-3rem)]' : 'max-w-7xl h-full sm:h-[90vh]'}`}
       >
-        <div className="border-b border-white/10 px-6 py-4 sm:px-8">
-          <div className="flex items-start justify-between gap-6">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex items-center gap-2 self-start">
-                <button onClick={onClose} className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500/90 text-transparent transition-all hover:text-rose-950" title="Close">
-                  <X size={10} strokeWidth={3} />
-                </button>
-                <button onClick={() => setIsMaximized(prev => !prev)} className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500/90 text-transparent transition-all hover:text-emerald-950" title={isMaximized ? 'Restore size' : 'Maximize'}>
-                  {isMaximized ? <Minimize2 size={8} strokeWidth={3} /> : <Maximize2 size={8} strokeWidth={3} />}
-                </button>
-              </div>
-              <div className="ml-2 flex h-12 w-12 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-600/10 text-blue-400">
-                <Zap size={20} />
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-xl font-black tracking-tighter text-white">
-                  {item ? 'Update Monitoring' : 'Add Monitoring'}
-                </h2>
-                <div className="mt-1 flex items-center space-x-2">
-                   <span className="text-[10px] font-bold text-slate-400">
-                     Configure monitoring targets, logic, and alert routing.
-                   </span>
-                   <span className="w-1 h-1 rounded-full bg-slate-700" />
-                   <StatusPill value={formData.status} />
-                </div>
-              </div>
-            </div>
-
-            <WorkspaceTabStrip
-              activeTab={activeTab}
-              onChange={(id) => setActiveTab(id as 'context' | 'logic' | 'alerting')}
-              tabs={[
-                { id: 'context', label: 'Context', badgeCount: tabErrors.context },
-                { id: 'logic', label: 'Logic', badgeCount: tabErrors.logic },
-                { id: 'alerting', label: 'Alerting', badgeCount: tabErrors.alerting },
-              ]}
-            />
-          </div>
-        </div>
+        <WorkspaceModalHeader
+          icon={<Zap size={20} />}
+          title={item ? 'Update Monitoring' : 'Add Monitoring'}
+          subtitle="Configure monitoring targets, logic, and alert routing."
+          status={<StatusPill value={formData.status} />}
+          closeControl={
+            <button onClick={onClose} className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500/90 text-transparent transition-all hover:text-rose-950" title="Close">
+              <X size={10} strokeWidth={3} />
+            </button>
+          }
+          maximizeControl={
+            <button onClick={() => setIsMaximized(prev => !prev)} className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500/90 text-transparent transition-all hover:text-emerald-950" title={isMaximized ? 'Restore size' : 'Maximize'}>
+              {isMaximized ? <Minimize2 size={8} strokeWidth={3} /> : <Maximize2 size={8} strokeWidth={3} />}
+            </button>
+          }
+          activeTab={activeTab}
+          onTabChange={(id) => setActiveTab(id as 'context' | 'logic' | 'alerting')}
+          tabs={[
+            { id: 'context', label: 'Context', badgeCount: tabErrors.context },
+            { id: 'logic', label: 'Logic', badgeCount: tabErrors.logic },
+            { id: 'alerting', label: 'Alerting', badgeCount: tabErrors.alerting },
+          ]}
+        />
 
         <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 pr-4 sm:px-8">
            <WorkspaceStickyIdentityBar>
@@ -4053,13 +4039,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                />
              </div>
            </WorkspaceStickyIdentityBar>
-           {generalError && (
-             <div className="mb-6 rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3">
-               <p className="text-[10px] font-black text-rose-300">
-                 {generalError}
-               </p>
-             </div>
-           )}
+           <WorkspaceValidationBanner message={generalError} />
            {activeTab === 'context' ? (
              <div className="grid grid-cols-12 gap-5 p-2">
                <div className="col-span-12 xl:col-span-5 space-y-5">
@@ -4604,9 +4584,8 @@ export function MonitoringForm({ item, devices, categories, severities, platform
            )}
         </div>
 
-        <div className="border-t border-white/10 px-6 py-5 sm:px-8 sm:py-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-           <div className="flex items-center space-x-2 pl-1">
+        <WorkspaceModalFooter
+          left={
               <button 
                 onClick={() => {
                   if (formData.status === 'Existing') {
@@ -4623,9 +4602,9 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                 <div className={`w-2 h-2 rounded-full ${formData.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'}`} />
                 <span className="text-[10px] font-black uppercase tracking-widest">{formData.is_active ? 'Monitor Active' : 'Monitor Paused'}</span>
               </button>
-           </div>
-
-           <div className="flex flex-wrap items-center justify-end gap-3 pr-1">
+          }
+          right={
+            <>
               <button onClick={onClose} className="px-6 sm:px-8 py-3 bg-white/5 hover:bg-white/10 text-slate-400 rounded-lg font-black uppercase tracking-widest text-[9px] sm:text-[10px] transition-all">Abort</button>
               <button 
                 onClick={handleSave}
@@ -4635,9 +4614,9 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                 {mutation.isPending ? <Clock className="animate-spin" size={14} /> : <Check size={14} />}
                 <span>{item ? 'Save Monitoring' : 'Add Monitoring'}</span>
               </button>
-           </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       </motion.div>
     </div>
   )
