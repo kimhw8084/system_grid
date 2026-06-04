@@ -3647,7 +3647,7 @@ function FieldError({ message }: { message?: string }) {
 }
 
 const monitoringInputClass = (error?: string) =>
-  `w-full rounded-xl px-4 py-3 text-[12px] font-bold text-white outline-none transition-all ${
+  `w-full rounded-lg px-4 py-3 text-[12px] font-bold text-white outline-none transition-all ${
     error
       ? 'border border-rose-500/60 bg-rose-500/10 shadow-[0_0_0_1px_rgba(244,63,94,0.18)] focus:border-rose-400'
       : 'border border-white/10 bg-slate-950/70 focus:border-blue-500/40'
@@ -3699,7 +3699,7 @@ function MonitoringSelectField({
           type="button"
           disabled={disabled}
           onClick={() => setIsOpen((current) => !current)}
-          className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10 shadow-[0_0_0_1px_rgba(244,63,94,0.18)]' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+          className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10 shadow-[0_0_0_1px_rgba(244,63,94,0.18)]' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
         >
           <span className={`text-[11px] font-black uppercase tracking-[0.12em] ${selected ? 'text-slate-100' : 'text-slate-500'}`}>
             {selected?.label || placeholder || 'Select option'}
@@ -3707,14 +3707,14 @@ function MonitoringSelectField({
           <ChevronDown size={14} className={`text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
         {isOpen && !disabled && (
-          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 rounded-2xl border border-white/10 bg-[#020617] p-3 shadow-[0_24px_60px_rgba(2,6,23,0.48)]">
+          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 rounded-lg border border-white/10 bg-[#020617] p-3 shadow-[0_24px_60px_rgba(2,6,23,0.48)]">
             {searchable && (
               <div className="mb-3">
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={`Search ${label.toLowerCase()}...`}
-                  className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-100 outline-none focus:border-blue-500/40"
+                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-100 outline-none focus:border-blue-500/40"
                 />
               </div>
             )}
@@ -3730,7 +3730,7 @@ function MonitoringSelectField({
                       setIsOpen(false)
                       setSearch('')
                     }}
-                    className={`w-full rounded-xl border px-3 py-3 text-left transition-all ${active ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10 hover:bg-white/[0.03]'}`}
+                    className={`w-full rounded-lg border px-3 py-3 text-left transition-all ${active ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10 hover:bg-white/[0.03]'}`}
                   >
                     <p className={`text-[10px] font-black uppercase tracking-[0.14em] ${active ? 'text-blue-300' : 'text-slate-200'}`}>{option.label}</p>
                     {option.description && <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">{option.description}</p>}
@@ -3738,7 +3738,7 @@ function MonitoringSelectField({
                 )
               })}
               {filteredOptions.length === 0 && (
-                <div className="rounded-xl border border-white/5 bg-black/20 px-3 py-4 text-center text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">
+                <div className="rounded-lg border border-white/5 bg-black/20 px-3 py-4 text-center text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">
                   No matching options
                 </div>
               )}
@@ -3791,7 +3791,7 @@ function MonitoringAssetField({
         <button
           type="button"
           onClick={() => setIsOpen((current) => !current)}
-          className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'}`}
+          className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'}`}
         >
           <span className={`text-[11px] font-black uppercase tracking-[0.12em] ${selectedDevice ? 'text-slate-100' : 'text-slate-500'}`}>
             {selectedDevice ? `${selectedDevice.name} [${selectedDevice.system}]` : 'Select asset'}
@@ -3799,7 +3799,7 @@ function MonitoringAssetField({
           <ChevronDown size={14} className={`text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
         {isOpen && (
-          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 rounded-2xl border border-white/10 bg-[#020617] p-3 shadow-[0_24px_60px_rgba(2,6,23,0.48)]">
+          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 rounded-lg border border-white/10 bg-[#020617] p-3 shadow-[0_24px_60px_rgba(2,6,23,0.48)]">
             <div className="grid grid-cols-[170px_minmax(0,1fr)] gap-3">
               <MonitoringSelectField
                 label="System Filter"
@@ -3814,7 +3814,7 @@ function MonitoringAssetField({
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search hostname or system..."
-                  className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-100 outline-none focus:border-blue-500/40"
+                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-100 outline-none focus:border-blue-500/40"
                 />
               </div>
             </div>
@@ -3825,7 +3825,7 @@ function MonitoringAssetField({
                   onChange(null)
                   setIsOpen(false)
                 }}
-                className={`w-full rounded-xl border px-3 py-3 text-left transition-all ${deviceId == null ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10'}`}
+                className={`w-full rounded-lg border px-3 py-3 text-left transition-all ${deviceId == null ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10'}`}
               >
                 <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-200">No linked asset</p>
               </button>
@@ -3837,7 +3837,7 @@ function MonitoringAssetField({
                     onChange(device.id)
                     setIsOpen(false)
                   }}
-                  className={`w-full rounded-xl border px-3 py-3 text-left transition-all ${device.id === deviceId ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10'}`}
+                  className={`w-full rounded-lg border px-3 py-3 text-left transition-all ${device.id === deviceId ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10'}`}
                 >
                   <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-200">{device.name}</p>
                   <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">{device.system || 'No system'}</p>
@@ -4188,7 +4188,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 pr-4 sm:px-8">
-           <div className="sticky top-0 z-20 mb-6 rounded-xl border border-blue-500/20 bg-slate-950/90 p-4 shadow-[0_10px_40px_rgba(2,6,23,0.45)] backdrop-blur">
+           <div className="sticky top-0 z-20 mb-6 rounded-lg border border-blue-500/20 bg-slate-950/90 p-4 shadow-[0_10px_40px_rgba(2,6,23,0.45)] backdrop-blur">
              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.8fr)_repeat(2,minmax(180px,0.6fr))]">
                <div className="space-y-2">
                  <FieldLabel label="Title" required />
@@ -4219,13 +4219,13 @@ export function MonitoringForm({ item, devices, categories, severities, platform
              </div>
            </div>
            {(generalError || Object.keys(formErrors).length > 0) && (
-             <div className="mb-6 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3">
+             <div className="mb-6 rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3">
                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-rose-300">
                  {generalError || 'Resolve the highlighted required fields and rule violations before saving.'}
                </p>
              </div>
            )}
-           <div className="mb-6 flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+           <div className="mb-6 flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-4 py-3">
              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
                Fields marked <span className="text-rose-400">*</span> are required.
              </p>
@@ -4236,7 +4236,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
            {activeTab === 'context' ? (
              <div className="grid grid-cols-12 gap-5 p-2">
                <div className="col-span-12 xl:col-span-5 space-y-5">
-                 <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                 <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
                    <div className="mb-4 flex items-center justify-between">
                      <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Target Identification</h3>
                      <span className="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-slate-500">
@@ -4250,7 +4250,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                        onChange={(deviceId) => setFormData({ ...formData, device_id: deviceId, monitored_services: [] })}
                      />
                      {formData.device_id && (
-                       <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                       <div className="rounded-lg border border-white/10 bg-black/20 p-4">
                          <div className="mb-3 flex items-center justify-between">
                            <FieldLabel label="Service Scope" />
                            <span className="rounded-full bg-blue-500/10 px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-blue-300">
@@ -4263,7 +4263,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                key={svc.id}
                                type="button"
                                onClick={() => toggleService(svc.id)}
-                               className={`rounded-xl border px-3 py-2 text-[9px] font-black uppercase tracking-[0.12em] transition-all ${
+                               className={`rounded-lg border px-3 py-2 text-[9px] font-black uppercase tracking-[0.12em] transition-all ${
                                  formData.monitored_services?.includes(svc.id)
                                    ? 'border-blue-500/40 bg-blue-500/12 text-blue-200'
                                    : 'border-white/10 bg-slate-950/60 text-slate-400 hover:border-white/20 hover:text-slate-200'
@@ -4286,7 +4286,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                    </div>
                  </section>
 
-                 <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                 <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
                    <div className="mb-4 flex items-center justify-between">
                      <div>
                        <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Ownership</h3>
@@ -4298,7 +4298,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                        {ownershipMode === 'team' ? 'Team Mode' : `${formData.owners?.length || 0} Operators`}
                      </span>
                    </div>
-                   <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-black/30 p-1">
+                   <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg border border-white/10 bg-black/30 p-1">
                      {[
                        { id: 'team', label: 'Team Owner' },
                        { id: 'individual', label: 'Individual Owners' }
@@ -4307,7 +4307,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                          key={mode.id}
                          type="button"
                          onClick={() => setOwnershipModeAndNormalize(mode.id as 'team' | 'individual')}
-                         className={`rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] transition-all ${
+                         className={`rounded-lg px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] transition-all ${
                            ownershipMode === mode.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-200'
                          }`}
                        >
@@ -4333,7 +4333,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                          searchable
                        />
                        {selectedTeam && (
-                         <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                         <div className="rounded-lg border border-white/10 bg-black/20 p-4">
                            <div className="flex items-center justify-between">
                              <div>
                                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-200">{selectedTeam.name}</p>
@@ -4379,7 +4379,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                            <button
                              type="button"
                              onClick={addOwner}
-                             className="w-full rounded-xl border border-blue-500/30 bg-blue-600 px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-white transition-all hover:bg-blue-500"
+                             className="w-full rounded-lg border border-blue-500/30 bg-blue-600 px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-white transition-all hover:bg-blue-500"
                            >
                              Add
                            </button>
@@ -4388,7 +4388,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                        <FieldError message={formErrors.owners} />
                        <div className="max-h-52 space-y-2 overflow-y-auto pr-1 custom-scrollbar">
                          {formData.owners?.length ? formData.owners.map((o: any, idx: number) => (
-                           <div key={idx} className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                           <div key={idx} className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-4 py-3">
                              <div className="min-w-0">
                                <p className="truncate text-[10px] font-black uppercase tracking-[0.14em] text-slate-100">{o.name}</p>
                                <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">
@@ -4400,7 +4400,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                              </button>
                            </div>
                          )) : (
-                           <div className="rounded-2xl border border-dashed border-white/10 px-4 py-6 text-center text-[10px] font-black uppercase tracking-[0.16em] text-slate-600">
+                           <div className="rounded-lg border border-dashed border-white/10 px-4 py-6 text-center text-[10px] font-black uppercase tracking-[0.16em] text-slate-600">
                              No individual owners assigned
                            </div>
                          )}
@@ -4411,7 +4411,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                </div>
 
                <div className="col-span-12 xl:col-span-7 space-y-5">
-                 <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                 <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
                    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                      <MonitoringSelectField
                        label="Platform"
@@ -4439,7 +4439,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                    </div>
                  </section>
 
-                 <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                 <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
                    <div className="mb-4">
                      <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Operational Context</h3>
                    </div>
@@ -4471,14 +4471,14 @@ export function MonitoringForm({ item, devices, categories, severities, platform
            ) : activeTab === 'logic' ? (
              <div className="grid grid-cols-12 gap-5 p-2 h-full min-h-[500px]">
                 <div className="col-span-12 xl:col-span-4 space-y-5">
-                   <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                   <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
                    <div className="flex items-center justify-between">
                       <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center space-x-2">
                          <Settings size={14}/> <span>Logic Entries</span>
                       </h3>
                       <button 
                          onClick={addLogicEntry}
-                         className="px-3 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[9px] font-black uppercase hover:bg-emerald-600/40 transition-all flex items-center space-x-1"
+                          className="px-3 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[9px] font-black uppercase hover:bg-emerald-600/40 transition-all flex items-center space-x-1"
                       >
                          <Plus size={12}/> <span>Add Entry</span>
                       </button>
@@ -4519,7 +4519,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                    </div>
                    </section>
 
-                   <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                   <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
                       <div className="grid grid-cols-1 gap-4">
                          <div className="space-y-1.5">
                             <FieldLabel label="Check Frequency (Seconds)" required />
@@ -4559,7 +4559,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
 
                 <div className="col-span-12 xl:col-span-8 flex flex-col space-y-4 h-full">
                    {activeLogicEntry ? (
-                     <section className="flex h-full flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                     <section className="flex h-full flex-col rounded-lg border border-white/10 bg-white/[0.03] p-5">
                         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                            <MonitoringSelectField
                              label="Logic Type"
@@ -4588,7 +4588,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                               </span>
                            </div>
                            
-                           <div className={`flex-1 overflow-hidden rounded-xl border shadow-inner min-h-[260px] ${
+                           <div className={`flex-1 overflow-hidden rounded-lg border shadow-inner min-h-[260px] ${
                              activeLogicErrors.logic_info ? 'border-rose-500/60 bg-rose-500/10' : 'border-white/10 bg-black/40'
                            }`}>
                               <CodeMirror
@@ -4622,14 +4622,14 @@ export function MonitoringForm({ item, devices, categories, severities, platform
            ) : (
              <div className="grid grid-cols-12 gap-5 p-2">
                 <div className="col-span-12 xl:col-span-4 space-y-5">
-                   <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                   <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
                      <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Alert Routing Rules</h3>
                      <div className="mt-4 rounded-lg border border-white/5 bg-white/[0.03] p-4">
                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Severity Level</p>
                      <p className="pt-2 text-[10px] font-bold text-slate-300">Pinned in header for cross-tab context.</p>
                      </div>
 
-                     <div className="mt-4 space-y-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+                     <div className="mt-4 space-y-4 rounded-lg border border-white/10 bg-black/20 p-4">
                       <div className="space-y-1.5">
                          <FieldLabel label="Notification Throttle (Seconds)" required />
                          <p className="text-[8px] text-slate-600 uppercase font-bold mb-2 tracking-tight">Minimum time between re-alerts for the same issue</p>
@@ -4682,7 +4682,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                 </div>
 
                 <div className="col-span-12 xl:col-span-8 space-y-5">
-                   <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                   <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
                      <div className="mb-4 flex items-center justify-between border-b border-white/5 pb-3">
                        <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center space-x-2">
                           <Activity size={14}/> <span>Recovery Procedures</span>
@@ -4695,7 +4695,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                      </div>
                    
                    <div className="space-y-4">
-                      <div className={`space-y-6 rounded-2xl border-2 p-6 ${formErrors.recovery_docs ? 'border-rose-500/40 bg-rose-500/10' : 'border-dashed border-white/10 bg-black/20'}`}>
+                      <div className={`space-y-6 rounded-lg border-2 p-6 ${formErrors.recovery_docs ? 'border-rose-500/40 bg-rose-500/10' : 'border-dashed border-white/10 bg-black/20'}`}>
                          <div className="flex items-center justify-between">
                             <div className="space-y-1">
                                <p className="text-[12px] font-black text-white uppercase tracking-tighter">Link Recovery Documents</p>
