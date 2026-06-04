@@ -42,16 +42,9 @@ async def get_setting_values_by_category(db: AsyncSession, category: str) -> set
     result = await db.execute(select(models.SettingOption.value).where(models.SettingOption.category == category))
     return {value for value in result.scalars().all() if value}
 
-async def get_monitoring_team_members(db: AsyncSession) -> dict[str, set[str]]:
-    result = await db.execute(
-        select(models.SettingOption.value, models.SettingOption.metadata_keys)
-        .where(models.SettingOption.category == "MonitoringTeam")
-    )
-    return {
-        value: {str(member).strip() for member in (members or []) if str(member).strip()}
-        for value, members in result.all()
-        if value
-    }
+async def get_registered_team_names(db: AsyncSession) -> set[str]:
+    result = await db.execute(select(models.Team.name).where(models.Team.is_archived == False))
+    return {name for name in result.scalars().all() if name}
 
 async def build_monitoring_payload(
     db: AsyncSession,
@@ -86,11 +79,11 @@ async def build_monitoring_payload(
         if platforms and clean_data["platform"] not in platforms:
             raise HTTPException(status_code=400, detail="Platform must be selected from Monitoring Platform settings")
 
-    team_members = await get_monitoring_team_members(db)
+    registered_teams = await get_registered_team_names(db)
     if "owner_team" in clean_data:
         owner_team = clean_data.get("owner_team")
-        if owner_team and owner_team not in team_members:
-            raise HTTPException(status_code=400, detail="Owner team must be selected from Monitoring Team settings")
+        if owner_team and owner_team not in registered_teams:
+            raise HTTPException(status_code=400, detail="Owner team must be selected from user management teams")
 
     resolved_owners: list[dict[str, Any]] | None = None
     if owners_data is not None:
@@ -114,13 +107,6 @@ async def build_monitoring_payload(
                 "external_id": operator.external_id,
                 "role": role,
             })
-        owner_team = clean_data.get("owner_team")
-        if owner_team:
-            allowed_members = team_members.get(owner_team, set())
-            if allowed_members:
-                invalid_owner = next((owner for owner in resolved_owners if owner["external_id"] not in allowed_members), None)
-                if invalid_owner:
-                    raise HTTPException(status_code=400, detail=f"Owner '{invalid_owner['name']}' is not assigned to team '{owner_team}'")
 
     if not partial:
         data = schemas.MonitoringItemCreate.model_validate({**clean_data, "owners": resolved_owners or []})
@@ -132,6 +118,14 @@ async def build_monitoring_payload(
     severity = clean_data.get("severity")
     if severity == "Critical" and not clean_data.get("recovery_docs"):
         raise HTTPException(status_code=400, detail="Critical monitors require at least one linked recovery document")
+
+    owner_team = clean_data.get("owner_team")
+    has_team_owner = bool(owner_team)
+    has_individual_owners = bool(resolved_owners)
+    if has_team_owner and has_individual_owners:
+        raise HTTPException(status_code=400, detail="Choose either a team owner or individual owners, not both")
+    if not has_team_owner and not has_individual_owners:
+        raise HTTPException(status_code=400, detail="Choose a team owner or at least one individual owner")
 
     if "status" in clean_data:
         clean_data["is_deleted"] = clean_data["status"] == "Deleted"
@@ -384,8 +378,7 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
             await db.flush()
             await save_monitoring_history(item.id, item.version, db, "Bulk restore")
     elif action == "update":
-        clean_update, _ = await build_monitoring_payload(db, payload, partial=True)
-        if clean_update:
+        if payload:
             result = await db.execute(
                 select(models.MonitoringItem)
                 .options(joinedload(models.MonitoringItem.owners).joinedload(models.MonitoringOwner.operator))
@@ -421,13 +414,17 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
                         if owner.operator_id
                     ],
                 }
-                merged_payload.update(clean_update)
-                validated_update, _ = await build_monitoring_payload(db, merged_payload, partial=False)
+                merged_payload.update(payload)
+                validated_update, owners_data = await build_monitoring_payload(db, merged_payload, partial=False)
                 for key, value in validated_update.items():
                     setattr(item, key, value)
+                if owners_data is not None:
+                    await db.execute(delete(models.MonitoringOwner).where(models.MonitoringOwner.monitoring_item_id == item.id))
+                    for owner in owners_data:
+                        db.add(models.MonitoringOwner(**owner, monitoring_item_id=item.id))
                 item.version = (item.version or 0) + 1
                 await db.flush()
-                summary_fields = ", ".join(sorted(clean_update.keys()))
+                summary_fields = ", ".join(sorted(payload.keys()))
                 await save_monitoring_history(item.id, item.version, db, f"Bulk update: {summary_fields}")
 
     await db.commit()

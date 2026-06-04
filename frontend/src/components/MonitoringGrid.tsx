@@ -77,14 +77,16 @@ interface OperatorRecord {
   username?: string | null
   external_id?: string | null
   team?: string | null
+  team_id?: number | null
   email?: string | null
 }
 
 interface MonitoringTeamOption {
   id: number
-  value: string
-  label: string
-  metadata_keys?: string[]
+  name: string
+  description?: string | null
+  source?: string | null
+  operators?: Array<{ id: number; external_id?: string | null }>
 }
 
 const DEFAULT_MONITORING_VIEWS = []
@@ -583,10 +585,13 @@ export default function MonitoringGrid() {
     queryKey: ['operators'],
     queryFn: async () => (await (await apiFetch('/api/v1/settings/operators')).json())
   })
+  const { data: teams } = useQuery({
+    queryKey: ['teams'],
+    queryFn: async () => (await (await apiFetch('/api/v1/settings/teams')).json())
+  })
 
   const categories = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "MonitoringCategory") : [], [settingsOptions])
   const platforms = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "MonitoringPlatform") : [], [settingsOptions])
-  const teams = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "MonitoringTeam") : [], [settingsOptions])
   const notificationMethods = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "NotificationMethod") : [], [settingsOptions])
   const severities = MONITORING_SEVERITIES
   const ownerRoles = MONITORING_OWNER_ROLES
@@ -2732,7 +2737,6 @@ export default function MonitoringGrid() {
             sections={[
                 { title: "Categories", category: "MonitoringCategory", icon: Layers },
                 { title: "Platforms", category: "MonitoringPlatform", icon: Globe },
-                { title: "Teams", category: "MonitoringTeam", icon: User },
                 { title: "Notification Methods", category: "NotificationMethod", icon: Bell },
             ]}
         />
@@ -3565,6 +3569,289 @@ const getLogicExtensions = (logicType?: MonitoringLogicEntry['type']) => {
   return [javascript()]
 }
 
+type MonitoringFormErrors = Record<string, string>
+
+const buildMonitoringFormErrors = (formData: any, ownershipMode: 'team' | 'individual') => {
+  const errors: MonitoringFormErrors = {}
+  const unsafeUrlPattern = /[<>"']|javascript:|data:|vbscript:/i
+
+  if (!formData.title?.trim()) errors.title = 'Title is required.'
+  if (!formData.category) errors.category = 'Category is required.'
+  if (!formData.status) errors.status = 'Status is required.'
+  if (!formData.severity) errors.severity = 'Severity is required.'
+  if (!formData.platform) errors.platform = 'Platform is required.'
+  if (!formData.notification_method) errors.notification_method = 'Notification method is required.'
+
+  if (ownershipMode === 'team') {
+    if (!formData.owner_team) errors.owner_team = 'Select a team owner.'
+    if (formData.owners?.length) errors.ownership = 'Choose either a team owner or individual owners, not both.'
+  } else {
+    if (!formData.owners?.length) errors.owners = 'Add at least one individual owner.'
+    if (formData.owner_team) errors.ownership = 'Choose either a team owner or individual owners, not both.'
+  }
+
+  if (formData.monitoring_url) {
+    try {
+      const parsed = new URL(formData.monitoring_url)
+      if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname) {
+        errors.monitoring_url = 'Monitoring URL must use http/https and include a host.'
+      }
+    } catch {
+      errors.monitoring_url = 'Monitoring URL must be a valid http/https URL.'
+    }
+    if (unsafeUrlPattern.test(formData.monitoring_url)) {
+      errors.monitoring_url = 'Monitoring URL contains unsafe content.'
+    }
+  }
+
+  if (Number.isNaN(formData.check_interval) || formData.check_interval < CHECK_INTERVAL_MIN || formData.check_interval > CHECK_INTERVAL_MAX) {
+    errors.check_interval = `Check interval must be between ${CHECK_INTERVAL_MIN} and ${CHECK_INTERVAL_MAX} seconds.`
+  }
+  if (Number.isNaN(formData.alert_duration) || formData.alert_duration < ALERT_DURATION_MIN || formData.alert_duration > ALERT_DURATION_MAX) {
+    errors.alert_duration = `Alert duration must be between ${ALERT_DURATION_MIN} and ${ALERT_DURATION_MAX} seconds.`
+  }
+  if (Number.isNaN(formData.notification_throttle) || formData.notification_throttle < NOTIFICATION_THROTTLE_MIN || formData.notification_throttle > NOTIFICATION_THROTTLE_MAX) {
+    errors.notification_throttle = `Notification throttle must be between ${NOTIFICATION_THROTTLE_MIN} and ${NOTIFICATION_THROTTLE_MAX} seconds.`
+  }
+
+  if (formData.severity === 'Critical' && !formData.recovery_docs?.length) {
+    errors.recovery_docs = 'Critical monitors require at least one linked recovery procedure.'
+  }
+
+  ;(formData.logic_json || []).forEach((entry: MonitoringLogicEntry) => {
+    if (!entry.description?.trim()) errors[`logic_${entry.id}_description`] = 'Logic description is required.'
+    if (!entry.logic_info?.trim()) errors[`logic_${entry.id}_logic_info`] = 'Logic definition is required.'
+  })
+
+  return errors
+}
+
+const getMonitoringTabErrorCounts = (errors: MonitoringFormErrors) => ({
+  context: Object.keys(errors).filter((key) => ['title', 'category', 'status', 'platform', 'owner_team', 'owners', 'ownership', 'monitoring_url'].includes(key)).length,
+  logic: Object.keys(errors).filter((key) => ['check_interval', 'alert_duration'].includes(key) || key.startsWith('logic_')).length,
+  alerting: Object.keys(errors).filter((key) => ['severity', 'notification_method', 'notification_throttle', 'recovery_docs'].includes(key)).length,
+})
+
+function FieldLabel({ label, required = false }: { label: string; required?: boolean }) {
+  return (
+    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">
+      {label}
+      {required && <span className="ml-1 text-rose-400">*</span>}
+    </label>
+  )
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null
+  return <p className="text-[10px] font-black uppercase tracking-[0.08em] text-rose-400 px-1">{message}</p>
+}
+
+const monitoringInputClass = (error?: string) =>
+  `w-full rounded-xl px-4 py-3 text-[12px] font-bold text-white outline-none transition-all ${
+    error
+      ? 'border border-rose-500/60 bg-rose-500/10 shadow-[0_0_0_1px_rgba(244,63,94,0.18)] focus:border-rose-400'
+      : 'border border-white/10 bg-slate-950/70 focus:border-blue-500/40'
+  }`
+
+function MonitoringSelectField({
+  label,
+  required = false,
+  value,
+  options,
+  onChange,
+  placeholder,
+  error,
+  searchable = false,
+  disabled = false,
+}: {
+  label: string
+  required?: boolean
+  value: string | number | null
+  options: Array<{ value: string | number; label: string; description?: string }>
+  onChange: (value: string) => void
+  placeholder?: string
+  error?: string
+  searchable?: boolean
+  disabled?: boolean
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const selected = options.find((option) => String(option.value) === String(value))
+  const filteredOptions = searchable
+    ? options.filter((option) => `${option.label} ${option.description || ''}`.toLowerCase().includes(search.toLowerCase()))
+    : options
+
+  useEffect(() => {
+    if (!isOpen) return
+    const handleClick = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setIsOpen(false)
+    }
+    window.addEventListener('mousedown', handleClick)
+    return () => window.removeEventListener('mousedown', handleClick)
+  }, [isOpen])
+
+  return (
+    <div className="space-y-2" ref={containerRef}>
+      <FieldLabel label={label} required={required} />
+      <div className="relative">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => setIsOpen((current) => !current)}
+          className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10 shadow-[0_0_0_1px_rgba(244,63,94,0.18)]' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+        >
+          <span className={`text-[11px] font-black uppercase tracking-[0.12em] ${selected ? 'text-slate-100' : 'text-slate-500'}`}>
+            {selected?.label || placeholder || 'Select option'}
+          </span>
+          <ChevronDown size={14} className={`text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {isOpen && !disabled && (
+          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 rounded-2xl border border-white/10 bg-[#020617] p-3 shadow-[0_24px_60px_rgba(2,6,23,0.48)]">
+            {searchable && (
+              <div className="mb-3">
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={`Search ${label.toLowerCase()}...`}
+                  className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-100 outline-none focus:border-blue-500/40"
+                />
+              </div>
+            )}
+            <div className="max-h-64 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+              {filteredOptions.map((option) => {
+                const active = String(option.value) === String(value)
+                return (
+                  <button
+                    key={String(option.value)}
+                    type="button"
+                    onClick={() => {
+                      onChange(String(option.value))
+                      setIsOpen(false)
+                      setSearch('')
+                    }}
+                    className={`w-full rounded-xl border px-3 py-3 text-left transition-all ${active ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10 hover:bg-white/[0.03]'}`}
+                  >
+                    <p className={`text-[10px] font-black uppercase tracking-[0.14em] ${active ? 'text-blue-300' : 'text-slate-200'}`}>{option.label}</p>
+                    {option.description && <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">{option.description}</p>}
+                  </button>
+                )
+              })}
+              {filteredOptions.length === 0 && (
+                <div className="rounded-xl border border-white/5 bg-black/20 px-3 py-4 text-center text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">
+                  No matching options
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+      <FieldError message={error} />
+    </div>
+  )
+}
+
+function MonitoringAssetField({
+  devices,
+  deviceId,
+  onChange,
+  error,
+}: {
+  devices: any[]
+  deviceId: number | null
+  onChange: (deviceId: number | null) => void
+  error?: string
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [systemFilter, setSystemFilter] = useState('ALL')
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const selectedDevice = devices?.find((device: any) => device.id === deviceId)
+  const systems = Array.from(new Set((devices || []).map((device: any) => device.system).filter(Boolean))).sort()
+  const filteredDevices = (devices || []).filter((device: any) => {
+    const matchesSystem = systemFilter === 'ALL' || device.system === systemFilter
+    const needle = `${device.name} ${device.system || ''}`.toLowerCase()
+    const matchesSearch = !search || needle.includes(search.toLowerCase())
+    return matchesSystem && matchesSearch
+  })
+
+  useEffect(() => {
+    if (!isOpen) return
+    const handleClick = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setIsOpen(false)
+    }
+    window.addEventListener('mousedown', handleClick)
+    return () => window.removeEventListener('mousedown', handleClick)
+  }, [isOpen])
+
+  return (
+    <div className="space-y-2" ref={containerRef}>
+      <FieldLabel label="Registry Asset" />
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setIsOpen((current) => !current)}
+          className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'}`}
+        >
+          <span className={`text-[11px] font-black uppercase tracking-[0.12em] ${selectedDevice ? 'text-slate-100' : 'text-slate-500'}`}>
+            {selectedDevice ? `${selectedDevice.name} [${selectedDevice.system}]` : 'Select asset'}
+          </span>
+          <ChevronDown size={14} className={`text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {isOpen && (
+          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 rounded-2xl border border-white/10 bg-[#020617] p-3 shadow-[0_24px_60px_rgba(2,6,23,0.48)]">
+            <div className="grid grid-cols-[170px_minmax(0,1fr)] gap-3">
+              <MonitoringSelectField
+                label="System Filter"
+                value={systemFilter}
+                onChange={(value) => setSystemFilter(value)}
+                options={[{ value: 'ALL', label: 'All Systems' }, ...systems.map((system) => ({ value: system, label: system }))]}
+                placeholder="All Systems"
+              />
+              <div className="space-y-2">
+                <FieldLabel label="Search Asset" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search hostname or system..."
+                  className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-100 outline-none focus:border-blue-500/40"
+                />
+              </div>
+            </div>
+            <div className="mt-3 max-h-72 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(null)
+                  setIsOpen(false)
+                }}
+                className={`w-full rounded-xl border px-3 py-3 text-left transition-all ${deviceId == null ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10'}`}
+              >
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-200">No linked asset</p>
+              </button>
+              {filteredDevices.map((device: any) => (
+                <button
+                  key={device.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(device.id)
+                    setIsOpen(false)
+                  }}
+                  className={`w-full rounded-xl border px-3 py-3 text-left transition-all ${device.id === deviceId ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10'}`}
+                >
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-200">{device.name}</p>
+                  <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">{device.system || 'No system'}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      <FieldError message={error} />
+    </div>
+  )
+}
+
 export function MonitoringForm({ item, devices, categories, severities, platforms, teams, operators, notificationMethods, ownerRoles, onClose, onSuccess }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
@@ -3624,23 +3911,52 @@ export function MonitoringForm({ item, devices, categories, severities, platform
     logic_json: initialLogicJson as MonitoringLogicEntry[]
   })
 
+  const [ownershipMode, setOwnershipMode] = useState<'team' | 'individual'>(
+    initialItemFields?.owner_team ? 'team' : (initialItemFields?.owners?.length ? 'individual' : 'team')
+  )
   const [newOwner, setNewOwner] = useState<{ operator_id: string; role: string }>({ operator_id: '', role: ownerRoles?.[0]?.value || 'Primary Support' })
   const [recipientInput, setRecipientInput] = useState('')
+  const [formErrors, setFormErrors] = useState<MonitoringFormErrors>({})
+  const [generalError, setGeneralError] = useState('')
 
   const selectedTeam = useMemo(
-    () => (teams || []).find((team: MonitoringTeamOption) => team.value === formData.owner_team),
+    () => (teams || []).find((team: MonitoringTeamOption) => team.name === formData.owner_team),
     [teams, formData.owner_team]
   )
 
   const teamOperators = useMemo(() => {
-    const memberIds = new Set((selectedTeam?.metadata_keys || []).map((value) => String(value)))
-    if (!memberIds.size) return operators as OperatorRecord[]
-    return (operators as OperatorRecord[]).filter((operator) => operator.external_id && memberIds.has(String(operator.external_id)))
+    if (!selectedTeam?.id) return operators as OperatorRecord[]
+    return (operators as OperatorRecord[]).filter((operator) => operator.team_id === selectedTeam.id)
   }, [operators, selectedTeam])
+
+  const tabErrors = useMemo(() => getMonitoringTabErrorCounts(formErrors), [formErrors])
+
+  const setOwnershipModeAndNormalize = (mode: 'team' | 'individual') => {
+    setOwnershipMode(mode)
+    setFormData((current) => ({
+      ...current,
+      owner_team: mode === 'team' ? current.owner_team : '',
+      owners: mode === 'individual' ? current.owners : []
+    }))
+    setFormErrors((current) => {
+      const next = { ...current }
+      delete next.owner_team
+      delete next.owners
+      delete next.ownership
+      return next
+    })
+  }
+
+  const activeLogicErrors = activeLogicId == null
+    ? { description: '', logic_info: '' }
+    : {
+        description: formErrors[`logic_${activeLogicId}_description`],
+        logic_info: formErrors[`logic_${activeLogicId}_logic_info`]
+      }
 
   const addOwner = () => {
     const operatorId = Number(newOwner.operator_id)
-    const selectedOperator = (operators as OperatorRecord[]).find((operator) => operator.id === operatorId)
+    const selectedOperator = teamOperators.find((operator) => operator.id === operatorId) || (operators as OperatorRecord[]).find((operator) => operator.id === operatorId)
     if (selectedOperator && !formData.owners.some((owner) => owner.operator_id === operatorId)) {
        setFormData({
          ...formData,
@@ -3653,6 +3969,12 @@ export function MonitoringForm({ item, devices, categories, severities, platform
              external_id: selectedOperator.external_id
            }
          ]
+       })
+       setFormErrors((current) => {
+         const next = { ...current }
+         delete next.owners
+         delete next.ownership
+         return next
        })
        setNewOwner({ operator_id: '', role: ownerRoles?.[0]?.value || 'Primary Support' })
     }
@@ -3681,6 +4003,11 @@ export function MonitoringForm({ item, devices, categories, severities, platform
       setActiveLogicId(formData.logic_json[0].id)
     }
   }, [formData.logic_json])
+
+  useEffect(() => {
+    if (Object.keys(formErrors).length === 0 && !generalError) return
+    setFormErrors(buildMonitoringFormErrors(formData, ownershipMode))
+  }, [formData, ownershipMode])
 
   // Fetch services for selected device
   const { data: deviceServices } = useQuery({
@@ -3718,10 +4045,18 @@ export function MonitoringForm({ item, devices, categories, severities, platform
       return res.json()
     },
     onSuccess: () => {
+      setGeneralError('')
       toast.success(item ? 'Logic synchronized' : 'Logic deployed to matrix')
       onSuccess()
     },
-    onError: (e: any) => toast.error(e.message || 'Failed to save monitoring item')
+    onError: (e: any) => {
+      const message = e.message || 'Failed to save monitoring item'
+      setGeneralError(message)
+      toast.error(message)
+      if (message.toLowerCase().includes('recovery')) setActiveTab('alerting')
+      else if (message.toLowerCase().includes('owner') || message.toLowerCase().includes('team')) setActiveTab('context')
+      else if (message.toLowerCase().includes('interval') || message.toLowerCase().includes('logic')) setActiveTab('logic')
+    }
   })
 
   const toggleService = (id: number) => {
@@ -3780,9 +4115,15 @@ export function MonitoringForm({ item, devices, categories, severities, platform
   }
 
   const handleSave = () => {
-    if (formData.severity === 'Critical' && formData.recovery_docs.length === 0) {
-      toast.error('Critical monitors require at least one linked recovery document')
-      setActiveTab('alerting')
+    const errors = buildMonitoringFormErrors(formData, ownershipMode)
+    setFormErrors(errors)
+    setGeneralError('')
+    if (Object.keys(errors).length > 0) {
+      const counts = getMonitoringTabErrorCounts(errors)
+      if (counts.context > 0) setActiveTab('context')
+      else if (counts.logic > 0) setActiveTab('logic')
+      else if (counts.alerting > 0) setActiveTab('alerting')
+      toast.error('Resolve the highlighted form errors before saving')
       return
     }
     mutation.mutate(formData)
@@ -3834,7 +4175,12 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                   onClick={() => setActiveTab(tab.id as any)}
                   className={`px-4 sm:px-6 py-2 rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                  {tab.label}
+                  <span className="flex items-center gap-2">
+                    <span>{tab.label}</span>
+                    {(tabErrors as any)[tab.id] > 0 && (
+                      <span className="rounded-full bg-rose-500/20 px-1.5 py-0.5 text-[8px] text-rose-300">{(tabErrors as any)[tab.id]}</span>
+                    )}
+                  </span>
                 </button>
               ))}
             </div>
@@ -3845,193 +4191,287 @@ export function MonitoringForm({ item, devices, categories, severities, platform
            <div className="sticky top-0 z-20 mb-6 rounded-xl border border-blue-500/20 bg-slate-950/90 p-4 shadow-[0_10px_40px_rgba(2,6,23,0.45)] backdrop-blur">
              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.8fr)_repeat(2,minmax(180px,0.6fr))]">
                <div className="space-y-2">
-                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Title</label>
+                 <FieldLabel label="Title" required />
                  <input
                    value={formData.title}
                    onChange={e => setFormData({ ...formData, title: e.target.value })}
                    placeholder="e.g. CORE-DB: High CPU Load Alert"
-                   className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500 transition-all shadow-inner"
+                   className={monitoringInputClass(formErrors.title)}
                  />
+                 <FieldError message={formErrors.title} />
                </div>
-               <StyledSelect
+               <MonitoringSelectField
                  label="Status"
+                 required
                  value={formData.status}
-                 onChange={(e: any) => setFormData({ ...formData, status: e.target.value })}
+                 onChange={(value) => setFormData({ ...formData, status: value })}
                  options={STATUSES.map(s => ({ value: s.value, label: s.value }))}
+                 error={formErrors.status}
                />
-               <StyledSelect
+               <MonitoringSelectField
                  label="Severity"
+                 required
                  value={formData.severity}
-                 onChange={(e: any) => setFormData({ ...formData, severity: e.target.value })}
+                 onChange={(value) => setFormData({ ...formData, severity: value })}
                  options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
+                 error={formErrors.severity}
                />
              </div>
            </div>
+           {(generalError || Object.keys(formErrors).length > 0) && (
+             <div className="mb-6 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3">
+               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-rose-300">
+                 {generalError || 'Resolve the highlighted required fields and rule violations before saving.'}
+               </p>
+             </div>
+           )}
+           <div className="mb-6 flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+               Fields marked <span className="text-rose-400">*</span> are required.
+             </p>
+             <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">
+               Validation is shown inline before save.
+             </p>
+           </div>
            {activeTab === 'context' ? (
-             <div className="grid grid-cols-12 gap-8 p-2">
-                <div className="col-span-12 sm:col-span-4 space-y-6">
+             <div className="grid grid-cols-12 gap-5 p-2">
+               <div className="col-span-12 xl:col-span-5 space-y-5">
+                 <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                   <div className="mb-4 flex items-center justify-between">
+                     <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Target Identification</h3>
+                     <span className="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-slate-500">
+                       Asset + Scope
+                     </span>
+                   </div>
                    <div className="space-y-4">
-                      <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 border-l-2 border-blue-600 pl-3">Target Identification</h3>
-                      <StyledSelect 
-                        label="Registry Asset"
-                        value={formData.device_id}
-                        onChange={(e: any) => {
-                            const val = e.target.value === "" ? null : parseInt(e.target.value);
-                            setFormData({...formData, device_id: val, monitored_services: []});
-                        }}
-                        options={devices?.map((d: any) => ({ value: d.id, label: `${d.name} [${d.system}]` })) || []}
-                        placeholder="Select Device..."
-                      />
-
-                      {formData.device_id && (
-                        <div className="p-4 bg-white/5 rounded-lg border border-white/5 space-y-3">
-                           <div className="flex items-center justify-between px-1">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Service Scope</label>
-                              <span className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full">
-                                {formData.monitored_services?.length || 0} Bound
-                              </span>
-                           </div>
-                           <div className="flex flex-wrap gap-2">
-                              {deviceServices?.map((svc: any) => (
-                                <button
-                                  key={svc.id}
-                                  onClick={() => toggleService(svc.id)}
-                                  className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase transition-all flex items-center space-x-1.5 border ${
-                                    formData.monitored_services?.includes(svc.id)
-                                      ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/20'
-                                      : 'bg-black/40 border-white/10 text-slate-500 hover:text-slate-300 hover:border-white/20'
-                                  }`}
-                                >
-                                  {formData.monitored_services?.includes(svc.id) ? <Check size={8} strokeWidth={4} /> : <div className="w-1 h-1 rounded-full bg-slate-700" />}
-                                  <span>{svc.name}</span>
-                                </button>
-                              ))}
-                           </div>
-                        </div>
-                      )}
-                   </div>
-
-                   <StyledSelect 
-                     label="Category"
-                     value={formData.category}
-                     onChange={(e: any) => setFormData({...formData, category: e.target.value})}
-                     options={categories.map((c:any) => ({ value: c.value, label: c.label }))}
-                   />
-                   
-                   <div className="space-y-4 p-4 bg-white/5 rounded-lg border border-white/5">
-                      <div className="flex items-center justify-between px-1">
-                         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Ownership</h3>
-                         <span className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full">{formData.owners?.length || 0} Assigned</span>
-                      </div>
-
-                      <StyledSelect
-                        label="Owner Team"
-                        value={formData.owner_team}
-                        onChange={(e: any) => setFormData({ ...formData, owner_team: e.target.value, owners: [] })}
-                        options={(teams || []).map((team: MonitoringTeamOption) => ({ value: team.value, label: team.label }))}
-                        placeholder="Select Team..."
-                      />
-                      
-                      <div className="grid grid-cols-12 gap-2">
-                         <div className="col-span-7">
-                            <select
-                              value={newOwner.operator_id}
-                              onChange={e => setNewOwner({ ...newOwner, operator_id: e.target.value })}
-                              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] font-bold outline-none focus:border-blue-500 appearance-none"
-                            >
-                               <option value="">Select operator...</option>
-                               {teamOperators.map((operator: OperatorRecord) => (
-                                 <option key={operator.id} value={operator.id}>
-                                   {(operator.full_name || operator.username || operator.external_id)}{operator.external_id ? ` [${operator.external_id}]` : ''}
-                                 </option>
-                               ))}
-                            </select>
+                     <MonitoringAssetField
+                       devices={devices || []}
+                       deviceId={formData.device_id}
+                       onChange={(deviceId) => setFormData({ ...formData, device_id: deviceId, monitored_services: [] })}
+                     />
+                     {formData.device_id && (
+                       <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                         <div className="mb-3 flex items-center justify-between">
+                           <FieldLabel label="Service Scope" />
+                           <span className="rounded-full bg-blue-500/10 px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-blue-300">
+                             {formData.monitored_services?.length || 0} Bound
+                           </span>
                          </div>
-                         <div className="col-span-4">
-                            <select 
-                              value={newOwner.role}
-                              onChange={e => setNewOwner({...newOwner, role: e.target.value})}
-                              className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] font-bold outline-none focus:border-blue-500 appearance-none"
-                            >
-                               {ownerRoles.map((r:any) => <option key={r.value} value={r.value}>{r.label}</option>)}
-                            </select>
+                         <div className="flex flex-wrap gap-2">
+                           {deviceServices?.map((svc: any) => (
+                             <button
+                               key={svc.id}
+                               type="button"
+                               onClick={() => toggleService(svc.id)}
+                               className={`rounded-xl border px-3 py-2 text-[9px] font-black uppercase tracking-[0.12em] transition-all ${
+                                 formData.monitored_services?.includes(svc.id)
+                                   ? 'border-blue-500/40 bg-blue-500/12 text-blue-200'
+                                   : 'border-white/10 bg-slate-950/60 text-slate-400 hover:border-white/20 hover:text-slate-200'
+                               }`}
+                             >
+                               {svc.name}
+                             </button>
+                           ))}
                          </div>
-                         <div className="col-span-1">
-                            <button onClick={addOwner} className="w-full h-full flex items-center justify-center bg-blue-600 rounded-lg text-white hover:bg-blue-500 transition-all"><Plus size={14}/></button>
-                         </div>
-                      </div>
+                       </div>
+                     )}
+                     <MonitoringSelectField
+                       label="Category"
+                       required
+                       value={formData.category}
+                       onChange={(value) => setFormData({ ...formData, category: value })}
+                       options={categories.map((c: any) => ({ value: c.value, label: c.label }))}
+                       error={formErrors.category}
+                     />
+                   </div>
+                 </section>
 
-                      <div className="space-y-1 mt-2 max-h-32 overflow-y-auto custom-scrollbar pr-1">
-                         {formData.owners?.map((o: any, idx: number) => (
-                           <div key={idx} className="flex items-center justify-between bg-black/20 p-2 rounded-lg border border-white/5 group">
-                              <div className="flex items-center space-x-3">
-                                 <User size={12} className="text-blue-500" />
-                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-slate-200">{o.name}</span>
-                                    <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{o.role} | ID: {o.external_id}</span>
-                                 </div>
-                              </div>
-                              <button onClick={() => removeOwner(idx)} className="p-1 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={12}/></button>
+                 <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                   <div className="mb-4 flex items-center justify-between">
+                     <div>
+                       <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Ownership</h3>
+                       <p className="mt-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-600">
+                         Choose a team owner or named operators, never both.
+                       </p>
+                     </div>
+                     <span className="rounded-full bg-blue-500/10 px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-blue-300">
+                       {ownershipMode === 'team' ? 'Team Mode' : `${formData.owners?.length || 0} Operators`}
+                     </span>
+                   </div>
+                   <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-black/30 p-1">
+                     {[
+                       { id: 'team', label: 'Team Owner' },
+                       { id: 'individual', label: 'Individual Owners' }
+                     ].map((mode) => (
+                       <button
+                         key={mode.id}
+                         type="button"
+                         onClick={() => setOwnershipModeAndNormalize(mode.id as 'team' | 'individual')}
+                         className={`rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] transition-all ${
+                           ownershipMode === mode.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-200'
+                         }`}
+                       >
+                         {mode.label}
+                       </button>
+                     ))}
+                   </div>
+                   <FieldError message={formErrors.ownership} />
+                   {ownershipMode === 'team' ? (
+                     <div className="space-y-3">
+                       <MonitoringSelectField
+                         label="Owner Team"
+                         required
+                         value={formData.owner_team}
+                         onChange={(value) => setFormData({ ...formData, owner_team: value, owners: [] })}
+                         options={(teams || []).map((team: MonitoringTeamOption) => ({
+                           value: team.name,
+                           label: team.name,
+                           description: `${team.operators?.length || 0} members`
+                         }))}
+                         placeholder="Select team"
+                         error={formErrors.owner_team}
+                         searchable
+                       />
+                       {selectedTeam && (
+                         <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                           <div className="flex items-center justify-between">
+                             <div>
+                               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-200">{selectedTeam.name}</p>
+                               <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">
+                                 {(selectedTeam.operators?.length || 0)} synced or managed operators
+                               </p>
+                             </div>
+                             <span className="rounded-full border border-white/10 px-2 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">
+                               {selectedTeam.source || 'manual'}
+                             </span>
                            </div>
-                         ))}
-                      </div>
-                   </div>
-                </div>
+                         </div>
+                       )}
+                     </div>
+                   ) : (
+                     <div className="space-y-4">
+                       <div className="grid grid-cols-12 gap-3">
+                         <div className="col-span-12 md:col-span-6">
+                           <MonitoringSelectField
+                             label="Owner Operator"
+                             required
+                             value={newOwner.operator_id}
+                             onChange={(value) => setNewOwner({ ...newOwner, operator_id: value })}
+                             options={(operators as OperatorRecord[]).map((operator) => ({
+                               value: String(operator.id),
+                               label: operator.full_name || operator.username || operator.external_id,
+                               description: `${operator.team || 'No team'} | ${operator.external_id || 'No ID'}`
+                             }))}
+                             placeholder="Select operator"
+                             error={formErrors.owners}
+                             searchable
+                           />
+                         </div>
+                         <div className="col-span-12 md:col-span-4">
+                           <MonitoringSelectField
+                             label="Owner Role"
+                             value={newOwner.role}
+                             onChange={(value) => setNewOwner({ ...newOwner, role: value })}
+                             options={ownerRoles.map((r: any) => ({ value: r.value, label: r.label }))}
+                           />
+                         </div>
+                         <div className="col-span-12 md:col-span-2 flex items-end">
+                           <button
+                             type="button"
+                             onClick={addOwner}
+                             className="w-full rounded-xl border border-blue-500/30 bg-blue-600 px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-white transition-all hover:bg-blue-500"
+                           >
+                             Add
+                           </button>
+                         </div>
+                       </div>
+                       <FieldError message={formErrors.owners} />
+                       <div className="max-h-52 space-y-2 overflow-y-auto pr-1 custom-scrollbar">
+                         {formData.owners?.length ? formData.owners.map((o: any, idx: number) => (
+                           <div key={idx} className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                             <div className="min-w-0">
+                               <p className="truncate text-[10px] font-black uppercase tracking-[0.14em] text-slate-100">{o.name}</p>
+                               <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">
+                                 {o.role} | {o.external_id || 'No external ID'}
+                               </p>
+                             </div>
+                             <button type="button" onClick={() => removeOwner(idx)} className="rounded-lg p-2 text-slate-500 transition-colors hover:text-rose-400">
+                               <Trash2 size={12} />
+                             </button>
+                           </div>
+                         )) : (
+                           <div className="rounded-2xl border border-dashed border-white/10 px-4 py-6 text-center text-[10px] font-black uppercase tracking-[0.16em] text-slate-600">
+                             No individual owners assigned
+                           </div>
+                         )}
+                       </div>
+                     </div>
+                   )}
+                 </section>
+               </div>
 
-                <div className="col-span-12 sm:col-span-8 space-y-6">
-                   <StyledSelect
-                     label="Platform"
-                     value={formData.platform}
-                     onChange={(e: any) => setFormData({ ...formData, platform: e.target.value })}
-                     options={(platforms || []).map((platform: any) => ({ value: platform.value, label: platform.label }))}
-                     placeholder="Select Platform..."
-                   />
-
-                   <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Monitoring URL</label>
-                      <div className="relative group">
-                        <Globe size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                        <input 
-                          value={formData.monitoring_url}
-                          onChange={e => setFormData({...formData, monitoring_url: e.target.value})}
-                          placeholder="https://console.internal/..."
-                          className="w-full bg-black/40 border border-white/10 rounded-lg pl-11 pr-4 py-3 text-[12px] font-bold text-blue-400 outline-none focus:border-blue-500 transition-all"
-                        />
-                      </div>
+               <div className="col-span-12 xl:col-span-7 space-y-5">
+                 <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                   <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                     <MonitoringSelectField
+                       label="Platform"
+                       required
+                       value={formData.platform}
+                       onChange={(value) => setFormData({ ...formData, platform: value })}
+                       options={(platforms || []).map((platform: any) => ({ value: platform.value, label: platform.label }))}
+                       placeholder="Select platform"
+                       error={formErrors.platform}
+                       searchable
+                     />
+                     <div className="space-y-2">
+                       <FieldLabel label="Monitoring URL" />
+                       <div className="relative">
+                         <Globe size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                         <input
+                           value={formData.monitoring_url}
+                           onChange={e => setFormData({ ...formData, monitoring_url: e.target.value })}
+                           placeholder="https://console.internal/..."
+                           className={`${monitoringInputClass(formErrors.monitoring_url)} pl-11 text-blue-300`}
+                         />
+                       </div>
+                       <FieldError message={formErrors.monitoring_url} />
+                     </div>
                    </div>
+                 </section>
 
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-	                      <div className="space-y-2">
-	                        <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 flex items-center space-x-2">
-	                          <Info size={14}/> <span>Purpose</span>
-	                        </label>
-                        <textarea 
-                          value={formData.purpose}
-                          onChange={e => setFormData({...formData, purpose: e.target.value})}
-                          placeholder="Why are we monitoring this? How does it help the team?"
-                          rows={4}
-                          className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all resize-none"
-                        />
-                      </div>
-	                      <div className="space-y-2">
-	                        <label className="text-[11px] font-black uppercase tracking-widest text-slate-500 flex items-center space-x-2">
-	                          <Zap size={14}/> <span>Impact</span>
-	                        </label>
-                        <textarea 
-                          value={formData.impact}
-                          onChange={e => setFormData({...formData, impact: e.target.value})}
-                          placeholder="What does it mean if this alert notifies? What is the consequence?"
-                          rows={4}
-                          className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[11px] font-bold text-white outline-none focus:border-blue-500 transition-all resize-none"
-                        />
-                      </div>
+                 <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                   <div className="mb-4">
+                     <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Operational Context</h3>
                    </div>
-                </div>
+                   <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                     <div className="space-y-2">
+                       <FieldLabel label="Purpose" />
+                       <textarea
+                         value={formData.purpose}
+                         onChange={e => setFormData({ ...formData, purpose: e.target.value })}
+                         placeholder="Why are we monitoring this? How does it help the team?"
+                         rows={6}
+                         className={`${monitoringInputClass()} resize-none text-[11px]`}
+                       />
+                     </div>
+                     <div className="space-y-2">
+                       <FieldLabel label="Impact" />
+                       <textarea
+                         value={formData.impact}
+                         onChange={e => setFormData({ ...formData, impact: e.target.value })}
+                         placeholder="What happens when this monitor triggers?"
+                         rows={6}
+                         className={`${monitoringInputClass()} resize-none text-[11px]`}
+                       />
+                     </div>
+                   </div>
+                 </section>
+               </div>
              </div>
            ) : activeTab === 'logic' ? (
-             <div className="grid grid-cols-12 gap-8 p-2 h-full min-h-[500px]">
-                {/* Left: Logic Entry Selection */}
-                <div className="col-span-12 sm:col-span-4 space-y-4">
+             <div className="grid grid-cols-12 gap-5 p-2 h-full min-h-[500px]">
+                <div className="col-span-12 xl:col-span-4 space-y-5">
+                   <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
                    <div className="flex items-center justify-between">
                       <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center space-x-2">
                          <Settings size={14}/> <span>Logic Entries</span>
@@ -4044,7 +4484,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                       </button>
                    </div>
 
-                   <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                   <div className="mt-4 space-y-2 max-h-[360px] overflow-y-auto custom-scrollbar pr-2">
                       {formData.logic_json?.map((entry: MonitoringLogicEntry) => (
                         <div 
                           key={entry.id}
@@ -4066,6 +4506,9 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                               <span className="text-[8px] font-bold text-slate-600 uppercase">Entry #{entry.id.toString().slice(-4)}</span>
                            </div>
                            <p className="text-[11px] font-bold text-slate-300 truncate">{entry.description || 'No description provided'}</p>
+                           {(formErrors[`logic_${entry.id}_description`] || formErrors[`logic_${entry.id}_logic_info`]) && (
+                             <p className="mt-2 text-[8px] font-black uppercase tracking-[0.12em] text-rose-400">Entry has required-field errors</p>
+                           )}
                         </div>
                       ))}
                       {formData.logic_json?.length === 0 && (
@@ -4074,11 +4517,12 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                         </div>
                       )}
                    </div>
+                   </section>
 
-                   <div className="space-y-4 pt-4 border-t border-white/5">
+                   <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
                       <div className="grid grid-cols-1 gap-4">
                          <div className="space-y-1.5">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 px-1">Check Frequency (Seconds)</label>
+                            <FieldLabel label="Check Frequency (Seconds)" required />
                             <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600 px-1">Allowed {CHECK_INTERVAL_MIN} to {CHECK_INTERVAL_MAX}</p>
                             <div className="relative">
                                <Clock size={12} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -4088,12 +4532,13 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                  min={CHECK_INTERVAL_MIN}
                                  max={CHECK_INTERVAL_MAX}
                                  onChange={e => setFormData({...formData, check_interval: Number(e.target.value)})}
-                                 className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-[12px] font-bold text-white outline-none focus:border-blue-500"
+                                 className={`${monitoringInputClass(formErrors.check_interval)} pl-10 py-2`}
                                />
                             </div>
+                            <FieldError message={formErrors.check_interval} />
                          </div>
                          <div className="space-y-1.5">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 px-1">Alert Duration (Seconds Delay)</label>
+                            <FieldLabel label="Alert Duration (Seconds Delay)" required />
                             <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600 px-1">Allowed {ALERT_DURATION_MIN} to {ALERT_DURATION_MAX}</p>
                             <div className="relative">
                                <AlertCircle size={12} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -4103,45 +4548,49 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                  min={ALERT_DURATION_MIN}
                                  max={ALERT_DURATION_MAX}
                                  onChange={e => setFormData({...formData, alert_duration: Number(e.target.value)})}
-                                 className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-[12px] font-bold text-white outline-none focus:border-blue-500"
+                                 className={`${monitoringInputClass(formErrors.alert_duration)} pl-10 py-2`}
                                />
                             </div>
+                            <FieldError message={formErrors.alert_duration} />
                          </div>
                       </div>
-                   </div>
+                   </section>
                 </div>
 
-                {/* Right: Detailed Logic Editor */}
-                <div className="col-span-12 sm:col-span-8 flex flex-col space-y-4 h-full">
+                <div className="col-span-12 xl:col-span-8 flex flex-col space-y-4 h-full">
                    {activeLogicEntry ? (
-                     <>
-                        <div className="grid grid-cols-2 gap-4">
-                           <StyledSelect 
+                     <section className="flex h-full flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                           <MonitoringSelectField
                              label="Logic Type"
+                             required
                              value={activeLogicEntry.type}
-                             onChange={e => updateLogicEntry(activeLogicEntry.id, 'type', e.target.value)}
+                             onChange={(value) => updateLogicEntry(activeLogicEntry.id, 'type', value)}
                              options={LOGIC_TYPES.map(t => ({ value: t, label: t }))}
                            />
                            <div className="space-y-2">
-                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description</label>
+                             <FieldLabel label="Description" required />
                              <input 
                                value={activeLogicEntry.description}
                                onChange={e => updateLogicEntry(activeLogicEntry.id, 'description', e.target.value)}
                                placeholder="What does this logic check?"
-                               className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-[12px] font-bold text-white outline-none focus:border-blue-500"
+                               className={`${monitoringInputClass(activeLogicErrors.description)} py-2`}
                              />
+                             <FieldError message={activeLogicErrors.description} />
                            </div>
                         </div>
 
-                        <div className="flex-1 flex flex-col space-y-2 min-h-0">
+                        <div className="mt-4 flex-1 flex flex-col space-y-2 min-h-0">
                            <div className="flex items-center justify-between px-1">
-                              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Logic Information</label>
+                              <FieldLabel label="Logic Information" required />
                               <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">
                                 Syntax-aware editor
                               </span>
                            </div>
                            
-                           <div className="flex-1 bg-black/40 border border-white/10 rounded-lg overflow-hidden shadow-inner min-h-[260px]">
+                           <div className={`flex-1 overflow-hidden rounded-xl border shadow-inner min-h-[260px] ${
+                             activeLogicErrors.logic_info ? 'border-rose-500/60 bg-rose-500/10' : 'border-white/10 bg-black/40'
+                           }`}>
                               <CodeMirror
                                 value={activeLogicEntry.logic_info}
                                 height="320px"
@@ -4151,13 +4600,14 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                 onChange={(value) => updateLogicEntry(activeLogicEntry.id, 'logic_info', value)}
                               />
                            </div>
+                           <FieldError message={activeLogicErrors.logic_info} />
                            <div className="flex justify-end">
                               <span className="text-[8px] font-black text-slate-500 uppercase bg-black/60 px-2 py-1 rounded-lg border border-white/5">
                                  {activeLogicEntry.logic_info.length} Chars | {activeLogicEntry.logic_info.split('\n').length} Lines
                               </span>
                            </div>
                         </div>
-                     </>
+                     </section>
                    ) : (
                      <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-lg space-y-4">
                         <Activity size={40} className="text-slate-700" />
@@ -4170,19 +4620,18 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                 </div>
              </div>
            ) : (
-             <div className="grid grid-cols-12 gap-8 p-2">
-                {/* Left: Severity & Throttling */}
-                <div className="col-span-12 sm:col-span-4 space-y-6">
-                   <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 border-l-2 border-blue-600 pl-3">Alert Routing Rules</h3>
-                   
-                   <div className="rounded-lg border border-white/5 bg-white/[0.03] p-4">
+             <div className="grid grid-cols-12 gap-5 p-2">
+                <div className="col-span-12 xl:col-span-4 space-y-5">
+                   <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                     <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Alert Routing Rules</h3>
+                     <div className="mt-4 rounded-lg border border-white/5 bg-white/[0.03] p-4">
                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Severity Level</p>
                      <p className="pt-2 text-[10px] font-bold text-slate-300">Pinned in header for cross-tab context.</p>
-                   </div>
+                     </div>
 
-                   <div className="space-y-4 p-4 bg-white/5 rounded-lg border border-white/5">
+                     <div className="mt-4 space-y-4 rounded-2xl border border-white/10 bg-black/20 p-4">
                       <div className="space-y-1.5">
-                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Notification Throttle (Seconds)</label>
+                         <FieldLabel label="Notification Throttle (Seconds)" required />
                          <p className="text-[8px] text-slate-600 uppercase font-bold mb-2 tracking-tight">Minimum time between re-alerts for the same issue</p>
                          <input 
                            type="number"
@@ -4190,29 +4639,32 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                            min={NOTIFICATION_THROTTLE_MIN}
                            max={NOTIFICATION_THROTTLE_MAX}
                            onChange={e => setFormData({...formData, notification_throttle: Number(e.target.value)})}
-                           className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-blue-500"
+                           className={monitoringInputClass(formErrors.notification_throttle)}
                          />
                          <p className="pt-2 text-[8px] font-bold uppercase tracking-widest text-slate-600">Allowed {NOTIFICATION_THROTTLE_MIN} to {NOTIFICATION_THROTTLE_MAX}</p>
+                         <FieldError message={formErrors.notification_throttle} />
                       </div>
-                   </div>
+                     </div>
 
-                   <div className="space-y-4">
-                      <StyledSelect 
+                     <div className="mt-4 space-y-4">
+                      <MonitoringSelectField
                         label="Primary Notification Method"
+                        required
                         value={formData.notification_method}
-                        onChange={(e: any) => setFormData({...formData, notification_method: e.target.value})}
+                        onChange={(value) => setFormData({...formData, notification_method: value})}
                         options={notificationMethods.map((m:any) => ({ value: m.value, label: m.label }))}
+                        error={formErrors.notification_method}
                       />
                       
                       <div className="space-y-2">
-                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Recipients Matrix</label>
+                         <FieldLabel label="Recipients Matrix" />
                          <div className="flex space-x-2">
                             <input 
                               value={recipientInput}
                               onChange={e => setRecipientInput(e.target.value)}
                               onKeyDown={e => e.key === 'Enter' && addRecipient()}
                               placeholder="Channel ID or Email..."
-                              className="flex-1 bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-[11px] outline-none focus:border-blue-500"
+                              className={`${monitoringInputClass()} flex-1 py-2 text-[11px]`}
                             />
                             <button onClick={addRecipient} className="bg-slate-800 hover:bg-slate-700 text-white px-4 rounded-lg transition-all"><Plus size={14}/></button>
                          </div>
@@ -4225,17 +4677,25 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                             ))}
                          </div>
                       </div>
-                   </div>
+                     </div>
+                   </section>
                 </div>
 
-                {/* Right: Recovery Methods (Linked Knowledge) */}
-                <div className="col-span-12 sm:col-span-8 space-y-6">
-                   <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center space-x-2 border-b border-white/5 pb-2">
-                      <Activity size={14}/> <span>Recovery Procedures (Linked BKM/Knowledge)</span>
-                   </h3>
+                <div className="col-span-12 xl:col-span-8 space-y-5">
+                   <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                     <div className="mb-4 flex items-center justify-between border-b border-white/5 pb-3">
+                       <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center space-x-2">
+                          <Activity size={14}/> <span>Recovery Procedures</span>
+                       </h3>
+                       {formData.severity === 'Critical' && (
+                         <span className="rounded-full border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-rose-300">
+                           Required for Critical
+                         </span>
+                       )}
+                     </div>
                    
                    <div className="space-y-4">
-                      <div className="p-6 border-2 border-dashed border-white/5 rounded-lg space-y-6">
+                      <div className={`space-y-6 rounded-2xl border-2 p-6 ${formErrors.recovery_docs ? 'border-rose-500/40 bg-rose-500/10' : 'border-dashed border-white/10 bg-black/20'}`}>
                          <div className="flex items-center justify-between">
                             <div className="space-y-1">
                                <p className="text-[12px] font-black text-white uppercase tracking-tighter">Link Recovery Documents</p>
@@ -4253,7 +4713,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                               value={recoverySearch}
                               onChange={e => setRecoverySearch(e.target.value)}
                               placeholder="Search Knowledge Base for Recovery Procedures..."
-                              className="w-full bg-black/60 border border-white/10 rounded-lg pl-11 pr-4 py-4 text-[11px] font-black outline-none focus:border-blue-500 transition-all shadow-2xl"
+                              className={`${monitoringInputClass()} pl-11 py-4 text-[11px] shadow-2xl`}
                             />
                          </div>
 
@@ -4287,10 +4747,11 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                <div className="col-span-2 py-8 text-center text-slate-600 text-[10px] uppercase font-black">No matching knowledge entries found</div>
                             )}
                          </div>
+                         <FieldError message={formErrors.recovery_docs} />
                       </div>
                    </div>
                    
-	                   <div className="bg-white/[0.03] border border-white/5 rounded-lg p-4 flex items-start space-x-3">
+	                   <div className="mt-5 bg-white/[0.03] border border-white/5 rounded-lg p-4 flex items-start space-x-3">
 	                      <div className="p-2 bg-white/5 rounded-lg text-slate-500 mt-1">
 	                         <AlertCircle size={16} />
 	                      </div>
@@ -4299,6 +4760,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
 	                         <p className="text-[9px] text-slate-400 font-bold leading-relaxed">Link high-quality recovery documentation to reduce MTTR and give the on-call engineer a clear starting point.</p>
 	                      </div>
 	                   </div>
+                   </section>
                 </div>
              </div>
            )}

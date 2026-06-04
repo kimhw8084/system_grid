@@ -4,6 +4,8 @@ import pytest
 @pytest.mark.anyio
 async def test_monitoring_bulk_actions_create_history_entries(client):
     await client.get("/api/v1/settings/initialize")
+    team_res = await client.post("/api/v1/settings/teams", json={"name": "History Ops"})
+    assert team_res.status_code == 200, team_res.text
     device_res = await client.post("/api/v1/devices", json={
         "name": "MON-HIST-01",
         "system": "MON-HIST",
@@ -32,6 +34,7 @@ async def test_monitoring_bulk_actions_create_history_entries(client):
         "platform": "Zabbix",
         "purpose": "History validation",
         "notification_method": "Slack",
+        "owner_team": "History Ops",
         "recovery_docs": [knowledge["id"]],
     })
     assert create_res.status_code == 200, create_res.text
@@ -72,6 +75,8 @@ async def test_monitoring_bulk_actions_create_history_entries(client):
 @pytest.mark.anyio
 async def test_monitoring_enforces_guardrails_and_security_rules(client):
     await client.get("/api/v1/settings/initialize")
+    team_res = await client.post("/api/v1/settings/teams", json={"name": "Validation Ops"})
+    assert team_res.status_code == 200, team_res.text
     device_res = await client.post("/api/v1/devices", json={
         "name": "MON-VAL-01",
         "system": "MON-VAL",
@@ -88,6 +93,7 @@ async def test_monitoring_enforces_guardrails_and_security_rules(client):
         "status": "Existing",
         "title": "BAD-FREQ",
         "platform": "Zabbix",
+        "owner_team": "Validation Ops",
         "check_interval": 5,
     })
     assert bad_frequency.status_code == 400
@@ -99,6 +105,7 @@ async def test_monitoring_enforces_guardrails_and_security_rules(client):
         "status": "Existing",
         "title": "BAD-URL",
         "platform": "Zabbix",
+        "owner_team": "Validation Ops",
         "monitoring_url": "javascript:alert(1)",
     })
     assert bad_url.status_code == 400
@@ -110,6 +117,7 @@ async def test_monitoring_enforces_guardrails_and_security_rules(client):
         "status": "Existing",
         "title": "NO-BKM",
         "platform": "Zabbix",
+        "owner_team": "Validation Ops",
         "severity": "Critical",
     })
     assert missing_bkm.status_code == 400
@@ -117,8 +125,10 @@ async def test_monitoring_enforces_guardrails_and_security_rules(client):
 
 
 @pytest.mark.anyio
-async def test_monitoring_links_platform_team_and_operator_owners(client):
+async def test_monitoring_requires_single_ownership_mode(client):
     await client.get("/api/v1/settings/initialize")
+    team_res = await client.post("/api/v1/settings/teams", json={"name": "Operations"})
+    assert team_res.status_code == 200, team_res.text
 
     operator_res = await client.post("/api/v1/settings/operators", json={
         "external_id": "op-1001",
@@ -131,16 +141,6 @@ async def test_monitoring_links_platform_team_and_operator_owners(client):
     })
     assert operator_res.status_code == 200, operator_res.text
     operator = operator_res.json()
-
-    options_res = await client.get("/api/v1/settings/options")
-    assert options_res.status_code == 200, options_res.text
-    team_option = next(option for option in options_res.json() if option["category"] == "MonitoringTeam" and option["value"] == "Operations")
-    update_team_res = await client.put(f"/api/v1/settings/options/{team_option['id']}", json={
-        "label": "Operations",
-        "value": "Operations",
-        "metadata_keys": [operator["external_id"]],
-    })
-    assert update_team_res.status_code == 200, update_team_res.text
 
     knowledge_res = await client.post("/api/v1/knowledge", json={
         "title": "CPU Recovery",
@@ -172,8 +172,33 @@ async def test_monitoring_links_platform_team_and_operator_owners(client):
         "recovery_docs": [knowledge["id"]],
         "owners": [{"operator_id": operator["id"], "role": "Primary Support"}],
     })
-    assert create_res.status_code == 200, create_res.text
-    monitor = create_res.json()
-    assert monitor["owner_team"] == "Operations"
-    assert monitor["owners"][0]["operator_id"] == operator["id"]
-    assert monitor["owners"][0]["name"] == "Monitor Alpha"
+    assert create_res.status_code == 400
+    assert "either a team owner or individual owners" in create_res.json()["detail"]
+
+    individual_res = await client.post("/api/v1/monitoring", json={
+        "device_id": device["id"],
+        "category": "Infrastructure",
+        "status": "Existing",
+        "title": "USER-OWNED-MONITOR",
+        "platform": "Zabbix",
+        "severity": "Critical",
+        "recovery_docs": [knowledge["id"]],
+        "owners": [{"operator_id": operator["id"], "role": "Primary Support"}],
+    })
+    assert individual_res.status_code == 200, individual_res.text
+    individual_monitor = individual_res.json()
+    assert individual_monitor["owner_team"] in ("", None)
+    assert individual_monitor["owners"][0]["operator_id"] == operator["id"]
+
+    team_owned_res = await client.post("/api/v1/monitoring", json={
+        "device_id": device["id"],
+        "category": "Infrastructure",
+        "status": "Existing",
+        "title": "TEAM-ONLY-MONITOR",
+        "platform": "Zabbix",
+        "owner_team": "Operations",
+        "severity": "Critical",
+        "recovery_docs": [knowledge["id"]],
+        "owners": [],
+    })
+    assert team_owned_res.status_code == 200, team_owned_res.text
