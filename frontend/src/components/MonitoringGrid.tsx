@@ -416,9 +416,7 @@ export default function MonitoringGrid() {
   const [editingItem, setEditingItem] = useState<any>(null)
   const [detailItem, setDetailItem] = useState<any>(null)
   const [historyItem, setHistoryItem] = useState<any>(null)
-  const [servicePopup, setServicePopup] = useState<{ names: string[], title: string } | null>(null)
   const [recipientPopup, setRecipientPopup] = useState<{ recipients: string[], method: string } | null>(null)
-  const [ownerPopup, setOwnerPopup] = useState<{ owners: any[], title: string } | null>(null)
   const [bkmPopup, setBkmPopup] = useState<{ ids: number[], titles: string[], monitorId?: number } | null>(null)
   const [activeBkm, setActiveBkm] = useState<any>(null)
   const [compareOpen, setCompareOpen] = useState(false)
@@ -1643,14 +1641,12 @@ export default function MonitoringGrid() {
         const owners = p.value || []
         const count = owners.length
         if (count === 0) return <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500">N/A</span>
+        const summary = count > 1 ? `${owners[0].name} +${count - 1}` : owners[0].name
+        const tooltip = owners
+          .map((owner: any) => `${owner.name}${owner.role ? ` (${owner.role})` : ''}${owner.external_id ? ` - ${owner.external_id}` : ''}`)
+          .join('\n')
         return (
-          <button
-            onClick={() => setOwnerPopup({ owners, title: p.data.title })}
-            className="border-b border-dashed border-slate-700 text-left hover:text-blue-300"
-            style={{ fontSize: `${fontSize}px` }}
-          >
-            {count > 1 ? `${owners[0].name} +${count-1}` : owners[0].name}
-          </button>
+          <HoverPreview summary={summary} tooltip={tooltip} fontSize={fontSize} />
         )
       },
       hide: hiddenColumns.includes("owners")
@@ -1708,15 +1704,15 @@ export default function MonitoringGrid() {
         const names = p.value || []
         const count = names.length
         if (count === 0) return <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold">N/A</span>
+        const summary = count > 1 ? `${names[0]} +${count - 1}` : names[0]
         return (
           <div className="flex items-center justify-center h-full">
-            <button 
-              onClick={() => setServicePopup({ names, title: p.data.title })}
-              className="px-2 py-0.5 bg-blue-600/20 border border-blue-500/30 rounded-lg font-bold text-blue-400 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-              style={{ fontSize: `${fontSize}px` }}
-            >
-              {count}
-            </button>
+            <HoverPreview
+              summary={summary}
+              tooltip={names.join('\n')}
+              tone="blue"
+              fontSize={fontSize}
+            />
           </div>
         )
       },
@@ -2724,9 +2720,7 @@ export default function MonitoringGrid() {
           />
         )}
         {historyItem && <MonitoringHistoryModal item={historyItem} onClose={() => setHistoryItem(null)} />}
-        {servicePopup && <ServicesModal names={servicePopup.names} title={servicePopup.title} onClose={() => setServicePopup(null)} />}
         {recipientPopup && <RecipientsModal recipients={recipientPopup.recipients} method={recipientPopup.method} onClose={() => setRecipientPopup(null)} />}
-        {ownerPopup && <OwnersModal owners={ownerPopup.owners} title={ownerPopup.title} onClose={() => setOwnerPopup(null)} />}
         {bkmPopup && <BkmListModal ids={bkmPopup.ids} titles={bkmPopup.titles} onOpenBkm={setActiveBkm} onClose={() => setBkmPopup(null)} />}
         {activeBkm && <BkmDetailModal bkmId={activeBkm} onClose={() => setActiveBkm(null)} />}
         {compareOpen && <CompareMonitorsModal items={compareItems} onClose={() => setCompareOpen(false)} />}
@@ -2812,40 +2806,6 @@ function InlineBulkEditor({ value, onChange, options, placeholder, actionLabel, 
       </div>
     </div>
   )
-}
-
-function OwnersModal({ owners, title, onClose }: any) {
-  useEscapeDismiss(onClose)
-  useBodyModalFlag()
-  const modal = (
-    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
-      <motion.div onClick={(e) => e.stopPropagation()} initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg rounded-xl border border-slate-700 bg-[#020617] p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-black uppercase tracking-[0.18em] text-slate-100">Owner Contacts</h3>
-            <p className="pt-1 text-[11px] text-slate-400">{title}</p>
-          </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18} /></button>
-        </div>
-        <div className="space-y-2">
-          {owners.map((owner: any, index: number) => (
-            <div key={`${owner.name}-${index}`} className="rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[12px] font-semibold text-slate-100">{owner.name}</p>
-                  <p className="pt-1 text-[10px] uppercase tracking-[0.14em] text-slate-500">{owner.role || 'Owner'}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[11px] text-slate-300">{owner.external_id || 'No contact path'}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </motion.div>
-    </div>
-  )
-  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
 function CompareMonitorsModal({ items, onClose }: any) {
@@ -3017,32 +2977,6 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     }
 
     return null;
-}
-
-// --- POPUP MODALS ---
-
-function ServicesModal({ names, title, onClose }: any) {
-  useEscapeDismiss(onClose)
-  const modal = (
-    <div onClick={onClose} className="fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
-      <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-md p-6 rounded-lg border-blue-500/20">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-black uppercase text-blue-400">Monitored Services</h3>
-          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18}/></button>
-        </div>
-        <p className="text-[10px] text-slate-500 font-bold uppercase mb-4">Linked to: {title}</p>
-        <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-          {names.map((name: string, i: number) => (
-            <div key={i} className="bg-white/5 border border-white/5 p-3 rounded-lg flex items-center space-x-3">
-              <Shield size={14} className="text-blue-500" />
-              <span className="text-[11px] font-bold text-slate-200">{name}</span>
-            </div>
-          ))}
-        </div>
-      </motion.div>
-    </div>
-  )
-  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
 function RecipientsModal({ recipients, method, onClose }: any) {
@@ -3656,6 +3590,28 @@ function PanelSubtitle({ children }: { children: React.ReactNode }) {
 
 function PanelHint({ children }: { children: React.ReactNode }) {
   return <p className="text-[10px] font-semibold text-slate-500">{children}</p>
+}
+
+function HoverPreview({
+  summary,
+  tooltip,
+  tone = 'default',
+  fontSize
+}: {
+  summary: string
+  tooltip: string
+  tone?: 'default' | 'blue'
+  fontSize?: number
+}) {
+  return (
+    <span
+      title={tooltip}
+      style={fontSize ? { fontSize: `${fontSize}px` } : undefined}
+      className={`cursor-help border-b border-dashed ${tone === 'blue' ? 'border-blue-500/30 text-blue-300 hover:text-blue-200' : 'border-slate-700 text-slate-200 hover:text-white'} transition-colors`}
+    >
+      {summary}
+    </span>
+  )
 }
 
 const monitoringInputClass = (error?: string) =>

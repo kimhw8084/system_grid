@@ -72,3 +72,19 @@ async def test_team_delete_is_blocked_when_members_exist(client):
     delete_res = await client.delete(f"/api/v1/settings/teams/{team['id']}")
     assert delete_res.status_code == 400, delete_res.text
     assert "assigned operators" in delete_res.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_tenant_storage_explorer_lists_accessible_locations(client):
+    settings_res = await client.get("/api/v1/tenants/admin/settings")
+    assert settings_res.status_code == 200, settings_res.text
+    storage_root = next(item["value"] for item in settings_res.json() if item["key"] == "tenant_storage_root")
+
+    explorer_res = await client.get(f"/api/v1/tenants/admin/storage-explorer?path={storage_root}")
+    assert explorer_res.status_code == 200, explorer_res.text
+    payload = explorer_res.json()
+
+    assert payload["current_path"] == storage_root
+    assert any(root["path"] == storage_root for root in payload["roots"])
+    assert payload["current_access"]["readable"] is True
+    assert "workspace_root" in payload["runtime_context"]

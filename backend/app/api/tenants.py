@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy import select, update, insert, func, text
-from typing import List
+from typing import List, Optional
 import os
 import sys
 from ..database import get_config_db, get_db, ConfigSessionLocal, get_tenant_engine, is_sqlite_url, sqlite_path_from_url
@@ -11,6 +11,31 @@ from ..core.config import settings
 from .utils import get_current_user_id
 
 router = APIRouter(prefix="/tenants", tags=["Multi-Tenancy"])
+
+def normalize_fs_path(path: str) -> str:
+    return os.path.abspath(os.path.expanduser(path))
+
+def path_is_within(base: str, candidate: str) -> bool:
+    try:
+        return os.path.commonpath([base, candidate]) == base
+    except ValueError:
+        return False
+
+def get_storage_explorer_roots() -> list[str]:
+    candidates = [
+        settings.TENANT_STORAGE_ROOT,
+        os.getcwd(),
+        os.path.expanduser("~"),
+        "/",
+    ]
+    roots: list[str] = []
+    for candidate in candidates:
+        if not candidate:
+            continue
+        normalized = normalize_fs_path(candidate)
+        if normalized not in roots and os.path.exists(normalized):
+            roots.append(normalized)
+    return roots
 
 def resolve_db_target(db_path: str | None = None, db_url: str | None = None) -> tuple[str, str]:
     if db_url and db_url.strip():
@@ -65,6 +90,71 @@ async def update_master_setting(setting: MasterSettingBase, db: AsyncSession = D
     
     result = await db.execute(select(MasterSystemSetting).filter(MasterSystemSetting.key == setting.key))
     return result.scalar_one()
+
+@router.get("/admin/storage-explorer")
+async def browse_storage_locations(path: Optional[str] = Query(default=None), request: Request = None):
+    roots = get_storage_explorer_roots()
+    requested_path = normalize_fs_path(path) if path else normalize_fs_path(settings.TENANT_STORAGE_ROOT or os.getcwd())
+
+    if not any(path_is_within(root, requested_path) or requested_path == root for root in roots):
+        raise HTTPException(status_code=400, detail="Requested path is outside the accessible explorer roots")
+    if not os.path.exists(requested_path):
+        raise HTTPException(status_code=404, detail="Requested path was not found")
+    if not os.path.isdir(requested_path):
+        raise HTTPException(status_code=400, detail="Requested path is not a directory")
+
+    def access_flags(target: str):
+        return {
+            "readable": os.access(target, os.R_OK),
+            "writable": os.access(target, os.W_OK),
+        }
+
+    try:
+        entries = []
+        for name in sorted(os.listdir(requested_path), key=lambda item: item.lower()):
+            if name.startswith("."):
+                continue
+            full_path = os.path.join(requested_path, name)
+            if not os.path.isdir(full_path):
+                continue
+            stats = access_flags(full_path)
+            entries.append({
+                "name": name,
+                "path": full_path,
+                "readable": stats["readable"],
+                "writable": stats["writable"],
+            })
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=f"Cannot read directory contents: {exc}")
+
+    parent_path = os.path.dirname(requested_path.rstrip(os.sep)) or os.sep
+    if requested_path == os.sep or not any(path_is_within(root, parent_path) or parent_path == root for root in roots):
+        parent_path = None
+
+    return {
+        "current_path": requested_path,
+        "parent_path": parent_path,
+        "roots": [
+            {
+                "label": (
+                    "Tenant storage root" if root == normalize_fs_path(settings.TENANT_STORAGE_ROOT)
+                    else "Workspace" if root == normalize_fs_path(os.getcwd())
+                    else "Home" if root == normalize_fs_path(os.path.expanduser("~"))
+                    else "Filesystem root"
+                ),
+                "path": root,
+                **access_flags(root),
+            }
+            for root in roots
+        ],
+        "entries": entries,
+        "current_access": access_flags(requested_path),
+        "runtime_context": {
+            "workspace_root": normalize_fs_path(os.getcwd()),
+            "tenant_storage_root": normalize_fs_path(settings.TENANT_STORAGE_ROOT),
+            "process_user": get_current_user_id(request) if request else None,
+        },
+    }
 
 @router.post("/admin/backup/{tenant_id}")
 async def backup_tenant(tenant_id: int, db: AsyncSession = Depends(get_config_db)):

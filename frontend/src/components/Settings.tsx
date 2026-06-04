@@ -153,6 +153,7 @@ export default function SettingsPage() {
   const [attachMode, setAttachMode] = useState<'path' | 'url'>('path')
   const [preflightResult, setPreflightResult] = useState<any>(null)
   const [storageRootEdit, setStorageRootEdit] = useState<string | null>(null)
+  const [storageExplorerPath, setStorageExplorerPath] = useState<string | null>(null)
   const [operatorFilter, setOperatorFilter] = useState("")
   const [teamFilterOpen, setTeamFilterOpen] = useState(false)
   const [selectedTeamFilters, setSelectedTeamFilters] = useState<string[]>([])
@@ -420,6 +421,25 @@ result_df = get_user_pool()`)
       return res.json()
     },
     enabled: topTab === 'tenants'
+  })
+
+  const activeStorageRoot = storageRootEdit ?? masterSettings?.find((setting: any) => setting.key === 'tenant_storage_root')?.value ?? null
+
+  useEffect(() => {
+    if (topTab !== 'tenants') return
+    if (!activeStorageRoot || storageExplorerPath) return
+    setStorageExplorerPath(activeStorageRoot)
+  }, [topTab, activeStorageRoot, storageExplorerPath])
+
+  const { data: storageExplorer, isLoading: isStorageExplorerLoading } = useQuery({
+    queryKey: ['tenant-storage-explorer', storageExplorerPath],
+    queryFn: async () => {
+      const query = storageExplorerPath ? `?path=${encodeURIComponent(storageExplorerPath)}` : ""
+      const res = await apiFetch(`/api/v1/tenants/admin/storage-explorer${query}`)
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    enabled: topTab === 'tenants' && !!storageExplorerPath
   })
 
   const backupTenantMutation = useMutation({
@@ -1741,6 +1761,127 @@ result_df = get_user_pool()`)
                                  <p className="text-[8px] font-bold text-slate-600 uppercase leading-relaxed px-1">{setting.description}</p>
                               </div>
                            ))}
+                           <div className="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-4">
+                              <div className="flex items-start justify-between gap-4">
+                                 <div>
+                                    <h4 className="text-[11px] font-black text-white tracking-tight">Accessible storage explorer</h4>
+                                    <p className="mt-1 text-[10px] font-semibold text-slate-400 leading-relaxed">
+                                       Browse folders the app runtime can currently reach, inspect read/write status, and pick a tenant storage root without guessing absolute paths.
+                                    </p>
+                                 </div>
+                                 <button
+                                    onClick={() => {
+                                       if (activeStorageRoot) setStorageExplorerPath(activeStorageRoot)
+                                    }}
+                                    className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-widest text-slate-300 hover:bg-white/10 transition-all"
+                                 >
+                                    Reset View
+                                 </button>
+                              </div>
+
+                              <div className="space-y-2">
+                                 <div className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Accessible locations</div>
+                                 <div className="flex flex-wrap gap-2">
+                                    {storageExplorer?.roots?.map((root: any) => (
+                                       <button
+                                          key={root.path}
+                                          onClick={() => setStorageExplorerPath(root.path)}
+                                          className={`px-3 py-2 rounded-lg border text-[9px] font-black transition-all ${
+                                             storageExplorerPath === root.path
+                                               ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                                               : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
+                                          }`}
+                                       >
+                                          <div>{root.label}</div>
+                                          <div className="mt-1 text-[8px] font-bold text-slate-500">{root.readable ? 'Read' : 'No read'} · {root.writable ? 'Write' : 'No write'}</div>
+                                       </button>
+                                    ))}
+                                 </div>
+                              </div>
+
+                              <div className="rounded-xl border border-white/10 bg-slate-950/70 p-4 space-y-4">
+                                 <div className="flex items-center justify-between gap-3">
+                                    <div className="min-w-0">
+                                       <div className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Current location</div>
+                                       <div className="mt-1 text-[10px] font-mono text-slate-200 break-all">{storageExplorer?.current_path || storageExplorerPath}</div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                       {storageExplorer?.parent_path && (
+                                          <button
+                                             onClick={() => setStorageExplorerPath(storageExplorer.parent_path)}
+                                             className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-widest text-slate-300 hover:bg-white/10 transition-all"
+                                          >
+                                             Up
+                                          </button>
+                                       )}
+                                       <button
+                                          onClick={() => {
+                                             const selectedPath = storageExplorer?.current_path || storageExplorerPath
+                                             if (!selectedPath) return
+                                             setStorageRootEdit(selectedPath)
+                                          }}
+                                          className="px-3 py-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-[9px] font-black uppercase tracking-widest text-emerald-300 hover:bg-emerald-500/20 transition-all"
+                                       >
+                                          Use this folder
+                                       </button>
+                                    </div>
+                                 </div>
+
+                                 <div className="flex flex-wrap gap-2">
+                                    <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${storageExplorer?.current_access?.readable ? 'bg-blue-500/10 text-blue-300 border border-blue-500/20' : 'bg-rose-500/10 text-rose-300 border border-rose-500/20'}`}>
+                                       {storageExplorer?.current_access?.readable ? 'Readable' : 'Not readable'}
+                                    </span>
+                                    <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${storageExplorer?.current_access?.writable ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-300 border border-amber-500/20'}`}>
+                                       {storageExplorer?.current_access?.writable ? 'Writable' : 'Not writable'}
+                                    </span>
+                                 </div>
+
+                                 <div className="rounded-xl border border-white/5 bg-black/20 p-3">
+                                    <div className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Runtime visibility</div>
+                                    <div className="mt-2 space-y-1 text-[9px] font-mono text-slate-400">
+                                       <div>Workspace: {storageExplorer?.runtime_context?.workspace_root || 'Unknown'}</div>
+                                       <div>Configured root: {storageExplorer?.runtime_context?.tenant_storage_root || 'Unknown'}</div>
+                                    </div>
+                                 </div>
+
+                                 <div className="space-y-2">
+                                    <div className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Folders</div>
+                                    <div className="max-h-64 overflow-y-auto custom-scrollbar pr-1 space-y-2">
+                                       {isStorageExplorerLoading ? (
+                                          <div className="rounded-xl border border-white/5 bg-black/20 px-3 py-4 text-[9px] font-black text-slate-500">Loading folders...</div>
+                                       ) : storageExplorer?.entries?.length ? (
+                                          storageExplorer.entries.map((entry: any) => (
+                                             <button
+                                                key={entry.path}
+                                                onClick={() => setStorageExplorerPath(entry.path)}
+                                                className="w-full rounded-xl border border-white/5 bg-black/20 px-3 py-3 text-left hover:border-white/10 hover:bg-white/[0.03] transition-all"
+                                             >
+                                                <div className="flex items-center justify-between gap-3">
+                                                   <div className="flex items-center gap-3 min-w-0">
+                                                      <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                         <FolderTree size={14} />
+                                                      </div>
+                                                      <div className="min-w-0">
+                                                         <div className="text-[10px] font-black text-slate-100 truncate">{entry.name}</div>
+                                                         <div className="mt-1 text-[8px] font-mono text-slate-500 truncate">{entry.path}</div>
+                                                      </div>
+                                                   </div>
+                                                   <div className="shrink-0 text-right">
+                                                      <div className="text-[8px] font-black text-slate-400">{entry.readable ? 'Read' : 'No read'}</div>
+                                                      <div className="mt-1 text-[8px] font-black text-slate-500">{entry.writable ? 'Write' : 'No write'}</div>
+                                                   </div>
+                                                </div>
+                                             </button>
+                                          ))
+                                       ) : (
+                                          <div className="rounded-xl border border-dashed border-white/10 px-3 py-5 text-center text-[9px] font-black text-slate-500">
+                                             No subfolders visible from this location.
+                                          </div>
+                                       )}
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
                         </div>
                      </div>
                   </div>
