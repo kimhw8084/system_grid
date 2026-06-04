@@ -3581,11 +3581,11 @@ function FieldError({ message }: { message?: string }) {
 }
 
 function PanelTitle({ children }: { children: React.ReactNode }) {
-  return <h3 className="text-sm font-black tracking-tight text-slate-100">{children}</h3>
+  return <h3 className="text-[clamp(11px,0.9vw,13px)] font-black uppercase tracking-widest text-slate-100">{children}</h3>
 }
 
 function PanelSubtitle({ children }: { children: React.ReactNode }) {
-  return <p className="mt-1 text-[10px] font-semibold text-slate-400">{children}</p>
+  return <p className="mt-0.5 text-[9px] font-bold text-slate-500 uppercase tracking-tight">{children}</p>
 }
 
 function PanelHint({ children }: { children: React.ReactNode }) {
@@ -3615,7 +3615,7 @@ function HoverPreview({
 }
 
 const monitoringInputClass = (error?: string) =>
-  `w-full rounded-lg px-4 py-[clamp(11px,0.95vw,14px)] text-[clamp(12px,0.95vw,14px)] font-bold text-white outline-none transition-all ${
+  `w-full rounded-lg px-4 py-[clamp(8px,0.75vw,11px)] text-[clamp(11px,0.85vw,13px)] font-bold text-white outline-none transition-all ${
     error
       ? 'border border-rose-500/60 bg-rose-500/10 shadow-[0_0_0_1px_rgba(244,63,94,0.18)] focus:border-rose-400'
       : 'border border-white/10 bg-slate-950/70 focus:border-blue-500/40'
@@ -3656,37 +3656,46 @@ function MonitoringSelectField({
       if (!containerRef.current?.contains(event.target as Node)) setIsOpen(false)
     }
     window.addEventListener('mousedown', handleClick)
-    return () => window.removeEventListener('mousedown', handleClick)
+    
+    // Auto-scroll logic
+    const timer = setTimeout(() => {
+      containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }, 50)
+
+    return () => {
+      window.removeEventListener('mousedown', handleClick)
+      clearTimeout(timer)
+    }
   }, [isOpen])
 
   return (
-    <div className="space-y-2" ref={containerRef}>
+    <div className="space-y-1.5" ref={containerRef}>
       <FieldLabel label={label} required={required} />
       <div className="relative">
         <button
           type="button"
           disabled={disabled}
           onClick={() => setIsOpen((current) => !current)}
-          className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10 shadow-[0_0_0_1px_rgba(244,63,94,0.18)]' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+          className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10 shadow-[0_0_0_1px_rgba(244,63,94,0.18)]' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
         >
-          <span className={`text-[clamp(11px,0.9vw,13px)] font-black ${selected ? 'text-slate-100' : 'text-slate-500'}`}>
+          <span className={`text-[clamp(10px,0.85vw,12px)] font-black truncate pr-4 ${selected ? 'text-slate-100' : 'text-slate-500'}`}>
             {selected?.label || placeholder || 'Select option'}
           </span>
-          <ChevronDown size={14} className={`text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          <ChevronDown size={12} className={`shrink-0 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
         {isOpen && !disabled && (
-          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 rounded-lg border border-white/10 bg-[#020617] p-3 shadow-[0_24px_60px_rgba(2,6,23,0.48)]">
+          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 rounded-lg border border-white/10 bg-[#020617] p-2 shadow-[0_24px_60px_rgba(2,6,23,0.48)]">
             {searchable && (
-              <div className="mb-3">
+              <div className="mb-2">
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={`Search ${label.toLowerCase()}...`}
-                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 text-[10px] font-black text-slate-100 outline-none focus:border-blue-500/40"
+                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[10px] font-black text-slate-100 outline-none focus:border-blue-500/40"
                 />
               </div>
             )}
-            <div className="max-h-64 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+            <div className="max-h-52 overflow-y-auto custom-scrollbar space-y-1 pr-1">
               {filteredOptions.map((option) => {
                 const active = String(option.value) === String(value)
                 return (
@@ -3698,10 +3707,10 @@ function MonitoringSelectField({
                       setIsOpen(false)
                       setSearch('')
                     }}
-                    className={`w-full rounded-lg border px-3 py-3 text-left transition-all ${active ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10 hover:bg-white/[0.03]'}`}
+                    className={`w-full rounded-lg border px-3 py-2 text-left transition-all ${active ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10 hover:bg-white/[0.03]'}`}
                   >
-                    <p className={`text-[10px] font-black ${active ? 'text-blue-300' : 'text-slate-200'}`}>{option.label}</p>
-                    {option.description && <p className="mt-1 text-[8px] font-black text-slate-500">{option.description}</p>}
+                    <p className={`text-[9px] font-black ${active ? 'text-blue-300' : 'text-slate-200'}`}>{option.label}</p>
+                    {option.description && <p className="mt-0.5 text-[8px] font-black text-slate-500 truncate">{option.description}</p>}
                   </button>
                 )
               })}
@@ -3749,26 +3758,35 @@ function MonitoringAssetField({
       if (!containerRef.current?.contains(event.target as Node)) setIsOpen(false)
     }
     window.addEventListener('mousedown', handleClick)
-    return () => window.removeEventListener('mousedown', handleClick)
+
+    // Auto-scroll logic
+    const timer = setTimeout(() => {
+      containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }, 50)
+
+    return () => {
+      window.removeEventListener('mousedown', handleClick)
+      clearTimeout(timer)
+    }
   }, [isOpen])
 
   return (
-    <div className="space-y-2" ref={containerRef}>
+    <div className="space-y-1.5" ref={containerRef}>
       <FieldLabel label="Registry Asset" />
       <div className="relative">
         <button
           type="button"
           onClick={() => setIsOpen((current) => !current)}
-          className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'}`}
+          className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'}`}
         >
-          <span className={`text-[11px] font-black ${selectedDevice ? 'text-slate-100' : 'text-slate-500'}`}>
+          <span className={`text-[clamp(10px,0.85vw,12px)] font-black truncate pr-4 ${selectedDevice ? 'text-slate-100' : 'text-slate-500'}`}>
             {selectedDevice ? `${selectedDevice.name} [${selectedDevice.system}]` : 'Select asset'}
           </span>
-          <ChevronDown size={14} className={`text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          <ChevronDown size={12} className={`shrink-0 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
         {isOpen && (
-          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 rounded-lg border border-white/10 bg-[#020617] p-3 shadow-[0_24px_60px_rgba(2,6,23,0.48)]">
-            <div className="grid grid-cols-[170px_minmax(0,1fr)] gap-3">
+          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 rounded-lg border border-white/10 bg-[#020617] p-2 shadow-[0_24px_60px_rgba(2,6,23,0.48)]">
+            <div className="grid grid-cols-[140px_minmax(0,1fr)] gap-2">
               <MonitoringSelectField
                 label="System Filter"
                 value={systemFilter}
@@ -3776,26 +3794,26 @@ function MonitoringAssetField({
                 options={[{ value: 'ALL', label: 'All Systems' }, ...systems.map((system) => ({ value: system, label: system }))]}
                 placeholder="All Systems"
               />
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <FieldLabel label="Search Asset" />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search hostname or system..."
-                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-3 text-[10px] font-black text-slate-100 outline-none focus:border-blue-500/40"
+                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[10px] font-black text-slate-100 outline-none focus:border-blue-500/40"
                 />
               </div>
             </div>
-            <div className="mt-3 max-h-72 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+            <div className="mt-2 max-h-52 overflow-y-auto custom-scrollbar space-y-1 pr-1">
               <button
                 type="button"
                 onClick={() => {
                   onChange(null)
                   setIsOpen(false)
                 }}
-                className={`w-full rounded-lg border px-3 py-3 text-left transition-all ${deviceId == null ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10'}`}
+                className={`w-full rounded-lg border px-3 py-2 text-left transition-all ${deviceId == null ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10'}`}
               >
-                <p className="text-[10px] font-black text-slate-200">No linked asset</p>
+                <p className="text-[9px] font-black text-slate-200">No linked asset</p>
               </button>
               {filteredDevices.map((device: any) => (
                 <button
@@ -3804,11 +3822,12 @@ function MonitoringAssetField({
                   onClick={() => {
                     onChange(device.id)
                     setIsOpen(false)
+                    setSearch('')
                   }}
-                  className={`w-full rounded-lg border px-3 py-3 text-left transition-all ${device.id === deviceId ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10'}`}
+                  className={`w-full rounded-lg border px-3 py-2 text-left transition-all ${device.id === deviceId ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10'}`}
                 >
-                  <p className="text-[10px] font-black text-slate-200">{device.name}</p>
-                  <p className="mt-1 text-[8px] font-black text-slate-500">{device.system || 'No system'}</p>
+                  <p className={`text-[9px] font-black ${device.id === deviceId ? 'text-blue-300' : 'text-slate-200'}`}>{device.name}</p>
+                  <p className="mt-0.5 text-[8px] font-black text-slate-500 truncate">{device.system || 'No system'}</p>
                 </button>
               ))}
             </div>
@@ -4198,34 +4217,34 @@ export function MonitoringForm({ item, devices, categories, severities, platform
            {activeTab === 'context' ? (
              <div className="grid grid-cols-12 gap-5 p-2">
                <div className="col-span-12 xl:col-span-5 space-y-5">
-                 <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
-                   <div className="mb-4 flex items-center justify-between">
+                 <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+                   <div className="mb-3 flex items-center justify-between">
                      <PanelTitle>Target identification</PanelTitle>
                      <span className="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[8px] font-black text-slate-500">
                        Asset + Scope
                      </span>
                    </div>
-                   <div className="space-y-4">
+                   <div className="space-y-3">
                      <MonitoringAssetField
                        devices={devices || []}
                        deviceId={formData.device_id}
                        onChange={(deviceId) => setFormData({ ...formData, device_id: deviceId, monitored_services: [] })}
                      />
                      {formData.device_id && (
-                       <div className="rounded-lg border border-white/10 bg-black/20 p-4">
-                         <div className="mb-3 flex items-center justify-between">
+                       <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                         <div className="mb-2 flex items-center justify-between">
                            <FieldLabel label="Service Scope" />
-                           <span className="rounded-full bg-blue-500/10 px-2 py-1 text-[8px] font-black text-blue-300">
+                           <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[8px] font-black text-blue-300">
                              {formData.monitored_services?.length || 0} Bound
                            </span>
                          </div>
-                         <div className="flex flex-wrap gap-2">
+                         <div className="flex flex-wrap gap-1.5">
                            {deviceServices?.map((svc: any) => (
                              <button
                                key={svc.id}
                                type="button"
                                onClick={() => toggleService(svc.id)}
-                               className={`rounded-lg border px-3 py-2 text-[9px] font-black transition-all ${
+                               className={`rounded-lg border px-2.5 py-1.5 text-[9px] font-black transition-all ${
                                  formData.monitored_services?.includes(svc.id)
                                    ? 'border-blue-500/40 bg-blue-500/12 text-blue-200'
                                    : 'border-white/10 bg-slate-950/60 text-slate-400 hover:border-white/20 hover:text-slate-200'
@@ -4248,19 +4267,19 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                    </div>
                  </section>
 
-                 <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
-                   <div className="mb-4 flex items-center justify-between">
+                 <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+                   <div className="mb-3 flex items-center justify-between">
                      <div>
                        <PanelTitle>Ownership</PanelTitle>
                        <PanelSubtitle>
-                         Choose a team owner or named operators, never both.
+                         Choose a team owner or named operators.
                        </PanelSubtitle>
                      </div>
                      <span className="rounded-full bg-blue-500/10 px-2 py-1 text-[8px] font-black text-blue-300">
                        {ownershipMode === 'team' ? 'Team Mode' : `${formData.owners?.length || 0} Operators`}
                      </span>
                    </div>
-                   <div className="mb-4 grid grid-cols-2 gap-2 rounded-lg border border-white/10 bg-black/30 p-1">
+                   <div className="mb-3 grid grid-cols-2 gap-2 rounded-lg border border-white/10 bg-black/30 p-1">
                      {[
                        { id: 'team', label: 'Team Owner' },
                        { id: 'individual', label: 'Individual Owners' }
@@ -4269,7 +4288,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                          key={mode.id}
                          type="button"
                          onClick={() => setOwnershipModeAndNormalize(mode.id as 'team' | 'individual')}
-                         className={`rounded-lg px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] transition-all ${
+                         className={`rounded-lg px-3 py-2 text-[9px] font-black uppercase tracking-[0.12em] transition-all ${
                            ownershipMode === mode.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-200'
                          }`}
                        >
@@ -4279,7 +4298,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                    </div>
                    <FieldError message={formErrors.ownership} />
                    {ownershipMode === 'team' ? (
-                     <div className="space-y-3">
+                     <div className="space-y-2">
                        <MonitoringSelectField
                          label="Owner Team"
                          required
@@ -4295,15 +4314,15 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                          searchable
                        />
                        {selectedTeam && (
-                         <div className="rounded-lg border border-white/10 bg-black/20 p-4">
+                         <div className="rounded-lg border border-white/10 bg-black/20 p-3">
                            <div className="flex items-center justify-between">
-                             <div>
-                               <p className="text-[10px] font-black text-slate-200">{selectedTeam.name}</p>
-                               <p className="mt-1 text-[8px] font-black text-slate-500">
+                             <div className="min-w-0">
+                               <p className="text-[10px] font-black text-slate-200 truncate">{selectedTeam.name}</p>
+                               <p className="mt-0.5 text-[8px] font-black text-slate-500 truncate">
                                  {(selectedTeam.operators?.length || 0)} synced or managed operators
                                </p>
                              </div>
-                             <span className="rounded-full border border-white/10 px-2 py-1 text-[8px] font-black text-slate-500">
+                             <span className="rounded-full border border-white/10 px-2 py-0.5 text-[8px] font-black text-slate-500 shrink-0">
                                {selectedTeam.source || 'manual'}
                              </span>
                            </div>
@@ -4311,59 +4330,59 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                        )}
                      </div>
                    ) : (
-                     <div className="space-y-4">
-                       <div className="grid grid-cols-12 gap-3">
-                         <div className="col-span-12 md:col-span-6">
+                     <div className="space-y-3">
+                       <div className="grid grid-cols-12 gap-2 items-end">
+                         <div className="col-span-12 md:col-span-5">
                            <MonitoringSelectField
-                             label="Owner Operator"
+                             label="Operator"
                              required
                              value={newOwner.operator_id}
                              onChange={(value) => setNewOwner({ ...newOwner, operator_id: value })}
                              options={(operators as OperatorRecord[]).map((operator) => ({
                                value: String(operator.id),
                                label: operator.full_name || operator.username || operator.external_id,
-                               description: `${operator.team || 'No team'} | ${operator.external_id || 'No ID'}`
+                               description: `${operator.team || 'No team'}`
                              }))}
-                             placeholder="Select operator"
+                             placeholder="Select"
                              error={formErrors.owners}
                              searchable
                            />
                          </div>
-                         <div className="col-span-12 md:col-span-4">
+                         <div className="col-span-12 md:col-span-5">
                            <MonitoringSelectField
-                             label="Owner Role"
+                             label="Role"
                              value={newOwner.role}
                              onChange={(value) => setNewOwner({ ...newOwner, role: value })}
                              options={ownerRoles.map((r: any) => ({ value: r.value, label: r.label }))}
                            />
                          </div>
-                         <div className="col-span-12 md:col-span-2 flex items-end">
+                         <div className="col-span-12 md:col-span-2">
                            <button
                              type="button"
                              onClick={addOwner}
-                             className="w-full rounded-lg border border-blue-500/30 bg-blue-600 px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-white transition-all hover:bg-blue-500"
+                             className="w-full rounded-lg border border-blue-500/30 bg-blue-600 px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-white transition-all hover:bg-blue-500"
                            >
                              Add
                            </button>
                          </div>
                        </div>
                        <FieldError message={formErrors.owners} />
-                       <div className="max-h-52 space-y-2 overflow-y-auto pr-1 custom-scrollbar">
+                       <div className="max-h-40 space-y-1.5 overflow-y-auto pr-1 custom-scrollbar">
                          {formData.owners?.length ? formData.owners.map((o: any, idx: number) => (
-                           <div key={idx} className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-4 py-3">
+                           <div key={idx} className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-3 py-2">
                              <div className="min-w-0">
                                <p className="truncate text-[10px] font-black text-slate-100">{o.name}</p>
-                               <p className="mt-1 text-[8px] font-black text-slate-500">
-                                 {o.role} | {o.external_id || 'No external ID'}
+                               <p className="mt-0.5 text-[8px] font-black text-slate-500 truncate">
+                                 {o.role}
                                </p>
                              </div>
-                             <button type="button" onClick={() => removeOwner(idx)} className="rounded-lg p-2 text-slate-500 transition-colors hover:text-rose-400">
+                             <button type="button" onClick={() => removeOwner(idx)} className="rounded-lg p-1.5 text-slate-500 transition-colors hover:text-rose-400">
                                <Trash2 size={12} />
                              </button>
                            </div>
                          )) : (
-                           <div className="rounded-lg border border-dashed border-white/10 px-4 py-6 text-center text-[10px] font-black text-slate-600">
-                             No individual owners assigned
+                           <div className="rounded-lg border border-dashed border-white/10 px-3 py-4 text-center text-[9px] font-black text-slate-600">
+                             No owners assigned
                            </div>
                          )}
                        </div>
@@ -4372,9 +4391,9 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                  </section>
                </div>
 
-               <div className="col-span-12 xl:col-span-7 space-y-5">
-                 <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
-                   <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+               <div className="col-span-12 xl:col-span-7 space-y-4">
+                 <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+                   <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                      <MonitoringSelectField
                        label="Platform"
                        required
@@ -4385,15 +4404,15 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                        error={formErrors.platform}
                        searchable
                      />
-                     <div className="space-y-2">
+                     <div className="space-y-1.5">
                        <FieldLabel label="Monitoring URL" />
                        <div className="relative">
-                         <Globe size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                         <Globe size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
                          <input
                            value={formData.monitoring_url}
                            onChange={e => setFormData({ ...formData, monitoring_url: e.target.value })}
                            placeholder="https://console.internal/..."
-                           className={`${monitoringInputClass(formErrors.monitoring_url)} pl-11 text-blue-300`}
+                           className={`${monitoringInputClass(formErrors.monitoring_url)} pl-9 text-blue-300`}
                          />
                        </div>
                        <FieldError message={formErrors.monitoring_url} />
@@ -4401,29 +4420,29 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                    </div>
                  </section>
 
-                 <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
-                    <div className="mb-4">
+                 <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+                    <div className="mb-3">
                      <PanelTitle>Operational context</PanelTitle>
                    </div>
-                   <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                     <div className="space-y-2">
+                   <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                     <div className="space-y-1.5">
                        <FieldLabel label="Purpose" />
                        <textarea
                          value={formData.purpose}
                          onChange={e => setFormData({ ...formData, purpose: e.target.value })}
-                         placeholder="Why are we monitoring this? How does it help the team?"
-                         rows={6}
-                         className={`${monitoringInputClass()} resize-none text-[11px]`}
+                         placeholder="Why are we monitoring this?"
+                         rows={4}
+                         className={`${monitoringInputClass()} resize-none text-[10px]`}
                        />
                      </div>
-                     <div className="space-y-2">
+                     <div className="space-y-1.5">
                        <FieldLabel label="Impact" />
                        <textarea
                          value={formData.impact}
                          onChange={e => setFormData({ ...formData, impact: e.target.value })}
                          placeholder="What happens when this monitor triggers?"
-                         rows={6}
-                         className={`${monitoringInputClass()} resize-none text-[11px]`}
+                         rows={4}
+                         className={`${monitoringInputClass()} resize-none text-[10px]`}
                        />
                      </div>
                    </div>
@@ -4432,85 +4451,89 @@ export function MonitoringForm({ item, devices, categories, severities, platform
              </div>
            ) : activeTab === 'logic' ? (
              <div className="grid grid-cols-12 gap-5 p-2 h-full min-h-[500px]">
-                <div className="col-span-12 xl:col-span-4 space-y-5">
-                   <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
+                <div className="col-span-12 xl:col-span-4 space-y-4">
+                   <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2 text-sm font-black tracking-tight text-slate-100">
-                         <Settings size={14}/> <span>Logic Entries</span>
+                      <div className="flex items-center space-x-2 text-[clamp(11px,0.9vw,13px)] font-black tracking-tight text-slate-100 uppercase">
+                         <Settings size={12}/> <span>Logic Entries</span>
                       </div>
                       <button 
                          onClick={addLogicEntry}
-                          className="px-3 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[9px] font-black uppercase hover:bg-emerald-600/40 transition-all flex items-center space-x-1"
+                          className="px-2.5 py-1.5 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[9px] font-black uppercase hover:bg-emerald-600/40 transition-all flex items-center space-x-1"
                       >
-                         <Plus size={12}/> <span>Add Entry</span>
+                         <Plus size={10}/> <span>Add Entry</span>
                       </button>
                    </div>
 
-                   <div className="mt-4 space-y-2 max-h-[360px] overflow-y-auto custom-scrollbar pr-2">
+                   <div className="mt-4 space-y-2 max-h-[340px] overflow-y-auto custom-scrollbar pr-2">
                       {formData.logic_json?.map((entry: MonitoringLogicEntry) => (
                         <div 
                           key={entry.id}
                           onClick={() => setActiveLogicId(entry.id)}
-                          className={`p-4 rounded-lg border cursor-pointer transition-all relative group ${
+                          className={`p-3 rounded-lg border cursor-pointer transition-all relative group ${
                             activeLogicId === entry.id 
-                              ? 'bg-blue-600/10 border-blue-500/50 shadow-lg' 
+                              ? 'bg-blue-600/10 border-blue-500/40 shadow-lg shadow-blue-500/5' 
                               : 'bg-black/40 border-white/5 hover:border-white/20'
                           }`}
                         >
                            <button 
                              onClick={(e) => { e.stopPropagation(); removeLogicEntry(entry.id); }}
-                             className="absolute -right-2 -top-2 w-6 h-6 bg-rose-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                             className="absolute -right-1.5 -top-1.5 w-5 h-5 bg-rose-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
                            >
-                             <X size={12}/>
+                             <X size={10}/>
                            </button>
-                           <div className="flex items-center justify-between mb-2">
-                              <span className="text-[10px] font-black text-blue-400">{entry.type}</span>
-                              <span className="text-[8px] font-bold text-slate-600">Entry #{entry.id.toString().slice(-4)}</span>
+                           <div className="flex items-center justify-between mb-1">
+                              <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{entry.type}</span>
+                              <span className="text-[8px] font-bold text-slate-600">ID {entry.id.toString().slice(-4)}</span>
                            </div>
-                           <p className="text-[11px] font-bold text-slate-300 truncate">{entry.description || 'No description provided'}</p>
+                           <p className="text-[10px] font-bold text-slate-300 truncate pr-2">{entry.description || 'No description'}</p>
                            {(formErrors[`logic_${entry.id}_description`] || formErrors[`logic_${entry.id}_logic_info`]) && (
-                             <p className="mt-2 text-[8px] font-black text-rose-400">Entry has required-field errors</p>
+                             <p className="mt-1.5 text-[8px] font-black text-rose-400">Required field missing</p>
                            )}
                         </div>
                       ))}
                       {formData.logic_json?.length === 0 && (
-                        <div className="py-12 text-center text-slate-600 text-[10px] font-black border-2 border-dashed border-white/5 rounded-lg">
-                           No logic entries defined
+                        <div className="py-10 text-center text-slate-600 text-[9px] font-black border-2 border-dashed border-white/5 rounded-lg uppercase tracking-widest">
+                           No entries defined
                         </div>
                       )}
                    </div>
                    </section>
 
-                   <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
-                      <div className="grid grid-cols-1 gap-4">
+                   <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+                      <div className="grid grid-cols-1 gap-3">
                          <div className="space-y-1.5">
-                            <FieldLabel label="Check Frequency (Seconds)" required />
-                            <p className="text-[8px] font-bold text-slate-600 px-1">Allowed {CHECK_INTERVAL_MIN} to {CHECK_INTERVAL_MAX}</p>
+                            <div className="flex items-center justify-between">
+                               <FieldLabel label="Frequency (Sec)" required />
+                               <span className="text-[8px] font-bold text-slate-600">{CHECK_INTERVAL_MIN}-{CHECK_INTERVAL_MAX}</span>
+                            </div>
                             <div className="relative">
-                               <Clock size={12} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                               <Clock size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
                                <input 
                                  type="number"
                                  value={formData.check_interval}
                                  min={CHECK_INTERVAL_MIN}
                                  max={CHECK_INTERVAL_MAX}
                                  onChange={e => setFormData({...formData, check_interval: Number(e.target.value)})}
-                                 className={`${monitoringInputClass(formErrors.check_interval)} pl-10 py-2`}
+                                 className={`${monitoringInputClass(formErrors.check_interval)} pl-9`}
                                />
                             </div>
                             <FieldError message={formErrors.check_interval} />
                          </div>
                          <div className="space-y-1.5">
-                            <FieldLabel label="Alert Duration (Seconds Delay)" required />
-                            <p className="text-[8px] font-bold text-slate-600 px-1">Allowed {ALERT_DURATION_MIN} to {ALERT_DURATION_MAX}</p>
+                            <div className="flex items-center justify-between">
+                               <FieldLabel label="Delay (Sec)" required />
+                               <span className="text-[8px] font-bold text-slate-600">{ALERT_DURATION_MIN}-{ALERT_DURATION_MAX}</span>
+                            </div>
                             <div className="relative">
-                               <AlertCircle size={12} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                               <AlertCircle size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
                                <input 
                                  type="number"
                                  value={formData.alert_duration}
                                  min={ALERT_DURATION_MIN}
                                  max={ALERT_DURATION_MAX}
                                  onChange={e => setFormData({...formData, alert_duration: Number(e.target.value)})}
-                                 className={`${monitoringInputClass(formErrors.alert_duration)} pl-10 py-2`}
+                                 className={`${monitoringInputClass(formErrors.alert_duration)} pl-9`}
                                />
                             </div>
                             <FieldError message={formErrors.alert_duration} />
@@ -4521,7 +4544,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
 
                 <div className="col-span-12 xl:col-span-8 flex flex-col space-y-4 h-full">
                    {activeLogicEntry ? (
-                     <section className="flex h-full flex-col rounded-lg border border-white/10 bg-white/[0.03] p-5">
+                     <section className="flex h-full flex-col rounded-lg border border-white/10 bg-white/[0.03] p-4">
                         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                            <MonitoringSelectField
                              label="Logic Type"
@@ -4530,13 +4553,13 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                              onChange={(value) => updateLogicEntry(activeLogicEntry.id, 'type', value)}
                              options={LOGIC_TYPES.map(t => ({ value: t, label: t }))}
                            />
-                           <div className="space-y-2">
-                             <FieldLabel label="Description" required />
+                           <div className="space-y-1.5">
+                             <FieldLabel label="Entry Description" required />
                              <input 
                                value={activeLogicEntry.description}
                                onChange={e => updateLogicEntry(activeLogicEntry.id, 'description', e.target.value)}
-                               placeholder="What does this logic check?"
-                               className={`${monitoringInputClass(activeLogicErrors.description)} py-2`}
+                               placeholder="Verification logic purpose"
+                               className={`${monitoringInputClass(activeLogicErrors.description)}`}
                              />
                              <FieldError message={activeLogicErrors.description} />
                            </div>
@@ -4545,37 +4568,39 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                         <div className="mt-4 flex-1 flex flex-col space-y-2 min-h-0">
                            <div className="flex items-center justify-between px-1">
                               <FieldLabel label="Logic Information" required />
-                              <span className="text-[8px] font-black text-slate-600">
-                                Syntax-aware editor
+                              <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+                                Editor
                               </span>
                            </div>
                            
-                           <div className={`flex-1 overflow-hidden rounded-lg border shadow-inner min-h-[260px] ${
+                           <div className={`flex-1 overflow-hidden rounded-lg border shadow-inner min-h-[240px] ${
                              activeLogicErrors.logic_info ? 'border-rose-500/60 bg-rose-500/10' : 'border-white/10 bg-black/40'
                            }`}>
                               <CodeMirror
                                 value={activeLogicEntry.logic_info}
-                                height="320px"
+                                height="100%"
+                                minHeight="240px"
                                 extensions={getLogicExtensions(activeLogicEntry.type)}
                                 basicSetup={{ lineNumbers: true, foldGutter: true }}
                                 placeholder={LOGIC_SUGGESTIONS[activeLogicEntry.type] || 'Enter logic parameters...'}
                                 onChange={(value) => updateLogicEntry(activeLogicEntry.id, 'logic_info', value)}
+                                theme="dark"
                               />
                            </div>
                            <FieldError message={activeLogicErrors.logic_info} />
-                           <div className="flex justify-end">
-                              <span className="text-[8px] font-black text-slate-500 bg-black/60 px-2 py-1 rounded-lg border border-white/5">
+                           <div className="flex justify-end pt-1">
+                              <span className="text-[8px] font-black text-slate-500 bg-black/60 px-2 py-1 rounded-lg border border-white/5 uppercase tracking-[0.1em]">
                                  {activeLogicEntry.logic_info.length} Chars | {activeLogicEntry.logic_info.split('\n').length} Lines
                               </span>
                            </div>
                         </div>
                      </section>
                    ) : (
-                     <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-lg space-y-4">
-                        <Activity size={40} className="text-slate-700" />
+                     <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-lg space-y-4 bg-black/10">
+                        <Activity size={32} className="text-slate-700 animate-pulse" />
                         <div className="text-center">
-                           <p className="text-[11px] font-black text-slate-500">Select an entry to modify logic</p>
-                           <p className="text-[9px] text-slate-600 font-bold mt-1">Logic specification editor</p>
+                           <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Select logic entry</p>
+                           <p className="text-[8px] text-slate-600 font-bold mt-1 uppercase">Logic specification matrix</p>
                         </div>
                      </div>
                    )}
@@ -4583,18 +4608,20 @@ export function MonitoringForm({ item, devices, categories, severities, platform
              </div>
            ) : (
              <div className="grid grid-cols-12 gap-5 p-2">
-                <div className="col-span-12 xl:col-span-4 space-y-5">
-                   <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
+                <div className="col-span-12 xl:col-span-4 space-y-4">
+                   <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
                      <PanelTitle>Alert routing rules</PanelTitle>
-                     <div className="mt-4 rounded-lg border border-white/5 bg-white/[0.03] p-4">
-                     <PanelSubtitle>Severity level</PanelSubtitle>
-                     <p className="pt-2 text-[10px] font-semibold text-slate-300">Pinned in the header for cross-tab context.</p>
+                     <div className="mt-3 rounded-lg border border-white/5 bg-white/[0.03] p-3">
+                        <PanelSubtitle>Severity level</PanelSubtitle>
+                        <p className="pt-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-tight">Pinned in the header for context.</p>
                      </div>
 
-                     <div className="mt-4 space-y-4 rounded-lg border border-white/10 bg-black/20 p-4">
+                     <div className="mt-3 space-y-3 rounded-lg border border-white/10 bg-black/20 p-4">
                       <div className="space-y-1.5">
-                         <FieldLabel label="Notification Throttle (Seconds)" required />
-                         <p className="text-[8px] text-slate-600 font-bold mb-2">Minimum time between re-alerts for the same issue</p>
+                         <div className="flex items-center justify-between">
+                            <FieldLabel label="Throttle (Seconds)" required />
+                            <span className="text-[8px] font-bold text-slate-600">{NOTIFICATION_THROTTLE_MIN}-{NOTIFICATION_THROTTLE_MAX}</span>
+                         </div>
                          <input 
                            type="number"
                            value={formData.notification_throttle}
@@ -4603,14 +4630,13 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                            onChange={e => setFormData({...formData, notification_throttle: Number(e.target.value)})}
                            className={monitoringInputClass(formErrors.notification_throttle)}
                          />
-                         <p className="pt-2 text-[8px] font-bold text-slate-600">Allowed {NOTIFICATION_THROTTLE_MIN} to {NOTIFICATION_THROTTLE_MAX}</p>
                          <FieldError message={formErrors.notification_throttle} />
                       </div>
                      </div>
 
-                     <div className="mt-4 space-y-4">
+                     <div className="mt-3 space-y-3">
                       <MonitoringSelectField
-                        label="Primary Notification Method"
+                        label="Notification Method"
                         required
                         value={formData.notification_method}
                         onChange={(value) => setFormData({...formData, notification_method: value})}
@@ -4618,36 +4644,40 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                         error={formErrors.notification_method}
                       />
                       
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                          <FieldLabel label="Recipients Matrix" />
                          <div className="flex space-x-2">
                             <input 
                               value={recipientInput}
                               onChange={e => setRecipientInput(e.target.value)}
                               onKeyDown={e => e.key === 'Enter' && addRecipient()}
-                              placeholder="Channel ID or Email..."
-                              className={`${monitoringInputClass()} flex-1 py-2 text-[11px]`}
+                              placeholder="ID or Email..."
+                              className={`${monitoringInputClass()} flex-1 py-2 text-[10px]`}
                             />
-                            <button onClick={addRecipient} className="bg-slate-800 hover:bg-slate-700 text-white px-4 rounded-lg transition-all"><Plus size={14}/></button>
-                         </div>
-                         <div className="flex flex-wrap gap-2 mt-2">
-                            {formData.notification_recipients.map((r: string) => (
-                              <div key={r} className="flex items-center space-x-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-lg">
-                                 <span className="text-[10px] font-bold text-blue-300">{r}</span>
-                                 <button onClick={() => removeRecipient(r)} className="text-slate-500 hover:text-rose-400"><X size={10}/></button>
-                              </div>
-                            ))}
+                            <button onClick={addRecipient} className="bg-slate-800 hover:bg-slate-700 text-white px-3 rounded-lg transition-all shrink-0"><Plus size={12}/></button>
                          </div>
                       </div>
+                     </div>
+
+                     <div className="flex flex-wrap gap-1.5 mt-2 px-1">
+                        {formData.notification_recipients.map((r: string) => (
+                          <div key={r} className="flex items-center space-x-2 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded-lg">
+                             <span className="text-[9px] font-black text-blue-300 uppercase tracking-widest">{r}</span>
+                             <button onClick={() => removeRecipient(r)} className="text-slate-500 hover:text-rose-400 transition-colors"><X size={10}/></button>
+                          </div>
+                        ))}
+                        {formData.notification_recipients.length === 0 && (
+                          <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">No recipients defined</p>
+                        )}
                      </div>
                    </section>
                 </div>
 
-                <div className="col-span-12 xl:col-span-8 space-y-5">
-                   <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
-                     <div className="mb-4 flex items-center justify-between border-b border-white/5 pb-3">
-                       <div className="flex items-center space-x-2 text-sm font-black tracking-tight text-slate-100">
-                          <Activity size={14}/> <span>Recovery Procedures</span>
+                <div className="col-span-12 xl:col-span-8 space-y-4">
+                   <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+                     <div className="mb-3 flex items-center justify-between border-b border-white/5 pb-2">
+                       <div className="flex items-center space-x-2 text-[clamp(11px,0.9vw,13px)] font-black tracking-tight text-slate-100 uppercase">
+                          <Activity size={12}/> <span>Recovery Procedures</span>
                        </div>
                        {formData.severity === 'Critical' && (
                          <span className="rounded-full border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-[8px] font-black text-rose-300">
@@ -4656,16 +4686,16 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                        )}
                      </div>
                    
-                   <div className="space-y-4">
-                      <div className={`space-y-6 rounded-lg border-2 p-6 ${formErrors.recovery_docs ? 'border-rose-500/40 bg-rose-500/10' : 'border-dashed border-white/10 bg-black/20'}`}>
+                   <div className="space-y-3">
+                      <div className={`space-y-4 rounded-lg border-2 p-4 ${formErrors.recovery_docs ? 'border-rose-500/40 bg-rose-500/10' : 'border-dashed border-white/10 bg-black/20'}`}>
                          <div className="flex items-center justify-between">
-                            <div className="space-y-1">
+                            <div className="space-y-0.5">
                                <PanelTitle>Link recovery documents</PanelTitle>
-                               <PanelSubtitle>Documentation linked here will be presented to the on-call engineer during an alert.</PanelSubtitle>
+                               <PanelSubtitle>Linked docs are presented to the on-call engineer.</PanelSubtitle>
                             </div>
-                            <div className="flex items-center space-x-2 bg-blue-600/10 px-3 py-1 rounded-lg border border-blue-600/20">
-                               <List size={12} className="text-blue-400" />
-                               <span className="text-[10px] font-black text-blue-400">{formData.recovery_docs?.length || 0} Linked</span>
+                            <div className="flex items-center space-x-2 bg-blue-600/10 px-2 py-1 rounded-lg border border-blue-600/20 shrink-0">
+                               <List size={10} className="text-blue-400" />
+                               <span className="text-[9px] font-black text-blue-400">{formData.recovery_docs?.length || 0} Linked</span>
                             </div>
                          </div>
 
@@ -4674,54 +4704,54 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                             <input 
                               value={recoverySearch}
                               onChange={e => setRecoverySearch(e.target.value)}
-                              placeholder="Search Knowledge Base for Recovery Procedures..."
-                              className={`${monitoringInputClass()} pl-11 py-4 text-[11px] shadow-2xl`}
+                              placeholder="Search Knowledge Base..."
+                              className={`${monitoringInputClass()} pl-11 py-3 text-[11px] shadow-2xl`}
                             />
                          </div>
 
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[260px] overflow-y-auto custom-scrollbar pr-2">
                             {filteredKnowledge?.map((entry: any) => (
                                <button
                                  key={entry.id}
                                  type="button"
                                  onClick={() => toggleRecoveryDoc(entry.id)}
-                                 className={`p-4 rounded-lg border text-left transition-all relative overflow-hidden group/item ${
+                                 className={`p-3 rounded-lg border text-left transition-all relative overflow-hidden group/item ${
                                    formData.recovery_docs?.includes(entry.id)
                                      ? 'bg-blue-600/20 border-blue-500/50 shadow-[0_0_20px_rgba(37,99,235,0.1)]'
                                      : 'bg-black/40 border-white/5 hover:border-white/20'
                                  }`}
                                >
                                   {formData.recovery_docs?.includes(entry.id) && (
-                                    <div className="absolute top-0 right-0 w-8 h-8 bg-blue-600 flex items-center justify-center rounded-bl-xl shadow-lg">
-                                       <Check size={14} className="text-white" strokeWidth={4} />
+                                    <div className="absolute top-0 right-0 w-6 h-6 bg-blue-600 flex items-center justify-center rounded-bl-lg shadow-lg">
+                                       <Check size={10} className="text-white" strokeWidth={4} />
                                     </div>
                                   )}
-                                  <div className="flex items-center space-x-2 mb-2">
-                                     <span className="text-[8px] font-black px-2 py-0.5 bg-slate-800 text-slate-400 rounded border border-white/5">{entry.category}</span>
-                                     <span className="text-[8px] font-bold text-slate-600">#{entry.id}</span>
+                                  <div className="flex items-center space-x-1.5 mb-1.5">
+                                     <span className="text-[8px] font-black px-1.5 py-0.5 bg-slate-800 text-slate-400 rounded border border-white/5 truncate">{entry.category}</span>
+                                     <span className="text-[8px] font-bold text-slate-600 shrink-0">#{entry.id}</span>
                                   </div>
-                                  <p className={`text-[11px] font-black leading-tight transition-colors ${formData.recovery_docs?.includes(entry.id) ? 'text-blue-300' : 'text-slate-300'}`}>
+                                  <p className={`text-[10px] font-black leading-tight transition-colors ${formData.recovery_docs?.includes(entry.id) ? 'text-blue-300' : 'text-slate-300'} line-clamp-2`}>
                                     {entry.title}
                                   </p>
                                </button>
                             ))}
                             {filteredKnowledge?.length === 0 && (
-                               <div className="col-span-2 py-8 text-center text-slate-600 text-[10px] font-black">No matching knowledge entries found</div>
+                               <div className="col-span-2 py-6 text-center text-slate-600 text-[9px] font-black uppercase tracking-widest">No entries found</div>
                             )}
                          </div>
                          <FieldError message={formErrors.recovery_docs} />
                       </div>
                    </div>
                    
-	                   <div className="mt-5 bg-white/[0.03] border border-white/5 rounded-lg p-4 flex items-start space-x-3">
-	                      <div className="p-2 bg-white/5 rounded-lg text-slate-500 mt-1">
-	                         <AlertCircle size={16} />
-	                      </div>
-	                      <div className="space-y-1">
-	                         <PanelHint>Operational note</PanelHint>
-	                         <p className="text-[10px] font-semibold leading-relaxed text-slate-400">Link high-quality recovery documentation to reduce MTTR and give the on-call engineer a clear starting point.</p>
-	                      </div>
-	                   </div>
+                           <div className="mt-4 bg-white/[0.03] border border-white/5 rounded-lg p-3 flex items-start space-x-3">
+                              <div className="p-1.5 bg-white/5 rounded-lg text-slate-500 mt-0.5 shrink-0">
+                                 <AlertCircle size={14} />
+                              </div>
+                              <div className="space-y-0.5 min-w-0">
+                                 <PanelHint>Operational note</PanelHint>
+                                 <p className="text-[9px] font-semibold leading-relaxed text-slate-500 line-clamp-2">Link high-quality recovery documentation to reduce MTTR and give the on-call engineer a clear starting point.</p>
+                              </div>
+                           </div>
                    </section>
                 </div>
              </div>
