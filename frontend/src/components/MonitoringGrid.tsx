@@ -4158,7 +4158,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 pr-4 sm:px-8">
-           <div className="sticky top-0 z-20 mb-6 rounded-lg border border-blue-500/20 bg-slate-950/90 p-4 shadow-[0_10px_40px_rgba(2,6,23,0.45)] backdrop-blur">
+           <div className="sticky top-0 z-20 mb-6 rounded-lg border border-blue-500/20 bg-slate-800 p-4 shadow-[0_10px_40px_rgba(2,6,23,0.45)]">
              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.8fr)_repeat(2,minmax(180px,0.6fr))]">
                <div className="space-y-2">
                  <FieldLabel label="Title" required />
