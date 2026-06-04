@@ -1615,7 +1615,7 @@ export default function MonitoringGrid() {
       width: 280,
       flex: 2.2, 
       filter: true,
-      cellClass: "font-bold text-left uppercase tracking-tight flex items-center", 
+      cellClass: "font-bold text-left tracking-tight flex items-center", 
       headerClass: 'text-left',
       cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
       hide: hiddenColumns.includes("title")
@@ -1637,7 +1637,7 @@ export default function MonitoringGrid() {
       width: 140,
       minWidth: 120,
       filter: true,
-      cellClass: "text-center font-bold uppercase flex items-center justify-center", 
+      cellClass: "text-center font-bold flex items-center justify-center", 
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
         const owners = p.value || []
@@ -1671,13 +1671,13 @@ export default function MonitoringGrid() {
           'Application': 'text-emerald-500',
           'Database': 'text-rose-500'
         }
-        return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${colors[p.value] || 'text-slate-400'}`}>{p.value || 'N/A'}</span>
+        return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold ${colors[p.value] || 'text-slate-400'}`}>{p.value || 'N/A'}</span>
       },
       hide: hiddenColumns.includes("category")
     },
     { 
       field: "is_active", 
-      headerName: "Live", 
+      headerName: "Existing", 
       width: 70,
       minWidth: 70,
       cellClass: 'text-center flex items-center justify-center',
@@ -1707,7 +1707,7 @@ export default function MonitoringGrid() {
       cellRenderer: (p: any) => {
         const names = p.value || []
         const count = names.length
-        if (count === 0) return <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>
+        if (count === 0) return <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold">N/A</span>
         return (
           <div className="flex items-center justify-center h-full">
             <button 
@@ -1727,9 +1727,9 @@ export default function MonitoringGrid() {
       headerName: "Platform", 
       minWidth: 100,
       filter: true,
-      cellClass: 'text-center font-bold uppercase text-slate-300 flex items-center justify-center', 
+      cellClass: 'text-center font-bold text-slate-300 flex items-center justify-center', 
       headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold">N/A</span>,
       hide: hiddenColumns.includes("platform")
     },
     { 
@@ -1748,7 +1748,7 @@ export default function MonitoringGrid() {
       headerName: "Freq", 
       width: 80, 
       minWidth: 80,
-      cellClass: 'text-center font-bold uppercase flex items-center justify-center', 
+      cellClass: 'text-center font-bold flex items-center justify-center', 
       headerClass: 'text-center',
       cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value ? `${p.value}s` : 'N/A'}</span>,
       hide: hiddenColumns.includes("check_interval")
@@ -1767,7 +1767,7 @@ export default function MonitoringGrid() {
              onClick={() => setRecipientPopup({ recipients: p.data.notification_recipients || [], method: p.value })}
              className="flex items-center space-x-1 hover:text-blue-400 transition-colors"
            >
-              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase text-slate-300 border-b border-dashed border-slate-700">{p.value || 'N/A'}</span>
+              <span style={{ fontSize: `${fontSize}px` }} className="font-bold text-slate-300 border-b border-dashed border-slate-700">{p.value || 'N/A'}</span>
            </button>
         </div>
       ),
@@ -1779,7 +1779,7 @@ export default function MonitoringGrid() {
       minWidth: 180,
       flex: 1, 
       filter: true,
-      cellClass: "font-bold text-slate-500 uppercase text-left truncate px-4 flex items-center", 
+      cellClass: "font-bold text-slate-500 text-left truncate px-4 flex items-center", 
       headerClass: 'text-left',
       cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
       hide: hiddenColumns.includes("purpose")
@@ -1796,7 +1796,7 @@ export default function MonitoringGrid() {
            <Clock size={12} className="opacity-40" />
            <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleString()}</span>
         </div>
-      ) : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 uppercase">N/A</span>,
+      ) : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500">N/A</span>,
       hide: hiddenColumns.includes("created_at")
     },
     { 
@@ -1811,7 +1811,7 @@ export default function MonitoringGrid() {
            <Clock size={12} className="opacity-40" />
            <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleString()}</span>
         </div>
-      ) : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 uppercase">N/A</span>,
+      ) : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500">N/A</span>,
       hide: hiddenColumns.includes("updated_at")
     },
     {
@@ -1884,10 +1884,10 @@ export default function MonitoringGrid() {
        title={
          <div className="flex items-center gap-3">
             <Activity className="text-blue-500" />
-            <span>Observability <span className="text-blue-500">Studio</span></span>
+            <span>Monitoring</span>
          </div>
        }
-       subtitle="Holistic infrastructure health and signal attribution"
+       subtitle="Centralized monitoring configuration and operational status"
        actions={
          <ToolbarSegmented
            value={activeTab}
@@ -1896,7 +1896,7 @@ export default function MonitoringGrid() {
              setSelectedIds([])
            }}
            options={[
-             { label: 'Live Signals', value: 'active' },
+             { label: 'Existing', value: 'active' },
              { label: 'Archived', value: 'deleted' }
            ]}
          />
@@ -3634,7 +3634,7 @@ const getMonitoringTabErrorCounts = (errors: MonitoringFormErrors) => ({
 
 function FieldLabel({ label, required = false }: { label: string; required?: boolean }) {
   return (
-    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">
+    <label className="text-[10px] font-black text-slate-500 px-1">
       {label}
       {required && <span className="ml-1 text-rose-400">*</span>}
     </label>
@@ -3643,7 +3643,7 @@ function FieldLabel({ label, required = false }: { label: string; required?: boo
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null
-  return <p className="text-[10px] font-black uppercase tracking-[0.08em] text-rose-400 px-1">{message}</p>
+  return <p className="text-[10px] font-black text-rose-400 px-1">{message}</p>
 }
 
 const monitoringInputClass = (error?: string) =>
@@ -3701,7 +3701,7 @@ function MonitoringSelectField({
           onClick={() => setIsOpen((current) => !current)}
           className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10 shadow-[0_0_0_1px_rgba(244,63,94,0.18)]' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
         >
-          <span className={`text-[11px] font-black uppercase tracking-[0.12em] ${selected ? 'text-slate-100' : 'text-slate-500'}`}>
+          <span className={`text-[11px] font-black ${selected ? 'text-slate-100' : 'text-slate-500'}`}>
             {selected?.label || placeholder || 'Select option'}
           </span>
           <ChevronDown size={14} className={`text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -3714,7 +3714,7 @@ function MonitoringSelectField({
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={`Search ${label.toLowerCase()}...`}
-                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-100 outline-none focus:border-blue-500/40"
+                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 text-[10px] font-black text-slate-100 outline-none focus:border-blue-500/40"
                 />
               </div>
             )}
@@ -3732,13 +3732,13 @@ function MonitoringSelectField({
                     }}
                     className={`w-full rounded-lg border px-3 py-3 text-left transition-all ${active ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10 hover:bg-white/[0.03]'}`}
                   >
-                    <p className={`text-[10px] font-black uppercase tracking-[0.14em] ${active ? 'text-blue-300' : 'text-slate-200'}`}>{option.label}</p>
-                    {option.description && <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">{option.description}</p>}
+                    <p className={`text-[10px] font-black ${active ? 'text-blue-300' : 'text-slate-200'}`}>{option.label}</p>
+                    {option.description && <p className="mt-1 text-[8px] font-black text-slate-500">{option.description}</p>}
                   </button>
                 )
               })}
               {filteredOptions.length === 0 && (
-                <div className="rounded-lg border border-white/5 bg-black/20 px-3 py-4 text-center text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">
+                <div className="rounded-lg border border-white/5 bg-black/20 px-3 py-4 text-center text-[9px] font-black text-slate-500">
                   No matching options
                 </div>
               )}
@@ -3793,7 +3793,7 @@ function MonitoringAssetField({
           onClick={() => setIsOpen((current) => !current)}
           className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'}`}
         >
-          <span className={`text-[11px] font-black uppercase tracking-[0.12em] ${selectedDevice ? 'text-slate-100' : 'text-slate-500'}`}>
+          <span className={`text-[11px] font-black ${selectedDevice ? 'text-slate-100' : 'text-slate-500'}`}>
             {selectedDevice ? `${selectedDevice.name} [${selectedDevice.system}]` : 'Select asset'}
           </span>
           <ChevronDown size={14} className={`text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -3814,7 +3814,7 @@ function MonitoringAssetField({
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search hostname or system..."
-                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-100 outline-none focus:border-blue-500/40"
+                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-3 text-[10px] font-black text-slate-100 outline-none focus:border-blue-500/40"
                 />
               </div>
             </div>
@@ -3827,7 +3827,7 @@ function MonitoringAssetField({
                 }}
                 className={`w-full rounded-lg border px-3 py-3 text-left transition-all ${deviceId == null ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10'}`}
               >
-                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-200">No linked asset</p>
+                <p className="text-[10px] font-black text-slate-200">No linked asset</p>
               </button>
               {filteredDevices.map((device: any) => (
                 <button
@@ -3839,8 +3839,8 @@ function MonitoringAssetField({
                   }}
                   className={`w-full rounded-lg border px-3 py-3 text-left transition-all ${device.id === deviceId ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10'}`}
                 >
-                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-200">{device.name}</p>
-                  <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">{device.system || 'No system'}</p>
+                  <p className="text-[10px] font-black text-slate-200">{device.name}</p>
+                  <p className="mt-1 text-[8px] font-black text-slate-500">{device.system || 'No system'}</p>
                 </button>
               ))}
             </div>
@@ -4157,7 +4157,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                   {item ? 'Update Monitoring' : 'Add Monitoring'}
                 </h2>
                 <div className="mt-1 flex items-center space-x-2">
-                   <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Monitoring editor</span>
+                   <span className="text-[9px] font-black text-slate-500">Monitoring editor</span>
                    <span className="w-1 h-1 rounded-full bg-slate-700" />
                    <StatusPill value={formData.status} />
                 </div>
@@ -4220,7 +4220,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
            </div>
            {generalError && (
              <div className="mb-6 rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3">
-               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-rose-300">
+               <p className="text-[10px] font-black text-rose-300">
                  {generalError}
                </p>
              </div>
@@ -4230,8 +4230,8 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                <div className="col-span-12 xl:col-span-5 space-y-5">
                  <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
                    <div className="mb-4 flex items-center justify-between">
-                     <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Target Identification</h3>
-                     <span className="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-slate-500">
+                     <h3 className="text-[11px] font-black text-slate-500">Target identification</h3>
+                     <span className="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[8px] font-black text-slate-500">
                        Asset + Scope
                      </span>
                    </div>
@@ -4245,7 +4245,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                        <div className="rounded-lg border border-white/10 bg-black/20 p-4">
                          <div className="mb-3 flex items-center justify-between">
                            <FieldLabel label="Service Scope" />
-                           <span className="rounded-full bg-blue-500/10 px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-blue-300">
+                           <span className="rounded-full bg-blue-500/10 px-2 py-1 text-[8px] font-black text-blue-300">
                              {formData.monitored_services?.length || 0} Bound
                            </span>
                          </div>
@@ -4255,7 +4255,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                key={svc.id}
                                type="button"
                                onClick={() => toggleService(svc.id)}
-                               className={`rounded-lg border px-3 py-2 text-[9px] font-black uppercase tracking-[0.12em] transition-all ${
+                               className={`rounded-lg border px-3 py-2 text-[9px] font-black transition-all ${
                                  formData.monitored_services?.includes(svc.id)
                                    ? 'border-blue-500/40 bg-blue-500/12 text-blue-200'
                                    : 'border-white/10 bg-slate-950/60 text-slate-400 hover:border-white/20 hover:text-slate-200'
@@ -4281,12 +4281,12 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                  <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
                    <div className="mb-4 flex items-center justify-between">
                      <div>
-                       <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Ownership</h3>
-                       <p className="mt-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-600">
+                       <h3 className="text-[11px] font-black text-slate-500">Ownership</h3>
+                       <p className="mt-1 text-[9px] font-black text-slate-600">
                          Choose a team owner or named operators, never both.
                        </p>
                      </div>
-                     <span className="rounded-full bg-blue-500/10 px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-blue-300">
+                     <span className="rounded-full bg-blue-500/10 px-2 py-1 text-[8px] font-black text-blue-300">
                        {ownershipMode === 'team' ? 'Team Mode' : `${formData.owners?.length || 0} Operators`}
                      </span>
                    </div>
@@ -4328,12 +4328,12 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                          <div className="rounded-lg border border-white/10 bg-black/20 p-4">
                            <div className="flex items-center justify-between">
                              <div>
-                               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-200">{selectedTeam.name}</p>
-                               <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">
+                               <p className="text-[10px] font-black text-slate-200">{selectedTeam.name}</p>
+                               <p className="mt-1 text-[8px] font-black text-slate-500">
                                  {(selectedTeam.operators?.length || 0)} synced or managed operators
                                </p>
                              </div>
-                             <span className="rounded-full border border-white/10 px-2 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">
+                             <span className="rounded-full border border-white/10 px-2 py-1 text-[8px] font-black text-slate-500">
                                {selectedTeam.source || 'manual'}
                              </span>
                            </div>
@@ -4382,8 +4382,8 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                          {formData.owners?.length ? formData.owners.map((o: any, idx: number) => (
                            <div key={idx} className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-4 py-3">
                              <div className="min-w-0">
-                               <p className="truncate text-[10px] font-black uppercase tracking-[0.14em] text-slate-100">{o.name}</p>
-                               <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">
+                               <p className="truncate text-[10px] font-black text-slate-100">{o.name}</p>
+                               <p className="mt-1 text-[8px] font-black text-slate-500">
                                  {o.role} | {o.external_id || 'No external ID'}
                                </p>
                              </div>
@@ -4392,7 +4392,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                              </button>
                            </div>
                          )) : (
-                           <div className="rounded-lg border border-dashed border-white/10 px-4 py-6 text-center text-[10px] font-black uppercase tracking-[0.16em] text-slate-600">
+                           <div className="rounded-lg border border-dashed border-white/10 px-4 py-6 text-center text-[10px] font-black text-slate-600">
                              No individual owners assigned
                            </div>
                          )}
@@ -4433,7 +4433,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
 
                  <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
                    <div className="mb-4">
-                     <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Operational Context</h3>
+                     <h3 className="text-[11px] font-black text-slate-500">Operational context</h3>
                    </div>
                    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                      <div className="space-y-2">
@@ -4465,7 +4465,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                 <div className="col-span-12 xl:col-span-4 space-y-5">
                    <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
                    <div className="flex items-center justify-between">
-                      <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center space-x-2">
+                      <h3 className="text-[11px] font-black text-slate-500 flex items-center space-x-2">
                          <Settings size={14}/> <span>Logic Entries</span>
                       </h3>
                       <button 
@@ -4494,17 +4494,17 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                              <X size={12}/>
                            </button>
                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-[10px] font-black uppercase text-blue-400">{entry.type}</span>
-                              <span className="text-[8px] font-bold text-slate-600 uppercase">Entry #{entry.id.toString().slice(-4)}</span>
+                              <span className="text-[10px] font-black text-blue-400">{entry.type}</span>
+                              <span className="text-[8px] font-bold text-slate-600">Entry #{entry.id.toString().slice(-4)}</span>
                            </div>
                            <p className="text-[11px] font-bold text-slate-300 truncate">{entry.description || 'No description provided'}</p>
                            {(formErrors[`logic_${entry.id}_description`] || formErrors[`logic_${entry.id}_logic_info`]) && (
-                             <p className="mt-2 text-[8px] font-black uppercase tracking-[0.12em] text-rose-400">Entry has required-field errors</p>
+                             <p className="mt-2 text-[8px] font-black text-rose-400">Entry has required-field errors</p>
                            )}
                         </div>
                       ))}
                       {formData.logic_json?.length === 0 && (
-                        <div className="py-12 text-center text-slate-600 text-[10px] uppercase font-black border-2 border-dashed border-white/5 rounded-lg">
+                        <div className="py-12 text-center text-slate-600 text-[10px] font-black border-2 border-dashed border-white/5 rounded-lg">
                            No logic entries defined
                         </div>
                       )}
@@ -4515,7 +4515,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                       <div className="grid grid-cols-1 gap-4">
                          <div className="space-y-1.5">
                             <FieldLabel label="Check Frequency (Seconds)" required />
-                            <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600 px-1">Allowed {CHECK_INTERVAL_MIN} to {CHECK_INTERVAL_MAX}</p>
+                            <p className="text-[8px] font-bold text-slate-600 px-1">Allowed {CHECK_INTERVAL_MIN} to {CHECK_INTERVAL_MAX}</p>
                             <div className="relative">
                                <Clock size={12} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                                <input 
@@ -4531,7 +4531,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                          </div>
                          <div className="space-y-1.5">
                             <FieldLabel label="Alert Duration (Seconds Delay)" required />
-                            <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600 px-1">Allowed {ALERT_DURATION_MIN} to {ALERT_DURATION_MAX}</p>
+                            <p className="text-[8px] font-bold text-slate-600 px-1">Allowed {ALERT_DURATION_MIN} to {ALERT_DURATION_MAX}</p>
                             <div className="relative">
                                <AlertCircle size={12} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                                <input 
@@ -4575,7 +4575,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                         <div className="mt-4 flex-1 flex flex-col space-y-2 min-h-0">
                            <div className="flex items-center justify-between px-1">
                               <FieldLabel label="Logic Information" required />
-                              <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">
+                              <span className="text-[8px] font-black text-slate-600">
                                 Syntax-aware editor
                               </span>
                            </div>
@@ -4594,7 +4594,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                            </div>
                            <FieldError message={activeLogicErrors.logic_info} />
                            <div className="flex justify-end">
-                              <span className="text-[8px] font-black text-slate-500 uppercase bg-black/60 px-2 py-1 rounded-lg border border-white/5">
+                              <span className="text-[8px] font-black text-slate-500 bg-black/60 px-2 py-1 rounded-lg border border-white/5">
                                  {activeLogicEntry.logic_info.length} Chars | {activeLogicEntry.logic_info.split('\n').length} Lines
                               </span>
                            </div>
@@ -4604,8 +4604,8 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                      <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-lg space-y-4">
                         <Activity size={40} className="text-slate-700" />
                         <div className="text-center">
-                           <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Select an entry to modify logic</p>
-                           <p className="text-[9px] text-slate-600 uppercase font-bold mt-1">Logic Specification Environment</p>
+                           <p className="text-[11px] font-black text-slate-500">Select an entry to modify logic</p>
+                           <p className="text-[9px] text-slate-600 font-bold mt-1">Logic specification editor</p>
                         </div>
                      </div>
                    )}
@@ -4615,16 +4615,16 @@ export function MonitoringForm({ item, devices, categories, severities, platform
              <div className="grid grid-cols-12 gap-5 p-2">
                 <div className="col-span-12 xl:col-span-4 space-y-5">
                    <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
-                     <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Alert Routing Rules</h3>
+                     <h3 className="text-[11px] font-black text-slate-500">Alert routing rules</h3>
                      <div className="mt-4 rounded-lg border border-white/5 bg-white/[0.03] p-4">
-                     <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Severity Level</p>
+                     <p className="text-[10px] font-black text-slate-500">Severity level</p>
                      <p className="pt-2 text-[10px] font-bold text-slate-300">Pinned in header for cross-tab context.</p>
                      </div>
 
                      <div className="mt-4 space-y-4 rounded-lg border border-white/10 bg-black/20 p-4">
                       <div className="space-y-1.5">
                          <FieldLabel label="Notification Throttle (Seconds)" required />
-                         <p className="text-[8px] text-slate-600 uppercase font-bold mb-2 tracking-tight">Minimum time between re-alerts for the same issue</p>
+                         <p className="text-[8px] text-slate-600 font-bold mb-2">Minimum time between re-alerts for the same issue</p>
                          <input 
                            type="number"
                            value={formData.notification_throttle}
@@ -4633,7 +4633,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                            onChange={e => setFormData({...formData, notification_throttle: Number(e.target.value)})}
                            className={monitoringInputClass(formErrors.notification_throttle)}
                          />
-                         <p className="pt-2 text-[8px] font-bold uppercase tracking-widest text-slate-600">Allowed {NOTIFICATION_THROTTLE_MIN} to {NOTIFICATION_THROTTLE_MAX}</p>
+                         <p className="pt-2 text-[8px] font-bold text-slate-600">Allowed {NOTIFICATION_THROTTLE_MIN} to {NOTIFICATION_THROTTLE_MAX}</p>
                          <FieldError message={formErrors.notification_throttle} />
                       </div>
                      </div>
@@ -4676,11 +4676,11 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                 <div className="col-span-12 xl:col-span-8 space-y-5">
                    <section className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
                      <div className="mb-4 flex items-center justify-between border-b border-white/5 pb-3">
-                       <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center space-x-2">
+                       <h3 className="text-[11px] font-black text-slate-500 flex items-center space-x-2">
                           <Activity size={14}/> <span>Recovery Procedures</span>
                        </h3>
                        {formData.severity === 'Critical' && (
-                         <span className="rounded-full border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-rose-300">
+                         <span className="rounded-full border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-[8px] font-black text-rose-300">
                            Required for Critical
                          </span>
                        )}
@@ -4690,8 +4690,8 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                       <div className={`space-y-6 rounded-lg border-2 p-6 ${formErrors.recovery_docs ? 'border-rose-500/40 bg-rose-500/10' : 'border-dashed border-white/10 bg-black/20'}`}>
                          <div className="flex items-center justify-between">
                             <div className="space-y-1">
-                               <p className="text-[12px] font-black text-white uppercase tracking-tighter">Link Recovery Documents</p>
-                               <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest">Documentation linked here will be presented to the on-call engineer during an alert.</p>
+                               <p className="text-[12px] font-black text-white">Link recovery documents</p>
+                               <p className="text-[9px] text-slate-500 font-bold">Documentation linked here will be presented to the on-call engineer during an alert.</p>
                             </div>
                             <div className="flex items-center space-x-2 bg-blue-600/10 px-3 py-1 rounded-lg border border-blue-600/20">
                                <List size={12} className="text-blue-400" />
@@ -4727,16 +4727,16 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                     </div>
                                   )}
                                   <div className="flex items-center space-x-2 mb-2">
-                                     <span className="text-[8px] font-black uppercase px-2 py-0.5 bg-slate-800 text-slate-400 rounded border border-white/5">{entry.category}</span>
-                                     <span className="text-[8px] font-bold text-slate-600 uppercase">#{entry.id}</span>
+                                     <span className="text-[8px] font-black px-2 py-0.5 bg-slate-800 text-slate-400 rounded border border-white/5">{entry.category}</span>
+                                     <span className="text-[8px] font-bold text-slate-600">#{entry.id}</span>
                                   </div>
-                                  <p className={`text-[11px] font-black uppercase tracking-tight leading-tight transition-colors ${formData.recovery_docs?.includes(entry.id) ? 'text-blue-300' : 'text-slate-300'}`}>
+                                  <p className={`text-[11px] font-black leading-tight transition-colors ${formData.recovery_docs?.includes(entry.id) ? 'text-blue-300' : 'text-slate-300'}`}>
                                     {entry.title}
                                   </p>
                                </button>
                             ))}
                             {filteredKnowledge?.length === 0 && (
-                               <div className="col-span-2 py-8 text-center text-slate-600 text-[10px] uppercase font-black">No matching knowledge entries found</div>
+                               <div className="col-span-2 py-8 text-center text-slate-600 text-[10px] font-black">No matching knowledge entries found</div>
                             )}
                          </div>
                          <FieldError message={formErrors.recovery_docs} />
@@ -4748,7 +4748,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
 	                         <AlertCircle size={16} />
 	                      </div>
 	                      <div className="space-y-1">
-	                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Operational Note</p>
+	                         <p className="text-[10px] font-black text-slate-500">Operational note</p>
 	                         <p className="text-[9px] text-slate-400 font-bold leading-relaxed">Link high-quality recovery documentation to reduce MTTR and give the on-call engineer a clear starting point.</p>
 	                      </div>
 	                   </div>
