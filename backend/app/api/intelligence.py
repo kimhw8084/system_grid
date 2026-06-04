@@ -3,6 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update, or_
 from sqlalchemy.orm import selectinload
 from typing import List, Optional, Any, Dict
+import json
+import re
 from ..database import get_db
 from ..models import models
 from ..schemas import schemas
@@ -35,8 +37,99 @@ async def _validate_internal_ownership(db: AsyncSession, payload: schemas.Extern
             raise HTTPException(status_code=400, detail="Selected accountable operator does not exist")
 
 
+def _normalize_contacts(entity: models.ExternalEntity) -> list[dict[str, Any]]:
+    if entity.contacts_json:
+        return entity.contacts_json
+    legacy_contacts = entity.poc_json or []
+    normalized = []
+    for index, contact in enumerate(legacy_contacts):
+        full_name = " ".join(part for part in [contact.get("first_name"), contact.get("last_name")] if part).strip()
+        normalized.append({
+            "role": "Primary" if index == 0 else "Operational",
+            "full_name": full_name or contact.get("id") or "Unspecified Contact",
+            "email": contact.get("email"),
+            "phone": contact.get("phone"),
+            "external_person_id": contact.get("id"),
+            "is_primary": index == 0,
+            "is_escalation": False,
+        })
+    return normalized
+
+
+def _normalize_secret(secret: models.ExternalEntitySecret) -> dict[str, Any]:
+    secret_type = secret.secret_type or ("SharedSecret" if secret.password else "VaultReference")
+    return {
+        "id": secret.id,
+        "created_at": secret.created_at,
+        "updated_at": secret.updated_at,
+        "created_by_user_id": secret.created_by_user_id,
+        "external_entity_id": secret.external_entity_id,
+        "secret_label": secret.secret_label or secret.note or secret.username or f"secret-{secret.id}",
+        "secret_type": secret_type,
+        "username": secret.username,
+        "vault_provider": secret.vault_provider,
+        "vault_path": secret.vault_path or (f"legacy-inline://external-secrets/{secret.id}" if secret.password else None),
+        "note": secret.note,
+        "credential_status": secret.credential_status or "Active",
+        "rotation_frequency_days": secret.rotation_frequency_days,
+        "password_last_rotated_at": secret.password_last_rotated_at,
+    }
+
+
 async def _enrich_entity_response(db: AsyncSession, entity: models.ExternalEntity) -> schemas.ExternalEntityResponse:
-    response = schemas.ExternalEntityResponse.model_validate(entity)
+    metadata = entity.metadata_json or {}
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except Exception:
+            metadata = {}
+    normalized_payload = {
+        "id": entity.id,
+        "created_at": entity.created_at,
+        "updated_at": entity.updated_at,
+        "created_by_user_id": entity.created_by_user_id,
+        "name": entity.name,
+        "external_key": entity.external_key or re.sub(r"[^a-z0-9._:-]+", "-", (entity.name or "").strip().lower()).strip("-") or f"external-{entity.id}",
+        "aliases_json": entity.aliases_json or [],
+        "type": entity.type,
+        "subtype": entity.subtype,
+        "owner_organization": entity.owner_organization,
+        "owner_team": entity.owner_team,
+        "ownership_mode": entity.ownership_mode or ("individual" if entity.internal_operator_id else "team"),
+        "internal_team_id": entity.internal_team_id,
+        "internal_operator_id": entity.internal_operator_id,
+        "status": entity.status or "Planned",
+        "environment": entity.environment or "Production",
+        "description": entity.description,
+        "notes": entity.notes,
+        "contacts_json": _normalize_contacts(entity),
+        "business_purpose": entity.business_purpose or metadata.get("business_purpose"),
+        "criticality": entity.criticality or metadata.get("criticality") or "Low",
+        "dependency_tier": entity.dependency_tier or metadata.get("dependency_tier") or "Tier 3",
+        "data_classification": entity.data_classification,
+        "integration_mode": entity.integration_mode or ("API" if entity.type == "API" else None),
+        "primary_endpoint_url": entity.primary_endpoint_url or metadata.get("base_url"),
+        "secondary_endpoint_url": entity.secondary_endpoint_url,
+        "auth_method": entity.auth_method or metadata.get("auth_method") or metadata.get("auth_type"),
+        "protocol_family": entity.protocol_family,
+        "port_override": entity.port_override,
+        "supports_inbound": bool(entity.supports_inbound),
+        "supports_outbound": bool(entity.supports_outbound),
+        "source_system": entity.source_system,
+        "source_record_id": entity.source_record_id,
+        "risk_rating": entity.risk_rating or "Low",
+        "contains_customer_data": bool(entity.contains_customer_data),
+        "contains_credentials": bool(entity.contains_credentials),
+        "stores_pii": bool(entity.stores_pii),
+        "internet_exposed": bool(entity.internet_exposed),
+        "third_party_assessment_status": entity.third_party_assessment_status,
+        "metadata_json": metadata,
+        "is_deleted": bool(entity.is_deleted),
+        "secrets": [_normalize_secret(secret) for secret in (entity.secrets or [])],
+    }
+    if normalized_payload["ownership_mode"] == "team" and normalized_payload["internal_team_id"] is None:
+        normalized_payload["ownership_mode"] = "individual" if normalized_payload["internal_operator_id"] else "team"
+    response = schemas.ExternalEntityResponse.model_validate(normalized_payload)
     if entity.internal_team_id:
         team_res = await db.execute(select(models.Team.name).filter(models.Team.id == entity.internal_team_id))
         response.internal_team_name = team_res.scalar_one_or_none()

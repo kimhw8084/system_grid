@@ -399,8 +399,60 @@ class ExternalEntitySecretBase(BaseModel):
 class ExternalEntitySecretCreate(ExternalEntitySecretBase):
     external_entity_id: int
 
-class ExternalEntitySecretResponse(ExternalEntitySecretBase, BaseSchema):
+class ExternalEntitySecretResponse(BaseSchema):
     external_entity_id: int
+    secret_label: Optional[str] = None
+    secret_type: Optional[str] = None
+    username: Optional[str] = None
+    vault_provider: Optional[str] = None
+    vault_path: Optional[str] = None
+    note: Optional[str] = None
+    credential_status: Optional[str] = None
+    rotation_frequency_days: Optional[int] = None
+    password_last_rotated_at: Optional[str] = None
+
+class ExternalEntityResponse(BaseSchema):
+    name: str
+    external_key: Optional[str] = None
+    aliases_json: List[str] = Field(default_factory=list)
+    type: str
+    subtype: Optional[str] = None
+    owner_organization: Optional[str] = None
+    owner_team: Optional[str] = None
+    ownership_mode: Optional[str] = None
+    internal_team_id: Optional[int] = None
+    internal_operator_id: Optional[int] = None
+    status: Optional[str] = "Planned"
+    environment: Optional[str] = "Production"
+    description: Optional[str] = None
+    notes: Optional[str] = None
+    contacts_json: List[Dict[str, Any]] = Field(default_factory=list)
+    business_purpose: Optional[str] = None
+    criticality: Optional[str] = "Low"
+    dependency_tier: Optional[str] = "Tier 3"
+    data_classification: Optional[str] = None
+    integration_mode: Optional[str] = None
+    primary_endpoint_url: Optional[str] = None
+    secondary_endpoint_url: Optional[str] = None
+    auth_method: Optional[str] = None
+    protocol_family: Optional[str] = None
+    port_override: Optional[int] = None
+    supports_inbound: bool = False
+    supports_outbound: bool = False
+    source_system: Optional[str] = None
+    source_record_id: Optional[str] = None
+    risk_rating: Optional[str] = "Low"
+    contains_customer_data: bool = False
+    contains_credentials: bool = False
+    stores_pii: bool = False
+    internet_exposed: bool = False
+    third_party_assessment_status: Optional[str] = None
+    metadata_json: Dict[str, Any] = Field(default_factory=dict)
+    is_deleted: bool = False
+    secrets: List[ExternalEntitySecretResponse] = []
+    internal_team_name: Optional[str] = None
+    internal_operator_name: Optional[str] = None
+    internal_operator_external_id: Optional[str] = None
 
 class ExternalEntityBase(BaseModel):
     name: str
@@ -529,12 +581,6 @@ class ExternalEntityBase(BaseModel):
 
 class ExternalEntityCreate(ExternalEntityBase): pass
 class ExternalEntityUpdate(ExternalEntityBase): pass
-class ExternalEntityResponse(ExternalEntityBase, BaseSchema):
-    is_deleted: bool = False
-    secrets: List[ExternalEntitySecretResponse] = []
-    internal_team_name: Optional[str] = None
-    internal_operator_name: Optional[str] = None
-    internal_operator_external_id: Optional[str] = None
 
 class ExternalLinkBase(BaseModel):
     external_entity_id: int
