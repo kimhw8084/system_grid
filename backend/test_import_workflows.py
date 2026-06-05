@@ -35,7 +35,10 @@ async def test_monitoring_import_schema_and_template(client):
 
     assert schema["table_name"] == "monitoring_items"
     assert "title" in schema["required_fields"]
-    assert "platform" in schema["required_fields"]
+    assert "category" in schema["required_fields"]
+    assert "status" in schema["required_fields"]
+    assert "platform" not in schema["required_fields"]
+    assert "severity" not in schema["required_fields"]
     assert any(field["name"] == "device_name" for field in schema["fields"])
     assert any(field["name"] == "status" and field["options"] for field in schema["fields"])
     assert any(field["name"] == "logic" and field["supported_in_builder"] is False for field in schema["fields"])
@@ -46,10 +49,11 @@ async def test_monitoring_import_schema_and_template(client):
     decoded = template_res.content.decode("utf-8")
     rows = list(csv.reader(io.StringIO(decoded)))
 
-    assert rows[0][:4] == ["category", "status", "title", "platform"]
+    assert rows[0][:5] == ["category", "status", "title", "owner_team", "monitoring_url"]
     assert "owner_team" in rows[0]
+    assert "platform" not in rows[0]
     assert "monitoring_url" in rows[0]
-    assert rows[1][rows[0].index("platform")] == "[Monitoring platform]"
+    assert rows[1][rows[0].index("monitoring_url")] == "[https://...]"
     assert rows[2][rows[0].index("title")] == "Template Example Monitor"
 
 

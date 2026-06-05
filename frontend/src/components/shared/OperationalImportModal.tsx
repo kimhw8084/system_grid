@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { AlertCircle, CheckSquare, Clipboard, Download, FileSpreadsheet, FileUp, Maximize2, Minimize2, Plus, Trash2, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { apiFetch, getApiBaseUrl } from '../../api/apiClient'
+import { AppDropdown } from './AppDropdown'
 import {
   WorkspaceEmptyState,
   WorkspaceFieldLabel,
@@ -180,6 +181,7 @@ export function OperationalImportModal({
   const [templateMode, setTemplateMode] = useState<TemplateMode>('raw')
   const [exampleRecordId, setExampleRecordId] = useState<number | null>(null)
   const [isMaximized, setIsMaximized] = useState(false)
+  const [isPickerOpening, setIsPickerOpening] = useState(false)
 
   const schemaQuery = useQuery({
     queryKey: ['operational-import-schema', tableName],
@@ -228,8 +230,20 @@ export function OperationalImportModal({
       setTemplateMode('raw')
       setExampleRecordId(null)
       setIsMaximized(false)
+      setIsPickerOpening(false)
     }
   }, [isOpen])
+
+  useEffect(() => {
+    if (!isPickerOpening) return
+    const handleFocus = () => setIsPickerOpening(false)
+    window.addEventListener('focus', handleFocus, { once: true })
+    const timeout = window.setTimeout(() => setIsPickerOpening(false), 4000)
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      window.clearTimeout(timeout)
+    }
+  }, [isPickerOpening])
 
   const supportedFields = useMemo(
     () => (schema?.fields || []).filter((field) => field.supported_in_builder !== false),
@@ -319,6 +333,16 @@ export function OperationalImportModal({
     setPreview(null)
   }
 
+  const selectAllOptionalColumns = () => {
+    setSelectedColumns(supportedFields.map((field) => field.name))
+    setPreview(null)
+  }
+
+  const unselectAllOptionalColumns = () => {
+    setSelectedColumns([])
+    setPreview(null)
+  }
+
   const updateDraftCell = (rowIndex: number, columnName: string, value: string) => {
     setDraftRows((current) => current.map((row, index) => (
       index === rowIndex
@@ -393,6 +417,20 @@ export function OperationalImportModal({
     setMode('builder')
     setPreview(null)
     toast.success(`Loaded ${nextRows.length} row${nextRows.length === 1 ? '' : 's'} into the builder`)
+  }
+
+  const handlePastedFile = (event: React.ClipboardEvent<HTMLButtonElement | HTMLDivElement>) => {
+    const clipboardFiles = Array.from(event.clipboardData.files || [])
+    const pastedFile = clipboardFiles.find((candidate) => /\.(csv|xlsx|xls)$/i.test(candidate.name))
+    if (!pastedFile) {
+      toast.error('Clipboard does not contain a CSV or Excel file.')
+      return
+    }
+    event.preventDefault()
+    setFile(pastedFile)
+    setMode('file')
+    setPreview(null)
+    toast.success(`Loaded ${pastedFile.name} from clipboard`)
   }
 
   const handleCellPaste = (rowIndex: number, columnIndex: number, text: string) => {
@@ -550,6 +588,23 @@ export function OperationalImportModal({
                               </button>
                             ))}
                           </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={selectAllOptionalColumns}
+                            className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[10px] font-black text-slate-300 transition-colors hover:text-white"
+                          >
+                            Select All
+                          </button>
+                          <button
+                            type="button"
+                            onClick={unselectAllOptionalColumns}
+                            className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[10px] font-black text-slate-400 transition-colors hover:text-white"
+                          >
+                            Unselect All
+                          </button>
                         </div>
 
                         {templateMode === 'example' && (
@@ -714,18 +769,34 @@ export function OperationalImportModal({
                             onChange={(event) => {
                               setFile(event.target.files?.[0] || null)
                               setPreview(null)
+                              setIsPickerOpening(false)
                             }}
                           />
-                          <label
-                            htmlFor={fileInputId}
-                            className="flex min-h-[180px] w-full flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-white/10 bg-black/20 text-slate-400 transition-colors hover:border-blue-500/30 hover:text-white"
-                          >
-                            <FileUp size={30} />
-                            <div className="text-center">
-                              <p className="text-[11px] font-black text-white">{file?.name || 'Select CSV or Excel file'}</p>
-                              <p className="mt-1 text-[9px] font-semibold text-slate-500">The server parses the file and returns the simulated import preview.</p>
-                            </div>
-                          </label>
+                          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
+                            <label
+                              htmlFor={fileInputId}
+                              onClick={() => setIsPickerOpening(true)}
+                              className="flex min-h-[160px] w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-white/10 bg-black/20 text-slate-400 transition-colors hover:border-blue-500/30 hover:text-white"
+                            >
+                              <FileUp size={30} />
+                              <div className="text-center">
+                                <p className="text-[11px] font-black text-white">{file?.name || (isPickerOpening ? 'Opening file explorer...' : 'Open File Explorer')}</p>
+                                <p className="mt-1 text-[9px] font-semibold text-slate-500">Choose a CSV or Excel file from disk.</p>
+                              </div>
+                            </label>
+                            <button
+                              type="button"
+                              onPaste={handlePastedFile}
+                              onClick={() => setMode('file')}
+                              className="flex min-h-[160px] w-full flex-col items-center justify-center gap-3 rounded-lg border border-white/10 bg-slate-950/60 px-5 text-center text-slate-400 transition-colors hover:border-blue-500/30 hover:text-white focus:border-blue-500/40 focus:outline-none"
+                            >
+                              <Clipboard size={24} />
+                              <div>
+                                <p className="text-[11px] font-black text-white">Paste File From Clipboard</p>
+                                <p className="mt-1 text-[9px] font-semibold text-slate-500">Click here, then press <span className="text-slate-300">Ctrl+V</span> if your browser clipboard contains a real file.</p>
+                              </div>
+                            </button>
+                          </div>
                         </div>
                       )}
 
@@ -814,31 +885,26 @@ export function OperationalImportModal({
                                     {activeColumns.map((field, columnIndex) => (
                                       <td key={`${rowIndex}-${field.name}`} className="px-2 py-2 align-top">
                                         {field.input_control === 'select' ? (
-                                          <select
+                                          <AppDropdown
                                             value={row[field.name] || ''}
-                                            onChange={(event) => updateDraftCell(rowIndex, field.name, event.target.value)}
-                                            className={`${getWorkspaceInputClass()} px-3 py-2 text-[11px]`}
-                                          >
-                                            <option value="">{field.required ? `Select ${field.label}` : `Optional ${field.label}`}</option>
-                                            {(field.options || []).map((option) => (
-                                              <option key={`${field.name}-${option.value}`} value={option.value}>
-                                                {option.label}
-                                              </option>
-                                            ))}
-                                          </select>
+                                            onChange={(value) => updateDraftCell(rowIndex, field.name, String(value))}
+                                            options={(field.options || []).map((option) => ({ value: option.value, label: option.label }))}
+                                            placeholder={field.required ? `Select ${field.label}` : `Optional ${field.label}`}
+                                            className="min-w-[180px]"
+                                          />
                                         ) : field.input_control === 'number' ? (
                                           <input
                                             type="number"
                                             value={row[field.name] || ''}
                                             onChange={(event) => updateDraftCell(rowIndex, field.name, event.target.value)}
-                                            className={`${getWorkspaceInputClass()} px-3 py-2 text-[11px]`}
+                                            className={`${getWorkspaceInputClass()} h-[42px] px-3 py-2 text-[11px]`}
                                           />
                                         ) : field.input_control === 'url' ? (
                                           <input
                                             type="url"
                                             value={row[field.name] || ''}
                                             onChange={(event) => updateDraftCell(rowIndex, field.name, event.target.value)}
-                                            className={`${getWorkspaceInputClass()} px-3 py-2 text-[11px]`}
+                                            className={`${getWorkspaceInputClass()} h-[42px] px-3 py-2 text-[11px]`}
                                           />
                                         ) : field.input_kind === 'multiline' ? (
                                           <textarea
@@ -851,7 +917,7 @@ export function OperationalImportModal({
                                                 handleCellPaste(rowIndex, columnIndex, text)
                                               }
                                             }}
-                                            className={`${getWorkspaceInputClass()} min-h-[74px] resize-y px-3 py-2 text-[11px]`}
+                                            className={`${getWorkspaceInputClass()} min-h-[42px] px-3 py-2 text-[11px]`}
                                           />
                                         ) : (
                                           <input
@@ -864,7 +930,7 @@ export function OperationalImportModal({
                                                 handleCellPaste(rowIndex, columnIndex, text)
                                               }
                                             }}
-                                            className={`${getWorkspaceInputClass()} px-3 py-2 text-[11px]`}
+                                            className={`${getWorkspaceInputClass()} h-[42px] px-3 py-2 text-[11px]`}
                                           />
                                         )}
                                         {(field.validation_rules || []).length > 0 && (

@@ -235,27 +235,51 @@ async def execute_generic_rows(db: AsyncSession, model: Any, rows: list[dict[str
     return {"status": "success", "count": count}
 
 
-MONITORING_IMPORT_FIELDS = [
-    ImportField("device_name", "Target Asset", description="Existing asset name. Resolves to device_id.", template_hint="[Existing asset name]", input_control="select", options_key="device_name"),
-    ImportField("category", "Category", required=True, template_hint="[Monitoring category]", input_control="select", options_key="category"),
-    ImportField("status", "Status", required=True, template_hint="[Existing|Planned|Cancelled|Decommissioned]", input_control="select", options_key="status"),
-    ImportField("title", "Title", required=True, template_hint="[Short monitor title]", validation_rules=["Required. Keep it concise and unique enough to identify the monitor."]),
-    ImportField("platform", "Platform", required=True, template_hint="[Monitoring platform]", input_control="select", options_key="platform"),
-    ImportField("purpose", "Purpose", template_hint="[Why this monitor exists]", input_kind="multiline", input_control="textarea"),
-    ImportField("impact", "Impact", template_hint="[What happens if it fails]", input_kind="multiline", input_control="textarea"),
-    ImportField("notification_method", "Notification Method", template_hint="[Notification route]", input_control="select", options_key="notification_method"),
-    ImportField("notification_recipients", "Notification Recipients", input_kind="multiline", input_control="textarea", template_hint="[comma separated user IDs or emails]", accepts_multiple=True, validation_rules=["Comma-separated recipients only."]),
-    ImportField("owner_team", "Owner Team", required=True, template_hint="[Managed team name]", input_control="select", options_key="owner_team"),
-    ImportField("monitoring_url", "Monitoring URL", template_hint="[https://...]", input_control="url", validation_rules=["Must be a valid http/https URL with a host."]),
-    ImportField("severity", "Severity", template_hint="[Critical|Warning|Info]", input_control="select", options_key="severity"),
-    ImportField("check_interval", "Check Interval (sec)", template_hint="[15-86400]", input_control="number", validation_rules=["Must be between 15 and 86400 seconds."]),
-    ImportField("alert_duration", "Alert Duration (sec)", template_hint="[0-86400]", input_control="number", validation_rules=["Must be between 0 and 86400 seconds."]),
-    ImportField("notification_throttle", "Notification Throttle (sec)", template_hint="[60-604800]", input_control="number", validation_rules=["Must be between 60 and 604800 seconds."]),
-    ImportField("spec", "Spec", input_kind="multiline", input_control="unsupported", template_hint="[Use add/edit workspace]", supported_in_builder=False, unsupported_reason="Spec content is freeform threshold documentation and is not standardized enough for strict bulk import."),
-    ImportField("logic", "Logic", input_kind="multiline", input_control="unsupported", template_hint="[Use add/edit workspace]", supported_in_builder=False, unsupported_reason="Logic belongs in the structured monitoring logic editor, not the simplified import grid."),
-    ImportField("monitored_service_names", "Services", input_control="unsupported", template_hint="[Use add/edit workspace]", accepts_multiple=True, supported_in_builder=False, unsupported_reason="Service coverage depends on the linked asset and must be chosen from the add/edit workspace."),
-    ImportField("recovery_doc_titles", "Recovery Documents", input_control="unsupported", template_hint="[Use add/edit workspace]", accepts_multiple=True, supported_in_builder=False, unsupported_reason="Recovery documents should be linked from the knowledge workspace search, not typed into bulk import."),
-]
+MONITORING_IMPORT_REQUIRED_FIELD_NAMES = {"category", "status", "title"}
+MONITORING_IMPORT_SUPPORTED_FIELD_NAMES = {
+    "device_name",
+    "category",
+    "status",
+    "title",
+    "platform",
+    "purpose",
+    "impact",
+    "notification_method",
+    "notification_recipients",
+    "owner_team",
+    "monitoring_url",
+    "severity",
+    "check_interval",
+    "alert_duration",
+    "notification_throttle",
+}
+
+
+def build_monitoring_import_fields() -> list[ImportField]:
+    return [
+        ImportField("device_name", "Target Asset", description="Existing asset name. Resolves to device_id.", template_hint="[Existing asset name]", input_control="select", options_key="device_name"),
+        ImportField("category", "Category", required="category" in MONITORING_IMPORT_REQUIRED_FIELD_NAMES, template_hint="[Monitoring category]", input_control="select", options_key="category"),
+        ImportField("status", "Status", required="status" in MONITORING_IMPORT_REQUIRED_FIELD_NAMES, template_hint="[Existing|Planned|Cancelled|Decommissioned]", input_control="select", options_key="status"),
+        ImportField("title", "Title", required="title" in MONITORING_IMPORT_REQUIRED_FIELD_NAMES, template_hint="[Short monitor title]", validation_rules=["Required. Keep it concise and unique enough to identify the monitor."]),
+        ImportField("platform", "Platform", required=False, template_hint="[Monitoring platform]", input_control="select", options_key="platform"),
+        ImportField("purpose", "Purpose", template_hint="[Why this monitor exists]", input_kind="multiline", input_control="textarea"),
+        ImportField("impact", "Impact", template_hint="[What happens if it fails]", input_kind="multiline", input_control="textarea"),
+        ImportField("notification_method", "Notification Method", template_hint="[Notification route]", input_control="select", options_key="notification_method"),
+        ImportField("notification_recipients", "Notification Recipients", input_kind="multiline", input_control="textarea", template_hint="[comma separated user IDs or emails]", accepts_multiple=True, validation_rules=["Comma-separated recipients only."]),
+        ImportField("owner_team", "Owner Team", required=True, template_hint="[Managed team name]", input_control="select", options_key="owner_team", validation_rules=["Bulk import supports team ownership only. Individual owners stay in the add/edit workspace."]),
+        ImportField("monitoring_url", "Monitoring URL", template_hint="[https://...]", input_control="url", validation_rules=["Must be a valid http/https URL with a host."]),
+        ImportField("severity", "Severity", required=False, template_hint="[Critical|Warning|Info]", input_control="select", options_key="severity"),
+        ImportField("check_interval", "Check Interval (sec)", template_hint="[15-86400]", input_control="number", validation_rules=["Must be between 15 and 86400 seconds."]),
+        ImportField("alert_duration", "Alert Duration (sec)", template_hint="[0-86400]", input_control="number", validation_rules=["Must be between 0 and 86400 seconds."]),
+        ImportField("notification_throttle", "Notification Throttle (sec)", template_hint="[60-604800]", input_control="number", validation_rules=["Must be between 60 and 604800 seconds."]),
+        ImportField("spec", "Spec", input_kind="multiline", input_control="unsupported", template_hint="[Use add/edit workspace]", supported_in_builder=False, unsupported_reason="Spec content is freeform threshold documentation and is not standardized enough for strict bulk import."),
+        ImportField("logic", "Logic", input_kind="multiline", input_control="unsupported", template_hint="[Use add/edit workspace]", supported_in_builder=False, unsupported_reason="Logic belongs in the structured monitoring logic editor, not the simplified import grid."),
+        ImportField("monitored_service_names", "Services", input_control="unsupported", template_hint="[Use add/edit workspace]", accepts_multiple=True, supported_in_builder=False, unsupported_reason="Service coverage depends on the linked asset and must be chosen from the add/edit workspace."),
+        ImportField("recovery_doc_titles", "Recovery Documents", input_control="unsupported", template_hint="[Use add/edit workspace]", accepts_multiple=True, supported_in_builder=False, unsupported_reason="Recovery documents should be linked from the knowledge workspace search, not typed into bulk import."),
+    ]
+
+
+MONITORING_IMPORT_FIELDS = build_monitoring_import_fields()
 
 
 async def fetch_setting_options(db: AsyncSession, category: str) -> list[dict[str, str]]:

@@ -476,6 +476,7 @@ export default function MonitoringGrid() {
   const [bkmPopup, setBkmPopup] = useState<{ ids: number[], titles: string[], monitorId?: number } | null>(null)
   const [activeBkm, setActiveBkm] = useState<any>(null)
   const [compareOpen, setCompareOpen] = useState(false)
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false)
   
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
@@ -2304,6 +2305,14 @@ export default function MonitoringGrid() {
                     </button>
                   ) : (
                     <div className="space-y-2">
+                      <button
+                        onClick={() => setShowBulkEditModal(true)}
+                        className="w-full rounded-lg border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-left transition-all hover:bg-blue-500/15"
+                      >
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">Bulk Edit Table</p>
+                        <p className="pt-1 text-[10px] font-semibold text-slate-400">Edit selected monitors row by row using safe columns only.</p>
+                      </button>
+
                       <BulkActionCard
                         title="Set Status"
                         active={expandedBulkSection === 'status'}
@@ -2756,6 +2765,19 @@ export default function MonitoringGrid() {
         {bkmPopup && <BkmListModal ids={bkmPopup.ids} titles={bkmPopup.titles} onOpenBkm={setActiveBkm} onClose={() => setBkmPopup(null)} />}
         {activeBkm && <BkmDetailModal bkmId={activeBkm} onClose={() => setActiveBkm(null)} />}
         {compareOpen && <CompareMonitorsModal items={compareItems} onClose={() => setCompareOpen(false)} />}
+        {showBulkEditModal && (
+          <BulkEditTableModal
+            items={selectedItems}
+            teams={teams || []}
+            severities={severities}
+            notificationMethods={notificationMethods}
+            onClose={() => setShowBulkEditModal(false)}
+            onSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
+              setShowBulkEditModal(false)
+            }}
+          />
+        )}
         <OperationalImportModal
           isOpen={showImportModal}
           onClose={() => setShowImportModal(false)}
@@ -3019,6 +3041,142 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     }
 
     return null;
+}
+
+function BulkEditTableModal({ items, teams, severities, notificationMethods, onClose, onSuccess }: any) {
+  const [rows, setRows] = useState(() => items.map((item: any) => ({
+    id: item.id,
+    title: item.title,
+    status: item.status || '',
+    severity: item.severity || '',
+    notification_method: item.notification_method || '',
+    owner_team: item.owner_team || '',
+    check_interval: item.check_interval ?? '',
+    alert_duration: item.alert_duration ?? '',
+    notification_throttle: item.notification_throttle ?? '',
+    is_active: item.is_active !== false,
+  })))
+  const [isMaximized, setIsMaximized] = useState(false)
+
+  useEscapeDismiss(onClose)
+
+  const updateRow = (rowId: number, field: string, value: any) => {
+    setRows((current: any[]) => current.map((row: any) => row.id === rowId ? { ...row, [field]: value } : row))
+  }
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      for (const row of rows) {
+        const payload = {
+          status: row.status,
+          severity: row.severity || null,
+          notification_method: row.notification_method || null,
+          owner_team: row.owner_team || null,
+          check_interval: row.check_interval === '' ? null : Number(row.check_interval),
+          alert_duration: row.alert_duration === '' ? null : Number(row.alert_duration),
+          notification_throttle: row.notification_throttle === '' ? null : Number(row.notification_throttle),
+          is_active: Boolean(row.is_active),
+        }
+        const res = await apiFetch(`/api/v1/monitoring/${row.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        })
+        await res.json()
+      }
+    },
+    onSuccess: () => {
+      toast.success(`Updated ${rows.length} monitor${rows.length === 1 ? '' : 's'}`)
+      onSuccess()
+    },
+    onError: (error: any) => toast.error(error.message || 'Bulk edit failed'),
+  })
+
+  const modal = (
+    <div onClick={onClose} className={`fixed inset-0 z-[3245] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('workspace')}`}>
+      <motion.div
+        onClick={(event) => event.stopPropagation()}
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className={`glass-panel w-full overflow-hidden flex flex-col rounded-lg border-blue-500/20 shadow-[0_0_80px_rgba(37,99,235,0.08)] ${isMaximized ? 'max-w-none h-[calc(100vh-3rem)]' : getWorkspaceModalShellClass('workspace')}`}
+      >
+        <WorkspaceModalHeader
+          icon={<Edit2 size={20} />}
+          title="Bulk Edit Monitoring"
+          subtitle="Safe table-based edits for selected monitors."
+          closeControl={
+            <button onClick={onClose} className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500/90 text-transparent transition-all hover:text-rose-950" title="Close">
+              <X size={10} strokeWidth={3} />
+            </button>
+          }
+          maximizeControl={
+            <button onClick={() => setIsMaximized((current) => !current)} className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500/90 text-transparent transition-all hover:text-emerald-950" title={isMaximized ? 'Restore size' : 'Maximize'}>
+              {isMaximized ? <Minimize2 size={8} strokeWidth={3} /> : <Maximize2 size={8} strokeWidth={3} />}
+            </button>
+          }
+        />
+        <div className="flex-1 overflow-y-auto px-6 py-6 sm:px-8">
+          <div className="mb-4 rounded-lg border border-white/10 bg-black/20 px-4 py-3">
+            <p className="text-[10px] font-semibold text-slate-400">Selected monitors</p>
+            <p className="pt-1 text-[12px] font-semibold text-slate-100">{rows.length} rows</p>
+          </div>
+          <div className="overflow-x-auto rounded-lg border border-white/10 bg-black/20">
+            <table className="min-w-full divide-y divide-white/10">
+              <thead className="bg-slate-950/90">
+                <tr>
+                  <th className="px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Title</th>
+                  <th className="min-w-[160px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Status</th>
+                  <th className="min-w-[160px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Severity</th>
+                  <th className="min-w-[180px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Notification</th>
+                  <th className="min-w-[180px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Owner Team</th>
+                  <th className="min-w-[130px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Check Interval</th>
+                  <th className="min-w-[130px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Alert Duration</th>
+                  <th className="min-w-[150px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Throttle</th>
+                  <th className="min-w-[120px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Active</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {rows.map((row: any) => (
+                  <tr key={row.id}>
+                    <td className="px-3 py-2 text-[10px] font-semibold text-slate-100">{row.title}</td>
+                    <td className="px-2 py-2"><AppDropdown value={row.status} onChange={(value) => updateRow(row.id, 'status', value)} options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))} placeholder="Status" /></td>
+                    <td className="px-2 py-2"><AppDropdown value={row.severity} onChange={(value) => updateRow(row.id, 'severity', value)} options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))} placeholder="Severity" /></td>
+                    <td className="px-2 py-2"><AppDropdown value={row.notification_method} onChange={(value) => updateRow(row.id, 'notification_method', value)} options={notificationMethods.map((method: any) => ({ value: method.value, label: method.label }))} placeholder="Notification" /></td>
+                    <td className="px-2 py-2"><AppDropdown value={row.owner_team} onChange={(value) => updateRow(row.id, 'owner_team', value)} options={(teams || []).map((team: any) => ({ value: team.name, label: team.name }))} placeholder="Owner team" /></td>
+                    <td className="px-2 py-2"><input type="number" value={row.check_interval} min={CHECK_INTERVAL_MIN} max={CHECK_INTERVAL_MAX} onChange={(event) => updateRow(row.id, 'check_interval', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[11px]`} /></td>
+                    <td className="px-2 py-2"><input type="number" value={row.alert_duration} min={ALERT_DURATION_MIN} max={ALERT_DURATION_MAX} onChange={(event) => updateRow(row.id, 'alert_duration', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[11px]`} /></td>
+                    <td className="px-2 py-2"><input type="number" value={row.notification_throttle} min={NOTIFICATION_THROTTLE_MIN} max={NOTIFICATION_THROTTLE_MAX} onChange={(event) => updateRow(row.id, 'notification_throttle', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[11px]`} /></td>
+                    <td className="px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => updateRow(row.id, 'is_active', !row.is_active)}
+                        className={`rounded-lg border px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${row.is_active ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300' : 'border-white/10 bg-black/20 text-slate-400'}`}
+                      >
+                        {row.is_active ? 'Active' : 'Paused'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <WorkspaceModalFooter
+          right={
+            <>
+              <button onClick={onClose} className="px-6 sm:px-8 py-3 bg-white/5 hover:bg-white/10 text-slate-400 rounded-lg font-black uppercase tracking-widest text-[9px] sm:text-[10px] transition-all">Abort</button>
+              <button onClick={() => mutation.mutate()} disabled={mutation.isPending} className="px-8 sm:px-12 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-black uppercase tracking-widest text-[9px] sm:text-[10px] transition-all shadow-xl shadow-blue-500/20 active:scale-95 disabled:bg-slate-700 flex items-center space-x-2">
+                {mutation.isPending ? <Clock className="animate-spin" size={14} /> : <Check size={14} />}
+                <span>Save Bulk Edit</span>
+              </button>
+            </>
+          }
+        />
+      </motion.div>
+    </div>
+  )
+
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
 function RecipientsModal({ recipients, method, onClose }: any) {
@@ -4050,7 +4208,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
         className={`glass-panel w-full overflow-hidden flex flex-col rounded-lg border-blue-500/20 shadow-[0_0_80px_rgba(37,99,235,0.08)] ${isMaximized ? 'max-w-none h-[calc(100vh-3rem)]' : getWorkspaceModalShellClass('workspace')}`}
       >
         <WorkspaceModalHeader
-          icon={<Zap size={20} />}
+          icon={<Plus size={20} />}
           title={item ? 'Update Monitoring' : 'Add Monitoring'}
           subtitle="Configure monitoring targets, logic, and alert routing."
           status={<StatusPill value={formData.status} />}
