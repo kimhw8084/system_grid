@@ -22,9 +22,13 @@ import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { MONITORING_WORKSPACE_STANDARD } from './shared/OperationalWorkspace'
 import {
+  WorkspaceCollapsibleHeader,
+  WorkspaceEmptyState,
   WorkspaceFieldError as FieldError,
   WorkspaceFieldLabel as FieldLabel,
+  WorkspaceFloatingPanel,
   WorkspaceHoverPreview as HoverPreview,
+  WorkspaceSectionBadge,
   WorkspaceModalFooter,
   WorkspaceModalHeader,
   WorkspacePanelHint as PanelHint,
@@ -32,14 +36,19 @@ import {
   WorkspacePanelTitle as PanelTitle,
   WorkspaceSectionCard,
   WorkspaceSelectField as MonitoringSelectField,
+  WorkspaceSplitView,
   WorkspaceStickyIdentityBar,
   WorkspaceValidationBanner,
   getWorkspaceModalFrameClass,
   getWorkspaceModalShellClass,
   getWorkspaceInputClass,
+  useWorkspaceAnchoredLayer,
 } from './shared/OperationalWorkspacePrimitives'
 import { StatusPill } from './shared/StatusPill'
-import { PageHeader, PageToolbar, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch, ToolbarSegmented } from './shared/LayoutPrimitives'
+import { PageHeader, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch, ToolbarSegmented } from './shared/LayoutPrimitives'
+import { WorkspaceCommandBar } from './shared/WorkspaceCommandBar'
+import { usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
+import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } from './shared/WorkspaceModalShells'
 
 const MONITORING_VIEW_STORAGE_KEY = 'sysgrid_monitoring_views_v1'
 const MONITORING_ACTIVE_VIEW_KEY = 'sysgrid_monitoring_active_view_v1'
@@ -47,6 +56,26 @@ const MONITORING_FAVORITES_STORAGE_KEY = 'sysgrid_monitoring_favorites_v1'
 const MONITORING_UI_STATE_KEY = 'sysgrid_monitoring_ui_state_v1'
 const MONITORING_WATCH_STORAGE_KEY = 'sysgrid_monitoring_watch_v1'
 const BULK_MENU_MAX_HEIGHT = 560
+const MONITORING_FIXED_WIDTH_COLUMN_IDS = new Set([
+  'select',
+  'id',
+  'recent_change',
+  'favorite',
+  'watch',
+  'is_active',
+  'check_interval',
+  'row_actions',
+])
+
+const normalizeMonitoringColumnLayout = (layout: any[], preserveWidths: boolean) =>
+  (layout || []).map((column: any) => ({
+    colId: column.colId,
+    hide: column.hide,
+    pinned: column.pinned,
+    sort: column.sort,
+    sortIndex: column.sortIndex,
+    ...(preserveWidths ? { width: column.width, flex: column.flex } : {})
+  }))
 
 const STATUSES = [
   { value: 'Existing', label: 'Existing', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
@@ -276,7 +305,7 @@ const GridMatrix = React.memo(({
       enableCellTextSelection={true}
       suppressMovableColumns={false}
       ensureDomOrder={true}
-      overlayNoRowsTemplate="<span class='text-slate-500 font-black uppercase tracking-widest text-[10px]'>No monitoring data found</span>"
+      overlayNoRowsTemplate="<span class='text-slate-500 font-semibold text-[10px]'>No monitoring data found</span>"
     />
   )
 }, (prev, next) => {
@@ -453,61 +482,34 @@ export default function MonitoringGrid() {
   const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
   const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
   const [gridSortModel, setGridSortModel] = useState<any[]>([{ colId: 'favorite', sort: 'desc' }])
-  const [savedViews, setSavedViews] = useState<any[]>(() => {
-    if (typeof window === 'undefined') return DEFAULT_MONITORING_VIEWS
-    try {
-      const raw = window.localStorage.getItem(MONITORING_VIEW_STORAGE_KEY)
-      if (!raw) return DEFAULT_MONITORING_VIEWS
-      const parsed = JSON.parse(raw)
-      if (!Array.isArray(parsed)) return DEFAULT_MONITORING_VIEWS
-      
-      // Merge system defaults with persisted versions (to get latest config)
-      // and append any custom views that are not in the default list
-      const systemIds = new Set(DEFAULT_MONITORING_VIEWS.map(v => v.id))
-      const legacyIds = new Set(['ops', 'incident', 'recovery'])
-      const customViews = parsed.filter((v: any) => !systemIds.has(v.id) && !legacyIds.has(v.id))
-      
-      return [
-        ...DEFAULT_MONITORING_VIEWS.map((view) => parsed.find((entry: any) => entry.id === view.id) || view),
-        ...customViews
-      ]
-    } catch {
-      return DEFAULT_MONITORING_VIEWS
-    }
+  const [savedViews, setSavedViews] = usePersistentJsonState<any[]>(MONITORING_VIEW_STORAGE_KEY, () => {
+    const parsed = typeof window !== 'undefined' ? (() => {
+      try {
+        const raw = window.localStorage.getItem(MONITORING_VIEW_STORAGE_KEY)
+        return raw ? JSON.parse(raw) : []
+      } catch {
+        return []
+      }
+    })() : []
+    const systemIds = new Set(DEFAULT_MONITORING_VIEWS.map((view) => view.id))
+    const legacyIds = new Set(['ops', 'incident', 'recovery'])
+    const customViews = Array.isArray(parsed) ? parsed.filter((view: any) => !systemIds.has(view.id) && !legacyIds.has(view.id)) : []
+    return [
+      ...DEFAULT_MONITORING_VIEWS.map((view) => Array.isArray(parsed) ? parsed.find((entry: any) => entry.id === view.id) || view : view),
+      ...customViews,
+    ]
   })
-  const [activeViewId, setActiveViewId] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null
-    // Reset to system default (no view) on the very first load of a browser session
-    const isFirstLoad = !window.sessionStorage.getItem('sysgrid_monitoring_session_init')
-    if (isFirstLoad) {
-      window.sessionStorage.setItem('sysgrid_monitoring_session_init', 'true')
-      return null
-    }
-    return window.localStorage.getItem(MONITORING_ACTIVE_VIEW_KEY)
-  })
-  const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
-    if (typeof window === 'undefined') return []
-    try {
-      const raw = window.localStorage.getItem(MONITORING_FAVORITES_STORAGE_KEY)
-      const parsed = raw ? JSON.parse(raw) : []
-      return Array.isArray(parsed) ? parsed : []
-    } catch {
-      return []
-    }
-  })
-  const [watchIds, setWatchIds] = useState<number[]>(() => {
-    if (typeof window === 'undefined') return []
-    try {
-      const raw = window.localStorage.getItem(MONITORING_WATCH_STORAGE_KEY)
-      const parsed = raw ? JSON.parse(raw) : []
-      return Array.isArray(parsed) ? parsed : []
-    } catch {
-      return []
-    }
-  })
+  const [activeViewId, setActiveViewId] = useWorkspaceSessionValue<string | null>(
+    'sysgrid_monitoring_session_init',
+    null,
+    () => (typeof window === 'undefined' ? null : window.localStorage.getItem(MONITORING_ACTIVE_VIEW_KEY))
+  )
+  const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>(MONITORING_FAVORITES_STORAGE_KEY, [])
+  const [watchIds, setWatchIds] = usePersistentJsonState<number[]>(MONITORING_WATCH_STORAGE_KEY, [])
   const [quickFilters, setQuickFilters] = useState({ status: '', severity: '', platform: '', owner: '' })
   const [groupBy, setGroupBy] = useState<string>('raw')
-  const [columnLayoutState, setColumnLayoutState] = useState<any[]>([])
+  const [columnLayoutState, setColumnLayoutState] = useState<any[]>(persistedUiState?.columnLayoutState ?? [])
+  const [hasManualColumnWidths, setHasManualColumnWidths] = useState<boolean>(Boolean(persistedUiState?.hasManualColumnWidths))
   const [bulkDraft, setBulkDraft] = useState({ status: '', severity: '', notification_method: '' })
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'severity' | 'notification' | null>(null)
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
@@ -522,6 +524,7 @@ export default function MonitoringGrid() {
   const lastUndoRef = useRef<any>(null)
   const [newViewName, setNewViewName] = useState('')
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
+  const preserveExplicitColumnWidths = Boolean((activeViewId || hasManualColumnWidths) && columnLayoutState.length)
 
   const groupSelectionsRef = useRef<Record<string, number[]>>({})
 
@@ -542,7 +545,13 @@ export default function MonitoringGrid() {
   }, [])
 
   const handleColumnResized = useCallback((event: any) => {
-    if (event.finished) syncColumnLayoutState(event.api)
+    if (!event.finished) return
+    if (event.source === 'uiColumnDragged' || event.source === 'uiColumnResized' || event.source === 'sizeColumnsToFit') {
+      setHasManualColumnWidths(true)
+      syncColumnLayoutState(event.api, true)
+      return
+    }
+    syncColumnLayoutState(event.api)
   }, [])
 
   const handleColumnMoved = useCallback((event: any) => {
@@ -579,12 +588,22 @@ export default function MonitoringGrid() {
     // Immediately apply layout if we have it to prevent squish
     if (columnLayoutState.length > 0) {
       event.api.applyColumnState({
-        state: columnLayoutState,
+        state: normalizeMonitoringColumnLayout(columnLayoutState, preserveExplicitColumnWidths),
         applyOrder: true,
         defaultState: { sort: null }
       });
     }
-  }, [columnLayoutState])
+  }, [columnLayoutState, preserveExplicitColumnWidths])
+
+  const autoSizeMonitoringColumns = useCallback(() => {
+    if (!gridRef.current?.api || preserveExplicitColumnWidths) return
+    const visibleColumnIds = gridRef.current.api
+      .getAllDisplayedColumns()
+      .map((column: any) => column.getColId())
+      .filter((colId: string) => !MONITORING_FIXED_WIDTH_COLUMN_IDS.has(colId))
+    if (!visibleColumnIds.length) return
+    gridRef.current.api.autoSizeColumns(visibleColumnIds, false)
+  }, [preserveExplicitColumnWidths])
 
   const getRowClass = useCallback((params: any) => {
     let classes = params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd'
@@ -803,21 +822,13 @@ export default function MonitoringGrid() {
     }
   }
 
-  const getColumnLayoutSnapshot = (api: any) => {
+  const getColumnLayoutSnapshot = (api: any, preserveWidths: boolean = preserveExplicitColumnWidths) => {
     if (!api?.getColumnState) return []
-    return api.getColumnState().map((column: any) => ({
-      colId: column.colId,
-      width: column.width,
-      hide: column.hide,
-      pinned: column.pinned,
-      flex: column.flex,
-      sort: column.sort,
-      sortIndex: column.sortIndex
-    }))
+    return normalizeMonitoringColumnLayout(api.getColumnState(), preserveWidths)
   }
 
-  const syncColumnLayoutState = (api: any) => {
-    const nextLayout = getColumnLayoutSnapshot(api)
+  const syncColumnLayoutState = (api: any, preserveWidths: boolean = preserveExplicitColumnWidths) => {
+    const nextLayout = getColumnLayoutSnapshot(api, preserveWidths)
     if (!nextLayout.length) return
     setColumnLayoutState(nextLayout)
   }
@@ -825,7 +836,7 @@ export default function MonitoringGrid() {
   const applyColumnLayoutState = (api: any) => {
     if (!api || !columnLayoutState.length) return
     api.applyColumnState({
-      state: columnLayoutState,
+      state: normalizeMonitoringColumnLayout(columnLayoutState, preserveExplicitColumnWidths),
       applyOrder: true,
       defaultState: { sort: null }
     })
@@ -836,7 +847,7 @@ export default function MonitoringGrid() {
     rowDensity,
     hiddenColumns,
     groupBy,
-    columnLayoutState: gridRef.current?.api?.getColumnState() || columnLayoutState,
+    columnLayoutState: normalizeMonitoringColumnLayout(gridRef.current?.api?.getColumnState() || columnLayoutState, true),
     quickFilter: searchTerm,
     quickFilters,
     filterModel: gridRef.current?.api?.getFilterModel?.() || gridFilterModel,
@@ -854,6 +865,7 @@ export default function MonitoringGrid() {
     setHiddenColumns(config.hiddenColumns ?? [])
     setGroupBy(config.groupBy ?? 'raw')
     setColumnLayoutState(config.columnLayoutState ?? [])
+    setHasManualColumnWidths(true)
     setSearchTerm(config.quickFilter ?? '')
     setQuickFilters(config.quickFilters ?? { status: '', severity: '', platform: '', owner: '' })
     setGridFilterModel(config.filterModel ?? {})
@@ -866,7 +878,7 @@ export default function MonitoringGrid() {
       if (gridRef.current?.api) {
         if (Array.isArray(config.columnLayoutState) && config.columnLayoutState.length) {
           gridRef.current.api.applyColumnState({
-            state: config.columnLayoutState,
+            state: normalizeMonitoringColumnLayout(config.columnLayoutState, true),
             applyOrder: true,
             defaultState: { sort: null }
           })
@@ -923,6 +935,7 @@ export default function MonitoringGrid() {
 
   const applySystemDefault = () => {
     setActiveViewId(null)
+    setHasManualColumnWidths(false)
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(MONITORING_ACTIVE_VIEW_KEY)
     }
@@ -937,7 +950,7 @@ export default function MonitoringGrid() {
     if (gridRef.current?.api) {
        gridRef.current.api.setFilterModel({})
        gridRef.current.api.applyColumnState({
-         defaultState: { sort: null, flex: 1, pinned: null, hide: false },
+         defaultState: { sort: null, pinned: null, hide: false },
          applyOrder: true
        })
     }
@@ -967,46 +980,26 @@ export default function MonitoringGrid() {
     )
   }
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      if (showBulkMenu && !target.closest('.bulk-menu-container') && !target.closest('.bulk-menu-trigger')) {
-        setShowBulkMenu(false)
-        setBulkDeleteConfirm(false)
-      }
-      if (showDisplayMenu && !target.closest('.display-menu-container')) {
-        setShowDisplayMenu(false)
-      }
-      if (showViewsMenu && !target.closest('.views-menu-container')) {
-        setShowViewsMenu(false)
-      }
-      if (rowActionMenu && !target.closest('.row-action-menu-container')) {
-        setRowActionMenu(null)
-        setRowDeleteConfirmId(null)
-      }
-    }
-    if (showBulkMenu || showDisplayMenu || showViewsMenu || rowActionMenu) {
-      document.addEventListener('click', handleClickOutside)
-      return () => document.removeEventListener('click', handleClickOutside)
-    }
-  }, [showBulkMenu, showDisplayMenu, showViewsMenu, rowActionMenu])
+  const dismissWorkspaceMenus = useCallback(() => {
+    setShowBulkMenu(false)
+    setBulkDeleteConfirm(false)
+    setShowDisplayMenu(false)
+    setShowViewsMenu(false)
+    setRowActionMenu(null)
+    setRowDeleteConfirmId(null)
+  }, [])
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setShowBulkMenu(false)
-        setBulkDeleteConfirm(false)
-        setShowDisplayMenu(false)
-        setShowViewsMenu(false)
-        setRowActionMenu(null)
-        setRowDeleteConfirmId(null)
-      }
-    }
-    if (showBulkMenu || showDisplayMenu || showViewsMenu || rowActionMenu) {
-      window.addEventListener('keydown', handleKeyDown)
-      return () => window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [showBulkMenu, showDisplayMenu, showViewsMenu, rowActionMenu])
+  useWorkspaceDismissHandlers({
+    active: showBulkMenu || showDisplayMenu || showViewsMenu || !!rowActionMenu,
+    onDismiss: dismissWorkspaceMenus,
+    shouldDismiss: (target) => {
+      if (showBulkMenu && !target.closest('.bulk-menu-container') && !target.closest('.bulk-menu-trigger')) return true
+      if (showDisplayMenu && !target.closest('.display-menu-container')) return true
+      if (showViewsMenu && !target.closest('.views-menu-container')) return true
+      if (rowActionMenu && !target.closest('.row-action-menu-container')) return true
+      return false
+    },
+  })
 
   useEffect(() => {
     const handleContextMenu = (event: MouseEvent) => {
@@ -1095,12 +1088,6 @@ export default function MonitoringGrid() {
     }
   }, [favoriteIds, watchIds])
 
-  useEffect(() => {
-    if (gridRef.current?.api && items?.length > 0) {
-      gridRef.current.api.autoSizeColumns(['platform'])
-    }
-  }, [items])
-
   const groupOptions = [
     { value: 'raw', label: 'Raw Rows' },
     { value: 'category', label: 'Category' },
@@ -1175,6 +1162,14 @@ export default function MonitoringGrid() {
     return sortedItemsForGrouped
   }, [sortedItemsForGrouped, groupBy])
 
+  useEffect(() => {
+    if (!displayedItemsInOrder.length) return
+    const timer = window.setTimeout(() => {
+      autoSizeMonitoringColumns()
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [autoSizeMonitoringColumns, displayedItemsInOrder, fontSize, hiddenColumns, isIntelligenceExpanded])
+
   const selectedItems = useMemo(
     () => displayedItems.filter((item: any) => selectedIds.includes(item.id)),
     [displayedItems, selectedIds]
@@ -1247,21 +1242,6 @@ export default function MonitoringGrid() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(savedViews))
-  }, [savedViews])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(MONITORING_FAVORITES_STORAGE_KEY, JSON.stringify(favoriteIds))
-  }, [favoriteIds])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(MONITORING_WATCH_STORAGE_KEY, JSON.stringify(watchIds))
-  }, [watchIds])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
     window.localStorage.setItem(MONITORING_UI_STATE_KEY, JSON.stringify({
       activeTab,
       fontSize,
@@ -1270,12 +1250,13 @@ export default function MonitoringGrid() {
       quickFilters,
       groupBy,
       columnLayoutState,
+      hasManualColumnWidths,
       selectedIds,
       expandedBulkSection,
       lastVisitedAt,
       searchTerm
     }))
-  }, [activeTab, columnLayoutState, expandedBulkSection, fontSize, groupBy, hiddenColumns, lastVisitedAt, quickFilters, rowDensity, searchTerm, selectedIds])
+  }, [activeTab, columnLayoutState, expandedBulkSection, fontSize, groupBy, hasManualColumnWidths, hiddenColumns, lastVisitedAt, quickFilters, rowDensity, searchTerm, selectedIds])
 
   useEffect(() => {
     if (!activeViewId || !gridRef.current?.api) return
@@ -1489,7 +1470,7 @@ export default function MonitoringGrid() {
       resizable: false,
       sortable: false,
       filter: false,
-      suppressHide: true
+      lockVisible: true
     },
     { 
       colId: "id",
@@ -1502,7 +1483,7 @@ export default function MonitoringGrid() {
       cellClass: 'text-center font-bold text-slate-500 border-r border-white/5 flex items-center justify-center',
       headerClass: 'text-center border-r border-white/5',
       filter: 'agNumberColumnFilter',
-      suppressHide: true
+      lockVisible: true
     },
     {
       colId: "recent_change",
@@ -1515,7 +1496,7 @@ export default function MonitoringGrid() {
       sortable: false,
       filter: false,
       resizable: false,
-      suppressHide: true,
+      lockVisible: true,
       cellClass: 'text-center border-r border-white/5 flex items-center justify-center !overflow-visible',
       headerClass: 'text-center border-r border-white/5',
       hide: !isIntelligenceExpanded,
@@ -1561,7 +1542,7 @@ export default function MonitoringGrid() {
       sortable: true,
       filter: false,
       resizable: false,
-      suppressHide: true,
+      lockVisible: true,
       valueGetter: (p: any) => p.context?.favoriteIds?.includes(p.data?.id) ? 1 : 0,
       cellRenderer: (p: any) => {
         const isFavorite = p.context?.favoriteIds?.includes(p.data?.id)
@@ -1594,7 +1575,7 @@ export default function MonitoringGrid() {
       sortable: false,
       filter: false,
       resizable: false,
-      suppressHide: true,
+      lockVisible: true,
       hide: !isIntelligenceExpanded,
       cellRenderer: (p: any) => {
         const isWatched = p.context?.watchIds?.includes(p.data?.id)
@@ -1649,13 +1630,14 @@ export default function MonitoringGrid() {
       hide: hiddenColumns.includes("status")
     },
     { 
-      field: "owners", 
-      headerName: "Owners", 
+      field: "owners",
+      headerName: "Owners",
       width: 140,
       minWidth: 120,
       filter: true,
-      cellClass: "text-center font-bold flex items-center justify-center", 
+      cellClass: "text-center font-bold flex items-center justify-center",
       headerClass: 'text-center',
+      valueFormatter: (p: any) => p.value?.map((o: any) => o.name).join(', ') || 'N/A',
       cellRenderer: (p: any) => {
         const owners = p.value || []
         const count = owners.length
@@ -1717,6 +1699,7 @@ export default function MonitoringGrid() {
       headerName: "Services", 
       width: 110, 
       minWidth: 100,
+      valueFormatter: (p: any) => p.value?.join(', ') || 'N/A',
       cellClass: "text-center flex items-center justify-center", 
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -1842,7 +1825,7 @@ export default function MonitoringGrid() {
       sortable: false,
       filter: false,
       cellRenderer: (p: any) => p.data ? renderPrimaryRowActions(p.data) : null,
-      suppressHide: true
+      lockVisible: true
     }
   ]
   
@@ -1857,10 +1840,10 @@ export default function MonitoringGrid() {
           if (!layout) return child
           return {
             ...child,
-            width: layout.width ?? child.width,
+            width: preserveExplicitColumnWidths ? layout.width ?? child.width : child.width,
             pinned: layout.pinned ?? child.pinned,
             hide: child.hide !== undefined ? child.hide : layout.hide,
-            flex: layout.flex ?? child.flex
+            flex: preserveExplicitColumnWidths ? layout.flex ?? child.flex : child.flex
           }
         })
       }
@@ -1870,10 +1853,10 @@ export default function MonitoringGrid() {
     if (!layout) return col
     return {
       ...col,
-      width: layout.width ?? col.width,
+      width: preserveExplicitColumnWidths ? layout.width ?? col.width : col.width,
       pinned: layout.pinned ?? col.pinned,
       hide: col.hide !== undefined ? col.hide : layout.hide,
-      flex: layout.flex ?? col.flex
+      flex: preserveExplicitColumnWidths ? layout.flex ?? col.flex : col.flex
     }
   })
 
@@ -1888,7 +1871,7 @@ export default function MonitoringGrid() {
   }
 
   return mergedDefs
-}, [fontSize, hiddenColumns, columnLayoutState, isIntelligenceExpanded]) as any
+}, [fontSize, hiddenColumns, columnLayoutState, isIntelligenceExpanded, preserveExplicitColumnWidths]) as any
 
   const gridContext = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
 
@@ -1918,7 +1901,7 @@ export default function MonitoringGrid() {
          }
          />
 
-         <PageToolbar
+         <WorkspaceCommandBar
         left={
           <>
             <ToolbarSearch
@@ -1952,8 +1935,8 @@ export default function MonitoringGrid() {
               <ToolbarIconButton onClick={() => setShowRegistry(true)} title="Registry configuration">
                <Settings size={16} />
               </ToolbarIconButton>
-              </ToolbarGroup>
-              <ToolbarGroup>
+            </ToolbarGroup>
+            <ToolbarGroup>
               <ToolbarButton
                active={isIntelligenceExpanded}
                onClick={() => setIsIntelligenceExpanded(!isIntelligenceExpanded)}
@@ -1964,9 +1947,41 @@ export default function MonitoringGrid() {
                  Intelligence
                </span>
               </ToolbarButton>
-              </ToolbarGroup>
-              </>
-              }
+            </ToolbarGroup>
+          </>
+        }
+        secondary={
+          <div className="grid w-full gap-3 md:grid-cols-4">
+        <AppDropdown
+          value={quickFilters.status}
+          onChange={(val) => setQuickFilters((current) => ({ ...current, status: val }))}
+          options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
+          label="Status Filter"
+          placeholder="All statuses"
+        />
+        <AppDropdown
+          value={quickFilters.severity}
+          onChange={(val) => setQuickFilters((current) => ({ ...current, severity: val }))}
+          options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
+          label="Severity Filter"
+          placeholder="All severities"
+        />
+        <AppDropdown
+          value={quickFilters.platform}
+          onChange={(val) => setQuickFilters((current) => ({ ...current, platform: val }))}
+          options={platformOptions}
+          label="Platform Filter"
+          placeholder="All platforms"
+        />
+        <AppDropdown
+          value={quickFilters.owner}
+          onChange={(val) => setQuickFilters((current) => ({ ...current, owner: val }))}
+          options={ownerOptions}
+          label="Owner Filter"
+          placeholder="All owners"
+        />
+          </div>
+        }
 	        right={
 	          <>
               {MONITORING_SUPPORTS_COMPARE && (
@@ -2004,70 +2019,22 @@ export default function MonitoringGrid() {
             </ToolbarButton>
           </>
         }
-		      />
-
-      <div className="grid gap-3 md:grid-cols-4">
-        <AppDropdown
-          value={quickFilters.status}
-          onChange={(val) => setQuickFilters((current) => ({ ...current, status: val }))}
-          options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
-          label="Status Filter"
-          placeholder="All statuses"
-        />
-        <AppDropdown
-          value={quickFilters.severity}
-          onChange={(val) => setQuickFilters((current) => ({ ...current, severity: val }))}
-          options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
-          label="Severity Filter"
-          placeholder="All severities"
-        />
-        <AppDropdown
-          value={quickFilters.platform}
-          onChange={(val) => setQuickFilters((current) => ({ ...current, platform: val }))}
-          options={platformOptions}
-          label="Platform Filter"
-          placeholder="All platforms"
-        />
-        <AppDropdown
-          value={quickFilters.owner}
-          onChange={(val) => setQuickFilters((current) => ({ ...current, owner: val }))}
-          options={ownerOptions}
-          label="Owner Filter"
-          placeholder="All owners"
-        />
-      </div>
-
-      <AnimatePresence>
-        {activeFilterChips.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            className="flex flex-wrap items-center gap-2"
-          >
-            {activeFilterChips.map((chip) => (
-              <button
-                key={chip.id}
-                onClick={chip.onRemove}
-                className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.08]"
-              >
-                {chip.label}
-              </button>
-            ))}
-	            <button
-	              onClick={() => {
-	                setSearchTerm('')
-	                setGridFilterModel({})
+        filterChips={[
+          ...activeFilterChips,
+          ...(activeFilterChips.length > 0
+            ? [{
+                id: 'clear-all',
+                label: 'Clear All',
+                onRemove: () => {
+                  setSearchTerm('')
+                  setGridFilterModel({})
                   setQuickFilters({ status: '', severity: '', platform: '', owner: '' })
-	                gridRef.current?.api?.setFilterModel({})
-	              }}
-              className="rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 transition-all hover:text-white"
-            >
-              Clear All
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                  gridRef.current?.api?.setFilterModel({})
+                }
+              }]
+            : []),
+        ]}
+		      />
 
       {typeof document !== 'undefined' && createPortal(
         <>
@@ -2078,19 +2045,20 @@ export default function MonitoringGrid() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
                 style={displayMenuStyle}
-                className="display-menu-container rounded-lg border border-white/10 bg-slate-950/95 p-4 shadow-2xl backdrop-blur-xl"
+                className="display-menu-container"
               >
+                <WorkspaceFloatingPanel kind="menu" className="p-4">
                 <div className="space-y-4">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Display Density</span>
+                      <span className="text-[10px] font-semibold text-slate-400">Display density</span>
                       <button onClick={() => setShowDisplayMenu(false)} className="text-slate-500 hover:text-white">
                         <X size={14} />
                       </button>
                     </div>
                     <div className="space-y-3 rounded-lg border border-white/5 bg-black/20 p-3">
                       <div className="flex items-center justify-between gap-4">
-                        <span className="text-[9px] font-black uppercase text-slate-500">Font</span>
+                        <span className="text-[10px] font-semibold text-slate-400">Font</span>
                         <div className="flex items-center gap-2">
                           <input
                             type="range"
@@ -2105,7 +2073,7 @@ export default function MonitoringGrid() {
                         </div>
                       </div>
                       <div className="flex items-center justify-between gap-4">
-                        <span className="text-[9px] font-black uppercase text-slate-500">Rows</span>
+                        <span className="text-[10px] font-semibold text-slate-400">Rows</span>
                         <div className="flex items-center gap-2">
                           <input
                             type="range"
@@ -2132,9 +2100,9 @@ export default function MonitoringGrid() {
                       </div>
 
 	                  <div className="space-y-2">
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Columns</span>
+                    <span className="text-[10px] font-semibold text-slate-400">Columns</span>
                     <div className="max-h-[240px] space-y-1 overflow-y-auto pr-1 custom-scrollbar">
-                      {columnDefs.filter((c: any) => c.field && !c.suppressHide).map((col: any) => (
+                      {columnDefs.filter((c: any) => c.field && !c.lockVisible).map((col: any) => (
                         <label key={col.field} className="flex cursor-pointer items-center gap-3 rounded-lg p-2 transition-all hover:bg-white/5">
                           <input
                             type="checkbox"
@@ -2151,7 +2119,7 @@ export default function MonitoringGrid() {
                           <div className={`flex h-4 w-4 items-center justify-center rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500' : 'border-white/10 bg-black/40'}`}>
                             {!hiddenColumns.includes(col.field) && <Check size={11} className="text-white" />}
                           </div>
-                          <span className={`text-[10px] font-black uppercase tracking-widest ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>
+                          <span className={`text-[10px] font-semibold ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>
                             {col.headerName || col.field}
                           </span>
                         </label>
@@ -2159,6 +2127,7 @@ export default function MonitoringGrid() {
                     </div>
                   </div>
                 </div>
+                </WorkspaceFloatingPanel>
               </motion.div>
             )}
           </AnimatePresence>
@@ -2170,12 +2139,13 @@ export default function MonitoringGrid() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
                 style={viewsMenuStyle}
-                className="views-menu-container rounded-lg border border-white/10 bg-slate-950/95 p-4 shadow-2xl backdrop-blur-xl"
+                className="views-menu-container"
               >
+                <WorkspaceFloatingPanel kind="menu" className="p-4">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Saved Views</p>
+                      <p className="text-[10px] font-semibold text-slate-400">Saved views</p>
                       <p className="pt-1 text-[11px] text-slate-400">Load, save, and overwrite full Monitoring layouts.</p>
                     </div>
                     <button onClick={() => setShowViewsMenu(false)} className="text-slate-500 hover:text-white">
@@ -2186,14 +2156,14 @@ export default function MonitoringGrid() {
                   <div className="rounded-lg border border-white/5 bg-black/20 p-3">
                     <div className="mb-3 flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Current View</p>
+                        <p className="text-[10px] font-semibold text-slate-400">Current view</p>
                         <p className="pt-1 text-[11px] font-semibold text-slate-100">{activeViewId ? savedViews.find((view) => view.id === activeViewId)?.name : 'Unsaved working view'}</p>
                       </div>
                       {activeViewId && (
                         <button
                           type="button"
                           onClick={() => saveCurrentToView(activeViewId)}
-                          className="rounded-lg border border-blue-500/20 bg-blue-600/15 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-blue-200 transition-all hover:bg-blue-600/25"
+                          className="rounded-lg border border-blue-500/20 bg-blue-600/15 px-3 py-2 text-[10px] font-semibold text-blue-200 transition-all hover:bg-blue-600/25"
                         >
                           Overwrite Current
                         </button>
@@ -2209,7 +2179,7 @@ export default function MonitoringGrid() {
                       <button
                         type="button"
                         onClick={createViewFromCurrent}
-                        className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:bg-white/[0.08]"
+                        className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[10px] font-semibold text-slate-200 transition-all hover:bg-white/[0.08]"
                       >
                         Save New
                       </button>
@@ -2227,10 +2197,10 @@ export default function MonitoringGrid() {
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <p className={`text-[10px] font-black uppercase tracking-[0.14em] ${activeViewId === null ? 'text-emerald-300' : 'text-slate-200'}`}>System Default</p>
+                          <p className={`text-[10px] font-semibold ${activeViewId === null ? 'text-emerald-300' : 'text-slate-200'}`}>System default</p>
                           <p className="pt-1 text-[10px] text-slate-500">Standard table layout with no active view</p>
                         </div>
-                        <span className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-600">Core</span>
+                        <span className="text-[9px] font-semibold text-slate-500">Core</span>
                       </div>
                     </button>
 
@@ -2248,10 +2218,10 @@ export default function MonitoringGrid() {
                           >
                             <div className="flex items-center justify-between gap-3">
                               <div>
-                                <p className={`text-[10px] font-black uppercase tracking-[0.14em] ${activeViewId === view.id ? 'text-blue-300' : 'text-slate-200'}`}>{view.name}</p>
+                                <p className={`text-[10px] font-semibold ${activeViewId === view.id ? 'text-blue-300' : 'text-slate-200'}`}>{view.name}</p>
                                 <p className="pt-1 text-[10px] text-slate-500">{view.config?.groupBy && view.config.groupBy !== 'raw' ? `Grouped by ${groupOptions.find((option) => option.value === view.config.groupBy)?.label || view.config.groupBy}` : 'Raw monitoring table'}</p>
                               </div>
-                              <span className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-600">{isDefaultView ? 'Default' : 'Custom'}</span>
+                              <span className="text-[9px] font-semibold text-slate-500">{isDefaultView ? 'Default' : 'Custom'}</span>
                             </div>
                           </button>
                           <div className="flex flex-col gap-1">
@@ -2277,6 +2247,7 @@ export default function MonitoringGrid() {
                     })}
                   </div>
                 </div>
+                </WorkspaceFloatingPanel>
               </motion.div>
             )}
           </AnimatePresence>
@@ -2288,10 +2259,11 @@ export default function MonitoringGrid() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
                   style={bulkMenuStyle}
-                  className="bulk-menu-container max-h-[560px] overflow-y-auto rounded-lg border border-slate-700 bg-[#020617] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
+                  className="bulk-menu-container"
                 >
+                  <WorkspaceFloatingPanel kind="context" className="max-h-[560px] overflow-y-auto p-3">
                   <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
-                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500">Bulk Actions</p>
+                    <p className="text-[10px] font-semibold text-slate-400">Bulk actions</p>
                     <p className="pt-1 text-[12px] font-semibold text-slate-100">{selectedIds.length} monitors selected</p>
                   </div>
 
@@ -2373,12 +2345,13 @@ export default function MonitoringGrid() {
                         : 'border-rose-900/70 bg-rose-950/70 hover:bg-rose-950'
                     }`}
                   >
-                    <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
+                    <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
                       {bulkDeleteConfirm 
                         ? (activeTab === 'deleted' ? 'Confirm Permanent Purge?' : 'Confirm De-activation?') 
                         : (activeTab === 'deleted' ? 'Purge Selection' : 'De-activate Selection')}
                     </p>
                   </button>
+                  </WorkspaceFloatingPanel>
                 </motion.div>
 	            )}
 	          </AnimatePresence>
@@ -2390,11 +2363,12 @@ export default function MonitoringGrid() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
                 style={rowActionMenu.style}
-                className="row-action-menu-container overflow-hidden rounded-lg border border-slate-700 bg-[#020617] shadow-[0_24px_80px_rgba(0,0,0,0.62)]"
+                className="row-action-menu-container"
               >
+                <WorkspaceFloatingPanel kind="context" className="overflow-hidden">
                 <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
                   <div className="min-w-0">
-                    <p className="truncate text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Row Actions</p>
+                    <p className="truncate text-[10px] font-semibold text-slate-400">Row actions</p>
                     <p className="pt-1 text-[11px] font-semibold text-slate-100">ID {rowActionMenu.item.id} · {rowActionMenu.item.device_name || 'No target asset linked'}</p>
                     <p className="truncate pt-1 text-[12px] text-slate-300">{rowActionMenu.item.title}</p>
                   </div>
@@ -2408,7 +2382,7 @@ export default function MonitoringGrid() {
                 </div>
                 <div className="max-h-[calc(100vh-180px)] overflow-y-auto p-2.5 custom-scrollbar">
                   <div className="px-3 py-1">
-                    <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Quick Access</p>
+                    <p className="text-[10px] font-semibold text-slate-400">Quick access</p>
                   </div>
                   <div className="grid grid-cols-3 gap-2 px-2 pb-3 border-b border-slate-800 mb-2">
                     <button
@@ -2445,7 +2419,7 @@ export default function MonitoringGrid() {
                   </div>
 
                   <div className="px-3 py-1">
-                    <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Related Destinations</p>
+                    <p className="text-[10px] font-semibold text-slate-400">Related destinations</p>
                   </div>
                   <div className="grid grid-cols-2 gap-2 px-2 pb-1">
                     <button
@@ -2543,6 +2517,7 @@ export default function MonitoringGrid() {
                     : (activeTab === 'active' ? 'De-activate' : 'Purge')}
                 </button>
                 </div>
+                </WorkspaceFloatingPanel>
               </motion.div>
             )}
           </AnimatePresence>
@@ -2561,7 +2536,7 @@ export default function MonitoringGrid() {
           {isLoading && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
                <RefreshCcw size={32} className="text-blue-400 animate-spin" />
-               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Scanning Monitoring Matrix...</p>
+               <p className="text-[10px] font-semibold text-blue-400">Scanning monitoring matrix...</p>
             </div>
           )}
 	          <GridMatrix
@@ -2592,26 +2567,26 @@ export default function MonitoringGrid() {
         <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 custom-scrollbar">
           <div className="rounded-lg border border-white/5 bg-black/20 px-6 py-4 flex items-center justify-between">
             <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Grouped Intelligence Matrix</p>
-              <p className="pt-1 text-[12px] font-black uppercase tracking-tight text-slate-100">Sorted by {groupOptions.find((option) => option.value === groupBy)?.label || groupBy}</p>
+              <p className="text-[10px] font-semibold text-slate-400">Grouped monitoring matrix</p>
+              <p className="pt-1 text-[12px] font-semibold text-slate-100">Sorted by {groupOptions.find((option) => option.value === groupBy)?.label || groupBy}</p>
             </div>
             <div className="flex items-center gap-3">
                <button 
                  onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: false }), {}))}
-                 className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+                 className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
                >
                  Expand All
                </button>
                <button 
                  onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: true }), {}))}
-                 className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+                 className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
                >
                  Collapse All
                </button>
                <div className="w-px h-6 bg-white/10 mx-1" />
                <button 
                  onClick={() => setGroupBy('raw')}
-                 className="px-3 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-[9px] font-black uppercase tracking-widest text-rose-400 hover:bg-rose-500/20 transition-all flex items-center gap-2"
+                 className="px-3 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-[9px] font-semibold text-rose-400 hover:bg-rose-500/20 transition-all flex items-center gap-2"
                >
                  <X size={12} />
                  <span>Cancel</span>
@@ -2630,13 +2605,13 @@ export default function MonitoringGrid() {
                 >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-400">{groupOptions.find((option) => option.value === groupBy)?.label}</span>
-                      <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-100">{section.label}</h3>
+                      <span className="text-[9px] font-semibold text-blue-400">{groupOptions.find((option) => option.value === groupBy)?.label}</span>
+                      <h3 className="text-sm font-semibold text-slate-100">{section.label}</h3>
                     </div>
                     <p className="pt-1 text-[11px] text-slate-400">{section.items.length} monitors{selectedCount ? ` · ${selectedCount} selected` : ''}</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="rounded-lg border border-white/5 bg-black/30 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-slate-300">{section.items.length}</span>
+                    <span className="rounded-lg border border-white/5 bg-black/30 px-2.5 py-1 text-[9px] font-semibold text-slate-300">{section.items.length}</span>
                     {isCollapsed ? <ChevronDown size={16} className="text-slate-500" /> : <ChevronUp size={16} className="text-slate-500" />}
                   </div>
                 </button>
@@ -2800,7 +2775,7 @@ function BulkActionCard({ title, active, onClick }: { title: string; active: boo
       }`}
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-100">{title}</p>
+        <p className="text-[10px] font-semibold text-slate-100">{title}</p>
         <ChevronRight size={14} className={active ? 'text-blue-300' : 'text-slate-500'} />
       </div>
     </button>
@@ -2820,7 +2795,7 @@ function InlineBulkEditor({ value, onChange, options, placeholder, actionLabel, 
         <button
           onClick={onApply}
           disabled={disabled}
-          className="rounded-lg border border-blue-500/20 bg-blue-600/15 px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.16em] text-blue-200 transition-all hover:bg-blue-600/25 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-950 disabled:text-slate-600"
+          className="rounded-lg border border-blue-500/20 bg-blue-600/15 px-4 py-2.5 text-[10px] font-semibold text-blue-200 transition-all hover:bg-blue-600/25 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-950 disabled:text-slate-600"
         >
           {actionLabel}
         </button>
@@ -2862,16 +2837,19 @@ function CompareMonitorsModal({ items, onClose }: any) {
   const modal = (
     <div onClick={onClose} className={`fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('wide')}`}>
       <motion.div onClick={(e) => e.stopPropagation()} initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('wide')} overflow-y-auto custom-scrollbar rounded-lg border border-slate-700 bg-[#020617] p-6`}>
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-black uppercase tracking-[0.18em] text-slate-100">Compare Monitors</h3>
-          </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18} /></button>
-        </div>
-        <div className={`grid gap-4 ${gridCols}`}>
+        <WorkspaceCompareShell
+          header={
+            <>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-100">Compare monitors</h3>
+              </div>
+              <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18} /></button>
+            </>
+          }
+          body={<div className={`grid gap-4 ${gridCols}`}>
           {items.map((item: any) => (
             <div key={item.id} className="rounded-lg border border-slate-800 bg-slate-950 p-4">
-              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">ID {item.id} · {item.device_name || 'No asset'}</p>
+              <p className="text-[9px] font-semibold text-slate-500">ID {item.id} · {item.device_name || 'No asset'}</p>
               <h4 className="pt-2 text-sm font-semibold text-slate-100 truncate">{item.title}</h4>
               <div className="mt-3 space-y-2 text-[11px] text-slate-300">
                 {fields.map(f => {
@@ -2891,7 +2869,8 @@ function CompareMonitorsModal({ items, onClose }: any) {
               </div>
             </div>
           ))}
-        </div>
+        </div>}
+        />
       </motion.div>
     </div>
   )
@@ -2914,7 +2893,7 @@ function CompareRow({ label, value, multiline = false, colorIndex = -1 }: { labe
   return (
     <div className={`rounded-lg border px-3 py-2 ${style.border} ${style.bg} ${isDiff ? 'shadow-[0_0_15px_rgba(0,0,0,0.1)]' : ''} ${multiline ? '' : 'flex items-center justify-between gap-3'}`}>
       <div className="flex items-center gap-2">
-        <p className={`text-[8px] font-black uppercase tracking-[0.16em] ${style.text}`}>{label}</p>
+        <p className={`text-[8px] font-semibold ${style.text}`}>{label}</p>
         {isDiff && <div className={`w-1 h-1 rounded-full ${style.text.replace('text-', 'bg-')} animate-pulse`} />}
       </div>
       <p className={`pt-1 font-bold ${style.val} ${multiline ? 'leading-5' : 'text-right'}`}>{value}</p>
@@ -3006,12 +2985,12 @@ function RecipientsModal({ recipients, method, onClose }: any) {
     <div onClick={onClose} className={`fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('compact')}`}>
       <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('compact')} p-6 rounded-lg border-emerald-500/20`}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-black uppercase text-emerald-400">Recipient Matrix</h3>
+          <h3 className="text-sm font-semibold text-emerald-400">Recipient matrix</h3>
           <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18}/></button>
         </div>
         <div className="flex items-center space-x-2 mb-4">
           <Bell size={12} className="text-slate-500" />
-          <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Method: {method}</span>
+          <span className="text-[10px] text-slate-500 font-semibold">Method: {method}</span>
         </div>
         <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
           {recipients.map((r: string, i: number) => (
@@ -3270,22 +3249,23 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
   const modal = (
     <div onClick={onClose} className={`fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('workspace')}`}>
       <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('workspace')} flex flex-col p-6 sm:p-8 rounded-lg border-blue-500/20 overflow-hidden shadow-[0_0_120px_rgba(37,99,235,0.12)]`}>
-        <div className="mb-6 border-b border-white/10 pb-6">
-          <div className="flex items-start justify-between gap-4">
+        <WorkspaceDossierShell
+          header={
+            <>
             <div className="flex items-start gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-600/10 text-blue-400">
                 <Monitor size={24} strokeWidth={1.75} />
               </div>
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[9px] font-black uppercase tracking-[0.24em] text-blue-400">Monitor {item.id}</span>
+                  <span className="text-[9px] font-semibold text-blue-400">Monitor {item.id}</span>
                   <StatusPill value={item.status} />
                   <StatusPill value={item.severity} />
                 </div>
                 <div>
                   <h2 className="text-2xl font-black tracking-tighter text-white">{item.title}</h2>
-                  <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                    {item.device_name || 'No linked asset'} // {item.platform || 'No platform'} // {item.check_interval ? `${item.check_interval}s checks` : 'No frequency'}
+                  <p className="mt-1 text-[10px] font-semibold text-slate-500">
+                    {item.device_name || 'No linked asset'} · {item.platform || 'No platform'} · {item.check_interval ? `${item.check_interval}s checks` : 'No frequency'}
                   </p>
                 </div>
               </div>
@@ -3293,9 +3273,10 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
             <button onClick={onClose} className="rounded-lg border border-white/5 bg-white/5 p-2 text-slate-400 transition-all hover:bg-white/10 hover:text-white">
               <X size={20} />
             </button>
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+            </>
+          }
+          actions={
+            <>
             <ToolbarButton onClick={() => onEdit?.(item)}>Edit Monitor</ToolbarButton>
             <ToolbarButton onClick={() => onOpenHistory?.(item)}>History</ToolbarButton>
             <ToolbarButton onClick={() => onOpenBkm?.(item)}>Recovery</ToolbarButton>
@@ -3308,15 +3289,112 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
                 ? (item.is_deleted ? 'Confirm Purge?' : 'Confirm De-activate?') 
                 : (item.is_deleted ? 'Purge' : 'De-activate')}
             </ToolbarButton>
-          </div>
-        </div>
+            </>
+          }
+          body={
+           <WorkspaceSplitView
+             className="gap-8"
+             sidebar={<div className="space-y-8">
+                 <section className="space-y-3">
+                    <h3 className="px-1 text-[11px] font-semibold text-slate-400">Jump path</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3">
+                       <button
+                         disabled={!item.device_id}
+                         onClick={() => item.device_id && onOpenAsset?.(item.device_id)}
+                         className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 text-left transition-all hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-30"
+                       >
+                         <p className="text-[9px] font-semibold text-blue-400">Open asset</p>
+                         <p className="mt-2 text-[10px] font-semibold text-slate-200">{item.device_name || 'No linked asset'}</p>
+                       </button>
+                       <button
+                         disabled={!item.recovery_docs?.length}
+                         onClick={() => item.recovery_docs?.[0] && onOpenKnowledge?.(item.recovery_docs[0])}
+                         className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4 text-left transition-all hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-30"
+                       >
+                         <p className="text-[9px] font-semibold text-amber-400">Open recovery BKM</p>
+                         <p className="mt-2 text-[10px] font-semibold text-slate-200">
+                           {item.recovery_doc_titles?.[0] || 'No recovery document linked'}
+                         </p>
+                       </button>
+                    </div>
+                 </section>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
-           <div className="grid grid-cols-1 sm:grid-cols-12 gap-8">
-              <div className="sm:col-span-7 space-y-8">
+                 <section className="space-y-3">
+                    <h3 className="px-1 text-[11px] font-semibold text-slate-400">Reliability matrix</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                       {[
+                          { label: 'Severity', value: item.severity, color: 'text-slate-200', icon: Shield },
+                          { label: 'Platform', value: item.platform, color: 'text-blue-400', icon: Globe },
+                          { label: 'Frequency', value: `${item.check_interval}s`, color: 'text-slate-300', icon: Clock },
+                          { label: 'Throttle', value: `${item.notification_throttle}s`, color: 'text-amber-400', icon: Zap }
+                       ].map((stat, i) => (
+                          <div key={i} className="bg-white/5 border border-white/5 rounded-lg p-4 flex flex-col justify-between hover:bg-white/10 transition-all">
+                            <div className="flex items-center justify-between mb-2">
+                               <stat.icon size={12} className="text-slate-600" />
+                               <span className="text-[8px] font-semibold text-slate-500">{stat.label}</span>
+                            </div>
+                               {stat.label === 'Severity' ? <StatusPill value={String(stat.value)} /> : <span className={`text-[12px] font-black ${stat.color} tracking-tighter`}>{stat.value}</span>}
+                         </div>
+                       ))}
+                    </div>
+                 </section>
+
+                 <section className="space-y-3">
+                    <h3 className="px-1 text-[11px] font-semibold text-slate-400">Recovery procedures</h3>
+                    <div className="space-y-2">
+                       {item.recovery_doc_titles?.map((title: string, i: number) => (
+                         <button
+                           key={i}
+                           type="button"
+                           onClick={() => item.recovery_docs?.[i] && onOpenKnowledge?.(item.recovery_docs[i])}
+                           className="w-full bg-amber-500/5 border border-amber-500/10 rounded-lg p-3 flex items-center space-x-3 hover:border-amber-500/30 transition-all cursor-pointer group text-left"
+                         >
+                            <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all"><FileText size={14}/></div>
+                            <span className="text-[11px] font-semibold text-slate-300 tracking-tight leading-tight">{title}</span>
+                         </button>
+                       ))}
+                       {item.recovery_doc_titles?.length === 0 && (
+                         <WorkspaceEmptyState compact icon={<AlertCircle size={18} />} title="No recovery document linked" />
+                       )}
+                    </div>
+                 </section>
+
+                 <section className="space-y-3">
+                    <h3 className="px-1 text-[11px] font-semibold text-slate-400">Suggested runbooks</h3>
+                    <div className="space-y-2">
+                       {suggestedKnowledge?.slice(0, 3).map((entry: any) => (
+                         <button
+                           key={entry.id}
+                           type="button"
+                           onClick={() => onOpenKnowledge?.(entry.id)}
+                           className="w-full rounded-lg border border-sky-500/15 bg-sky-500/5 p-3 text-left transition-all hover:bg-sky-500/10"
+                         >
+                           <p className="text-[11px] font-semibold text-slate-200 tracking-tight">{entry.title}</p>
+                           <p className="mt-1 text-[8px] font-semibold text-slate-500">
+                             {entry.metadata_json?.entry_type || entry.category} · {entry.metadata_json?.verification?.state || entry.status}
+                           </p>
+                         </button>
+                       ))}
+                       {!suggestedKnowledge?.length && (
+                         <WorkspaceEmptyState compact title="No suggested runbooks yet" />
+                       )}
+                    </div>
+                 </section>
+
+                 {item.monitoring_url && (
+                    <button 
+                       onClick={() => window.open(item.monitoring_url, '_blank')}
+                       className="w-full bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-lg font-semibold text-[10px] transition-all shadow-xl shadow-blue-500/20 flex items-center justify-center space-x-3"
+                    >
+                       <ExternalLink size={14} />
+                       <span>Open platform console</span>
+                    </button>
+                 )}
+             </div>}
+             main={<div className="space-y-8">
                  <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-white/[0.03] border border-white/5 rounded-lg p-5 group hover:border-white/10 transition-all">
-                       <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center space-x-2">
+                       <h4 className="text-[10px] font-semibold text-slate-500 mb-2 flex items-center space-x-2">
                           <Info size={12}/> <span>Purpose</span>
                        </h4>
                        <p className="text-[12px] font-bold text-slate-300 leading-relaxed">
@@ -3324,7 +3402,7 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
                        </p>
                     </div>
                     <div className="bg-white/[0.03] border border-white/5 rounded-lg p-5 group hover:border-white/10 transition-all">
-                       <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center space-x-2">
+                       <h4 className="text-[10px] font-semibold text-slate-500 mb-2 flex items-center space-x-2">
                           <Zap size={12}/> <span>Impact</span>
                        </h4>
                        <p className="text-[12px] font-bold text-slate-300 leading-relaxed">
@@ -3335,14 +3413,14 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
 
                  <section className="space-y-3">
                     <div className="flex items-center justify-between px-1">
-                      <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.24em] flex items-center">
+                      <h3 className="text-[11px] font-semibold text-slate-400 flex items-center">
                          <Settings size={14} className="mr-3" /> Logic Specification
                       </h3>
                       <button 
                          onClick={() => setShowLineNumbers(!showLineNumbers)}
-                         className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border transition-all ${showLineNumbers ? 'bg-blue-600/20 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-white/5 text-slate-500'}`}
+                         className={`text-[8px] font-semibold px-2 py-1 rounded border transition-all ${showLineNumbers ? 'bg-blue-600/20 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-white/5 text-slate-500'}`}
                       >
-                         {showLineNumbers ? 'Hide Line Numbers' : 'Show Line Numbers'}
+                         {showLineNumbers ? 'Hide line numbers' : 'Show line numbers'}
                       </button>
                     </div>
                     <div className="space-y-3">
@@ -3353,7 +3431,7 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
                                className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-all"
                             >
                                <div className="flex items-center space-x-4">
-                                  <span className="text-[9px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 uppercase tracking-tighter">{log.type}</span>
+                                  <span className="text-[9px] font-semibold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">{log.type}</span>
                                   <span className="text-slate-300 font-bold text-[11px] tracking-tight">{log.description}</span>
                                </div>
                                {expandedLogic === log.id ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
@@ -3383,121 +3461,10 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
                        ))}
                     </div>
                  </section>
-              </div>
-
-              <div className="sm:col-span-5 space-y-8">
-                 <section className="space-y-3">
-                    <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.24em] flex items-center px-1">
-                       <ChevronRight size={14} className="mr-3" /> Incident Jump Path
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                       <button
-                         disabled={!item.device_id}
-                         onClick={() => item.device_id && onOpenAsset?.(item.device_id)}
-                         className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 text-left transition-all hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-30"
-                       >
-                         <p className="text-[8px] font-black uppercase tracking-[0.25em] text-blue-400">Open Asset</p>
-                         <p className="mt-2 text-[10px] font-bold uppercase text-slate-200">{item.device_name || 'No linked asset'}</p>
-                       </button>
-                       <button
-                         disabled={!item.recovery_docs?.length}
-                         onClick={() => item.recovery_docs?.[0] && onOpenKnowledge?.(item.recovery_docs[0])}
-                         className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4 text-left transition-all hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-30"
-                       >
-                         <p className="text-[8px] font-black uppercase tracking-[0.25em] text-amber-400">Open Recovery BKM</p>
-                         <p className="mt-2 text-[10px] font-bold uppercase text-slate-200">
-                           {item.recovery_doc_titles?.[0] || 'No recovery document linked'}
-                         </p>
-                       </button>
-                    </div>
-                 </section>
-
-                 {/* Reliability Matrix */}
-                 <section className="space-y-3">
-                    <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.24em] flex items-center px-1">
-                       <Bell size={14} className="mr-3" /> Reliability Matrix
-                    </h3>
-                    <div className="grid grid-cols-2 gap-3">
-                       {[
-                          { label: 'Severity', value: item.severity, color: 'text-slate-200', icon: Shield },
-                          { label: 'Platform', value: item.platform, color: 'text-blue-400', icon: Globe },
-                          { label: 'Frequency', value: `${item.check_interval}s`, color: 'text-slate-300', icon: Clock },
-                          { label: 'Throttle', value: `${item.notification_throttle}s`, color: 'text-amber-400', icon: Zap }
-                       ].map((stat, i) => (
-                          <div key={i} className="bg-white/5 border border-white/5 rounded-lg p-4 flex flex-col justify-between hover:bg-white/10 transition-all">
-                            <div className="flex items-center justify-between mb-2">
-                               <stat.icon size={12} className="text-slate-600" />
-                               <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{stat.label}</span>
-                            </div>
-                               {stat.label === 'Severity' ? <StatusPill value={String(stat.value)} /> : <span className={`text-[12px] font-black ${stat.color} tracking-tighter`}>{stat.value}</span>}
-                         </div>
-                       ))}
-                    </div>
-                 </section>
-
-                 <section className="space-y-3">
-                    <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.24em] flex items-center px-1">
-                       <BookOpen size={14} className="mr-3" /> Recovery Procedures
-                    </h3>
-                    <div className="space-y-2">
-                       {item.recovery_doc_titles?.map((title: string, i: number) => (
-                         <button
-                           key={i}
-                           type="button"
-                           onClick={() => item.recovery_docs?.[i] && onOpenKnowledge?.(item.recovery_docs[i])}
-                           className="w-full bg-amber-500/5 border border-amber-500/10 rounded-lg p-3 flex items-center space-x-3 hover:border-amber-500/30 transition-all cursor-pointer group text-left"
-                         >
-                            <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all"><FileText size={14}/></div>
-                            <span className="text-[11px] font-black text-slate-300 tracking-tight leading-tight">{title}</span>
-                         </button>
-                       ))}
-                       {item.recovery_doc_titles?.length === 0 && (
-                          <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-4 text-center">
-                             <AlertCircle size={18} className="mx-auto text-rose-500 mb-2" />
-                             <p className="text-[10px] font-black text-rose-500 uppercase">No BKM Linked</p>
-                          </div>
-                       )}
-                    </div>
-                 </section>
-
-                 <section className="space-y-3">
-                    <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.24em] flex items-center px-1">
-                       <Lightbulb size={14} className="mr-3" /> Suggested Runbooks
-                    </h3>
-                    <div className="space-y-2">
-                       {suggestedKnowledge?.slice(0, 3).map((entry: any) => (
-                         <button
-                           key={entry.id}
-                           type="button"
-                           onClick={() => onOpenKnowledge?.(entry.id)}
-                           className="w-full rounded-lg border border-sky-500/15 bg-sky-500/5 p-3 text-left transition-all hover:bg-sky-500/10"
-                         >
-                           <p className="text-[11px] font-black text-slate-200 tracking-tight">{entry.title}</p>
-                           <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500">
-                             {entry.metadata_json?.entry_type || entry.category} // {entry.metadata_json?.verification?.state || entry.status}
-                           </p>
-                         </button>
-                       ))}
-                       {!suggestedKnowledge?.length && (
-                         <div className="rounded-lg border border-white/5 bg-white/[0.03] p-4 text-center">
-                           <p className="text-[10px] font-bold uppercase text-slate-600">No suggested runbooks yet</p>
-                         </div>
-                       )}
-                    </div>
-                 </section>
-
-                 {item.monitoring_url && (
-                    <button 
-                       onClick={() => window.open(item.monitoring_url, '_blank')}
-                       className="w-full bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-lg font-black uppercase tracking-[0.2em] text-[10px] transition-all shadow-xl shadow-blue-500/20 flex items-center justify-center space-x-3"
-                    >
-                       <ExternalLink size={14} />
-                       <span>Open Platform Console</span>
-                    </button>
-                 )}
-              </div>
-           </div>
-        </div>
+             </div>}
+           />
+          }
+        />
       </motion.div>
     </div>
   )
@@ -3603,7 +3570,7 @@ function MonitoringAssetField({
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [systemFilter, setSystemFilter] = useState('ALL')
-  const containerRef = useRef<HTMLDivElement | null>(null)
+  const { triggerRef, panelRef, panelStyle } = useWorkspaceAnchoredLayer(isOpen, { minWidth: 420 })
   const selectedDevice = devices?.find((device: any) => device.id === deviceId)
   const systems = Array.from(new Set((devices || []).map((device: any) => device.system).filter(Boolean))).sort()
   const filteredDevices = (devices || []).filter((device: any) => {
@@ -3616,28 +3583,27 @@ function MonitoringAssetField({
   useEffect(() => {
     if (!isOpen) return
     const handleClick = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) setIsOpen(false)
+      const target = event.target as Node
+      if (triggerRef.current?.contains(target) || panelRef.current?.contains(target)) return
+      setIsOpen(false)
     }
     window.addEventListener('mousedown', handleClick)
 
-    // Auto-scroll logic
-    const timer = setTimeout(() => {
-      containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    }, 50)
-
     return () => {
       window.removeEventListener('mousedown', handleClick)
-      clearTimeout(timer)
     }
-  }, [isOpen])
+  }, [isOpen, panelRef, triggerRef])
 
   return (
-    <div className="space-y-1.5" ref={containerRef}>
+    <div className="space-y-1.5">
       <FieldLabel label="Registry Asset" />
-      <div className="relative">
+      <div>
         <button
           type="button"
           onClick={() => setIsOpen((current) => !current)}
+          ref={(node) => {
+            triggerRef.current = node
+          }}
           className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'}`}
         >
           <span className={`text-[clamp(10px,0.85vw,12px)] font-black truncate pr-4 ${selectedDevice ? 'text-slate-100' : 'text-slate-500'}`}>
@@ -3645,8 +3611,12 @@ function MonitoringAssetField({
           </span>
           <ChevronDown size={12} className={`shrink-0 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
-        {isOpen && (
-          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 rounded-lg border border-white/10 bg-[#020617] p-2 shadow-[0_24px_60px_rgba(2,6,23,0.48)]">
+        {isOpen && createPortal(
+          <div ref={panelRef} style={panelStyle}>
+            <WorkspaceFloatingPanel
+              kind="menu"
+              className="p-2"
+            >
             <div className="grid grid-cols-[140px_minmax(0,1fr)] gap-2">
               <MonitoringSelectField
                 label="System Filter"
@@ -3692,7 +3662,9 @@ function MonitoringAssetField({
                 </button>
               ))}
             </div>
-          </div>
+            </WorkspaceFloatingPanel>
+          </div>,
+          document.body
         )}
       </div>
       <FieldError message={error} />
@@ -3766,6 +3738,18 @@ export function MonitoringForm({ item, devices, categories, severities, platform
   const [recipientInput, setRecipientInput] = useState('')
   const [formErrors, setFormErrors] = useState<MonitoringFormErrors>({})
   const [generalError, setGeneralError] = useState('')
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
+    target: false,
+    ownership: false,
+    platform: false,
+    context: false,
+    logicEntries: false,
+    logicEditor: false,
+    executionPolicy: false,
+    alerting: false,
+    recipients: false,
+    recovery: false,
+  })
 
   const selectedTeam = useMemo(
     () => (teams || []).find((team: MonitoringTeamOption) => team.name === formData.owner_team),
@@ -3801,6 +3785,10 @@ export function MonitoringForm({ item, devices, categories, severities, platform
         description: formErrors[`logic_${activeLogicId}_description`],
         logic_info: formErrors[`logic_${activeLogicId}_logic_info`]
       }
+
+  const toggleSection = (key: string) => {
+    setCollapsedSections((current) => ({ ...current, [key]: !current[key] }))
+  }
 
   const addOwner = () => {
     const operatorId = Number(newOwner.operator_id)
@@ -3950,6 +3938,30 @@ export function MonitoringForm({ item, devices, categories, severities, platform
   }
 
   const activeLogicEntry = formData.logic_json?.find((e: MonitoringLogicEntry) => e.id === activeLogicId)
+  const selectedDevice = useMemo(
+    () => (devices || []).find((device: any) => device.id === formData.device_id),
+    [devices, formData.device_id]
+  )
+  const linkedRecoveryDocs = useMemo(
+    () => (knowledgeEntries || []).filter((entry: any) => formData.recovery_docs?.includes(entry.id)),
+    [knowledgeEntries, formData.recovery_docs]
+  )
+  const ownershipSummary = ownershipMode === 'team'
+    ? (formData.owner_team || 'No team selected')
+    : (formData.owners?.length ? `${formData.owners.length} operators assigned` : 'No owners assigned')
+  const summaryIssues = useMemo(() => {
+    const issues: Array<{ label: string; tab: 'context' | 'logic' | 'alerting'; anchor: string }> = []
+    Object.keys(formErrors).forEach((key) => {
+      if (['title', 'category', 'status', 'platform', 'owner_team', 'owners', 'ownership', 'monitoring_url'].includes(key)) {
+        issues.push({ label: formErrors[key] || 'Context issue', tab: 'context', anchor: 'monitoring-context-root' })
+      } else if (['check_interval', 'alert_duration'].includes(key) || key.startsWith('logic_')) {
+        issues.push({ label: formErrors[key] || 'Logic issue', tab: 'logic', anchor: 'monitoring-logic-root' })
+      } else if (['severity', 'notification_method', 'notification_throttle', 'recovery_docs'].includes(key)) {
+        issues.push({ label: formErrors[key] || 'Alerting issue', tab: 'alerting', anchor: 'monitoring-alerting-root' })
+      }
+    })
+    return issues
+  }, [formErrors])
 
   const addRecipient = () => {
     if (recipientInput && !formData.notification_recipients.includes(recipientInput)) {
@@ -3975,6 +3987,15 @@ export function MonitoringForm({ item, devices, categories, severities, platform
       return
     }
     mutation.mutate(formData)
+  }
+
+  const jumpToSection = (tab: 'context' | 'logic' | 'alerting', anchor: string) => {
+    setActiveTab(tab)
+    window.requestAnimationFrame(() => {
+      window.setTimeout(() => {
+        document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 80)
+    })
   }
 
   const modal = (
@@ -4011,579 +4032,670 @@ export function MonitoringForm({ item, devices, categories, severities, platform
         />
 
         <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 pr-4 sm:px-8">
-           <WorkspaceStickyIdentityBar>
-             <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.8fr)_repeat(2,minmax(180px,0.6fr))]">
-               <div className="space-y-2">
-                 <FieldLabel label="Title" required />
-                 <input
-                   value={formData.title}
-                   onChange={e => setFormData({ ...formData, title: e.target.value })}
-                   placeholder="e.g. CORE-DB: High CPU Load Alert"
-                   className={monitoringInputClass(formErrors.title)}
-                 />
-                 <FieldError message={formErrors.title} />
-               </div>
-               <MonitoringSelectField
-                 label="Status"
-                 required
-                 value={formData.status}
-                 onChange={(value) => setFormData({ ...formData, status: value })}
-                 options={STATUSES.map(s => ({ value: s.value, label: s.value }))}
-                 error={formErrors.status}
-               />
-               <MonitoringSelectField
-                 label="Severity"
-                 required
-                 value={formData.severity}
-                 onChange={(value) => setFormData({ ...formData, severity: value })}
-                 options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
-                 error={formErrors.severity}
-               />
-             </div>
-           </WorkspaceStickyIdentityBar>
-           <WorkspaceValidationBanner message={generalError} />
-           {activeTab === 'context' ? (
-             <div className="grid grid-cols-12 gap-5 p-2">
-               <div className="col-span-12 xl:col-span-5 space-y-5">
-                 <WorkspaceSectionCard>
-                   <div className="mb-3 flex items-center justify-between">
-                     <PanelTitle>Target identification</PanelTitle>
-                     <span className="rounded-full border border-white/10 bg-black/30 px-2.5 py-1 text-[8px] font-black text-slate-500">
-                       Asset + Scope
-                     </span>
-                   </div>
-                   <div className="space-y-3">
-                     <MonitoringAssetField
-                       devices={devices || []}
-                       deviceId={formData.device_id}
-                       onChange={(deviceId) => setFormData({ ...formData, device_id: deviceId, monitored_services: [] })}
-                     />
-                     {formData.device_id && (
-                       <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                         <div className="mb-2 flex items-center justify-between">
-                           <FieldLabel label="Service Scope" />
-                           <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[8px] font-black text-blue-300">
-                             {formData.monitored_services?.length || 0} Bound
-                           </span>
-                         </div>
-                         <div className="flex flex-wrap gap-1.5">
-                           {deviceServices?.map((svc: any) => (
-                             <button
-                               key={svc.id}
-                               type="button"
-                               onClick={() => toggleService(svc.id)}
-                               className={`rounded-lg border px-2.5 py-1.5 text-[9px] font-black transition-all ${
-                                 formData.monitored_services?.includes(svc.id)
-                                   ? 'border-blue-500/40 bg-blue-500/12 text-blue-200'
-                                   : 'border-white/10 bg-slate-950/60 text-slate-400 hover:border-white/20 hover:text-slate-200'
-                               }`}
-                             >
-                               {svc.name}
-                             </button>
-                           ))}
-                         </div>
-                       </div>
-                     )}
-                     <MonitoringSelectField
-                       label="Category"
-                       required
-                       value={formData.category}
-                       onChange={(value) => setFormData({ ...formData, category: value })}
-                       options={categories.map((c: any) => ({ value: c.value, label: c.label }))}
-                       error={formErrors.category}
-                     />
-                   </div>
-                 </WorkspaceSectionCard>
-
-                 <WorkspaceSectionCard>
-                   <div className="mb-3 flex items-center justify-between">
-                     <div>
-                       <PanelTitle>Ownership</PanelTitle>
-                       <PanelSubtitle>
-                         Choose a team owner or named operators.
-                       </PanelSubtitle>
-                     </div>
-                     <span className="rounded-full bg-blue-500/10 px-2 py-1 text-[8px] font-black text-blue-300">
-                       {ownershipMode === 'team' ? 'Team Mode' : `${formData.owners?.length || 0} Operators`}
-                     </span>
-                   </div>
-                   <div className="mb-3 grid grid-cols-2 gap-2 rounded-lg border border-white/10 bg-black/30 p-1">
-                     {[
-                       { id: 'team', label: 'Team Owner' },
-                       { id: 'individual', label: 'Individual Owners' }
-                     ].map((mode) => (
-                       <button
-                         key={mode.id}
-                         type="button"
-                         onClick={() => setOwnershipModeAndNormalize(mode.id as 'team' | 'individual')}
-                         className={`rounded-lg px-3 py-2 text-[9px] font-black uppercase tracking-[0.12em] transition-all ${
-                           ownershipMode === mode.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-200'
-                         }`}
-                       >
-                         {mode.label}
-                       </button>
-                     ))}
-                   </div>
-                   <FieldError message={formErrors.ownership} />
-                   {ownershipMode === 'team' ? (
-                     <div className="space-y-2">
-                       <MonitoringSelectField
-                         label="Owner Team"
-                         required
-                         value={formData.owner_team}
-                         onChange={(value) => setFormData({ ...formData, owner_team: value, owners: [] })}
-                         options={(teams || []).map((team: MonitoringTeamOption) => ({
-                           value: team.name,
-                           label: team.name,
-                           description: `${team.operators?.length || 0} members`
-                         }))}
-                         placeholder="Select team"
-                         error={formErrors.owner_team}
-                         searchable
-                       />
-                       {selectedTeam && (
-                         <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                           <div className="flex items-center justify-between">
-                             <div className="min-w-0">
-                               <p className="text-[10px] font-black text-slate-200 truncate">{selectedTeam.name}</p>
-                               <p className="mt-0.5 text-[8px] font-black text-slate-500 truncate">
-                                 {(selectedTeam.operators?.length || 0)} synced or managed operators
-                               </p>
-                             </div>
-                             <span className="rounded-full border border-white/10 px-2 py-0.5 text-[8px] font-black text-slate-500 shrink-0">
-                               {selectedTeam.source || 'manual'}
-                             </span>
-                           </div>
-                         </div>
-                       )}
-                     </div>
-                   ) : (
-                     <div className="space-y-3">
-                       <div className="grid grid-cols-12 gap-2 items-end">
-                         <div className="col-span-12 md:col-span-5">
-                           <MonitoringSelectField
-                             label="Operator"
-                             required
-                             value={newOwner.operator_id}
-                             onChange={(value) => setNewOwner({ ...newOwner, operator_id: value })}
-                             options={(operators as OperatorRecord[]).map((operator) => ({
-                               value: String(operator.id),
-                               label: operator.full_name || operator.username || operator.external_id,
-                               description: `${operator.team || 'No team'}`
-                             }))}
-                             placeholder="Select"
-                             error={formErrors.owners}
-                             searchable
-                           />
-                         </div>
-                         <div className="col-span-12 md:col-span-5">
-                           <MonitoringSelectField
-                             label="Role"
-                             value={newOwner.role}
-                             onChange={(value) => setNewOwner({ ...newOwner, role: value })}
-                             options={ownerRoles.map((r: any) => ({ value: r.value, label: r.label }))}
-                           />
-                         </div>
-                         <div className="col-span-12 md:col-span-2">
-                           <button
-                             type="button"
-                             onClick={addOwner}
-                             className="w-full rounded-lg border border-blue-500/30 bg-blue-600 px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-white transition-all hover:bg-blue-500"
-                           >
-                             Add
-                           </button>
-                         </div>
-                       </div>
-                       <FieldError message={formErrors.owners} />
-                       <div className="max-h-40 space-y-1.5 overflow-y-auto pr-1 custom-scrollbar">
-                         {formData.owners?.length ? formData.owners.map((o: any, idx: number) => (
-                           <div key={idx} className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-3 py-2">
-                             <div className="min-w-0">
-                               <p className="truncate text-[10px] font-black text-slate-100">{o.name}</p>
-                               <p className="mt-0.5 text-[8px] font-black text-slate-500 truncate">
-                                 {o.role}
-                               </p>
-                             </div>
-                             <button type="button" onClick={() => removeOwner(idx)} className="rounded-lg p-1.5 text-slate-500 transition-colors hover:text-rose-400">
-                               <Trash2 size={12} />
-                             </button>
-                           </div>
-                         )) : (
-                           <div className="rounded-lg border border-dashed border-white/10 px-3 py-4 text-center text-[9px] font-black text-slate-600">
-                             No owners assigned
-                           </div>
-                         )}
-                       </div>
-                     </div>
-                   )}
-                 </WorkspaceSectionCard>
-               </div>
-
-               <div className="col-span-12 xl:col-span-7 space-y-4">
-                 <WorkspaceSectionCard>
-                   <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                     <MonitoringSelectField
-                       label="Platform"
-                       required
-                       value={formData.platform}
-                       onChange={(value) => setFormData({ ...formData, platform: value })}
-                       options={(platforms || []).map((platform: any) => ({ value: platform.value, label: platform.label }))}
-                       placeholder="Select platform"
-                       error={formErrors.platform}
-                       searchable
-                     />
-                     <div className="space-y-1.5">
-                       <FieldLabel label="Monitoring URL" />
-                       <div className="relative">
-                         <Globe size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                         <input
-                           value={formData.monitoring_url}
-                           onChange={e => setFormData({ ...formData, monitoring_url: e.target.value })}
-                           placeholder="https://console.internal/..."
-                           className={`${monitoringInputClass(formErrors.monitoring_url)} pl-9 text-blue-300`}
-                         />
-                       </div>
-                       <FieldError message={formErrors.monitoring_url} />
-                     </div>
-                   </div>
-                 </WorkspaceSectionCard>
-
-                 <WorkspaceSectionCard>
-                    <div className="mb-3">
-                     <PanelTitle>Operational context</PanelTitle>
-                   </div>
-                   <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                     <div className="space-y-1.5">
-                       <FieldLabel label="Purpose" />
-                       <textarea
-                         value={formData.purpose}
-                         onChange={e => setFormData({ ...formData, purpose: e.target.value })}
-                         placeholder="Why are we monitoring this?"
-                         rows={4}
-                         className={`${monitoringInputClass()} resize-none text-[10px]`}
-                       />
-                     </div>
-                     <div className="space-y-1.5">
-                       <FieldLabel label="Impact" />
-                       <textarea
-                         value={formData.impact}
-                         onChange={e => setFormData({ ...formData, impact: e.target.value })}
-                         placeholder="What happens when this monitor triggers?"
-                         rows={4}
-                         className={`${monitoringInputClass()} resize-none text-[10px]`}
-                       />
-                     </div>
-                   </div>
-                 </WorkspaceSectionCard>
-               </div>
-             </div>
-           ) : activeTab === 'logic' ? (
-             <div className="grid grid-cols-12 gap-5 p-2 h-full min-h-[500px]">
-                <div className="col-span-12 xl:col-span-4 space-y-4">
-                   <WorkspaceSectionCard>
-                   <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2 text-[clamp(11px,0.9vw,13px)] font-black tracking-tight text-slate-100 uppercase">
-                         <Settings size={12}/> <span>Logic Entries</span>
-                      </div>
-                      <button 
-                         onClick={addLogicEntry}
-                          className="px-2.5 py-1.5 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[9px] font-black uppercase hover:bg-emerald-600/40 transition-all flex items-center space-x-1"
-                      >
-                         <Plus size={10}/> <span>Add Entry</span>
-                      </button>
-                   </div>
-
-                   <div className="mt-4 space-y-2 max-h-[340px] overflow-y-auto custom-scrollbar pr-2">
-                      {formData.logic_json?.map((entry: MonitoringLogicEntry) => (
-                        <div 
-                          key={entry.id}
-                          onClick={() => setActiveLogicId(entry.id)}
-                          className={`p-3 rounded-lg border cursor-pointer transition-all relative group ${
-                            activeLogicId === entry.id 
-                              ? 'bg-blue-600/10 border-blue-500/40 shadow-lg shadow-blue-500/5' 
-                              : 'bg-black/40 border-white/5 hover:border-white/20'
-                          }`}
-                        >
-                           <button 
-                             onClick={(e) => { e.stopPropagation(); removeLogicEntry(entry.id); }}
-                             className="absolute -right-1.5 -top-1.5 w-5 h-5 bg-rose-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                           >
-                             <X size={10}/>
-                           </button>
-                           <div className="flex items-center justify-between mb-1">
-                              <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{entry.type}</span>
-                              <span className="text-[8px] font-bold text-slate-600">ID {entry.id.toString().slice(-4)}</span>
-                           </div>
-                           <p className="text-[10px] font-bold text-slate-300 truncate pr-2">{entry.description || 'No description'}</p>
-                           {(formErrors[`logic_${entry.id}_description`] || formErrors[`logic_${entry.id}_logic_info`]) && (
-                             <p className="mt-1.5 text-[8px] font-black text-rose-400">Required field missing</p>
-                           )}
-                        </div>
-                      ))}
-                      {formData.logic_json?.length === 0 && (
-                        <div className="py-10 text-center text-slate-600 text-[9px] font-black border-2 border-dashed border-white/5 rounded-lg uppercase tracking-widest">
-                           No entries defined
-                        </div>
-                      )}
-                   </div>
-                   </WorkspaceSectionCard>
-
-                   <WorkspaceSectionCard>
-                      <div className="grid grid-cols-1 gap-3">
-                         <div className="space-y-1.5">
-                            <div className="flex items-center justify-between">
-                               <FieldLabel label="Frequency (Sec)" required />
-                               <span className="text-[8px] font-bold text-slate-600">{CHECK_INTERVAL_MIN}-{CHECK_INTERVAL_MAX}</span>
-                            </div>
-                            <div className="relative">
-                               <Clock size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                               <input 
-                                 type="number"
-                                 value={formData.check_interval}
-                                 min={CHECK_INTERVAL_MIN}
-                                 max={CHECK_INTERVAL_MAX}
-                                 onChange={e => setFormData({...formData, check_interval: Number(e.target.value)})}
-                                 className={`${monitoringInputClass(formErrors.check_interval)} pl-9`}
-                               />
-                            </div>
-                            <FieldError message={formErrors.check_interval} />
-                         </div>
-                         <div className="space-y-1.5">
-                            <div className="flex items-center justify-between">
-                               <FieldLabel label="Delay (Sec)" required />
-                               <span className="text-[8px] font-bold text-slate-600">{ALERT_DURATION_MIN}-{ALERT_DURATION_MAX}</span>
-                            </div>
-                            <div className="relative">
-                               <AlertCircle size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                               <input 
-                                 type="number"
-                                 value={formData.alert_duration}
-                                 min={ALERT_DURATION_MIN}
-                                 max={ALERT_DURATION_MAX}
-                                 onChange={e => setFormData({...formData, alert_duration: Number(e.target.value)})}
-                                 className={`${monitoringInputClass(formErrors.alert_duration)} pl-9`}
-                               />
-                            </div>
-                            <FieldError message={formErrors.alert_duration} />
-                         </div>
-                      </div>
-                   </WorkspaceSectionCard>
+          <WorkspaceStickyIdentityBar className="border-white/10 bg-slate-950/90 shadow-[0_18px_50px_rgba(2,6,23,0.55)]">
+            <div className="space-y-4">
+              <div className="grid grid-cols-12 gap-4">
+                <div id="monitoring-header-title" className="col-span-12 xl:col-span-5 space-y-2">
+                  <FieldLabel label="Title" required />
+                  <input
+                    value={formData.title}
+                    onChange={e => setFormData({ ...formData, title: e.target.value })}
+                    placeholder="e.g. CORE-DB: High CPU Load Alert"
+                    className={monitoringInputClass(formErrors.title)}
+                  />
+                  <FieldError message={formErrors.title} />
                 </div>
+                <div className="col-span-12 sm:col-span-4 xl:col-span-2">
+                  <MonitoringSelectField
+                    label="Status"
+                    required
+                    value={formData.status}
+                    onChange={(value) => setFormData({ ...formData, status: value })}
+                    options={STATUSES.map(s => ({ value: s.value, label: s.value }))}
+                    error={formErrors.status}
+                  />
+                </div>
+                <div className="col-span-12 sm:col-span-4 xl:col-span-2">
+                  <MonitoringSelectField
+                    label="Severity"
+                    required
+                    value={formData.severity}
+                    onChange={(value) => setFormData({ ...formData, severity: value })}
+                    options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
+                    error={formErrors.severity}
+                  />
+                </div>
+                <div className="col-span-12 sm:col-span-4 xl:col-span-3">
+                  <MonitoringSelectField
+                    label="Platform"
+                    required
+                    value={formData.platform}
+                    onChange={(value) => setFormData({ ...formData, platform: value })}
+                    options={(platforms || []).map((platform: any) => ({ value: platform.value, label: platform.label }))}
+                    placeholder="Select platform"
+                    error={formErrors.platform}
+                    searchable
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-12 gap-4">
+                <div className="col-span-12 lg:col-span-3">
+                  <MonitoringSelectField
+                    label="Category"
+                    required
+                    value={formData.category}
+                    onChange={(value) => setFormData({ ...formData, category: value })}
+                    options={categories.map((c: any) => ({ value: c.value, label: c.label }))}
+                    error={formErrors.category}
+                  />
+                </div>
+                <div className="col-span-12 lg:col-span-5">
+                  <MonitoringAssetField
+                    devices={devices || []}
+                    deviceId={formData.device_id}
+                    onChange={(deviceId) => setFormData({ ...formData, device_id: deviceId, monitored_services: [] })}
+                  />
+                </div>
+              </div>
+            </div>
+          </WorkspaceStickyIdentityBar>
+          <WorkspaceValidationBanner message={generalError} />
 
-                <div className="col-span-12 xl:col-span-8 flex flex-col space-y-4 h-full">
-                   {activeLogicEntry ? (
-                     <WorkspaceSectionCard className="flex h-full flex-col">
-                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                           <MonitoringSelectField
-                             label="Logic Type"
-                             required
-                             value={activeLogicEntry.type}
-                             onChange={(value) => updateLogicEntry(activeLogicEntry.id, 'type', value)}
-                             options={LOGIC_TYPES.map(t => ({ value: t, label: t }))}
-                           />
-                           <div className="space-y-1.5">
-                             <FieldLabel label="Entry Description" required />
-                             <input 
-                               value={activeLogicEntry.description}
-                               onChange={e => updateLogicEntry(activeLogicEntry.id, 'description', e.target.value)}
-                               placeholder="Verification logic purpose"
-                               className={`${monitoringInputClass(activeLogicErrors.description)}`}
-                             />
-                             <FieldError message={activeLogicErrors.description} />
-                           </div>
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="min-w-0">
+              {activeTab === 'context' ? (
+                <div id="monitoring-context-root" className="space-y-5 p-2">
+                  <WorkspaceSectionCard id="monitoring-target-card">
+                    <WorkspaceCollapsibleHeader
+                      title="Target identity"
+                      subtitle="Define scope, secure console access, and linked service coverage."
+                      badge={<WorkspaceSectionBadge>Asset + scope</WorkspaceSectionBadge>}
+                      collapsed={collapsedSections.target}
+                      onToggle={() => toggleSection('target')}
+                    />
+                    {!collapsedSections.target && <div className="mt-4 space-y-4">
+                      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+                        <div className="space-y-2 rounded-lg border border-white/10 bg-black/20 p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <PanelTitle>Registry asset and service scope</PanelTitle>
+                              <PanelSubtitle>Keep the linked asset and covered services together.</PanelSubtitle>
+                            </div>
+                            <span className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[9px] font-semibold text-blue-300">
+                              {formData.monitored_services?.length || 0} linked
+                            </span>
+                          </div>
+                          {formData.device_id ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {deviceServices?.map((svc: any) => (
+                                <button
+                                  key={svc.id}
+                                  type="button"
+                                  onClick={() => toggleService(svc.id)}
+                                  className={`rounded-lg border px-2.5 py-1.5 text-[9px] font-semibold transition-all ${
+                                    formData.monitored_services?.includes(svc.id)
+                                      ? 'border-blue-500/40 bg-blue-500/12 text-blue-200'
+                                      : 'border-white/10 bg-slate-950/60 text-slate-400 hover:border-white/20 hover:text-slate-200'
+                                  }`}
+                                >
+                                  {svc.name}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <WorkspaceEmptyState
+                              compact
+                              title="Choose an asset first"
+                              description="Asset-linked services appear here after a registry asset is selected."
+                            />
+                          )}
                         </div>
+                        <div className="space-y-1.5">
+                          <FieldLabel label="Monitoring URL" />
+                          <div className="relative">
+                            <Globe size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <input
+                              value={formData.monitoring_url}
+                              onChange={e => setFormData({ ...formData, monitoring_url: e.target.value })}
+                              placeholder="https://console.internal/..."
+                              className={`${monitoringInputClass(formErrors.monitoring_url)} pl-9 text-blue-300`}
+                            />
+                          </div>
+                          <FieldError message={formErrors.monitoring_url} />
+                          <div className="rounded-lg border border-white/10 bg-black/20 p-4">
+                            <p className="text-[9px] font-semibold text-slate-500">Linked asset</p>
+                            <p className="mt-1 text-[11px] font-semibold text-slate-100">{selectedDevice?.name || 'No asset linked'}</p>
+                            <p className="mt-1 text-[9px] font-semibold text-slate-500">{selectedDevice?.system || 'No system available'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>}
+                  </WorkspaceSectionCard>
 
-                        <div className="mt-4 flex-1 flex flex-col space-y-2 min-h-0">
-                           <div className="flex items-center justify-between px-1">
+                  <WorkspaceSectionCard>
+                    <WorkspaceCollapsibleHeader
+                      title="Operational purpose"
+                      subtitle="Document why the monitor exists and what the alert means."
+                      collapsed={collapsedSections.context}
+                      onToggle={() => toggleSection('context')}
+                    />
+                    {!collapsedSections.context && <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <FieldLabel label="Purpose" />
+                        <textarea
+                          value={formData.purpose}
+                          onChange={e => setFormData({ ...formData, purpose: e.target.value })}
+                          placeholder="Why are we monitoring this?"
+                          rows={5}
+                          className={`${monitoringInputClass()} resize-none text-[10px]`}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <FieldLabel label="Impact" />
+                        <textarea
+                          value={formData.impact}
+                          onChange={e => setFormData({ ...formData, impact: e.target.value })}
+                          placeholder="What happens when this monitor triggers?"
+                          rows={5}
+                          className={`${monitoringInputClass()} resize-none text-[10px]`}
+                        />
+                      </div>
+                    </div>}
+                  </WorkspaceSectionCard>
+
+                  <WorkspaceSectionCard id="monitoring-ownership-card">
+                    <WorkspaceCollapsibleHeader
+                      title="Ownership"
+                      subtitle="Choose a team owner or named operators."
+                      badge={<WorkspaceSectionBadge tone="blue">{ownershipMode === 'team' ? 'Team owner' : 'Individual owners'}</WorkspaceSectionBadge>}
+                      collapsed={collapsedSections.ownership}
+                      onToggle={() => toggleSection('ownership')}
+                    />
+                    {!collapsedSections.ownership && <>
+                      <div className="mt-4 grid grid-cols-2 gap-2 rounded-lg border border-white/10 bg-black/30 p-1">
+                        {[
+                          { id: 'team', label: 'Team owner' },
+                          { id: 'individual', label: 'Individual owners' }
+                        ].map((mode) => (
+                          <button
+                            key={mode.id}
+                            type="button"
+                            onClick={() => setOwnershipModeAndNormalize(mode.id as 'team' | 'individual')}
+                            className={`rounded-lg px-3 py-2 text-[10px] font-semibold transition-all ${
+                              ownershipMode === mode.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-200'
+                            }`}
+                          >
+                            {mode.label}
+                          </button>
+                        ))}
+                      </div>
+                      <FieldError message={formErrors.ownership} />
+                      <div className="mt-4">
+                        {ownershipMode === 'team' ? (
+                          <div className="space-y-3">
+                            <MonitoringSelectField
+                              label="Owner Team"
+                              required
+                              value={formData.owner_team}
+                              onChange={(value) => setFormData({ ...formData, owner_team: value, owners: [] })}
+                              options={(teams || []).map((team: MonitoringTeamOption) => ({
+                                value: team.name,
+                                label: team.name,
+                                description: `${team.operators?.length || 0} members`
+                              }))}
+                              placeholder="Select team"
+                              error={formErrors.owner_team}
+                              searchable
+                            />
+                            {selectedTeam && (
+                              <div className="rounded-lg border border-white/10 bg-black/20 p-4">
+                                <p className="text-[11px] font-semibold text-slate-100">{selectedTeam.name}</p>
+                                <p className="mt-1 text-[9px] font-semibold text-slate-500">
+                                  {(selectedTeam.operators?.length || 0)} synced or managed operators · {selectedTeam.source || 'manual'}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-12 gap-3 items-end">
+                              <div className="col-span-12 md:col-span-5">
+                                <MonitoringSelectField
+                                  label="Operator"
+                                  required
+                                  value={newOwner.operator_id}
+                                  onChange={(value) => setNewOwner({ ...newOwner, operator_id: value })}
+                                  options={(operators as OperatorRecord[]).map((operator) => ({
+                                    value: String(operator.id),
+                                    label: operator.full_name || operator.username || operator.external_id,
+                                    description: `${operator.team || 'No team'}`
+                                  }))}
+                                  placeholder="Select operator"
+                                  error={formErrors.owners}
+                                  searchable
+                                />
+                              </div>
+                              <div className="col-span-12 md:col-span-5">
+                                <MonitoringSelectField
+                                  label="Role"
+                                  value={newOwner.role}
+                                  onChange={(value) => setNewOwner({ ...newOwner, role: value })}
+                                  options={ownerRoles.map((r: any) => ({ value: r.value, label: r.label }))}
+                                />
+                              </div>
+                              <div className="col-span-12 md:col-span-2">
+                                <button
+                                  type="button"
+                                  onClick={addOwner}
+                                  className="w-full rounded-lg border border-blue-500/30 bg-blue-600 px-3 py-2.5 text-[10px] font-semibold text-white transition-all hover:bg-blue-500"
+                                >
+                                  Add owner
+                                </button>
+                              </div>
+                            </div>
+                            <FieldError message={formErrors.owners} />
+                            <div className="max-h-48 space-y-1.5 overflow-y-auto pr-1 custom-scrollbar">
+                              {formData.owners?.length ? formData.owners.map((o: any, idx: number) => (
+                                <div key={idx} className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                                  <div className="min-w-0">
+                                    <p className="truncate text-[10px] font-semibold text-slate-100">{o.name}</p>
+                                    <p className="mt-0.5 text-[8px] font-semibold text-slate-500 truncate">{o.role}</p>
+                                  </div>
+                                  <button type="button" onClick={() => removeOwner(idx)} className="rounded-lg p-1.5 text-slate-500 transition-colors hover:text-rose-400">
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              )) : (
+                                <WorkspaceEmptyState compact title="No owners assigned" description="Add one or more individual owners for this monitor." />
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </>}
+                  </WorkspaceSectionCard>
+                </div>
+              ) : activeTab === 'logic' ? (
+                <div id="monitoring-logic-root" className="grid grid-cols-12 gap-5 p-2 min-h-[560px]">
+                  <div className="col-span-12 xl:col-span-4 space-y-5">
+                    <WorkspaceSectionCard>
+                      <WorkspaceCollapsibleHeader
+                        title="Logic entries"
+                        subtitle="Manage the checks that feed this monitor."
+                        collapsed={collapsedSections.logicEntries}
+                        onToggle={() => toggleSection('logicEntries')}
+                        action={
+                          <button
+                            onClick={(e) => { e.stopPropagation(); addLogicEntry() }}
+                            className="rounded-lg border border-emerald-500/30 bg-emerald-600/20 px-2.5 py-1.5 text-[9px] font-semibold text-emerald-400 transition-all hover:bg-emerald-600/35"
+                          >
+                            Add entry
+                          </button>
+                        }
+                      />
+                      {!collapsedSections.logicEntries && <div className="mt-4 space-y-2 max-h-[420px] overflow-y-auto custom-scrollbar pr-2">
+                        {formData.logic_json?.map((entry: MonitoringLogicEntry) => (
+                          <div
+                            key={entry.id}
+                            onClick={() => setActiveLogicId(entry.id)}
+                            className={`rounded-lg border p-3 cursor-pointer transition-all relative group ${
+                              activeLogicId === entry.id
+                                ? 'bg-blue-600/10 border-blue-500/40 shadow-lg shadow-blue-500/5'
+                                : 'bg-black/40 border-white/5 hover:border-white/20'
+                            }`}
+                          >
+                            <button
+                              onClick={(e) => { e.stopPropagation(); removeLogicEntry(entry.id) }}
+                              className="absolute right-2 top-2 rounded-lg p-1 text-slate-500 opacity-0 transition-all group-hover:opacity-100 hover:text-rose-400"
+                            >
+                              <X size={10} />
+                            </button>
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-[9px] font-semibold text-blue-400">{entry.type}</span>
+                              <span className="text-[8px] font-semibold text-slate-600">ID {entry.id.toString().slice(-4)}</span>
+                            </div>
+                            <p className="mt-2 truncate text-[10px] font-semibold text-slate-200">{entry.description || 'No description'}</p>
+                            <p className="mt-1 text-[8px] font-semibold text-slate-500 truncate">{entry.logic_info || 'No definition yet'}</p>
+                            {(formErrors[`logic_${entry.id}_description`] || formErrors[`logic_${entry.id}_logic_info`]) && (
+                              <p className="mt-2 text-[8px] font-semibold text-rose-400">Required field missing</p>
+                            )}
+                          </div>
+                        ))}
+                        {formData.logic_json?.length === 0 && (
+                          <WorkspaceEmptyState compact icon={<Settings size={22} />} title="No logic entries defined" description="Add an entry to configure the first check." />
+                        )}
+                      </div>}
+                    </WorkspaceSectionCard>
+                  </div>
+
+                  <div className="col-span-12 xl:col-span-8 flex flex-col space-y-5 min-h-0">
+                    <WorkspaceSectionCard>
+                      <WorkspaceCollapsibleHeader
+                        title="Execution policy"
+                        subtitle="Keep check cadence, delay, and alert throttle aligned as one operational rule set."
+                        collapsed={collapsedSections.executionPolicy}
+                        onToggle={() => toggleSection('executionPolicy')}
+                      />
+                      {!collapsedSections.executionPolicy && <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <FieldLabel label="Check interval" required />
+                            <span className="text-[8px] font-semibold text-slate-600">{CHECK_INTERVAL_MIN}-{CHECK_INTERVAL_MAX}</span>
+                          </div>
+                          <div className="relative">
+                            <Clock size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <input
+                              type="number"
+                              value={formData.check_interval}
+                              min={CHECK_INTERVAL_MIN}
+                              max={CHECK_INTERVAL_MAX}
+                              onChange={e => setFormData({ ...formData, check_interval: Number(e.target.value) })}
+                              className={`${monitoringInputClass(formErrors.check_interval)} pl-9`}
+                            />
+                          </div>
+                          <FieldError message={formErrors.check_interval} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <FieldLabel label="Alert duration" required />
+                            <span className="text-[8px] font-semibold text-slate-600">{ALERT_DURATION_MIN}-{ALERT_DURATION_MAX}</span>
+                          </div>
+                          <div className="relative">
+                            <AlertCircle size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <input
+                              type="number"
+                              value={formData.alert_duration}
+                              min={ALERT_DURATION_MIN}
+                              max={ALERT_DURATION_MAX}
+                              onChange={e => setFormData({ ...formData, alert_duration: Number(e.target.value) })}
+                              className={`${monitoringInputClass(formErrors.alert_duration)} pl-9`}
+                            />
+                          </div>
+                          <FieldError message={formErrors.alert_duration} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <FieldLabel label="Notification throttle" required />
+                            <span className="text-[8px] font-semibold text-slate-600">{NOTIFICATION_THROTTLE_MIN}-{NOTIFICATION_THROTTLE_MAX}</span>
+                          </div>
+                          <input
+                            type="number"
+                            value={formData.notification_throttle}
+                            min={NOTIFICATION_THROTTLE_MIN}
+                            max={NOTIFICATION_THROTTLE_MAX}
+                            onChange={e => setFormData({ ...formData, notification_throttle: Number(e.target.value) })}
+                            className={monitoringInputClass(formErrors.notification_throttle)}
+                          />
+                          <FieldError message={formErrors.notification_throttle} />
+                        </div>
+                      </div>}
+                    </WorkspaceSectionCard>
+
+                    {activeLogicEntry ? (
+                      <WorkspaceSectionCard className="flex h-full flex-col min-h-[420px]">
+                        <WorkspaceCollapsibleHeader
+                          title="Logic editor"
+                          subtitle="Edit the active logic entry with the syntax-aware editor."
+                          badge={<WorkspaceSectionBadge>{activeLogicEntry.type}</WorkspaceSectionBadge>}
+                          collapsed={collapsedSections.logicEditor}
+                          onToggle={() => toggleSection('logicEditor')}
+                        />
+                        {!collapsedSections.logicEditor && <>
+                          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                            <MonitoringSelectField
+                              label="Logic Type"
+                              required
+                              value={activeLogicEntry.type}
+                              onChange={(value) => updateLogicEntry(activeLogicEntry.id, 'type', value)}
+                              options={LOGIC_TYPES.map(t => ({ value: t, label: t }))}
+                            />
+                            <div className="space-y-1.5">
+                              <FieldLabel label="Entry Description" required />
+                              <input
+                                value={activeLogicEntry.description}
+                                onChange={e => updateLogicEntry(activeLogicEntry.id, 'description', e.target.value)}
+                                placeholder="Verification logic purpose"
+                                className={monitoringInputClass(activeLogicErrors.description)}
+                              />
+                              <FieldError message={activeLogicErrors.description} />
+                            </div>
+                          </div>
+                          <div className="mt-4 flex-1 flex flex-col space-y-2 min-h-0">
+                            <div className="flex items-center justify-between px-1">
                               <FieldLabel label="Logic Information" required />
-                              <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
-                                Editor
-                              </span>
-                           </div>
-                           
-                           <div className={`flex-1 overflow-hidden rounded-lg border shadow-inner min-h-[240px] ${
-                             activeLogicErrors.logic_info ? 'border-rose-500/60 bg-rose-500/10' : 'border-white/10 bg-black/40'
-                           }`}>
+                              <span className="text-[8px] font-semibold text-slate-500">Editor</span>
+                            </div>
+                            <div className={`flex-1 overflow-hidden rounded-lg border shadow-inner min-h-[280px] ${
+                              activeLogicErrors.logic_info ? 'border-rose-500/60 bg-rose-500/10' : 'border-white/10 bg-black/40'
+                            }`}>
                               <CodeMirror
                                 value={activeLogicEntry.logic_info}
                                 height="100%"
-                                minHeight="240px"
+                                minHeight="280px"
                                 extensions={getLogicExtensions(activeLogicEntry.type)}
                                 basicSetup={{ lineNumbers: true, foldGutter: true }}
                                 placeholder={LOGIC_SUGGESTIONS[activeLogicEntry.type] || 'Enter logic parameters...'}
                                 onChange={(value) => updateLogicEntry(activeLogicEntry.id, 'logic_info', value)}
                                 theme="dark"
                               />
-                           </div>
-                           <FieldError message={activeLogicErrors.logic_info} />
-                           <div className="flex justify-end pt-1">
-                              <span className="text-[8px] font-black text-slate-500 bg-black/60 px-2 py-1 rounded-lg border border-white/5 uppercase tracking-[0.1em]">
-                                 {activeLogicEntry.logic_info.length} Chars | {activeLogicEntry.logic_info.split('\n').length} Lines
-                              </span>
-                           </div>
-                        </div>
-                     </WorkspaceSectionCard>
-                   ) : (
-                     <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-lg space-y-4 bg-black/10">
-                        <Activity size={32} className="text-slate-700 animate-pulse" />
-                        <div className="text-center">
-                           <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Select logic entry</p>
-                           <p className="text-[8px] text-slate-600 font-bold mt-1 uppercase">Logic specification matrix</p>
-                        </div>
-                     </div>
-                   )}
-                </div>
-             </div>
-           ) : (
-             <div className="grid grid-cols-12 gap-5 p-2">
-                <div className="col-span-12 xl:col-span-4 space-y-4">
-                   <WorkspaceSectionCard>
-                     <PanelTitle>Alert routing rules</PanelTitle>
-                     <div className="mt-3 rounded-lg border border-white/5 bg-white/[0.03] p-3">
-                        <PanelSubtitle>Severity level</PanelSubtitle>
-                        <p className="pt-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-tight">Pinned in the header for context.</p>
-                     </div>
-
-                     <div className="mt-3 space-y-3 rounded-lg border border-white/10 bg-black/20 p-4">
-                      <div className="space-y-1.5">
-                         <div className="flex items-center justify-between">
-                            <FieldLabel label="Throttle (Seconds)" required />
-                            <span className="text-[8px] font-bold text-slate-600">{NOTIFICATION_THROTTLE_MIN}-{NOTIFICATION_THROTTLE_MAX}</span>
-                         </div>
-                         <input 
-                           type="number"
-                           value={formData.notification_throttle}
-                           min={NOTIFICATION_THROTTLE_MIN}
-                           max={NOTIFICATION_THROTTLE_MAX}
-                           onChange={e => setFormData({...formData, notification_throttle: Number(e.target.value)})}
-                           className={monitoringInputClass(formErrors.notification_throttle)}
-                         />
-                         <FieldError message={formErrors.notification_throttle} />
-                      </div>
-                     </div>
-
-                     <div className="mt-3 space-y-3">
-                      <MonitoringSelectField
-                        label="Notification Method"
-                        required
-                        value={formData.notification_method}
-                        onChange={(value) => setFormData({...formData, notification_method: value})}
-                        options={notificationMethods.map((m:any) => ({ value: m.value, label: m.label }))}
-                        error={formErrors.notification_method}
-                      />
-                      
-                      <div className="space-y-1.5">
-                         <FieldLabel label="Recipients Matrix" />
-                         <div className="flex space-x-2">
-                            <input 
-                              value={recipientInput}
-                              onChange={e => setRecipientInput(e.target.value)}
-                              onKeyDown={e => e.key === 'Enter' && addRecipient()}
-                              placeholder="ID or Email..."
-                              className={`${monitoringInputClass()} flex-1 py-2 text-[10px]`}
-                            />
-                            <button onClick={addRecipient} className="bg-slate-800 hover:bg-slate-700 text-white px-3 rounded-lg transition-all shrink-0"><Plus size={12}/></button>
-                         </div>
-                      </div>
-                     </div>
-
-                     <div className="flex flex-wrap gap-1.5 mt-2 px-1">
-                        {formData.notification_recipients.map((r: string) => (
-                          <div key={r} className="flex items-center space-x-2 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded-lg">
-                             <span className="text-[9px] font-black text-blue-300 uppercase tracking-widest">{r}</span>
-                             <button onClick={() => removeRecipient(r)} className="text-slate-500 hover:text-rose-400 transition-colors"><X size={10}/></button>
+                            </div>
+                            <FieldError message={activeLogicErrors.logic_info} />
                           </div>
-                        ))}
-                        {formData.notification_recipients.length === 0 && (
-                          <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest px-1">No recipients defined</p>
-                        )}
-                     </div>
-                   </WorkspaceSectionCard>
+                        </>}
+                      </WorkspaceSectionCard>
+                    ) : (
+                      <WorkspaceEmptyState icon={<Activity size={32} className="animate-pulse" />} title="Select a logic entry" description="Choose an entry from the left to edit its definition." />
+                    )}
+                  </div>
                 </div>
+              ) : (
+                <div id="monitoring-alerting-root" className="grid grid-cols-12 gap-5 p-2">
+                  <div className="col-span-12 xl:col-span-4 space-y-5">
+                    <WorkspaceSectionCard>
+                      <WorkspaceCollapsibleHeader
+                        title="Severity and notification"
+                        subtitle="Choose the delivery path and throttling behavior."
+                        collapsed={collapsedSections.alerting}
+                        onToggle={() => toggleSection('alerting')}
+                      />
+                      {!collapsedSections.alerting && <div className="mt-4 space-y-4">
+                        <MonitoringSelectField
+                          label="Notification Method"
+                          required
+                          value={formData.notification_method}
+                          onChange={(value) => setFormData({ ...formData, notification_method: value })}
+                          options={notificationMethods.map((m:any) => ({ value: m.value, label: m.label }))}
+                          error={formErrors.notification_method}
+                        />
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-4">
+                          <p className="text-[9px] font-semibold text-slate-500">Severity</p>
+                          <p className="mt-1 text-[11px] font-semibold text-slate-100">{formData.severity}</p>
+                          <p className="mt-1 text-[9px] font-semibold text-slate-500">Pinned in the identity header for constant context.</p>
+                        </div>
+                      </div>}
+                    </WorkspaceSectionCard>
 
-                <div className="col-span-12 xl:col-span-8 space-y-4">
-                   <WorkspaceSectionCard>
-                     <div className="mb-3 flex items-center justify-between border-b border-white/5 pb-2">
-                       <div className="flex items-center space-x-2 text-[clamp(11px,0.9vw,13px)] font-black tracking-tight text-slate-100 uppercase">
-                          <Activity size={12}/> <span>Recovery Procedures</span>
-                       </div>
-                       {formData.severity === 'Critical' && (
-                         <span className="rounded-full border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-[8px] font-black text-rose-300">
-                           Required for Critical
-                         </span>
-                       )}
-                     </div>
-                   
-                   <div className="space-y-3">
-                      <div className={`space-y-4 rounded-lg border-2 p-4 ${formErrors.recovery_docs ? 'border-rose-500/40 bg-rose-500/10' : 'border-dashed border-white/10 bg-black/20'}`}>
-                         <div className="flex items-center justify-between">
+                    <WorkspaceSectionCard>
+                      <WorkspaceCollapsibleHeader
+                        title="Recipients"
+                        subtitle="Define who receives notifications from this monitor."
+                        collapsed={collapsedSections.recipients}
+                        onToggle={() => toggleSection('recipients')}
+                      />
+                      {!collapsedSections.recipients && <div className="mt-4 space-y-3">
+                        <div className="flex space-x-2">
+                          <input
+                            value={recipientInput}
+                            onChange={e => setRecipientInput(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && addRecipient()}
+                            placeholder="ID or Email..."
+                            className={`${monitoringInputClass()} flex-1 py-2 text-[10px]`}
+                          />
+                          <button onClick={addRecipient} className="rounded-lg bg-slate-800 px-3 text-white transition-all hover:bg-slate-700 shrink-0"><Plus size={12} /></button>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {formData.notification_recipients.map((r: string) => (
+                            <div key={r} className="flex items-center space-x-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2 py-1">
+                              <span className="text-[9px] font-semibold text-blue-300">{r}</span>
+                              <button onClick={() => removeRecipient(r)} className="text-slate-500 transition-colors hover:text-rose-400"><X size={10} /></button>
+                            </div>
+                          ))}
+                          {formData.notification_recipients.length === 0 && (
+                            <WorkspaceEmptyState compact title="No recipients defined" description="Add one or more destinations for alert delivery." />
+                          )}
+                        </div>
+                      </div>}
+                    </WorkspaceSectionCard>
+                  </div>
+
+                  <div className="col-span-12 xl:col-span-8 space-y-5">
+                    <WorkspaceSectionCard>
+                      <WorkspaceCollapsibleHeader
+                        title="Recovery procedures"
+                        subtitle="Linked recovery guidance is shown to the on-call engineer."
+                        badge={formData.severity === 'Critical' ? <WorkspaceSectionBadge tone="rose">Required for Critical</WorkspaceSectionBadge> : undefined}
+                        collapsed={collapsedSections.recovery}
+                        onToggle={() => toggleSection('recovery')}
+                      />
+                      {!collapsedSections.recovery && <div className="mt-4 space-y-4">
+                        <div className={`space-y-4 rounded-lg border-2 p-4 ${formErrors.recovery_docs ? 'border-rose-500/40 bg-rose-500/10' : 'border-dashed border-white/10 bg-black/20'}`}>
+                          <div className="flex items-center justify-between">
                             <div className="space-y-0.5">
-                               <PanelTitle>Link recovery documents</PanelTitle>
-                               <PanelSubtitle>Linked docs are presented to the on-call engineer.</PanelSubtitle>
+                              <PanelTitle>Link recovery documents</PanelTitle>
+                              <PanelSubtitle>Linked docs are presented to the on-call engineer.</PanelSubtitle>
                             </div>
-                            <div className="flex items-center space-x-2 bg-blue-600/10 px-2 py-1 rounded-lg border border-blue-600/20 shrink-0">
-                               <List size={10} className="text-blue-400" />
-                               <span className="text-[9px] font-black text-blue-400">{formData.recovery_docs?.length || 0} Linked</span>
+                            <div className="flex items-center space-x-2 rounded-lg border border-blue-600/20 bg-blue-600/10 px-2 py-1 shrink-0">
+                              <List size={10} className="text-blue-400" />
+                              <span className="text-[9px] font-semibold text-blue-400">{formData.recovery_docs?.length || 0} linked</span>
                             </div>
-                         </div>
-
-                         <div className="relative group">
+                          </div>
+                          <div className="relative group">
                             <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                            <input 
+                            <input
                               value={recoverySearch}
                               onChange={e => setRecoverySearch(e.target.value)}
                               placeholder="Search Knowledge Base..."
-                              className={`${monitoringInputClass()} pl-11 py-3 text-[11px] shadow-2xl`}
+                              className={`${monitoringInputClass()} pl-11 py-3 text-[11px]`}
                             />
-                         </div>
-
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[260px] overflow-y-auto custom-scrollbar pr-2">
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[280px] overflow-y-auto custom-scrollbar pr-2">
                             {filteredKnowledge?.map((entry: any) => (
-                               <button
-                                 key={entry.id}
-                                 type="button"
-                                 onClick={() => toggleRecoveryDoc(entry.id)}
-                                 className={`p-3 rounded-lg border text-left transition-all relative overflow-hidden group/item ${
-                                   formData.recovery_docs?.includes(entry.id)
-                                     ? 'bg-blue-600/20 border-blue-500/50 shadow-[0_0_20px_rgba(37,99,235,0.1)]'
-                                     : 'bg-black/40 border-white/5 hover:border-white/20'
-                                 }`}
-                               >
-                                  {formData.recovery_docs?.includes(entry.id) && (
-                                    <div className="absolute top-0 right-0 w-6 h-6 bg-blue-600 flex items-center justify-center rounded-bl-lg shadow-lg">
-                                       <Check size={10} className="text-white" strokeWidth={4} />
-                                    </div>
-                                  )}
-                                  <div className="flex items-center space-x-1.5 mb-1.5">
-                                     <span className="text-[8px] font-black px-1.5 py-0.5 bg-slate-800 text-slate-400 rounded border border-white/5 truncate">{entry.category}</span>
-                                     <span className="text-[8px] font-bold text-slate-600 shrink-0">#{entry.id}</span>
+                              <button
+                                key={entry.id}
+                                type="button"
+                                onClick={() => toggleRecoveryDoc(entry.id)}
+                                className={`p-3 rounded-lg border text-left transition-all relative overflow-hidden ${
+                                  formData.recovery_docs?.includes(entry.id)
+                                    ? 'bg-blue-600/20 border-blue-500/50 shadow-[0_0_20px_rgba(37,99,235,0.1)]'
+                                    : 'bg-black/40 border-white/5 hover:border-white/20'
+                                }`}
+                              >
+                                {formData.recovery_docs?.includes(entry.id) && (
+                                  <div className="absolute top-0 right-0 w-6 h-6 bg-blue-600 flex items-center justify-center rounded-bl-lg shadow-lg">
+                                    <Check size={10} className="text-white" strokeWidth={4} />
                                   </div>
-                                  <p className={`text-[10px] font-black leading-tight transition-colors ${formData.recovery_docs?.includes(entry.id) ? 'text-blue-300' : 'text-slate-300'} line-clamp-2`}>
-                                    {entry.title}
-                                  </p>
-                               </button>
+                                )}
+                                <div className="flex items-center space-x-1.5 mb-1.5">
+                                  <span className="text-[8px] font-semibold px-1.5 py-0.5 bg-slate-800 text-slate-400 rounded border border-white/5 truncate">{entry.category}</span>
+                                  <span className="text-[8px] font-semibold text-slate-600 shrink-0">#{entry.id}</span>
+                                </div>
+                                <p className={`text-[10px] font-semibold leading-tight ${formData.recovery_docs?.includes(entry.id) ? 'text-blue-300' : 'text-slate-300'} line-clamp-2`}>
+                                  {entry.title}
+                                </p>
+                              </button>
                             ))}
                             {filteredKnowledge?.length === 0 && (
-                               <div className="col-span-2 py-6 text-center text-slate-600 text-[9px] font-black uppercase tracking-widest">No entries found</div>
+                              <div className="col-span-2 py-6 text-center text-slate-600 text-[9px] font-semibold">No entries found</div>
                             )}
-                         </div>
-                         <FieldError message={formErrors.recovery_docs} />
-                      </div>
-                   </div>
-                   
-                           <div className="mt-4 bg-white/[0.03] border border-white/5 rounded-lg p-3 flex items-start space-x-3">
-                              <div className="p-1.5 bg-white/5 rounded-lg text-slate-500 mt-0.5 shrink-0">
-                                 <AlertCircle size={14} />
-                              </div>
-                              <div className="space-y-0.5 min-w-0">
-                                 <PanelHint>Operational note</PanelHint>
-                                 <p className="text-[9px] font-semibold leading-relaxed text-slate-500 line-clamp-2">Link high-quality recovery documentation to reduce MTTR and give the on-call engineer a clear starting point.</p>
-                              </div>
-                           </div>
-                   </WorkspaceSectionCard>
+                          </div>
+                          <FieldError message={formErrors.recovery_docs} />
+                        </div>
+                      </div>}
+                    </WorkspaceSectionCard>
+                  </div>
                 </div>
-             </div>
-           )}
+              )}
+            </div>
+
+            <aside className="min-w-0">
+              <div className="xl:sticky xl:top-0 space-y-4 p-2">
+                <WorkspaceSectionCard>
+                  <PanelTitle>Execution and routing</PanelTitle>
+                  <PanelSubtitle>Core timing and delivery rules.</PanelSubtitle>
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center justify-between text-[10px] font-semibold">
+                      <span className="text-slate-500">Check interval</span>
+                      <span className="text-slate-200">{formData.check_interval}s</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] font-semibold">
+                      <span className="text-slate-500">Alert duration</span>
+                      <span className="text-slate-200">{formData.alert_duration}s</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] font-semibold">
+                      <span className="text-slate-500">Notification throttle</span>
+                      <span className="text-slate-200">{formData.notification_throttle}s</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] font-semibold">
+                      <span className="text-slate-500">Notification method</span>
+                      <span className="text-slate-200">{formData.notification_method || 'Not selected'}</span>
+                    </div>
+                  </div>
+                </WorkspaceSectionCard>
+
+                <WorkspaceSectionCard>
+                  <PanelTitle>Coverage</PanelTitle>
+                  <PanelSubtitle>Services, recipients, and recovery readiness.</PanelSubtitle>
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center justify-between text-[10px] font-semibold">
+                      <span className="text-slate-500">Services linked</span>
+                      <span className="text-slate-200">{formData.monitored_services?.length || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] font-semibold">
+                      <span className="text-slate-500">Recipients</span>
+                      <span className="text-slate-200">{formData.notification_recipients.length}</span>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-semibold text-slate-500">Recovery documents</p>
+                      <div className="mt-2 space-y-1.5">
+                        {linkedRecoveryDocs.length ? linkedRecoveryDocs.slice(0, 3).map((entry: any) => (
+                          <div key={entry.id} className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                            <p className="text-[9px] font-semibold text-slate-200 line-clamp-1">{entry.title}</p>
+                          </div>
+                        )) : (
+                          <p className="text-[9px] font-semibold text-slate-600">No linked recovery docs</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </WorkspaceSectionCard>
+
+                <WorkspaceSectionCard>
+                  <PanelTitle>{summaryIssues.length ? `${summaryIssues.length} issues to resolve` : 'Ready to save'}</PanelTitle>
+                  <PanelSubtitle>
+                    {summaryIssues.length ? 'Resolve these issues before saving the monitor.' : 'All required fields and guardrails are currently satisfied.'}
+                  </PanelSubtitle>
+                  <div className="mt-4 space-y-2">
+                    {summaryIssues.length ? summaryIssues.map((issue, index) => (
+                      <button
+                        key={`${issue.anchor}-${index}`}
+                        type="button"
+                        onClick={() => jumpToSection(issue.tab, issue.anchor)}
+                        className="w-full rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-left transition-all hover:bg-rose-500/15"
+                      >
+                        <p className="text-[9px] font-semibold text-rose-300">{issue.label}</p>
+                        <p className="mt-1 text-[8px] font-semibold text-rose-200/70">{issue.tab}</p>
+                      </button>
+                    )) : (
+                      <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-3">
+                        <p className="text-[10px] font-semibold text-emerald-300">Validation clear</p>
+                        <p className="mt-1 text-[8px] font-semibold text-emerald-200/70">The monitor is ready for save.</p>
+                      </div>
+                    )}
+                  </div>
+                </WorkspaceSectionCard>
+              </div>
+            </aside>
+          </div>
         </div>
 
         <WorkspaceModalFooter
@@ -4674,33 +4786,36 @@ function MonitoringHistoryModal({ item, onClose }: any) {
   const modal = (
     <div onClick={onClose} className={`fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('wide')}`}>
       <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('wide')} flex flex-col p-6 sm:p-8 rounded-lg border-white/10 shadow-[0_0_90px_rgba(15,23,42,0.35)]`}>
+        <WorkspaceHistoryShell
+          header={
+            <>
         <div className="flex items-center justify-between mb-8">
            <div className="flex items-center space-x-6">
               <div className="w-14 h-14 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-blue-400">
                 <Clock size={32} strokeWidth={1.5} />
               </div>
               <div>
-                <h2 className="text-2xl font-black tracking-tighter text-white leading-none">Revision History</h2>
+                <h2 className="text-2xl font-black tracking-tighter text-white leading-none">Revision history</h2>
                 <div className="flex items-center space-x-2 mt-1">
-                   <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{item.title}</span>
+                   <span className="text-[10px] text-slate-500 font-semibold">{item.title}</span>
                    <span className="w-1 h-1 rounded-full bg-slate-700" />
-                   <span className="text-[10px] text-blue-400 font-black uppercase tracking-widest">Version Lineage</span>
+                   <span className="text-[10px] text-blue-400 font-semibold">Version lineage</span>
                 </div>
               </div>
            </div>
            
            <div className="flex items-center space-x-4">
               <div className="px-4 py-2 bg-white/5 border border-white/5 rounded-lg">
-                 <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 text-center">Comparison Mode</p>
+                 <p className="text-[8px] font-semibold text-slate-500 mb-1 text-center">Comparison mode</p>
                  <div className="flex items-center space-x-3">
                     <div className="flex items-center space-x-1.5">
                        <div className="w-2 h-2 rounded-full bg-blue-500" />
-                       <span className="text-[10px] font-black text-white uppercase">v{newer?.version}</span>
+                       <span className="text-[10px] font-semibold text-white">v{newer?.version}</span>
                     </div>
                     <ChevronRight size={10} className="text-slate-600" />
                     <div className="flex items-center space-x-1.5">
                        <div className="w-2 h-2 rounded-full bg-slate-600" />
-                       <span className="text-[10px] font-black text-slate-400 uppercase">{older ? `v${older.version}` : 'Genesis'}</span>
+                       <span className="text-[10px] font-semibold text-slate-400">{older ? `v${older.version}` : 'Genesis'}</span>
                     </div>
                  </div>
               </div>
@@ -4709,19 +4824,19 @@ function MonitoringHistoryModal({ item, onClose }: any) {
               </button>
            </div>
         </div>
-
-        <div className="flex-1 flex space-x-10 min-h-0">
-           {/* Timeline Sidebar */}
+            </>
+          }
+          sidebar={
            <div className="w-72 flex flex-col min-h-0">
               <div className="mb-4 flex items-center justify-between px-1">
-                 <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Revision History</h3>
-                 <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">{history?.length || 0} States</span>
+                 <h3 className="text-[10px] font-semibold text-slate-400">Revision history</h3>
+                 <span className="text-[9px] font-semibold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">{history?.length || 0} states</span>
               </div>
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
                 {isLoading ? (
                    <div className="flex-1 flex flex-col items-center justify-center space-y-3 py-20">
                       <RefreshCcw size={24} className="animate-spin text-purple-500" />
-                      <span className="text-[10px] font-black text-purple-500 uppercase tracking-widest animate-pulse">Syncing Timeline...</span>
+                      <span className="text-[10px] font-semibold text-purple-500 animate-pulse">Syncing timeline...</span>
                    </div>
                 ) : (
                   history?.map((h: any, idx: number) => {
@@ -4738,12 +4853,12 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                         }`}
                       >
                         {isSelected && (
-                          <div className={`absolute top-0 right-0 px-2 py-0.5 text-[8px] font-black uppercase rounded-bl-lg ${isNewest ? 'bg-blue-400 text-blue-950' : 'bg-slate-500 text-slate-200'}`}>
+                          <div className={`absolute top-0 right-0 px-2 py-0.5 text-[8px] font-semibold rounded-bl-lg ${isNewest ? 'bg-blue-400 text-blue-950' : 'bg-slate-500 text-slate-200'}`}>
                              {isNewest ? 'Primary' : 'Reference'}
                           </div>
                         )}
                         <div className="flex items-center justify-between mb-2">
-                           <span className={`text-[11px] font-black uppercase tracking-tighter ${isSelected ? 'text-white' : 'text-blue-400'}`}>v{h.version}</span>
+                           <span className={`text-[11px] font-black tracking-tighter ${isSelected ? 'text-white' : 'text-blue-400'}`}>v{h.version}</span>
                            <span className={`text-[9px] font-bold ${isSelected ? 'text-white/60' : 'text-slate-500'}`}>
                               {new Date(h.created_at).toLocaleDateString()}
                            </span>
@@ -4753,7 +4868,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                         </p>
                         <div className="mt-2 flex items-center space-x-2">
                            <Clock size={10} className={isSelected ? 'text-white/40' : 'text-slate-600'} />
-                           <span className={`text-[8px] font-black uppercase tracking-widest ${isSelected ? 'text-white/40' : 'text-slate-600'}`}>
+                           <span className={`text-[8px] font-semibold ${isSelected ? 'text-white/40' : 'text-slate-600'}`}>
                               {new Date(h.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                            </span>
                         </div>
@@ -4763,12 +4878,12 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                 )}
               </div>
               <div className="mt-4 p-4 bg-white/[0.03] border border-white/5 rounded-lg">
-                 <p className="text-[9px] text-slate-500 font-bold leading-relaxed uppercase">Select two versions to perform a deep semantic comparison. If only one is selected, it compares to its immediate predecessor.</p>
+                 <p className="text-[9px] text-slate-500 font-semibold leading-relaxed">Select two versions to perform a deep semantic comparison. If only one is selected, it compares to its immediate predecessor.</p>
               </div>
            </div>
-
-           {/* Diff Panel */}
-           <div className="flex-1 bg-black/40 rounded-lg border border-white/10 overflow-hidden flex flex-col shadow-inner">
+          }
+          content={
+           <>
               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5 backdrop-blur-md">
                  <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2">
@@ -4777,12 +4892,12 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                        <div className="w-8 h-8 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-500 text-[12px] font-black">{older ? `v${older.version}` : 'Ø'}</div>
                     </div>
                     <div>
-                       <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-300">Change Analysis</h3>
-                       <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">{diffs.length} modification vectors detected</p>
+                       <h3 className="text-[11px] font-semibold text-slate-300">Change analysis</h3>
+                       <p className="text-[8px] font-semibold text-slate-600">{diffs.length} modification vectors detected</p>
                     </div>
                  </div>
                  <div className="flex items-center space-x-2">
-                    <span className="text-[9px] font-black text-slate-400 bg-white/5 px-3 py-1 rounded-full border border-white/10 uppercase tracking-widest">
+                    <span className="text-[9px] font-semibold text-slate-400 bg-white/5 px-3 py-1 rounded-full border border-white/10">
                        Diff Ready
                     </span>
                  </div>
@@ -4796,15 +4911,15 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                              <div className="flex items-center justify-between mb-3 px-1">
                                 <div className="flex items-center space-x-3">
                                    <div className="w-2 h-6 bg-blue-500 rounded-full" />
-                                   <span className="text-[12px] font-black uppercase text-white tracking-[0.2em]">{d.field.replace(/_/g, ' ')}</span>
+                                   <span className="text-[12px] font-black text-white tracking-[0.08em]">{d.field.replace(/_/g, ' ')}</span>
                                 </div>
-                                <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Vector Field: {d.field}</span>
+                                <span className="text-[9px] font-semibold text-slate-600">Field: {d.field}</span>
                              </div>
                              
                              <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                    <div className="flex items-center justify-between px-2">
-                                      <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest">Pre-Mutation State</span>
+                                      <span className="text-[9px] font-semibold text-rose-500">Previous state</span>
                                       <Trash2 size={12} className="text-rose-900" />
                                    </div>
                                    <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-5 relative overflow-hidden min-h-[100px] group transition-all hover:bg-rose-500/10 hover:border-rose-500/20">
@@ -4816,7 +4931,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
 
                                 <div className="space-y-2">
                                    <div className="flex items-center justify-between px-2">
-                                      <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Post-Mutation State</span>
+                                      <span className="text-[9px] font-semibold text-emerald-400">Current state</span>
                                       <Zap size={12} className="text-emerald-900" />
                                    </div>
                                    <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-5 relative overflow-hidden min-h-[100px] group transition-all hover:bg-emerald-500/10 hover:border-emerald-500/20">
@@ -4830,22 +4945,15 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                        ))}
                     </div>
                  ) : !isLoading ? (
-                    <div className="h-full flex flex-col items-center justify-center space-y-6 max-w-md mx-auto">
-                       <div className="relative">
-                          <div className="absolute inset-0 bg-purple-500/20 blur-2xl rounded-full" />
-                          <div className="relative p-8 bg-black/40 rounded-full border border-purple-500/30">
-                             <Check size={48} className="text-purple-400" strokeWidth={1} />
-                          </div>
-                       </div>
-                       <div className="text-center space-y-2">
-                          <h4 className="text-[13px] font-black text-white uppercase tracking-[0.2em]">Synchronous Integrity</h4>
-                          <p className="text-[10px] font-bold text-slate-500 uppercase leading-relaxed tracking-widest">
-                             {selectedIndices.length > 1 
-                                ? "No semantic variance detected between the selected temporal snapshots. Configuration states are identical." 
-                                : "This state represents the system genesis. No previous configuration cycles detected."}
-                          </p>
-                       </div>
-                    </div>
+                    <WorkspaceEmptyState
+                      icon={<Check size={42} className="text-purple-400" strokeWidth={1} />}
+                      title="No configuration variance detected"
+                      description={
+                        selectedIndices.length > 1
+                          ? 'No semantic variance was detected between the selected temporal snapshots. Configuration states are identical.'
+                          : 'This state represents the system genesis. No previous configuration cycles were detected.'
+                      }
+                    />
                  ) : null}
               </div>
 
@@ -4854,17 +4962,18 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                  <div className="flex items-center space-x-6">
                     <div className="flex items-center space-x-2">
                        <User size={12} className="text-slate-600" />
-                       <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Authored by: Operational Kernel</span>
+                       <span className="text-[9px] font-semibold text-slate-500">Authored by: Operational Kernel</span>
                     </div>
                     <div className="flex items-center space-x-2">
                        <Tag size={12} className="text-slate-600" />
-                       <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Trace ID: {newer?.id}</span>
+                       <span className="text-[9px] font-semibold text-slate-500">Trace ID: {newer?.id}</span>
                     </div>
                  </div>
-                 <div className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em]">Temporal Data Repository - v4.2</div>
+                 <div className="text-[9px] font-semibold text-slate-600">Temporal data repository · v4.2</div>
               </div>
-           </div>
-        </div>
+            </>
+          }
+        />
       </motion.div>
     </div>
   )

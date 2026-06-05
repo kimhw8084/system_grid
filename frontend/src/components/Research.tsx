@@ -333,7 +333,7 @@ export default function Research() {
       resizable: false,
       sortable: false,
       filter: false,
-      suppressHide: true
+      lockVisible: true
     },
     { 
       field: "id", 
@@ -553,7 +553,7 @@ export default function Research() {
            </div>
         </div>
       ),
-      suppressHide: true
+      lockVisible: true
     }
   ], [setActiveDetails, setActiveModal, setConfirmModal, deleteMutation, fontSize, hiddenColumns]) as any
 
@@ -668,7 +668,7 @@ export default function Research() {
                 <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
               </div>
               <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
-                {columnDefs.filter((c: any) => c.field && !c.suppressHide).map((col: any) => (
+                {columnDefs.filter((c: any) => c.field && !c.lockVisible).map((col: any) => (
                   <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
                     <input type="checkbox" checked={!hiddenColumns.includes(col.field)} onChange={() => setHiddenColumns(hiddenColumns.includes(col.field) ? hiddenColumns.filter(f => f !== col.field) : [...hiddenColumns, col.field])} className="sr-only" />
                     <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>

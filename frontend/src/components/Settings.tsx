@@ -670,7 +670,7 @@ result_df = get_user_pool()`)
   const selectedTeam = (teams || []).find((team: any) => team.id === selectedTeamId) || null
   const selectedTeamMembers = (operators || []).filter((op: any) => op.team_id === selectedTeamId)
   const availableTeamCandidates = (operators || []).filter((op: any) => op.team_id !== selectedTeamId)
-  const allTeamNames = Array.from(new Set((teams || []).map((team: any) => team.name))).sort()
+  const allTeamNames = Array.from(new Set((teams || []).map((team: any) => team.name))).sort() as string[]
 
   const handleAddOperator = () => {
     if (!newOpId) return;

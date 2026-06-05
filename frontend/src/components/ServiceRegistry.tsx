@@ -439,7 +439,7 @@ export default function ServiceRegistry() {
       resizable: false,
       sortable: false,
       filter: false,
-      suppressHide: true
+      lockVisible: true
     },
     { field: "id", headerName: "ID", width: 80, cellClass: 'text-center font-bold text-slate-500', headerClass: 'text-center', filter: 'agNumberColumnFilter' },
     { field: "name", headerName: "Instance Identifier", pinned: 'left', flex: 1.2, filter: true, cellClass: 'text-left font-bold uppercase text-blue-400', headerClass: 'text-left', hide: hiddenColumns.includes("name") },

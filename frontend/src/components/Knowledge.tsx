@@ -219,6 +219,7 @@ const CategoryPill = ({ label, active, onClick, count }: any) => (
 
 export default function Knowledge() {
   const navigate = useNavigate()
+
   const [searchParams, setSearchParams] = useSearchParams()
   const idParam = searchParams.get('id')
   const deviceParam = searchParams.get('device_id')
@@ -311,14 +312,14 @@ export default function Knowledge() {
   })
 
   const entityMaps = useMemo(() => ({
-    devices: new Map((devices || []).map((item: any) => [item.id, item])),
-    dataFlows: new Map((dataFlows || []).map((item: any) => [item.id, item])),
-    services: new Map((services || []).map((item: any) => [item.id, item])),
-    monitoring: new Map((monitoringItems || []).map((item: any) => [item.id, item])),
-    far: new Map((farModes || []).map((item: any) => [item.id, item])),
-    research: new Map((investigations || []).map((item: any) => [item.id, item])),
-    vendors: new Map((vendors || []).map((item: any) => [item.id, item])),
-    projects: new Map((projects || []).map((item: any) => [item.id, item]))
+    devices: new Map<number, any>((devices || []).map((item: any) => [item.id, item])),
+    dataFlows: new Map<number, any>((dataFlows || []).map((item: any) => [item.id, item])),
+    services: new Map<number, any>((services || []).map((item: any) => [item.id, item])),
+    monitoring: new Map<number, any>((monitoringItems || []).map((item: any) => [item.id, item])),
+    far: new Map<number, any>((farModes || []).map((item: any) => [item.id, item])),
+    research: new Map<number, any>((investigations || []).map((item: any) => [item.id, item])),
+    vendors: new Map<number, any>((vendors || []).map((item: any) => [item.id, item])),
+    projects: new Map<number, any>((projects || []).map((item: any) => [item.id, item]))
   }), [devices, dataFlows, services, monitoringItems, farModes, investigations, vendors, projects])
 
   const contextIds = useMemo(() => ({

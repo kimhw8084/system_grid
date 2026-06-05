@@ -1757,7 +1757,7 @@ export default function Assets() {
       resizable: false,
       sortable: false,
       filter: false,
-      suppressHide: true
+      lockVisible: true
     },
     { 
       field: "id", 
@@ -1954,7 +1954,7 @@ export default function Assets() {
            </div>
         </div>
       ),
-      suppressHide: true
+      lockVisible: true
     }
   ], [activeTab, hiddenColumns, fontSize]) as any
 
@@ -2240,7 +2240,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
                   <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
                 </div>
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
-                  {columnDefs.filter((c: any) => c.field && !c.suppressHide).map((col: any) => (
+                  {columnDefs.filter((c: any) => c.field && !c.lockVisible).map((col: any) => (
                     <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
                       <div className="relative flex items-center">
                         <input

@@ -274,7 +274,7 @@ export default function FAR() {
       resizable: false,
       sortable: false,
       filter: false,
-      suppressHide: true
+      lockVisible: true
     },
     { 
       field: "id", 
@@ -703,7 +703,7 @@ export default function FAR() {
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl">
                     <div className="p-6 border-b border-white/5 flex items-center justify-between"><h3 className="text-xs font-bold uppercase tracking-widest text-rose-400 flex items-center space-x-2"><Sliders size={14} /> <span>Columns</span></h3><button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button></div>
                     <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
-                      {columnDefs.filter((c: any) => c.field && !c.suppressHide).map((col: any) => (
+                      {columnDefs.filter((c: any) => c.field && !c.lockVisible).map((col: any) => (
                         <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
                           <input type="checkbox" checked={!hiddenColumns.includes(col.field)} onChange={() => setHiddenColumns(prev => prev.includes(col.field) ? prev.filter(f => f !== col.field) : [...prev, col.field])} className="sr-only" />
                           <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-rose-600 border-rose-500 shadow-lg shadow-rose-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>{!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}</div>
@@ -920,7 +920,7 @@ function StatCard({ id, label, value, suffix, color, onHelp }: any) {
   )
 }
 
-function FailureDetailView({ mode, onClose, onUpdate }: { mode: any, onClose: () => void, onUpdate: () => void }) {
+function FailureDetailView({ mode, onClose, onUpdate }: { mode: any, onClose: () => void, onUpdate: (type: string) => void }) {
   const [activeTab, setActiveTab] = useState('causal')
   const [showAllAssets, setShowAllAssets] = useState(false)
   const queryClient = useQueryClient()

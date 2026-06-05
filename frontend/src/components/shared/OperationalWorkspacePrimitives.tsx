@@ -1,8 +1,15 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { CSSProperties, useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { createPortal } from 'react-dom'
 import { OPERATIONAL_WORKSPACE_VISUALS } from './OperationalWorkspace'
 
 export type WorkspaceModalSize = 'compact' | 'standard' | 'wide' | 'workspace'
+
+const join = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ')
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
+}
 
 export function getWorkspaceModalFrameClass(size: WorkspaceModalSize) {
   if (size === 'compact') return 'p-4 sm:p-6'
@@ -48,6 +55,191 @@ export function WorkspacePanelSubtitle({ children }: { children: React.ReactNode
 
 export function WorkspacePanelHint({ children }: { children: React.ReactNode }) {
   return <p className={OPERATIONAL_WORKSPACE_VISUALS.hintText}>{children}</p>
+}
+
+export function getWorkspaceFloatingPanelClass(kind: 'menu' | 'context' | 'detail' = 'menu') {
+  const tone =
+    kind === 'context'
+      ? 'border-slate-700 bg-[#020617] shadow-[0_24px_80px_rgba(0,0,0,0.62)]'
+      : kind === 'detail'
+        ? 'border-white/10 bg-slate-950/95 shadow-[0_24px_60px_rgba(2,6,23,0.48)]'
+        : 'border-white/10 bg-slate-950/95 shadow-[0_24px_60px_rgba(2,6,23,0.48)]'
+
+  return join(
+    'rounded-lg backdrop-blur-xl',
+    tone,
+  )
+}
+
+export function useWorkspaceAnchoredLayer(isOpen: boolean, options?: { offset?: number; minWidth?: number }) {
+  const offset = options?.offset ?? 8
+  const minWidth = options?.minWidth ?? 0
+  const triggerRef = useRef<HTMLElement | null>(null)
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>({})
+
+  const updatePosition = useCallback(() => {
+    const trigger = triggerRef.current
+    if (!trigger) return
+
+    const rect = trigger.getBoundingClientRect()
+    const padding = 12
+    const maxWidth = Math.max(0, window.innerWidth - padding * 2)
+    const panelHeight = panelRef.current?.offsetHeight ?? 0
+    const desiredWidth = Math.max(rect.width, minWidth)
+    const width = Math.min(desiredWidth, maxWidth)
+    const left = clamp(rect.left, padding, window.innerWidth - width - padding)
+    const openUpward =
+      panelHeight > 0 &&
+      rect.bottom + offset + panelHeight > window.innerHeight - padding &&
+      rect.top - offset - panelHeight >= padding
+    const top = openUpward
+      ? rect.top - offset - panelHeight
+      : Math.min(rect.bottom + offset, window.innerHeight - padding)
+
+    setPanelStyle({
+      position: 'fixed',
+      top,
+      left,
+      width,
+      zIndex: 3600,
+    })
+  }, [minWidth, offset])
+
+  useEffect(() => {
+    if (!isOpen) return
+    updatePosition()
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+    return () => {
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [isOpen, updatePosition])
+
+  return { triggerRef, panelRef, panelStyle }
+}
+
+export function WorkspaceFloatingPanel({
+  children,
+  className = '',
+  kind = 'menu',
+}: {
+  children: React.ReactNode
+  className?: string
+  kind?: 'menu' | 'context' | 'detail'
+}) {
+  return <div className={join(getWorkspaceFloatingPanelClass(kind), className)}>{children}</div>
+}
+
+export function WorkspaceSectionBadge({
+  children,
+  tone = 'default',
+}: {
+  children: React.ReactNode
+  tone?: 'default' | 'blue' | 'emerald' | 'amber' | 'rose'
+}) {
+  const toneClass =
+    tone === 'blue'
+      ? 'border-blue-500/20 bg-blue-500/10 text-blue-300'
+      : tone === 'emerald'
+        ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+        : tone === 'amber'
+          ? 'border-amber-500/20 bg-amber-500/10 text-amber-300'
+          : tone === 'rose'
+            ? 'border-rose-500/20 bg-rose-500/10 text-rose-300'
+            : 'border-white/10 bg-black/30 text-slate-400'
+
+  return (
+    <span className={join('rounded-lg border px-2.5 py-1 text-[9px] font-semibold', toneClass)}>
+      {children}
+    </span>
+  )
+}
+
+export function WorkspaceEmptyState({
+  icon,
+  title,
+  description,
+  action,
+  compact = false,
+}: {
+  icon?: React.ReactNode
+  title: string
+  description?: React.ReactNode
+  action?: React.ReactNode
+  compact?: boolean
+}) {
+  return (
+    <div
+      className={join(
+        'flex flex-col items-center justify-center rounded-lg border border-dashed border-white/10 bg-black/10 text-center',
+        compact ? 'px-4 py-8 space-y-2' : 'px-6 py-12 space-y-4'
+      )}
+    >
+      {icon && <div className="text-slate-700">{icon}</div>}
+      <div className="space-y-1">
+        <p className="text-[11px] font-semibold text-slate-300">{title}</p>
+        {description && <p className="max-w-md text-[10px] font-semibold leading-relaxed text-slate-500">{description}</p>}
+      </div>
+      {action}
+    </div>
+  )
+}
+
+export function WorkspaceCollapsibleHeader({
+  title,
+  subtitle,
+  badge,
+  action,
+  collapsed,
+  onToggle,
+}: {
+  title: React.ReactNode
+  subtitle?: React.ReactNode
+  badge?: React.ReactNode
+  action?: React.ReactNode
+  collapsed: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="flex w-full items-start justify-between gap-4 rounded-lg text-left transition-colors hover:text-white"
+    >
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <WorkspacePanelTitle>{title}</WorkspacePanelTitle>
+          {badge}
+        </div>
+        {subtitle && <WorkspacePanelSubtitle>{subtitle}</WorkspacePanelSubtitle>}
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        {action}
+        <span className="rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-[9px] font-semibold text-slate-400">
+          {collapsed ? 'Show' : 'Hide'}
+        </span>
+      </div>
+    </button>
+  )
+}
+
+export function WorkspaceSplitView({
+  sidebar,
+  main,
+  className = '',
+}: {
+  sidebar: React.ReactNode
+  main: React.ReactNode
+  className?: string
+}) {
+  return (
+    <div className={join('grid grid-cols-1 gap-6 xl:grid-cols-[320px_minmax(0,1fr)]', className)}>
+      <div className="min-h-0">{sidebar}</div>
+      <div className="min-h-0">{main}</div>
+    </div>
+  )
 }
 
 export function WorkspaceHoverPreview({
@@ -103,7 +295,7 @@ export function WorkspaceSelectField({
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const containerRef = useRef<HTMLDivElement | null>(null)
+  const { triggerRef, panelRef, panelStyle } = useWorkspaceAnchoredLayer(isOpen, { minWidth: 220 })
   const selected = options.find((option) => String(option.value) === String(value))
   const filteredOptions = searchable
     ? options.filter((option) => `${option.label} ${option.description || ''}`.toLowerCase().includes(search.toLowerCase()))
@@ -112,28 +304,28 @@ export function WorkspaceSelectField({
   useEffect(() => {
     if (!isOpen) return
     const handleClick = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) setIsOpen(false)
+      const target = event.target as Node
+      if (triggerRef.current?.contains(target) || panelRef.current?.contains(target)) return
+      setIsOpen(false)
     }
     window.addEventListener('mousedown', handleClick)
 
-    const timer = setTimeout(() => {
-      containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    }, 50)
-
     return () => {
       window.removeEventListener('mousedown', handleClick)
-      clearTimeout(timer)
     }
-  }, [isOpen])
+  }, [isOpen, panelRef, triggerRef])
 
   return (
-    <div className="space-y-1.5" ref={containerRef}>
+    <div className="space-y-1.5">
       <WorkspaceFieldLabel label={label} required={required} />
-      <div className="relative">
+      <div>
         <button
           type="button"
           disabled={disabled}
           onClick={() => setIsOpen((current) => !current)}
+          ref={(node) => {
+            triggerRef.current = node
+          }}
           className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10 shadow-[0_0_0_1px_rgba(244,63,94,0.18)]' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
         >
           <span className={`text-[clamp(10px,0.85vw,12px)] font-black truncate pr-4 ${selected ? 'text-slate-100' : 'text-slate-500'}`}>
@@ -141,8 +333,12 @@ export function WorkspaceSelectField({
           </span>
           <ChevronDown size={12} className={`shrink-0 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
-        {isOpen && !disabled && (
-          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 rounded-lg border border-white/10 bg-[#020617] p-2 shadow-[0_24px_60px_rgba(2,6,23,0.48)]">
+        {isOpen && !disabled && typeof document !== 'undefined' && createPortal(
+          <div
+            ref={panelRef}
+            style={panelStyle}
+            className="rounded-lg border border-white/10 bg-[#020617] p-2 shadow-[0_24px_60px_rgba(2,6,23,0.48)] backdrop-blur-xl"
+          >
             {searchable && (
               <div className="mb-2">
                 <input
@@ -178,7 +374,8 @@ export function WorkspaceSelectField({
                 </div>
               )}
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
       <WorkspaceFieldError message={error} />
@@ -189,11 +386,12 @@ export function WorkspaceSelectField({
 export function WorkspaceSectionCard({
   children,
   className = '',
-}: {
+  ...props
+}: React.HTMLAttributes<HTMLElement> & {
   children: React.ReactNode
   className?: string
 }) {
-  return <section className={`${OPERATIONAL_WORKSPACE_VISUALS.panelSurface} p-4 ${className}`}>{children}</section>
+  return <section {...props} className={`${OPERATIONAL_WORKSPACE_VISUALS.panelSurface} p-4 ${className}`}>{children}</section>
 }
 
 export function WorkspaceStickyIdentityBar({
@@ -226,7 +424,7 @@ export function WorkspaceTabStrip({
           key={tab.id}
           type="button"
           onClick={() => onChange(tab.id)}
-          className={`rounded-lg px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+          className={`rounded-lg px-4 py-2 text-[10px] font-semibold transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
         >
           <span className="flex items-center gap-2">
             <span>{tab.label}</span>
@@ -244,7 +442,7 @@ export function WorkspaceValidationBanner({ message }: { message?: string }) {
   if (!message) return null
   return (
     <div className="mb-6 rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3">
-      <p className="text-[10px] font-black text-rose-300">{message}</p>
+      <p className="text-[10px] font-semibold text-rose-300">{message}</p>
     </div>
   )
 }

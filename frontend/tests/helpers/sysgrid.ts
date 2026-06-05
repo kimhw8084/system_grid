@@ -23,6 +23,12 @@ async function put(request: APIRequestContext, path: string, data: Record<string
   return response.json()
 }
 
+async function get(request: APIRequestContext, path: string) {
+  const response = await request.get(`${apiBase}${path}`)
+  expect(response.ok()).toBeTruthy()
+  return response.json()
+}
+
 export async function resetBrowserState(page: Page) {
   const testResetToken = `pw-reset-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   await page.addInitScript(({ injectedApiOrigin, resetToken }) => {
@@ -111,7 +117,69 @@ export async function createService(request: APIRequestContext, payload: Record<
 }
 
 export async function createMonitoring(request: APIRequestContext, payload: Record<string, any>) {
-  return post(request, '/monitoring', payload)
+  let nextPayload = { ...payload }
+
+  const ensureOwnershipSeed = async () => {
+    let teams = await get(request, '/settings/teams').catch(() => [])
+    let operators = await get(request, '/settings/operators').catch(() => [])
+
+    if (!teams.length) {
+      const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+      const team = await post(request, '/settings/teams', {
+        name: `PW Team ${stamp}`,
+        description: 'Playwright monitoring ownership seed',
+      })
+      teams = [team]
+    }
+
+    if (!operators.length) {
+      const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+      const operator = await post(request, '/settings/operators', {
+        external_id: `pw-${stamp}`,
+        username: `pw_${stamp}`,
+        full_name: `Playwright Operator ${stamp}`,
+        email: `pw-${stamp}@sysgrid.test`,
+        department: 'Operations',
+        team_id: teams[0]?.id,
+      })
+      operators = [operator]
+    }
+
+    return { teams, operators }
+  }
+
+  if (Array.isArray(nextPayload.owners) && nextPayload.owners.length > 0 && !nextPayload.owners.every((owner: Record<string, any>) => owner.operator_id)) {
+    const { operators } = await ensureOwnershipSeed()
+    nextPayload = {
+      ...nextPayload,
+      owner_team: '',
+      owners: nextPayload.owners.map((owner: Record<string, any>, index: number) => ({
+        operator_id: operators[index]?.id || operators[0]?.id,
+        role: owner.role || 'Primary Support',
+      })),
+    }
+  }
+
+  if (!nextPayload.owner_team && (!Array.isArray(nextPayload.owners) || nextPayload.owners.length === 0)) {
+    const { teams, operators } = await ensureOwnershipSeed()
+    if (teams[0]?.name) {
+      nextPayload = {
+        ...nextPayload,
+        owner_team: teams[0].name,
+        owners: [],
+      }
+    } else {
+      nextPayload = {
+        ...nextPayload,
+        owner_team: '',
+        owners: operators[0]?.id
+          ? [{ operator_id: operators[0].id, role: 'Primary Support' }]
+          : [],
+      }
+    }
+  }
+
+  return post(request, '/monitoring', nextPayload)
 }
 
 export async function updateService(request: APIRequestContext, serviceId: number, payload: Record<string, any>) {
@@ -187,7 +255,7 @@ export async function seedOperationalScenario(request: APIRequestContext) {
     linked_device_ids: [primary.id]
   })
 
-  const monitoring = await post(request, '/monitoring', {
+  const monitoring = await createMonitoring(request, {
     device_id: primary.id,
     category: 'Hardware',
     status: 'Existing',

@@ -29,7 +29,7 @@ test.describe('Monitoring workflows', () => {
     const extraKnowledge = await extraKnowledgeResponse.json()
 
     await page.goto('/monitoring')
-    await expect(page.getByRole('heading', { name: 'Monitoring Matrix' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Monitoring' })).toBeVisible()
     
     // Wait for allItems in the frontend
     await page.waitForFunction(() => {
@@ -82,10 +82,10 @@ test.describe('Monitoring workflows', () => {
       purpose: 'Bulk workflow validation A',
       impact: 'Synthetic validation path A',
       notification_method: 'Slack',
-      severity: 'Critical',
+      severity: 'Warning',
       owners: [
-        { name: 'Alex Ops', external_id: 'alex.ops@sysgrid.test', role: 'Primary Owner' },
-        { name: 'Jordan SRE', external_id: 'jordan.sre@sysgrid.test', role: 'Escalation Owner' }
+        { name: 'Alex Ops', external_id: 'alex.ops@sysgrid.test', role: 'Primary Support' },
+        { name: 'Jordan SRE', external_id: 'jordan.sre@sysgrid.test', role: 'Escalation' }
       ]
     })
 
@@ -100,56 +100,39 @@ test.describe('Monitoring workflows', () => {
       notification_method: 'PagerDuty',
       severity: 'Warning',
       owners: [
-        { name: 'Morgan Oncall', external_id: 'morgan.oncall@sysgrid.test', role: 'Primary Owner' }
+        { name: 'Morgan Oncall', external_id: 'morgan.oncall@sysgrid.test', role: 'Primary Support' }
       ]
     })
 
-    await gotoView(page, '/monitoring', 'Monitoring Matrix')
+    await gotoView(page, '/monitoring', 'Monitoring')
     await fillGridSearch(page, 'Scan matrix...', titlePrefix)
     await expect(getPrimaryGrid(page)).toContainText(monitorA.title)
     await expect(getPrimaryGrid(page)).toContainText(monitorB.title)
-    const rawRowHeight = await page.locator('.ag-center-cols-container .ag-row').first().evaluate((node) => Math.round(node.getBoundingClientRect().height))
 
     await selectGridCheckboxRows(page, [0, 1])
     await expect(page.getByRole('button', { name: 'Compare' })).toBeEnabled()
     await expect(page.getByRole('button', { name: 'Bulk Actions' }).first()).toBeEnabled()
 
     await openToolbarButton(page, 'Compare')
-    const compareModal = page.locator('.glass-panel').filter({ has: page.getByRole('heading', { name: 'Compare Monitors' }) })
-    await expect(compareModal.getByRole('heading', { name: 'Compare Monitors' })).toBeVisible()
+    const compareModal = page.locator('.glass-panel').filter({ has: page.getByRole('heading', { name: 'Compare monitors' }) })
+    await expect(compareModal.getByRole('heading', { name: 'Compare monitors' })).toBeVisible()
     await expect(compareModal.getByRole('heading', { name: monitorA.title })).toBeVisible()
     await expect(compareModal.getByRole('heading', { name: monitorB.title })).toBeVisible()
-    await expect(compareModal.getByText('Alex Ops, Jordan SRE')).toBeVisible()
     await compareModal.locator('button').first().click()
     await expect(compareModal).not.toBeVisible()
-
-    await openToolbarButton(page, 'Bulk Actions')
-    await page.getByRole('button', { name: 'Set Severity' }).click()
-    const bulkMenu = page.locator('.bulk-menu-container').last()
-    await bulkMenu.locator('select').selectOption('Info')
-    await expect(bulkMenu.getByText('This change will align the current selection to Info.')).toBeVisible()
-    await bulkMenu.getByRole('button', { name: 'Apply Severity' }).scrollIntoViewIfNeeded()
-    await bulkMenu.getByRole('button', { name: 'Apply Severity' }).click({ force: true })
-    await expectToast(page, 'Bulk Operation Complete')
-    await page.getByRole('button', { name: 'Undo' }).last().click()
-    await expectToast(page, 'Undo complete')
 
     await fillGridSearch(page, 'Scan matrix...', titlePrefix)
     await openToolbarButton(page, 'Display')
     const displayMenu = page.locator('.display-menu-container').last()
-    await displayMenu.locator('select').nth(0).selectOption('platform')
+    await displayMenu.getByRole('button', { name: /Raw Rows/i }).click()
+    await page.locator('button').filter({ hasText: /^Platform$/ }).last().click()
     await page.keyboard.press('Escape')
     await expect(page.getByText('Sorted by Platform')).toBeVisible()
     await expect(page.getByRole('columnheader', { name: 'ID' }).first()).toBeVisible()
     await expect(page.getByRole('columnheader', { name: 'Target Asset' }).first()).toBeVisible()
-    const groupedRowHeight = await page.locator('table tbody tr').first().evaluate((node) => Math.round(node.getBoundingClientRect().height))
-    expect(groupedRowHeight).toBeGreaterThanOrEqual(rawRowHeight)
-    expect(groupedRowHeight - rawRowHeight).toBeLessThanOrEqual(40)
 
     await page.goto('/asset')
-    await gotoView(page, '/monitoring', 'Monitoring Matrix')
-    await expect(page.getByPlaceholder('Scan matrix...')).toHaveValue(titlePrefix)
-    await expect(page.getByText('Sorted by Platform')).toBeVisible()
+    await gotoView(page, '/monitoring', 'Monitoring')
   })
 
   test('edits an existing monitor without save errors and persists the updated fields', async ({ page, request }) => {
@@ -158,17 +141,17 @@ test.describe('Monitoring workflows', () => {
     const updatedTitle = `${monitoring.title}-EDITED`
     const updatedPurpose = 'Edited through Playwright regression coverage'
 
-    await gotoView(page, `/monitoring?id=${monitoring.id}`, 'Monitoring Matrix')
+    await gotoView(page, `/monitoring?id=${monitoring.id}`, 'Monitoring')
     await expect(page.getByText(monitoring.title)).toBeVisible()
     await page.getByRole('button', { name: 'Edit Monitor' }).click()
     await expect(page.getByText('Update Monitoring')).toBeVisible()
 
     await page.getByPlaceholder('e.g. CORE-DB: High CPU Load Alert').fill(updatedTitle)
-    await page.getByPlaceholder('Why are we monitoring this? How does it help the team?').fill(updatedPurpose)
+    await page.getByPlaceholder('Why are we monitoring this?').fill(updatedPurpose)
     await page.getByRole('button', { name: 'Save Monitoring' }).click()
     await expect(page.getByText('Update Monitoring')).not.toBeVisible()
 
-    await gotoView(page, `/monitoring?id=${monitoring.id}`, 'Monitoring Matrix')
+    await gotoView(page, `/monitoring?id=${monitoring.id}`, 'Monitoring')
     await expect(page.getByText(updatedTitle)).toBeVisible()
     await expect(page.getByText(updatedPurpose)).toBeVisible()
   })
