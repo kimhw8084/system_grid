@@ -48,9 +48,15 @@ import {
 import { StatusPill } from './shared/StatusPill'
 import { PageHeader, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch, ToolbarSegmented } from './shared/LayoutPrimitives'
 import { WorkspaceCommandBar } from './shared/WorkspaceCommandBar'
-import { usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
+import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
 import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } from './shared/WorkspaceModalShells'
-import { applyOperationalColumnSizing, OPERATIONAL_GRID_AUTO_SIZE_STRATEGY } from './shared/OperationalGridSizing'
+import {
+  applyOperationalColumnSizing,
+  applyOperationalColumnState,
+  getOperationalColumnLayoutSnapshot,
+  normalizeOperationalColumnLayout,
+  OPERATIONAL_GRID_AUTO_SIZE_STRATEGY
+} from './shared/OperationalGridSizing'
 
 const MONITORING_VIEW_STORAGE_KEY = 'sysgrid_monitoring_views_v1'
 const MONITORING_ACTIVE_VIEW_KEY = 'sysgrid_monitoring_active_view_v1'
@@ -68,16 +74,6 @@ const MONITORING_FIXED_WIDTH_COLUMN_IDS = new Set([
   'check_interval',
   'row_actions',
 ])
-
-const normalizeMonitoringColumnLayout = (layout: any[], preserveWidths: boolean) =>
-  (layout || []).map((column: any) => ({
-    colId: column.colId,
-    hide: column.hide,
-    pinned: column.pinned,
-    sort: column.sort,
-    sortIndex: column.sortIndex,
-    ...(preserveWidths ? { width: column.width, flex: column.flex } : {})
-  }))
 
 const STATUSES = [
   { value: 'Existing', label: 'Existing', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
@@ -253,7 +249,8 @@ const GridMatrix = React.memo(({
   onRowDoubleClicked,
   onCellContextMenu,
   getRowClass,
-  onFirstDataRendered
+  onFirstDataRendered,
+  onRowDataUpdated
 }: any) => {
   const apiRef = useRef<any>(null)
 
@@ -303,6 +300,7 @@ const GridMatrix = React.memo(({
       onCellContextMenu={onCellContextMenu}
       getRowClass={getRowClass}
       onFirstDataRendered={onFirstDataRendered}
+      onRowDataUpdated={onRowDataUpdated}
       suppressScrollOnNewData={true}
       suppressCellFocus={true}
       suppressRowClickSelection={true}
@@ -513,8 +511,6 @@ export default function MonitoringGrid() {
   const [watchIds, setWatchIds] = usePersistentJsonState<number[]>(MONITORING_WATCH_STORAGE_KEY, [])
   const [quickFilters, setQuickFilters] = useState({ status: '', severity: '', platform: '', owner: '' })
   const [groupBy, setGroupBy] = useState<string>('raw')
-  const [columnLayoutState, setColumnLayoutState] = useState<any[]>(persistedUiState?.columnLayoutState ?? [])
-  const [hasManualColumnWidths, setHasManualColumnWidths] = useState<boolean>(false)
   const [bulkDraft, setBulkDraft] = useState({ status: '', severity: '', notification_method: '' })
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'severity' | 'notification' | null>(null)
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
@@ -529,7 +525,15 @@ export default function MonitoringGrid() {
   const lastUndoRef = useRef<any>(null)
   const [newViewName, setNewViewName] = useState('')
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
-  const preserveExplicitColumnWidths = Boolean((activeViewId || hasManualColumnWidths) && columnLayoutState.length)
+  const {
+    columnLayoutState,
+    setColumnLayoutState,
+    setTransientManualColumnWidths,
+    preserveExplicitColumnWidths,
+    syncColumnLayoutState,
+    applyColumnLayoutState,
+    handleColumnResized,
+  } = useOperationalGridLayout(persistedUiState?.columnLayoutState ?? [], Boolean(activeViewId))
 
   const groupSelectionsRef = useRef<Record<string, number[]>>({})
 
@@ -549,23 +553,13 @@ export default function MonitoringGrid() {
     setSelectedIds(allSelected)
   }, [])
 
-  const handleColumnResized = useCallback((event: any) => {
-    if (!event.finished) return
-    if (event.source === 'uiColumnDragged' || event.source === 'uiColumnResized') {
-      setHasManualColumnWidths(true)
-      syncColumnLayoutState(event.api, true)
-      return
-    }
-    syncColumnLayoutState(event.api, false)
-  }, [])
-
   const handleColumnMoved = useCallback((event: any) => {
     if (!event.source.includes('drag')) syncColumnLayoutState(event.api)
-  }, [])
+  }, [syncColumnLayoutState])
 
-  const handleDragStopped = useCallback((event: any) => syncColumnLayoutState(event.api), [])
-  const handleColumnPinned = useCallback((event: any) => syncColumnLayoutState(event.api), [])
-  const handleColumnVisible = useCallback((event: any) => syncColumnLayoutState(event.api), [])
+  const handleDragStopped = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
+  const handleColumnPinned = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
+  const handleColumnVisible = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
   const handleFilterChanged = useCallback((e: any) => setGridFilterModel(e.api.getFilterModel() || {}), [])
   
   const handleSortChanged = useCallback((e: any) => {
@@ -592,11 +586,7 @@ export default function MonitoringGrid() {
   const handleGridReady = useCallback((event: any) => {
     // Immediately apply layout if we have it to prevent squish
     if (columnLayoutState.length > 0) {
-      event.api.applyColumnState({
-        state: normalizeMonitoringColumnLayout(columnLayoutState, preserveExplicitColumnWidths),
-        applyOrder: true,
-        defaultState: { sort: null }
-      });
+      applyOperationalColumnState(event.api, columnLayoutState, preserveExplicitColumnWidths)
     }
   }, [columnLayoutState, preserveExplicitColumnWidths])
 
@@ -607,8 +597,16 @@ export default function MonitoringGrid() {
       .map((column: any) => column.getColId())
       .filter((colId: string) => !MONITORING_FIXED_WIDTH_COLUMN_IDS.has(colId))
     if (!visibleColumnIds.length) return
-    gridRef.current.api.autoSizeColumns(visibleColumnIds, false)
-  }, [preserveExplicitColumnWidths])
+    requestAnimationFrame(() => {
+      if (!gridRef.current?.api || preserveExplicitColumnWidths) return
+      gridRef.current.api.autoSizeColumns(visibleColumnIds, false)
+      syncColumnLayoutState(gridRef.current.api, false)
+    })
+  }, [preserveExplicitColumnWidths, syncColumnLayoutState])
+
+  const handleGridDataUpdated = useCallback(() => {
+    autoSizeMonitoringColumns()
+  }, [autoSizeMonitoringColumns])
 
   const getRowClass = useCallback((params: any) => {
     let classes = params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd'
@@ -827,33 +825,13 @@ export default function MonitoringGrid() {
     }
   }
 
-  const getColumnLayoutSnapshot = (api: any, preserveWidths: boolean = preserveExplicitColumnWidths) => {
-    if (!api?.getColumnState) return []
-    return normalizeMonitoringColumnLayout(api.getColumnState(), preserveWidths)
-  }
-
-  const syncColumnLayoutState = (api: any, preserveWidths: boolean = preserveExplicitColumnWidths) => {
-    const nextLayout = getColumnLayoutSnapshot(api, preserveWidths)
-    if (!nextLayout.length) return
-    setColumnLayoutState(nextLayout)
-  }
-
-  const applyColumnLayoutState = (api: any) => {
-    if (!api || !columnLayoutState.length) return
-    api.applyColumnState({
-      state: normalizeMonitoringColumnLayout(columnLayoutState, preserveExplicitColumnWidths),
-      applyOrder: true,
-      defaultState: { sort: null }
-    })
-  }
-
   const buildCurrentViewConfig = () => ({
     fontSize,
     rowDensity,
     hiddenColumns,
     groupBy,
     showFilterBar,
-    columnLayoutState: normalizeMonitoringColumnLayout(gridRef.current?.api?.getColumnState() || columnLayoutState, true),
+    columnLayoutState: getOperationalColumnLayoutSnapshot(gridRef.current?.api, true) || columnLayoutState,
     quickFilter: searchTerm,
     quickFilters,
     filterModel: gridRef.current?.api?.getFilterModel?.() || gridFilterModel,
@@ -872,7 +850,7 @@ export default function MonitoringGrid() {
     setGroupBy(config.groupBy ?? 'raw')
     setShowFilterBar(config.showFilterBar ?? true)
     setColumnLayoutState(config.columnLayoutState ?? [])
-    setHasManualColumnWidths(true)
+    setTransientManualColumnWidths(false)
     setSearchTerm(config.quickFilter ?? '')
     setQuickFilters(config.quickFilters ?? { status: '', severity: '', platform: '', owner: '' })
     setGridFilterModel(config.filterModel ?? {})
@@ -884,11 +862,7 @@ export default function MonitoringGrid() {
     requestAnimationFrame(() => {
       if (gridRef.current?.api) {
         if (Array.isArray(config.columnLayoutState) && config.columnLayoutState.length) {
-          gridRef.current.api.applyColumnState({
-            state: normalizeMonitoringColumnLayout(config.columnLayoutState, true),
-            applyOrder: true,
-            defaultState: { sort: null }
-          })
+          applyOperationalColumnState(gridRef.current.api, config.columnLayoutState, true)
         } else {
           applyColumnLayoutState(gridRef.current.api)
         }
@@ -942,7 +916,7 @@ export default function MonitoringGrid() {
 
   const applySystemDefault = () => {
     setActiveViewId(null)
-    setHasManualColumnWidths(false)
+    setTransientManualColumnWidths(false)
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(MONITORING_ACTIVE_VIEW_KEY)
     }
@@ -1259,7 +1233,7 @@ export default function MonitoringGrid() {
       quickFilters,
       groupBy,
       showFilterBar,
-      columnLayoutState: normalizeMonitoringColumnLayout(columnLayoutState, false),
+      columnLayoutState: normalizeOperationalColumnLayout(columnLayoutState, false),
       selectedIds,
       expandedBulkSection,
       lastVisitedAt,
@@ -2567,6 +2541,8 @@ export default function MonitoringGrid() {
 	            onRowClicked={handleRowClicked}
             onRowDoubleClicked={handleRowDoubleClicked}
             getRowClass={getRowClass}
+            onFirstDataRendered={handleGridDataUpdated}
+            onRowDataUpdated={handleGridDataUpdated}
 	          />
 
 	        </div>
@@ -2651,6 +2627,8 @@ export default function MonitoringGrid() {
                       onRowClicked={handleRowClicked}
                       onRowDoubleClicked={handleRowDoubleClicked}
                       getRowClass={getRowClass}
+                      onFirstDataRendered={handleGridDataUpdated}
+                      onRowDataUpdated={handleGridDataUpdated}
                     />
                   </div>
                 )}

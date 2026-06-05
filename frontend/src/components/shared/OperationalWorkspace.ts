@@ -106,7 +106,8 @@ export const MONITORING_WORKSPACE_STANDARD: WorkspaceDefinition = {
 
 export const OPERATIONAL_WORKSPACE_MINIMUM_STANDARD = [
   'Shared page header and toolbar shell',
-  'Shared table/workspace state model for search, filters, views, and selection',
+  'Shared table/workspace state model for search, filters, views, selection, and column layout persistence',
+  'Shared operational grid sizing helpers for dynamic default widths and explicit saved/manual widths',
   'Shared add/edit modal shell with sticky identity, tabs, validation, and footer actions',
   'Per-view adapter contract for schema, actions, validation rules, and linked selectors',
 ] as const

@@ -17,6 +17,7 @@ import { toast } from 'react-hot-toast'
 import { formatAppDate } from '../utils/dateUtils'
 import { BulkImportModal } from './shared/BulkImportModal'
 import { ConfirmationModal } from './shared/ConfirmationModal'
+import { OPERATIONAL_GRID_AUTO_SIZE_STRATEGY } from './shared/OperationalGridSizing'
 import { StyledSelect } from './shared/StyledSelect'
 import { StatusPill } from './shared/StatusPill'
 import { ConfigRegistryModal } from './ConfigRegistry'
@@ -541,9 +542,7 @@ export default function FAR() {
     }
   ], [fontSize, hiddenColumns, bulkMutation]) as any
 
-  const autoSizeStrategy = useMemo(() => ({
-    type: 'fitCellContents' as const
-  }), []);
+  const autoSizeStrategy = OPERATIONAL_GRID_AUTO_SIZE_STRATEGY
 
   // Advanced Metrics Calculation
   const metrics = useMemo(() => {

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { applyOperationalColumnState, getOperationalColumnLayoutSnapshot } from './OperationalGridSizing'
 
 export function usePersistentJsonState<T>(
   storageKey: string,
@@ -73,4 +74,53 @@ export function useWorkspaceDismissHandlers({
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [active, onDismiss, shouldDismiss])
+}
+
+export function useOperationalGridLayout(
+  initialLayout: any[],
+  hasSavedViewWidths: boolean
+) {
+  const [columnLayoutState, setColumnLayoutState] = useState<any[]>(initialLayout)
+  const [hasManualColumnWidths, setHasManualColumnWidths] = useState(false)
+
+  const preserveExplicitColumnWidths = Boolean((hasSavedViewWidths || hasManualColumnWidths) && columnLayoutState.length)
+
+  const syncColumnLayoutState = useCallback((api: any, preserveWidths: boolean = preserveExplicitColumnWidths) => {
+    const nextLayout = getOperationalColumnLayoutSnapshot(api, preserveWidths)
+    if (!nextLayout.length) return
+    setColumnLayoutState(nextLayout)
+  }, [preserveExplicitColumnWidths])
+
+  const applyColumnLayoutState = useCallback((
+    api: any,
+    layout: any[] = columnLayoutState,
+    preserveWidths: boolean = preserveExplicitColumnWidths
+  ) => {
+    applyOperationalColumnState(api, layout, preserveWidths)
+  }, [columnLayoutState, preserveExplicitColumnWidths])
+
+  const handleColumnResized = useCallback((event: any) => {
+    if (!event.finished) return
+    if (event.source === 'uiColumnDragged' || event.source === 'uiColumnResized') {
+      setHasManualColumnWidths(true)
+      syncColumnLayoutState(event.api, true)
+      return
+    }
+    syncColumnLayoutState(event.api, false)
+  }, [syncColumnLayoutState])
+
+  const setTransientManualColumnWidths = useCallback((value: boolean) => {
+    setHasManualColumnWidths(value)
+  }, [])
+
+  return {
+    columnLayoutState,
+    setColumnLayoutState,
+    hasManualColumnWidths,
+    setTransientManualColumnWidths,
+    preserveExplicitColumnWidths,
+    syncColumnLayoutState,
+    applyColumnLayoutState,
+    handleColumnResized,
+  }
 }

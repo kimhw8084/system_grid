@@ -9,6 +9,7 @@ import { apiFetch } from "../api/apiClient"
 import { BulkImportModal } from "./shared/BulkImportModal"
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
+import { OPERATIONAL_GRID_AUTO_SIZE_STRATEGY } from './shared/OperationalGridSizing'
 import { StyledSelect } from "./shared/StyledSelect"
 
 const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v: any) => void, onError?: (err: string | null) => void }) => {
@@ -485,9 +486,7 @@ export default function ServiceRegistry() {
     }
   ], [selectedIds, activeTab, fontSize, hiddenColumns]) as any
 
-  const autoSizeStrategy = useMemo(() => ({
-    type: 'fitCellContents' as const
-  }), []);
+  const autoSizeStrategy = OPERATIONAL_GRID_AUTO_SIZE_STRATEGY
 
   return (
     <div className="h-full flex flex-col space-y-4">

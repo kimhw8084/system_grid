@@ -13,6 +13,7 @@ import { apiFetch } from "../api/apiClient"
 import { StyledSelect } from "./shared/StyledSelect"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { ConfigRegistryModal } from "./ConfigRegistry"
+import { OPERATIONAL_GRID_AUTO_SIZE_STRATEGY } from './shared/OperationalGridSizing'
 
 // --- Sub-components ---
 
@@ -1269,9 +1270,7 @@ export default function External() {
     }
   ], [fontSize, hiddenColumns, activeTab]) as any
 
-  const autoSizeStrategy = useMemo(() => ({
-    type: 'fitCellContents' as const
-  }), []);
+  const autoSizeStrategy = OPERATIONAL_GRID_AUTO_SIZE_STRATEGY
 
   return (
     <div className="h-full flex flex-col space-y-4">

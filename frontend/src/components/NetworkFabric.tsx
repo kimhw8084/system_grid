@@ -11,6 +11,7 @@ import { apiFetch } from "../api/apiClient"
 import { BulkImportModal } from "./shared/BulkImportModal"
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
+import { OPERATIONAL_GRID_AUTO_SIZE_STRATEGY } from './shared/OperationalGridSizing'
 import { StyledSelect } from "./shared/StyledSelect"
 import { ConnectionForensicsModal } from "./shared/ConnectionForensicsModal"
 
@@ -62,9 +63,7 @@ export default function NetworkFabric() {
     if (target) setViewingLink(target)
   }, [idParam, connections])
 
-  const autoSizeStrategy = useMemo(() => ({
-    type: 'fitCellContents' as const
-  }), []);
+  const autoSizeStrategy = OPERATIONAL_GRID_AUTO_SIZE_STRATEGY
 
   useEffect(() => {
     if (gridRef.current?.api) {
