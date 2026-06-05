@@ -6,7 +6,7 @@ test.describe('App shell and global search', () => {
     await resetBrowserState(page)
 
     await page.goto('/')
-    await expect(page.getByText('Command Center')).toBeVisible()
+    await expect(page.getByText('Global Stability Index')).toBeVisible()
     await expect(page.getByText(/Cockpit/).first()).toBeVisible()
 
     await page.getByRole('button', { name: /Feature Audit/i }).click()

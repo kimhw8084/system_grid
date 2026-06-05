@@ -78,6 +78,9 @@ async def test_monitoring_matrix_flow(client):
     assert dev_res.status_code == 200, dev_res.text
     dev_id = dev_res.json()["id"]
 
+    # Create a team to satisfy monitoring ownership requirement
+    await client.post("/api/v1/settings/teams", json={"name": "Infrastructure"})
+
     payload = {
         "device_id": dev_id,
         "category": "Hardware",
@@ -85,7 +88,8 @@ async def test_monitoring_matrix_flow(client):
         "title": "CPU Thermal Monitoring",
         "platform": "Zabbix",
         "purpose": "Prevent overheating",
-        "notification_method": "Slack"
+        "notification_method": "Slack",
+        "owner_team": "Infrastructure"
     }
     post_res = await client.post("/api/v1/monitoring", json=payload)
     assert post_res.status_code == 200

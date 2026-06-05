@@ -41,6 +41,9 @@ async def test_cross_module_asset_context_flows(client: AsyncClient):
     assert knowledge_res.status_code == 200, knowledge_res.text
     knowledge = knowledge_res.json()
 
+    # Create a team to satisfy monitoring ownership requirement
+    await client.post("/api/v1/settings/teams", json={"name": "Infrastructure"})
+    
     monitoring_res = await client.post("/api/v1/monitoring", json={
         "device_id": device["id"],
         "category": "Hardware",
@@ -51,7 +54,8 @@ async def test_cross_module_asset_context_flows(client: AsyncClient):
         "impact": "Service degradation",
         "notification_method": "Slack",
         "severity": "Critical",
-        "recovery_docs": [knowledge["id"]]
+        "recovery_docs": [knowledge["id"]],
+        "owner_team": "Infrastructure"
     })
     assert monitoring_res.status_code == 200, monitoring_res.text
     monitoring = monitoring_res.json()
@@ -127,6 +131,9 @@ async def test_dashboard_search_returns_new_cross_module_entities(client: AsyncC
     })
     assert knowledge_res.status_code == 200
 
+    # Create a team to satisfy monitoring ownership requirement
+    await client.post("/api/v1/settings/teams", json={"name": "Infrastructure"})
+
     monitoring_res = await client.post("/api/v1/monitoring", json={
         "device_id": device["id"],
         "category": "Application",
@@ -134,7 +141,8 @@ async def test_dashboard_search_returns_new_cross_module_entities(client: AsyncC
         "title": "SEARCH-MON-01",
         "platform": "Datadog",
         "purpose": "Search coverage",
-        "notification_method": "Email"
+        "notification_method": "Email",
+        "owner_team": "Infrastructure"
     })
     assert monitoring_res.status_code == 200
 

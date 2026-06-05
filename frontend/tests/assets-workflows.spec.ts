@@ -7,7 +7,7 @@ test.describe('Assets workflows', () => {
     const { stamp, systemName, primary, secondary, monitoring, far } = await seedOperationalScenario(request)
 
     await page.goto('/asset')
-    await expect(page.getByRole('heading', { name: 'Assets' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Global Registry' })).toBeVisible()
     await page.getByPlaceholder('Search assets...').fill(primary.name)
     await expect(page.locator('[role="treegrid"]')).toContainText(primary.name, { timeout: 15_000 })
 
