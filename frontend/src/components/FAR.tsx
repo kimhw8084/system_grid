@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
 import { toast } from 'react-hot-toast'
+import { formatAppDate } from '../utils/dateUtils'
 import { BulkImportModal } from './shared/BulkImportModal'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
@@ -772,7 +773,7 @@ export default function FAR() {
                              <div className="text-[11px] font-bold text-slate-200 uppercase group-hover:text-white transition-colors leading-tight">{r.title}</div>
                           </td>
                           <td className="py-4 px-4 text-[10px] font-bold text-slate-400 uppercase tracking-tight">
-                             {r.occurrence_at ? new Date(r.occurrence_at).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : 'N/A'}
+                             {r.occurrence_at ? formatAppDate(r.occurrence_at, {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'}) : 'N/A'}
                           </td>
                           <td className="py-4 px-4">
                              <div className="text-[10px] font-bold text-blue-400/70 group-hover:text-blue-400 uppercase tracking-widest truncate max-w-[120px]">

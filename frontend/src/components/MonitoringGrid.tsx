@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from "ag-grid-react"
 import toast from 'react-hot-toast'
 import { apiFetch } from '../api/apiClient'
+import { formatAppDate, formatAppTime, formatAppDay } from '../utils/dateUtils'
 import { AppDropdown } from './shared/AppDropdown'
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
@@ -2816,8 +2817,8 @@ function CompareMonitorsModal({ items, onClose }: any) {
     { label: 'Owners', getValue: (item: any) => (item.owners || []).map((owner: any) => owner.name).join(', ') || 'None' },
     { label: 'Recovery', getValue: (item: any) => item.recovery_doc_titles?.join(', ') || 'None linked' },
     { label: 'Purpose', getValue: (item: any) => item.purpose || 'No purpose documented', multiline: true },
-    { label: 'Created', getValue: (item: any) => item.created_at ? new Date(item.created_at).toLocaleString() : 'N/A' },
-    { label: 'Updated', getValue: (item: any) => item.updated_at ? new Date(item.updated_at).toLocaleString() : 'N/A' },
+    { label: 'Created', getValue: (item: any) => formatAppDate(item.created_at) },
+    { label: 'Updated', getValue: (item: any) => formatAppDate(item.updated_at) },
   ], [])
 
   const diffMap = useMemo(() => {
@@ -3624,7 +3625,7 @@ function MonitoringAssetField({
                 onChange={(value) => setSystemFilter(value)}
                 options={[{ value: 'all', label: 'All Systems' }, ...systems.map((system) => ({ value: system, label: system }))]}
                 placeholder="All Systems"
-              />
+                />
               <div className="space-y-1.5">
                 <FieldLabel label="Search Asset" />
                 <input
@@ -4804,7 +4805,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                         <div className="flex items-center justify-between mb-2">
                            <span className={`text-[11px] font-black tracking-tighter ${isSelected ? 'text-white' : 'text-blue-400'}`}>v{h.version}</span>
                            <span className={`text-[9px] font-bold ${isSelected ? 'text-white/60' : 'text-slate-500'}`}>
-                              {new Date(h.created_at).toLocaleDateString()}
+                              {formatAppDay(h.created_at)}
                            </span>
                         </div>
                         <p className={`text-[10px] font-bold leading-tight line-clamp-2 ${isSelected ? 'text-white/90' : 'text-slate-300'}`}>
@@ -4813,7 +4814,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                         <div className="mt-2 flex items-center space-x-2">
                            <Clock size={10} className={isSelected ? 'text-white/40' : 'text-slate-600'} />
                            <span className={`text-[8px] font-semibold ${isSelected ? 'text-white/40' : 'text-slate-600'}`}>
-                              {new Date(h.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {formatAppTime(h.created_at)}
                            </span>
                         </div>
                       </button>

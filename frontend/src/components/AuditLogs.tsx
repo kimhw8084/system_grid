@@ -7,6 +7,7 @@ import { apiFetch } from '../api/apiClient'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PageHeader, PageToolbar, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
+import { formatAppDate, formatAppTime, formatAppDay } from '../utils/dateUtils'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 
@@ -102,7 +103,7 @@ export default function AuditLogs() {
       cellRenderer: (p: any) => p.value ? (
         <div className="flex items-center gap-2">
            <Clock size={12} className="opacity-40" />
-           <span>{new Date(p.value).toLocaleString()}</span>
+           <span>{formatAppDate(p.value)}</span>
         </div>
       ) : <span className="text-slate-500 font-bold uppercase">N/A</span> 
     },

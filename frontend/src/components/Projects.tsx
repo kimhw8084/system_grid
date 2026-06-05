@@ -20,6 +20,7 @@ import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
 import { StatusPill } from './shared/StatusPill'
 import { ConfigRegistryModal } from './ConfigRegistry'
+import { parseAppDate } from '../utils/dateUtils'
 import { format, differenceInDays, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, eachWeekOfInterval, eachMonthOfInterval } from 'date-fns'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import ReactFlow, { 
@@ -2418,7 +2419,7 @@ const ProjectActivityStream = ({ project, allProjects = [] }: any) => {
                           </>
                         )}
                      </div>
-                     <span className="text-[9px] font-bold text-slate-700 uppercase">{format(new Date(item.timestamp || item.created_at), 'MMM dd, yyyy HH:mm:ss')}</span>
+                     <span className="text-[9px] font-bold text-slate-700 uppercase">{format(parseAppDate(item.timestamp || item.created_at)!, 'MMM dd, yyyy HH:mm:ss')}</span>
                   </div>
                   
                   <div className="bg-black/20 p-4 rounded-lg border border-white/5">

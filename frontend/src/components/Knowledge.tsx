@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
 import { toast } from 'react-hot-toast'
+import { formatAppDate } from '../utils/dateUtils'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
 
@@ -1931,7 +1932,7 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, onQuickUpdate, con
                    </span>
                    <span className="text-slate-700 font-black tracking-widest">{" >> "}</span>
                    <span className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-2 tracking-widest">
-                     <History size={14}/> LAST_SYNC: {new Date(entry.updated_at).toLocaleString()}
+                     <History size={14}/> LAST_SYNC: {formatAppDate(entry.updated_at)}
                    </span>
                 </div>
                 <h1 className="text-6xl font-black uppercase tracking-tighter text-white leading-[0.9] max-w-5xl">
@@ -2911,7 +2912,7 @@ function QANode({ qa, onReply, onVerify }: any) {
                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-[0.2em]">{qa.author_team}</span>
                    {qa.is_verified && <span className="text-[8px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded">VERIFIED_DRI</span>}
                 </div>
-                <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{new Date(qa.created_at).toLocaleString()}</span>
+                <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{formatAppDate(qa.created_at)}</span>
              </div>
              <div className={`p-6 rounded-[32px] border border-white/5 shadow-xl relative group-hover:border-blue-500/30 transition-all ${
                qa.entry_type === 'Answer' ? 'bg-emerald-600/5' : 'bg-slate-900/50'

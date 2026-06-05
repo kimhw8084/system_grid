@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
 import { useNavigate, Link } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
+import { formatAppDate, formatAppTime, formatAppDay } from '../utils/dateUtils'
 
 const StatCard = ({ title, total, metrics, icon: Icon, color, onClick, delay = 0 }: any) => {
   const navigate = useNavigate();
@@ -153,7 +154,7 @@ const ProjectSection = ({ title, projects = [], color, delay }: any) => (
         <Link key={p.id} to={`/projects?id=${p.id}`} className="block p-3.5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.05] transition-all group/item shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-slate-200 uppercase truncate group-hover/item:text-blue-400">{p.title}</span>
-            <span className="text-[9px] font-bold text-slate-600 uppercase shrink-0">{new Date(p.updated_at).toLocaleDateString()}</span>
+            <span className="text-[9px] font-bold text-slate-600 uppercase shrink-0">{formatAppDay(p.updated_at)}</span>
           </div>
         </Link>
       )) : (

@@ -14,6 +14,7 @@ import { motion, AnimatePresence, Reorder } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
 import { AgGridReact } from 'ag-grid-react'
 import { toast } from 'react-hot-toast'
+import { formatAppDate } from '../utils/dateUtils'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
 import { StatusPill } from './shared/StatusPill'
@@ -2299,7 +2300,7 @@ function IntelligenceStream({ logs, compact = false }: any) {
              <div className="flex-1 pb-6">
                 <div className="flex items-center gap-3 mb-2">
                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">{log.entry_type}</span>
-                   <span className="text-[9px] font-bold text-slate-600 uppercase">{new Date(log.timestamp).toLocaleString()}</span>
+                   <span className="text-[9px] font-bold text-slate-600 uppercase">{formatAppDate(log.timestamp)}</span>
                    <span className="text-[9px] font-bold text-blue-400/70 uppercase">BY: {log.poc || 'SYSTEM'}</span>
                 </div>
                 <div className="bg-white/5 border border-white/5 rounded-lg p-4 group-hover:bg-white/[0.08] transition-all">
@@ -2395,7 +2396,7 @@ function MitigationTab({ formData, setFormData, isEditing }: any) {
                       <p className={`text-[8px] font-bold uppercase mt-1.5 ${log.status === 'Completed' ? 'text-emerald-400' : 'text-amber-400'}`}>{log.status}</p>
                    </div>
                    <div className="space-y-1">
-                     <p className="text-xs font-black text-slate-200">{log.description}</p>                      <p className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">{new Date(log.timestamp).toLocaleString()}</p>
+                     <p className="text-xs font-black text-slate-200">{log.description}</p>                      <p className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">{formatAppDate(log.timestamp)}</p>
                    </div>
                 </div>
                 {isEditing && (

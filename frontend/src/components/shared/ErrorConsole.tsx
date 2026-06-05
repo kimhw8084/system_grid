@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Terminal, AlertTriangle, Bug, Clock, Search, Trash2, ChevronRight, ChevronDown, Copy, ShieldAlert, TerminalSquare, Filter, Database, Cpu, CheckCircle2, History, Activity, Globe } from 'lucide-react'
 import { useErrors, SysError } from '../../stores/errorStore'
+import { formatAppDate, formatAppTime } from '../../utils/dateUtils'
 import { toast } from 'react-hot-toast'
 
 export function ErrorConsole() {
@@ -193,7 +194,7 @@ export function ErrorConsole() {
 
                      <div className="grid grid-cols-4 gap-4">
                         {[
-                           { label: 'Time of Failure', val: new Date(selectedError.timestamp).toLocaleString(), icon: Clock },
+                           { label: 'Time of Failure', val: formatAppDate(selectedError.timestamp), icon: Clock },
                            { label: 'Fault Domain', val: selectedError.type, icon: Database },
                            { label: 'Severity Level', val: selectedError.severity, icon: ShieldAlert },
                            { label: 'Execution Path', val: selectedError.view || '/', icon: TerminalSquare }
