@@ -4035,7 +4035,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
           <WorkspaceStickyIdentityBar>
             <div className="space-y-4">
               <div className="grid grid-cols-12 gap-4">
-                <div id="monitoring-header-title" className="col-span-12 xl:col-span-5 space-y-2">
+                <div id="monitoring-header-title" className="col-span-12 space-y-2">
                   <FieldLabel label="Title" required />
                   <input
                     value={formData.title}
@@ -4045,7 +4045,9 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                   />
                   <FieldError message={formErrors.title} />
                 </div>
-                <div className="col-span-12 sm:col-span-4 xl:col-span-2">
+              </div>
+              <div className="grid grid-cols-12 gap-4">
+                <div className="col-span-12 sm:col-span-6 lg:col-span-3">
                   <MonitoringSelectField
                     label="Status"
                     required
@@ -4055,7 +4057,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                     error={formErrors.status}
                   />
                 </div>
-                <div className="col-span-12 sm:col-span-4 xl:col-span-2">
+                <div className="col-span-12 sm:col-span-6 lg:col-span-3">
                   <MonitoringSelectField
                     label="Severity"
                     required
@@ -4065,21 +4067,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                     error={formErrors.severity}
                   />
                 </div>
-                <div className="col-span-12 sm:col-span-4 xl:col-span-3">
-                  <MonitoringSelectField
-                    label="Platform"
-                    required
-                    value={formData.platform}
-                    onChange={(value) => setFormData({ ...formData, platform: value })}
-                    options={(platforms || []).map((platform: any) => ({ value: platform.value, label: platform.label }))}
-                    placeholder="Select platform"
-                    error={formErrors.platform}
-                    searchable
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-12 gap-4">
-                <div className="col-span-12 lg:col-span-3">
+                <div className="col-span-12 sm:col-span-6 lg:col-span-3">
                   <MonitoringSelectField
                     label="Category"
                     required
@@ -4089,11 +4077,16 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                     error={formErrors.category}
                   />
                 </div>
-                <div className="col-span-12 lg:col-span-5">
-                  <MonitoringAssetField
-                    devices={devices || []}
-                    deviceId={formData.device_id}
-                    onChange={(deviceId) => setFormData({ ...formData, device_id: deviceId, monitored_services: [] })}
+                <div className="col-span-12 sm:col-span-6 lg:col-span-3">
+                  <MonitoringSelectField
+                    label="Platform"
+                    required
+                    value={formData.platform}
+                    onChange={(value) => setFormData({ ...formData, platform: value })}
+                    options={(platforms || []).map((platform: any) => ({ value: platform.value, label: platform.label }))}
+                    placeholder="Select platform"
+                    error={formErrors.platform}
+                    searchable
                   />
                 </div>
               </div>
@@ -4116,58 +4109,85 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                       />
                       {!collapsedSections.target && <div className="mt-4 space-y-4">
                         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-                          <div className="space-y-2 rounded-lg border border-white/10 bg-black/20 p-4">
+                          <div className="space-y-4 rounded-lg border border-white/10 bg-black/20 p-4">
                             <div className="flex items-center justify-between">
                               <div>
                                 <PanelTitle>Registry asset and service scope</PanelTitle>
-                                <PanelSubtitle>Keep the linked asset and covered services together.</PanelSubtitle>
+                                <PanelSubtitle>Link a registry asset and select the services covered by this monitor.</PanelSubtitle>
                               </div>
                               <span className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[9px] font-semibold text-blue-300">
                                 {formData.monitored_services?.length || 0} linked
                               </span>
                             </div>
-                            {formData.device_id ? (
-                              <div className="flex flex-wrap gap-1.5">
-                                {deviceServices?.map((svc: any) => (
-                                  <button
-                                    key={svc.id}
-                                    type="button"
-                                    onClick={() => toggleService(svc.id)}
-                                    className={`rounded-lg border px-2.5 py-1.5 text-[9px] font-semibold transition-all ${
-                                      formData.monitored_services?.includes(svc.id)
-                                        ? 'border-blue-500/40 bg-blue-500/12 text-blue-200'
-                                        : 'border-white/10 bg-slate-950/60 text-slate-400 hover:border-white/20 hover:text-slate-200'
-                                    }`}
-                                  >
-                                    {svc.name}
-                                  </button>
-                                ))}
-                              </div>
-                            ) : (
-                              <WorkspaceEmptyState
-                                compact
-                                title="Choose an asset first"
-                                description="Asset-linked services appear here after a registry asset is selected."
+
+                            <div className="space-y-4">
+                              <MonitoringAssetField
+                                devices={devices || []}
+                                deviceId={formData.device_id}
+                                onChange={(deviceId) => setFormData({ ...formData, device_id: deviceId, monitored_services: [] })}
                               />
-                            )}
+
+                              {formData.device_id ? (
+                                <div className="space-y-2">
+                                  <FieldLabel label="Service Coverage" />
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {deviceServices?.map((svc: any) => (
+                                      <button
+                                        key={svc.id}
+                                        type="button"
+                                        onClick={() => toggleService(svc.id)}
+                                        className={`rounded-lg border px-2.5 py-1.5 text-[9px] font-semibold transition-all ${
+                                          formData.monitored_services?.includes(svc.id)
+                                            ? 'border-blue-500/40 bg-blue-500/12 text-blue-200'
+                                            : 'border-white/10 bg-slate-950/60 text-slate-400 hover:border-white/20 hover:text-slate-200'
+                                        }`}
+                                      >
+                                        {svc.name}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : (
+                                <WorkspaceEmptyState
+                                  compact
+                                  title="Choose an asset first"
+                                  description="Asset-linked services appear here after a registry asset is selected."
+                                />
+                              )}
+                            </div>
                           </div>
 
-                          <div className="space-y-1.5">
-                            <FieldLabel label="Monitoring URL" />
-                            <div className="relative">
-                              <Globe size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                              <input
-                                value={formData.monitoring_url}
-                                onChange={e => setFormData({ ...formData, monitoring_url: e.target.value })}
-                                placeholder="https://console.internal/..."
-                                className={`${monitoringInputClass(formErrors.monitoring_url)} pl-9 text-blue-300`}
-                              />
+                          <div className="space-y-4">
+                            <div className="space-y-1.5">
+                              <FieldLabel label="Monitoring URL" />
+                              <div className="relative">
+                                <Globe size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                                <input
+                                  value={formData.monitoring_url}
+                                  onChange={e => setFormData({ ...formData, monitoring_url: e.target.value })}
+                                  placeholder="https://console.internal/..."
+                                  className={`${monitoringInputClass(formErrors.monitoring_url)} pl-9 text-blue-300`}
+                                />
+                              </div>
+                              <FieldError message={formErrors.monitoring_url} />
                             </div>
-                            <FieldError message={formErrors.monitoring_url} />
+
                             <div className="rounded-lg border border-white/10 bg-black/20 p-4">
-                              <p className="text-[9px] font-semibold text-slate-500">Linked asset</p>
-                              <p className="mt-1 text-[11px] font-semibold text-slate-100">{selectedDevice?.name || 'No asset linked'}</p>
-                              <p className="mt-1 text-[9px] font-semibold text-slate-500">{selectedDevice?.system || 'No system available'}</p>
+                              <h4 className="text-[10px] font-semibold text-slate-500 mb-2">Scope Summary</h4>
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[9px] text-slate-500 uppercase font-bold">Primary Asset</span>
+                                  <span className="text-[11px] font-semibold text-slate-100">{selectedDevice?.name || 'Unlinked'}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[9px] text-slate-500 uppercase font-bold">System</span>
+                                  <span className="text-[11px] font-semibold text-slate-100">{selectedDevice?.system || 'Unlinked'}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[9px] text-slate-500 uppercase font-bold">Platform</span>
+                                  <span className="text-[11px] font-semibold text-blue-400">{formData.platform}</span>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
