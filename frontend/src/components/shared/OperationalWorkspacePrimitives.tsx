@@ -229,15 +229,36 @@ export function WorkspaceSplitView({
   sidebar,
   main,
   className = '',
+  side = 'left',
 }: {
-  sidebar: React.ReactNode
+  sidebar?: React.ReactNode
   main: React.ReactNode
   className?: string
+  side?: 'left' | 'right'
 }) {
+  if (!sidebar) {
+    return <div className={join('w-full', className)}>{main}</div>
+  }
+
   return (
-    <div className={join('grid grid-cols-1 gap-6 xl:grid-cols-[320px_minmax(0,1fr)]', className)}>
-      <div className="min-h-0">{sidebar}</div>
-      <div className="min-h-0">{main}</div>
+    <div
+      className={join(
+        'grid grid-cols-1 gap-6',
+        side === 'left' ? 'xl:grid-cols-[320px_minmax(0,1fr)]' : 'xl:grid-cols-[minmax(0,1fr)_320px]',
+        className,
+      )}
+    >
+      {side === 'left' ? (
+        <>
+          <div className="min-h-0">{sidebar}</div>
+          <div className="min-h-0">{main}</div>
+        </>
+      ) : (
+        <>
+          <div className="min-h-0">{main}</div>
+          <div className="min-h-0">{sidebar}</div>
+        </>
+      )}
     </div>
   )
 }

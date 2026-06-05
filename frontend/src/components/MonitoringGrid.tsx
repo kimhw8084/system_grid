@@ -4101,601 +4101,525 @@ export function MonitoringForm({ item, devices, categories, severities, platform
           </WorkspaceStickyIdentityBar>
           <WorkspaceValidationBanner message={generalError} />
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="min-w-0">
-              {activeTab === 'context' ? (
-                <div id="monitoring-context-root" className="space-y-5 p-2">
-                  <WorkspaceSectionCard id="monitoring-target-card">
-                    <WorkspaceCollapsibleHeader
-                      title="Target identity"
-                      subtitle="Define scope, secure console access, and linked service coverage."
-                      badge={<WorkspaceSectionBadge>Asset + scope</WorkspaceSectionBadge>}
-                      collapsed={collapsedSections.target}
-                      onToggle={() => toggleSection('target')}
-                    />
-                    {!collapsedSections.target && <div className="mt-4 space-y-4">
-                      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-                        <div className="space-y-2 rounded-lg border border-white/10 bg-black/20 p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <PanelTitle>Registry asset and service scope</PanelTitle>
-                              <PanelSubtitle>Keep the linked asset and covered services together.</PanelSubtitle>
-                            </div>
-                            <span className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[9px] font-semibold text-blue-300">
-                              {formData.monitored_services?.length || 0} linked
-                            </span>
-                          </div>
-                          {formData.device_id ? (
-                            <div className="flex flex-wrap gap-1.5">
-                              {deviceServices?.map((svc: any) => (
-                                <button
-                                  key={svc.id}
-                                  type="button"
-                                  onClick={() => toggleService(svc.id)}
-                                  className={`rounded-lg border px-2.5 py-1.5 text-[9px] font-semibold transition-all ${
-                                    formData.monitored_services?.includes(svc.id)
-                                      ? 'border-blue-500/40 bg-blue-500/12 text-blue-200'
-                                      : 'border-white/10 bg-slate-950/60 text-slate-400 hover:border-white/20 hover:text-slate-200'
-                                  }`}
-                                >
-                                  {svc.name}
-                                </button>
-                              ))}
-                            </div>
-                          ) : (
-                            <WorkspaceEmptyState
-                              compact
-                              title="Choose an asset first"
-                              description="Asset-linked services appear here after a registry asset is selected."
-                            />
-                          )}
-                        </div>
-                        <div className="space-y-1.5">
-                          <FieldLabel label="Monitoring URL" />
-                          <div className="relative">
-                            <Globe size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                            <input
-                              value={formData.monitoring_url}
-                              onChange={e => setFormData({ ...formData, monitoring_url: e.target.value })}
-                              placeholder="https://console.internal/..."
-                              className={`${monitoringInputClass(formErrors.monitoring_url)} pl-9 text-blue-300`}
-                            />
-                          </div>
-                          <FieldError message={formErrors.monitoring_url} />
-                          <div className="rounded-lg border border-white/10 bg-black/20 p-4">
-                            <p className="text-[9px] font-semibold text-slate-500">Linked asset</p>
-                            <p className="mt-1 text-[11px] font-semibold text-slate-100">{selectedDevice?.name || 'No asset linked'}</p>
-                            <p className="mt-1 text-[9px] font-semibold text-slate-500">{selectedDevice?.system || 'No system available'}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>}
-                  </WorkspaceSectionCard>
-
-                  <WorkspaceSectionCard>
-                    <WorkspaceCollapsibleHeader
-                      title="Operational purpose"
-                      subtitle="Document why the monitor exists and what the alert means."
-                      collapsed={collapsedSections.context}
-                      onToggle={() => toggleSection('context')}
-                    />
-                    {!collapsedSections.context && <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <FieldLabel label="Purpose" />
-                        <textarea
-                          value={formData.purpose}
-                          onChange={e => setFormData({ ...formData, purpose: e.target.value })}
-                          placeholder="Why are we monitoring this?"
-                          rows={5}
-                          className={`${monitoringInputClass()} resize-none text-[10px]`}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <FieldLabel label="Impact" />
-                        <textarea
-                          value={formData.impact}
-                          onChange={e => setFormData({ ...formData, impact: e.target.value })}
-                          placeholder="What happens when this monitor triggers?"
-                          rows={5}
-                          className={`${monitoringInputClass()} resize-none text-[10px]`}
-                        />
-                      </div>
-                    </div>}
-                  </WorkspaceSectionCard>
-
-                  <WorkspaceSectionCard id="monitoring-ownership-card">
-                    <WorkspaceCollapsibleHeader
-                      title="Ownership"
-                      subtitle="Choose a team owner or named operators."
-                      badge={<WorkspaceSectionBadge tone="blue">{ownershipMode === 'team' ? 'Team owner' : 'Individual owners'}</WorkspaceSectionBadge>}
-                      collapsed={collapsedSections.ownership}
-                      onToggle={() => toggleSection('ownership')}
-                    />
-                    {!collapsedSections.ownership && <>
-                      <div className="mt-4 grid grid-cols-2 gap-2 rounded-lg border border-white/10 bg-black/30 p-1">
-                        {[
-                          { id: 'team', label: 'Team owner' },
-                          { id: 'individual', label: 'Individual owners' }
-                        ].map((mode) => (
-                          <button
-                            key={mode.id}
-                            type="button"
-                            onClick={() => setOwnershipModeAndNormalize(mode.id as 'team' | 'individual')}
-                            className={`rounded-lg px-3 py-2 text-[10px] font-semibold transition-all ${
-                              ownershipMode === mode.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-200'
-                            }`}
-                          >
-                            {mode.label}
-                          </button>
-                        ))}
-                      </div>
-                      <FieldError message={formErrors.ownership} />
-                      <div className="mt-4">
-                        {ownershipMode === 'team' ? (
-                          <div className="space-y-3">
-                            <MonitoringSelectField
-                              label="Owner Team"
-                              required
-                              value={formData.owner_team}
-                              onChange={(value) => setFormData({ ...formData, owner_team: value, owners: [] })}
-                              options={(teams || []).map((team: MonitoringTeamOption) => ({
-                                value: team.name,
-                                label: team.name,
-                                description: `${team.operators?.length || 0} members`
-                              }))}
-                              placeholder="Select team"
-                              error={formErrors.owner_team}
-                              searchable
-                            />
-                            {selectedTeam && (
-                              <div className="rounded-lg border border-white/10 bg-black/20 p-4">
-                                <p className="text-[11px] font-semibold text-slate-100">{selectedTeam.name}</p>
-                                <p className="mt-1 text-[9px] font-semibold text-slate-500">
-                                  {(selectedTeam.operators?.length || 0)} synced or managed operators · {selectedTeam.source || 'manual'}
-                                </p>
+          <WorkspaceSplitView
+            main={
+              <div className="min-w-0">
+                {activeTab === 'context' ? (
+                  <div id="monitoring-context-root" className="space-y-5 p-2">
+                    <WorkspaceSectionCard id="monitoring-target-card">
+                      <WorkspaceCollapsibleHeader
+                        title="Target identity"
+                        subtitle="Define scope, secure console access, and linked service coverage."
+                        badge={<WorkspaceSectionBadge>Asset + scope</WorkspaceSectionBadge>}
+                        collapsed={collapsedSections.target}
+                        onToggle={() => toggleSection('target')}
+                      />
+                      {!collapsedSections.target && <div className="mt-4 space-y-4">
+                        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+                          <div className="space-y-2 rounded-lg border border-white/10 bg-black/20 p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <PanelTitle>Registry asset and service scope</PanelTitle>
+                                <PanelSubtitle>Keep the linked asset and covered services together.</PanelSubtitle>
                               </div>
+                              <span className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[9px] font-semibold text-blue-300">
+                                {formData.monitored_services?.length || 0} linked
+                              </span>
+                            </div>
+                            {formData.device_id ? (
+                              <div className="flex flex-wrap gap-1.5">
+                                {deviceServices?.map((svc: any) => (
+                                  <button
+                                    key={svc.id}
+                                    type="button"
+                                    onClick={() => toggleService(svc.id)}
+                                    className={`rounded-lg border px-2.5 py-1.5 text-[9px] font-semibold transition-all ${
+                                      formData.monitored_services?.includes(svc.id)
+                                        ? 'border-blue-500/40 bg-blue-500/12 text-blue-200'
+                                        : 'border-white/10 bg-slate-950/60 text-slate-400 hover:border-white/20 hover:text-slate-200'
+                                    }`}
+                                  >
+                                    {svc.name}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <WorkspaceEmptyState
+                                compact
+                                title="Choose an asset first"
+                                description="Asset-linked services appear here after a registry asset is selected."
+                              />
                             )}
                           </div>
-                        ) : (
-                          <div className="space-y-3">
-                            <div className="grid grid-cols-12 gap-3 items-end">
-                              <div className="col-span-12 md:col-span-5">
-                                <MonitoringSelectField
-                                  label="Operator"
-                                  required
-                                  value={newOwner.operator_id}
-                                  onChange={(value) => setNewOwner({ ...newOwner, operator_id: value })}
-                                  options={(operators as OperatorRecord[]).map((operator) => ({
-                                    value: String(operator.id),
-                                    label: operator.full_name || operator.username || operator.external_id,
-                                    description: `${operator.team || 'No team'}`
-                                  }))}
-                                  placeholder="Select operator"
-                                  error={formErrors.owners}
-                                  searchable
-                                />
-                              </div>
-                              <div className="col-span-12 md:col-span-5">
-                                <MonitoringSelectField
-                                  label="Role"
-                                  value={newOwner.role}
-                                  onChange={(value) => setNewOwner({ ...newOwner, role: value })}
-                                  options={ownerRoles.map((r: any) => ({ value: r.value, label: r.label }))}
-                                />
-                              </div>
-                              <div className="col-span-12 md:col-span-2">
-                                <button
-                                  type="button"
-                                  onClick={addOwner}
-                                  className="w-full rounded-lg border border-blue-500/30 bg-blue-600 px-3 py-2.5 text-[10px] font-semibold text-white transition-all hover:bg-blue-500"
-                                >
-                                  Add owner
-                                </button>
-                              </div>
+
+                          <div className="space-y-1.5">
+                            <FieldLabel label="Monitoring URL" />
+                            <div className="relative">
+                              <Globe size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                              <input
+                                value={formData.monitoring_url}
+                                onChange={e => setFormData({ ...formData, monitoring_url: e.target.value })}
+                                placeholder="https://console.internal/..."
+                                className={`${monitoringInputClass(formErrors.monitoring_url)} pl-9 text-blue-300`}
+                              />
                             </div>
-                            <FieldError message={formErrors.owners} />
-                            <div className="max-h-48 space-y-1.5 overflow-y-auto pr-1 custom-scrollbar">
-                              {formData.owners?.length ? formData.owners.map((o: any, idx: number) => (
-                                <div key={idx} className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-3 py-2">
-                                  <div className="min-w-0">
-                                    <p className="truncate text-[10px] font-semibold text-slate-100">{o.name}</p>
-                                    <p className="mt-0.5 text-[8px] font-semibold text-slate-500 truncate">{o.role}</p>
-                                  </div>
-                                  <button type="button" onClick={() => removeOwner(idx)} className="rounded-lg p-1.5 text-slate-500 transition-colors hover:text-rose-400">
-                                    <Trash2 size={12} />
-                                  </button>
+                            <FieldError message={formErrors.monitoring_url} />
+                            <div className="rounded-lg border border-white/10 bg-black/20 p-4">
+                              <p className="text-[9px] font-semibold text-slate-500">Linked asset</p>
+                              <p className="mt-1 text-[11px] font-semibold text-slate-100">{selectedDevice?.name || 'No asset linked'}</p>
+                              <p className="mt-1 text-[9px] font-semibold text-slate-500">{selectedDevice?.system || 'No system available'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>}
+                    </WorkspaceSectionCard>
+
+                    <WorkspaceSectionCard>
+                      <WorkspaceCollapsibleHeader
+                        title="Operational purpose"
+                        subtitle="Document why the monitor exists and what the alert means."
+                        collapsed={collapsedSections.context}
+                        onToggle={() => toggleSection('context')}
+                      />
+                      {!collapsedSections.context && <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <FieldLabel label="Purpose" />
+                          <textarea
+                            value={formData.purpose}
+                            onChange={e => setFormData({ ...formData, purpose: e.target.value })}
+                            placeholder="Why are we monitoring this?"
+                            rows={5}
+                            className={`${monitoringInputClass()} resize-none text-[10px]`}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <FieldLabel label="Impact" />
+                          <textarea
+                            value={formData.impact}
+                            onChange={e => setFormData({ ...formData, impact: e.target.value })}
+                            placeholder="What happens when this monitor triggers?"
+                            rows={5}
+                            className={`${monitoringInputClass()} resize-none text-[10px]`}
+                          />
+                        </div>
+                      </div>}
+                    </WorkspaceSectionCard>
+
+                    <WorkspaceSectionCard id="monitoring-ownership-card">
+                      <WorkspaceCollapsibleHeader
+                        title="Ownership"
+                        subtitle="Choose a team owner or named operators."
+                        badge={<WorkspaceSectionBadge tone="blue">{ownershipMode === 'team' ? 'Team owner' : 'Individual owners'}</WorkspaceSectionBadge>}
+                        collapsed={collapsedSections.ownership}
+                        onToggle={() => toggleSection('ownership')}
+                      />
+                      {!collapsedSections.ownership && <>
+                        <div className="mt-4 grid grid-cols-2 gap-2 rounded-lg border border-white/10 bg-black/30 p-1">
+                          {[
+                            { id: 'team', label: 'Team owner' },
+                            { id: 'individual', label: 'Individual owners' }
+                          ].map((mode) => (
+                            <button
+                              key={mode.id}
+                              type="button"
+                              onClick={() => setOwnershipModeAndNormalize(mode.id as 'team' | 'individual')}
+                              className={`rounded-lg px-3 py-2 text-[10px] font-semibold transition-all ${
+                                ownershipMode === mode.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-200'
+                              }`}
+                            >
+                              {mode.label}
+                            </button>
+                          ))}
+                        </div>
+                        <FieldError message={formErrors.ownership} />
+                        <div className="mt-4">
+                          {ownershipMode === 'team' ? (
+                            <div className="space-y-3">
+                              <MonitoringSelectField
+                                label="Owner Team"
+                                required
+                                value={formData.owner_team}
+                                onChange={(value) => setFormData({ ...formData, owner_team: value, owners: [] })}
+                                options={(teams || []).map((team: MonitoringTeamOption) => ({
+                                  value: team.name,
+                                  label: team.name,
+                                  description: `${team.operators?.length || 0} members`
+                                }))}
+                                placeholder="Select team"
+                                error={formErrors.owner_team}
+                                searchable
+                              />
+                              {selectedTeam && (
+                                <div className="rounded-lg border border-white/10 bg-black/20 p-4">
+                                  <p className="text-[11px] font-semibold text-slate-100">{selectedTeam.name}</p>
+                                  <p className="mt-1 text-[9px] font-semibold text-slate-500">
+                                    {(selectedTeam.operators?.length || 0)} synced or managed operators · {selectedTeam.source || 'manual'}
+                                  </p>
                                 </div>
-                              )) : (
-                                <WorkspaceEmptyState compact title="No owners assigned" description="Add one or more individual owners for this monitor." />
                               )}
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    </>}
-                  </WorkspaceSectionCard>
-                </div>
-              ) : activeTab === 'logic' ? (
-                <div id="monitoring-logic-root" className="grid grid-cols-12 gap-5 p-2 min-h-[560px]">
-                  <div className="col-span-12 xl:col-span-4 space-y-5">
-                    <WorkspaceSectionCard>
-                      <WorkspaceCollapsibleHeader
-                        title="Logic entries"
-                        subtitle="Manage the checks that feed this monitor."
-                        collapsed={collapsedSections.logicEntries}
-                        onToggle={() => toggleSection('logicEntries')}
-                        action={
-                          <button
-                            onClick={(e) => { e.stopPropagation(); addLogicEntry() }}
-                            className="rounded-lg border border-emerald-500/30 bg-emerald-600/20 px-2.5 py-1.5 text-[9px] font-semibold text-emerald-400 transition-all hover:bg-emerald-600/35"
-                          >
-                            Add entry
-                          </button>
-                        }
-                      />
-                      {!collapsedSections.logicEntries && <div className="mt-4 space-y-2 max-h-[420px] overflow-y-auto custom-scrollbar pr-2">
-                        {formData.logic_json?.map((entry: MonitoringLogicEntry) => (
-                          <div
-                            key={entry.id}
-                            onClick={() => setActiveLogicId(entry.id)}
-                            className={`rounded-lg border p-3 cursor-pointer transition-all relative group ${
-                              activeLogicId === entry.id
-                                ? 'bg-blue-600/10 border-blue-500/40 shadow-lg shadow-blue-500/5'
-                                : 'bg-black/40 border-white/5 hover:border-white/20'
-                            }`}
-                          >
-                            <button
-                              onClick={(e) => { e.stopPropagation(); removeLogicEntry(entry.id) }}
-                              className="absolute right-2 top-2 rounded-lg p-1 text-slate-500 opacity-0 transition-all group-hover:opacity-100 hover:text-rose-400"
-                            >
-                              <X size={10} />
-                            </button>
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="text-[9px] font-semibold text-blue-400">{entry.type}</span>
-                              <span className="text-[8px] font-semibold text-slate-600">ID {entry.id.toString().slice(-4)}</span>
+                          ) : (
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-12 gap-3 items-end">
+                                <div className="col-span-12 md:col-span-5">
+                                  <MonitoringSelectField
+                                    label="Operator"
+                                    required
+                                    value={newOwner.operator_id}
+                                    onChange={(value) => setNewOwner({ ...newOwner, operator_id: value })}
+                                    options={(operators as OperatorRecord[]).map((operator) => ({
+                                      value: String(operator.id),
+                                      label: operator.full_name || operator.username || operator.external_id,
+                                      description: `${operator.team || 'No team'}`
+                                    }))}
+                                    placeholder="Select operator"
+                                    error={formErrors.owners}
+                                    searchable
+                                  />
+                                </div>
+                                <div className="col-span-12 md:col-span-5">
+                                  <MonitoringSelectField
+                                    label="Role"
+                                    value={newOwner.role}
+                                    onChange={(value) => setNewOwner({ ...newOwner, role: value })}
+                                    options={ownerRoles.map((r: any) => ({ value: r.value, label: r.label }))}
+                                  />
+                                </div>
+                                <div className="col-span-12 md:col-span-2">
+                                  <button
+                                    type="button"
+                                    onClick={addOwner}
+                                    className="w-full rounded-lg border border-blue-500/30 bg-blue-600 px-3 py-2.5 text-[10px] font-semibold text-white transition-all hover:bg-blue-500"
+                                  >
+                                    Add owner
+                                  </button>
+                                </div>
+                              </div>
+                              <FieldError message={formErrors.owners} />
+                              <div className="max-h-48 space-y-1.5 overflow-y-auto pr-1 custom-scrollbar">
+                                {formData.owners?.length ? formData.owners.map((o: any, idx: number) => (
+                                  <div key={idx} className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                                    <div className="min-w-0">
+                                      <p className="truncate text-[10px] font-semibold text-slate-100">{o.name}</p>
+                                      <p className="mt-0.5 text-[8px] font-semibold text-slate-500 truncate">{o.role}</p>
+                                    </div>
+                                    <button type="button" onClick={() => removeOwner(idx)} className="rounded-lg p-1.5 text-slate-500 transition-colors hover:text-rose-400">
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                )) : (
+                                  <WorkspaceEmptyState compact title="No owners assigned" description="Add one or more individual owners for this monitor." />
+                                )}
+                              </div>
                             </div>
-                            <p className="mt-2 truncate text-[10px] font-semibold text-slate-200">{entry.description || 'No description'}</p>
-                            <p className="mt-1 text-[8px] font-semibold text-slate-500 truncate">{entry.logic_info || 'No definition yet'}</p>
-                            {(formErrors[`logic_${entry.id}_description`] || formErrors[`logic_${entry.id}_logic_info`]) && (
-                              <p className="mt-2 text-[8px] font-semibold text-rose-400">Required field missing</p>
-                            )}
-                          </div>
-                        ))}
-                        {formData.logic_json?.length === 0 && (
-                          <WorkspaceEmptyState compact icon={<Settings size={22} />} title="No logic entries defined" description="Add an entry to configure the first check." />
-                        )}
-                      </div>}
-                    </WorkspaceSectionCard>
-                  </div>
-
-                  <div className="col-span-12 xl:col-span-8 flex flex-col space-y-5 min-h-0">
-                    <WorkspaceSectionCard>
-                      <WorkspaceCollapsibleHeader
-                        title="Execution policy"
-                        subtitle="Keep check cadence, delay, and alert throttle aligned as one operational rule set."
-                        collapsed={collapsedSections.executionPolicy}
-                        onToggle={() => toggleSection('executionPolicy')}
-                      />
-                      {!collapsedSections.executionPolicy && <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <FieldLabel label="Check interval" required />
-                            <span className="text-[8px] font-semibold text-slate-600">{CHECK_INTERVAL_MIN}-{CHECK_INTERVAL_MAX}</span>
-                          </div>
-                          <div className="relative">
-                            <Clock size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                            <input
-                              type="number"
-                              value={formData.check_interval}
-                              min={CHECK_INTERVAL_MIN}
-                              max={CHECK_INTERVAL_MAX}
-                              onChange={e => setFormData({ ...formData, check_interval: Number(e.target.value) })}
-                              className={`${monitoringInputClass(formErrors.check_interval)} pl-9`}
-                            />
-                          </div>
-                          <FieldError message={formErrors.check_interval} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <FieldLabel label="Alert duration" required />
-                            <span className="text-[8px] font-semibold text-slate-600">{ALERT_DURATION_MIN}-{ALERT_DURATION_MAX}</span>
-                          </div>
-                          <div className="relative">
-                            <AlertCircle size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                            <input
-                              type="number"
-                              value={formData.alert_duration}
-                              min={ALERT_DURATION_MIN}
-                              max={ALERT_DURATION_MAX}
-                              onChange={e => setFormData({ ...formData, alert_duration: Number(e.target.value) })}
-                              className={`${monitoringInputClass(formErrors.alert_duration)} pl-9`}
-                            />
-                          </div>
-                          <FieldError message={formErrors.alert_duration} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <FieldLabel label="Notification throttle" required />
-                            <span className="text-[8px] font-semibold text-slate-600">{NOTIFICATION_THROTTLE_MIN}-{NOTIFICATION_THROTTLE_MAX}</span>
-                          </div>
-                          <input
-                            type="number"
-                            value={formData.notification_throttle}
-                            min={NOTIFICATION_THROTTLE_MIN}
-                            max={NOTIFICATION_THROTTLE_MAX}
-                            onChange={e => setFormData({ ...formData, notification_throttle: Number(e.target.value) })}
-                            className={monitoringInputClass(formErrors.notification_throttle)}
-                          />
-                          <FieldError message={formErrors.notification_throttle} />
-                        </div>
-                      </div>}
-                    </WorkspaceSectionCard>
-
-                    {activeLogicEntry ? (
-                      <WorkspaceSectionCard className="flex h-full flex-col min-h-[420px]">
-                        <WorkspaceCollapsibleHeader
-                          title="Logic editor"
-                          subtitle="Edit the active logic entry with the syntax-aware editor."
-                          badge={<WorkspaceSectionBadge>{activeLogicEntry.type}</WorkspaceSectionBadge>}
-                          collapsed={collapsedSections.logicEditor}
-                          onToggle={() => toggleSection('logicEditor')}
-                        />
-                        {!collapsedSections.logicEditor && <>
-                          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                            <MonitoringSelectField
-                              label="Logic Type"
-                              required
-                              value={activeLogicEntry.type}
-                              onChange={(value) => updateLogicEntry(activeLogicEntry.id, 'type', value)}
-                              options={LOGIC_TYPES.map(t => ({ value: t, label: t }))}
-                            />
-                            <div className="space-y-1.5">
-                              <FieldLabel label="Entry Description" required />
-                              <input
-                                value={activeLogicEntry.description}
-                                onChange={e => updateLogicEntry(activeLogicEntry.id, 'description', e.target.value)}
-                                placeholder="Verification logic purpose"
-                                className={monitoringInputClass(activeLogicErrors.description)}
-                              />
-                              <FieldError message={activeLogicErrors.description} />
-                            </div>
-                          </div>
-                          <div className="mt-4 flex-1 flex flex-col space-y-2 min-h-0">
-                            <div className="flex items-center justify-between px-1">
-                              <FieldLabel label="Logic Information" required />
-                              <span className="text-[8px] font-semibold text-slate-500">Editor</span>
-                            </div>
-                            <div className={`flex-1 overflow-hidden rounded-lg border shadow-inner min-h-[280px] ${
-                              activeLogicErrors.logic_info ? 'border-rose-500/60 bg-rose-500/10' : 'border-white/10 bg-black/40'
-                            }`}>
-                              <CodeMirror
-                                value={activeLogicEntry.logic_info}
-                                height="100%"
-                                minHeight="280px"
-                                extensions={getLogicExtensions(activeLogicEntry.type)}
-                                basicSetup={{ lineNumbers: true, foldGutter: true }}
-                                placeholder={LOGIC_SUGGESTIONS[activeLogicEntry.type] || 'Enter logic parameters...'}
-                                onChange={(value) => updateLogicEntry(activeLogicEntry.id, 'logic_info', value)}
-                                theme="dark"
-                              />
-                            </div>
-                            <FieldError message={activeLogicErrors.logic_info} />
-                          </div>
-                        </>}
-                      </WorkspaceSectionCard>
-                    ) : (
-                      <WorkspaceEmptyState icon={<Activity size={32} className="animate-pulse" />} title="Select a logic entry" description="Choose an entry from the left to edit its definition." />
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div id="monitoring-alerting-root" className="grid grid-cols-12 gap-5 p-2">
-                  <div className="col-span-12 xl:col-span-4 space-y-5">
-                    <WorkspaceSectionCard>
-                      <WorkspaceCollapsibleHeader
-                        title="Severity and notification"
-                        subtitle="Choose the delivery path and throttling behavior."
-                        collapsed={collapsedSections.alerting}
-                        onToggle={() => toggleSection('alerting')}
-                      />
-                      {!collapsedSections.alerting && <div className="mt-4 space-y-4">
-                        <MonitoringSelectField
-                          label="Notification Method"
-                          required
-                          value={formData.notification_method}
-                          onChange={(value) => setFormData({ ...formData, notification_method: value })}
-                          options={notificationMethods.map((m:any) => ({ value: m.value, label: m.label }))}
-                          error={formErrors.notification_method}
-                        />
-                        <div className="rounded-lg border border-white/10 bg-black/20 p-4">
-                          <p className="text-[9px] font-semibold text-slate-500">Severity</p>
-                          <p className="mt-1 text-[11px] font-semibold text-slate-100">{formData.severity}</p>
-                          <p className="mt-1 text-[9px] font-semibold text-slate-500">Pinned in the identity header for constant context.</p>
-                        </div>
-                      </div>}
-                    </WorkspaceSectionCard>
-
-                    <WorkspaceSectionCard>
-                      <WorkspaceCollapsibleHeader
-                        title="Recipients"
-                        subtitle="Define who receives notifications from this monitor."
-                        collapsed={collapsedSections.recipients}
-                        onToggle={() => toggleSection('recipients')}
-                      />
-                      {!collapsedSections.recipients && <div className="mt-4 space-y-3">
-                        <div className="flex space-x-2">
-                          <input
-                            value={recipientInput}
-                            onChange={e => setRecipientInput(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && addRecipient()}
-                            placeholder="ID or Email..."
-                            className={`${monitoringInputClass()} flex-1 py-2 text-[10px]`}
-                          />
-                          <button onClick={addRecipient} className="rounded-lg bg-slate-800 px-3 text-white transition-all hover:bg-slate-700 shrink-0"><Plus size={12} /></button>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {formData.notification_recipients.map((r: string) => (
-                            <div key={r} className="flex items-center space-x-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2 py-1">
-                              <span className="text-[9px] font-semibold text-blue-300">{r}</span>
-                              <button onClick={() => removeRecipient(r)} className="text-slate-500 transition-colors hover:text-rose-400"><X size={10} /></button>
-                            </div>
-                          ))}
-                          {formData.notification_recipients.length === 0 && (
-                            <WorkspaceEmptyState compact title="No recipients defined" description="Add one or more destinations for alert delivery." />
                           )}
                         </div>
-                      </div>}
+                      </>}
                     </WorkspaceSectionCard>
                   </div>
-
-                  <div className="col-span-12 xl:col-span-8 space-y-5">
-                    <WorkspaceSectionCard>
-                      <WorkspaceCollapsibleHeader
-                        title="Recovery procedures"
-                        subtitle="Linked recovery guidance is shown to the on-call engineer."
-                        badge={formData.severity === 'Critical' ? <WorkspaceSectionBadge tone="rose">Required for Critical</WorkspaceSectionBadge> : undefined}
-                        collapsed={collapsedSections.recovery}
-                        onToggle={() => toggleSection('recovery')}
-                      />
-                      {!collapsedSections.recovery && <div className="mt-4 space-y-4">
-                        <div className={`space-y-4 rounded-lg border-2 p-4 ${formErrors.recovery_docs ? 'border-rose-500/40 bg-rose-500/10' : 'border-dashed border-white/10 bg-black/20'}`}>
-                          <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                              <PanelTitle>Link recovery documents</PanelTitle>
-                              <PanelSubtitle>Linked docs are presented to the on-call engineer.</PanelSubtitle>
-                            </div>
-                            <div className="flex items-center space-x-2 rounded-lg border border-blue-600/20 bg-blue-600/10 px-2 py-1 shrink-0">
-                              <List size={10} className="text-blue-400" />
-                              <span className="text-[9px] font-semibold text-blue-400">{formData.recovery_docs?.length || 0} linked</span>
-                            </div>
-                          </div>
-                          <div className="relative group">
-                            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                            <input
-                              value={recoverySearch}
-                              onChange={e => setRecoverySearch(e.target.value)}
-                              placeholder="Search Knowledge Base..."
-                              className={`${monitoringInputClass()} pl-11 py-3 text-[11px]`}
-                            />
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[280px] overflow-y-auto custom-scrollbar pr-2">
-                            {filteredKnowledge?.map((entry: any) => (
+                ) : activeTab === 'logic' ? (
+                  <div id="monitoring-logic-root" className="grid grid-cols-12 gap-5 p-2 min-h-[560px]">
+                    <div className="col-span-12 xl:col-span-4 space-y-5">
+                      <WorkspaceSectionCard>
+                        <WorkspaceCollapsibleHeader
+                          title="Logic entries"
+                          subtitle="Manage the checks that feed this monitor."
+                          collapsed={collapsedSections.logicEntries}
+                          onToggle={() => toggleSection('logicEntries')}
+                          action={
+                            <button
+                              onClick={(e) => { e.stopPropagation(); addLogicEntry() }}
+                              className="rounded-lg border border-emerald-500/30 bg-emerald-600/20 px-2.5 py-1.5 text-[9px] font-semibold text-emerald-400 transition-all hover:bg-emerald-600/35"
+                            >
+                              Add entry
+                            </button>
+                          }
+                        />
+                        {!collapsedSections.logicEntries && <div className="mt-4 space-y-2 max-h-[420px] overflow-y-auto custom-scrollbar pr-2">
+                          {formData.logic_json?.map((entry: MonitoringLogicEntry) => (
+                            <div
+                              key={entry.id}
+                              onClick={() => setActiveLogicId(entry.id)}
+                              className={`rounded-lg border p-3 cursor-pointer transition-all relative group ${
+                                activeLogicId === entry.id
+                                  ? 'bg-blue-600/10 border-blue-500/40 shadow-lg shadow-blue-500/5'
+                                  : 'bg-black/40 border-white/5 hover:border-white/20'
+                              }`}
+                            >
                               <button
-                                key={entry.id}
-                                type="button"
-                                onClick={() => toggleRecoveryDoc(entry.id)}
-                                className={`p-3 rounded-lg border text-left transition-all relative overflow-hidden ${
-                                  formData.recovery_docs?.includes(entry.id)
-                                    ? 'bg-blue-600/20 border-blue-500/50 shadow-[0_0_20px_rgba(37,99,235,0.1)]'
-                                    : 'bg-black/40 border-white/5 hover:border-white/20'
-                                }`}
+                                onClick={(e) => { e.stopPropagation(); removeLogicEntry(entry.id) }}
+                                className="absolute right-2 top-2 rounded-lg p-1 text-slate-500 opacity-0 transition-all group-hover:opacity-100 hover:text-rose-400"
                               >
-                                {formData.recovery_docs?.includes(entry.id) && (
-                                  <div className="absolute top-0 right-0 w-6 h-6 bg-blue-600 flex items-center justify-center rounded-bl-lg shadow-lg">
-                                    <Check size={10} className="text-white" strokeWidth={4} />
-                                  </div>
-                                )}
-                                <div className="flex items-center space-x-1.5 mb-1.5">
-                                  <span className="text-[8px] font-semibold px-1.5 py-0.5 bg-slate-800 text-slate-400 rounded border border-white/5 truncate">{entry.category}</span>
-                                  <span className="text-[8px] font-semibold text-slate-600 shrink-0">#{entry.id}</span>
-                                </div>
-                                <p className={`text-[10px] font-semibold leading-tight ${formData.recovery_docs?.includes(entry.id) ? 'text-blue-300' : 'text-slate-300'} line-clamp-2`}>
-                                  {entry.title}
-                                </p>
+                                <X size={10} />
                               </button>
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-[9px] font-semibold text-blue-400">{entry.type}</span>
+                                <span className="text-[8px] font-semibold text-slate-600">ID {entry.id.toString().slice(-4)}</span>
+                              </div>
+                              <p className="mt-2 truncate text-[10px] font-semibold text-slate-200">{entry.description || 'No description'}</p>
+                              <p className="mt-1 text-[8px] font-semibold text-slate-500 truncate">{entry.logic_info || 'No definition yet'}</p>
+                              {(formErrors[`logic_${entry.id}_description`] || formErrors[`logic_${entry.id}_logic_info`]) && (
+                                <p className="mt-2 text-[8px] font-semibold text-rose-400">Required field missing</p>
+                              )}
+                            </div>
+                          ))}
+                          {formData.logic_json?.length === 0 && (
+                            <WorkspaceEmptyState compact icon={<Settings size={22} />} title="No logic entries defined" description="Add an entry to configure the first check." />
+                          )}
+                        </div>}
+                      </WorkspaceSectionCard>
+                    </div>
+
+                    <div className="col-span-12 xl:col-span-8 flex flex-col space-y-5 min-h-0">
+                      <WorkspaceSectionCard>
+                        <WorkspaceCollapsibleHeader
+                          title="Execution policy"
+                          subtitle="Keep check cadence, delay, and alert throttle aligned as one operational rule set."
+                          collapsed={collapsedSections.executionPolicy}
+                          onToggle={() => toggleSection('executionPolicy')}
+                        />
+                        {!collapsedSections.executionPolicy && <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <FieldLabel label="Check interval" required />
+                              <span className="text-[8px] font-semibold text-slate-600">{CHECK_INTERVAL_MIN}-{CHECK_INTERVAL_MAX}</span>
+                            </div>
+                            <div className="relative">
+                              <Clock size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                              <input
+                                type="number"
+                                value={formData.check_interval}
+                                min={CHECK_INTERVAL_MIN}
+                                max={CHECK_INTERVAL_MAX}
+                                onChange={e => setFormData({ ...formData, check_interval: Number(e.target.value) })}
+                                className={`${monitoringInputClass(formErrors.check_interval)} pl-9`}
+                              />
+                            </div>
+                            <FieldError message={formErrors.check_interval} />
+                          </div>
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <FieldLabel label="Alert duration" required />
+                              <span className="text-[8px] font-semibold text-slate-600">{ALERT_DURATION_MIN}-{ALERT_DURATION_MAX}</span>
+                            </div>
+                            <div className="relative">
+                              <AlertCircle size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                              <input
+                                type="number"
+                                value={formData.alert_duration}
+                                min={ALERT_DURATION_MIN}
+                                max={ALERT_DURATION_MAX}
+                                onChange={e => setFormData({ ...formData, alert_duration: Number(e.target.value) })}
+                                className={`${monitoringInputClass(formErrors.alert_duration)} pl-9`}
+                              />
+                            </div>
+                            <FieldError message={formErrors.alert_duration} />
+                          </div>
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <FieldLabel label="Notification throttle" required />
+                              <span className="text-[8px] font-semibold text-slate-600">{NOTIFICATION_THROTTLE_MIN}-{NOTIFICATION_THROTTLE_MAX}</span>
+                            </div>
+                            <input
+                              type="number"
+                              value={formData.notification_throttle}
+                              min={NOTIFICATION_THROTTLE_MIN}
+                              max={NOTIFICATION_THROTTLE_MAX}
+                              onChange={e => setFormData({ ...formData, notification_throttle: Number(e.target.value) })}
+                              className={monitoringInputClass(formErrors.notification_throttle)}
+                            />
+                            <FieldError message={formErrors.notification_throttle} />
+                          </div>
+                        </div>}
+                      </WorkspaceSectionCard>
+
+                      {activeLogicEntry ? (
+                        <WorkspaceSectionCard className="flex h-full flex-col min-h-[420px]">
+                          <WorkspaceCollapsibleHeader
+                            title="Logic editor"
+                            subtitle="Edit the active logic entry with the syntax-aware editor."
+                            badge={<WorkspaceSectionBadge>{activeLogicEntry.type}</WorkspaceSectionBadge>}
+                            collapsed={collapsedSections.logicEditor}
+                            onToggle={() => toggleSection('logicEditor')}
+                          />
+                          {!collapsedSections.logicEditor && <>
+                            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                              <MonitoringSelectField
+                                label="Logic Type"
+                                required
+                                value={activeLogicEntry.type}
+                                onChange={(value) => updateLogicEntry(activeLogicEntry.id, 'type', value)}
+                                options={LOGIC_TYPES.map(t => ({ value: t, label: t }))}
+                              />
+                              <div className="space-y-1.5">
+                                <FieldLabel label="Entry Description" required />
+                                <input
+                                  value={activeLogicEntry.description}
+                                  onChange={e => updateLogicEntry(activeLogicEntry.id, 'description', e.target.value)}
+                                  placeholder="Verification logic purpose"
+                                  className={monitoringInputClass(activeLogicErrors.description)}
+                                />
+                                <FieldError message={activeLogicErrors.description} />
+                              </div>
+                            </div>
+                            <div className="mt-4 flex-1 flex flex-col space-y-2 min-h-0">
+                              <div className="flex items-center justify-between px-1">
+                                <FieldLabel label="Logic Information" required />
+                                <span className="text-[8px] font-semibold text-slate-500">Editor</span>
+                              </div>
+                              <div className={`flex-1 overflow-hidden rounded-lg border shadow-inner min-h-[280px] ${
+                                activeLogicErrors.logic_info ? 'border-rose-500/60 bg-rose-500/10' : 'border-white/10 bg-black/40'
+                              }`}>
+                                <CodeMirror
+                                  value={activeLogicEntry.logic_info}
+                                  height="100%"
+                                  minHeight="280px"
+                                  extensions={getLogicExtensions(activeLogicEntry.type)}
+                                  basicSetup={{ lineNumbers: true, foldGutter: true }}
+                                  placeholder={LOGIC_SUGGESTIONS[activeLogicEntry.type] || 'Enter logic parameters...'}
+                                  onChange={(value) => updateLogicEntry(activeLogicEntry.id, 'logic_info', value)}
+                                  theme="dark"
+                                />
+                              </div>
+                              <FieldError message={activeLogicErrors.logic_info} />
+                            </div>
+                          </>}
+                        </WorkspaceSectionCard>
+                      ) : (
+                        <WorkspaceEmptyState icon={<Activity size={32} className="animate-pulse" />} title="Select a logic entry" description="Choose an entry from the left to edit its definition." />
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div id="monitoring-alerting-root" className="grid grid-cols-12 gap-5 p-2">
+                    <div className="col-span-12 xl:col-span-4 space-y-5">
+                      <WorkspaceSectionCard>
+                        <WorkspaceCollapsibleHeader
+                          title="Severity and notification"
+                          subtitle="Choose the delivery path and throttling behavior."
+                          collapsed={collapsedSections.alerting}
+                          onToggle={() => toggleSection('alerting')}
+                        />
+                        {!collapsedSections.alerting && <div className="mt-4 space-y-4">
+                          <MonitoringSelectField
+                            label="Notification Method"
+                            required
+                            value={formData.notification_method}
+                            onChange={(value) => setFormData({ ...formData, notification_method: value })}
+                            options={notificationMethods.map((m:any) => ({ value: m.value, label: m.label }))}
+                            error={formErrors.notification_method}
+                          />
+                          <div className="rounded-lg border border-white/10 bg-black/20 p-4">
+                            <p className="text-[9px] font-semibold text-slate-500">Severity</p>
+                            <p className="mt-1 text-[11px] font-semibold text-slate-100">{formData.severity}</p>
+                            <p className="mt-1 text-[9px] font-semibold text-slate-500">Pinned in the identity header for constant context.</p>
+                          </div>
+                        </div>}
+                      </WorkspaceSectionCard>
+
+                      <WorkspaceSectionCard>
+                        <WorkspaceCollapsibleHeader
+                          title="Recipients"
+                          subtitle="Define who receives notifications from this monitor."
+                          collapsed={collapsedSections.recipients}
+                          onToggle={() => toggleSection('recipients')}
+                        />
+                        {!collapsedSections.recipients && <div className="mt-4 space-y-3">
+                          <div className="flex space-x-2">
+                            <input
+                              value={recipientInput}
+                              onChange={e => setRecipientInput(e.target.value)}
+                              onKeyDown={e => e.key === 'Enter' && addRecipient()}
+                              placeholder="ID or Email..."
+                              className={`${monitoringInputClass()} flex-1 py-2 text-[10px]`}
+                            />
+                            <button onClick={addRecipient} className="rounded-lg bg-slate-800 px-3 text-white transition-all hover:bg-slate-700 shrink-0"><Plus size={12} /></button>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {formData.notification_recipients.map((r: string) => (
+                              <div key={r} className="flex items-center space-x-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2 py-1">
+                                <span className="text-[9px] font-semibold text-blue-300">{r}</span>
+                                <button onClick={() => removeRecipient(r)} className="text-slate-500 transition-colors hover:text-rose-400"><X size={10} /></button>
+                              </div>
                             ))}
-                            {filteredKnowledge?.length === 0 && (
-                              <div className="col-span-2 py-6 text-center text-slate-600 text-[9px] font-semibold">No entries found</div>
+                            {formData.notification_recipients.length === 0 && (
+                              <WorkspaceEmptyState compact title="No recipients defined" description="Add one or more destinations for alert delivery." />
                             )}
                           </div>
-                          <FieldError message={formErrors.recovery_docs} />
-                        </div>
-                      </div>}
-                    </WorkspaceSectionCard>
-                  </div>
-                </div>
-              )}
-            </div>
+                        </div>}
+                      </WorkspaceSectionCard>
+                    </div>
 
-            <aside className="min-w-0">
-              <div className="xl:sticky xl:top-0 space-y-4 p-2">
-                <WorkspaceSectionCard>
-                  <PanelTitle>Execution and routing</PanelTitle>
-                  <PanelSubtitle>Core timing and delivery rules.</PanelSubtitle>
-                  <div className="mt-4 space-y-3">
-                    <div className="flex items-center justify-between text-[10px] font-semibold">
-                      <span className="text-slate-500">Check interval</span>
-                      <span className="text-slate-200">{formData.check_interval}s</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] font-semibold">
-                      <span className="text-slate-500">Alert duration</span>
-                      <span className="text-slate-200">{formData.alert_duration}s</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] font-semibold">
-                      <span className="text-slate-500">Notification throttle</span>
-                      <span className="text-slate-200">{formData.notification_throttle}s</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] font-semibold">
-                      <span className="text-slate-500">Notification method</span>
-                      <span className="text-slate-200">{formData.notification_method || 'Not selected'}</span>
-                    </div>
-                  </div>
-                </WorkspaceSectionCard>
-
-                <WorkspaceSectionCard>
-                  <PanelTitle>Coverage</PanelTitle>
-                  <PanelSubtitle>Services, recipients, and recovery readiness.</PanelSubtitle>
-                  <div className="mt-4 space-y-3">
-                    <div className="flex items-center justify-between text-[10px] font-semibold">
-                      <span className="text-slate-500">Services linked</span>
-                      <span className="text-slate-200">{formData.monitored_services?.length || 0}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] font-semibold">
-                      <span className="text-slate-500">Recipients</span>
-                      <span className="text-slate-200">{formData.notification_recipients.length}</span>
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-semibold text-slate-500">Recovery documents</p>
-                      <div className="mt-2 space-y-1.5">
-                        {linkedRecoveryDocs.length ? linkedRecoveryDocs.slice(0, 3).map((entry: any) => (
-                          <div key={entry.id} className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
-                            <p className="text-[9px] font-semibold text-slate-200 line-clamp-1">{entry.title}</p>
+                    <div className="col-span-12 xl:col-span-8 space-y-5">
+                      <WorkspaceSectionCard>
+                        <WorkspaceCollapsibleHeader
+                          title="Recovery procedures"
+                          subtitle="Linked recovery guidance is shown to the on-call engineer."
+                          badge={formData.severity === 'Critical' ? <WorkspaceSectionBadge tone="rose">Required for Critical</WorkspaceSectionBadge> : undefined}
+                          collapsed={collapsedSections.recovery}
+                          onToggle={() => toggleSection('recovery')}
+                        />
+                        {!collapsedSections.recovery && <div className="mt-4 space-y-4">
+                          <div className={`space-y-4 rounded-lg border-2 p-4 ${formErrors.recovery_docs ? 'border-rose-500/40 bg-rose-500/10' : 'border-dashed border-white/10 bg-black/20'}`}>
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-0.5">
+                                <PanelTitle>Link recovery documents</PanelTitle>
+                                <PanelSubtitle>Linked docs are presented to the on-call engineer.</PanelSubtitle>
+                              </div>
+                              <div className="flex items-center space-x-2 rounded-lg border border-blue-600/20 bg-blue-600/10 px-2 py-1 shrink-0">
+                                <List size={10} className="text-blue-400" />
+                                <span className="text-[9px] font-semibold text-blue-400">{formData.recovery_docs?.length || 0} linked</span>
+                              </div>
+                            </div>
+                            <div className="relative group">
+                              <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                              <input
+                                value={recoverySearch}
+                                onChange={e => setRecoverySearch(e.target.value)}
+                                placeholder="Search Knowledge Base..."
+                                className={`${monitoringInputClass()} pl-11 py-3 text-[11px]`}
+                              />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[280px] overflow-y-auto custom-scrollbar pr-2">
+                              {filteredKnowledge?.map((entry: any) => (
+                                <button
+                                  key={entry.id}
+                                  type="button"
+                                  onClick={() => toggleRecoveryDoc(entry.id)}
+                                  className={`p-3 rounded-lg border text-left transition-all relative overflow-hidden ${
+                                    formData.recovery_docs?.includes(entry.id)
+                                      ? 'bg-blue-600/20 border-blue-500/50 shadow-[0_0_20px_rgba(37,99,235,0.1)]'
+                                      : 'bg-black/40 border-white/5 hover:border-white/20'
+                                  }`}
+                                >
+                                  {formData.recovery_docs?.includes(entry.id) && (
+                                    <div className="absolute top-0 right-0 w-6 h-6 bg-blue-600 flex items-center justify-center rounded-bl-lg shadow-lg">
+                                      <Check size={10} className="text-white" strokeWidth={4} />
+                                    </div>
+                                  )}
+                                  <div className="flex items-center space-x-1.5 mb-1.5">
+                                    <span className="text-[8px] font-semibold px-1.5 py-0.5 bg-slate-800 text-slate-400 rounded border border-white/5 truncate">{entry.category}</span>
+                                    <span className="text-[8px] font-semibold text-slate-600 shrink-0">#{entry.id}</span>
+                                  </div>
+                                  <p className={`text-[10px] font-semibold leading-tight ${formData.recovery_docs?.includes(entry.id) ? 'text-blue-300' : 'text-slate-300'} line-clamp-2`}>
+                                    {entry.title}
+                                  </p>
+                                </button>
+                              ))}
+                              {filteredKnowledge?.length === 0 && (
+                                <div className="col-span-2 py-6 text-center text-slate-600 text-[9px] font-semibold">No entries found</div>
+                              )}
+                            </div>
+                            <FieldError message={formErrors.recovery_docs} />
                           </div>
-                        )) : (
-                          <p className="text-[9px] font-semibold text-slate-600">No linked recovery docs</p>
-                        )}
-                      </div>
+                        </div>}
+                      </WorkspaceSectionCard>
                     </div>
                   </div>
-                </WorkspaceSectionCard>
-
-                <WorkspaceSectionCard>
-                  <PanelTitle>{summaryIssues.length ? `${summaryIssues.length} issues to resolve` : 'Ready to save'}</PanelTitle>
-                  <PanelSubtitle>
-                    {summaryIssues.length ? 'Resolve these issues before saving the monitor.' : 'All required fields and guardrails are currently satisfied.'}
-                  </PanelSubtitle>
-                  <div className="mt-4 space-y-2">
-                    {summaryIssues.length ? summaryIssues.map((issue, index) => (
-                      <button
-                        key={`${issue.anchor}-${index}`}
-                        type="button"
-                        onClick={() => jumpToSection(issue.tab, issue.anchor)}
-                        className="w-full rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-left transition-all hover:bg-rose-500/15"
-                      >
-                        <p className="text-[9px] font-semibold text-rose-300">{issue.label}</p>
-                        <p className="mt-1 text-[8px] font-semibold text-rose-200/70">{issue.tab}</p>
-                      </button>
-                    )) : (
-                      <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-3">
-                        <p className="text-[10px] font-semibold text-emerald-300">Validation clear</p>
-                        <p className="mt-1 text-[8px] font-semibold text-emerald-200/70">The monitor is ready for save.</p>
-                      </div>
-                    )}
-                  </div>
-                </WorkspaceSectionCard>
+                )}
               </div>
-            </aside>
-          </div>
+            }
+          />
         </div>
 
         <WorkspaceModalFooter
