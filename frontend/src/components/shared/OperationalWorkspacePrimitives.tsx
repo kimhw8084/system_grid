@@ -326,7 +326,9 @@ export function WorkspaceSelectField({
     if (!isOpen) return
     const handleClick = (event: MouseEvent) => {
       const target = event.target as Node
-      if (triggerRef.current?.contains(target) || panelRef.current?.contains(target)) return
+      if (triggerRef.current?.contains(target) || 
+          panelRef.current?.contains(target) || 
+          (target instanceof HTMLElement && target.closest('[data-workspace-panel]'))) return
       setIsOpen(false)
     }
     window.addEventListener('mousedown', handleClick)
@@ -358,6 +360,8 @@ export function WorkspaceSelectField({
           <div
             ref={panelRef}
             style={panelStyle}
+            data-workspace-panel="true"
+            onMouseDown={(e) => e.stopPropagation()}
             className="rounded-lg border border-white/10 bg-[#020617] p-2 shadow-[0_24px_60px_rgba(2,6,23,0.48)] backdrop-blur-xl"
           >
             {searchable && (

@@ -3622,7 +3622,7 @@ function MonitoringAssetField({
                 label="System Filter"
                 value={systemFilter}
                 onChange={(value) => setSystemFilter(value)}
-                options={[{ value: 'ALL', label: 'All Systems' }, ...systems.map((system) => ({ value: system, label: system }))]}
+                options={[{ value: 'all', label: 'All Systems' }, ...systems.map((system) => ({ value: system, label: system }))]}
                 placeholder="All Systems"
               />
               <div className="space-y-1.5">

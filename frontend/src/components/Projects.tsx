@@ -296,7 +296,7 @@ const ProjectRail = ({
                   onChange={e => setPriorityFilter(e.target.value)}
                   className="bg-white/5 border border-white/5 rounded-lg px-2 py-1.5 text-[8px] font-bold text-slate-400 outline-none focus:border-blue-500/50 uppercase tracking-widest"
                 >
-                   <option value="ALL">ALL PRIORITY</option>
+                   <option value="all">ALL PRIORITY</option>
                    {PROJECT_PRIORITIES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                 </select>
              </div>

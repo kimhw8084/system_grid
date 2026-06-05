@@ -9,8 +9,8 @@ export interface SysError {
   method?: string
   status?: number
   data?: any
-  type: 'FRONTEND' | 'BACKEND'
-  severity: 'CRITICAL' | 'ERROR' | 'WARNING'
+  type: 'frontend' | 'backend'
+  severity: 'critical' | 'error' | 'warning'
   view?: string
   acknowledged?: boolean
 }

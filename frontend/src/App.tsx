@@ -276,7 +276,7 @@ const PatchNotesModal = ({ onClose }: any) => {
                          <div className="px-6 pb-6 pt-2 space-y-3">
                             {patch.changes.map((change, cIdx) => (
                               <div key={cIdx} className="flex space-x-3 text-[11px] font-bold uppercase tracking-tight">
-                                 <span className={`text-[8px] px-1.5 py-0.5 rounded h-fit ${change.type === 'NEW' ? 'bg-emerald-500/20 text-emerald-400' : change.type === 'FIXED' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'}`}>{change.type}</span>
+                                 <span className={`text-[8px] px-1.5 py-0.5 rounded h-fit ${change.type === 'New' ? 'bg-emerald-500/20 text-emerald-400' : change.type === 'Fixed' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'}`}>{change.type}</span>
                                  <span className="text-slate-300 leading-tight">{change.text}</span>
                               </div>
                             ))}
@@ -474,8 +474,8 @@ function MainLayout() {
           stack: error.traceback || error.stack,
           status: error.status,
           data: error.data,
-          type: error.status ? 'BACKEND' : 'FRONTEND',
-          severity: 'ERROR'
+          type: error.status ? 'backend' : 'frontend',
+          severity: 'error'
         });
         event.preventDefault();
       }
@@ -486,8 +486,8 @@ function MainLayout() {
         message: event.message || 'Frontend Exception',
         stack: event.error?.stack,
         url: event.filename,
-        type: 'FRONTEND',
-        severity: 'CRITICAL'
+        type: 'frontend',
+        severity: 'critical'
       });
     };
 
@@ -709,11 +709,11 @@ function MainLayout() {
         <footer className="h-8 border-t border-[var(--glass-border)] px-8 flex items-center justify-between text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest bg-[var(--bg-primary)]/20">
            <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
-                 <Clock size={10} className="text-blue-500" />
-                 <span>US CENTRAL (CT): <span className="text-[var(--text-primary)] tabular-nums">{formatTime(currentTime, 'America/Chicago')}</span></span>
+                 <Globe size={10} className="text-slate-500" />
+                 <span>YOUR TIME ({Intl.DateTimeFormat().resolvedOptions().timeZone}): <span className="text-blue-400 tabular-nums">{formatTime(currentTime, Intl.DateTimeFormat().resolvedOptions().timeZone)}</span></span>
               </div>
               <div className="flex items-center gap-2 border-l border-white/5 pl-6">
-                 <Clock size={10} className="text-emerald-500" />
+                 <Clock size={10} className="text-slate-500" />
                  <span>SOUTH KOREA (KST): <span className="text-[var(--text-primary)] tabular-nums">{formatTime(currentTime, 'Asia/Seoul')}</span></span>
               </div>
            </div>

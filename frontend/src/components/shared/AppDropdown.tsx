@@ -34,7 +34,9 @@ export const AppDropdown = ({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node
-      if (triggerRef.current?.contains(target) || panelRef.current?.contains(target)) return
+      if (triggerRef.current?.contains(target) || 
+          panelRef.current?.contains(target) ||
+          (target instanceof HTMLElement && target.closest('[data-workspace-panel]'))) return
       setIsOpen(false)
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -73,6 +75,8 @@ export const AppDropdown = ({
           <div
             ref={panelRef}
             style={panelStyle}
+            data-workspace-panel="true"
+            onMouseDown={(e) => e.stopPropagation()}
             className={`${getWorkspaceFloatingPanelClass('menu')} overflow-hidden shadow-2xl`}
           >
             <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-1">

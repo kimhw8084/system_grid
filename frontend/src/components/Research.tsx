@@ -2360,17 +2360,17 @@ export const ModernStatusPicker = ({ value, onChange, options }: any) => {
 
 
 function MitigationTab({ formData, setFormData, isEditing }: any) {
-  const [newLog, setNewLog] = useState({ type: 'WORKAROUND', description: '', status: 'PLANNED' })
+  const [newLog, setNewLog] = useState({ type: 'Workaround', description: '', status: 'Planned' })
 
   const addLog = () => {
     if (!newLog.description.trim()) return
     const log = { ...newLog, id: Date.now(), timestamp: new Date().toISOString() }
     setFormData({ ...formData, mitigation_logs_json: [...(formData.mitigation_logs_json || []), log] })
-    setNewLog({ type: 'WORKAROUND', description: '', status: 'PLANNED' })
+    setNewLog({ type: 'Workaround', description: '', status: 'Planned' })
   }
 
-  const types = ['WORKAROUND', 'MONITORING', 'MITIGATION', 'PREVENTION']
-  const statuses = ['PLANNED', 'IN PROGRESS', 'VERIFIED', 'COMPLETED']
+  const types = ['Workaround', 'Monitoring', 'Mitigation', 'Prevention']
+  const statuses = ['Planned', 'In Progress', 'Verified', 'Completed']
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden p-6 space-y-6">
@@ -2381,7 +2381,7 @@ function MitigationTab({ formData, setFormData, isEditing }: any) {
                 <StyledSelect label="Log Type" value={newLog.type} onChange={(e:any) => setNewLog({...newLog, type: e.target.value})} options={types.map(t => ({value: t, label: t}))} />
                 <StyledSelect label="Status" value={newLog.status} onChange={(e:any) => setNewLog({...newLog, status: e.target.value})} options={statuses.map(s => ({value: s, label: s}))} />
              </div>
-             <textarea value={newLog.description} onChange={e => setNewLog({...newLog, description: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[11px] font-bold text-white outline-none focus:border-emerald-500/50 min-h-[80px] uppercase" placeholder="Strategy details..." />
+             <textarea value={newLog.description} onChange={e => setNewLog({...newLog, description: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[11px] font-bold text-white outline-none focus:border-emerald-500/50 min-h-[80px]" placeholder="Strategy details..." />
              <button onClick={addLog} className="h-12 w-full bg-emerald-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all">Capture Log</button>
           </div>
        )}
@@ -2391,11 +2391,11 @@ function MitigationTab({ formData, setFormData, isEditing }: any) {
              <div key={log.id || idx} className="bg-white/5 border border-white/10 rounded-lg p-5 flex items-center justify-between group hover:bg-white/[0.08] transition-all">
                 <div className="flex items-center gap-6">
                    <div className="w-32 text-center">
-                      <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded border ${log.type === 'PREVENTION' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-blue-400 border-blue-500/30 bg-blue-500/10'}`}>{log.type}</span>
-                      <p className={`text-[8px] font-bold uppercase mt-1.5 ${log.status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>{log.status}</p>
+                      <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded border ${log.type === 'Prevention' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-blue-400 border-blue-500/30 bg-blue-500/10'}`}>{log.type}</span>
+                      <p className={`text-[8px] font-bold uppercase mt-1.5 ${log.status === 'Completed' ? 'text-emerald-400' : 'text-amber-400'}`}>{log.status}</p>
                    </div>
                    <div className="space-y-1">
-                     <p className="text-xs font-black text-slate-200 uppercase">{log.description}</p>                      <p className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">{new Date(log.timestamp).toLocaleString()}</p>
+                     <p className="text-xs font-black text-slate-200">{log.description}</p>                      <p className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">{new Date(log.timestamp).toLocaleString()}</p>
                    </div>
                 </div>
                 {isEditing && (

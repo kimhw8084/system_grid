@@ -6,6 +6,7 @@
 @tailwind utilities;
 
 :root {
+  scrollbar-gutter: stable;
   /* Dark Mode (Default) */
   --bg-primary: #020617;
   --bg-header: rgba(15, 23, 42, 0.8);

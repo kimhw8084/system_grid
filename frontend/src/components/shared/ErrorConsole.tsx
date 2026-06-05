@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Terminal, AlertTriangle, Bug, Clock, Search, Trash2, ChevronRight, ChevronDown, Copy, ShieldAlert, TerminalSquare, Filter, Database, Cpu, CheckCircle2, History } from 'lucide-react'
+import { X, Terminal, AlertTriangle, Bug, Clock, Search, Trash2, ChevronRight, ChevronDown, Copy, ShieldAlert, TerminalSquare, Filter, Database, Cpu, CheckCircle2, History, Activity, Globe } from 'lucide-react'
 import { useErrors, SysError } from '../../stores/errorStore'
 import { toast } from 'react-hot-toast'
 
@@ -8,7 +8,7 @@ export function ErrorConsole() {
   const { errors, isOpen, setOpen, clearErrors, acknowledgeError, acknowledgeAll } = useErrors()
   const [selectedErrorId, setSelectedErrorId] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterType, setFilterType] = useState<'ALL' | 'FRONTEND' | 'BACKEND'>('ALL')
+  const [filterType, setFilterType] = useState<'all' | 'frontend' | 'backend'>('all')
   const [showAcknowledged, setShowAcknowledged] = useState(true)
 
   const filteredErrors = useMemo(() => {
@@ -16,7 +16,7 @@ export function ErrorConsole() {
       const matchesSearch = e.message.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             e.url?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             e.stack?.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchesType = filterType === 'ALL' || e.type === filterType
+      const matchesType = filterType === 'all' || e.type.toLowerCase() === filterType
       const matchesAck = showAcknowledged || !e.acknowledged
       return matchesSearch && matchesType && matchesAck
     })
@@ -37,6 +37,7 @@ export function ErrorConsole() {
         initial={{ scale: 0.95, opacity: 0 }} 
         animate={{ scale: 1, opacity: 1 }} 
         exit={{ scale: 0.95, opacity: 0 }}
+        onMouseDown={(e) => e.stopPropagation()}
         className="bg-[#020617] w-full max-w-[1400px] h-[85vh] rounded-lg border border-rose-500/20 shadow-[0_0_100px_rgba(244,63,94,0.15)] flex flex-col overflow-hidden"
       >
         {/* Header */}
@@ -72,7 +73,7 @@ export function ErrorConsole() {
                 <CheckCircle2 size={14} /> Acknowledge All
              </button>
              <div className="flex bg-black/40 rounded-lg p-1 border border-white/5 gap-1">
-                {['ALL', 'FRONTEND', 'BACKEND'].map(type => (
+                {['all', 'frontend', 'backend'].map(type => (
                    <button 
                      key={type}
                      onClick={() => setFilterType(type as any)}
@@ -98,29 +99,29 @@ export function ErrorConsole() {
         </div>
 
         {/* Search Bar */}
-        <div className="px-8 py-3 bg-white/2 border-b border-white/5 flex items-center justify-between">
-           <div className="flex items-center gap-4 flex-1">
-              <Search size={16} className="text-slate-600" />
+        <div className="px-8 py-4 border-b border-white/5 bg-black/40 flex items-center gap-4">
+           <div className="relative flex-1">
+              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
               <input 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                placeholder="SCAN TRACEBACKS / MESSAGES / ENDPOINTS..."
-                className="flex-1 bg-transparent border-none outline-none text-[11px] font-bold text-slate-300 uppercase tracking-widest"
+                placeholder="Search error messages, stack traces, or endpoints..."
+                className="w-full bg-black/40 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-xs font-bold text-white uppercase outline-none focus:border-rose-500/40 transition-all placeholder:text-slate-600"
               />
            </div>
            <button 
              onClick={() => setShowAcknowledged(!showAcknowledged)}
-             className={`px-4 py-1.5 rounded text-[9px] font-black uppercase tracking-widest border transition-all ${showAcknowledged ? 'bg-slate-800 text-slate-400 border-white/5' : 'bg-blue-600/10 text-blue-400 border-blue-500/20'}`}
+             className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${showAcknowledged ? 'bg-blue-600/10 border-blue-500/20 text-blue-400' : 'bg-white/5 border-white/5 text-slate-500'}`}
            >
-              {showAcknowledged ? 'HIDE ACKNOWLEDGED' : 'SHOW ALL'}
+              <History size={14} /> {showAcknowledged ? 'Showing All' : 'Active Only'}
            </button>
         </div>
 
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex min-h-0">
           {/* Error List */}
-          <div className="w-[450px] border-r border-white/5 overflow-y-auto custom-scrollbar bg-black/40">
-            {filteredErrors.length > 0 ? (
-              filteredErrors.map((error) => (
+          <div className="w-[450px] border-r border-white/10 flex flex-col bg-black/20">
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              {filteredErrors.map(error => (
                 <div 
                   key={error.id}
                   onClick={() => setSelectedErrorId(error.id)}
@@ -128,182 +129,159 @@ export function ErrorConsole() {
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
-                       <span className={`text-[8px] font-black px-1.5 py-0.5 rounded ${error.type === 'BACKEND' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                          {error.type}
+                       <span className={`text-[8px] font-black px-1.5 py-0.5 rounded ${error.type.toLowerCase() === 'backend' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                         {error.type}
                        </span>
-                       <span className={`text-[8px] font-black px-1.5 py-0.5 rounded ${error.severity === 'CRITICAL' ? 'bg-rose-600 text-white' : 'bg-rose-500/20 text-rose-400'}`}>
+                       <span className={`text-[8px] font-black px-1.5 py-0.5 rounded ${error.severity === 'critical' ? 'bg-rose-600 text-white' : 'bg-rose-500/20 text-rose-400'}`}>
                           {error.severity}
                        </span>
                        {error.acknowledged && (
                          <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 uppercase">ACKNOWLEDGED</span>
                        )}
                     </div>
-                    <div className="flex flex-col items-end">
-                       <span className="text-[8px] font-bold text-slate-600">{new Date(error.timestamp).toLocaleDateString()}</span>
-                       <span className="text-[8px] font-bold text-slate-600">{new Date(error.timestamp).toLocaleTimeString()}</span>
-                    </div>
+                    <span className="text-[9px] font-bold text-slate-600 tabular-nums">
+                       {new Date(error.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </span>
                   </div>
-                  <h3 className={`text-[11px] font-black uppercase tracking-tight mb-1 truncate ${selectedErrorId === error.id ? 'text-rose-400' : 'text-slate-200'}`}>
+                  <p className="text-[11px] font-black text-slate-200 line-clamp-2 leading-snug group-hover:text-white transition-colors">
                     {error.message}
-                  </h3>
-                  <div className="flex items-center gap-2 overflow-hidden">
-                    <span className="text-[8px] font-bold text-blue-500 shrink-0">{error.view || '/'}</span>
-                    <p className="text-[9px] font-bold text-slate-500 uppercase truncate">
-                      {error.url || 'Internal Context'}
-                    </p>
-                  </div>
-                  {selectedErrorId === error.id && (
-                    <motion.div layoutId="active-indicator" className="absolute right-4 top-1/2 -translate-y-1/2 text-rose-500">
-                       <ChevronRight size={18} />
-                    </motion.div>
+                  </p>
+                  {error.url && (
+                    <div className="mt-2 flex items-center gap-1.5 text-[8px] font-bold text-slate-500 uppercase tracking-tight">
+                       <Globe size={10} />
+                       <span className="truncate">{error.url}</span>
+                    </div>
                   )}
                 </div>
-              ))
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center opacity-20">
-                 <Terminal size={48} className="text-slate-600 mb-4" />
-                 <p className="text-[10px] font-black uppercase tracking-[0.4em]">Matrix Clean</p>
-              </div>
-            )}
+              ))}
+              {filteredErrors.length === 0 && (
+                <div className="h-full flex flex-col items-center justify-center p-12 text-center">
+                   <CheckCircle2 size={48} className="text-emerald-500/20 mb-4" />
+                   <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">No Faults Detected</h3>
+                   <p className="text-[10px] text-slate-600 mt-2">All systems operational in the current context</p>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Details Pane */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-10 bg-[#010410]">
-            {selectedError ? (
-              <div className="space-y-8 max-w-5xl">
-                <div className="flex items-start justify-between">
-                   <div className="space-y-2 flex-1">
-                      <div className="flex items-center gap-3">
-                         <h2 className="text-3xl font-black text-rose-500 uppercase tracking-tighter leading-none">{selectedError.message}</h2>
-                      </div>
-                      <div className="flex items-center gap-6">
-                         <div className="flex items-center gap-2">
-                            <Clock size={14} className="text-slate-600" />
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{new Date(selectedError.timestamp).toLocaleString()}</span>
-                         </div>
-                         <div className="flex items-center gap-2">
-                            <ShieldAlert size={14} className="text-slate-600" />
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">ID: {selectedError.id}</span>
-                         </div>
-                         <div className="flex items-center gap-2 text-blue-400">
-                            <History size={14} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">VIEW: {selectedError.view || 'ROOT'}</span>
-                         </div>
-                      </div>
-                   </div>
-                   <div className="flex gap-3 shrink-0">
-                      {!selectedError.acknowledged && (
-                        <button 
-                          onClick={() => acknowledgeError(selectedError.id)}
-                          className="px-6 py-3 bg-emerald-600 text-white rounded-lg font-black uppercase text-[10px] tracking-widest shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all"
-                        >
-                           Acknowledge Fault
-                        </button>
-                      )}
-                      <button 
-                        onClick={() => copyToClipboard(`MESSAGE: ${selectedError.message}\nVIEW: ${selectedError.view}\nTIMESTAMP: ${selectedError.timestamp}\nSTACK: ${selectedError.stack}\nDATA: ${JSON.stringify(selectedError.data, null, 2)}`)}
-                        className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-lg border border-white/10 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-xl"
-                      >
-                         <Copy size={16} /> Copy Full Traceback
-                      </button>
-                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-8">
-                   <div className="space-y-4">
-                      <div className="flex items-center gap-2 border-b border-white/5 pb-2">
-                         <Database size={14} className="text-indigo-400" />
-                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Request Metadata</span>
-                      </div>
-                      <div className="bg-white/2 rounded-lg p-6 border border-white/5 space-y-4 font-mono">
-                         <div className="flex justify-between">
-                            <span className="text-[10px] text-slate-500 uppercase font-bold">Endpoint</span>
-                            <span className="text-[10px] text-indigo-400 font-bold">{selectedError.url || 'N/A'}</span>
-                         </div>
-                         <div className="flex justify-between">
-                            <span className="text-[10px] text-slate-500 uppercase font-bold">Method</span>
-                            <span className="text-[10px] text-white font-black">{selectedError.method || 'N/A'}</span>
-                         </div>
-                         <div className="flex justify-between">
-                            <span className="text-[10px] text-slate-500 uppercase font-bold">Status Code</span>
-                            <span className={`text-[10px] font-black ${selectedError.status && selectedError.status >= 500 ? 'text-rose-500' : 'text-amber-500'}`}>{selectedError.status || 'N/A'}</span>
-                         </div>
-                      </div>
-                   </div>
-
-                   <div className="space-y-4">
-                      <div className="flex items-center gap-2 border-b border-white/5 pb-2">
-                         <Cpu size={14} className="text-emerald-400" />
-                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Execution Context</span>
-                      </div>
-                      <div className="bg-white/2 rounded-lg p-6 border border-white/5 space-y-4 font-mono">
-                         <div className="flex justify-between">
-                            <span className="text-[10px] text-slate-500 uppercase font-bold">Type</span>
-                            <span className="text-[10px] text-emerald-400 font-bold">{selectedError.type}</span>
-                         </div>
-                         <div className="flex justify-between">
-                            <span className="text-[10px] text-slate-500 uppercase font-bold">Platform</span>
-                            <span className="text-[10px] text-white font-black">{navigator.platform}</span>
-                         </div>
-                         <div className="flex justify-between items-center">
-                            <span className="text-[10px] text-slate-500 uppercase font-bold shrink-0">User Agent</span>
-                            <span className="text-[8px] text-slate-400 font-bold truncate ml-4 max-w-[200px]">{navigator.userAgent}</span>
-                         </div>
-                      </div>
-                   </div>
-                </div>
-
-                <div className="space-y-4">
-                   <div className="flex items-center gap-2 border-b border-white/5 pb-2">
-                      <TerminalSquare size={14} className="text-rose-500" />
-                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Full Traceback Dump</span>
-                   </div>
-                   <div className="bg-black border border-white/10 rounded-lg p-8 font-mono overflow-x-auto shadow-2xl relative">
-                      <div className="absolute top-4 right-4 flex gap-2">
-                         <div className="w-3 h-3 rounded-full bg-rose-500/50" />
-                         <div className="w-3 h-3 rounded-full bg-amber-500/50" />
-                         <div className="w-3 h-3 rounded-full bg-emerald-500/50" />
-                      </div>
-                      <code className="text-[11px] leading-relaxed block whitespace-pre text-rose-400/90">
-                        {selectedError.stack || 'No stack trace available for this event.'}
-                      </code>
-                   </div>
-                </div>
-
-                {selectedError.data && (
+          {/* Error Detail */}
+          <div className="flex-1 bg-black/40 flex flex-col min-w-0">
+             {selectedError ? (
+               <div className="flex-1 overflow-y-auto custom-scrollbar p-10 space-y-8">
                   <div className="space-y-4">
-                    <div className="flex items-center gap-2 border-b border-white/5 pb-2">
-                        <Filter size={14} className="text-blue-400" />
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Response Payload (JSON)</span>
-                    </div>
-                    <div className="bg-slate-950/50 border border-white/5 rounded-lg p-8 font-mono shadow-inner">
-                        <pre className="text-[11px] text-blue-300 overflow-auto">
-                          {JSON.stringify(selectedError.data, null, 2)}
-                        </pre>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center opacity-30 text-slate-500 space-y-4">
-                 <Terminal size={64} />
-                 <p className="text-xs font-black uppercase tracking-[0.5em]">SELECT A FAULT FOR DEEP INSPECTION</p>
-              </div>
-            )}
-          </div>
-        </div>
+                     <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                           <div className={`w-3 h-3 rounded-full ${selectedError.severity === 'critical' ? 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]' : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]'}`} />
+                           <h3 className="text-2xl font-black text-white tracking-tighter uppercase">{selectedError.message}</h3>
+                        </div>
+                        <div className="flex items-center gap-2">
+                           <button 
+                             onClick={() => acknowledgeError(selectedError.id)}
+                             disabled={selectedError.acknowledged}
+                             className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${selectedError.acknowledged ? 'bg-emerald-500/20 text-emerald-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-500 active:scale-95'}`}
+                           >
+                              {selectedError.acknowledged ? 'Verified' : 'Verify Exception'}
+                           </button>
+                           <button 
+                             onClick={() => copyToClipboard(selectedError.stack || '')}
+                             className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-all"
+                           >
+                              <Copy size={18} />
+                           </button>
+                        </div>
+                     </div>
 
-        {/* Footer Stats */}
-        <div className="px-8 py-3 bg-white/5 border-t border-white/10 flex items-center justify-between text-[9px] font-black text-slate-600 uppercase tracking-widest">
-           <div className="flex items-center gap-6">
-              <span>TRACING ACTIVE</span>
-              <span className="w-1 h-1 rounded-full bg-slate-800" />
-              <span>LOG RETENTION: 100 RECORDS</span>
-           </div>
-           <div className="flex items-center gap-2">
-              <span className="text-rose-500">SYSGRID BUGANIZER</span>
-              <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-           </div>
+                     <div className="grid grid-cols-4 gap-4">
+                        {[
+                           { label: 'Time of Failure', val: new Date(selectedError.timestamp).toLocaleString(), icon: Clock },
+                           { label: 'Fault Domain', val: selectedError.type, icon: Database },
+                           { label: 'Severity Level', val: selectedError.severity, icon: ShieldAlert },
+                           { label: 'Execution Path', val: selectedError.view || '/', icon: TerminalSquare }
+                        ].map(m => (
+                          <div key={m.label} className="bg-white/[0.03] border border-white/5 rounded-xl p-4">
+                             <div className="flex items-center gap-2 text-slate-500 mb-1">
+                                <m.icon size={12} />
+                                <span className="text-[9px] font-bold uppercase tracking-widest">{m.label}</span>
+                             </div>
+                             <p className="text-[11px] font-black text-slate-200">{m.val}</p>
+                          </div>
+                        ))}
+                     </div>
+                  </div>
+
+                  {selectedError.url && (
+                    <div className="space-y-3">
+                       <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                          <Globe size={14} /> Request Context
+                       </h4>
+                       <div className="bg-slate-950 border border-white/5 rounded-xl p-6 font-mono text-[11px] space-y-2">
+                          <div className="flex gap-4"><span className="text-blue-400 w-16">ENDPOINT</span> <span className="text-slate-300">{selectedError.url}</span></div>
+                          <div className="flex gap-4"><span className="text-blue-400 w-16">METHOD</span> <span className="text-emerald-400">{selectedError.method || 'GET'}</span></div>
+                          <div className="flex gap-4"><span className="text-blue-400 w-16">STATUS</span> <span className="text-amber-400">{selectedError.status || 'N/A'}</span></div>
+                       </div>
+                    </div>
+                  )}
+
+                  {selectedError.stack && (
+                    <div className="space-y-3">
+                       <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                          <Terminal size={14} /> Kernel Traceback
+                       </h4>
+                       <div className="bg-[#020617] border border-rose-500/20 rounded-xl p-6 font-mono text-[11px] leading-relaxed relative group shadow-2xl">
+                          <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                             <button onClick={() => copyToClipboard(selectedError.stack || '')} className="text-slate-600 hover:text-white"><Copy size={16}/></button>
+                          </div>
+                          <pre className="text-rose-400/80 whitespace-pre-wrap overflow-x-auto custom-scrollbar max-h-[400px]">
+                             {selectedError.stack}
+                          </pre>
+                       </div>
+                    </div>
+                  )}
+
+                  {selectedError.data && (
+                    <div className="space-y-3">
+                       <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                          <Database size={14} /> Payload Inspection
+                       </h4>
+                       <div className="bg-slate-950 border border-white/5 rounded-xl p-6 font-mono text-[11px]">
+                          <pre className="text-emerald-400/80 overflow-x-auto custom-scrollbar">
+                             {JSON.stringify(selectedError.data, null, 2)}
+                          </pre>
+                       </div>
+                    </div>
+                  )}
+               </div>
+             ) : (
+               <div className="flex-1 flex flex-col items-center justify-center p-20 text-center space-y-6">
+                  <div className="w-24 h-24 rounded-full border-4 border-dashed border-white/10 flex items-center justify-center text-slate-700 animate-[spin_10s_linear_infinite]">
+                     <TerminalSquare size={48} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-400 uppercase tracking-tighter">Selection Required</h3>
+                    <p className="text-[10px] text-slate-600 max-w-xs mt-2 mx-auto leading-relaxed uppercase font-bold">
+                       Select a temporal trace from the vector list on the left to inspect its kernel state and payload.
+                    </p>
+                  </div>
+               </div>
+             )}
+
+             <div className="px-8 py-4 border-t border-white/5 bg-black/20 shrink-0 flex items-center justify-between">
+                <div className="flex items-center gap-6 text-[8px] font-black text-slate-500 uppercase tracking-widest">
+                   <div className="flex items-center gap-2">
+                      <Cpu size={12} className="text-slate-600" />
+                      <span>RUNTIME: MATRIX_V8</span>
+                   </div>
+                   <div className="flex items-center gap-2">
+                      <span className="w-1 h-1 rounded-full bg-slate-800" />
+                      <span>LOG RETENTION: 100 RECORDS</span>
+                   </div>
+                   <div className="flex items-center gap-2">
+                      <span className="text-rose-500">SYSGRID BUGANIZER</span>
+                      <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                   </div>
+                </div>
+             </div>
+          </div>
         </div>
       </motion.div>
     </div>
