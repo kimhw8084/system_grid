@@ -1,236 +1,568 @@
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Request
-from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, inspect
-import pandas as pd
+from __future__ import annotations
+
+from dataclasses import dataclass, field
 import io
 import json
-from typing import List, Dict, Any
+from typing import Any, Callable, Dict, List, Optional
+
+import pandas as pd
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import StreamingResponse
+from sqlalchemy import inspect, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
+
 from ..database import get_db
 from ..models import models
-from .utils import get_current_user_id
+from .monitoring import build_monitoring_payload, save_monitoring_history
+from .utils import filter_valid_columns, get_current_user_id
 
 router = APIRouter(prefix="/import", tags=["Intelligence Engine"])
 
-class ModelValidator:
-    @staticmethod
-    def get_model(table_name: str):
-        mapping = {
-            "devices": models.Device,
-            "racks": models.Rack,
-            "logical_services": models.LogicalService,
-            "far_records": models.FarFailureMode,
-            "port_connections": models.PortConnection
+
+@dataclass
+class ImportField:
+    name: str
+    label: str
+    required: bool = False
+    description: str = ""
+    input_kind: str = "text"
+    template_hint: str = ""
+    aliases: list[str] = field(default_factory=list)
+    accepts_multiple: bool = False
+
+
+@dataclass
+class ImportProfile:
+    key: str
+    display_name: str
+    model: Any
+    fields: list[ImportField]
+    execute_rows: Callable[[AsyncSession, list[dict[str, Any]], Optional[str]], Any]
+    preview_rows: Callable[[AsyncSession, list[dict[str, Any]]], Any]
+
+
+GENERIC_EXCLUDE_COLUMNS = {
+    "id",
+    "created_at",
+    "updated_at",
+    "created_by_user_id",
+    "hardware_age",
+    "open_incident_count",
+}
+
+
+def normalize_scalar(value: Any) -> Any:
+    if value is None:
+        return None
+    if isinstance(value, float) and pd.isna(value):
+      return None
+    if isinstance(value, str):
+      trimmed = value.strip()
+      return trimmed or None
+    return value
+
+
+def stringify_json(value: Any) -> Any:
+    if isinstance(value, (dict, list)):
+        return json.dumps(value)
+    return value
+
+
+def coerce_bool(value: Any) -> bool:
+    normalized = str(value).strip().lower()
+    if normalized in {"true", "1", "yes", "y"}:
+        return True
+    if normalized in {"false", "0", "no", "n"}:
+        return False
+    raise ValueError("must be a boolean")
+
+
+def coerce_value_for_column(column: Any, value: Any) -> Any:
+    normalized = normalize_scalar(value)
+    if normalized is None:
+        return None
+    python_type = column.type.python_type
+    if python_type == bool:
+        return coerce_bool(normalized)
+    if python_type == int:
+        return int(normalized)
+    if python_type == float:
+        return float(normalized)
+    if python_type in {dict, list}:
+        if isinstance(normalized, str):
+            return json.loads(normalized)
+        return normalized
+    return normalized
+
+
+def split_multi_value(value: Any) -> list[str]:
+    normalized = normalize_scalar(value)
+    if normalized is None:
+        return []
+    if isinstance(normalized, list):
+        return [str(entry).strip() for entry in normalized if str(entry).strip()]
+    raw = str(normalized).replace("\n", ",")
+    return [entry.strip() for entry in raw.split(",") if entry.strip()]
+
+
+def rows_from_dataframe(df: pd.DataFrame) -> list[dict[str, Any]]:
+    normalized = df.where(pd.notnull(df), None)
+    return [dict(row) for _, row in normalized.iterrows()]
+
+
+def load_dataframe_from_upload(file: UploadFile, content: bytes) -> pd.DataFrame:
+    lower_name = (file.filename or "").lower()
+    if lower_name.endswith(".csv"):
+        return pd.read_csv(io.BytesIO(content))
+    if lower_name.endswith(".xlsx") or lower_name.endswith(".xls"):
+        return pd.read_excel(io.BytesIO(content))
+    raise HTTPException(status_code=400, detail="Only CSV and Excel uploads are supported")
+
+
+def generic_fields_for_model(model: Any) -> list[ImportField]:
+    mapper = inspect(model)
+    fields: list[ImportField] = []
+    for column in mapper.columns:
+        if column.primary_key or column.name in GENERIC_EXCLUDE_COLUMNS:
+            continue
+        hint = "[STRING]"
+        try:
+            python_type = column.type.python_type
+            if python_type == int:
+                hint = "[INTEGER]"
+            elif python_type == float:
+                hint = "[FLOAT]"
+            elif python_type == bool:
+                hint = "[BOOLEAN]"
+            elif python_type == dict:
+                hint = "[JSON_OBJECT]"
+            elif python_type == list:
+                hint = "[JSON_ARRAY]"
+        except NotImplementedError:
+            pass
+        fields.append(
+            ImportField(
+                name=column.name,
+                label=column.name.replace("_", " ").title(),
+                required=not column.nullable and column.default is None and column.server_default is None,
+                template_hint=hint,
+            )
+        )
+    return fields
+
+
+async def preview_generic_rows(db: AsyncSession, model: Any, rows: list[dict[str, Any]]) -> dict[str, Any]:
+    mapper = inspect(model)
+    relevant_columns = {
+        column.name: column
+        for column in mapper.columns
+        if not column.primary_key and column.name not in GENERIC_EXCLUDE_COLUMNS
+    }
+    results = []
+    for index, raw_row in enumerate(rows):
+        normalized_row: dict[str, Any] = {}
+        errors: list[str] = []
+        for column_name, column in relevant_columns.items():
+            try:
+                normalized_row[column_name] = coerce_value_for_column(column, raw_row.get(column_name))
+            except (ValueError, TypeError, json.JSONDecodeError):
+                errors.append(f"{column_name} has an invalid value")
+
+            value = normalized_row.get(column_name)
+            if not column.nullable and value is None and column.default is None and column.server_default is None:
+                errors.append(f"{column_name} is required")
+
+        results.append({
+            "row": index + 1,
+            "source": raw_row,
+            "normalized": normalized_row,
+            "status": "VALID" if not errors else "INVALID",
+            "errors": errors,
+        })
+
+    valid = [result for result in results if result["status"] == "VALID"]
+    invalid = [result for result in results if result["status"] == "INVALID"]
+    return {
+        "total_rows": len(results),
+        "valid_rows": len(valid),
+        "invalid_rows": len(invalid),
+        "total_errors": sum(len(result["errors"]) for result in invalid),
+        "results": results,
+    }
+
+
+async def execute_generic_rows(db: AsyncSession, model: Any, rows: list[dict[str, Any]], user_id: Optional[str]) -> dict[str, Any]:
+    preview = await preview_generic_rows(db, model, rows)
+    invalid = [result for result in preview["results"] if result["status"] == "INVALID"]
+    if invalid:
+        return {"status": "failed", "errors": [f"Row {result['row']}: {', '.join(result['errors'])}" for result in invalid], "count": 0}
+
+    mapper = inspect(model)
+    relevant_columns = {
+        column.name: column
+        for column in mapper.columns
+        if not column.primary_key and column.name not in GENERIC_EXCLUDE_COLUMNS
+    }
+    count = 0
+    for raw_row in rows:
+        clean_data = {}
+        for column_name, column in relevant_columns.items():
+            clean_data[column_name] = coerce_value_for_column(column, raw_row.get(column_name))
+        clean_data = filter_valid_columns(model, clean_data)
+        if hasattr(model, "created_by_user_id") and user_id:
+            clean_data["created_by_user_id"] = user_id
+        db.add(model(**clean_data))
+        count += 1
+
+    await db.commit()
+    if user_id:
+        db.add(models.AuditLog(
+            user_id=user_id,
+            action="BULK_IMPORT",
+            target_table=model.__tablename__.upper(),
+            target_id="MULTIPLE",
+            description=f"Bulk imported {count} records into {model.__tablename__}.",
+        ))
+        await db.commit()
+    return {"status": "success", "count": count}
+
+
+MONITORING_IMPORT_FIELDS = [
+    ImportField("device_name", "Target Asset", description="Existing asset name. Resolves to device_id.", template_hint="[ASSET_NAME]"),
+    ImportField("category", "Category", required=True, template_hint="[STRING]"),
+    ImportField("status", "Status", required=True, template_hint="[Existing|Planned|Cancelled|Decommissioned]"),
+    ImportField("title", "Title", required=True, template_hint="[STRING]"),
+    ImportField("platform", "Platform", required=True, template_hint="[Monitoring Platform]"),
+    ImportField("purpose", "Purpose", template_hint="[STRING]"),
+    ImportField("impact", "Impact", template_hint="[STRING]"),
+    ImportField("notification_method", "Notification Method", template_hint="[STRING]"),
+    ImportField("notification_recipients", "Notification Recipients", input_kind="multiline", template_hint="[comma separated]", accepts_multiple=True),
+    ImportField("owner_team", "Owner Team", required=True, template_hint="[Team Name]"),
+    ImportField("monitoring_url", "Monitoring URL", template_hint="[https://...]"),
+    ImportField("severity", "Severity", template_hint="[Critical|Warning|Info]"),
+    ImportField("check_interval", "Check Interval (sec)", template_hint="[INTEGER]"),
+    ImportField("alert_duration", "Alert Duration (sec)", template_hint="[INTEGER]"),
+    ImportField("notification_throttle", "Notification Throttle (sec)", template_hint="[INTEGER]"),
+    ImportField("spec", "Spec", input_kind="multiline", template_hint="[STRING]"),
+    ImportField("logic", "Logic", input_kind="multiline", template_hint="[STRING]"),
+    ImportField("monitored_service_names", "Services", template_hint="[comma separated service names]", accepts_multiple=True),
+    ImportField("recovery_doc_titles", "Recovery Documents", template_hint="[comma separated knowledge titles]", accepts_multiple=True),
+]
+
+
+async def build_monitoring_import_row(db: AsyncSession, raw_row: dict[str, Any]) -> dict[str, Any]:
+    row = {key: normalize_scalar(value) for key, value in raw_row.items()}
+    next_row: dict[str, Any] = {}
+
+    for field_name in ("category", "status", "title", "platform", "purpose", "impact", "notification_method", "owner_team", "monitoring_url", "severity", "spec", "logic"):
+        if field_name in row:
+            next_row[field_name] = row.get(field_name)
+
+    for integer_field in ("check_interval", "alert_duration", "notification_throttle"):
+        if integer_field in row and row.get(integer_field) is not None:
+            next_row[integer_field] = int(row[integer_field])
+
+    if row.get("device_id") is not None:
+        next_row["device_id"] = int(row["device_id"])
+    elif row.get("device_name"):
+        result = await db.execute(select(models.Device.id).where(models.Device.name == row["device_name"]))
+        device_id = result.scalar_one_or_none()
+        if device_id is None:
+            raise HTTPException(status_code=400, detail=f"Unknown device_name: {row['device_name']}")
+        next_row["device_id"] = device_id
+
+    if "notification_recipients" in row:
+        next_row["notification_recipients"] = split_multi_value(row.get("notification_recipients"))
+
+    if row.get("monitored_services") is not None:
+        next_row["monitored_services"] = row["monitored_services"]
+    elif row.get("monitored_service_names"):
+        names = split_multi_value(row.get("monitored_service_names"))
+        if names:
+            result = await db.execute(select(models.LogicalService.id, models.LogicalService.name).where(models.LogicalService.name.in_(names)))
+            mapping = {name: service_id for service_id, name in result.all()}
+            missing = [name for name in names if name not in mapping]
+            if missing:
+                raise HTTPException(status_code=400, detail=f"Unknown monitored services: {', '.join(missing)}")
+            next_row["monitored_services"] = [mapping[name] for name in names]
+
+    if row.get("recovery_docs") is not None:
+        next_row["recovery_docs"] = row["recovery_docs"]
+    elif row.get("recovery_doc_titles"):
+        titles = split_multi_value(row.get("recovery_doc_titles"))
+        if titles:
+            result = await db.execute(select(models.KnowledgeEntry.id, models.KnowledgeEntry.title).where(models.KnowledgeEntry.title.in_(titles)))
+            mapping = {title: knowledge_id for knowledge_id, title in result.all()}
+            missing = [title for title in titles if title not in mapping]
+            if missing:
+                raise HTTPException(status_code=400, detail=f"Unknown recovery documents: {', '.join(missing)}")
+            next_row["recovery_docs"] = [mapping[title] for title in titles]
+
+    return next_row
+
+
+async def preview_monitoring_rows(db: AsyncSession, rows: list[dict[str, Any]]) -> dict[str, Any]:
+    results = []
+    for index, raw_row in enumerate(rows):
+        errors: list[str] = []
+        normalized_row: dict[str, Any] = {}
+        try:
+            candidate = await build_monitoring_import_row(db, raw_row)
+            clean_data, owners_data = await build_monitoring_payload(db, candidate, partial=False)
+            normalized_row = {**clean_data, "owners": owners_data or []}
+        except HTTPException as exc:
+            detail = exc.detail
+            if isinstance(detail, list):
+                errors.extend(str(entry) for entry in detail)
+            else:
+                errors.append(str(detail))
+        except (ValueError, TypeError) as exc:
+            errors.append(str(exc))
+
+        results.append({
+            "row": index + 1,
+            "source": raw_row,
+            "normalized": normalized_row,
+            "status": "VALID" if not errors else "INVALID",
+            "errors": errors,
+        })
+
+    valid = [result for result in results if result["status"] == "VALID"]
+    invalid = [result for result in results if result["status"] == "INVALID"]
+    return {
+        "total_rows": len(results),
+        "valid_rows": len(valid),
+        "invalid_rows": len(invalid),
+        "total_errors": sum(len(result["errors"]) for result in invalid),
+        "results": results,
+    }
+
+
+async def execute_monitoring_rows(db: AsyncSession, rows: list[dict[str, Any]], user_id: Optional[str]) -> dict[str, Any]:
+    preview = await preview_monitoring_rows(db, rows)
+    invalid = [result for result in preview["results"] if result["status"] == "INVALID"]
+    if invalid:
+        return {"status": "failed", "errors": [f"Row {result['row']}: {', '.join(result['errors'])}" for result in invalid], "count": 0}
+
+    count = 0
+    for raw_row in rows:
+        candidate = await build_monitoring_import_row(db, raw_row)
+        item_data, owners_data = await build_monitoring_payload(db, candidate, partial=False)
+        if user_id:
+            item_data["created_by_user_id"] = user_id
+        db_obj = models.MonitoringItem(**item_data)
+        db.add(db_obj)
+        await db.flush()
+        for owner in owners_data or []:
+            db.add(models.MonitoringOwner(**owner, monitoring_item_id=db_obj.id))
+        count += 1
+
+    await db.commit()
+
+    result = await db.execute(
+        select(models.MonitoringItem)
+        .options(joinedload(models.MonitoringItem.owners).joinedload(models.MonitoringOwner.operator))
+        .order_by(models.MonitoringItem.id.desc())
+        .limit(count)
+    )
+    created_items = list(reversed(result.unique().scalars().all()))
+    for item in created_items:
+        await save_monitoring_history(item.id, item.version, db, "Import create")
+    await db.commit()
+
+    if user_id:
+        db.add(models.AuditLog(
+            user_id=user_id,
+            action="BULK_IMPORT",
+            target_table=models.MonitoringItem.__tablename__.upper(),
+            target_id="MULTIPLE",
+            description=f"Bulk imported {count} records into monitoring_items.",
+        ))
+        await db.commit()
+
+    return {"status": "success", "count": count}
+
+
+def profile_fields_to_payload(fields: list[ImportField]) -> list[dict[str, Any]]:
+    return [
+        {
+            "name": field.name,
+            "label": field.label,
+            "required": field.required,
+            "description": field.description,
+            "input_kind": field.input_kind,
+            "template_hint": field.template_hint,
+            "aliases": field.aliases,
+            "accepts_multiple": field.accepts_multiple,
         }
-        return mapping.get(table_name)
+        for field in fields
+    ]
 
-    @staticmethod
-    def validate_row(model, row: Dict[str, Any]) -> List[str]:
-        errors = []
-        mapper = inspect(model)
-        
-        for column in mapper.columns:
-            # Skip primary keys and system timestamps if not provided
-            if column.primary_key or column.name in ["created_at", "updated_at"]:
-                continue
-                
-            val = row.get(column.name)
-            
-            # 1. Nullability Check
-            if not column.nullable and (val is None or str(val).strip() == "" or pd.isna(val)):
-                # Check if it has a default value
-                if column.default is None and column.server_default is None:
-                    errors.append(f"Field '{column.name}' is required but missing.")
-                continue
 
-            if val is not None and not pd.isna(val):
-                # 2. Type Checking
-                try:
-                    python_type = column.type.python_type
-                    if python_type == int:
-                        int(val)
-                    elif python_type == float:
-                        float(val)
-                    elif python_type == bool:
-                        if str(val).lower() not in ["true", "false", "1", "0", "yes", "no"]:
-                            errors.append(f"Field '{column.name}' must be a boolean.")
-                    elif python_type == dict or python_type == list:
-                        if isinstance(val, str):
-                            json.loads(val)
-                except (ValueError, TypeError, json.JSONDecodeError):
-                    errors.append(f"Field '{column.name}' has invalid type. Expected {column.type.python_type.__name__}.")
+GENERIC_MODEL_MAPPING = {
+    "devices": models.Device,
+    "racks": models.Rack,
+    "logical_services": models.LogicalService,
+    "far_records": models.FarFailureMode,
+    "port_connections": models.PortConnection,
+}
 
-        return errors
+
+def build_import_profiles() -> dict[str, ImportProfile]:
+    profiles: dict[str, ImportProfile] = {
+        "monitoring_items": ImportProfile(
+            key="monitoring_items",
+            display_name="Monitoring",
+            model=models.MonitoringItem,
+            fields=MONITORING_IMPORT_FIELDS,
+            preview_rows=preview_monitoring_rows,
+            execute_rows=execute_monitoring_rows,
+        )
+    }
+
+    for key, model in GENERIC_MODEL_MAPPING.items():
+        profiles[key] = ImportProfile(
+            key=key,
+            display_name=model.__tablename__.replace("_", " ").title(),
+            model=model,
+            fields=generic_fields_for_model(model),
+            preview_rows=lambda db, rows, current_model=model: preview_generic_rows(db, current_model, rows),
+            execute_rows=lambda db, rows, user_id, current_model=model: execute_generic_rows(db, current_model, rows, user_id),
+        )
+    return profiles
+
+
+IMPORT_PROFILES = build_import_profiles()
+
+
+def get_import_profile(table_name: str) -> ImportProfile:
+    profile = IMPORT_PROFILES.get(table_name)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Import profile not found")
+    return profile
+
+
+def resolve_template_fields(profile: ImportProfile, requested_columns: Optional[str]) -> list[ImportField]:
+    field_map = {field.name: field for field in profile.fields}
+    required_names = [field.name for field in profile.fields if field.required]
+    if not requested_columns:
+        ordered_names = [field.name for field in profile.fields]
+    else:
+        requested_names = [column.strip() for column in requested_columns.split(",") if column.strip()]
+        ordered_names = []
+        for name in required_names + requested_names:
+            if name in field_map and name not in ordered_names:
+                ordered_names.append(name)
+    return [field_map[name] for name in ordered_names]
+
+
+@router.get("/schema/{table_name}")
+async def get_import_schema(table_name: str):
+    profile = get_import_profile(table_name)
+    return {
+        "table_name": profile.key,
+        "display_name": profile.display_name,
+        "fields": profile_fields_to_payload(profile.fields),
+        "required_fields": [field.name for field in profile.fields if field.required],
+    }
+
 
 @router.get("/template/{table_name}")
-def download_template(table_name: str, mode: str = "raw", db: AsyncSession = Depends(get_db)):
-    model = ModelValidator.get_model(table_name)
-    if not model:
-        raise HTTPException(404, "Table model not found")
-        
-    mapper = inspect(model)
-    # Columns to exclude: primary keys, timestamps, and known auto-populated fields
-    exclude = ["created_at", "updated_at", "id", "created_by_user_id", "is_deleted", "hardware_age", "open_incident_count"]
-    cols = [c.name for c in mapper.columns if not c.primary_key and c.name not in exclude]
-    
-    if mode == "snapshot":
-        # This will be handled by a different logic or if I want to merge it here
-        pass
+async def download_template(table_name: str, columns: Optional[str] = None):
+    profile = get_import_profile(table_name)
+    fields = resolve_template_fields(profile, columns)
+    df = pd.DataFrame(columns=[field.name for field in fields])
+    if fields:
+        df.loc[0] = {field.name: field.template_hint or "[STRING]" for field in fields}
 
-    df = pd.DataFrame(columns=cols)
-    
-    # Add a type hint row
-    type_hints = {}
-    for c in mapper.columns:
-        if c.name not in cols: continue
-        python_type = c.type.python_type
-        if python_type == int: type_hints[c.name] = "[INTEGER]"
-        elif python_type == float: type_hints[c.name] = "[FLOAT]"
-        elif python_type == bool: type_hints[c.name] = "[BOOLEAN]"
-        elif python_type == dict or python_type == list: type_hints[c.name] = "[JSON_OBJECT]"
-        else: type_hints[c.name] = "[STRING]"
-    
-    df.loc[0] = type_hints
-    
     stream = io.BytesIO()
     df.to_csv(stream, index=False)
     stream.seek(0)
-    
     return StreamingResponse(
-        stream, 
+        stream,
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename=SYSGRID_{table_name}_Template.csv"}
     )
 
+
 @router.get("/snapshot/{table_name}")
 async def download_snapshot(table_name: str, db: AsyncSession = Depends(get_db)):
-    model = ModelValidator.get_model(table_name)
-    if not model:
-        raise HTTPException(404, "Table model not found")
-        
+    profile = get_import_profile(table_name)
+    model = profile.model
     mapper = inspect(model)
-    exclude = ["created_at", "updated_at", "id", "created_by_user_id"]
-    cols = [c.name for c in mapper.columns if c.name not in exclude]
-    
-    # Fetch all records
-    result = await db.execute(select(model).where(model.is_deleted == False if hasattr(model, 'is_deleted') else True))
+    exclude = {"id", "created_at", "updated_at", "created_by_user_id"}
+    cols = [column.name for column in mapper.columns if column.name not in exclude]
+
+    query = select(model)
+    if hasattr(model, "is_deleted"):
+        query = query.where(model.is_deleted == False)
+
+    result = await db.execute(query)
     records = result.scalars().all()
-    
     data = []
-    for r in records:
+    for record in records:
         row = {}
-        for col in cols:
-            val = getattr(r, col)
-            if isinstance(val, (dict, list)):
-                row[col] = json.dumps(val)
-            else:
-                row[col] = val
+        for column in cols:
+            row[column] = stringify_json(getattr(record, column))
         data.append(row)
-        
+
     df = pd.DataFrame(data, columns=cols)
-    
     stream = io.BytesIO()
     df.to_csv(stream, index=False)
     stream.seek(0)
-    
     return StreamingResponse(
-        stream, 
+        stream,
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename=SYSGRID_{table_name}_Snapshot.csv"}
     )
 
-@router.post("/audit")
-async def audit_import(table_name: str, file: UploadFile = File(...)):
-    """Pre-flight check: Validates file content against schema without writing to DB."""
-    model = ModelValidator.get_model(table_name)
-    if not model:
-        raise HTTPException(404, "Table model not found")
-        
+
+@router.post("/preview-file")
+async def preview_import_file(table_name: str = Form(...), file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+    profile = get_import_profile(table_name)
     content = await file.read()
     try:
-        # Support CSV and Excel
-        if file.filename.endswith(".csv"):
-            df = pd.read_csv(io.BytesIO(content))
-        else:
-            df = pd.read_excel(io.BytesIO(content))
-            
-        results = []
-        total_errors = 0
-        
-        # Replace NaN with None for validator
-        df = df.where(pd.notnull(df), None)
-        
-        for idx, row in df.iterrows():
-            row_dict = row.to_dict()
-            errors = ModelValidator.validate_row(model, row_dict)
-            results.append({
-                "row": idx + 2, # +1 for 0-index, +1 for header
-                "data": row_dict,
-                "status": "VALID" if not errors else "INVALID",
-                "errors": errors
-            })
-            if errors:
-                total_errors += len(errors)
-                
-        return {
-            "table_name": table_name,
-            "total_rows": len(df),
-            "valid_rows": len([r for r in results if r["status"] == "VALID"]),
-            "invalid_rows": len([r for r in results if r["status"] == "INVALID"]),
-            "total_errors": total_errors,
-            "results": results
-        }
-    except Exception as e:
-        raise HTTPException(400, f"Failed to parse file: {str(e)}")
+        df = load_dataframe_from_upload(file, content)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    preview = await profile.preview_rows(db, rows_from_dataframe(df))
+    return {"table_name": table_name, **preview}
+
+
+@router.post("/preview-rows")
+async def preview_import_rows(
+    table_name: str,
+    payload: dict[str, Any] = Body(...),
+    db: AsyncSession = Depends(get_db),
+):
+    profile = get_import_profile(table_name)
+    rows = payload.get("rows")
+    if not isinstance(rows, list):
+        raise HTTPException(status_code=400, detail="rows must be a list")
+    preview = await profile.preview_rows(db, rows)
+    return {"table_name": table_name, **preview}
+
+
+@router.post("/audit")
+async def audit_import(table_name: str, file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+    return await preview_import_file(table_name=table_name, file=file, db=db)
+
 
 @router.post("/execute")
-async def execute_import(table_name: str, data: List[Dict[str, Any]], request: Request, db: AsyncSession = Depends(get_db)):
-    """Final ingestion step: Commits audited data to the database."""
-    model = ModelValidator.get_model(table_name)
-    if not model:
-        raise HTTPException(404, "Table model not found")
-        
+async def execute_import(
+    table_name: str,
+    request: Request,
+    body: Any = Body(...),
+    db: AsyncSession = Depends(get_db),
+):
+    profile = get_import_profile(table_name)
+    if isinstance(body, dict):
+        rows = body.get("rows")
+    else:
+        rows = body
+    if not isinstance(rows, list):
+        raise HTTPException(status_code=400, detail="rows must be a list")
+
     user_id = get_current_user_id(request)
-    count = 0
-    errors = []
-    
-    try:
-        for idx, row_data in enumerate(data):
-            # Final validation check
-            row_errors = ModelValidator.validate_row(model, row_data)
-            if row_errors:
-                errors.append(f"Row {idx + 1}: {', '.join(row_errors)}")
-                continue
-            
-            # Clean data (remove extra fields not in model)
-            from .utils import filter_valid_columns
-            clean_data = filter_valid_columns(model, row_data)
-            
-            # Set creator
-            if hasattr(model, "created_by_user_id"):
-                clean_data["created_by_user_id"] = user_id
-                
-            obj = model(**clean_data)
-            db.add(obj)
-            count += 1
-            
-        if errors:
-            await db.rollback()
-            return {"status": "failed", "errors": errors, "count": 0}
-            
-        await db.commit()
-        
-        # Add to Audit Trail
-        db.add(models.AuditLog(
-            user_id=user_id,
-            action="BULK_IMPORT",
-            target_table=table_name.upper(),
-            target_id="MULTIPLE",
-            description=f"Bulk imported {count} records into {table_name}."
-        ))
-        await db.commit()
-        
-        return {"status": "success", "count": count}
-    except Exception as e:
-        await db.rollback()
-        raise HTTPException(500, f"Ingestion failed: {str(e)}")
+    return await profile.execute_rows(db, rows, user_id)

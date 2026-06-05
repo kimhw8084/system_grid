@@ -11,7 +11,7 @@ import {
   Globe, Bell, Info, ChevronRight, X, Check, Save,
   AlertCircle, Clock, Zap, Settings,
   BookOpen, Eye, EyeOff, FileText, User, Mail, MessageSquare, Monitor, MoreVertical,
-  Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, Star, GitCompare, Undo2, List, LayoutGrid
+  Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, Star, GitCompare, Undo2, List, LayoutGrid, Upload
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from "ag-grid-react"
@@ -50,6 +50,7 @@ import { PageHeader, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSear
 import { WorkspaceCommandBar } from './shared/WorkspaceCommandBar'
 import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
 import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } from './shared/WorkspaceModalShells'
+import { OperationalImportModal } from './shared/OperationalImportModal'
 import {
   applyOperationalColumnSizing,
   applyOperationalColumnState,
@@ -233,6 +234,7 @@ const GridMatrix = React.memo(({
   rowData, 
   columnDefs, 
   autoSizeStrategy,
+  colResizeDefault,
   fontSize, 
   rowDensity, 
   context,
@@ -280,6 +282,7 @@ const GridMatrix = React.memo(({
       rowData={rowData}
       columnDefs={columnDefs}
       autoSizeStrategy={autoSizeStrategy}
+      colResizeDefault={colResizeDefault}
       defaultColDef={defaultColDef}
       getRowId={getRowId}
       rowSelection="multiple"
@@ -468,6 +471,7 @@ export default function MonitoringGrid() {
   const [editingItem, setEditingItem] = useState<any>(null)
   const [detailItem, setDetailItem] = useState<any>(null)
   const [historyItem, setHistoryItem] = useState<any>(null)
+  const [showImportModal, setShowImportModal] = useState(false)
   const [recipientPopup, setRecipientPopup] = useState<{ recipients: string[], method: string } | null>(null)
   const [bkmPopup, setBkmPopup] = useState<{ ids: number[], titles: string[], monitorId?: number } | null>(null)
   const [activeBkm, setActiveBkm] = useState<any>(null)
@@ -1878,7 +1882,10 @@ export default function MonitoringGrid() {
 }, [fontSize, hiddenColumns, columnLayoutState, isIntelligenceExpanded, preserveExplicitColumnWidths]) as any
 
   const gridContext = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
-  const autoSizeStrategy = useMemo(() => OPERATIONAL_GRID_AUTO_SIZE_STRATEGY, [])
+  const autoSizeStrategy = useMemo(
+    () => (preserveExplicitColumnWidths ? undefined : OPERATIONAL_GRID_AUTO_SIZE_STRATEGY),
+    [preserveExplicitColumnWidths]
+  )
 
   return (
    <div className="h-full min-h-0 flex flex-col space-y-6">
@@ -1942,6 +1949,12 @@ export default function MonitoringGrid() {
               </ToolbarIconButton>
             </ToolbarGroup>
             <ToolbarGroup>
+              <ToolbarButton onClick={() => setShowImportModal(true)} title="Import monitoring rows">
+                <span className="flex items-center gap-2">
+                  <Upload size={14} />
+                  Import
+                </span>
+              </ToolbarButton>
               <ToolbarButton
                 active={showFilterBar}
                 onClick={() => setShowFilterBar((current) => !current)}
@@ -2559,6 +2572,7 @@ export default function MonitoringGrid() {
 	            rowData={displayedItemsInOrder || []} 
 	            columnDefs={columnDefs} 
             autoSizeStrategy={autoSizeStrategy}
+            colResizeDefault="normal"
             fontSize={fontSize}
             rowDensity={rowDensity}
             context={gridContext}
@@ -2646,6 +2660,7 @@ export default function MonitoringGrid() {
                       rowData={section.items} 
                       columnDefs={columnDefs} 
                       autoSizeStrategy={autoSizeStrategy}
+                      colResizeDefault="normal"
                       fontSize={fontSize}
                       rowDensity={rowDensity}
                       context={gridContext}
@@ -2741,6 +2756,12 @@ export default function MonitoringGrid() {
         {bkmPopup && <BkmListModal ids={bkmPopup.ids} titles={bkmPopup.titles} onOpenBkm={setActiveBkm} onClose={() => setBkmPopup(null)} />}
         {activeBkm && <BkmDetailModal bkmId={activeBkm} onClose={() => setActiveBkm(null)} />}
         {compareOpen && <CompareMonitorsModal items={compareItems} onClose={() => setCompareOpen(false)} />}
+        <OperationalImportModal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          tableName="monitoring_items"
+          displayName="Monitoring"
+        />
         <ConfigRegistryModal
             isOpen={showRegistry}
             onClose={() => setShowRegistry(false)}

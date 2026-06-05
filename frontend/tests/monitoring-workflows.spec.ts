@@ -275,4 +275,38 @@ test.describe('Monitoring workflows', () => {
     await fillGridSearch(page, 'Scan matrix...', createdLongTitle)
     await expect.poll(async () => getColumnWidth(page, 'device_name')).toBe(manualViewWidth)
   })
+
+  test('imports monitoring rows through the shared operational import modal', async ({ page, request }) => {
+    await resetBrowserState(page)
+    const { stamp, primary, knowledge, monitoring } = await seedOperationalScenario(request)
+    const importTitle = `PW-IMPORT-MON-${stamp}`
+    const invalidTitle = `PW-IMPORT-BAD-${stamp}`
+
+    await gotoView(page, '/monitoring', 'Monitoring')
+    await openToolbarButton(page, 'Import')
+    await expect(page.getByRole('heading', { name: 'Monitoring Import' })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Paste CSV / Grid' }).click()
+    await page.getByPlaceholder('Paste CSV with headers, or paste spreadsheet cells directly.').fill([
+      'device_name,category,status,title,platform,owner_team,severity,recovery_doc_titles',
+      `${primary.name},Infrastructure,Existing,${importTitle},Zabbix,${monitoring.owner_team},Critical,${knowledge.title}`,
+      `UNKNOWN-ASSET,Infrastructure,Existing,${invalidTitle},Zabbix,${monitoring.owner_team},Warning,`,
+    ].join('\n'))
+    await page.getByRole('button', { name: 'Load Into Builder' }).click()
+    await page.getByRole('button', { name: 'Validate Preview' }).click()
+
+    await expect(page.getByText('VALID').first()).toBeVisible()
+    await expect(page.getByText('INVALID').first()).toBeVisible()
+    await expect(page.getByText('Unknown device_name: UNKNOWN-ASSET').first()).toBeVisible()
+
+    await page.getByRole('button', { name: 'Import 1' }).click()
+    await expectToast(page, /Imported 1 row/i)
+    await expect(page.getByRole('heading', { name: 'Monitoring Import' })).not.toBeVisible()
+
+    await fillGridSearch(page, 'Scan matrix...', importTitle)
+    await expect(getPrimaryGrid(page)).toContainText(importTitle)
+
+    await fillGridSearch(page, 'Scan matrix...', invalidTitle)
+    await expect(getPrimaryGrid(page)).not.toContainText(invalidTitle)
+  })
 })
