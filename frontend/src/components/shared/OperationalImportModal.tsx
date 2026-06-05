@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useId, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertCircle, CheckSquare, Clipboard, Download, FileSpreadsheet, FileUp, Plus, Trash2, Upload, X } from 'lucide-react'
+import { AlertCircle, CheckSquare, Clipboard, Download, FileSpreadsheet, FileUp, Maximize2, Minimize2, Plus, Trash2, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { apiFetch, getApiBaseUrl } from '../../api/apiClient'
 import {
@@ -16,6 +16,7 @@ import {
   WorkspaceSectionBadge,
   WorkspaceSectionCard,
   WorkspaceSplitView,
+  WorkspaceValidationBanner,
   getWorkspaceInputClass,
   getWorkspaceModalFrameClass,
   getWorkspaceModalShellClass,
@@ -32,6 +33,11 @@ interface ImportFieldMeta {
   template_hint: string
   aliases: string[]
   accepts_multiple: boolean
+  input_control: string
+  supported_in_builder: boolean
+  unsupported_reason: string
+  validation_rules: string[]
+  options: Array<{ value: string; label: string; description?: string }>
 }
 
 interface ImportSchemaResponse {
@@ -39,6 +45,7 @@ interface ImportSchemaResponse {
   display_name: string
   fields: ImportFieldMeta[]
   required_fields: string[]
+  example_records: Array<{ id: number; label: string }>
 }
 
 interface ImportPreviewRow {
@@ -64,6 +71,8 @@ interface OperationalImportModalProps {
   tableName: string
   displayName: string
 }
+
+type TemplateMode = 'raw' | 'hints' | 'example'
 
 const SOURCE_MODES: Array<{ id: ImportMode; label: string; icon: React.ReactNode }> = [
   { id: 'file', label: 'File Upload', icon: <Upload size={14} /> },
@@ -147,6 +156,12 @@ function stringifyPreviewValue(value: any) {
   return String(value)
 }
 
+function getChoicePreview(options: Array<{ value: string; label: string }>) {
+  if (options.length === 0) return ''
+  const labels = options.slice(0, 4).map((option) => option.label)
+  return options.length > 4 ? `${labels.join(', ')} +${options.length - 4} more` : labels.join(', ')
+}
+
 export function OperationalImportModal({
   isOpen,
   onClose,
@@ -154,7 +169,7 @@ export function OperationalImportModal({
   displayName,
 }: OperationalImportModalProps) {
   const queryClient = useQueryClient()
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const fileInputId = useId()
   const [mode, setMode] = useState<ImportMode>('file')
   const [file, setFile] = useState<File | null>(null)
   const [pasteText, setPasteText] = useState('')
@@ -162,6 +177,9 @@ export function OperationalImportModal({
   const [draftRows, setDraftRows] = useState<Array<Record<string, string>>>([])
   const [preview, setPreview] = useState<ImportPreviewResponse | null>(null)
   const [selectedPreviewRows, setSelectedPreviewRows] = useState<number[]>([])
+  const [templateMode, setTemplateMode] = useState<TemplateMode>('raw')
+  const [exampleRecordId, setExampleRecordId] = useState<number | null>(null)
+  const [isMaximized, setIsMaximized] = useState(false)
 
   const schemaQuery = useQuery({
     queryKey: ['operational-import-schema', tableName],
@@ -183,12 +201,13 @@ export function OperationalImportModal({
     if (!schema) return
     setSelectedColumns((current) => {
       if (current.length > 0) return current
-      return schema.fields.map((field) => field.name)
+      return schema.fields.filter((field) => field.supported_in_builder !== false).map((field) => field.name)
     })
     setDraftRows((current) => {
       if (current.length > 0) return current
       return [createEmptyRow(schema.fields.map((field) => field.name))]
     })
+    setExampleRecordId((current) => current ?? schema.example_records?.[0]?.id ?? null)
   }, [schema])
 
   useEffect(() => {
@@ -206,14 +225,25 @@ export function OperationalImportModal({
       setSelectedPreviewRows([])
       setSelectedColumns([])
       setDraftRows([])
+      setTemplateMode('raw')
+      setExampleRecordId(null)
+      setIsMaximized(false)
     }
   }, [isOpen])
 
+  const supportedFields = useMemo(
+    () => (schema?.fields || []).filter((field) => field.supported_in_builder !== false),
+    [schema?.fields]
+  )
+  const unsupportedFields = useMemo(
+    () => (schema?.fields || []).filter((field) => field.supported_in_builder === false),
+    [schema?.fields]
+  )
   const activeColumns = useMemo(() => {
     if (!schema) return []
     const selected = new Set([...requiredFieldNames, ...selectedColumns])
-    return schema.fields.filter((field) => selected.has(field.name))
-  }, [requiredFieldNames, schema, selectedColumns])
+    return supportedFields.filter((field) => selected.has(field.name))
+  }, [requiredFieldNames, selectedColumns, supportedFields])
 
   const nonFileRows = useMemo(() => {
     const columnNames = activeColumns.map((field) => field.name)
@@ -329,7 +359,7 @@ export function OperationalImportModal({
     }
 
     const fieldLookup = new Map<string, string>()
-    schema.fields.forEach((field) => {
+    supportedFields.forEach((field) => {
       fieldLookup.set(normalizeHeader(field.name), field.name)
       fieldLookup.set(normalizeHeader(field.label), field.name)
       field.aliases.forEach((alias) => fieldLookup.set(normalizeHeader(alias), field.name))
@@ -396,7 +426,13 @@ export function OperationalImportModal({
       .map((field) => field.name)
       .join(',')
     const baseUrl = getApiBaseUrl()
-    const url = `${baseUrl.replace(/\/$/, '')}/api/v1/import/template/${tableName}${includedColumns ? `?columns=${encodeURIComponent(includedColumns)}` : ''}`
+    const params = new URLSearchParams()
+    if (includedColumns) params.set('columns', includedColumns)
+    params.set('mode', templateMode)
+    if (templateMode === 'example' && exampleRecordId != null) {
+      params.set('example_id', String(exampleRecordId))
+    }
+    const url = `${baseUrl.replace(/\/$/, '')}/api/v1/import/template/${tableName}?${params.toString()}`
 
     try {
       const response = await fetch(url, {
@@ -432,30 +468,48 @@ export function OperationalImportModal({
 
   const modal = (
     <AnimatePresence>
-      <div className={`fixed inset-0 z-[3300] flex items-center justify-center bg-[rgba(2,6,23,0.72)] backdrop-blur-xl ${getWorkspaceModalFrameClass('workspace')}`}>
+      <div
+        onClick={onClose}
+        className={`fixed inset-0 z-[3300] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('workspace')}`}
+      >
         <motion.div
-          initial={{ opacity: 0, y: 16, scale: 0.99 }}
+          onClick={(event) => event.stopPropagation()}
+          initial={{ scale: 0.9, opacity: 0 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 16, scale: 0.99 }}
-          className={`${getWorkspaceModalShellClass('workspace')} overflow-hidden rounded-lg border border-white/10 bg-slate-950 shadow-[0_32px_120px_rgba(2,6,23,0.6)]`}
+          exit={{ scale: 0.9, opacity: 0 }}
+          className={`glass-panel w-full overflow-hidden flex flex-col rounded-lg border-blue-500/20 shadow-[0_0_80px_rgba(37,99,235,0.08)] ${isMaximized ? 'max-w-none h-[calc(100vh-3rem)]' : getWorkspaceModalShellClass('workspace')}`}
         >
           <div className="flex h-full min-h-0 flex-col">
             <WorkspaceModalHeader
               icon={<Upload size={24} />}
               title={`${displayName} Import`}
-              subtitle="File upload, paste, manual row builder, validation, and selective commit."
+              subtitle="File upload, paste, manual row builder, strict validation, and selective commit."
               closeControl={(
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded-lg border border-white/10 bg-black/30 p-2 text-slate-400 transition-colors hover:text-white"
+                  className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500/90 text-transparent transition-all hover:text-rose-950"
+                  title="Close"
                 >
-                  <X size={16} />
+                  <X size={10} strokeWidth={3} />
+                </button>
+              )}
+              maximizeControl={(
+                <button
+                  type="button"
+                  onClick={() => setIsMaximized((current) => !current)}
+                  className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500/90 text-transparent transition-all hover:text-emerald-950"
+                  title={isMaximized ? 'Restore size' : 'Maximize'}
+                >
+                  {isMaximized ? <Minimize2 size={8} strokeWidth={3} /> : <Maximize2 size={8} strokeWidth={3} />}
                 </button>
               )}
             />
 
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8">
+              <WorkspaceValidationBanner
+                message={schemaQuery.error ? 'Import schema failed to load. Refresh the workspace and try again.' : undefined}
+              />
               <WorkspaceSplitView
                 side="right"
                 sidebar={(
@@ -464,38 +518,114 @@ export function OperationalImportModal({
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <WorkspacePanelTitle>Template</WorkspacePanelTitle>
-                          <WorkspacePanelSubtitle>Required columns stay included. Optional columns are selectable.</WorkspacePanelSubtitle>
+                          <WorkspacePanelSubtitle>Required columns stay included. Optional columns are selectable. Unsupported columns stay visible with reasons.</WorkspacePanelSubtitle>
                         </div>
+                      </div>
+                      <div className="mt-4 grid grid-cols-1 gap-3">
+                        {unsupportedFields.length > 0 && (
+                          <div className="rounded-lg border border-amber-500/10 bg-amber-500/5 px-3 py-2 text-[9px] font-semibold text-amber-200">
+                            {unsupportedFields.length} column{unsupportedFields.length === 1 ? '' : 's'} stay visible but are intentionally disabled in the builder because they require the richer add/edit workspace.
+                          </div>
+                        )}
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Download Mode</p>
+                          <div className="mt-3 grid grid-cols-3 gap-2">
+                            {[
+                              { id: 'raw', label: 'Raw', description: 'Headers only.' },
+                              { id: 'hints', label: 'Hints', description: 'Headers plus guidance row.' },
+                              { id: 'example', label: 'Example', description: 'Hints plus a real record row.' },
+                            ].map((option) => (
+                              <button
+                                key={option.id}
+                                type="button"
+                                onClick={() => setTemplateMode(option.id as TemplateMode)}
+                                className={`rounded-lg border px-3 py-2 text-left transition-all ${
+                                  templateMode === option.id
+                                    ? 'border-blue-500/30 bg-blue-500/10 text-blue-300'
+                                    : 'border-white/10 bg-slate-950/60 text-slate-400 hover:text-slate-200'
+                                }`}
+                              >
+                                <p className="text-[10px] font-black">{option.label}</p>
+                                <p className="mt-1 text-[8px] font-semibold">{option.description}</p>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {templateMode === 'example' && (
+                          <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                            <WorkspaceFieldLabel label="Example Record" required />
+                            <select
+                              value={exampleRecordId ?? ''}
+                              onChange={(event) => setExampleRecordId(event.target.value ? Number(event.target.value) : null)}
+                              className={`${getWorkspaceInputClass()} mt-2 px-3 py-2 text-[11px]`}
+                            >
+                              {(schema?.example_records || []).map((record) => (
+                                <option key={record.id} value={record.id}>
+                                  {record.label}
+                                </option>
+                              ))}
+                            </select>
+                            <p className="mt-2 text-[9px] font-semibold text-slate-500">
+                              Downloads a CSV that shows how a valid existing record is shaped.
+                            </p>
+                          </div>
+                        )}
+
                         <button
                           type="button"
                           onClick={handleDownloadTemplate}
-                          disabled={!schema}
-                          className="inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-[10px] font-black text-blue-300 transition-colors hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={!schema || (templateMode === 'example' && !exampleRecordId)}
+                          className="inline-flex items-center justify-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-[10px] font-black text-blue-300 transition-colors hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <Download size={12} />
-                          Download
+                          Download Template
                         </button>
                       </div>
                       <div className="mt-4 space-y-2">
                         {(schema?.fields || []).map((field) => {
                           const checked = requiredFieldNames.includes(field.name) || selectedColumns.includes(field.name)
+                          const fieldOptions = field.options || []
+                          const fieldValidationRules = field.validation_rules || []
+                          const supportedInBuilder = field.supported_in_builder !== false
                           return (
-                            <label key={field.name} className="flex items-start gap-3 rounded-lg border border-white/5 bg-black/20 px-3 py-2">
+                            <label
+                              key={field.name}
+                              className={`flex items-start gap-3 rounded-lg border px-3 py-2 ${
+                                supportedInBuilder
+                                  ? 'border-white/5 bg-black/20'
+                                  : 'border-white/5 bg-slate-950/70 opacity-70'
+                              }`}
+                            >
                               <input
                                 type="checkbox"
                                 className="mt-0.5 h-4 w-4 rounded border-white/10 bg-slate-950 text-blue-500"
                                 checked={checked}
-                                disabled={requiredFieldNames.includes(field.name)}
+                                disabled={requiredFieldNames.includes(field.name) || !supportedInBuilder}
                                 onChange={() => toggleColumn(field.name)}
                               />
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span className="text-[10px] font-black text-slate-100">{field.label}</span>
                                   {field.required && <WorkspaceSectionBadge tone="rose">Required</WorkspaceSectionBadge>}
+                                  {!supportedInBuilder && <WorkspaceSectionBadge>Unavailable In Builder</WorkspaceSectionBadge>}
+                                  {fieldOptions.length > 0 && <WorkspaceSectionBadge tone="blue">Strict Choice</WorkspaceSectionBadge>}
                                 </div>
                                 <p className="mt-1 text-[9px] font-semibold text-slate-500">
-                                  {field.template_hint || field.description || field.name}
+                                  {supportedInBuilder
+                                    ? (field.template_hint || field.description || field.name)
+                                    : field.unsupported_reason}
                                 </p>
+                                {fieldOptions.length > 0 && (
+                                  <p className="mt-1 text-[8px] font-semibold text-blue-300/80">
+                                    Allowed values: {getChoicePreview(fieldOptions)}
+                                  </p>
+                                )}
+                                {fieldValidationRules.length > 0 && (
+                                  <p className="mt-1 text-[8px] font-semibold text-amber-300/80">
+                                    {fieldValidationRules.join(' ')}
+                                  </p>
+                                )}
                               </div>
                             </label>
                           )
@@ -576,27 +706,26 @@ export function OperationalImportModal({
 
                       {mode === 'file' && (
                         <div className="mt-4 space-y-4">
-                          <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
+                          <input
+                            id={fileInputId}
+                            type="file"
+                            accept=".csv,.xlsx,.xls"
+                            className="hidden"
+                            onChange={(event) => {
+                              setFile(event.target.files?.[0] || null)
+                              setPreview(null)
+                            }}
+                          />
+                          <label
+                            htmlFor={fileInputId}
                             className="flex min-h-[180px] w-full flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-white/10 bg-black/20 text-slate-400 transition-colors hover:border-blue-500/30 hover:text-white"
                           >
-                            <input
-                              ref={fileInputRef}
-                              type="file"
-                              accept=".csv,.xlsx,.xls"
-                              className="hidden"
-                              onChange={(event) => {
-                                setFile(event.target.files?.[0] || null)
-                                setPreview(null)
-                              }}
-                            />
                             <FileUp size={30} />
                             <div className="text-center">
                               <p className="text-[11px] font-black text-white">{file?.name || 'Select CSV or Excel file'}</p>
                               <p className="mt-1 text-[9px] font-semibold text-slate-500">The server parses the file and returns the simulated import preview.</p>
                             </div>
-                          </button>
+                          </label>
                         </div>
                       )}
 
@@ -668,6 +797,11 @@ export function OperationalImportModal({
                                         <span>{field.label}</span>
                                         {field.required && <span className="text-rose-400">*</span>}
                                       </div>
+                                      {(field.options || []).length > 0 && (
+                                        <p className="mt-1 text-[8px] font-semibold normal-case tracking-normal text-blue-300/80">
+                                          Select from allowed values
+                                        </p>
+                                      )}
                                     </th>
                                   ))}
                                   <th className="px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Remove</th>
@@ -679,7 +813,34 @@ export function OperationalImportModal({
                                     <td className="px-3 py-2 text-[10px] font-black text-slate-500">{rowIndex + 1}</td>
                                     {activeColumns.map((field, columnIndex) => (
                                       <td key={`${rowIndex}-${field.name}`} className="px-2 py-2 align-top">
-                                        {field.input_kind === 'multiline' ? (
+                                        {field.input_control === 'select' ? (
+                                          <select
+                                            value={row[field.name] || ''}
+                                            onChange={(event) => updateDraftCell(rowIndex, field.name, event.target.value)}
+                                            className={`${getWorkspaceInputClass()} px-3 py-2 text-[11px]`}
+                                          >
+                                            <option value="">{field.required ? `Select ${field.label}` : `Optional ${field.label}`}</option>
+                                            {(field.options || []).map((option) => (
+                                              <option key={`${field.name}-${option.value}`} value={option.value}>
+                                                {option.label}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        ) : field.input_control === 'number' ? (
+                                          <input
+                                            type="number"
+                                            value={row[field.name] || ''}
+                                            onChange={(event) => updateDraftCell(rowIndex, field.name, event.target.value)}
+                                            className={`${getWorkspaceInputClass()} px-3 py-2 text-[11px]`}
+                                          />
+                                        ) : field.input_control === 'url' ? (
+                                          <input
+                                            type="url"
+                                            value={row[field.name] || ''}
+                                            onChange={(event) => updateDraftCell(rowIndex, field.name, event.target.value)}
+                                            className={`${getWorkspaceInputClass()} px-3 py-2 text-[11px]`}
+                                          />
+                                        ) : field.input_kind === 'multiline' ? (
                                           <textarea
                                             value={row[field.name] || ''}
                                             onChange={(event) => updateDraftCell(rowIndex, field.name, event.target.value)}
@@ -705,6 +866,11 @@ export function OperationalImportModal({
                                             }}
                                             className={`${getWorkspaceInputClass()} px-3 py-2 text-[11px]`}
                                           />
+                                        )}
+                                        {(field.validation_rules || []).length > 0 && (
+                                          <p className="mt-1 px-1 text-[8px] font-semibold text-slate-500">
+                                            {(field.validation_rules || [])[0]}
+                                          </p>
                                         )}
                                       </td>
                                     ))}

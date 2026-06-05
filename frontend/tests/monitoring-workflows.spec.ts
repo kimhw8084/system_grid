@@ -285,6 +285,7 @@ test.describe('Monitoring workflows', () => {
     await gotoView(page, '/monitoring', 'Monitoring')
     await openToolbarButton(page, 'Import')
     await expect(page.getByRole('heading', { name: 'Monitoring Import' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Download Template' })).toBeVisible()
 
     await page.getByRole('button', { name: 'Paste CSV / Grid' }).click()
     await page.getByPlaceholder('Paste CSV with headers, or paste spreadsheet cells directly.').fill([

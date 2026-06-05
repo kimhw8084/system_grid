@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import io
 import json
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 import pandas as pd
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Request, UploadFile
@@ -27,9 +27,14 @@ class ImportField:
     required: bool = False
     description: str = ""
     input_kind: str = "text"
+    input_control: str = "text"
     template_hint: str = ""
     aliases: list[str] = field(default_factory=list)
     accepts_multiple: bool = False
+    supported_in_builder: bool = True
+    unsupported_reason: str = ""
+    validation_rules: list[str] = field(default_factory=list)
+    options_key: Optional[str] = None
 
 
 @dataclass
@@ -40,6 +45,8 @@ class ImportProfile:
     fields: list[ImportField]
     execute_rows: Callable[[AsyncSession, list[dict[str, Any]], Optional[str]], Any]
     preview_rows: Callable[[AsyncSession, list[dict[str, Any]]], Any]
+    schema_context: Optional[Callable[[AsyncSession], Awaitable[dict[str, Any]]]] = None
+    serialize_example_row: Optional[Callable[[AsyncSession, Any], Awaitable[dict[str, Any]]]] = None
 
 
 GENERIC_EXCLUDE_COLUMNS = {
@@ -56,7 +63,7 @@ def normalize_scalar(value: Any) -> Any:
     if value is None:
         return None
     if isinstance(value, float) and pd.isna(value):
-      return None
+        return None
     if isinstance(value, str):
       trimmed = value.strip()
       return trimmed or None
@@ -229,26 +236,112 @@ async def execute_generic_rows(db: AsyncSession, model: Any, rows: list[dict[str
 
 
 MONITORING_IMPORT_FIELDS = [
-    ImportField("device_name", "Target Asset", description="Existing asset name. Resolves to device_id.", template_hint="[ASSET_NAME]"),
-    ImportField("category", "Category", required=True, template_hint="[STRING]"),
-    ImportField("status", "Status", required=True, template_hint="[Existing|Planned|Cancelled|Decommissioned]"),
-    ImportField("title", "Title", required=True, template_hint="[STRING]"),
-    ImportField("platform", "Platform", required=True, template_hint="[Monitoring Platform]"),
-    ImportField("purpose", "Purpose", template_hint="[STRING]"),
-    ImportField("impact", "Impact", template_hint="[STRING]"),
-    ImportField("notification_method", "Notification Method", template_hint="[STRING]"),
-    ImportField("notification_recipients", "Notification Recipients", input_kind="multiline", template_hint="[comma separated]", accepts_multiple=True),
-    ImportField("owner_team", "Owner Team", required=True, template_hint="[Team Name]"),
-    ImportField("monitoring_url", "Monitoring URL", template_hint="[https://...]"),
-    ImportField("severity", "Severity", template_hint="[Critical|Warning|Info]"),
-    ImportField("check_interval", "Check Interval (sec)", template_hint="[INTEGER]"),
-    ImportField("alert_duration", "Alert Duration (sec)", template_hint="[INTEGER]"),
-    ImportField("notification_throttle", "Notification Throttle (sec)", template_hint="[INTEGER]"),
-    ImportField("spec", "Spec", input_kind="multiline", template_hint="[STRING]"),
-    ImportField("logic", "Logic", input_kind="multiline", template_hint="[STRING]"),
-    ImportField("monitored_service_names", "Services", template_hint="[comma separated service names]", accepts_multiple=True),
-    ImportField("recovery_doc_titles", "Recovery Documents", template_hint="[comma separated knowledge titles]", accepts_multiple=True),
+    ImportField("device_name", "Target Asset", description="Existing asset name. Resolves to device_id.", template_hint="[Existing asset name]", input_control="select", options_key="device_name"),
+    ImportField("category", "Category", required=True, template_hint="[Monitoring category]", input_control="select", options_key="category"),
+    ImportField("status", "Status", required=True, template_hint="[Existing|Planned|Cancelled|Decommissioned]", input_control="select", options_key="status"),
+    ImportField("title", "Title", required=True, template_hint="[Short monitor title]", validation_rules=["Required. Keep it concise and unique enough to identify the monitor."]),
+    ImportField("platform", "Platform", required=True, template_hint="[Monitoring platform]", input_control="select", options_key="platform"),
+    ImportField("purpose", "Purpose", template_hint="[Why this monitor exists]", input_kind="multiline", input_control="textarea"),
+    ImportField("impact", "Impact", template_hint="[What happens if it fails]", input_kind="multiline", input_control="textarea"),
+    ImportField("notification_method", "Notification Method", template_hint="[Notification route]", input_control="select", options_key="notification_method"),
+    ImportField("notification_recipients", "Notification Recipients", input_kind="multiline", input_control="textarea", template_hint="[comma separated user IDs or emails]", accepts_multiple=True, validation_rules=["Comma-separated recipients only."]),
+    ImportField("owner_team", "Owner Team", required=True, template_hint="[Managed team name]", input_control="select", options_key="owner_team"),
+    ImportField("monitoring_url", "Monitoring URL", template_hint="[https://...]", input_control="url", validation_rules=["Must be a valid http/https URL with a host."]),
+    ImportField("severity", "Severity", template_hint="[Critical|Warning|Info]", input_control="select", options_key="severity"),
+    ImportField("check_interval", "Check Interval (sec)", template_hint="[15-86400]", input_control="number", validation_rules=["Must be between 15 and 86400 seconds."]),
+    ImportField("alert_duration", "Alert Duration (sec)", template_hint="[0-86400]", input_control="number", validation_rules=["Must be between 0 and 86400 seconds."]),
+    ImportField("notification_throttle", "Notification Throttle (sec)", template_hint="[60-604800]", input_control="number", validation_rules=["Must be between 60 and 604800 seconds."]),
+    ImportField("spec", "Spec", input_kind="multiline", input_control="unsupported", template_hint="[Use add/edit workspace]", supported_in_builder=False, unsupported_reason="Spec content is freeform threshold documentation and is not standardized enough for strict bulk import."),
+    ImportField("logic", "Logic", input_kind="multiline", input_control="unsupported", template_hint="[Use add/edit workspace]", supported_in_builder=False, unsupported_reason="Logic belongs in the structured monitoring logic editor, not the simplified import grid."),
+    ImportField("monitored_service_names", "Services", input_control="unsupported", template_hint="[Use add/edit workspace]", accepts_multiple=True, supported_in_builder=False, unsupported_reason="Service coverage depends on the linked asset and must be chosen from the add/edit workspace."),
+    ImportField("recovery_doc_titles", "Recovery Documents", input_control="unsupported", template_hint="[Use add/edit workspace]", accepts_multiple=True, supported_in_builder=False, unsupported_reason="Recovery documents should be linked from the knowledge workspace search, not typed into bulk import."),
 ]
+
+
+async def fetch_setting_options(db: AsyncSession, category: str) -> list[dict[str, str]]:
+    result = await db.execute(
+        select(models.SettingOption.value, models.SettingOption.label, models.SettingOption.description)
+        .where(models.SettingOption.category == category)
+        .order_by(models.SettingOption.label)
+    )
+    return [
+        {
+            "value": value,
+            "label": label or value,
+            "description": description or "",
+        }
+        for value, label, description in result.all()
+        if value
+    ]
+
+
+async def build_monitoring_schema_context(db: AsyncSession) -> dict[str, Any]:
+    devices = await db.execute(select(models.Device.name).where(models.Device.is_deleted == False).order_by(models.Device.name))
+    teams = await db.execute(select(models.Team.name).where(models.Team.is_archived == False).order_by(models.Team.name))
+    methods = await fetch_setting_options(db, "NotificationMethod")
+    if not methods:
+        methods = [
+            {"value": "Email", "label": "Email", "description": "Deliver alerts by email."},
+            {"value": "Slack", "label": "Slack", "description": "Deliver alerts to Slack."},
+            {"value": "PagerDuty", "label": "PagerDuty", "description": "Trigger PagerDuty escalation."},
+        ]
+
+    example_items_res = await db.execute(
+        select(models.MonitoringItem.id, models.MonitoringItem.title)
+        .where(models.MonitoringItem.is_deleted == False)
+        .order_by(models.MonitoringItem.updated_at.desc(), models.MonitoringItem.id.desc())
+        .limit(20)
+    )
+
+    return {
+        "options": {
+            "device_name": [{"value": name, "label": name, "description": "Existing asset"} for name in devices.scalars().all() if name],
+            "category": await fetch_setting_options(db, "MonitoringCategory"),
+            "platform": await fetch_setting_options(db, "MonitoringPlatform"),
+            "notification_method": methods,
+            "owner_team": [{"value": name, "label": name, "description": "Registered team"} for name in teams.scalars().all() if name],
+            "severity": [
+                {"value": "Critical", "label": "Critical", "description": "Requires linked recovery guidance."},
+                {"value": "Warning", "label": "Warning", "description": "Actionable but not highest urgency."},
+                {"value": "Info", "label": "Info", "description": "Informational visibility only."},
+            ],
+            "status": [
+                {"value": "Existing", "label": "Existing", "description": "Already in production."},
+                {"value": "Planned", "label": "Planned", "description": "Approved but not yet active."},
+                {"value": "Cancelled", "label": "Cancelled", "description": "Retired before implementation."},
+                {"value": "Decommissioned", "label": "Decommissioned", "description": "Previously active and now retired."},
+            ],
+        },
+        "example_records": [
+            {"id": item_id, "label": title}
+            for item_id, title in example_items_res.all()
+            if title
+        ],
+    }
+
+
+async def serialize_monitoring_example_row(db: AsyncSession, item: models.MonitoringItem) -> dict[str, Any]:
+    device_name = None
+    if item.device_id:
+        device_name = await db.scalar(select(models.Device.name).where(models.Device.id == item.device_id))
+
+    return {
+        "device_name": device_name or "",
+        "category": item.category or "",
+        "status": item.status or "",
+        "title": item.title or "",
+        "platform": item.platform or "",
+        "purpose": item.purpose or "",
+        "impact": item.impact or "",
+        "notification_method": item.notification_method or "",
+        "notification_recipients": ", ".join(item.notification_recipients or []),
+        "owner_team": item.owner_team or "",
+        "monitoring_url": item.monitoring_url or "",
+        "severity": item.severity or "",
+        "check_interval": item.check_interval,
+        "alert_duration": item.alert_duration,
+        "notification_throttle": item.notification_throttle,
+    }
 
 
 async def build_monitoring_import_row(db: AsyncSession, raw_row: dict[str, Any]) -> dict[str, Any]:
@@ -384,7 +477,8 @@ async def execute_monitoring_rows(db: AsyncSession, rows: list[dict[str, Any]], 
     return {"status": "success", "count": count}
 
 
-def profile_fields_to_payload(fields: list[ImportField]) -> list[dict[str, Any]]:
+def profile_fields_to_payload(fields: list[ImportField], context: Optional[dict[str, Any]] = None) -> list[dict[str, Any]]:
+    options_map = (context or {}).get("options", {})
     return [
         {
             "name": field.name,
@@ -392,9 +486,14 @@ def profile_fields_to_payload(fields: list[ImportField]) -> list[dict[str, Any]]
             "required": field.required,
             "description": field.description,
             "input_kind": field.input_kind,
+            "input_control": field.input_control,
             "template_hint": field.template_hint,
             "aliases": field.aliases,
             "accepts_multiple": field.accepts_multiple,
+            "supported_in_builder": field.supported_in_builder,
+            "unsupported_reason": field.unsupported_reason,
+            "validation_rules": field.validation_rules,
+            "options": options_map.get(field.options_key or "", []),
         }
         for field in fields
     ]
@@ -418,6 +517,8 @@ def build_import_profiles() -> dict[str, ImportProfile]:
             fields=MONITORING_IMPORT_FIELDS,
             preview_rows=preview_monitoring_rows,
             execute_rows=execute_monitoring_rows,
+            schema_context=build_monitoring_schema_context,
+            serialize_example_row=serialize_monitoring_example_row,
         )
     }
 
@@ -458,23 +559,43 @@ def resolve_template_fields(profile: ImportProfile, requested_columns: Optional[
 
 
 @router.get("/schema/{table_name}")
-async def get_import_schema(table_name: str):
+async def get_import_schema(table_name: str, db: AsyncSession = Depends(get_db)):
     profile = get_import_profile(table_name)
+    context = await profile.schema_context(db) if profile.schema_context else {}
     return {
         "table_name": profile.key,
         "display_name": profile.display_name,
-        "fields": profile_fields_to_payload(profile.fields),
+        "fields": profile_fields_to_payload(profile.fields, context),
         "required_fields": [field.name for field in profile.fields if field.required],
+        "example_records": context.get("example_records", []),
     }
 
 
 @router.get("/template/{table_name}")
-async def download_template(table_name: str, columns: Optional[str] = None):
+async def download_template(
+    table_name: str,
+    columns: Optional[str] = None,
+    mode: str = "hints",
+    example_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_db),
+):
     profile = get_import_profile(table_name)
     fields = resolve_template_fields(profile, columns)
     df = pd.DataFrame(columns=[field.name for field in fields])
-    if fields:
+
+    if fields and mode in {"hints", "example"}:
         df.loc[0] = {field.name: field.template_hint or "[STRING]" for field in fields}
+    if fields and mode == "example" and profile.serialize_example_row:
+        example_row = None
+        if example_id is not None:
+            example_row = await db.get(profile.model, example_id)
+        if example_row is None:
+            query = select(profile.model).order_by(profile.model.updated_at.desc(), profile.model.id.desc()).limit(1)
+            result = await db.execute(query)
+            example_row = result.scalar_one_or_none()
+        if example_row is not None:
+            serialized_example = await profile.serialize_example_row(db, example_row)
+            df.loc[len(df)] = {field.name: serialized_example.get(field.name, "") for field in fields}
 
     stream = io.BytesIO()
     df.to_csv(stream, index=False)

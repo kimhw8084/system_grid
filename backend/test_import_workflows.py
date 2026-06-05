@@ -7,6 +7,27 @@ import pytest
 @pytest.mark.anyio
 async def test_monitoring_import_schema_and_template(client):
     await client.get("/api/v1/settings/initialize")
+    team_res = await client.post("/api/v1/settings/teams", json={"name": "Import Template Ops"})
+    assert team_res.status_code == 200, team_res.text
+    device_res = await client.post("/api/v1/devices", json={
+        "name": "MON-TEMPLATE-01",
+        "system": "MON-TEMPLATE",
+        "status": "Active",
+        "type": "Physical",
+        "serial_number": "MON-TEMPLATE-SN",
+        "asset_tag": "MON-TEMPLATE-AT",
+    })
+    assert device_res.status_code == 200, device_res.text
+    monitor_res = await client.post("/api/v1/monitoring", json={
+        "device_id": device_res.json()["id"],
+        "category": "Infrastructure",
+        "status": "Existing",
+        "title": "Template Example Monitor",
+        "platform": "Zabbix",
+        "owner_team": "Import Template Ops",
+    })
+    assert monitor_res.status_code == 200, monitor_res.text
+    monitor = monitor_res.json()
 
     schema_res = await client.get("/api/v1/import/schema/monitoring_items")
     assert schema_res.status_code == 200, schema_res.text
@@ -16,8 +37,11 @@ async def test_monitoring_import_schema_and_template(client):
     assert "title" in schema["required_fields"]
     assert "platform" in schema["required_fields"]
     assert any(field["name"] == "device_name" for field in schema["fields"])
+    assert any(field["name"] == "status" and field["options"] for field in schema["fields"])
+    assert any(field["name"] == "logic" and field["supported_in_builder"] is False for field in schema["fields"])
+    assert any(record["id"] == monitor["id"] for record in schema["example_records"])
 
-    template_res = await client.get("/api/v1/import/template/monitoring_items?columns=title,monitoring_url")
+    template_res = await client.get(f"/api/v1/import/template/monitoring_items?columns=title,monitoring_url&mode=example&example_id={monitor['id']}")
     assert template_res.status_code == 200, template_res.text
     decoded = template_res.content.decode("utf-8")
     rows = list(csv.reader(io.StringIO(decoded)))
@@ -25,7 +49,8 @@ async def test_monitoring_import_schema_and_template(client):
     assert rows[0][:4] == ["category", "status", "title", "platform"]
     assert "owner_team" in rows[0]
     assert "monitoring_url" in rows[0]
-    assert rows[1][rows[0].index("platform")] == "[Monitoring Platform]"
+    assert rows[1][rows[0].index("platform")] == "[Monitoring platform]"
+    assert rows[2][rows[0].index("title")] == "Template Example Monitor"
 
 
 @pytest.mark.anyio
