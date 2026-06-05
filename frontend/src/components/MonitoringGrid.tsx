@@ -4031,8 +4031,8 @@ export function MonitoringForm({ item, devices, categories, severities, platform
           ]}
         />
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 pr-4 sm:px-8">
-          <WorkspaceStickyIdentityBar className="border-white/10 bg-slate-950/90 shadow-[0_18px_50px_rgba(2,6,23,0.55)]">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-10 sm:px-8">
+          <WorkspaceStickyIdentityBar>
             <div className="space-y-4">
               <div className="grid grid-cols-12 gap-4">
                 <div id="monitoring-header-title" className="col-span-12 xl:col-span-5 space-y-2">

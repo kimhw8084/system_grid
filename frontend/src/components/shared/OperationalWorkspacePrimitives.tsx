@@ -423,7 +423,7 @@ export function WorkspaceStickyIdentityBar({
   className?: string
 }) {
   return (
-    <div className={`sticky top-0 z-20 mb-6 rounded-lg border border-blue-500/20 bg-slate-800 p-4 shadow-[0_10px_40px_rgba(2,6,23,0.45)] ${className}`}>
+    <div className={`sticky top-0 z-20 -mx-6 mb-8 border-b border-white/10 bg-slate-900/95 px-6 py-5 shadow-2xl backdrop-blur-md sm:-mx-8 sm:px-8 ${className}`}>
       {children}
     </div>
   )
@@ -490,14 +490,14 @@ export function WorkspaceModalHeader({
   onTabChange?: (id: string) => void
 }) {
   return (
-    <div className="border-b border-white/10 px-6 py-4 sm:px-8">
+    <div className="z-30 border-b border-white/10 bg-slate-950 px-6 py-5 sm:px-8">
       <div className="flex items-start justify-between gap-6">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex items-center gap-2 self-start">
+          <div className="flex items-center gap-2 self-start pt-1">
             {closeControl}
             {maximizeControl}
           </div>
-          <div className="ml-2 flex h-12 w-12 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-600/10 text-blue-400">
+          <div className="ml-2 flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-600/10 text-blue-400">
             {icon}
           </div>
           <div className="min-w-0">
@@ -515,7 +515,9 @@ export function WorkspaceModalHeader({
         </div>
 
         {tabs && activeTab && onTabChange && (
-          <WorkspaceTabStrip tabs={tabs} activeTab={activeTab} onChange={onTabChange} />
+          <div className="hidden lg:block">
+            <WorkspaceTabStrip tabs={tabs} activeTab={activeTab} onChange={onTabChange} />
+          </div>
         )}
       </div>
     </div>
