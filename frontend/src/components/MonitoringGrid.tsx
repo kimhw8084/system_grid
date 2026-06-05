@@ -526,6 +526,9 @@ export default function MonitoringGrid() {
   const lastUndoRef = useRef<any>(null)
   const [newViewName, setNewViewName] = useState('')
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
+  const autoSizeFrameRef = useRef<number | null>(null)
+  const autoSizeTimeoutRef = useRef<number | null>(null)
+  const preserveExplicitColumnWidthsRef = useRef(false)
   const {
     columnLayoutState,
     setColumnLayoutState,
@@ -537,6 +540,23 @@ export default function MonitoringGrid() {
   } = useOperationalGridLayout(persistedUiState?.columnLayoutState ?? [], Boolean(activeViewId))
 
   const groupSelectionsRef = useRef<Record<string, number[]>>({})
+
+  useEffect(() => {
+    preserveExplicitColumnWidthsRef.current = preserveExplicitColumnWidths
+  }, [preserveExplicitColumnWidths])
+
+  const clearPendingAutoSize = useCallback(() => {
+    if (autoSizeFrameRef.current !== null) {
+      window.cancelAnimationFrame(autoSizeFrameRef.current)
+      autoSizeFrameRef.current = null
+    }
+    if (autoSizeTimeoutRef.current !== null) {
+      window.clearTimeout(autoSizeTimeoutRef.current)
+      autoSizeTimeoutRef.current = null
+    }
+  }, [])
+
+  useEffect(() => clearPendingAutoSize, [clearPendingAutoSize])
 
   useEffect(() => {
     setSelectedIds([])
@@ -562,6 +582,21 @@ export default function MonitoringGrid() {
   const handleColumnPinned = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
   const handleColumnVisible = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
   const handleFilterChanged = useCallback((e: any) => setGridFilterModel(e.api.getFilterModel() || {}), [])
+  const handleMonitoringColumnResized = useCallback((event: any) => {
+    const source = event?.source || ''
+    const isAutoResizeSource =
+      source === 'autosizeColumns' ||
+      source === 'sizeColumnsToFit' ||
+      source === 'api' ||
+      source === 'flex'
+
+    if (!isAutoResizeSource) {
+      clearPendingAutoSize()
+      setTransientManualColumnWidths(true)
+    }
+
+    handleColumnResized(event)
+  }, [clearPendingAutoSize, handleColumnResized, setTransientManualColumnWidths])
   
   const handleSortChanged = useCallback((e: any) => {
     const nextSortModel = e.api.getColumnState().filter((col: any) => col.sort).map((col: any) => ({ colId: col.colId, sort: col.sort }))
@@ -595,16 +630,28 @@ export default function MonitoringGrid() {
   }, [columnLayoutState, preserveExplicitColumnWidths])
 
   const autoSizeMonitoringColumns = useCallback(() => {
-    if (!gridRef.current?.api || preserveExplicitColumnWidths) return
-    autoSizeOperationalColumns({
-      api: gridRef.current.api,
-      skipColumnIds: Array.from(MONITORING_FIXED_WIDTH_COLUMN_IDS),
-      onSized: () => {
-        if (!gridRef.current?.api || preserveExplicitColumnWidths) return
-        syncColumnLayoutState(gridRef.current.api, false)
-      }
+    if (!gridRef.current?.api || preserveExplicitColumnWidthsRef.current) return
+    clearPendingAutoSize()
+    const run = () => {
+      if (!gridRef.current?.api || preserveExplicitColumnWidthsRef.current) return
+      autoSizeOperationalColumns({
+        api: gridRef.current.api,
+        skipColumnIds: Array.from(MONITORING_FIXED_WIDTH_COLUMN_IDS),
+        onSized: () => {
+          if (!gridRef.current?.api || preserveExplicitColumnWidthsRef.current) return
+          syncColumnLayoutState(gridRef.current.api, false)
+        }
+      })
+    }
+    autoSizeFrameRef.current = window.requestAnimationFrame(() => {
+      autoSizeFrameRef.current = null
+      run()
     })
-  }, [preserveExplicitColumnWidths, syncColumnLayoutState])
+    autoSizeTimeoutRef.current = window.setTimeout(() => {
+      autoSizeTimeoutRef.current = null
+      run()
+    }, 48)
+  }, [clearPendingAutoSize, syncColumnLayoutState])
 
   const handleGridDataUpdated = useCallback(() => {
     autoSizeMonitoringColumns()
@@ -2518,7 +2565,7 @@ export default function MonitoringGrid() {
             getRowId={handleRowId}
             onGridReady={handleGridReady}
 	            onSelectionChanged={(e) => handleSelectionChanged(e, 'raw')}
-            onColumnResized={handleColumnResized}
+            onColumnResized={handleMonitoringColumnResized}
             onColumnMoved={handleColumnMoved}
             onDragStopped={handleDragStopped}
             onColumnPinned={handleColumnPinned}
@@ -2604,7 +2651,7 @@ export default function MonitoringGrid() {
                       context={gridContext}
                       getRowId={handleRowId}
                       onSelectionChanged={(e) => handleSelectionChanged(e, section.key)}
-                      onColumnResized={handleColumnResized}
+                      onColumnResized={handleMonitoringColumnResized}
                       onColumnMoved={handleColumnMoved}
                       onDragStopped={handleDragStopped}
                       onColumnPinned={handleColumnPinned}
