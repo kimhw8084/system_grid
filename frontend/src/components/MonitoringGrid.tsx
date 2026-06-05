@@ -17,7 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from "ag-grid-react"
 import toast from 'react-hot-toast'
 import { apiFetch } from '../api/apiClient'
-import { formatAppDate, formatAppTime, formatAppDay } from '../utils/dateUtils'
+import { formatAppDate, formatAppTime, formatAppDay, parseAppDate } from '../utils/dateUtils'
 import { AppDropdown } from './shared/AppDropdown'
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
@@ -1549,11 +1549,11 @@ export default function MonitoringGrid() {
             <div className="absolute h-10 w-10 rounded-full bg-[radial-gradient(circle,_rgba(251,191,36,0.2)_0%,_transparent_70%)] blur-md animate-pulse" />
             <span className="relative z-[1] block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
             
-            {/* Hover Peek Intelligence */}
+            {/* Hover Peek Activity */}
             <div className="invisible group-hover:visible absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-[2000] w-52 p-3 rounded-lg border border-white/10 bg-slate-950/90 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl pointer-events-none transition-all duration-300 transform scale-95 group-hover:scale-100 opacity-0 group-hover:opacity-100">
                <div className="flex items-center gap-2 mb-2">
                  <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-400">Recent Intelligence</p>
+                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-400">Recent Activity</p>
                </div>
                <div className="space-y-1">
                  <p className="text-[11px] text-slate-100 font-bold leading-tight">{dateStr}</p>
@@ -1955,11 +1955,11 @@ export default function MonitoringGrid() {
               <ToolbarButton
                active={isIntelligenceExpanded}
                onClick={() => setIsIntelligenceExpanded(!isIntelligenceExpanded)}
-               title={isIntelligenceExpanded ? 'Hide Intelligence Columns' : 'Show Intelligence Columns'}
+               title={isIntelligenceExpanded ? 'Hide Activity Columns' : 'Show Activity Columns'}
               >
                <span className="flex items-center gap-2">
                  {isIntelligenceExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                 Intelligence
+                 Activity
                </span>
               </ToolbarButton>
             </ToolbarGroup>
