@@ -13,6 +13,32 @@ import {
 
 const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
 
+async function getColumnWidth(page: any, colId: string) {
+  return page.evaluate((targetColId: string) => {
+    // @ts-ignore
+    const api = window.__DEBUG_MONITORING_GRID_API__
+    const state = api?.getColumnState?.() || []
+    const column = state.find((entry: any) => entry.colId === targetColId)
+    if (!column?.width) {
+      throw new Error(`Missing width for column ${targetColId}`)
+    }
+    return Math.round(column.width)
+  }, colId)
+}
+
+async function dragHeaderResize(page: any, colId: string, deltaX: number) {
+  const handle = page.locator(`.ag-header-cell[col-id="${colId}"] .ag-header-cell-resize`).first()
+  await expect(handle).toBeVisible()
+  const box = await handle.boundingBox()
+  if (!box) throw new Error(`No resize handle box for column ${colId}`)
+  const startX = box.x + box.width / 2
+  const startY = box.y + box.height / 2
+  await page.mouse.move(startX, startY)
+  await page.mouse.down()
+  await page.mouse.move(startX + deltaX, startY, { steps: 18 })
+  await page.mouse.up()
+}
+
 test.describe('Monitoring workflows', () => {
   test('preserves lifecycle status, recovery linking, and knowledge jump paths', async ({ page, request }) => {
     await resetBrowserState(page)
@@ -154,5 +180,99 @@ test.describe('Monitoring workflows', () => {
     await gotoView(page, `/monitoring?id=${monitoring.id}`, 'Monitoring')
     await expect(page.getByText(updatedTitle)).toBeVisible()
     await expect(page.getByText(updatedPurpose)).toBeVisible()
+  })
+
+  test('keeps default title sizing dynamic and preserves human resized widths only in saved views', async ({ page, request }) => {
+    await resetBrowserState(page)
+    const { monitoring, primary } = await seedOperationalScenario(request)
+    const originalTitle = monitoring.title
+    const editedLongTitle = `${originalTitle} EXTREMELY LONG TITLE FOR PLAYWRIGHT DEFAULT WIDTH RECALC AFTER EDIT 0123456789`
+    const createdLongTitle = `PW-MON-CREATED-LONG-${Date.now()}-THIS TITLE SHOULD FORCE A MUCH WIDER DEFAULT COLUMN AFTER CREATE WITH ADDITIONAL LONG SUFFIX SEGMENTS AAA BBB CCC DDD EEE FFF GGG HHH III JJJ`
+    const viewName = `PW Width View ${Date.now()}`
+
+    await gotoView(page, '/monitoring', 'Monitoring')
+    await fillGridSearch(page, 'Scan matrix...', originalTitle)
+    await expect(getPrimaryGrid(page)).toContainText(originalTitle)
+
+    const initialTitleWidth = await getColumnWidth(page, 'title')
+
+    const updateResponse = await request.put(`${apiBase}/monitoring/${monitoring.id}`, {
+      data: {
+        ...monitoring,
+        title: editedLongTitle,
+      }
+    })
+    expect(updateResponse.ok()).toBeTruthy()
+
+    await page.reload()
+    await expect(page.getByRole('heading', { name: 'Monitoring' })).toBeVisible()
+    await fillGridSearch(page, 'Scan matrix...', editedLongTitle)
+    await expect(getPrimaryGrid(page)).toContainText(editedLongTitle)
+
+    const editedTitleWidth = await getColumnWidth(page, 'title')
+    expect(editedTitleWidth).toBeGreaterThan(initialTitleWidth + 40)
+
+    await createMonitoring(request, {
+      device_id: primary.id,
+      category: 'Hardware',
+      status: 'Existing',
+      title: createdLongTitle,
+      platform: 'Prometheus',
+      purpose: 'Playwright create width regression',
+      impact: 'Playwright create width regression',
+      notification_method: 'Slack',
+      severity: 'Warning',
+    })
+
+    await page.reload()
+    await expect(page.getByRole('heading', { name: 'Monitoring' })).toBeVisible()
+    await fillGridSearch(page, 'Scan matrix...', createdLongTitle)
+    await expect(getPrimaryGrid(page)).toContainText(createdLongTitle)
+
+    const createdTitleWidth = await getColumnWidth(page, 'title')
+    expect(createdTitleWidth).toBeGreaterThan(editedTitleWidth)
+
+    const manualViewWidth = 420
+    const restoredDefaultAssetWidth = await getColumnWidth(page, 'device_name')
+    expect(restoredDefaultAssetWidth).toBeLessThan(manualViewWidth - 60)
+
+    await page.evaluate(({ nextViewName, nextWidth }) => {
+      // @ts-ignore
+      const api = window.__DEBUG_MONITORING_GRID_API__
+      const storageKey = 'sysgrid_monitoring_views_v1'
+      const currentViews = JSON.parse(window.localStorage.getItem(storageKey) || '[]')
+      const widthState = (api?.getColumnState?.() || []).map((column: any) => (
+        column.colId === 'device_name'
+          ? { ...column, width: nextWidth }
+          : column
+      ))
+
+      currentViews.push({
+        id: `pw-width-view-${Date.now()}`,
+        name: nextViewName,
+        config: {
+          fontSize: 11,
+          rowDensity: 8,
+          hiddenColumns: [],
+          groupBy: 'raw',
+          showFilterBar: true,
+          columnLayoutState: widthState,
+          quickFilter: '',
+          quickFilters: { status: '', severity: '', platform: '', owner: '' },
+          filterModel: {},
+          sortModel: [],
+        }
+      })
+      window.localStorage.setItem(storageKey, JSON.stringify(currentViews))
+    }, { nextViewName: viewName, nextWidth: manualViewWidth })
+
+    await page.reload()
+    await expect(page.getByRole('heading', { name: 'Monitoring' })).toBeVisible()
+    await fillGridSearch(page, 'Scan matrix...', createdLongTitle)
+    await openToolbarButton(page, 'Views')
+    await page.getByRole('button', { name: new RegExp(`^${viewName}`) }).first().click()
+    await page.keyboard.press('Escape')
+    await fillGridSearch(page, 'Scan matrix...', createdLongTitle)
+    await expect.poll(async () => getColumnWidth(page, 'device_name')).toBe(manualViewWidth)
   })
 })

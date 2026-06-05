@@ -53,6 +53,7 @@ import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } f
 import {
   applyOperationalColumnSizing,
   applyOperationalColumnState,
+  autoSizeOperationalColumns,
   getOperationalColumnLayoutSnapshot,
   normalizeOperationalColumnLayout,
   OPERATIONAL_GRID_AUTO_SIZE_STRATEGY
@@ -584,6 +585,9 @@ export default function MonitoringGrid() {
   }, [openRowActionMenuAtPoint])
 
   const handleGridReady = useCallback((event: any) => {
+    if (typeof window !== 'undefined') {
+      ;(window as any).__DEBUG_MONITORING_GRID_API__ = event.api
+    }
     // Immediately apply layout if we have it to prevent squish
     if (columnLayoutState.length > 0) {
       applyOperationalColumnState(event.api, columnLayoutState, preserveExplicitColumnWidths)
@@ -592,15 +596,13 @@ export default function MonitoringGrid() {
 
   const autoSizeMonitoringColumns = useCallback(() => {
     if (!gridRef.current?.api || preserveExplicitColumnWidths) return
-    const visibleColumnIds = gridRef.current.api
-      .getAllDisplayedColumns()
-      .map((column: any) => column.getColId())
-      .filter((colId: string) => !MONITORING_FIXED_WIDTH_COLUMN_IDS.has(colId))
-    if (!visibleColumnIds.length) return
-    requestAnimationFrame(() => {
-      if (!gridRef.current?.api || preserveExplicitColumnWidths) return
-      gridRef.current.api.autoSizeColumns(visibleColumnIds, false)
-      syncColumnLayoutState(gridRef.current.api, false)
+    autoSizeOperationalColumns({
+      api: gridRef.current.api,
+      skipColumnIds: Array.from(MONITORING_FIXED_WIDTH_COLUMN_IDS),
+      onSized: () => {
+        if (!gridRef.current?.api || preserveExplicitColumnWidths) return
+        syncColumnLayoutState(gridRef.current.api, false)
+      }
     })
   }, [preserveExplicitColumnWidths, syncColumnLayoutState])
 
@@ -1264,6 +1266,22 @@ export default function MonitoringGrid() {
   }, [selectedIds.length])
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    ;(window as any).__DEBUG_SET_MONITORING_COLUMN_WIDTH__ = (colId: string, width: number) => {
+      if (!gridRef.current?.api) return
+      gridRef.current.api.applyColumnState({
+        state: [{ colId, width }],
+        applyOrder: false,
+      })
+      setTransientManualColumnWidths(true)
+      syncColumnLayoutState(gridRef.current.api, true)
+    }
+    return () => {
+      delete (window as any).__DEBUG_SET_MONITORING_COLUMN_WIDTH__
+    }
+  }, [setTransientManualColumnWidths, syncColumnLayoutState])
+
+  useEffect(() => {
     return () => {
       if (typeof window === 'undefined') return
       const current = readMonitoringUiState() || {}
@@ -1442,15 +1460,12 @@ export default function MonitoringGrid() {
       colId: "select",
       headerName: "", 
       width: 48,
-      minWidth: 48,
-      maxWidth: 48,
       checkboxSelection: true, 
       headerCheckboxSelection: true, 
       pinned: 'left', 
       cellClass: 'flex items-center justify-center border-r border-white/5', 
       headerClass: 'flex items-center justify-center border-r border-white/5', 
       suppressSizeToFit: true,
-      resizable: false,
       sortable: false,
       filter: false,
       lockVisible: true
@@ -1460,8 +1475,6 @@ export default function MonitoringGrid() {
       field: "id", 
       headerName: "ID", 
       width: 90,
-      minWidth: 90,
-      maxWidth: 120,
       pinned: 'left',
       cellClass: 'text-center font-bold text-slate-500 border-r border-white/5 flex items-center justify-center',
       headerClass: 'text-center border-r border-white/5',
@@ -1473,12 +1486,9 @@ export default function MonitoringGrid() {
       headerName: "Chg",
       field: "recent_change",
       width: 80,
-      minWidth: 80,
-      maxWidth: 80,
       pinned: 'left',
       sortable: false,
       filter: false,
-      resizable: false,
       lockVisible: true,
       cellClass: 'text-center border-r border-white/5 flex items-center justify-center !overflow-visible',
       headerClass: 'text-center border-r border-white/5',
@@ -1517,14 +1527,11 @@ export default function MonitoringGrid() {
       headerName: "Fav",
       field: "favorite",
       width: 80,
-      minWidth: 80,
-      maxWidth: 80,
       pinned: 'left',
       cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
       headerClass: 'text-center border-r border-white/5',
       sortable: true,
       filter: false,
-      resizable: false,
       lockVisible: true,
       valueGetter: (p: any) => p.context?.favoriteIds?.includes(p.data?.id) ? 1 : 0,
       cellRenderer: (p: any) => {
@@ -1550,14 +1557,11 @@ export default function MonitoringGrid() {
       headerName: "Watch",
       field: "watch",
       width: 85,
-      minWidth: 85,
-      maxWidth: 85,
       pinned: 'left',
       cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
       headerClass: 'text-center border-r border-white/5',
       sortable: false,
       filter: false,
-      resizable: false,
       lockVisible: true,
       hide: !isIntelligenceExpanded,
       cellRenderer: (p: any) => {
@@ -1582,7 +1586,6 @@ export default function MonitoringGrid() {
       field: "device_name", 
       headerName: "Target Asset", 
       width: 160, 
-      minWidth: 140,
       filter: true,
       cellClass: "font-bold text-center flex items-center justify-center", 
       headerClass: 'text-center',
@@ -1592,9 +1595,7 @@ export default function MonitoringGrid() {
     { 
       field: "title", 
       headerName: "Title", 
-      minWidth: 220,
       width: 280,
-      flex: 2.2, 
       filter: true,
       cellClass: "font-bold text-left tracking-tight flex items-center", 
       headerClass: 'text-left',
@@ -1605,7 +1606,6 @@ export default function MonitoringGrid() {
       field: "status", 
       headerName: "Status", 
       width: 130,
-      minWidth: 110,
       filter: true,
       cellClass: 'text-center flex items-center justify-center',
       headerClass: 'text-center',
@@ -1616,7 +1616,6 @@ export default function MonitoringGrid() {
       field: "owners",
       headerName: "Owners",
       width: 140,
-      minWidth: 120,
       filter: true,
       cellClass: "text-center font-bold flex items-center justify-center",
       headerClass: 'text-center',
@@ -1639,7 +1638,6 @@ export default function MonitoringGrid() {
       field: "category", 
       headerName: "Category", 
       width: 140,
-      minWidth: 120,
       filter: true,
       cellClass: 'text-center flex items-center justify-center',
       headerClass: 'text-center',
@@ -1659,7 +1657,6 @@ export default function MonitoringGrid() {
       field: "is_active", 
       headerName: "Existing", 
       width: 70,
-      minWidth: 70,
       cellClass: 'text-center flex items-center justify-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -1681,7 +1678,6 @@ export default function MonitoringGrid() {
       field: "monitored_service_names", 
       headerName: "Services", 
       width: 110, 
-      minWidth: 100,
       valueFormatter: (p: any) => p.value?.join(', ') || 'N/A',
       cellClass: "text-center flex items-center justify-center", 
       headerClass: 'text-center',
@@ -1706,7 +1702,6 @@ export default function MonitoringGrid() {
     { 
       field: "platform", 
       headerName: "Platform", 
-      minWidth: 100,
       filter: true,
       cellClass: 'text-center font-bold text-slate-300 flex items-center justify-center', 
       headerClass: 'text-center',
@@ -1717,7 +1712,6 @@ export default function MonitoringGrid() {
       field: "severity", 
       headerName: "Severity", 
       width: 130,
-      minWidth: 110,
       filter: true,
       cellClass: 'text-center flex items-center justify-center',
       headerClass: 'text-center',
@@ -1728,7 +1722,6 @@ export default function MonitoringGrid() {
       field: "check_interval", 
       headerName: "Freq", 
       width: 80, 
-      minWidth: 80,
       cellClass: 'text-center font-bold flex items-center justify-center', 
       headerClass: 'text-center',
       cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value ? `${p.value}s` : 'N/A'}</span>,
@@ -1738,7 +1731,6 @@ export default function MonitoringGrid() {
       field: "notification_method", 
       headerName: "Notify", 
       width: 130, 
-      minWidth: 110,
       filter: true,
       cellClass: 'text-center flex items-center justify-center', 
       headerClass: 'text-center',
@@ -1757,8 +1749,7 @@ export default function MonitoringGrid() {
     { 
       field: "purpose", 
       headerName: "Purpose", 
-      minWidth: 180,
-      flex: 1, 
+      width: 220,
       filter: true,
       cellClass: "font-bold text-slate-500 text-left truncate px-4 flex items-center", 
       headerClass: 'text-left',
@@ -1799,12 +1790,9 @@ export default function MonitoringGrid() {
       colId: "row_actions",
       headerName: "Action",
       width: 210,
-      minWidth: 210,
-      maxWidth: 210,
       pinned: 'right',
       cellClass: 'text-right pr-3 flex items-center justify-end',
       headerClass: 'text-center',
-      resizable: false,
       sortable: false,
       filter: false,
       cellRenderer: (p: any) => p.data ? renderPrimaryRowActions(p.data) : null,

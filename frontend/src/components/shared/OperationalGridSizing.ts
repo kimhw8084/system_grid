@@ -33,6 +33,37 @@ export const applyOperationalColumnState = (
   })
 }
 
+export const autoSizeOperationalColumns = ({
+  api,
+  skipColumnIds = [],
+  onSized,
+}: {
+  api: {
+    getAllDisplayedColumns?: () => Array<{ getColId: () => string }>
+    autoSizeColumns?: (keys: string[], skipHeader?: boolean) => void
+  } | null | undefined
+  skipColumnIds?: string[]
+  onSized?: () => void
+}) => {
+  if (!api?.getAllDisplayedColumns || !api.autoSizeColumns) return
+  const columnIds = api
+    .getAllDisplayedColumns()
+    .map((column) => column.getColId())
+    .filter((colId) => !skipColumnIds.includes(colId))
+
+  if (!columnIds.length) return
+
+  const run = () => {
+    api.autoSizeColumns?.(columnIds, false)
+    onSized?.()
+  }
+
+  requestAnimationFrame(() => {
+    run()
+    window.setTimeout(run, 32)
+  })
+}
+
 export const applyOperationalColumnSizing = (
   column: Record<string, any>,
   layout: Record<string, any> | undefined,

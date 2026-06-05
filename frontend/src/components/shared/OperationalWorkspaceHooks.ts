@@ -101,7 +101,18 @@ export function useOperationalGridLayout(
 
   const handleColumnResized = useCallback((event: any) => {
     if (!event.finished) return
-    if (event.source === 'uiColumnDragged' || event.source === 'uiColumnResized') {
+    const source = event.source || ''
+    if (typeof window !== 'undefined') {
+      ;(window as any).__DEBUG_LAST_RESIZE_SOURCE__ = source
+      ;(window as any).__DEBUG_LAST_RESIZE_STATE__ = event.api?.getColumnState?.() || []
+    }
+    const isAutoResizeSource =
+      source === 'autosizeColumns' ||
+      source === 'sizeColumnsToFit' ||
+      source === 'api' ||
+      source === 'flex'
+
+    if (!isAutoResizeSource) {
       setHasManualColumnWidths(true)
       syncColumnLayoutState(event.api, true)
       return

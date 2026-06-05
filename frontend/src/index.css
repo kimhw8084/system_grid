@@ -222,6 +222,19 @@
   text-transform: uppercase !important;
 }
 
+.monitoring-grid-shell .ag-header-cell-label,
+.monitoring-grid-shell .ag-header-group-cell-label {
+  padding-right: 10px !important;
+}
+
+.monitoring-grid-shell .ag-header-cell-resize {
+  width: 10px !important;
+  right: 0 !important;
+  cursor: col-resize !important;
+  pointer-events: auto !important;
+  z-index: 6 !important;
+}
+
 .monitoring-grid-shell .ag-row {
   border-color: rgba(255, 255, 255, 0.05) !important;
 }
