@@ -44,12 +44,12 @@ export default function AuditLogs() {
     if (!logs || !Array.isArray(logs)) return []
     const dailyMap: Record<string, number> = {}
     logs.forEach(log => {
-      const date = new Date(log.timestamp).toLocaleDateString()
+      const date = formatAppDay(log.timestamp)
       dailyMap[date] = (dailyMap[date] || 0) + 1
     })
     return Object.entries(dailyMap)
       .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => new Date(a.name).getTime() - new Date(b.name).getTime())
+      .sort((a, b) => (parseAppDate(a.name)?.getTime() || 0) - (parseAppDate(b.name)?.getTime() || 0))
       .slice(-14) // Last 14 days
   }, [logs])
 

@@ -64,6 +64,7 @@ export const MONITORING_WORKSPACE_STANDARD: WorkspaceDefinition = {
     'Saved views persist search, filters, grouping, sort, and column visibility together',
     'Display controls manage density and column presentation without mutating record data',
     'Default grid layouts auto-size visible content columns when longer data arrives, without overriding fixed utility columns or explicit saved/manual layouts',
+    'All operational timestamps render in the app runtime local timezone consistently across grid cells, hover previews, detail surfaces, and history flows',
     'Grouping and right-click actions are available only where the entity benefits from operational table workflows',
     'Bulk actions operate on explicit selection state and never on hidden implicit scope',
     'Hover previews expose dense linked data without forcing modal navigation',

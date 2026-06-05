@@ -20,7 +20,7 @@ import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
 import { StatusPill } from './shared/StatusPill'
 import { ConfigRegistryModal } from './ConfigRegistry'
-import { parseAppDate } from '../utils/dateUtils'
+import { parseAppDate, formatAppDate } from '../utils/dateUtils'
 import { format, differenceInDays, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, eachWeekOfInterval, eachMonthOfInterval } from 'date-fns'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import ReactFlow, { 
@@ -346,7 +346,7 @@ const ProjectRail = ({
                          </div>
                          <div className="flex items-center gap-1.5 shrink-0 opacity-40">
                             <Clock size={10} className="text-slate-500" />
-                            <span className="text-[8px] font-bold text-slate-500 uppercase">{p.updated_at ? format(new Date(p.updated_at), 'MMM dd') : 'N/A'}</span>
+                            <span className="text-[8px] font-bold text-slate-500 uppercase">{p.updated_at ? format(parseAppDate(p.updated_at)!, 'MMM dd') : 'N/A'}</span>
                          </div>
                          <GripVertical size={12} className={`text-slate-800 transition-opacity shrink-0 ${canReorder ? 'opacity-0 group-hover:opacity-100' : 'opacity-20'}`} />
                       </div>
@@ -848,11 +848,11 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
     const successors = updated.filter(t => t.dependencies_json?.includes(taskId))
     
     successors.forEach(succ => {
-      const succStart = new Date(succ.start_date)
-      const predEnd = new Date(newEnd)
+      const succStart = parseAppDate(succ.start_date)!
+      const predEnd = parseAppDate(newEnd)!
       
       if (succStart < predEnd) {
-        const duration = differenceInDays(new Date(succ.end_date), succStart)
+        const duration = differenceInDays(parseAppDate(succ.end_date)!, succStart)
         const updatedSuccStart = predEnd.toISOString()
         const updatedSuccEnd = addDays(predEnd, duration).toISOString()
         
@@ -866,7 +866,7 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
   // Predictive Analytics
   const criticalPath = useMemo(() => {
     if (!tasks.length) return new Set<number>()
-    const sorted = [...tasks].filter(t => t.end_date).sort((a, b) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime())
+    const sorted = [...tasks].filter(t => t.end_date).sort((a, b) => parseAppDate(a.end_date)!.getTime() - parseAppDate(b.end_date)!.getTime())
     if (!sorted.length) return new Set<number>()
 
     const lastTask = sorted[sorted.length - 1]
@@ -878,8 +878,8 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
 
       const deps = task.dependencies_json.map((id: number) => tasks.find(t => t.id === id)).filter((d: any) => d && d.end_date)
       if (deps.length === 0) return
-      const maxEnd = Math.max(...deps.map((d: any) => new Date(d.end_date).getTime()))
-      const critDeps = deps.filter((d: any) => new Date(d.end_date).getTime() === maxEnd)
+      const maxEnd = Math.max(...deps.map((d: any) => parseAppDate(d.end_date)!.getTime()))
+      const critDeps = deps.filter((d: any) => parseAppDate(d.end_date)!.getTime() === maxEnd)
 
       critDeps.forEach((d: any) => {
         if (!path.has(d.id)) {
@@ -952,10 +952,10 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
       updatedTasks = updatedTasks.map(t => {
         const startTask = baseTasks.find(bt => bt.id === t.id)
         if (startTask && idsToMove.includes(t.id)) {
-          const newStart = addDays(new Date(startTask.start_date), daysMoved).toISOString()
-          const duration = differenceInDays(new Date(startTask.end_date), new Date(startTask.start_date))
-          const newEnd = addDays(new Date(newStart), duration).toISOString()
-          if (t.id === id) newStartDateStr = format(new Date(newStart), 'MMM dd, yyyy')
+          const newStart = addDays(parseAppDate(startTask.start_date)!, daysMoved).toISOString()
+          const duration = differenceInDays(parseAppDate(startTask.end_date)!, parseAppDate(startTask.start_date)!)
+          const newEnd = addDays(parseAppDate(newStart)!, duration).toISOString()
+          if (t.id === id) newStartDateStr = format(parseAppDate(newStart)!, 'MMM dd, yyyy')
           return { ...t, start_date: newStart, end_date: newEnd }
         }
         return t
@@ -990,14 +990,14 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
         if (startTask && t.id === id) {
           let updatedTask = { ...t }
           if (type === 'start') {
-            const newStart = addDays(new Date(startTask.start_date), daysMoved)
-            if (newStart < new Date(startTask.end_date)) {
+            const newStart = addDays(parseAppDate(startTask.start_date)!, daysMoved)
+            if (newStart < parseAppDate(startTask.end_date)!) {
               updatedTask.start_date = newStart.toISOString()
               newDateStr = format(newStart, 'MMM dd, yyyy')
             }
           } else {
-            const newEnd = addDays(new Date(startTask.end_date), daysMoved)
-            if (newEnd > new Date(startTask.start_date)) {
+            const newEnd = addDays(parseAppDate(startTask.end_date)!, daysMoved)
+            if (newEnd > parseAppDate(startTask.start_date)!) {
               updatedTask.end_date = newEnd.toISOString()
               newDateStr = format(newEnd, 'MMM dd, yyyy')
             }
@@ -1024,14 +1024,14 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
 
   const startDate = useMemo(() => {
     if (!tasks || tasks.length === 0) return startOfMonth(new Date())
-    const times = tasks.map(t => new Date(t.start_date).getTime()).filter(t => !isNaN(t))
+    const times = tasks.map(t => parseAppDate(t.start_date)?.getTime() || NaN).filter(t => !isNaN(t))
     const min = times.length > 0 ? Math.min(...times) : new Date().getTime()
-    return addDays(new Date(min), -14) 
+    return addDays(new Date(min), -14)
   }, [tasks])
 
   const endDate = useMemo(() => {
     if (!tasks || tasks.length === 0) return endOfMonth(addDays(new Date(), 90))
-    const times = tasks.map(t => new Date(t.end_date).getTime()).filter(t => !isNaN(t))
+    const times = tasks.map(t => parseAppDate(t.end_date)?.getTime() || NaN).filter(t => !isNaN(t))
     const max = times.length > 0 ? Math.max(...times) : addDays(new Date(), 90).getTime()
     return endOfMonth(addDays(new Date(max), 60))
   }, [tasks])
@@ -1049,7 +1049,7 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
   }, [granularity])
 
   const days = useMemo(() => {
-    try { 
+    try {
       let interval: Date[] = []
       if (granularity === 'D') {
         interval = eachDayOfInterval({ start: startDate, end: endDate })
@@ -1064,15 +1064,15 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
   }, [startDate, endDate, granularity])
 
   const getDayOffset = useCallback((date: string) => {
-    const d = new Date(date)
+    const d = parseAppDate(date) || new Date()
     if (granularity === 'D') return differenceInDays(d, startDate)
     if (granularity === 'W') return differenceInDays(d, startDate) / 7
     return differenceInDays(d, startDate) / 30.44 // Average month length
   }, [startDate, granularity])
 
   const getDayWidth = useCallback((start: string, end: string) => {
-    const s = new Date(start)
-    const e = new Date(end)
+    const s = parseAppDate(start) || new Date()
+    const e = parseAppDate(end) || new Date()
     const diff = Math.max(1, differenceInDays(e, s))
     if (granularity === 'D') return diff
     if (granularity === 'W') return diff / 7
@@ -1083,14 +1083,14 @@ const PrecisionGantt = ({ project, onUpdate }: any) => {
     if (!tasks || tasks.length === 0) return []
     if (!isPackingMode) return tasks.map((t, i) => ({ ...t, rowIndex: i }))
     
-    const sorted = [...tasks].sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+    const sorted = [...tasks].sort((a, b) => parseAppDate(a.start_date)!.getTime() - parseAppDate(b.start_date)!.getTime())
     const rows: any[][] = []
     
     sorted.forEach(task => {
       let assigned = false
       for (let i = 0; i < rows.length; i++) {
         const lastInRow = rows[i][rows[i].length - 1]
-        if (new Date(task.start_date) >= new Date(lastInRow.end_date)) {
+        if (parseAppDate(task.start_date)! >= parseAppDate(lastInRow.end_date)!) {
           rows[i].push(task)
           assigned = true
           break
@@ -1292,7 +1292,7 @@ const DependencyLines = React.memo(({ lines }: any) => {
                zoomLevel={zoomLevel} 
                granularity={granularity} 
                onDayClick={(day: Date) => {
-                 const tasksEnding = tasks.filter(t => isSameDay(new Date(t.end_date), day))
+                 const tasksEnding = tasks.filter(t => isSameDay(parseAppDate(t.end_date)!, day))
                  setDayTasksPopup({ date: day, tasks: tasksEnding })
                }} 
              />
@@ -1489,7 +1489,7 @@ const DependencyLines = React.memo(({ lines }: any) => {
                                       <div key={i} className="p-4 bg-white/5 rounded-lg border border-white/5 space-y-2">
                                          <div className="flex items-center justify-between">
                                             <span className="text-[10px] font-bold text-blue-400">{c.author}</span>
-                                            <span className="text-[8px] font-bold text-slate-600 uppercase">{format(new Date(c.timestamp), 'MMM dd, HH:mm')}</span>
+                                            <span className="text-[8px] font-bold text-slate-600 uppercase">{c.timestamp ? format(parseAppDate(c.timestamp)!, 'MMM dd, HH:mm') : 'N/A'}</span>
                                          </div>
                                          <p className="text-xs font-bold text-slate-300 leading-relaxed">{c.content}</p>
                                       </div>
@@ -1548,11 +1548,11 @@ const DependencyLines = React.memo(({ lines }: any) => {
                                  <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
                                        <label className="text-[8px] font-bold text-slate-600 uppercase px-1">Planned Start Date</label>
-                                       <input type="date" value={format(new Date(task.start_date), 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { start_date: new Date(e.target.value).toISOString() })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+                                       <input type="date" value={format(parseAppDate(task.start_date)!, 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { start_date: new Date(e.target.value).toISOString() })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
                                     </div>
                                     <div className="space-y-1.5">
                                        <label className="text-[8px] font-bold text-slate-600 uppercase px-1">Planned End Date</label>
-                                       <input type="date" value={format(new Date(task.end_date), 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { end_date: new Date(e.target.value).toISOString() })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+                                       <input type="date" value={format(parseAppDate(task.end_date)!, 'yyyy-MM-dd')} onChange={e => handleTaskUpdate(task.id, { end_date: new Date(e.target.value).toISOString() })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
                                     </div>
                                  </div>
                               </section>
@@ -1562,11 +1562,11 @@ const DependencyLines = React.memo(({ lines }: any) => {
                                  <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
                                        <label className="text-[8px] font-bold text-slate-600 uppercase px-1">Actual Start Date</label>
-                                       <input type="date" value={task.actual_start_date ? format(new Date(task.actual_start_date), 'yyyy-MM-dd') : ''} onChange={e => handleTaskUpdate(task.id, { actual_start_date: e.target.value ? new Date(e.target.value).toISOString() : null })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+                                       <input type="date" value={task.actual_start_date ? format(parseAppDate(task.actual_start_date)!, 'yyyy-MM-dd') : ''} onChange={e => handleTaskUpdate(task.id, { actual_start_date: e.target.value ? new Date(e.target.value).toISOString() : null })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
                                     </div>
                                     <div className="space-y-1.5">
                                        <label className="text-[8px] font-bold text-slate-600 uppercase px-1">Actual End Date</label>
-                                       <input type="date" value={task.actual_end_date ? format(new Date(task.actual_end_date), 'yyyy-MM-dd') : ''} onChange={e => handleTaskUpdate(task.id, { actual_end_date: e.target.value ? new Date(e.target.value).toISOString() : null })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
+                                       <input type="date" value={task.actual_end_date ? format(parseAppDate(task.actual_end_date)!, 'yyyy-MM-dd') : ''} onChange={e => handleTaskUpdate(task.id, { actual_end_date: e.target.value ? new Date(e.target.value).toISOString() : null })} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500" />
                                     </div>
                                  </div>
                               </section>
@@ -1601,7 +1601,7 @@ const DependencyLines = React.memo(({ lines }: any) => {
                                     {(task.metadata_json?.history || []).slice(-5).reverse().map((h: any, i: number) => (
                                       <div key={i} className="text-[9px] font-bold text-slate-600 flex items-center justify-between">
                                          <span className="truncate flex-1">"{h.content}"</span>
-                                         <span className="text-slate-800 shrink-0 ml-4 uppercase">{format(new Date(h.timestamp), 'MMM dd, HH:mm')}</span>
+                                         <span className="text-slate-800 shrink-0 ml-4 uppercase">{h.timestamp ? format(parseAppDate(h.timestamp)!, 'MMM dd, HH:mm') : 'N/A'}</span>
                                       </div>
                                     ))}
                                     {(!task.metadata_json?.history || task.metadata_json.history.length === 0) && <p className="text-[8px] font-bold text-slate-800 uppercase text-center py-4">No audit history</p>}
@@ -1628,11 +1628,11 @@ const ExecutiveChart = ({ tasks }: { tasks: any[] }) => {
     
     // Get time range from all tasks (planned and actual)
     const times = tasks.flatMap(t => [
-      new Date(t.start_date).getTime(), 
-      new Date(t.end_date).getTime(),
-      t.actual_start_date ? new Date(t.actual_start_date).getTime() : null,
-      t.actual_end_date ? new Date(t.actual_end_date).getTime() : null
-    ]).filter(t => t !== null && !isNaN(t))
+      parseAppDate(t.start_date)?.getTime(), 
+      parseAppDate(t.end_date)?.getTime(),
+      t.actual_start_date ? parseAppDate(t.actual_start_date)?.getTime() : null,
+      t.actual_end_date ? parseAppDate(t.actual_end_date)?.getTime() : null
+    ]).filter((t): t is number => t !== null && t !== undefined && !isNaN(t))
     
     if (times.length === 0) return []
     
@@ -1647,11 +1647,11 @@ const ExecutiveChart = ({ tasks }: { tasks: any[] }) => {
     const totalTasks = tasks.length
 
     return interval.filter((_, i) => i % step === 0).map(date => {
-      const scheduledOnDate = tasks.filter(t => isSameDay(new Date(t.end_date), date))
-      const actualOnDate = tasks.filter(t => t.actual_end_date && isSameDay(new Date(t.actual_end_date), date))
+      const scheduledOnDate = tasks.filter(t => isSameDay(parseAppDate(t.end_date)!, date))
+      const actualOnDate = tasks.filter(t => t.actual_end_date && isSameDay(parseAppDate(t.actual_end_date)!, date))
       
-      const scheduledCount = tasks.filter(t => new Date(t.end_date) <= date).length
-      const actualCount = tasks.filter(t => t.actual_end_date && new Date(t.actual_end_date) <= date).length
+      const scheduledCount = tasks.filter(t => parseAppDate(t.end_date)! <= date).length
+      const actualCount = tasks.filter(t => t.actual_end_date && parseAppDate(t.actual_end_date)! <= date).length
 
       return {
         date: format(date, 'MMM d'),
@@ -1712,7 +1712,7 @@ const ExecutiveChart = ({ tasks }: { tasks: any[] }) => {
                      {selectedPoint.plannedTasks.length > 0 ? selectedPoint.plannedTasks.map((t: any) => (
                        <div key={t.id} className="p-2.5 bg-white/5 rounded border border-white/5">
                          <p className="text-[10px] font-bold text-slate-300 truncate">{t.name}</p>
-                         <p className="text-[8px] font-bold text-slate-600 mt-1 uppercase">Target: {format(new Date(t.end_date), 'MMM dd')}</p>
+                         <p className="text-[8px] font-bold text-slate-600 mt-1 uppercase">Target: {format(parseAppDate(t.end_date)!, 'MMM dd')}</p>
                        </div>
                      )) : <p className="text-[9px] text-slate-700 font-bold uppercase py-2 px-1">None</p>}
                   </div>
@@ -1721,7 +1721,7 @@ const ExecutiveChart = ({ tasks }: { tasks: any[] }) => {
                      {selectedPoint.actualTasks.length > 0 ? selectedPoint.actualTasks.map((t: any) => (
                        <div key={t.id} className="p-2.5 bg-emerald-500/5 rounded border border-emerald-500/20">
                          <p className="text-[10px] font-bold text-emerald-400 truncate">{t.name}</p>
-                         <p className="text-[8px] font-bold text-emerald-600 mt-1 uppercase">Finalized: {format(new Date(t.actual_end_date), 'MMM dd')}</p>
+                         <p className="text-[8px] font-bold text-emerald-600 mt-1 uppercase">Finalized: {format(parseAppDate(t.actual_end_date)!, 'MMM dd')}</p>
                        </div>
                      )) : <p className="text-[9px] text-slate-700 font-bold uppercase py-2 px-1">None</p>}
                   </div>
@@ -2369,7 +2369,7 @@ const ProjectActivityStream = ({ project, allProjects = [] }: any) => {
           ...(p?.tasks || []).flatMap((t:any) => (t?.metadata_json?.comments || []).map((c:any) => ({ ...c, type: 'COMMENT', taskName: t?.name, projectName: p?.name, icon: <MessageSquare size={14}/> }))),
           ...(p?.metadata_json?.audit_log || []).map((a:any) => ({ ...a, type: 'PROJECT', projectName: p?.name, icon: <Projector size={14}/> }))
         ])
-    return list.sort((a:any, b:any) => new Date(b.timestamp || b.created_at).getTime() - new Date(a.timestamp || a.created_at).getTime())
+    return list.sort((a:any, b:any) => (parseAppDate(b.timestamp || b.created_at)?.getTime() || 0) - (parseAppDate(a.timestamp || a.created_at)?.getTime() || 0))
   }, [project, allProjects])
 
   return (
@@ -2476,7 +2476,7 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, devices, 
   ]
 
   const handleDateChange = (type: 'start' | 'end', part: 'month' | 'year', val: number) => {
-    const d = new Date(formData[`${type}_date`] || new Date())
+    const d = parseAppDate(formData[`${type}_date`]) || new Date()
     d.setDate(1)
     if (part === 'month') d.setMonth(val)
     else d.setFullYear(val)
@@ -2490,8 +2490,8 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, devices, 
     }
   }, [initialData])
 
-  const startDate = new Date(formData.start_date || new Date())
-  const endDate = new Date(formData.end_date || new Date())
+  const startDate = parseAppDate(formData.start_date) || new Date()
+  const endDate = parseAppDate(formData.end_date) || new Date()
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto p-8 bg-[#0a0c14]/50 rounded-lg border border-white/5 shadow-2xl mt-4">
@@ -2617,7 +2617,7 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, devices, 
        <div className="flex gap-4 pt-4">
           <button onClick={onCancel} className="flex-1 py-3 bg-white/5 text-slate-600 rounded-lg text-[10px] font-bold uppercase tracking-[0.2em] transition-all">Abort</button>
           <button 
-            disabled={isSaving || !formData.name || new Date(formData.start_date) >= new Date(formData.end_date)} 
+            disabled={isSaving || !formData.name || (parseAppDate(formData.start_date)?.getTime() || 0) >= (parseAppDate(formData.end_date)?.getTime() || 0)} 
             onClick={() => onSave(formData)} 
             className="flex-[2] py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-bold uppercase tracking-[0.2em] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -2644,8 +2644,8 @@ const DailyHuddleView = ({ projects, users }: any) => {
       if (a.status === 'Blocked' && b.status !== 'Blocked') return -1
       if (a.status !== 'Blocked' && b.status === 'Blocked') return 1
       
-      const dateA = new Date(a.end_date).getTime()
-      const dateB = new Date(b.end_date).getTime()
+      const dateA = parseAppDate(a.end_date)?.getTime() || 0
+      const dateB = parseAppDate(b.end_date)?.getTime() || 0
       return dateA - dateB
     })
   }, [projects])
@@ -2654,7 +2654,10 @@ const DailyHuddleView = ({ projects, users }: any) => {
     return {
       total: huddleTasks.length,
       blocked: huddleTasks.filter(t => t.status === 'Blocked').length,
-      approaching: huddleTasks.filter(t => differenceInDays(new Date(t.end_date), new Date()) < 3).length
+      approaching: huddleTasks.filter(t => {
+        const dueDate = parseAppDate(t.end_date)
+        return dueDate && differenceInDays(dueDate, new Date()) < 3
+      }).length
     }
   }, [huddleTasks])
 
@@ -2725,9 +2728,15 @@ const DailyHuddleView = ({ projects, users }: any) => {
                         </div>
                         <div className="flex items-center justify-between pt-5 border-t border-white/5">
                            <div className="flex items-center gap-2 text-slate-500">
-                              <Calendar size={12} className={differenceInDays(new Date(task.end_date), new Date()) < 3 ? 'text-amber-500 animate-pulse' : ''} />
-                              <span className={`text-[9px] font-black uppercase tracking-widest ${differenceInDays(new Date(task.end_date), new Date()) < 3 ? 'text-amber-500' : ''}`}>
-                                 {format(new Date(task.end_date), 'MMM dd')}
+                              <Calendar size={12} className={(() => {
+                                 const d = parseAppDate(task.end_date);
+                                 return d && differenceInDays(d, new Date()) < 3;
+                              })() ? 'text-amber-500 animate-pulse' : ''} />
+                              <span className={`text-[9px] font-black uppercase tracking-widest ${(() => {
+                                 const d = parseAppDate(task.end_date);
+                                 return d && differenceInDays(d, new Date()) < 3;
+                              })() ? 'text-amber-500' : ''}`}>
+                                 {format(parseAppDate(task.end_date)!, 'MMM dd')}
                               </span>
                            </div>
                            <div className="flex items-center gap-2">
@@ -2865,7 +2874,7 @@ const ProjectAdoptionView = ({ project, onUpdate, isEditing }: any) => {
                            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{log.author}</span>
                         </div>
                         <div className="flex items-center gap-4">
-                           <span className="text-[9px] font-bold text-slate-700 uppercase">{format(new Date(log.timestamp), 'MMM dd, yyyy HH:mm')}</span>
+                           <span className="text-[8px] font-bold text-slate-600 uppercase">{c.timestamp ? format(parseAppDate(c.timestamp)!, 'MMM dd, HH:mm') : 'N/A'}</span>
                            <button onClick={() => handleDeleteLog(log.id)} className="text-slate-800 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={14}/></button>
                         </div>
                      </div>
@@ -2950,7 +2959,7 @@ export default function Projects() {
   useEffect(() => {
     if (projects?.length > 0 && selectedProjectId === 'HUDDLE' && !idParam) {
       // Find latest created project
-      const latest = [...projects].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+      const latest = [...projects].sort((a, b) => (parseAppDate(b.created_at)?.getTime() || 0) - (parseAppDate(a.created_at)?.getTime() || 0))[0]
       if (latest) syncSelectedProject(latest.id)
     }
   }, [projects, idParam, selectedProjectId, syncSelectedProject])

@@ -9,6 +9,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion"
 import toast from "react-hot-toast"
 import { apiFetch, setApiOverride, getApiBaseUrl } from "../api/apiClient"
+import { formatAppDate, parseAppDate } from "../utils/dateUtils"
 
 const normalizeTheme = (theme?: string | null) => {
   if (theme === 'dark') return 'nordic-frost-v1'
@@ -1305,7 +1306,7 @@ result_df = get_user_pool()`)
                             {selectedTeamAudit?.map((entry: any) => (
                               <div key={entry.id} className="rounded-xl border border-white/5 bg-black/20 px-3 py-3">
                                 <p className="text-[8px] font-black uppercase tracking-[0.18em] text-blue-400">{entry.action.replace(/_/g, ' ')}</p>
-                                <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">{entry.actor} • {new Date(entry.created_at).toLocaleString()}</p>
+                                <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">{entry.actor} • {formatAppDate(entry.created_at)}</p>
                               </div>
                             ))}
                           </div>
@@ -1585,7 +1586,7 @@ result_df = get_user_pool()`)
                                           <div className="flex items-center gap-2">
                                              <Clock size={12} className="text-slate-500" />
                                              <span className="text-[9px] font-bold text-slate-400 uppercase">
-                                                {t.last_backup ? new Date(t.last_backup).toLocaleString() : 'Never Backed Up'}
+                                                {t.last_backup ? formatAppDate(t.last_backup) : 'Never Backed Up'}
                                              </span>
                                           </div>
                                        </td>
@@ -2053,7 +2054,7 @@ result_df = get_user_pool()`)
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex flex-col">
                                     <span className="text-[11px] font-black text-[var(--text-primary)] uppercase tracking-[0.2em]">{v.version_label}</span>
-                                    <span className="text-[8px] font-black text-slate-500 uppercase mt-1">{new Date(v.created_at).toLocaleString()}</span>
+                                    <span className="text-[8px] font-black text-slate-500 uppercase mt-1">{formatAppDate(v.created_at)}</span>
                                 </div>
                                 {v.is_active ? (
                                     <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-400 rounded text-[8px] font-black uppercase tracking-widest">Active</span>

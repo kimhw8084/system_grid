@@ -6,6 +6,7 @@ import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, L
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
+import { parseAppDate, formatAppDate, formatAppDay } from '../utils/dateUtils'
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { StyledSelect } from "./shared/StyledSelect"
@@ -769,22 +770,22 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <div className="space-y-8">
                         <div>
                            <p className="text-[8px] font-bold text-slate-500 uppercase mb-1">Deployment Phase</p>
-                           <p className="text-sm font-bold text-white uppercase">{selectedAsset.install_date ? new Date(selectedAsset.install_date).toLocaleDateString() : 'N/A'}</p>
+                           <p className="text-sm font-bold text-white uppercase">{formatAppDay(selectedAsset.install_date)}</p>
                            <p className="text-[10px] font-bold text-blue-400 mt-1 uppercase">Total Uptime Age: {selectedAsset.hardware_age}</p>
                         </div>
                         <div>
                            <p className="text-[8px] font-bold text-slate-500 uppercase mb-1">Warranty Coverage</p>
-                           <p className="text-sm font-bold text-white uppercase">{selectedAsset.warranty_end ? new Date(selectedAsset.warranty_end).toLocaleDateString() : 'EXPIRED / NO TERM'}</p>
+                           <p className="text-sm font-bold text-white uppercase">{selectedAsset.warranty_end ? formatAppDay(selectedAsset.warranty_end) : 'EXPIRED / NO TERM'}</p>
                         </div>
                      </div>
                      <div className="space-y-8 text-right">
                         <div>
                            <p className="text-[8px] font-bold text-slate-500 uppercase mb-1">Acquisition Date</p>
-                           <p className="text-sm font-bold text-white uppercase">{selectedAsset.purchase_date ? new Date(selectedAsset.purchase_date).toLocaleDateString() : 'N/A'}</p>
+                           <p className="text-sm font-bold text-white uppercase">{formatAppDay(selectedAsset.purchase_date)}</p>
                         </div>
                         <div>
                            <p className="text-[8px] font-bold text-slate-500 uppercase mb-1">Retirement EOL</p>
-                           <p className="text-sm font-bold text-rose-400 uppercase">{selectedAsset.eol_date ? new Date(selectedAsset.eol_date).toLocaleDateString() : 'ACTIVE REIGN'}</p>
+                           <p className="text-sm font-bold text-rose-400 uppercase">{selectedAsset.eol_date ? formatAppDay(selectedAsset.eol_date) : 'ACTIVE REIGN'}</p>
                         </div>
                      </div>
                   </div>

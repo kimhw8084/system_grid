@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
+import { parseAppDate, formatAppDate, formatAppDay } from '../utils/dateUtils'
 import { AgGridReact } from 'ag-grid-react'
 import { toast } from 'react-hot-toast'
 import { ConfirmationModal } from './shared/ConfirmationModal'
@@ -213,7 +214,7 @@ export default function Vendor() {
       filter: true, 
       cellClass: 'text-center',
       headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? new Date(p.value).toLocaleDateString() : '---',
+      cellRenderer: (p: any) => formatAppDay(p.value),
       hide: hiddenColumns.includes("first_contract_date")
     },
     { 
@@ -225,9 +226,9 @@ export default function Vendor() {
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
         if (!p.value) return '---';
-        const date = new Date(p.value);
-        const isExpired = date < new Date();
-        return <span className={isExpired ? 'text-rose-500' : 'text-emerald-500'}>{date.toLocaleDateString()}</span>;
+        const date = parseAppDate(p.value);
+        const isExpired = date && date < new Date();
+        return <span className={isExpired ? 'text-rose-500' : 'text-emerald-500'}>{formatAppDay(p.value)}</span>;
       },
       hide: hiddenColumns.includes("earliest_expiry_date")
     },
@@ -269,14 +270,14 @@ export default function Vendor() {
       const primary = personnel.find((p: any) => p.id === v.primary_personnel_id);
       const now = new Date();
       const activeContracts = contracts.filter((c: any) => {
-        const start = c.effective_date ? new Date(c.effective_date) : null;
-        const end = c.expiry_date ? new Date(c.expiry_date) : null;
+        const start = parseAppDate(c.effective_date);
+        const end = parseAppDate(c.expiry_date);
         const isDateValid = (!start || start <= now) && (!end || end >= now);
         return isDateValid && c.status === 'Completed';
       });
       
-      const startDates = contracts.map((c: any) => c.effective_date).filter(Boolean).map((d: any) => new Date(d).getTime());
-      const expiryDates = contracts.map((c: any) => c.expiry_date).filter(Boolean).map((d: any) => new Date(d).getTime());
+      const startDates = contracts.map((c: any) => c.effective_date).map((d: any) => parseAppDate(d)).filter(Boolean).map((d: any) => d!.getTime());
+      const expiryDates = contracts.map((c: any) => c.expiry_date).map((d: any) => parseAppDate(d)).filter(Boolean).map((d: any) => d!.getTime());
       
       return {
         ...v,
@@ -827,8 +828,8 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                         <p className="text-3xl font-bold text-white">
                           {vendor.contracts?.filter((c:any) => {
                             const now = new Date();
-                            const start = c.effective_date ? new Date(c.effective_date) : null;
-                            const end = c.expiry_date ? new Date(c.expiry_date) : null;
+                            const start = parseAppDate(c.effective_date);
+                            const end = parseAppDate(c.expiry_date);
                             const isDateValid = (!start || start <= now) && (!end || end >= now);
                             return isDateValid && c.status === 'Completed';
                           }).length || 0}
@@ -881,12 +882,15 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                                       <div className="flex items-center gap-4 text-[9px] font-bold uppercase tracking-widest">
                                          <div className="flex flex-col">
                                             <span className="text-slate-500 mb-1">Effective</span>
-                                            <span className="text-white">{c.effective_date ? new Date(c.effective_date).toLocaleDateString() : '---'}</span>
+                                            <span className="text-white">{formatAppDay(c.effective_date)}</span>
                                          </div>
                                          <div className="flex flex-col border-l border-white/10 pl-4">
                                             <span className="text-slate-500 mb-1">Expiring</span>
-                                            <span className={new Date(c.expiry_date) < new Date() ? 'text-rose-500' : 'text-emerald-500'}>
-                                              {c.expiry_date ? new Date(c.expiry_date).toLocaleDateString() : 'OPEN-ENDED'}
+                                            <span className={(() => {
+                                              const d = parseAppDate(c.expiry_date);
+                                              return d && d < new Date() ? 'text-rose-500' : 'text-emerald-500';
+                                            })()}>
+                                              {c.expiry_date ? formatAppDay(c.expiry_date) : 'OPEN-ENDED'}
                                             </span>
                                          </div>
                                       </div>
@@ -1640,7 +1644,7 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
                        {isEditing ? (
                          <input type="date" value={formData.effective_date?.split('T')[0]} onChange={e => updateField('effective_date', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all" />
                        ) : (
-                         <p className="text-sm font-bold text-white py-2 tracking-tight">{formData.effective_date ? new Date(formData.effective_date).toLocaleDateString() : '---'}</p>
+                         <p className="text-sm font-bold text-white py-2 tracking-tight">{formatAppDay(formData.effective_date)}</p>
                        )}
                     </div>
                     <div>
@@ -1648,7 +1652,7 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
                        {isEditing ? (
                          <input type="date" value={formData.expiry_date?.split('T')[0]} onChange={e => updateField('expiry_date', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all" />
                        ) : (
-                         <p className="text-sm font-bold text-white py-2 tracking-tight">{formData.expiry_date ? new Date(formData.expiry_date).toLocaleDateString() : '---'}</p>
+                         <p className="text-sm font-bold text-white py-2 tracking-tight">{formatAppDay(formData.expiry_date)}</p>
                        )}
                     </div>
                  </div>

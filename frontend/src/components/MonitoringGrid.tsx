@@ -386,8 +386,8 @@ const ObservabilityHUD = ({ items }: any) => {
     const active = items.filter((i: any) => i.status === 'Existing').length
     const critical = items.filter((i: any) => i.severity === 'Critical' || i.severity === 'S1').length
     const recent = items.filter((i: any) => {
-      const updated = new Date(i.updated_at)
-      return new Date().getTime() - updated.getTime() < 3600000 // 1 hour
+      const updated = parseAppDate(i.updated_at)
+      return updated ? (new Date().getTime() - updated.getTime() < 3600000) : false // 1 hour
     }).length
     return { active, critical, recent }
   }, [items])
@@ -1210,7 +1210,8 @@ export default function MonitoringGrid() {
   const isRecentChange = useCallback((item: any) => {
     const changedAt = item?.updated_at || item?.created_at
     if (!changedAt || !lastVisitedAt) return false
-    return new Date(changedAt).getTime() > lastVisitedAt
+    const time = parseAppDate(changedAt)?.getTime() || 0
+    return time > lastVisitedAt
   }, [lastVisitedAt])
 
   const bulkPreview = useMemo(() => {
@@ -1503,7 +1504,7 @@ export default function MonitoringGrid() {
       hide: !isIntelligenceExpanded,
       cellRenderer: (p: any) => {
         if (!p.data || !isRecentChange(p.data)) return null
-        const dateStr = new Date(p.data.updated_at || p.data.created_at).toLocaleString()
+        const dateStr = formatAppDate(p.data.updated_at || p.data.created_at)
         const author = p.data.created_by_user_id || 'System'
         return (
           <div className="group relative flex items-center justify-center h-full w-full">
@@ -1793,7 +1794,7 @@ export default function MonitoringGrid() {
       cellRenderer: (p: any) => p.value ? (
         <div className="flex items-center gap-2">
            <Clock size={12} className="opacity-40" />
-           <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleString()}</span>
+           <span style={{ fontSize: `${fontSize}px` }}>{formatAppDate(p.value)}</span>
         </div>
       ) : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500">N/A</span>,
       hide: hiddenColumns.includes("created_at")
@@ -1808,7 +1809,7 @@ export default function MonitoringGrid() {
       cellRenderer: (p: any) => p.value ? (
         <div className="flex items-center gap-2">
            <Clock size={12} className="opacity-40" />
-           <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleString()}</span>
+           <span style={{ fontSize: `${fontSize}px` }}>{formatAppDate(p.value)}</span>
         </div>
       ) : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500">N/A</span>,
       hide: hiddenColumns.includes("updated_at")

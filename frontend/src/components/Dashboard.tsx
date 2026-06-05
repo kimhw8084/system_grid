@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
 import { useNavigate, Link } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
-import { formatAppDate, formatAppTime, formatAppDay } from '../utils/dateUtils'
+import { formatAppDate, formatAppTime, formatAppDay, parseAppDate } from '../utils/dateUtils'
 
 const StatCard = ({ title, total, metrics, icon: Icon, color, onClick, delay = 0 }: any) => {
   const navigate = useNavigate();
@@ -129,7 +129,7 @@ const RecentListCard = ({ title, items = [], icon: Icon, color, path, delay = 0 
         >
           <div className="flex flex-col min-w-0">
             <span className="text-[11px] font-bold text-slate-200 uppercase tracking-tight truncate group-hover/item:text-blue-400 transition-colors">{item.title}</span>
-            <span className="text-[9px] font-bold text-slate-500 uppercase mt-0.5">{new Date(item.created_at || item.updated_at).toLocaleDateString()}</span>
+            <span className="text-[9px] font-bold text-slate-500 uppercase mt-0.5">{formatAppDay(item.created_at || item.updated_at)}</span>
           </div>
           <ChevronRight size={14} className="text-slate-700 group-hover/item:translate-x-1 transition-transform" />
         </Link>
@@ -403,7 +403,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                        <div className="flex items-center justify-between mb-2">
                           <span className="text-[9px] font-black text-blue-400 uppercase tracking-tighter">{log.user}</span>
                           <span className="text-[9px] font-bold text-slate-600 uppercase tabular-nums">
-                            {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
+                            {formatDistanceToNow(parseAppDate(log.timestamp)!, { addSuffix: true })}
                           </span>
                        </div>
                        <p className="text-[11px] font-bold text-slate-300 leading-tight uppercase tracking-tight group-hover/log:text-white transition-colors">{log.description || `${log.action} ${log.target}`}</p>

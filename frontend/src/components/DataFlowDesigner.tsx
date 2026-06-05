@@ -22,6 +22,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import dagre from 'dagre'
 import { apiFetch } from '../api/apiClient'
+import { parseAppDate, formatAppDate } from '../utils/dateUtils'
 import { StatusPill } from './shared/StatusPill'
 import { StyledSelect } from './shared/StyledSelect'
 import { ConfirmationModal } from './shared/ConfirmationModal'
@@ -138,9 +139,7 @@ const getFlowMetadata = (flow: any) => flow?.metadata || {}
 const getFlowMeta = (flow: any, key: string) => getFlowMetadata(flow)?.[key]
 const parseMetaDate = (flow: any, key: string) => {
   const raw = getFlowMeta(flow, key)
-  if (!raw) return null
-  const parsed = new Date(raw)
-  return Number.isNaN(parsed.getTime()) ? null : parsed
+  return parseAppDate(raw)
 }
 const buildArchitectureInsights = (flow: any) => {
   const metadata = getFlowMetadata(flow)
@@ -1213,7 +1212,7 @@ const ArchitectureHistoryPanel = ({ flow, historyEntries, isOpen, onClose, onRes
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400">Version {entry.version}</p>
                     <p className="text-[9px] font-bold uppercase text-white mt-1">{entry.change_summary || 'Architecture change'}</p>
-                    <p className="text-[8px] font-bold uppercase text-slate-500 mt-2">{entry.created_at ? new Date(entry.created_at).toLocaleString() : 'Unknown time'}</p>
+                    <p className="text-[8px] font-bold uppercase text-slate-500 mt-2">{entry.created_at ? formatAppDate(entry.created_at) : 'Unknown time'}</p>
                   </div>
                   <button onClick={() => onRestore(entry.id)} className="px-3 py-2 rounded-lg bg-white/5 hover:bg-blue-600 text-slate-300 hover:text-white border border-white/10 text-[8px] font-bold uppercase tracking-widest">
                     Restore

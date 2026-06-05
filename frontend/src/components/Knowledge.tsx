@@ -107,7 +107,7 @@ const isKnowledgeIncidentReady = (entry: any) => {
 const isKnowledgeStale = (entry: any) => {
   const nextReview = entry.metadata_json?.verification?.next_review_at
   if (!nextReview) return false
-  return new Date(nextReview).getTime() < Date.now()
+  return (parseAppDate(nextReview)?.getTime() || 0) < Date.now()
 }
 
 const getKnowledgeLinkCount = (entry: any) => {
@@ -404,7 +404,7 @@ export default function Knowledge() {
       })
       .sort((a: any, b: any) => {
         if (activeLens === 'Suggested') return b.__suggestionScore - a.__suggestionScore
-        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        return (parseAppDate(b.updated_at)?.getTime() || 0) - (parseAppDate(a.updated_at)?.getTime() || 0)
       })
   }, [enhancedEntries, activeCategory, activeLens, searchTerm])
 
@@ -930,7 +930,7 @@ function KnowledgeCard({ entry, onClick }: any) {
 
 function KnowledgeTimeline({ entries, onEntryClick }: any) {
   const sortedEntries = useMemo(() => {
-    return [...entries].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    return [...entries].sort((a, b) => (parseAppDate(b.created_at)?.getTime() || 0) - (parseAppDate(a.created_at)?.getTime() || 0))
   }, [entries])
 
   return (
@@ -957,7 +957,7 @@ function KnowledgeTimeline({ entries, onEntryClick }: any) {
                <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <span className="text-[10px] font-black text-white uppercase bg-blue-600 px-2 py-0.5 rounded">NODE_{entry.id}</span>
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{new Date(entry.created_at).toLocaleString()}</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{formatAppDate(entry.created_at)}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     {entry.tags?.map((t: string) => (
@@ -2258,7 +2258,7 @@ function KnowledgeOpsRail({ entry, metadata, versionHistory, currentVersion, pre
         {(metadata.feedback || []).slice(-3).reverse().map((item: any, index: number) => (
           <div key={`${item.type}-${item.at}-${index}`} className="rounded-xl border border-white/5 bg-black/20 px-3 py-2">
             <p className="text-[9px] font-black uppercase tracking-widest text-white">{item.type}</p>
-            <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500 mt-1">{new Date(item.at).toLocaleString()}</p>
+            <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500 mt-1">{formatAppDate(item.at)}</p>
           </div>
         ))}
       </div>

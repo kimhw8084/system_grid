@@ -10,6 +10,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from '../api/apiClient'
+import { formatAppDate, parseAppDate } from '../utils/dateUtils'
 import { BulkImportModal } from './shared/BulkImportModal'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
@@ -663,7 +664,7 @@ const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       cellRenderer: (p: any) => (
         <div className="flex items-center gap-2 justify-center">
           <Clock size={10} className="opacity-40" />
-          <span>{new Date(p.value).toLocaleString('en-US', { hour12: false, month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+          <span>{formatAppDate(p.value)}</span>
         </div>
       )
     },
@@ -864,7 +865,7 @@ const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                                <h4 className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Discovery Trace</h4>
                             </div>
                             <h2 className="text-xl font-black text-white uppercase leading-tight">{selectedLog.action} TRANSACTION</h2>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-2">{new Date(selectedLog.timestamp).toLocaleString()}</p>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-2">{formatAppDate(selectedLog.timestamp)}</p>
                           </div>
                           
                           <div className="space-y-3">
@@ -2340,7 +2341,7 @@ export default function Racks() {
       ...p,
       racks: p.racks_config,
       racksData: typeof p.virtual_racks_data === 'string' ? JSON.parse(p.virtual_racks_data) : p.virtual_racks_data,
-      date: new Date(p.plan_date).toLocaleString()
+      date: formatAppDate(p.plan_date)
     }))
   }, [plansData])
 

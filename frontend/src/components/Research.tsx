@@ -451,7 +451,7 @@ export default function Research() {
       cellClass: 'text-center font-bold text-slate-400 uppercase', 
       headerClass: 'text-center',
       valueGetter: (p: any) => p.data.type === 'RCA' ? p.data.occurrence_at : p.data.initiation_at,
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{formatAppDate(p.value)}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
       hide: hiddenColumns.includes("initiation")
     },
     { 
@@ -461,7 +461,7 @@ export default function Research() {
       filter: true, 
       cellClass: 'text-center font-bold text-slate-500 uppercase', 
       headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span> : <span style={{ fontSize: `${fontSize}px` }}>N/A</span>,
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{formatAppDate(p.value)}</span> : <span style={{ fontSize: `${fontSize}px` }}>N/A</span>,
       hide: hiddenColumns.includes("created_at")
     },
     { 
@@ -471,7 +471,7 @@ export default function Research() {
       filter: true, 
       cellClass: 'text-center font-bold text-slate-300 uppercase', 
       headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{new Date(p.value).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span> : <span style={{ fontSize: `${fontSize}px` }}>N/A</span>,
+      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{formatAppDate(p.value)}</span> : <span style={{ fontSize: `${fontSize}px` }}>N/A</span>,
       hide: hiddenColumns.includes("updated_at")
     },
     { 
@@ -1352,11 +1352,11 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                    <div className="flex items-center gap-4 ml-4 pl-4 border-l border-white/10">
                       <div className="flex flex-col">
                          <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Record Created</span>
-                         <span className="text-[10px] font-bold text-blue-400">{formData.created_at ? new Date(formData.created_at).toLocaleString() : 'N/A'}</span>
+                         <span className="text-[10px] font-bold text-blue-400">{formData.created_at ? formatAppDate(formData.created_at) : 'N/A'}</span>
                       </div>
                       <div className="flex flex-col">
                          <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Last Synchronized</span>
-                         <span className="text-[10px] font-bold text-emerald-400">{formData.updated_at ? new Date(formData.updated_at).toLocaleString() : 'N/A'}</span>
+                         <span className="text-[10px] font-bold text-emerald-400">{formData.updated_at ? formatAppDate(formData.updated_at) : 'N/A'}</span>
                       </div>
                    </div>
                 </div>
@@ -2135,7 +2135,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
                    <div className={`px-3 py-1 rounded border text-[9px] font-black uppercase tracking-widest ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
                 </div>
                 <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Pulse: {new Date(formData.updated_at || formData.created_at).toLocaleString()}</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Pulse: {formatAppDate(formData.updated_at || formData.created_at)}</span>
               </div>
               <h1 className="text-3xl font-black uppercase tracking-tighter text-white leading-none">{formData.title}</h1>
             </div>
