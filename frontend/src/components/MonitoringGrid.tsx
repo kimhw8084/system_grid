@@ -50,6 +50,7 @@ import { PageHeader, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSear
 import { WorkspaceCommandBar } from './shared/WorkspaceCommandBar'
 import { usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
 import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } from './shared/WorkspaceModalShells'
+import { applyOperationalColumnSizing, OPERATIONAL_GRID_AUTO_SIZE_STRATEGY } from './shared/OperationalGridSizing'
 
 const MONITORING_VIEW_STORAGE_KEY = 'sysgrid_monitoring_views_v1'
 const MONITORING_ACTIVE_VIEW_KEY = 'sysgrid_monitoring_active_view_v1'
@@ -234,6 +235,7 @@ const GridMatrix = React.memo(({
   gridRef, 
   rowData, 
   columnDefs, 
+  autoSizeStrategy,
   fontSize, 
   rowDensity, 
   context,
@@ -279,6 +281,7 @@ const GridMatrix = React.memo(({
       }}
       rowData={rowData}
       columnDefs={columnDefs}
+      autoSizeStrategy={autoSizeStrategy}
       defaultColDef={defaultColDef}
       getRowId={getRowId}
       rowSelection="multiple"
@@ -1843,27 +1846,13 @@ export default function MonitoringGrid() {
         children: col.children.map((child: any) => {
           const colId = child.colId || child.field
           const layout = layoutById.get(colId)
-          if (!layout) return child
-          return {
-            ...child,
-            width: preserveExplicitColumnWidths ? layout.width ?? child.width : child.width,
-            pinned: layout.pinned ?? child.pinned,
-            hide: child.hide !== undefined ? child.hide : layout.hide,
-            flex: preserveExplicitColumnWidths ? layout.flex ?? child.flex : child.flex
-          }
+          return applyOperationalColumnSizing(child, layout, preserveExplicitColumnWidths)
         })
       }
     }
     const colId = col.colId || col.field
     const layout = layoutById.get(colId)
-    if (!layout) return col
-    return {
-      ...col,
-      width: preserveExplicitColumnWidths ? layout.width ?? col.width : col.width,
-      pinned: layout.pinned ?? col.pinned,
-      hide: col.hide !== undefined ? col.hide : layout.hide,
-      flex: preserveExplicitColumnWidths ? layout.flex ?? col.flex : col.flex
-    }
+    return applyOperationalColumnSizing(col, layout, preserveExplicitColumnWidths)
   })
 
   // Ensure column order is maintained from state to prevent "jumping" during re-renders
@@ -1880,6 +1869,7 @@ export default function MonitoringGrid() {
 }, [fontSize, hiddenColumns, columnLayoutState, isIntelligenceExpanded, preserveExplicitColumnWidths]) as any
 
   const gridContext = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
+  const autoSizeStrategy = useMemo(() => OPERATIONAL_GRID_AUTO_SIZE_STRATEGY, [])
 
   return (
    <div className="h-full min-h-0 flex flex-col space-y-6">
@@ -2559,6 +2549,7 @@ export default function MonitoringGrid() {
             gridRef={gridRef}
 	            rowData={displayedItemsInOrder || []} 
 	            columnDefs={columnDefs} 
+            autoSizeStrategy={autoSizeStrategy}
             fontSize={fontSize}
             rowDensity={rowDensity}
             context={gridContext}
@@ -2643,6 +2634,7 @@ export default function MonitoringGrid() {
                     <GridMatrix
                       rowData={section.items} 
                       columnDefs={columnDefs} 
+                      autoSizeStrategy={autoSizeStrategy}
                       fontSize={fontSize}
                       rowDensity={rowDensity}
                       context={gridContext}
