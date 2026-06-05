@@ -459,6 +459,7 @@ export default function MonitoringGrid() {
   const [showRegistry, setShowRegistry] = useState(false)
   const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedUiState?.hiddenColumns ?? ['created_at', 'updated_at'])
   const [activeTab, setActiveTab] = useState<'active' | 'deleted'>(persistedUiState?.activeTab === 'deleted' ? 'deleted' : 'active')
+  const [showFilterBar, setShowFilterBar] = useState<boolean>(persistedUiState?.showFilterBar ?? true)
 
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -848,6 +849,7 @@ export default function MonitoringGrid() {
     rowDensity,
     hiddenColumns,
     groupBy,
+    showFilterBar,
     columnLayoutState: normalizeMonitoringColumnLayout(gridRef.current?.api?.getColumnState() || columnLayoutState, true),
     quickFilter: searchTerm,
     quickFilters,
@@ -865,6 +867,7 @@ export default function MonitoringGrid() {
     setRowDensity(config.rowDensity ?? 8)
     setHiddenColumns(config.hiddenColumns ?? [])
     setGroupBy(config.groupBy ?? 'raw')
+    setShowFilterBar(config.showFilterBar ?? true)
     setColumnLayoutState(config.columnLayoutState ?? [])
     setHasManualColumnWidths(true)
     setSearchTerm(config.quickFilter ?? '')
@@ -944,6 +947,7 @@ export default function MonitoringGrid() {
     setRowDensity(8)
     setHiddenColumns([])
     setGroupBy('raw')
+    setShowFilterBar(true)
     setColumnLayoutState([])
     setSearchTerm('')
     setQuickFilters({ status: '', severity: '', platform: '', owner: '' })
@@ -1251,6 +1255,7 @@ export default function MonitoringGrid() {
       hiddenColumns,
       quickFilters,
       groupBy,
+      showFilterBar,
       columnLayoutState,
       hasManualColumnWidths,
       selectedIds,
@@ -1258,7 +1263,7 @@ export default function MonitoringGrid() {
       lastVisitedAt,
       searchTerm
     }))
-  }, [activeTab, columnLayoutState, expandedBulkSection, fontSize, groupBy, hasManualColumnWidths, hiddenColumns, lastVisitedAt, quickFilters, rowDensity, searchTerm, selectedIds])
+  }, [activeTab, columnLayoutState, expandedBulkSection, fontSize, groupBy, hasManualColumnWidths, hiddenColumns, lastVisitedAt, quickFilters, rowDensity, searchTerm, selectedIds, showFilterBar])
 
   useEffect(() => {
     if (!activeViewId || !gridRef.current?.api) return
@@ -1940,6 +1945,16 @@ export default function MonitoringGrid() {
             </ToolbarGroup>
             <ToolbarGroup>
               <ToolbarButton
+                active={showFilterBar}
+                onClick={() => setShowFilterBar((current) => !current)}
+                title={showFilterBar ? 'Hide filters' : 'Show filters'}
+              >
+                <span className="flex items-center gap-2">
+                  {showFilterBar ? <EyeOff size={14} /> : <Eye size={14} />}
+                  Filters
+                </span>
+              </ToolbarButton>
+              <ToolbarButton
                active={isIntelligenceExpanded}
                onClick={() => setIsIntelligenceExpanded(!isIntelligenceExpanded)}
                title={isIntelligenceExpanded ? 'Hide Intelligence Columns' : 'Show Intelligence Columns'}
@@ -1952,38 +1967,38 @@ export default function MonitoringGrid() {
             </ToolbarGroup>
           </>
         }
-        secondary={
+        secondary={showFilterBar ? (
           <div className="grid w-full gap-3 md:grid-cols-4">
-        <AppDropdown
-          value={quickFilters.status}
-          onChange={(val) => setQuickFilters((current) => ({ ...current, status: val }))}
-          options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
-          label="Status Filter"
-          placeholder="All statuses"
-        />
-        <AppDropdown
-          value={quickFilters.severity}
-          onChange={(val) => setQuickFilters((current) => ({ ...current, severity: val }))}
-          options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
-          label="Severity Filter"
-          placeholder="All severities"
-        />
-        <AppDropdown
-          value={quickFilters.platform}
-          onChange={(val) => setQuickFilters((current) => ({ ...current, platform: val }))}
-          options={platformOptions}
-          label="Platform Filter"
-          placeholder="All platforms"
-        />
-        <AppDropdown
-          value={quickFilters.owner}
-          onChange={(val) => setQuickFilters((current) => ({ ...current, owner: val }))}
-          options={ownerOptions}
-          label="Owner Filter"
-          placeholder="All owners"
-        />
+            <AppDropdown
+              value={quickFilters.status}
+              onChange={(val) => setQuickFilters((current) => ({ ...current, status: val }))}
+              options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
+              label="Status Filter"
+              placeholder="All statuses"
+            />
+            <AppDropdown
+              value={quickFilters.severity}
+              onChange={(val) => setQuickFilters((current) => ({ ...current, severity: val }))}
+              options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
+              label="Severity Filter"
+              placeholder="All severities"
+            />
+            <AppDropdown
+              value={quickFilters.platform}
+              onChange={(val) => setQuickFilters((current) => ({ ...current, platform: val }))}
+              options={platformOptions}
+              label="Platform Filter"
+              placeholder="All platforms"
+            />
+            <AppDropdown
+              value={quickFilters.owner}
+              onChange={(val) => setQuickFilters((current) => ({ ...current, owner: val }))}
+              options={ownerOptions}
+              label="Owner Filter"
+              placeholder="All owners"
+            />
           </div>
-        }
+        ) : null}
 	        right={
 	          <>
               {MONITORING_SUPPORTS_COMPARE && (
