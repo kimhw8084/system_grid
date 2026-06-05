@@ -511,7 +511,7 @@ export default function MonitoringGrid() {
   const [quickFilters, setQuickFilters] = useState({ status: '', severity: '', platform: '', owner: '' })
   const [groupBy, setGroupBy] = useState<string>('raw')
   const [columnLayoutState, setColumnLayoutState] = useState<any[]>(persistedUiState?.columnLayoutState ?? [])
-  const [hasManualColumnWidths, setHasManualColumnWidths] = useState<boolean>(Boolean(persistedUiState?.hasManualColumnWidths))
+  const [hasManualColumnWidths, setHasManualColumnWidths] = useState<boolean>(false)
   const [bulkDraft, setBulkDraft] = useState({ status: '', severity: '', notification_method: '' })
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'severity' | 'notification' | null>(null)
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
@@ -548,12 +548,12 @@ export default function MonitoringGrid() {
 
   const handleColumnResized = useCallback((event: any) => {
     if (!event.finished) return
-    if (event.source === 'uiColumnDragged' || event.source === 'uiColumnResized' || event.source === 'sizeColumnsToFit') {
+    if (event.source === 'uiColumnDragged' || event.source === 'uiColumnResized') {
       setHasManualColumnWidths(true)
       syncColumnLayoutState(event.api, true)
       return
     }
-    syncColumnLayoutState(event.api)
+    syncColumnLayoutState(event.api, false)
   }, [])
 
   const handleColumnMoved = useCallback((event: any) => {
@@ -1256,14 +1256,13 @@ export default function MonitoringGrid() {
       quickFilters,
       groupBy,
       showFilterBar,
-      columnLayoutState,
-      hasManualColumnWidths,
+      columnLayoutState: normalizeMonitoringColumnLayout(columnLayoutState, false),
       selectedIds,
       expandedBulkSection,
       lastVisitedAt,
       searchTerm
     }))
-  }, [activeTab, columnLayoutState, expandedBulkSection, fontSize, groupBy, hasManualColumnWidths, hiddenColumns, lastVisitedAt, quickFilters, rowDensity, searchTerm, selectedIds, showFilterBar])
+  }, [activeTab, columnLayoutState, expandedBulkSection, fontSize, groupBy, hiddenColumns, lastVisitedAt, quickFilters, rowDensity, searchTerm, selectedIds, showFilterBar])
 
   useEffect(() => {
     if (!activeViewId || !gridRef.current?.api) return
