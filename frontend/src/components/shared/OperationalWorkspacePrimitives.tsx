@@ -285,6 +285,53 @@ export function WorkspaceHoverPreview({
   )
 }
 
+export function WorkspaceInfoTooltip({
+  label,
+  content,
+}: {
+  label: React.ReactNode
+  content: React.ReactNode
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const { triggerRef, panelRef, panelStyle } = useWorkspaceAnchoredLayer(isOpen, { minWidth: 240 })
+
+  useEffect(() => {
+    if (!isOpen) return
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as Node
+      if (triggerRef.current?.contains(target) || panelRef.current?.contains(target)) return
+      setIsOpen(false)
+    }
+    window.addEventListener('mousedown', handleClick)
+    return () => window.removeEventListener('mousedown', handleClick)
+  }, [isOpen, panelRef, triggerRef])
+
+  return (
+    <>
+      <button
+        type="button"
+        ref={(node) => {
+          triggerRef.current = node
+        }}
+        onClick={() => setIsOpen((current) => !current)}
+        className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5 text-[9px] font-semibold text-slate-300 transition-colors hover:border-blue-500/30 hover:text-white"
+      >
+        {label}
+      </button>
+      {isOpen && typeof document !== 'undefined' && createPortal(
+        <div ref={panelRef} style={panelStyle} data-workspace-panel="true">
+          <WorkspaceFloatingPanel kind="detail" className="p-3">
+            <div className="max-h-64 overflow-y-auto custom-scrollbar space-y-2 text-[10px] font-semibold text-slate-200">
+              {content}
+            </div>
+          </WorkspaceFloatingPanel>
+        </div>,
+        document.body
+      )}
+    </>
+  )
+}
+
 export function getWorkspaceInputClass(error?: string) {
   return `w-full ${OPERATIONAL_WORKSPACE_VISUALS.controlSurface} px-4 py-[clamp(8px,0.75vw,11px)] ${OPERATIONAL_WORKSPACE_VISUALS.bodyControlText} outline-none transition-all ${
     error

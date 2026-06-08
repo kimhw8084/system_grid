@@ -17,6 +17,7 @@ import {
   WorkspaceSectionBadge,
   WorkspaceSectionCard,
   WorkspaceSplitView,
+  WorkspaceInfoTooltip,
   WorkspaceValidationBanner,
   getWorkspaceInputClass,
   getWorkspaceModalFrameClass,
@@ -500,6 +501,7 @@ export function OperationalImportModal({
   }
 
   const previewErrors = preview?.results.flatMap((result) => result.errors.map((error) => `Row ${result.row}: ${error}`)) || []
+  const previewErrorCount = preview?.total_errors ?? previewErrors.length
   const selectedImportCount = preview?.results.filter((result) => result.status === 'VALID' && selectedPreviewRows.includes(result.row)).length || 0
 
   if (!isOpen) return null
@@ -610,17 +612,17 @@ export function OperationalImportModal({
                         {templateMode === 'example' && (
                           <div className="rounded-lg border border-white/10 bg-black/20 p-3">
                             <WorkspaceFieldLabel label="Example Record" required />
-                            <select
-                              value={exampleRecordId ?? ''}
-                              onChange={(event) => setExampleRecordId(event.target.value ? Number(event.target.value) : null)}
-                              className={`${getWorkspaceInputClass()} mt-2 px-3 py-2 text-[11px]`}
-                            >
-                              {(schema?.example_records || []).map((record) => (
-                                <option key={record.id} value={record.id}>
-                                  {record.label}
-                                </option>
-                              ))}
-                            </select>
+                            <div className="mt-2">
+                              <AppDropdown
+                                value={exampleRecordId ?? ''}
+                                onChange={(value) => setExampleRecordId(value ? Number(value) : null)}
+                                options={(schema?.example_records || []).map((record) => ({
+                                  value: record.id,
+                                  label: record.label,
+                                }))}
+                                placeholder="Select example record"
+                              />
+                            </div>
                             <p className="mt-2 text-[9px] font-semibold text-slate-500">
                               Downloads a CSV that shows how a valid existing record is shaped.
                             </p>
@@ -713,6 +715,20 @@ export function OperationalImportModal({
                         <WorkspacePanelHint>
                           Required: {requiredFieldNames.map((fieldName) => fieldMap.get(fieldName)?.label || fieldName).join(', ')}
                         </WorkspacePanelHint>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2">
+                        <WorkspaceInfoTooltip
+                          label={<span>{previewErrorCount} error{previewErrorCount === 1 ? '' : 's'} to fix</span>}
+                          content={
+                            previewErrors.length > 0
+                              ? previewErrors.map((error) => (
+                                  <div key={error} className="rounded-lg border border-rose-500/10 bg-rose-500/5 px-3 py-2">
+                                    {error}
+                                  </div>
+                                ))
+                              : <p>No validation errors right now.</p>
+                          }
+                        />
                       </div>
                       <div className="mt-4 space-y-2">
                         {previewErrors.slice(0, 8).map((error) => (
@@ -897,14 +913,14 @@ export function OperationalImportModal({
                                             type="number"
                                             value={row[field.name] || ''}
                                             onChange={(event) => updateDraftCell(rowIndex, field.name, event.target.value)}
-                                            className={`${getWorkspaceInputClass()} h-[42px] px-3 py-2 text-[11px]`}
+                                            className={`${getWorkspaceInputClass()} h-[42px] px-3 py-2 text-[10px] leading-4 [appearance:textfield]`}
                                           />
                                         ) : field.input_control === 'url' ? (
                                           <input
                                             type="url"
                                             value={row[field.name] || ''}
                                             onChange={(event) => updateDraftCell(rowIndex, field.name, event.target.value)}
-                                            className={`${getWorkspaceInputClass()} h-[42px] px-3 py-2 text-[11px]`}
+                                            className={`${getWorkspaceInputClass()} h-[42px] px-3 py-2 text-[10px] leading-4`}
                                           />
                                         ) : field.input_kind === 'multiline' ? (
                                           <textarea
@@ -917,7 +933,7 @@ export function OperationalImportModal({
                                                 handleCellPaste(rowIndex, columnIndex, text)
                                               }
                                             }}
-                                            className={`${getWorkspaceInputClass()} min-h-[42px] px-3 py-2 text-[11px]`}
+                                            className={`${getWorkspaceInputClass()} min-h-[42px] px-3 py-2 text-[10px] leading-4`}
                                           />
                                         ) : (
                                           <input
@@ -930,7 +946,7 @@ export function OperationalImportModal({
                                                 handleCellPaste(rowIndex, columnIndex, text)
                                               }
                                             }}
-                                            className={`${getWorkspaceInputClass()} h-[42px] px-3 py-2 text-[11px]`}
+                                            className={`${getWorkspaceInputClass()} h-[42px] px-3 py-2 text-[10px] leading-4`}
                                           />
                                         )}
                                         {(field.validation_rules || []).length > 0 && (
@@ -993,15 +1009,15 @@ export function OperationalImportModal({
                             <table className="min-w-full divide-y divide-white/10 bg-black/20">
                               <thead className="bg-slate-950/90">
                                 <tr>
-                                  <th className="px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Add</th>
-                                  <th className="px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Row</th>
-                                  <th className="px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Status</th>
+                                  <th className="px-3 py-2 text-center text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Add</th>
+                                  <th className="px-3 py-2 text-center text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Row</th>
+                                  <th className="px-3 py-2 text-center text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Status</th>
                                   {activeColumns.map((field) => (
-                                    <th key={`preview-${field.name}`} className="min-w-[160px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+                                    <th key={`preview-${field.name}`} className="min-w-[160px] px-3 py-2 text-center text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
                                       {field.label}
                                     </th>
                                   ))}
-                                  <th className="min-w-[260px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Errors</th>
+                                  <th className="min-w-[260px] px-3 py-2 text-center text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Errors</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-white/5">
@@ -1009,7 +1025,7 @@ export function OperationalImportModal({
                                   const selected = selectedPreviewRows.includes(result.row)
                                   return (
                                     <tr key={`preview-row-${result.row}`} className={result.status === 'INVALID' ? 'bg-rose-500/[0.03]' : ''}>
-                                      <td className="px-3 py-2 align-top">
+                                      <td className="px-3 py-2 align-middle text-center">
                                         <input
                                           type="checkbox"
                                           checked={selected}
@@ -1017,19 +1033,27 @@ export function OperationalImportModal({
                                           onChange={() => togglePreviewRow(result.row)}
                                         />
                                       </td>
-                                      <td className="px-3 py-2 align-top text-[10px] font-black text-slate-500">{result.row}</td>
-                                      <td className="px-3 py-2 align-top">
+                                      <td className="px-3 py-2 align-middle text-center text-[10px] font-black text-slate-500">{result.row}</td>
+                                      <td className="px-3 py-2 align-middle text-center">
                                         <WorkspaceSectionBadge tone={result.status === 'VALID' ? 'emerald' : 'rose'}>
                                           {result.status}
                                         </WorkspaceSectionBadge>
                                       </td>
                                       {activeColumns.map((field) => (
-                                        <td key={`preview-cell-${result.row}-${field.name}`} className="px-3 py-2 align-top text-[10px] font-semibold text-slate-200">
-                                          {stringifyPreviewValue(result.normalized[field.name] ?? result.source[field.name])}
-                                        </td>
-                                      ))}
-                                      <td className="px-3 py-2 align-top text-[10px] font-semibold text-rose-200">
-                                        {result.errors.length > 0 ? result.errors.join('; ') : '—'}
+                                      <td key={`preview-cell-${result.row}-${field.name}`} className="px-3 py-2 align-middle text-center text-[10px] font-semibold text-slate-200">
+                                        {stringifyPreviewValue(result.normalized[field.name] ?? result.source[field.name])}
+                                      </td>
+                                    ))}
+                                      <td className="px-3 py-2 align-middle text-center text-[10px] font-semibold text-rose-200">
+                                        {result.errors.length > 0 ? (
+                                          <div className="space-y-1">
+                                            {result.errors.map((error) => (
+                                              <p key={`${result.row}-${error}`} className="rounded-lg border border-rose-500/10 bg-rose-500/5 px-2 py-1">
+                                                {error}
+                                              </p>
+                                            ))}
+                                          </div>
+                                        ) : '—'}
                                       </td>
                                     </tr>
                                   )

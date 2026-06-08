@@ -125,7 +125,7 @@ async def test_monitoring_enforces_guardrails_and_security_rules(client):
 
 
 @pytest.mark.anyio
-async def test_monitoring_requires_single_ownership_mode(client):
+async def test_monitoring_allows_optional_and_combined_ownership(client):
     await client.get("/api/v1/settings/initialize")
     team_res = await client.post("/api/v1/settings/teams", json={"name": "Operations"})
     assert team_res.status_code == 200, team_res.text
@@ -172,8 +172,10 @@ async def test_monitoring_requires_single_ownership_mode(client):
         "recovery_docs": [knowledge["id"]],
         "owners": [{"operator_id": operator["id"], "role": "Primary Support"}],
     })
-    assert create_res.status_code == 400
-    assert "either a team owner or individual owners" in create_res.json()["detail"]
+    assert create_res.status_code == 200, create_res.text
+    combined_monitor = create_res.json()
+    assert combined_monitor["owner_team"] == "Operations"
+    assert combined_monitor["owners"][0]["operator_id"] == operator["id"]
 
     individual_res = await client.post("/api/v1/monitoring", json={
         "device_id": device["id"],
@@ -202,3 +204,15 @@ async def test_monitoring_requires_single_ownership_mode(client):
         "owners": [],
     })
     assert team_owned_res.status_code == 200, team_owned_res.text
+
+    optional_owned_res = await client.post("/api/v1/monitoring", json={
+        "device_id": device["id"],
+        "category": "Infrastructure",
+        "status": "Existing",
+        "title": "UNOWNED-MONITOR",
+        "platform": "Zabbix",
+        "severity": "Critical",
+        "recovery_docs": [knowledge["id"]],
+        "owners": [],
+    })
+    assert optional_owned_res.status_code == 200, optional_owned_res.text

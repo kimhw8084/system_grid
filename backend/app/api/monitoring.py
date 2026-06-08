@@ -46,6 +46,16 @@ async def get_registered_team_names(db: AsyncSession) -> set[str]:
     result = await db.execute(select(models.Team.name).where(models.Team.is_archived == False))
     return {name for name in result.scalars().all() if name}
 
+
+def split_owner_values(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        raw_values = value
+    else:
+        raw_values = str(value).replace("\n", ",").split(",")
+    return [str(entry).strip() for entry in raw_values if str(entry).strip()]
+
 async def build_monitoring_payload(
     db: AsyncSession,
     payload: dict[str, Any],
@@ -81,9 +91,11 @@ async def build_monitoring_payload(
 
     registered_teams = await get_registered_team_names(db)
     if "owner_team" in clean_data:
-        owner_team = clean_data.get("owner_team")
-        if owner_team and owner_team not in registered_teams:
-            raise HTTPException(status_code=400, detail="Owner team must be selected from user management teams")
+        owner_team_names = split_owner_values(clean_data.get("owner_team"))
+        unknown_teams = [team_name for team_name in owner_team_names if team_name not in registered_teams]
+        if unknown_teams:
+            raise HTTPException(status_code=400, detail=f"Unknown owner team(s): {', '.join(unknown_teams)}")
+        clean_data["owner_team"] = ", ".join(owner_team_names) if owner_team_names else None
 
     resolved_owners: list[dict[str, Any]] | None = None
     if owners_data is not None:
@@ -92,15 +104,24 @@ async def build_monitoring_payload(
         resolved_owners = []
         for owner in owners_data:
             operator_id = owner.get("operator_id")
-            role = owner.get("role")
-            if not operator_id:
-                raise HTTPException(status_code=400, detail="Each owner must include operator_id")
+            owner_identifier = owner.get("external_id") or owner.get("username")
+            role = owner.get("role") or "Primary Support"
+            if not operator_id and not owner_identifier:
+                raise HTTPException(status_code=400, detail="Each owner must include operator_id or a user identifier")
             if role not in MONITORING_OWNER_ROLES:
                 raise HTTPException(status_code=400, detail=f"Owner role must be one of: {', '.join(sorted(MONITORING_OWNER_ROLES))}")
-            operator_result = await db.execute(select(models.Operator).where(models.Operator.id == operator_id))
+            operator_query = select(models.Operator)
+            if operator_id:
+                operator_query = operator_query.where(models.Operator.id == operator_id)
+            else:
+                operator_query = operator_query.where(
+                    (models.Operator.username == owner_identifier) |
+                    (models.Operator.external_id == owner_identifier)
+                )
+            operator_result = await db.execute(operator_query)
             operator = operator_result.scalar_one_or_none()
             if not operator:
-                raise HTTPException(status_code=400, detail=f"Operator {operator_id} was not found")
+                raise HTTPException(status_code=400, detail=f"Operator {owner_identifier or operator_id} was not found")
             resolved_owners.append({
                 "operator_id": operator.id,
                 "name": operator.full_name or operator.username or operator.external_id,
@@ -118,14 +139,6 @@ async def build_monitoring_payload(
     severity = clean_data.get("severity")
     if severity == "Critical" and not clean_data.get("recovery_docs"):
         raise HTTPException(status_code=400, detail="Critical monitors require at least one linked recovery document")
-
-    owner_team = clean_data.get("owner_team")
-    has_team_owner = bool(owner_team)
-    has_individual_owners = bool(resolved_owners)
-    if has_team_owner and has_individual_owners:
-        raise HTTPException(status_code=400, detail="Choose either a team owner or individual owners, not both")
-    if not has_team_owner and not has_individual_owners:
-        raise HTTPException(status_code=400, detail="Choose a team owner or at least one individual owner")
 
     if "status" in clean_data:
         clean_data["is_deleted"] = clean_data["status"] == "Deleted"

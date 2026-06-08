@@ -236,6 +236,7 @@ async def execute_generic_rows(db: AsyncSession, model: Any, rows: list[dict[str
 
 
 MONITORING_IMPORT_REQUIRED_FIELD_NAMES = {"category", "status", "title"}
+MONITORING_REQUIRED_UI_FIELD_NAMES = {"category", "status", "title", "severity"}
 MONITORING_IMPORT_SUPPORTED_FIELD_NAMES = {
     "device_name",
     "category",
@@ -247,6 +248,7 @@ MONITORING_IMPORT_SUPPORTED_FIELD_NAMES = {
     "notification_method",
     "notification_recipients",
     "owner_team",
+    "owner_user_ids",
     "monitoring_url",
     "severity",
     "check_interval",
@@ -266,9 +268,10 @@ def build_monitoring_import_fields() -> list[ImportField]:
         ImportField("impact", "Impact", template_hint="[What happens if it fails]", input_kind="multiline", input_control="textarea"),
         ImportField("notification_method", "Notification Method", template_hint="[Notification route]", input_control="select", options_key="notification_method"),
         ImportField("notification_recipients", "Notification Recipients", input_kind="multiline", input_control="textarea", template_hint="[comma separated user IDs or emails]", accepts_multiple=True, validation_rules=["Comma-separated recipients only."]),
-        ImportField("owner_team", "Owner Team", required=True, template_hint="[Managed team name]", input_control="select", options_key="owner_team", validation_rules=["Bulk import supports team ownership only. Individual owners stay in the add/edit workspace."]),
+        ImportField("owner_team", "Owner Team(s)", required=False, template_hint="[comma separated managed team names]", input_control="textarea", options_key="owner_team", accepts_multiple=True, validation_rules=["Optional. Use comma-separated team names from the registered team list."]),
+        ImportField("owner_user_ids", "Owner User ID(s)", required=False, template_hint="[comma separated usernames or external IDs]", input_control="textarea", options_key="owner_user_ids", accepts_multiple=True, validation_rules=["Optional. Use comma-separated usernames or external IDs from the operator list. Default role is Primary Support."]),
         ImportField("monitoring_url", "Monitoring URL", template_hint="[https://...]", input_control="url", validation_rules=["Must be a valid http/https URL with a host."]),
-        ImportField("severity", "Severity", required=False, template_hint="[Critical|Warning|Info]", input_control="select", options_key="severity"),
+        ImportField("severity", "Severity", required=True, template_hint="[Critical|Warning|Info]", input_control="select", options_key="severity"),
         ImportField("check_interval", "Check Interval (sec)", template_hint="[15-86400]", input_control="number", validation_rules=["Must be between 15 and 86400 seconds."]),
         ImportField("alert_duration", "Alert Duration (sec)", template_hint="[0-86400]", input_control="number", validation_rules=["Must be between 0 and 86400 seconds."]),
         ImportField("notification_throttle", "Notification Throttle (sec)", template_hint="[60-604800]", input_control="number", validation_rules=["Must be between 60 and 604800 seconds."]),
@@ -302,6 +305,10 @@ async def fetch_setting_options(db: AsyncSession, category: str) -> list[dict[st
 async def build_monitoring_schema_context(db: AsyncSession) -> dict[str, Any]:
     devices = await db.execute(select(models.Device.name).where(models.Device.is_deleted == False).order_by(models.Device.name))
     teams = await db.execute(select(models.Team.name).where(models.Team.is_archived == False).order_by(models.Team.name))
+    operators = await db.execute(
+        select(models.Operator.username, models.Operator.external_id, models.Operator.full_name)
+        .order_by(models.Operator.username)
+    )
     methods = await fetch_setting_options(db, "NotificationMethod")
     if not methods:
         methods = [
@@ -324,6 +331,15 @@ async def build_monitoring_schema_context(db: AsyncSession) -> dict[str, Any]:
             "platform": await fetch_setting_options(db, "MonitoringPlatform"),
             "notification_method": methods,
             "owner_team": [{"value": name, "label": name, "description": "Registered team"} for name in teams.scalars().all() if name],
+            "owner_user_ids": [
+                {
+                    "value": username or external_id,
+                    "label": username or external_id,
+                    "description": full_name or external_id or "",
+                }
+                for username, external_id, full_name in operators.all()
+                if username or external_id
+            ],
             "severity": [
                 {"value": "Critical", "label": "Critical", "description": "Requires linked recovery guidance."},
                 {"value": "Warning", "label": "Warning", "description": "Actionable but not highest urgency."},
@@ -360,6 +376,10 @@ async def serialize_monitoring_example_row(db: AsyncSession, item: models.Monito
         "notification_method": item.notification_method or "",
         "notification_recipients": ", ".join(item.notification_recipients or []),
         "owner_team": item.owner_team or "",
+        "owner_user_ids": ", ".join([
+            owner.external_id or (owner.operator.username if owner.operator else "") or str(owner.operator_id or "")
+            for owner in item.owners
+        ]),
         "monitoring_url": item.monitoring_url or "",
         "severity": item.severity or "",
         "check_interval": item.check_interval,
@@ -391,6 +411,15 @@ async def build_monitoring_import_row(db: AsyncSession, raw_row: dict[str, Any])
 
     if "notification_recipients" in row:
         next_row["notification_recipients"] = split_multi_value(row.get("notification_recipients"))
+
+    if row.get("owner_user_ids"):
+        next_row["owners"] = [
+            {
+                "external_id": owner_identifier,
+                "role": "Primary Support",
+            }
+            for owner_identifier in split_multi_value(row.get("owner_user_ids"))
+        ]
 
     if row.get("monitored_services") is not None:
         next_row["monitored_services"] = row["monitored_services"]
@@ -612,11 +641,23 @@ async def download_template(
     if fields and mode == "example" and profile.serialize_example_row:
         example_row = None
         if example_id is not None:
-            example_row = await db.get(profile.model, example_id)
+            if profile.key == "monitoring_items":
+                result = await db.execute(
+                    select(profile.model)
+                    .options(joinedload(models.MonitoringItem.owners).joinedload(models.MonitoringOwner.operator))
+                    .where(profile.model.id == example_id)
+                )
+                example_row = result.unique().scalar_one_or_none()
+            else:
+                example_row = await db.get(profile.model, example_id)
         if example_row is None:
             query = select(profile.model).order_by(profile.model.updated_at.desc(), profile.model.id.desc()).limit(1)
+            if profile.key == "monitoring_items":
+                query = query.options(
+                    joinedload(models.MonitoringItem.owners).joinedload(models.MonitoringOwner.operator)
+                )
             result = await db.execute(query)
-            example_row = result.scalar_one_or_none()
+            example_row = result.unique().scalar_one_or_none()
         if example_row is not None:
             serialized_example = await profile.serialize_example_row(db, example_row)
             df.loc[len(df)] = {field.name: serialized_example.get(field.name, "") for field in fields}

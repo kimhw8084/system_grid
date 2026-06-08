@@ -29,6 +29,7 @@ import {
   WorkspaceFieldLabel as FieldLabel,
   WorkspaceFloatingPanel,
   WorkspaceHoverPreview as HoverPreview,
+  WorkspaceInfoTooltip,
   WorkspaceSectionBadge,
   WorkspaceModalFooter,
   WorkspaceModalHeader,
@@ -135,6 +136,8 @@ interface MonitoringTeamOption {
   source?: string | null
   operators?: Array<{ id: number; external_id?: string | null }>
 }
+
+const MONITORING_REQUIRED_FIELD_NAMES = new Set(['title', 'category', 'status', 'severity'])
 
 const DEFAULT_MONITORING_VIEWS = []
 const DEFAULT_MONITORING_VIEW_IDS = new Set(DEFAULT_MONITORING_VIEWS.map((view) => view.id))
@@ -2769,6 +2772,7 @@ export default function MonitoringGrid() {
           <BulkEditTableModal
             items={selectedItems}
             teams={teams || []}
+            operators={operators || []}
             severities={severities}
             notificationMethods={notificationMethods}
             onClose={() => setShowBulkEditModal(false)}
@@ -3043,7 +3047,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     return null;
 }
 
-function BulkEditTableModal({ items, teams, severities, notificationMethods, onClose, onSuccess }: any) {
+function BulkEditTableModal({ items, teams, operators, severities, notificationMethods, onClose, onSuccess }: any) {
   const [rows, setRows] = useState(() => items.map((item: any) => ({
     id: item.id,
     title: item.title,
@@ -3051,6 +3055,7 @@ function BulkEditTableModal({ items, teams, severities, notificationMethods, onC
     severity: item.severity || '',
     notification_method: item.notification_method || '',
     owner_team: item.owner_team || '',
+    owner_user_ids: stringifyOwnerUserIds(item.owners || []),
     check_interval: item.check_interval ?? '',
     alert_duration: item.alert_duration ?? '',
     notification_throttle: item.notification_throttle ?? '',
@@ -3072,6 +3077,10 @@ function BulkEditTableModal({ items, teams, severities, notificationMethods, onC
           severity: row.severity || null,
           notification_method: row.notification_method || null,
           owner_team: row.owner_team || null,
+          owners: parseCommaSeparatedValues(row.owner_user_ids).map((externalId) => ({
+            external_id: externalId,
+            role: 'Primary Support',
+          })),
           check_interval: row.check_interval === '' ? null : Number(row.check_interval),
           alert_duration: row.alert_duration === '' ? null : Number(row.alert_duration),
           notification_throttle: row.notification_throttle === '' ? null : Number(row.notification_throttle),
@@ -3119,6 +3128,34 @@ function BulkEditTableModal({ items, teams, severities, notificationMethods, onC
           <div className="mb-4 rounded-lg border border-white/10 bg-black/20 px-4 py-3">
             <p className="text-[10px] font-semibold text-slate-400">Selected monitors</p>
             <p className="pt-1 text-[12px] font-semibold text-slate-100">{rows.length} rows</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <WorkspaceInfoTooltip
+                label={<span>Allowed team names</span>}
+                content={
+                  (teams || []).length > 0
+                    ? (teams || []).map((team: any) => (
+                        <div key={team.id} className="rounded-lg border border-white/5 bg-black/20 px-3 py-2">
+                          <p className="text-[10px] font-semibold text-slate-100">{team.name}</p>
+                          <p className="mt-1 text-[9px] font-semibold text-slate-500">{team.operators?.length || 0} members</p>
+                        </div>
+                      ))
+                    : <p>No teams available.</p>
+                }
+              />
+              <WorkspaceInfoTooltip
+                label={<span>Allowed owner user IDs</span>}
+                content={
+                  (operators || []).length > 0
+                    ? (operators as OperatorRecord[]).map((operator) => (
+                        <div key={operator.id} className="rounded-lg border border-white/5 bg-black/20 px-3 py-2">
+                          <p className="text-[10px] font-semibold text-slate-100">{operator.external_id || operator.username || String(operator.id)}</p>
+                          <p className="mt-1 text-[9px] font-semibold text-slate-500">{operator.full_name || operator.team || 'No team'}</p>
+                        </div>
+                      ))
+                    : <p>No operators available.</p>
+                }
+              />
+            </div>
           </div>
           <div className="overflow-x-auto rounded-lg border border-white/10 bg-black/20">
             <table className="min-w-full divide-y divide-white/10">
@@ -3128,7 +3165,8 @@ function BulkEditTableModal({ items, teams, severities, notificationMethods, onC
                   <th className="min-w-[160px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Status</th>
                   <th className="min-w-[160px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Severity</th>
                   <th className="min-w-[180px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Notification</th>
-                  <th className="min-w-[180px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Owner Team</th>
+                  <th className="min-w-[220px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Owner Team(s)</th>
+                  <th className="min-w-[240px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Owner User ID(s)</th>
                   <th className="min-w-[130px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Check Interval</th>
                   <th className="min-w-[130px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Alert Duration</th>
                   <th className="min-w-[150px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Throttle</th>
@@ -3142,10 +3180,11 @@ function BulkEditTableModal({ items, teams, severities, notificationMethods, onC
                     <td className="px-2 py-2"><AppDropdown value={row.status} onChange={(value) => updateRow(row.id, 'status', value)} options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))} placeholder="Status" /></td>
                     <td className="px-2 py-2"><AppDropdown value={row.severity} onChange={(value) => updateRow(row.id, 'severity', value)} options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))} placeholder="Severity" /></td>
                     <td className="px-2 py-2"><AppDropdown value={row.notification_method} onChange={(value) => updateRow(row.id, 'notification_method', value)} options={notificationMethods.map((method: any) => ({ value: method.value, label: method.label }))} placeholder="Notification" /></td>
-                    <td className="px-2 py-2"><AppDropdown value={row.owner_team} onChange={(value) => updateRow(row.id, 'owner_team', value)} options={(teams || []).map((team: any) => ({ value: team.name, label: team.name }))} placeholder="Owner team" /></td>
-                    <td className="px-2 py-2"><input type="number" value={row.check_interval} min={CHECK_INTERVAL_MIN} max={CHECK_INTERVAL_MAX} onChange={(event) => updateRow(row.id, 'check_interval', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[11px]`} /></td>
-                    <td className="px-2 py-2"><input type="number" value={row.alert_duration} min={ALERT_DURATION_MIN} max={ALERT_DURATION_MAX} onChange={(event) => updateRow(row.id, 'alert_duration', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[11px]`} /></td>
-                    <td className="px-2 py-2"><input type="number" value={row.notification_throttle} min={NOTIFICATION_THROTTLE_MIN} max={NOTIFICATION_THROTTLE_MAX} onChange={(event) => updateRow(row.id, 'notification_throttle', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[11px]`} /></td>
+                    <td className="px-2 py-2"><input value={row.owner_team} onChange={(event) => updateRow(row.id, 'owner_team', event.target.value)} placeholder="Comma-separated team names" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] leading-4`} /></td>
+                    <td className="px-2 py-2"><input value={row.owner_user_ids} onChange={(event) => updateRow(row.id, 'owner_user_ids', event.target.value)} placeholder="Comma-separated user IDs" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] leading-4`} /></td>
+                    <td className="px-2 py-2"><input type="number" value={row.check_interval} min={CHECK_INTERVAL_MIN} max={CHECK_INTERVAL_MAX} onChange={(event) => updateRow(row.id, 'check_interval', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] leading-4 [appearance:textfield]`} /></td>
+                    <td className="px-2 py-2"><input type="number" value={row.alert_duration} min={ALERT_DURATION_MIN} max={ALERT_DURATION_MAX} onChange={(event) => updateRow(row.id, 'alert_duration', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] leading-4 [appearance:textfield]`} /></td>
+                    <td className="px-2 py-2"><input type="number" value={row.notification_throttle} min={NOTIFICATION_THROTTLE_MIN} max={NOTIFICATION_THROTTLE_MAX} onChange={(event) => updateRow(row.id, 'notification_throttle', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] leading-4 [appearance:textfield]`} /></td>
                     <td className="px-3 py-2">
                       <button
                         type="button"
@@ -3693,24 +3732,28 @@ const getLogicExtensions = (logicType?: MonitoringLogicEntry['type']) => {
 
 type MonitoringFormErrors = Record<string, string>
 
-const buildMonitoringFormErrors = (formData: any, ownershipMode: 'team' | 'individual') => {
+const parseCommaSeparatedValues = (value: string | null | undefined) =>
+  String(value || '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+
+const stringifyOwnerUserIds = (owners: MonitoringOwner[] = []) =>
+  owners
+    .map((owner) => owner.external_id || owner.name || String(owner.operator_id))
+    .filter(Boolean)
+    .join(', ')
+
+const isMonitoringFieldRequired = (fieldName: string) => MONITORING_REQUIRED_FIELD_NAMES.has(fieldName)
+
+const buildMonitoringFormErrors = (formData: any) => {
   const errors: MonitoringFormErrors = {}
   const unsafeUrlPattern = /[<>"']|javascript:|data:|vbscript:/i
 
-  if (!formData.title?.trim()) errors.title = 'Title is required.'
-  if (!formData.category) errors.category = 'Category is required.'
-  if (!formData.status) errors.status = 'Status is required.'
-  if (!formData.severity) errors.severity = 'Severity is required.'
-  if (!formData.platform) errors.platform = 'Platform is required.'
-  if (!formData.notification_method) errors.notification_method = 'Notification method is required.'
-
-  if (ownershipMode === 'team') {
-    if (!formData.owner_team) errors.owner_team = 'Select a team owner.'
-    if (formData.owners?.length) errors.ownership = 'Choose either a team owner or individual owners, not both.'
-  } else {
-    if (!formData.owners?.length) errors.owners = 'Add at least one individual owner.'
-    if (formData.owner_team) errors.ownership = 'Choose either a team owner or individual owners, not both.'
-  }
+  if (isMonitoringFieldRequired('title') && !formData.title?.trim()) errors.title = 'Title is required.'
+  if (isMonitoringFieldRequired('category') && !formData.category) errors.category = 'Category is required.'
+  if (isMonitoringFieldRequired('status') && !formData.status) errors.status = 'Status is required.'
+  if (isMonitoringFieldRequired('severity') && !formData.severity) errors.severity = 'Severity is required.'
 
   if (formData.monitoring_url) {
     try {
@@ -3749,7 +3792,7 @@ const buildMonitoringFormErrors = (formData: any, ownershipMode: 'team' | 'indiv
 }
 
 const getMonitoringTabErrorCounts = (errors: MonitoringFormErrors) => ({
-  context: Object.keys(errors).filter((key) => ['title', 'category', 'status', 'platform', 'owner_team', 'owners', 'ownership', 'monitoring_url'].includes(key)).length,
+  context: Object.keys(errors).filter((key) => ['title', 'category', 'status', 'owner_team', 'owners', 'ownership', 'monitoring_url'].includes(key)).length,
   logic: Object.keys(errors).filter((key) => ['check_interval', 'alert_duration'].includes(key) || key.startsWith('logic_')).length,
   alerting: Object.keys(errors).filter((key) => ['severity', 'notification_method', 'notification_throttle', 'recovery_docs'].includes(key)).length,
 })
@@ -3951,25 +3994,24 @@ export function MonitoringForm({ item, devices, categories, severities, platform
     recovery: false,
   })
 
-  const selectedTeam = useMemo(
-    () => (teams || []).find((team: MonitoringTeamOption) => team.name === formData.owner_team),
+  const selectedTeams = useMemo(
+    () => {
+      const selectedTeamNames = new Set(parseCommaSeparatedValues(formData.owner_team))
+      return (teams || []).filter((team: MonitoringTeamOption) => selectedTeamNames.has(team.name))
+    },
     [teams, formData.owner_team]
   )
 
   const teamOperators = useMemo(() => {
-    if (!selectedTeam?.id) return operators as OperatorRecord[]
-    return (operators as OperatorRecord[]).filter((operator) => operator.team_id === selectedTeam.id)
-  }, [operators, selectedTeam])
+    if (!selectedTeams.length) return operators as OperatorRecord[]
+    const teamIds = new Set(selectedTeams.map((team) => team.id))
+    return (operators as OperatorRecord[]).filter((operator) => operator.team_id != null && teamIds.has(operator.team_id))
+  }, [operators, selectedTeams])
 
   const tabErrors = useMemo(() => getMonitoringTabErrorCounts(formErrors), [formErrors])
 
   const setOwnershipModeAndNormalize = (mode: 'team' | 'individual') => {
     setOwnershipMode(mode)
-    setFormData((current) => ({
-      ...current,
-      owner_team: mode === 'team' ? current.owner_team : '',
-      owners: mode === 'individual' ? current.owners : []
-    }))
     setFormErrors((current) => {
       const next = { ...current }
       delete next.owner_team
@@ -4042,7 +4084,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
 
   useEffect(() => {
     if (Object.keys(formErrors).length === 0 && !generalError) return
-    setFormErrors(buildMonitoringFormErrors(formData, ownershipMode))
+    setFormErrors(buildMonitoringFormErrors(formData))
   }, [formData, ownershipMode])
 
   // Fetch services for selected device
@@ -4146,13 +4188,18 @@ export function MonitoringForm({ item, devices, categories, severities, platform
     () => (knowledgeEntries || []).filter((entry: any) => formData.recovery_docs?.includes(entry.id)),
     [knowledgeEntries, formData.recovery_docs]
   )
-  const ownershipSummary = ownershipMode === 'team'
-    ? (formData.owner_team || 'No team selected')
-    : (formData.owners?.length ? `${formData.owners.length} operators assigned` : 'No owners assigned')
+  const ownershipSummary = [
+    parseCommaSeparatedValues(formData.owner_team).length
+      ? `${parseCommaSeparatedValues(formData.owner_team).length} team${parseCommaSeparatedValues(formData.owner_team).length === 1 ? '' : 's'}`
+      : null,
+    formData.owners?.length
+      ? `${formData.owners.length} owner${formData.owners.length === 1 ? '' : 's'}`
+      : null,
+  ].filter(Boolean).join(' · ') || 'No owners assigned'
   const summaryIssues = useMemo(() => {
     const issues: Array<{ label: string; tab: 'context' | 'logic' | 'alerting'; anchor: string }> = []
     Object.keys(formErrors).forEach((key) => {
-      if (['title', 'category', 'status', 'platform', 'owner_team', 'owners', 'ownership', 'monitoring_url'].includes(key)) {
+      if (['title', 'category', 'status', 'owner_team', 'owners', 'ownership', 'monitoring_url'].includes(key)) {
         issues.push({ label: formErrors[key] || 'Context issue', tab: 'context', anchor: 'monitoring-context-root' })
       } else if (['check_interval', 'alert_duration'].includes(key) || key.startsWith('logic_')) {
         issues.push({ label: formErrors[key] || 'Logic issue', tab: 'logic', anchor: 'monitoring-logic-root' })
@@ -4175,7 +4222,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
   }
 
   const handleSave = () => {
-    const errors = buildMonitoringFormErrors(formData, ownershipMode)
+    const errors = buildMonitoringFormErrors(formData)
     setFormErrors(errors)
     setGeneralError('')
     if (Object.keys(errors).length > 0) {
@@ -4250,7 +4297,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                 <div className="col-span-12 sm:col-span-6 lg:col-span-3">
                   <MonitoringSelectField
                     label="Status"
-                    required
+                    required={isMonitoringFieldRequired('status')}
                     value={formData.status}
                     onChange={(value) => setFormData({ ...formData, status: value })}
                     options={STATUSES.map(s => ({ value: s.value, label: s.value }))}
@@ -4260,7 +4307,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                 <div className="col-span-12 sm:col-span-6 lg:col-span-3">
                   <MonitoringSelectField
                     label="Severity"
-                    required
+                    required={isMonitoringFieldRequired('severity')}
                     value={formData.severity}
                     onChange={(value) => setFormData({ ...formData, severity: value })}
                     options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
@@ -4270,7 +4317,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                 <div className="col-span-12 sm:col-span-6 lg:col-span-3">
                   <MonitoringSelectField
                     label="Category"
-                    required
+                    required={isMonitoringFieldRequired('category')}
                     value={formData.category}
                     onChange={(value) => setFormData({ ...formData, category: value })}
                     options={categories.map((c: any) => ({ value: c.value, label: c.label }))}
@@ -4280,7 +4327,6 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                 <div className="col-span-12 sm:col-span-6 lg:col-span-3">
                   <MonitoringSelectField
                     label="Platform"
-                    required
                     value={formData.platform}
                     onChange={(value) => setFormData({ ...formData, platform: value })}
                     options={(platforms || []).map((platform: any) => ({ value: platform.value, label: platform.label }))}
@@ -4428,7 +4474,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                     <WorkspaceSectionCard id="monitoring-ownership-card">
                       <WorkspaceCollapsibleHeader
                         title="Ownership"
-                        subtitle="Choose a team owner or named operators."
+                        subtitle="Team and individual ownership are both optional and can coexist."
                         badge={<WorkspaceSectionBadge tone="blue">{ownershipMode === 'team' ? 'Team owner' : 'Individual owners'}</WorkspaceSectionBadge>}
                         collapsed={collapsedSections.ownership}
                         onToggle={() => toggleSection('ownership')}
@@ -4455,25 +4501,37 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                         <div className="mt-4">
                           {ownershipMode === 'team' ? (
                             <div className="space-y-3">
-                              <MonitoringSelectField
-                                label="Owner Team"
-                                required
-                                value={formData.owner_team}
-                                onChange={(value) => setFormData({ ...formData, owner_team: value, owners: [] })}
-                                options={(teams || []).map((team: MonitoringTeamOption) => ({
-                                  value: team.name,
-                                  label: team.name,
-                                  description: `${team.operators?.length || 0} members`
-                                }))}
-                                placeholder="Select team"
-                                error={formErrors.owner_team}
-                                searchable
+                              <div className="space-y-1.5">
+                                <FieldLabel label="Owner Team(s)" />
+                                <input
+                                  value={formData.owner_team}
+                                  onChange={(event) => setFormData({ ...formData, owner_team: event.target.value })}
+                                  placeholder="Comma-separated team names"
+                                  className={monitoringInputClass(formErrors.owner_team)}
+                                />
+                              </div>
+                              <FieldError message={formErrors.owner_team} />
+                              <p className="text-[9px] font-semibold text-slate-500">
+                                Optional. Use comma-separated team names from the registered team list.
+                              </p>
+                              <WorkspaceInfoTooltip
+                                label={<span>Allowed team names</span>}
+                                content={
+                                  (teams || []).length > 0
+                                    ? (teams || []).map((team: MonitoringTeamOption) => (
+                                        <div key={team.id} className="rounded-lg border border-white/5 bg-black/20 px-3 py-2">
+                                          <p className="text-[10px] font-semibold text-slate-100">{team.name}</p>
+                                          <p className="mt-1 text-[9px] font-semibold text-slate-500">{team.operators?.length || 0} members</p>
+                                        </div>
+                                      ))
+                                    : <p>No teams available.</p>
+                                }
                               />
-                              {selectedTeam && (
+                              {selectedTeams.length > 0 && (
                                 <div className="rounded-lg border border-white/10 bg-black/20 p-4">
-                                  <p className="text-[11px] font-semibold text-slate-100">{selectedTeam.name}</p>
+                                  <p className="text-[11px] font-semibold text-slate-100">{selectedTeams.map((team) => team.name).join(', ')}</p>
                                   <p className="mt-1 text-[9px] font-semibold text-slate-500">
-                                    {(selectedTeam.operators?.length || 0)} synced or managed operators · {selectedTeam.source || 'manual'}
+                                    {selectedTeams.length} selected team{selectedTeams.length === 1 ? '' : 's'}
                                   </p>
                                 </div>
                               )}
@@ -4484,7 +4542,6 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                 <div className="col-span-12 md:col-span-5">
                                   <MonitoringSelectField
                                     label="Operator"
-                                    required
                                     value={newOwner.operator_id}
                                     onChange={(value) => setNewOwner({ ...newOwner, operator_id: value })}
                                     options={(operators as OperatorRecord[]).map((operator) => ({
@@ -4723,7 +4780,6 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                         {!collapsedSections.alerting && <div className="mt-4 space-y-4">
                           <MonitoringSelectField
                             label="Notification Method"
-                            required
                             value={formData.notification_method}
                             onChange={(value) => setFormData({ ...formData, notification_method: value })}
                             options={notificationMethods.map((m:any) => ({ value: m.value, label: m.label }))}
