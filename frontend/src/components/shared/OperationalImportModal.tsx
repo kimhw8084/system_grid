@@ -188,7 +188,7 @@ export function OperationalImportModal({
   const [exampleRecordId, setExampleRecordId] = useState<number | null>(null)
   const [isMaximized, setIsMaximized] = useState(false)
   const [isPickerOpening, setIsPickerOpening] = useState(false)
-  const [isTemplateCollapsed, setIsTemplateCollapsed] = useState(true)
+  const [isTemplateCollapsed, setIsTemplateCollapsed] = useState(false)
   const [isValidationPopoutOpen, setIsValidationPopoutOpen] = useState(false)
 
   const { triggerRef: validationTriggerRef, panelRef: validationPanelRef, panelStyle: validationPanelStyle } = useWorkspaceAnchoredLayer(isValidationPopoutOpen, { minWidth: 360, offset: 12 })

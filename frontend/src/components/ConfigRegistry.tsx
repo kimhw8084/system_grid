@@ -246,6 +246,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
 export const ConfigRegistryModal = ({ isOpen, onClose, sections, title }: any) => {
     useEscapeDismiss(onClose)
     useBodyModalFlag()
+    const [isMaximized, setIsMaximized] = useState(false)
     const { data: options } = useQuery({ 
         queryKey: ["settings-options"], 
         queryFn: async () => (await (await apiFetch("/api/v1/settings/options")).json()) 
@@ -256,6 +257,8 @@ export const ConfigRegistryModal = ({ isOpen, onClose, sections, title }: any) =
             isOpen={isOpen}
             onClose={onClose}
             size="workspace"
+            isMaximized={isMaximized}
+            onMaximizeToggle={() => setIsMaximized(!isMaximized)}
             title={title || 'Registry Configuration'}
             subtitle="Global System Parameters & Enumerations"
             icon={<Layout size={20} />}

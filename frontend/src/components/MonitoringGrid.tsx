@@ -23,6 +23,7 @@ import { AppDropdown } from './shared/AppDropdown'
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { MONITORING_WORKSPACE_STANDARD } from './shared/OperationalWorkspace'
+import { WorkspaceModal } from './shared/WorkspaceModal'
 import {
   WorkspaceCollapsibleHeader,
   WorkspaceEmptyState,
@@ -1424,11 +1425,13 @@ export default function MonitoringGrid() {
       else lastUndoRef.current = null
 
       if (lastUndoRef.current) {
-        showWorkspaceToast(`Successfully modified ${idsToUse.length} item${idsToUse.length > 1 ? 's' : ''}.`, {
+        const verb = action === 'delete' ? 'Archived' : action === 'restore' ? 'Restored' : 'Synchronized';
+        const subject = idsToUse.length > 1 ? `${idsToUse.length} monitors` : 'monitor';
+        showWorkspaceToast(`${verb} ${subject} in matrix`, {
           onRevert: async () => {
             try {
               await runUndo()
-              showWorkspaceToast('Undo complete')
+              showWorkspaceToast(`Reverted ${verb.toLowerCase()} operation`, { type: 'success' })
             } catch (error: any) {
               showWorkspaceToast(error.message || 'Undo failed', { type: 'error' })
             }
@@ -2811,6 +2814,7 @@ function InlineBulkEditor({ value, onChange, options, placeholder, actionLabel, 
 function CompareMonitorsModal({ items, onClose }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
+  const [isMaximized, setIsMaximized] = useState(false)
 
   const fields = useMemo(() => [
     { label: 'Status', getValue: (item: any) => item.status || 'Unknown' },
@@ -2843,6 +2847,8 @@ function CompareMonitorsModal({ items, onClose }: any) {
       isOpen={true}
       onClose={onClose}
       size="wide"
+      isMaximized={isMaximized}
+      onMaximizeToggle={() => setIsMaximized(!isMaximized)}
       title="Compare Monitors"
       subtitle="Side-by-side analysis of configuration vectors."
       icon={<GitCompare size={20} />}
@@ -2922,6 +2928,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     
     useEffect(() => { setVal(''); }, [isStatusOpen, isSeverityOpen, isNotifyOpen]);
     useEscapeDismiss(onClose)
+    useBodyModalFlag()
 
     if (isStatusOpen) {
         return (
@@ -3192,6 +3199,7 @@ function BulkEditTableModal({ items, teams, operators, severities, notificationM
 
 function RecipientsModal({ recipients, method, onClose }: any) {
   useEscapeDismiss(onClose)
+  useBodyModalFlag()
   return (
     <WorkspaceModal
       isOpen={true}
@@ -3222,6 +3230,7 @@ function RecipientsModal({ recipients, method, onClose }: any) {
 function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
+  const [isMaximized, setIsMaximized] = useState(false)
   const queryClient = useQueryClient()
   const [recoverySearch, setRecoverySearch] = useState('')
   const [isAdding, setIsAdding] = useState(false)
@@ -3266,8 +3275,11 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
       setLinkedTitles(newIds.map((id: number) => String(titleMap.get(id) || `KB-${id}`)))
       queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
       queryClient.invalidateQueries({ queryKey: ['monitoring-history', monitorId] })
-      showWorkspaceToast('Recovery procedures updated', {
-        onRevert: () => mutation.mutate(prevIds)
+      showWorkspaceToast('Synchronized recovery procedures', {
+        onRevert: () => {
+          mutation.mutate(prevIds);
+          showWorkspaceToast('Reverted recovery links', { type: 'success' });
+        }
       })
     },
     onError: (e: any) => showWorkspaceToast(e.message || 'Failed to update recovery procedures', { type: 'error' })
@@ -3283,6 +3295,8 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
       isOpen={true}
       onClose={onClose}
       size="standard"
+      isMaximized={isMaximized}
+      onMaximizeToggle={() => setIsMaximized(!isMaximized)}
       title="Recovery Procedures"
       subtitle="Knowledge-base linkage for operational triage."
       icon={<BookOpen size={20} />}
@@ -3376,6 +3390,7 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
 function BkmDetailModal({ bkmId, onClose }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
+  const [isMaximized, setIsMaximized] = useState(false)
   const { data: bkm, isLoading } = useQuery({
     queryKey: ['knowledge-entry', bkmId],
     queryFn: async () => (await apiFetch(`/api/v1/knowledge/${bkmId}`)).json(),
@@ -3387,6 +3402,8 @@ function BkmDetailModal({ bkmId, onClose }: any) {
       isOpen={true}
       onClose={onClose}
       size="wide"
+      isMaximized={isMaximized}
+      onMaximizeToggle={() => setIsMaximized(!isMaximized)}
       title={bkm?.title || 'Loading Document...'}
       subtitle={`BKM ID: KB-${bkmId}`}
       icon={<BookOpen size={20} />}
@@ -3454,6 +3471,7 @@ function BkmDetailModal({ bkmId, onClose }: any) {
 function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm, onDelete, onOpenAsset, onOpenKnowledge, deleteConfirm }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
+  const [isMaximized, setIsMaximized] = useState(false)
   const [expandedLogic, setExpandedLogic] = useState<number | null>(item.logic_json?.[0]?.id || null)
   const [showLineNumbers, setShowLineNumbers] = useState(true)
   const { data: suggestedKnowledge } = useQuery({
@@ -3476,6 +3494,8 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
       isOpen={true}
       onClose={onClose}
       size="workspace"
+      isMaximized={isMaximized}
+      onMaximizeToggle={() => setIsMaximized(!isMaximized)}
       title={item.title}
       subtitle={`Monitor ID: ${item.id} · ${item.device_name || 'No Target Asset'}`}
       icon={<Monitor size={20} />}
@@ -3486,12 +3506,22 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
             <ToolbarButton onClick={() => onOpenBkm?.(item)}>Recovery</ToolbarButton>
             <ToolbarButton 
               variant="danger" 
-              onClick={() => onDelete?.(item)}
+              onClick={() => {
+                if (deleteConfirm) {
+                  const action = item.is_deleted ? 'Purged' : 'Archived';
+                  onDelete?.(item);
+                  showWorkspaceToast(`${action} ${item.title} from matrix`, {
+                    type: 'success'
+                  });
+                } else {
+                  onDelete?.(item);
+                }
+              }}
               className={deleteConfirm ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : ''}
             >
               {deleteConfirm 
-                ? (item.is_deleted ? 'Confirm Purge?' : 'Confirm De-activate?') 
-                : (item.is_deleted ? 'Purge' : 'De-activate')}
+                ? (item.is_deleted ? 'Confirm Purge?' : 'Confirm Archive?') 
+                : (item.is_deleted ? 'Purge' : 'Archive')}
             </ToolbarButton>
         </div>
       }
@@ -4119,9 +4149,13 @@ export function MonitoringForm({ item, devices, categories, severities, platform
       }
       return res.json()
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       setGeneralError('')
-      showWorkspaceToast(item ? 'Logic synchronized' : 'Logic deployed to matrix')
+      const action = item ? 'Synchronized' : 'Deployed';
+      const detail = item ? 'Changes propagated' : 'New monitor live';
+      showWorkspaceToast(`${action} ${data.title || formData.title}`, {
+        type: 'success'
+      })
       onSuccess()
     },
     onError: (e: any) => {
@@ -4922,6 +4956,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
 function MonitoringHistoryModal({ item, onClose }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
+  const [isMaximized, setIsMaximized] = useState(false)
   const { data: history, isLoading } = useQuery({
     queryKey: ['monitoring-history', item.id],
     queryFn: async () => (await apiFetch(`/api/v1/monitoring/${item.id}/history`)).json()
@@ -4969,6 +5004,8 @@ function MonitoringHistoryModal({ item, onClose }: any) {
       isOpen={true}
       onClose={onClose}
       size="wide"
+      isMaximized={isMaximized}
+      onMaximizeToggle={() => setIsMaximized(!isMaximized)}
       title="Revision history"
       subtitle={`Temporal lineage for ${item.title}`}
       icon={<Clock size={20} />}
