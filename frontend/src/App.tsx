@@ -46,6 +46,8 @@ const normalizeTheme = (theme?: string | null) => {
 
 import { QueryCache, MutationCache } from "@tanstack/react-query"
 
+import { showWorkspaceToast } from "./components/shared/WorkspaceToast"
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -70,6 +72,7 @@ const queryClient = new QueryClient({
         type: 'BACKEND',
         severity: 'ERROR'
       });
+      showWorkspaceToast(error.message || 'API Query Failure', { type: 'error' });
     }
   }),
   mutationCache: new MutationCache({
@@ -82,6 +85,7 @@ const queryClient = new QueryClient({
         type: 'BACKEND',
         severity: 'ERROR'
       });
+      showWorkspaceToast(error.message || 'API Mutation Failure', { type: 'error' });
     }
   })
 })
@@ -546,7 +550,7 @@ function MainLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans">
-      <Toaster position="top-right" toastOptions={{ duration: 1000 }} />
+      <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
       <motion.aside animate={{ width: isSidebarOpen ? 240 : 80 }} className="glass-panel border-r border-[var(--glass-border)] flex flex-col z-20 shadow-2xl relative bg-[var(--sidebar-bg)]">
         <div className={`p-6 flex items-center ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
           <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity group">

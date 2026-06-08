@@ -350,21 +350,55 @@ export function WorkspaceSelectField({
   error,
   searchable = false,
   disabled = false,
+  multi = false,
 }: {
   label: string
   required?: boolean
-  value: string | number | null
+  value: string | number | Array<string | number> | null
   options: Array<{ value: string | number; label: string; description?: string }>
-  onChange: (value: string) => void
+  onChange: (value: any) => void
   placeholder?: string
   error?: string
   searchable?: boolean
   disabled?: boolean
+  multi?: boolean
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const { triggerRef, panelRef, panelStyle } = useWorkspaceAnchoredLayer(isOpen, { minWidth: 220 })
-  const selected = options.find((option) => String(option.value) === String(value))
+  
+  const isSelected = (optValue: string | number) => {
+    if (multi && Array.isArray(value)) {
+      return value.includes(String(optValue)) || value.includes(Number(optValue))
+    }
+    return String(value) === String(optValue)
+  }
+
+  const handleSelect = (optValue: string | number) => {
+    if (multi) {
+      const currentValues = Array.isArray(value) ? [...value] : []
+      const stringValue = String(optValue)
+      const nextValues = currentValues.includes(stringValue)
+        ? currentValues.filter((v) => String(v) !== stringValue)
+        : [...currentValues, stringValue]
+      onChange(nextValues)
+    } else {
+      onChange(String(optValue))
+      setIsOpen(false)
+      setSearch('')
+    }
+  }
+
+  const getLabel = () => {
+    if (multi && Array.isArray(value)) {
+      if (value.length === 0) return placeholder || 'Select option'
+      if (value.length === 1) return options.find(o => String(o.value) === String(value[0]))?.label || value[0]
+      return `${value.length} selected`
+    }
+    const selected = options.find((option) => String(option.value) === String(value))
+    return selected?.label || placeholder || 'Select option'
+  }
+
   const filteredOptions = searchable
     ? options.filter((option) => `${option.label} ${option.description || ''}`.toLowerCase().includes(search.toLowerCase()))
     : options
@@ -398,8 +432,8 @@ export function WorkspaceSelectField({
           }}
           className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10 shadow-[0_0_0_1px_rgba(244,63,94,0.18)]' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
         >
-          <span className={`text-[clamp(10px,0.85vw,12px)] font-black truncate pr-4 ${selected ? 'text-slate-100' : 'text-slate-500'}`}>
-            {selected?.label || placeholder || 'Select option'}
+          <span className={`text-[clamp(10px,0.85vw,12px)] font-black truncate pr-4 ${(value && (!Array.isArray(value) || value.length > 0)) ? 'text-slate-100' : 'text-slate-500'}`}>
+            {getLabel()}
           </span>
           <ChevronDown size={12} className={`shrink-0 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
@@ -409,11 +443,12 @@ export function WorkspaceSelectField({
             style={panelStyle}
             data-workspace-panel="true"
             onMouseDown={(e) => e.stopPropagation()}
-            className="rounded-lg border border-white/10 bg-[#020617] p-2 shadow-[0_24px_60px_rgba(2,6,23,0.48)] backdrop-blur-xl"
+            className="rounded-lg border border-white/10 bg-[#020617] p-2 shadow-[0_24px_60px_rgba(2,6,23,0.48)] backdrop-blur-xl flex flex-col"
           >
             {searchable && (
               <div className="mb-2">
                 <input
+                  autoFocus
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={`Search ${label.toLowerCase()}...`}
@@ -423,20 +458,26 @@ export function WorkspaceSelectField({
             )}
             <div className="max-h-52 overflow-y-auto custom-scrollbar space-y-1 pr-1">
               {filteredOptions.map((option) => {
-                const active = String(option.value) === String(value)
+                const active = isSelected(option.value)
                 return (
                   <button
                     key={String(option.value)}
                     type="button"
-                    onClick={() => {
-                      onChange(String(option.value))
-                      setIsOpen(false)
-                      setSearch('')
-                    }}
+                    onClick={() => handleSelect(option.value)}
                     className={`w-full rounded-lg border px-3 py-2 text-left transition-all ${active ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10 hover:bg-white/[0.03]'}`}
                   >
-                    <p className={`text-[9px] font-black ${active ? 'text-blue-300' : 'text-slate-200'}`}>{option.label}</p>
-                    {option.description && <p className="mt-0.5 text-[8px] font-black text-slate-500 truncate">{option.description}</p>}
+                    <div className="flex items-center gap-2">
+                      {multi && (
+                        <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${active ? 'bg-blue-500 border-blue-500' : 'border-white/20 bg-black/20'}`}>
+                          {active && <Check size={10} className="text-white" />}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className={`text-[9px] font-black ${active ? 'text-blue-300' : 'text-slate-200'}`}>{option.label}</p>
+                        {option.description && <p className="mt-0.5 text-[8px] font-black text-slate-500 truncate">{option.description}</p>}
+                      </div>
+                      {!multi && active && <Check size={12} className="text-blue-400 shrink-0" />}
+                    </div>
                   </button>
                 )
               })}

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AlertCircle, CheckSquare, Clipboard, Download, FileSpreadsheet, FileUp, Maximize2, Minimize2, Plus, Trash2, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { showWorkspaceToast } from './WorkspaceToast'
 import { apiFetch, getApiBaseUrl } from '../../api/apiClient'
 import { AppDropdown } from './AppDropdown'
 import {
@@ -315,10 +316,11 @@ export function OperationalImportModal({
     },
     onSuccess: (data) => {
       setPreview(data)
-      toast.success(`Validated ${data.total_rows} row${data.total_rows === 1 ? '' : 's'}`)
+      showWorkspaceToast(
+`Validated ${data.total_rows} row${data.total_rows === 1 ? '' : 's'}`)
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Preview failed')
+      showWorkspaceToast(error.message || 'Preview failed', { type: 'error' })
     },
   })
 
@@ -338,15 +340,16 @@ export function OperationalImportModal({
     },
     onSuccess: (data: any) => {
       if (data.status !== 'success') {
-        toast.error(data.errors?.join(', ') || 'Import failed')
+        showWorkspaceToast(data.errors?.join(', ') || 'Import failed', { type: 'error' })
         return
       }
-      toast.success(`Imported ${data.count} row${data.count === 1 ? '' : 's'}`)
+      showWorkspaceToast(
+`Imported ${data.count} row${data.count === 1 ? '' : 's'}`)
       queryClient.invalidateQueries()
       onClose()
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Import failed')
+      showWorkspaceToast(error.message || 'Import failed', { type: 'error' })
     },
   })
 
@@ -399,13 +402,15 @@ export function OperationalImportModal({
   const loadPastedRows = () => {
     if (!schema) return
     if (!pasteText.trim()) {
-      toast.error('Paste CSV or spreadsheet data first.')
+      showWorkspaceToast(
+'Paste CSV or spreadsheet data first.')
       return
     }
 
     const parsed = parseDelimitedText(pasteText)
     if (parsed.rows.length === 0) {
-      toast.error('No rows were found in the pasted data.')
+      showWorkspaceToast(
+'No rows were found in the pasted data.')
       return
     }
 
@@ -436,28 +441,32 @@ export function OperationalImportModal({
       })
 
     if (nextRows.length === 0) {
-      toast.error('No importable rows were found in the pasted data.')
+      showWorkspaceToast(
+'No importable rows were found in the pasted data.')
       return
     }
 
     setDraftRows(nextRows)
     setMode('builder')
     setPreview(null)
-    toast.success(`Loaded ${nextRows.length} row${nextRows.length === 1 ? '' : 's'} into the builder`)
+    showWorkspaceToast(
+`Loaded ${nextRows.length} row${nextRows.length === 1 ? '' : 's'} into the builder`)
   }
 
   const handlePastedFile = (event: React.ClipboardEvent<HTMLButtonElement | HTMLDivElement>) => {
     const clipboardFiles = Array.from(event.clipboardData.files || [])
     const pastedFile = clipboardFiles.find((candidate) => /\.(csv|xlsx|xls)$/i.test(candidate.name))
     if (!pastedFile) {
-      toast.error('Clipboard does not contain a CSV or Excel file.')
+      showWorkspaceToast(
+'Clipboard does not contain a CSV or Excel file.')
       return
     }
     event.preventDefault()
     setFile(pastedFile)
     setMode('file')
     setPreview(null)
-    toast.success(`Loaded ${pastedFile.name} from clipboard`)
+    showWorkspaceToast(
+`Loaded ${pastedFile.name} from clipboard`)
   }
 
   const handleCellPaste = (rowIndex: number, columnIndex: number, text: string) => {
@@ -514,7 +523,7 @@ export function OperationalImportModal({
       link.click()
       URL.revokeObjectURL(objectUrl)
     } catch (error: any) {
-      toast.error(error.message || 'Template download failed')
+      showWorkspaceToast(error.message || 'Template download failed', { type: 'error' })
     }
   }
 

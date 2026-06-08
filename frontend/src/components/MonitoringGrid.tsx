@@ -16,6 +16,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from "ag-grid-react"
 import toast from 'react-hot-toast'
+import { showWorkspaceToast } from './shared/WorkspaceToast'
 import { apiFetch } from '../api/apiClient'
 import { formatAppDate, formatAppTime, formatAppDay, parseAppDate } from '../utils/dateUtils'
 import { AppDropdown } from './shared/AppDropdown'
@@ -518,7 +519,7 @@ export default function MonitoringGrid() {
   )
   const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>(MONITORING_FAVORITES_STORAGE_KEY, [])
   const [watchIds, setWatchIds] = usePersistentJsonState<number[]>(MONITORING_WATCH_STORAGE_KEY, [])
-  const [quickFilters, setQuickFilters] = useState({ status: '', severity: '', platform: '', owner: '' })
+  const [quickFilters, setQuickFilters] = useState({ status: [] as string[], severity: [] as string[], platform: [] as string[], owner: [] as string[] })
   const [groupBy, setGroupBy] = useState<string>('raw')
   const [bulkDraft, setBulkDraft] = useState({ status: '', severity: '', notification_method: '' })
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'severity' | 'notification' | null>(null)
@@ -876,8 +877,8 @@ export default function MonitoringGrid() {
       })
       if (csvData) {
         navigator.clipboard.writeText(csvData)
-          .then(() => toast.success("Table data copied to clipboard"))
-          .catch(() => toast.error("Failed to copy data"))
+          .then(() => showWorkspaceToast("Table data copied to clipboard"))
+          .catch(() => showWorkspaceToast("Failed to copy data", { type: 'error' }))
       }
     }
   }
@@ -909,7 +910,7 @@ export default function MonitoringGrid() {
     setColumnLayoutState(config.columnLayoutState ?? [])
     setTransientManualColumnWidths(false)
     setSearchTerm(config.quickFilter ?? '')
-    setQuickFilters(config.quickFilters ?? { status: '', severity: '', platform: '', owner: '' })
+    setQuickFilters(config.quickFilters ?? { status: [] as string[], severity: [] as string[], platform: [] as string[], owner: [] as string[] })
     setGridFilterModel(config.filterModel ?? {})
     setGridSortModel(config.sortModel ?? [{ colId: 'favorite', sort: 'desc' }])
     setActiveViewId(viewId)
@@ -940,13 +941,13 @@ export default function MonitoringGrid() {
       window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
       window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, viewId)
     }
-    toast.success(`Saved current table to ${nextViews.find((view) => view.id === viewId)?.name}`)
+    showWorkspaceToast(`Saved current table to ${nextViews.find((view) => view.id === viewId)?.name}`)
   }
 
   const createViewFromCurrent = () => {
     const trimmed = newViewName.trim()
     if (!trimmed) {
-      toast.error('Enter a name for the new view')
+      showWorkspaceToast('Enter a name for the new view', { type: 'error' })
       return
     }
     const nextIdBase = slugifyViewId(trimmed)
@@ -968,7 +969,7 @@ export default function MonitoringGrid() {
       window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
       window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, nextId)
     }
-    toast.success(`Saved new view ${trimmed}`)
+    showWorkspaceToast(`Saved new view ${trimmed}`)
   }
 
   const applySystemDefault = () => {
@@ -984,7 +985,7 @@ export default function MonitoringGrid() {
     setShowFilterBar(true)
     setColumnLayoutState([])
     setSearchTerm('')
-    setQuickFilters({ status: '', severity: '', platform: '', owner: '' })
+    setQuickFilters({ status: [] as string[], severity: [] as string[], platform: [] as string[], owner: [] as string[] })
     setGridSortModel([{ colId: 'favorite', sort: 'desc' }])
     if (gridRef.current?.api) {
        gridRef.current.api.setFilterModel({})
@@ -993,7 +994,7 @@ export default function MonitoringGrid() {
          applyOrder: true
        })
     }
-    toast.success('Restored system default view')
+    showWorkspaceToast('Restored system default view')
   }
 
   const deleteView = (viewId: string) => {
@@ -1014,7 +1015,7 @@ export default function MonitoringGrid() {
         if (typeof window !== 'undefined') {
           window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
         }
-        toast.success(`Deleted view ${view.name}`)
+        showWorkspaceToast(`Deleted view ${view.name}`)
       }
     )
   }
@@ -1032,6 +1033,7 @@ export default function MonitoringGrid() {
     active: showBulkMenu || showDisplayMenu || showViewsMenu || !!rowActionMenu,
     onDismiss: dismissWorkspaceMenus,
     shouldDismiss: (target) => {
+      if (target.closest('[data-workspace-panel]')) return false
       if (showBulkMenu && !target.closest('.bulk-menu-container') && !target.closest('.bulk-menu-trigger')) return true
       if (showDisplayMenu && !target.closest('.display-menu-container')) return true
       if (showViewsMenu && !target.closest('.views-menu-container')) return true
@@ -1158,10 +1160,10 @@ export default function MonitoringGrid() {
         
         if (!haystack.includes(query)) return false
       }
-      if (quickFilters.status && item.status !== quickFilters.status) return false
-      if (quickFilters.severity && item.severity !== quickFilters.severity) return false
-      if (quickFilters.platform && item.platform !== quickFilters.platform) return false
-      if (quickFilters.owner && !(item.owners || []).some((owner: any) => owner.name === quickFilters.owner)) return false
+      if (quickFilters.status.length > 0 && !quickFilters.status.includes(item.status)) return false
+      if (quickFilters.severity.length > 0 && !quickFilters.severity.includes(item.severity)) return false
+      if (quickFilters.platform.length > 0 && !quickFilters.platform.includes(item.platform)) return false
+      if (quickFilters.owner.length > 0 && !quickFilters.owner.some(o => (item.owners || []).some((owner: any) => owner.name === o))) return false
       return true
     })
     return filtered
@@ -1450,61 +1452,19 @@ export default function MonitoringGrid() {
       else lastUndoRef.current = null
 
       if (lastUndoRef.current) {
-        toast.custom((t) => (
-          <div className={`${t.visible ? 'animate-in fade-in slide-in-from-bottom-4' : 'animate-out fade-out slide-out-to-bottom-4'} relative overflow-hidden rounded-lg border border-slate-700 bg-[#020617] p-0 shadow-2xl`}>
-            <div className="px-5 py-4">
-              <div className="flex items-start justify-between gap-6">
-                <div className="space-y-1">
-                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-100">Bulk Operation Applied</p>
-                  <p className="text-[10px] font-bold text-slate-400">Successfully modified {idsToUse.length} item{idsToUse.length > 1 ? 's' : ''}.</p>
-                </div>
-                <button 
-                  onClick={() => toast.dismiss(t.id)}
-                  className="rounded-lg p-1 text-slate-500 hover:bg-white/5 hover:text-white transition-colors"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-              
-              <div className="mt-4 flex items-center gap-3">
-                <button
-                  onClick={async () => {
-                    toast.dismiss(t.id)
-                    try {
-                      await runUndo()
-                      toast.success('Undo complete', { id: 'undo-success' })
-                    } catch (error: any) {
-                      toast.error(error.message || 'Undo failed', { id: 'undo-error' })
-                    }
-                  }}
-                  className="inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-600/15 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-blue-200 hover:bg-blue-600/25 transition-colors"
-                >
-                  <Undo2 size={12} />
-                  Undo Change
-                </button>
-                <button
-                  onClick={() => toast.dismiss(t.id)}
-                  className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 hover:text-slate-300"
-                >
-                  Dismiss
-                </button>
-              </div>
-            </div>
-            
-            {/* Progress Gauge */}
-            <div className="absolute bottom-0 left-0 h-1 bg-blue-500/20 w-full">
-              <motion.div 
-                initial={{ width: '100%' }}
-                animate={{ width: 0 }}
-                transition={{ duration: 7.5, ease: 'linear' }}
-                className="h-full bg-blue-500"
-              />
-            </div>
-          </div>
-        ), { duration: 7500, id: 'bulk-toast' })
+        showWorkspaceToast(`Successfully modified ${idsToUse.length} item${idsToUse.length > 1 ? 's' : ''}.`, {
+          onRevert: async () => {
+            try {
+              await runUndo()
+              showWorkspaceToast('Undo complete')
+            } catch (error: any) {
+              showWorkspaceToast(error.message || 'Undo failed', { type: 'error' })
+            }
+          }
+        })
       }
     },
-    onError: (e: any) => toast.error(`Operation failed: ${e.message}`, { id: 'bulk-error' })
+    onError: (e: any) => showWorkspaceToast(`Operation failed: ${e.message}`, { type: 'error' })
   })
 
   const columnDefs = useMemo(() => {
@@ -1985,6 +1945,7 @@ export default function MonitoringGrid() {
         secondary={showFilterBar ? (
           <div className="grid w-full gap-3 md:grid-cols-4">
             <AppDropdown
+              multi
               value={quickFilters.status}
               onChange={(val) => setQuickFilters((current) => ({ ...current, status: val }))}
               options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
@@ -1992,6 +1953,7 @@ export default function MonitoringGrid() {
               placeholder="All statuses"
             />
             <AppDropdown
+              multi
               value={quickFilters.severity}
               onChange={(val) => setQuickFilters((current) => ({ ...current, severity: val }))}
               options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
@@ -1999,6 +1961,7 @@ export default function MonitoringGrid() {
               placeholder="All severities"
             />
             <AppDropdown
+              multi
               value={quickFilters.platform}
               onChange={(val) => setQuickFilters((current) => ({ ...current, platform: val }))}
               options={platformOptions}
@@ -2006,6 +1969,7 @@ export default function MonitoringGrid() {
               placeholder="All platforms"
             />
             <AppDropdown
+              multi
               value={quickFilters.owner}
               onChange={(val) => setQuickFilters((current) => ({ ...current, owner: val }))}
               options={ownerOptions}
@@ -2060,7 +2024,7 @@ export default function MonitoringGrid() {
                 onRemove: () => {
                   setSearchTerm('')
                   setGridFilterModel({})
-                  setQuickFilters({ status: '', severity: '', platform: '', owner: '' })
+                  setQuickFilters({ status: [] as string[], severity: [] as string[], platform: [] as string[], owner: [] as string[] })
                   gridRef.current?.api?.setFilterModel({})
                 }
               }]
@@ -3094,10 +3058,10 @@ function BulkEditTableModal({ items, teams, operators, severities, notificationM
       }
     },
     onSuccess: () => {
-      toast.success(`Updated ${rows.length} monitor${rows.length === 1 ? '' : 's'}`)
+      showWorkspaceToast(`Updated ${rows.length} monitor${rows.length === 1 ? '' : 's'}`)
       onSuccess()
     },
-    onError: (error: any) => toast.error(error.message || 'Bulk edit failed'),
+    onError: (error: any) => showWorkspaceToast(error.message || 'Bulk edit failed', { type: 'error' }),
   })
 
   const modal = (
@@ -3292,9 +3256,9 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
       setLinkedTitles(newIds.map((id: number) => String(titleMap.get(id) || `KB-${id}`)))
       queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
       queryClient.invalidateQueries({ queryKey: ['monitoring-history', monitorId] })
-      toast.success('Recovery procedures updated')
+      showWorkspaceToast('Recovery procedures updated')
     },
-    onError: (e: any) => toast.error(e.message || 'Failed to update recovery procedures')
+    onError: (e: any) => showWorkspaceToast(e.message || 'Failed to update recovery procedures', { type: 'error' })
   })
 
   const toggleRecoveryDoc = (id: number) => {
@@ -4124,13 +4088,13 @@ export function MonitoringForm({ item, devices, categories, severities, platform
     },
     onSuccess: () => {
       setGeneralError('')
-      toast.success(item ? 'Logic synchronized' : 'Logic deployed to matrix')
+      showWorkspaceToast(item ? 'Logic synchronized' : 'Logic deployed to matrix')
       onSuccess()
     },
     onError: (e: any) => {
       const message = e.message || 'Failed to save monitoring item'
       setGeneralError(message)
-      toast.error(message)
+      showWorkspaceToast(message, { type: 'error' })
       if (message.toLowerCase().includes('recovery')) setActiveTab('alerting')
       else if (message.toLowerCase().includes('owner') || message.toLowerCase().includes('team')) setActiveTab('context')
       else if (message.toLowerCase().includes('interval') || message.toLowerCase().includes('logic')) setActiveTab('logic')
@@ -4230,7 +4194,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
       if (counts.context > 0) setActiveTab('context')
       else if (counts.logic > 0) setActiveTab('logic')
       else if (counts.alerting > 0) setActiveTab('alerting')
-      toast.error('Resolve the highlighted form errors before saving')
+      showWorkspaceToast('Resolve the highlighted form errors before saving', { type: 'error' })
       return
     }
     mutation.mutate(formData)

@@ -1,0 +1,131 @@
+import React, { useEffect, useState } from 'react'
+import { toast, Toast } from 'react-hot-toast'
+import { X, RotateCcw, AlertTriangle, Check } from 'lucide-react'
+
+interface WorkspaceToastProps {
+  t: Toast
+  message: string
+  onRevert?: () => void
+  type?: 'success' | 'error' | 'loading'
+}
+
+export const WorkspaceToast = ({ t, message, onRevert, type = 'success' }: WorkspaceToastProps) => {
+  const [showConfirmRevert, setShowConfirmRevert] = useState(false)
+  const [progress, setProgress] = useState(100)
+  const duration = t.duration || 4000
+  
+  useEffect(() => {
+    if (!t.visible) return
+    
+    const startTime = Date.now()
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime
+      const remaining = Math.max(0, 100 - (elapsed / duration) * 100)
+      setProgress(remaining)
+      if (remaining <= 0) clearInterval(interval)
+    }, 50)
+
+    return () => clearInterval(interval)
+  }, [t.visible, duration])
+
+  return (
+    <div
+      className={`${
+        t.visible ? 'animate-enter' : 'animate-leave'
+      } max-w-md w-full bg-[#0f172a]/95 backdrop-blur-xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-lg pointer-events-auto flex flex-col overflow-hidden transition-all duration-300`}
+    >
+      <div className="flex items-center p-4">
+        <div className="flex-shrink-0 pt-0.5">
+          {type === 'success' ? (
+            <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
+              <Check size={16} className="text-emerald-400" />
+            </div>
+          ) : type === 'error' ? (
+            <div className="h-8 w-8 rounded-full bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
+              <AlertTriangle size={16} className="text-rose-400" />
+            </div>
+          ) : (
+            <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30 animate-pulse">
+              <div className="h-3 w-3 bg-blue-400 rounded-full" />
+            </div>
+          )}
+        </div>
+        <div className="ml-3 flex-1">
+          <p className="text-[11px] font-black uppercase tracking-widest text-slate-100">
+            {type === 'success' ? 'Operation Success' : type === 'error' ? 'System Error' : 'Processing...'}
+          </p>
+          <p className="mt-1 text-[12px] font-semibold text-slate-400 leading-snug">
+            {message}
+          </p>
+        </div>
+        <div className="ml-4 flex-shrink-0 flex gap-2">
+          {onRevert && !showConfirmRevert && (
+            <button
+              onClick={() => setShowConfirmRevert(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-tighter text-slate-300 hover:bg-white/10 hover:text-white transition-all"
+            >
+              <RotateCcw size={12} />
+              Revert
+            </button>
+          )}
+          
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:bg-white/5 hover:text-white transition-all"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      </div>
+
+      {showConfirmRevert && (
+        <div className="px-4 pb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 flex flex-col gap-3">
+            <p className="text-[10px] font-bold text-rose-300 uppercase tracking-tight text-center">
+              Are you sure you want to undo this action?
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  onRevert()
+                  toast.dismiss(t.id)
+                }}
+                className="flex-1 py-1.5 rounded bg-rose-600 text-white text-[9px] font-black uppercase hover:bg-rose-500 transition-all"
+              >
+                Confirm Undo
+              </button>
+              <button
+                onClick={() => setShowConfirmRevert(false)}
+                className="flex-1 py-1.5 rounded bg-white/5 text-slate-400 text-[9px] font-black uppercase hover:bg-white/10 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Progress Bar Gauge */}
+      <div className="h-0.5 w-full bg-white/5 overflow-hidden">
+        <div 
+          className={`h-full transition-all duration-75 ease-linear ${type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-rose-500' : 'bg-blue-500'}`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
+export const showWorkspaceToast = (message: string, options?: { onRevert?: () => void, type?: 'success' | 'error' | 'loading' }) => {
+  toast.custom((t) => (
+    <WorkspaceToast 
+      t={t} 
+      message={message} 
+      onRevert={options?.onRevert} 
+      type={options?.type} 
+    />
+  ), {
+    duration: options?.onRevert ? 6000 : 4000,
+    position: 'top-right'
+  })
+}

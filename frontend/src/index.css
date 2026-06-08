@@ -369,6 +369,25 @@ select option[value=""] {
 }
 
 /* ReactFlow Layering Overrides */
+/* Custom Workspace Toast Animations */
+@keyframes toast-enter {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes toast-leave {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+.animate-enter {
+  animation: toast-enter 0.3s ease-out forwards;
+}
+
+.animate-leave {
+  animation: toast-leave 0.2s ease-in forwards;
+}
+
 .react-flow__edges {
   z-index: 1001 !important;
 }
