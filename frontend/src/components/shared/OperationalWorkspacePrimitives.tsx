@@ -554,7 +554,7 @@ export function WorkspaceStickyIdentityBar({
   className?: string
 }) {
   return (
-    <div className={`sticky top-0 z-20 -mx-6 mb-8 border-b border-white/10 bg-slate-900/95 px-6 py-5 shadow-2xl backdrop-blur-md sm:-mx-8 sm:px-8 ${className}`}>
+    <div className={`sticky top-0 z-20 -mx-6 mb-8 border-b border-white/10 bg-[#0b1222] px-6 py-6 shadow-2xl sm:-mx-8 sm:px-8 ${className}`}>
       {children}
     </div>
   )

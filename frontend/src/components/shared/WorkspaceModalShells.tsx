@@ -1,4 +1,5 @@
 import React from 'react'
+import { WorkspaceStickyIdentityBar } from './OperationalWorkspacePrimitives'
 
 export function WorkspaceDossierShell({
   header,
@@ -10,13 +11,13 @@ export function WorkspaceDossierShell({
   body: React.ReactNode
 }) {
   return (
-    <>
-      <div className="mb-6 border-b border-white/10 pb-6">
+    <div className="flex flex-col">
+      <WorkspaceStickyIdentityBar className="!mb-6">
         <div className="flex items-start justify-between gap-4">{header}</div>
         {actions && <div className="mt-4 flex flex-wrap items-center gap-2">{actions}</div>}
-      </div>
-      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">{body}</div>
-    </>
+      </WorkspaceStickyIdentityBar>
+      <div className="flex-1">{body}</div>
+    </div>
   )
 }
 

@@ -11,7 +11,7 @@ import {
   Globe, Bell, Info, ChevronRight, X, Check, Save,
   AlertCircle, Clock, Zap, Settings,
   BookOpen, Eye, EyeOff, FileText, User, Mail, MessageSquare, Monitor, MoreVertical,
-  Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, Star, GitCompare, Undo2, List, LayoutGrid, Upload
+  Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, Star, GitCompare, Undo2, List, LayoutGrid, Upload, Terminal
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from "ag-grid-react"
@@ -2846,7 +2846,7 @@ function CompareMonitorsModal({ items, onClose }: any) {
     <WorkspaceModal
       isOpen={true}
       onClose={onClose}
-      size="wide"
+      size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
       title="Compare Monitors"
@@ -3401,7 +3401,7 @@ function BkmDetailModal({ bkmId, onClose }: any) {
     <WorkspaceModal
       isOpen={true}
       onClose={onClose}
-      size="wide"
+      size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
       title={bkm?.title || 'Loading Document...'}
@@ -4280,7 +4280,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
     <WorkspaceModal
       isOpen={true}
       onClose={onClose}
-      size="wide"
+      size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(prev => !prev)}
       title={item ? 'Update Monitoring' : 'Add Monitoring'}
@@ -5003,7 +5003,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
     <WorkspaceModal
       isOpen={true}
       onClose={onClose}
-      size="wide"
+      size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
       title="Revision history"

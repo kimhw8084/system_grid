@@ -73,7 +73,6 @@ export function WorkspaceModal({
                 >
                   <X size={8} strokeWidth={4} className="text-[#4c0000] opacity-0 transition-opacity group-hover:opacity-100" />
                 </button>
-                <div className="h-3 w-3 rounded-full bg-[#ffbd2e] opacity-50 cursor-not-allowed" title="Minimize" />
               </div>
             }
             maximizeControl={
@@ -97,7 +96,7 @@ export function WorkspaceModal({
             onTabChange={onTabChange}
           />
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-10 sm:px-8 pt-8">
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-10 sm:px-8">
             {children}
           </div>
 

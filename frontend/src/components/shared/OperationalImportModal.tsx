@@ -186,7 +186,7 @@ export function OperationalImportModal({
   const [selectedPreviewRows, setSelectedPreviewRows] = useState<number[]>([])
   const [templateMode, setTemplateMode] = useState<TemplateMode>('raw')
   const [exampleRecordId, setExampleRecordId] = useState<number | null>(null)
-  const [isMaximized, setIsMaximized] = useState(false)
+  const [isMaximized, setIsMaximized] = useState(true)
   const [isPickerOpening, setIsPickerOpening] = useState(false)
   const [isTemplateCollapsed, setIsTemplateCollapsed] = useState(false)
   const [isValidationPopoutOpen, setIsValidationPopoutOpen] = useState(false)
@@ -250,9 +250,9 @@ export function OperationalImportModal({
       setDraftRows([])
       setTemplateMode('raw')
       setExampleRecordId(null)
-      setIsMaximized(false)
+      setIsMaximized(true)
       setIsPickerOpening(false)
-      setIsTemplateCollapsed(true)
+      setIsTemplateCollapsed(false)
     }
   }, [isOpen])
 
