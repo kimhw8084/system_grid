@@ -775,8 +775,9 @@ export function OperationalImportModal({
                       <button
                         type="button"
                         onClick={() => {
-                          setIsPickerOpening(true)
                           fileInputRef.current?.click()
+                          // Update state after the dialog begins opening to avoid blocking the main thread
+                          setTimeout(() => setIsPickerOpening(true), 0)
                         }}
                         className="flex min-h-[220px] w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-lg border-2 border-dashed border-white/10 bg-black/20 text-slate-400 transition-all hover:border-blue-500/30 hover:bg-blue-500/5 group"
                       >

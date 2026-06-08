@@ -266,7 +266,7 @@ export const ConfigRegistryModal = ({ isOpen, onClose, sections, title }: any) =
                 <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
             }
         >
-            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
+            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pt-6">
                 {sections.map((s: any) => (
                     <ConfigSection 
                         key={s.category} 

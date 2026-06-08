@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from "framer-motion"
 import { AgGridReact } from "ag-grid-react"
 import toast from "react-hot-toast"
 import { apiFetch } from "../api/apiClient"
+import { WorkspaceModal } from "./shared/WorkspaceModal"
+import { ToolbarButton } from "./shared/LayoutPrimitives"
 import { BulkImportModal } from "./shared/BulkImportModal"
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
@@ -365,6 +367,7 @@ export default function ServiceRegistry() {
 
   const [activeModal, setActiveModal] = useState<any>(null)
   const [activeDetails, setActiveDetails] = useState<any>(null)
+  const [isMaximized, setIsMaximized] = useState(false)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -541,23 +544,41 @@ export default function ServiceRegistry() {
         <AgGridReact ref={gridRef} rowData={services || []} columnDefs={columnDefs} rowSelection="multiple" headerHeight={fontSize + rowDensity + 10} rowHeight={fontSize + rowDensity + 10} onSelectionChanged={e => setSelectedIds(e?.api?.getSelectedNodes().map((n: any) => n.data?.id).filter(Boolean) || [])} quickFilterText={searchTerm} animateRows={true} enableCellTextSelection={true} autoSizeStrategy={autoSizeStrategy} />
       </div>
 
-      <AnimatePresence>{activeModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[850px] max-h-[90vh] overflow-y-auto p-10 rounded-lg border border-blue-500/30 custom-scrollbar shadow-2xl">
-               <div className="flex items-center justify-between border-b border-white/5 pb-6"><h2 className="text-2xl font-bold uppercase  tracking-tighter text-blue-400 flex items-center space-x-4"><Layers size={28}/> <span>{activeModal.id ? 'Modify Logic Matrix' : 'Register Service Instance'}</span></h2><button onClick={() => setActiveModal(null)} className="text-slate-500 hover:text-white transition-all"><X size={24}/></button></div>
-               <ServiceForm initialData={activeModal} onSave={mutation.mutate} options={options} devices={devices} />
-            </motion.div>
-          </div>
-      )}</AnimatePresence>
+      <WorkspaceModal
+        isOpen={!!activeModal}
+        onClose={() => setActiveModal(null)}
+        size="workspace"
+        isMaximized={isMaximized}
+        onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+        title={activeModal?.id ? 'Modify Logic Matrix' : 'Register Service Instance'}
+        subtitle="Logical Service Identity, Environment & Ownership"
+        icon={<Layers size={20}/>}
+        footerRight={
+          <ToolbarButton onClick={() => setActiveModal(null)}>Close</ToolbarButton>
+        }
+      >
+        <div className="pt-6">
+          <ServiceForm initialData={activeModal} onSave={mutation.mutate} options={options} devices={devices} />
+        </div>
+      </WorkspaceModal>
 
-      <AnimatePresence>{activeDetails && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[950px] max-h-[85vh] overflow-hidden p-10 rounded-lg border border-blue-500/30 flex flex-col shadow-2xl">
-               <div className="flex items-center justify-between border-b border-white/5 pb-6"><div><h2 className="text-3xl font-bold uppercase text-blue-400  tracking-tighter">{activeDetails.name}</h2><div className="flex items-center space-x-3 mt-1"><p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ">{activeDetails.service_type} · {activeDetails.environment} · {activeDetails.device_name || 'FLOATING'}</p></div></div><button onClick={() => { setActiveDetails(null); clearServiceRoute(); }} className="text-slate-500 hover:text-white transition-all"><X size={24}/></button></div>
-               <div className="flex-1 overflow-y-auto custom-scrollbar pt-6"><ServiceDetailsView service={activeDetails} options={options} devices={devices} /></div>
-            </motion.div>
-          </div>
-      )}</AnimatePresence>
+      <WorkspaceModal
+        isOpen={!!activeDetails}
+        onClose={() => { setActiveDetails(null); clearServiceRoute(); }}
+        size="workspace"
+        isMaximized={isMaximized}
+        onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+        title={activeDetails?.name || 'Service Details'}
+        subtitle={`${activeDetails?.service_type} · ${activeDetails?.environment} · ${activeDetails?.device_name || 'FLOATING'}`}
+        icon={<Eye size={20}/>}
+        footerRight={
+          <ToolbarButton onClick={() => { setActiveDetails(null); clearServiceRoute(); }}>Close</ToolbarButton>
+        }
+      >
+        <div className="pt-6">
+          <ServiceDetailsView service={activeDetails} options={options} devices={devices} />
+        </div>
+      </WorkspaceModal>
 
       <ConfigRegistryModal isOpen={showConfig} onClose={() => setShowConfig(false)} title="Service Matrix Registry" sections={[{ title: "Service Types", category: "ServiceType", icon: Database }, { title: "Status Options", category: "Status", icon: RefreshCcw }, { title: "Environments", category: "Environment", icon: Globe }]} />
       <BulkImportModal 

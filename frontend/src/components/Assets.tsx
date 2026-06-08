@@ -12,6 +12,8 @@ import { BulkImportModal } from "./shared/BulkImportModal"
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { ConnectionForensicsModal } from "./shared/ConnectionForensicsModal"
+import { WorkspaceModal } from "./shared/WorkspaceModal"
+import { ToolbarButton } from "./shared/LayoutPrimitives"
 import { StyledSelect } from "./shared/StyledSelect"
 import { ServiceDetailsView, ServiceForm } from "./ServiceRegistry"
 
@@ -25,6 +27,7 @@ const SharedServiceModals = ({
   onServiceUpdate
 }: any) => {
   const queryClient = useQueryClient()
+  const [isMaximized, setIsMaximized] = useState(false)
   const mutation = useMutation({
     mutationFn: async (data: any) => {
       const url = `/api/v1/logical-services/${data.id}`
@@ -44,40 +47,41 @@ const SharedServiceModals = ({
 
   return (
     <>
-      <AnimatePresence>
-        {activeEdit && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[800px] max-h-[90vh] overflow-y-auto p-10 rounded-lg border border-blue-500/30 custom-scrollbar">
-               <div className="flex items-center justify-between border-b border-white/5 pb-6">
-                  <h2 className="text-2xl font-bold uppercase flex items-center space-x-4 text-blue-400">
-                     <Layers size={28}/> <span>Modify Service Configuration</span>
-                  </h2>
-                  <button onClick={() => setActiveEdit(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
-               </div>
-               <ServiceForm initialData={activeEdit} onSave={mutation.mutate} options={options} devices={devices} />
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <WorkspaceModal
+        isOpen={!!activeEdit}
+        onClose={() => setActiveEdit(null)}
+        size="workspace"
+        isMaximized={isMaximized}
+        onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+        title="Modify Service Configuration"
+        subtitle="Logical Service Identity & Environment"
+        icon={<Layers size={20}/>}
+        footerRight={
+          <ToolbarButton onClick={() => setActiveEdit(null)}>Close</ToolbarButton>
+        }
+      >
+        <div className="pt-6">
+          <ServiceForm initialData={activeEdit} onSave={mutation.mutate} options={options} devices={devices} />
+        </div>
+      </WorkspaceModal>
 
-      <AnimatePresence>
-        {activeDetails && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-lg border border-blue-500/30 flex flex-col">
-               <div className="flex items-center justify-between border-b border-white/5 pb-6">
-                  <div>
-                    <h2 className="text-2xl font-bold uppercase text-blue-400">{activeDetails.name}</h2>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{activeDetails.service_type} // {activeDetails.environment}</p>
-                  </div>
-                  <button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
-               </div>
-               <div className="flex-1 overflow-y-auto custom-scrollbar pt-6">
-                  <ServiceDetailsView service={activeDetails} options={options} devices={devices} />
-               </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <WorkspaceModal
+        isOpen={!!activeDetails}
+        onClose={() => setActiveDetails(null)}
+        size="workspace"
+        isMaximized={isMaximized}
+        onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+        title={activeDetails?.name || 'Service Details'}
+        subtitle={`${activeDetails?.service_type} // ${activeDetails?.environment}`}
+        icon={<Eye size={20}/>}
+        footerRight={
+          <ToolbarButton onClick={() => setActiveDetails(null)}>Close</ToolbarButton>
+        }
+      >
+        <div className="pt-6">
+          <ServiceDetailsView service={activeDetails} options={options} devices={devices} />
+        </div>
+      </WorkspaceModal>
     </>
   )
 }
@@ -124,6 +128,7 @@ const SharedNetworkModals = ({
 }) => {
   const queryClient = useQueryClient()
   const [connData, setConnData] = useState<any>({})
+  const [isMaximized, setIsMaximized] = useState(false)
 
   useEffect(() => {
     if (activeEdit) {
@@ -154,130 +159,121 @@ const SharedNetworkModals = ({
     onError: (e: any) => toast.error(e.message)
   })
 
-  return createPortal(
-    <AnimatePresence>
-      {activeEdit && (
-        <motion.div 
-          key="network-edit-overlay"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md p-10"
-        >
-          <motion.div 
-            key="network-edit-modal"
-            initial={{ scale: 0.95, opacity: 0 }} 
-            animate={{ scale: 1, opacity: 1 }} 
-            exit={{ scale: 0.95, opacity: 0 }} 
-            className="glass-panel w-[500px] p-10 rounded-lg space-y-6 border border-blue-500/30"
+  return (
+    <WorkspaceModal
+      isOpen={!!activeEdit}
+      onClose={() => setActiveEdit(null)}
+      size="standard"
+      isMaximized={isMaximized}
+      onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+      title="Modify Connectivity"
+      subtitle="Network Interface & Peer Parameters"
+      icon={<LinkIcon size={20}/>}
+      footerRight={
+        <div className="flex items-center gap-3">
+          <ToolbarButton onClick={() => setActiveEdit(null)}>Close</ToolbarButton>
+          <ToolbarButton 
+            onClick={() => {
+              if(!connData.device_a_id || !connData.port_a || !connData.device_b_id || !connData.port_b) {
+                return toast.error("Entity and Port mapping required")
+              }
+              mutation.mutate(connData)
+            }} 
+            disabled={mutation.isPending} 
+            variant="primary"
           >
-            <div className="flex items-center justify-between border-b border-white/5 pb-4">
-              <h2 className="text-2xl font-bold uppercase tracking-tighter flex items-center space-x-4 text-blue-400">
-                <LinkIcon size={24} />
-                <span>Modify Connectivity</span>
-              </h2>
-              <button onClick={() => setActiveEdit(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
-              <div className="col-span-2">
-                <StyledSelect
-                  label="Source Entity *"
-                  value={connData.device_a_id}
-                  onChange={e => setConnData({...connData, device_a_id: e.target.value})}
-                  options={devices?.map((d: any) => ({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
-                  placeholder="Select Registry Asset..."
-                />
-              </div>
-              <div>
-                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Source Port *</label>
-                <input value={connData.port_a || ''} onChange={e => setConnData({...connData, port_a: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="eth0" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Src IP</label>
-                  <input value={connData.source_ip || ''} onChange={e => setConnData({...connData, source_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="10.0.1.10" />
-                </div>
-                <div>
-                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Src VLAN</label>
-                  <input type="number" value={connData.source_vlan || ''} onChange={e => setConnData({...connData, source_vlan: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="100" />
-                </div>
-              </div>
-              <div className="col-span-2">
-                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Source MAC Address</label>
-                <input value={connData.source_mac || ''} onChange={e => setConnData({...connData, source_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="00:11:22:33:44:55" />
-              </div>
-              <StyledSelect
-                  label="Direction"
-                  value={connData.direction}
-                  onChange={e => setConnData({...connData, direction: e.target.value})}
-                  options={[{value: 'Bidirectional', label: 'Bidirectional'}, {value: 'Unidirectional', label: 'Unidirectional'}]}
-              />
-              <div className="col-span-2 border-t border-white/5 pt-4">
-                <StyledSelect
-                  label="Peer Entity *"
-                  value={connData.device_b_id}
-                  onChange={e => setConnData({...connData, device_b_id: e.target.value})}
-                  options={devices?.filter((d:any) => d.id != connData.device_a_id).map((d: any) => ({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
-                  placeholder="Select Registry Asset..."
-                />
-              </div>
-              <div>
-                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer Port *</label>
-                <input value={connData.port_b || ''} onChange={e => setConnData({...connData, port_b: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="Te1/1/1" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer IP</label>
-                  <input value={connData.target_ip || ''} onChange={e => setConnData({...connData, target_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="10.0.1.254" />
-                </div>
-                <div>
-                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer VLAN</label>
-                  <input type="number" value={connData.target_vlan || ''} onChange={e => setConnData({...connData, target_vlan: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="100" />
-                </div>
-              </div>
-              <div className="col-span-2">
-                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer MAC Address</label>
-                <input value={connData.target_mac || ''} onChange={e => setConnData({...connData, target_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="00:11:22:33:44:66" />
-              </div>
-              <StyledSelect
-                  label="Link Type *"
-                  value={connData.link_type}
-                  onChange={e => setConnData({...connData, link_type: e.target.value})}
-                  options={Array.isArray(options) && options.filter((o:any) => o.category === 'LinkPurpose').length > 0 
-                      ? options.filter((o:any) => o.category === 'LinkPurpose').map((p:any) => ({ value: p.value, label: p.label }))
-                      : ["Data", "Management", "Storage/iSCSI", "Backup", "vMotion", "Replication", "Heartbeat"].map(p => ({ value: p, label: p }))
-                  }
-              />
-              <div className="col-span-2">
-                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Purpose / Description</label>
-                <input value={connData.purpose || ''} onChange={e => setConnData({...connData, purpose: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="e.g. Primary Data Uplink for Prod..." />
-              </div>
-              <div>
-                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Speed *</label>
-                <input type="number" value={connData.speed_gbps} onChange={e => setConnData({...connData, speed_gbps: parseFloat(e.target.value) || 0})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
-              </div>
-              <StyledSelect
-                  label="Unit"
-                  value={connData.unit}
-                  onChange={e => setConnData({...connData, unit: e.target.value})}
-                  options={[{value: 'Gbps', label: 'Gbps'}, {value: 'Mbps', label: 'Mbps'}, {value: 'Tbps', label: 'Tbps'}]}
-              />
-            </div>
-            <div className="flex space-x-3 pt-4 border-t border-white/5">
-              <button onClick={() => setActiveEdit(null)} className="flex-1 py-3 text-[10px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Abort</button>
-              <button onClick={() => {
-                if(!connData.device_a_id || !connData.port_a || !connData.device_b_id || !connData.port_b) {
-                  return toast.error("Entity and Port mapping required")
-                }
-                mutation.mutate(connData)
-              }} className="flex-1 py-3 bg-blue-600 text-white rounded-lg text-[10px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Commit Changes</button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>,
-    document.body
+            {mutation.isPending ? <RefreshCw className="animate-spin mr-2" size={14} /> : <Check className="mr-2" size={14} />}
+            <span>{mutation.isPending ? 'Syncing...' : 'Commit Changes'}</span>
+          </ToolbarButton>
+        </div>
+      }
+    >
+      <div className="pt-6 grid grid-cols-2 gap-4">
+        <div className="col-span-2">
+          <StyledSelect
+            label="Source Entity *"
+            value={connData.device_a_id}
+            onChange={e => setConnData({...connData, device_a_id: e.target.value})}
+            options={devices?.map((d: any) => ({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
+            placeholder="Select Registry Asset..."
+          />
+        </div>
+        <div>
+          <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Source Port *</label>
+          <input value={connData.port_a || ''} onChange={e => setConnData({...connData, port_a: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="eth0" />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Src IP</label>
+            <input value={connData.source_ip || ''} onChange={e => setConnData({...connData, source_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="10.0.1.10" />
+          </div>
+          <div>
+            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Src VLAN</label>
+            <input type="number" value={connData.source_vlan || ''} onChange={e => setConnData({...connData, source_vlan: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="100" />
+          </div>
+        </div>
+        <div className="col-span-2">
+          <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Source MAC Address</label>
+          <input value={connData.source_mac || ''} onChange={e => setConnData({...connData, source_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="00:11:22:33:44:55" />
+        </div>
+        <StyledSelect
+            label="Direction"
+            value={connData.direction}
+            onChange={e => setConnData({...connData, direction: e.target.value})}
+            options={[{value: 'Bidirectional', label: 'Bidirectional'}, {value: 'Unidirectional', label: 'Unidirectional'}]}
+        />
+        <div className="col-span-2 border-t border-white/5 pt-4">
+          <StyledSelect
+            label="Peer Entity *"
+            value={connData.device_b_id}
+            onChange={e => setConnData({...connData, device_b_id: e.target.value})}
+            options={devices?.filter((d:any) => d.id != connData.device_a_id).map((d: any) => ({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []}
+            placeholder="Select Registry Asset..."
+          />
+        </div>
+        <div>
+          <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer Port *</label>
+          <input value={connData.port_b || ''} onChange={e => setConnData({...connData, port_b: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="Te1/1/1" />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer IP</label>
+            <input value={connData.target_ip || ''} onChange={e => setConnData({...connData, target_ip: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="10.0.1.254" />
+          </div>
+          <div>
+            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer VLAN</label>
+            <input type="number" value={connData.target_vlan || ''} onChange={e => setConnData({...connData, target_vlan: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="100" />
+          </div>
+        </div>
+        <div className="col-span-2">
+          <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Peer MAC Address</label>
+          <input value={connData.target_mac || ''} onChange={e => setConnData({...connData, target_mac: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="00:11:22:33:44:66" />
+        </div>
+        <StyledSelect
+            label="Link Type *"
+            value={connData.link_type}
+            onChange={e => setConnData({...connData, link_type: e.target.value})}
+            options={Array.isArray(options) && options.filter((o:any) => o.category === 'LinkPurpose').length > 0 
+                ? options.filter((o:any) => o.category === 'LinkPurpose').map((p:any) => ({ value: p.value, label: p.label }))
+                : ["Data", "Management", "Storage/iSCSI", "Backup", "vMotion", "Replication", "Heartbeat"].map(p => ({ value: p, label: p }))
+            }
+        />
+        <div className="col-span-2">
+          <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Purpose / Description</label>
+          <input value={connData.purpose || ''} onChange={e => setConnData({...connData, purpose: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" placeholder="e.g. Primary Data Uplink for Prod..." />
+        </div>
+        <div>
+          <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1 block mb-1">Speed *</label>
+          <input type="number" value={connData.speed_gbps} onChange={e => setConnData({...connData, speed_gbps: parseFloat(e.target.value) || 0})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs outline-none focus:border-blue-500" />
+        </div>
+        <StyledSelect
+            label="Unit"
+            value={connData.unit}
+            onChange={e => setConnData({...connData, unit: e.target.value})}
+            options={[{value: 'Gbps', label: 'Gbps'}, {value: 'Mbps', label: 'Mbps'}, {value: 'Tbps', label: 'Tbps'}]}
+        />
+      </div>
+    </WorkspaceModal>
   )
 }
 
@@ -1486,6 +1482,7 @@ export default function Assets() {
 
   const [activeModal, setActiveModal] = useState<any>(null)
   const [activeDetails, setActiveDetails] = useState<any>(null)
+  const [isMaximized, setIsMaximized] = useState(false)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [showColumnPicker, setShowColumnPicker] = useState(false)
@@ -2325,62 +2322,46 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
         variant={confirmModal.variant}
       />
 
-      <AnimatePresence>
-        {activeModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[950px] max-h-[90vh] overflow-y-auto p-10 rounded-lg border border-blue-500/30 custom-scrollbar">
-               <div className="flex items-center justify-between border-b border-white/5 pb-6">
-                  <h2 className="text-2xl font-bold uppercase flex items-center space-x-4 text-blue-400">
-                     <Package size={28}/> <span>{activeModal.id ? 'MODIFY ASSET CONFIGURATION' : 'New Asset Registration'}</span>
-                  </h2>
-                  <button onClick={() => setActiveModal(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
-               </div>
-               
-               <AssetForm initialData={activeModal} onSave={mutation.mutate} options={options} isSaving={mutation.isPending} devices={devices} />
+      <WorkspaceModal
+        isOpen={!!activeModal}
+        onClose={() => setActiveModal(null)}
+        size="workspace"
+        isMaximized={isMaximized}
+        onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+        title={activeModal?.id ? 'Modify Asset Configuration' : 'New Asset Registration'}
+        subtitle="Asset Identity, Classification & Life-cycle"
+        icon={<Package size={20}/>}
+        footerRight={
+          <ToolbarButton onClick={() => setActiveModal(null)}>Close</ToolbarButton>
+        }
+      >
+        <AssetForm initialData={activeModal} onSave={mutation.mutate} options={options} isSaving={mutation.isPending} devices={devices} />
+      </WorkspaceModal>
 
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {activeDetails && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-lg border border-blue-500/30 flex flex-col">
-               <div className="flex items-center justify-between border-b border-white/5 pb-6">
-                  <div>
-                    <h2 className="text-2xl font-bold uppercase text-blue-400">{activeDetails.name}</h2>
-                    <div className="flex items-center space-x-3 mt-1">
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{activeDetails.system} · {activeDetails.type}</p>
-                                    <span className="w-1 h-1 rounded-full bg-white/20" />
-                                    <p className="text-[10px] text-blue-400/80 uppercase tracking-widest" title="Primary IP">{activeDetails.primary_ip || 'NO PRIMARY IP'}</p>
-                                    <span className="w-1 h-1 rounded-full bg-white/20" />
-                                    <p className="text-[10px] text-indigo-400/80 uppercase tracking-widest" title="Management IP">{activeDetails.management_ip || 'NO MGMT IP'}</p>
-                                    <span className="w-1 h-1 rounded-full bg-white/20" />
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">AGE: {activeDetails.hardware_age}</p>
-                                  </div>
-                                  {activeDetails.role && (
-                                    <p className="text-[11px] font-bold text-emerald-400/80 uppercase tracking-widest mt-2 border-l-2 border-emerald-500/30 pl-3 ">
-                                      {activeDetails.role}
-                                    </p>
-                                  )}                  </div>
-                  <button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
-               </div>
-               
-               <div className="flex-1 overflow-y-auto custom-scrollbar pt-6">
-                 <AssetDetailsView
-                   device={activeDetails}
-                   options={options}
-                   onViewServiceDetails={(s:any) => setActiveServiceDetails(s)}
-                   onEditService={(s:any) => setActiveServiceEdit(s)}
-                   onEditLink={(l:any) => setActiveNetworkEdit(l)}
-                   onViewLink={(l:any) => setSelectedConnection(l)}
-                 />
-               </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <WorkspaceModal
+        isOpen={!!activeDetails}
+        onClose={() => setActiveDetails(null)}
+        size="workspace"
+        isMaximized={isMaximized}
+        onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+        title={activeDetails?.name || 'Asset Details'}
+        subtitle={`${activeDetails?.system} · ${activeDetails?.type} · ${activeDetails?.primary_ip || 'No IP'}`}
+        icon={<Eye size={20}/>}
+        footerRight={
+          <ToolbarButton onClick={() => setActiveDetails(null)}>Close</ToolbarButton>
+        }
+      >
+        <div className="pt-6">
+          <AssetDetailsView
+            device={activeDetails}
+            options={options}
+            onViewServiceDetails={(s:any) => setActiveServiceDetails(s)}
+            onEditService={(s:any) => setActiveServiceEdit(s)}
+            onEditLink={(l:any) => setActiveNetworkEdit(l)}
+            onViewLink={(l:any) => setSelectedConnection(l)}
+          />
+        </div>
+      </WorkspaceModal>
 
       <BulkImportModal 
         isOpen={showImportModal} 

@@ -10,6 +10,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from '../api/apiClient'
+import { WorkspaceModal } from './shared/WorkspaceModal'
+import { ToolbarButton } from './shared/LayoutPrimitives'
 import { formatAppDate, parseAppDate } from '../utils/dateUtils'
 import { BulkImportModal } from './shared/BulkImportModal'
 import { ConfirmationModal } from './shared/ConfirmationModal'
@@ -2030,18 +2032,27 @@ const RelocateModal = ({ selectedRacks, sites, onClose, onRelocate }:
   { selectedRacks: number[]; sites: any[]; onClose: () => void; onRelocate: (siteId: number) => void }) => {
   const [targetSiteId, setTargetSiteId] = useState('')
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-        className="glass-panel w-[420px] p-8 rounded-lg space-y-6 border border-violet-500/20">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-violet-500/15 rounded-lg border border-violet-500/20">
-            <ArrowRightLeft size={18} className="text-violet-400" />
-          </div>
-          <div>
-            <h2 className="text-base font-black uppercase tracking-tight text-white">Relocate Racks</h2>
-            <p className="text-[9px] text-slate-500 uppercase font-bold mt-0.5">{selectedRacks.length} rack(s) selected</p>
-          </div>
+    <WorkspaceModal
+      isOpen={true}
+      onClose={onClose}
+      size="compact"
+      title="Relocate Racks"
+      subtitle={`${selectedRacks.length} rack(s) selected`}
+      icon={<ArrowRightLeft size={20} />}
+      footerRight={
+        <div className="flex gap-3">
+          <ToolbarButton onClick={onClose}>Close</ToolbarButton>
+          <ToolbarButton
+            disabled={!targetSiteId}
+            onClick={() => { if (targetSiteId) { onRelocate(parseInt(targetSiteId)); onClose() } }}
+            variant="primary"
+          >
+            Relocate
+          </ToolbarButton>
         </div>
+      }
+    >
+      <div className="pt-6">
         <StyledSelect
           label="Destination Site"
           value={targetSiteId}
@@ -2049,24 +2060,15 @@ const RelocateModal = ({ selectedRacks, sites, onClose, onRelocate }:
           options={sites?.map((s: any) => ({ value: String(s.id), label: s.name })) || []}
           placeholder="Select target site..."
         />
-        <div className="flex gap-3 pt-2">
-          <button onClick={onClose} className="flex-1 py-3 text-[9px] font-black uppercase text-slate-500 hover:text-slate-300 transition-colors">Cancel</button>
-          <button
-            disabled={!targetSiteId}
-            onClick={() => { if (targetSiteId) { onRelocate(parseInt(targetSiteId)); onClose() } }}
-            className="flex-1 py-3 bg-violet-600 text-white rounded-lg text-[9px] font-black uppercase shadow-lg shadow-violet-500/20 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Relocate
-          </button>
-        </div>
-      </motion.div>
-    </div>
+      </div>
+    </WorkspaceModal>
   )
 }
 
 // ─── Rack Info Modal ───────────────────────────────────────────────────────────
 
 const RackInfoModal = ({ rack, onClose }: { rack: any; onClose: () => void }) => {
+  const [isMaximized, setIsMaximized] = useState(false)
   const totalU = rack.total_u || 42
   const occupiedU = (rack.device_locations || []).reduce((acc: number, l: any) => acc + (l.size_u || 1), 0)
   const freeU = totalU - occupiedU
@@ -2095,60 +2097,54 @@ const RackInfoModal = ({ rack, onClose }: { rack: any; onClose: () => void }) =>
   }, [rack.device_locations])
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4">
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-        className="glass-panel w-full max-w-2xl rounded-xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        
-        <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
-              <BarChart3 size={24} className="text-blue-400" />
+    <WorkspaceModal
+      isOpen={true}
+      onClose={onClose}
+      size="wide"
+      isMaximized={isMaximized}
+      onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+      title={`${rack.name} Summary`}
+      subtitle={`${rack.site_name} · Deployment Unit Report`}
+      icon={<BarChart3 size={20} />}
+      footerRight={
+        <ToolbarButton onClick={onClose}>Close</ToolbarButton>
+      }
+    >
+      <div className="pt-8 space-y-8">
+        {/* Capacity Gauges */}
+        <div className="grid grid-cols-2 gap-6">
+          <div className="bg-black/40 rounded-xl p-6 border border-white/5 space-y-4">
+            <div className="flex justify-between items-end">
+              <div>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Space Utilization</p>
+                <p className="text-2xl font-black text-white">{fillPct}%</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-slate-600 uppercase mb-1">{occupiedU}U Used</p>
+                <p className="text-[10px] font-bold text-emerald-400 uppercase">{freeU}U Available</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-black uppercase tracking-tight text-white">{rack.name} <span className="text-slate-500 ml-2">Summary</span></h2>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">{rack.site_name} · Deployment Unit Report</p>
+            <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full transition-all ${fillColor(fillPct)}`} style={{ width: `${fillPct}%` }} />
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-colors">
-            <X size={20} />
-          </button>
+
+          <div className="bg-black/40 rounded-xl p-6 border border-white/5 space-y-4">
+            <div className="flex justify-between items-end">
+              <div>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Power Consumption</p>
+                <p className="text-2xl font-black text-white">{powerPct}%</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-slate-600 uppercase mb-1">{(totalPowerW/1000).toFixed(2)} kW</p>
+                <p className="text-[10px] font-bold text-blue-400 uppercase">{rack.max_power_kw || 10} kW Cap</p>
+              </div>
+            </div>
+            <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full transition-all ${powerColor(powerPct)}`} style={{ width: `${powerPct}%` }} />
+            </div>
+          </div>
         </div>
-
-        <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
-          {/* Capacity Gauges */}
-          <div className="grid grid-cols-2 gap-6">
-            <div className="bg-black/40 rounded-xl p-6 border border-white/5 space-y-4">
-              <div className="flex justify-between items-end">
-                <div>
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Space Utilization</p>
-                  <p className="text-2xl font-black text-white">{fillPct}%</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-bold text-slate-600 uppercase mb-1">{occupiedU}U Used</p>
-                  <p className="text-[10px] font-bold text-emerald-400 uppercase">{freeU}U Available</p>
-                </div>
-              </div>
-              <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full transition-all ${fillColor(fillPct)}`} style={{ width: `${fillPct}%` }} />
-              </div>
-            </div>
-
-            <div className="bg-black/40 rounded-xl p-6 border border-white/5 space-y-4">
-              <div className="flex justify-between items-end">
-                <div>
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Power Consumption</p>
-                  <p className="text-2xl font-black text-white">{powerPct}%</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-bold text-slate-600 uppercase mb-1">{(totalPowerW/1000).toFixed(2)} kW</p>
-                  <p className="text-[10px] font-bold text-blue-400 uppercase">{rack.max_power_kw || 10} kW Cap</p>
-                </div>
-              </div>
-              <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full transition-all ${powerColor(powerPct)}`} style={{ width: `${powerPct}%` }} />
-              </div>
-            </div>
-          </div>
 
           {/* Distribution Tables */}
           <div className="grid grid-cols-2 gap-x-12 gap-y-8">
@@ -2175,15 +2171,8 @@ const RackInfoModal = ({ rack, onClose }: { rack: any; onClose: () => void }) =>
               </div>
             ))}
           </div>
-        </div>
-
-        <div className="px-8 py-4 bg-white/[0.02] border-t border-white/5 flex justify-end">
-          <button onClick={onClose} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-500/20">
-            Close Report
-          </button>
-        </div>
-      </motion.div>
-    </div>
+      </div>
+    </WorkspaceModal>
   )
 }
 
@@ -3616,31 +3605,57 @@ export default function Racks() {
       )}
 
       {/* Provision Modal */}
-      {isProvisioning && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
-          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-            className="glass-panel w-[520px] p-8 rounded-lg space-y-5 border border-blue-500/20 shadow-[0_30px_100px_rgba(0,0,0,0.5)]">
-              
-              {/* Modal Header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2.5 rounded-lg border transition-colors ${provisionMode === 'reserve' ? 'bg-violet-500/15 border-violet-500/20' : 'bg-blue-500/15 border-blue-500/20'}`}>
-                    {provisionMode === 'reserve' ? <Package size={18} className="text-violet-400" /> : <Server size={18} className="text-blue-400" />}
-                  </div>
-                  <div>
-                    <h2 className="text-base font-black uppercase tracking-tight text-white">
-                      {provisionMode === 'reserve' ? 'Reserve Space' : 'Mount Asset'}
-                    </h2>
-                    <p className="text-[9px] text-slate-500 font-bold uppercase mt-0.5">
-                      {allRacks?.find((r: any) => r.id === isProvisioning.rackId)?.name} · U{isProvisioning.start_u}
-                    </p>
-                  </div>
-                </div>
-                <button onClick={() => { setIsProvisioning(null); setMountSearch('') }} className="p-2 hover:bg-white/10 rounded-lg text-slate-500 transition-colors">
-                  <X size={16} />
-                </button>
-              </div>
-
+      <WorkspaceModal
+        isOpen={!!isProvisioning}
+        onClose={() => { setIsProvisioning(null); setMountSearch('') }}
+        size="standard"
+        title={provisionMode === 'reserve' ? 'Reserve Space' : 'Mount Asset'}
+        subtitle={`${allRacks?.find((r: any) => r.id === isProvisioning?.rackId)?.name} · U${isProvisioning?.start_u}`}
+        icon={provisionMode === 'reserve' ? <Package size={20} /> : <Server size={20} />}
+        footerRight={
+          <div className="flex gap-3">
+            <ToolbarButton onClick={() => { setIsProvisioning(null); setMountSearch('') }}>Close</ToolbarButton>
+            <ToolbarButton
+              disabled={provisionMode === 'asset' && !isProvisioning?.device_id}
+              onClick={() => {
+                if (provisionMode === 'asset') {
+                  if (isPlanInitialized) {
+                    addDeviceToPlan(isProvisioning.rackId, parseInt(isProvisioning.device_id), isProvisioning.start_u, isProvisioning.size_u, isProvisioning.orientation)
+                  } else {
+                    provisionMutation.mutate({
+                      rack_id: isProvisioning.rackId,
+                      device_id: parseInt(isProvisioning.device_id),
+                      u_start: isProvisioning.start_u,
+                      size_u: isProvisioning.size_u,
+                      orientation: isProvisioning.orientation
+                    })
+                  }
+                } else {
+                  if (isPlanInitialized) {
+                    addReservationToPlan(isProvisioning.rackId, isProvisioning.start_u, isProvisioning.size_u, reserveInfo.temporary_name, reserveInfo.est_date, reserveInfo.poc)
+                  } else {
+                    provisionMutation.mutate({
+                      rack_id: isProvisioning.rackId,
+                      is_reservation: true,
+                      u_start: isProvisioning.start_u,
+                      size_u: isProvisioning.size_u,
+                      temporary_name: reserveInfo.temporary_name,
+                      est_racking_date: reserveInfo.est_date,
+                      poc_name: reserveInfo.poc,
+                      orientation: isProvisioning.orientation
+                    })
+                  }
+                }
+                setIsProvisioning(null)
+              }}
+              variant="primary"
+            >
+              {provisionMode === 'reserve' ? 'Confirm Reservation' : 'Commit Mount'}
+            </ToolbarButton>
+          </div>
+        }
+      >
+        <div className="space-y-6 pt-6">
               {/* Asset / Reserve Toggle */}
               <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
                 <button 
@@ -3764,20 +3779,10 @@ export default function Racks() {
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => { setIsProvisioning(null); setMountSearch('') }} className="flex-1 py-4 text-[9px] font-black uppercase text-slate-500 hover:text-slate-300 transition-colors">Cancel</button>
-                <button 
-                  disabled={provisionMode === 'asset' && !isProvisioning.device_id}
-                  onClick={() => { mountMutation.mutate(isProvisioning); setMountSearch('') }}
-                  className={`flex-2 px-10 py-4 text-white rounded-lg text-[10px] font-black uppercase shadow-lg active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed border-2 border-white/10 ${provisionMode === 'reserve' ? 'bg-violet-600 shadow-violet-500/20' : 'bg-blue-600 shadow-blue-500/20'}`}>
-                  {provisionMode === 'reserve' ? 'Confirm Reservation' : 'Mount Asset'}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
+        </div>
+      </WorkspaceModal>
 
-        {(isAddingSite || isEditingSite) && (
+      {(isAddingSite || isEditingSite) && (
           <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
               className="glass-panel w-[420px] p-8 rounded-xl space-y-6 border border-emerald-500/20 shadow-2xl">

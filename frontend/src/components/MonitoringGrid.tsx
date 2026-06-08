@@ -3103,12 +3103,12 @@ function BulkEditTableModal({ items, teams, operators, severities, notificationM
       icon={<Edit2 size={20} />}
       footerRight={
         <div className="flex items-center gap-3">
-          <ToolbarButton onClick={onClose}>Abort</ToolbarButton>
+          <ToolbarButton onClick={onClose}>Close</ToolbarButton>
           <ToolbarButton 
             onClick={() => mutation.mutate()} 
             disabled={mutation.isPending} 
             variant="primary"
-            className="px-8"
+            className="px-8 whitespace-nowrap"
           >
             {mutation.isPending ? <Clock className="animate-spin mr-2" size={14} /> : <Check className="mr-2" size={14} />}
             <span>Save Bulk Edit</span>
@@ -4313,13 +4313,13 @@ export function MonitoringForm({ item, devices, categories, severities, platform
           </button>
       }
       footerRight={
-        <div className="flex items-center gap-3">
-          <ToolbarButton onClick={onClose}>Abort</ToolbarButton>
+        <div className="flex items-center gap-3 flex-nowrap shrink-0">
+          <ToolbarButton onClick={onClose} className="whitespace-nowrap">Close</ToolbarButton>
           <ToolbarButton 
             onClick={handleSave} 
             disabled={mutation.isPending} 
             variant="primary"
-            className="px-8"
+            className="px-8 whitespace-nowrap"
           >
             {mutation.isPending ? <Clock className="animate-spin mr-2" size={14} /> : <Check className="mr-2" size={14} />}
             <span>{item ? 'Save Monitoring' : 'Add Monitoring'}</span>
@@ -4477,10 +4477,6 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                 <div className="flex items-center justify-between">
                                   <span className="text-[9px] text-slate-600 uppercase font-black tracking-widest">System</span>
                                   <span className="text-[11px] font-bold text-slate-100">{selectedDevice?.system || 'Unlinked'}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[9px] text-slate-600 uppercase font-black tracking-widest">Platform</span>
-                                  <span className="text-[11px] font-bold text-blue-400">{formData.platform}</span>
                                 </div>
                               </div>
                             </div>
