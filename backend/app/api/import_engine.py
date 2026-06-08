@@ -8,7 +8,7 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
 import pandas as pd
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
-from sqlalchemy import inspect, select
+from sqlalchemy import func, inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -259,7 +259,7 @@ MONITORING_IMPORT_SUPPORTED_FIELD_NAMES = {
 
 def build_monitoring_import_fields() -> list[ImportField]:
     return [
-        ImportField("device_name", "Target Asset", description="Existing asset name. Resolves to device_id.", template_hint="[Existing asset name]", input_control="select", options_key="device_name"),
+        ImportField("device_name", "Target Asset", description="Existing asset name or tag. Resolves to device_id.", template_hint="[Name or Asset Tag]", input_control="select", options_key="device_name"),
         ImportField("category", "Category", required="category" in MONITORING_IMPORT_REQUIRED_FIELD_NAMES, template_hint="[Monitoring category]", input_control="select", options_key="category"),
         ImportField("status", "Status", required="status" in MONITORING_IMPORT_REQUIRED_FIELD_NAMES, template_hint="[Existing|Planned|Cancelled|Decommissioned]", input_control="select", options_key="status"),
         ImportField("title", "Title", required="title" in MONITORING_IMPORT_REQUIRED_FIELD_NAMES, template_hint="[Short monitor title]", validation_rules=["Required. Keep it concise and unique enough to identify the monitor."]),
@@ -275,10 +275,10 @@ def build_monitoring_import_fields() -> list[ImportField]:
         ImportField("check_interval", "Check Interval (sec)", template_hint="[15-86400]", input_control="number", validation_rules=["Must be between 15 and 86400 seconds."]),
         ImportField("alert_duration", "Alert Duration (sec)", template_hint="[0-86400]", input_control="number", validation_rules=["Must be between 0 and 86400 seconds."]),
         ImportField("notification_throttle", "Notification Throttle (sec)", template_hint="[60-604800]", input_control="number", validation_rules=["Must be between 60 and 604800 seconds."]),
-        ImportField("spec", "Spec", input_kind="multiline", input_control="unsupported", template_hint="[Use add/edit workspace]", supported_in_builder=False, unsupported_reason="Spec content is freeform threshold documentation and is not standardized enough for strict bulk import."),
-        ImportField("logic", "Logic", input_kind="multiline", input_control="unsupported", template_hint="[Use add/edit workspace]", supported_in_builder=False, unsupported_reason="Logic belongs in the structured monitoring logic editor, not the simplified import grid."),
-        ImportField("monitored_service_names", "Services", input_control="unsupported", template_hint="[Use add/edit workspace]", accepts_multiple=True, supported_in_builder=False, unsupported_reason="Service coverage depends on the linked asset and must be chosen from the add/edit workspace."),
-        ImportField("recovery_doc_titles", "Recovery Documents", input_control="unsupported", template_hint="[Use add/edit workspace]", accepts_multiple=True, supported_in_builder=False, unsupported_reason="Recovery documents should be linked from the knowledge workspace search, not typed into bulk import."),
+        ImportField("spec", "Spec", input_kind="multiline", input_control="textarea", template_hint="[Standardized thresholds]", validation_rules=["Optional. Freeform threshold documentation."]),
+        ImportField("logic", "Logic", input_kind="multiline", input_control="textarea", template_hint="[Alert condition logic]", validation_rules=["Optional. Raw alert condition logic string."]),
+        ImportField("monitored_service_names", "Services", input_control="textarea", template_hint="[comma separated service names]", accepts_multiple=True, validation_rules=["Optional. Comma-separated logical service names."]),
+        ImportField("recovery_doc_titles", "Recovery Documents", input_control="textarea", template_hint="[comma separated doc titles]", accepts_multiple=True, validation_rules=["Optional. Comma-separated Knowledge Entry titles."]),
     ]
 
 
@@ -403,10 +403,17 @@ async def build_monitoring_import_row(db: AsyncSession, raw_row: dict[str, Any])
     if row.get("device_id") is not None:
         next_row["device_id"] = int(row["device_id"])
     elif row.get("device_name"):
-        result = await db.execute(select(models.Device.id).where(models.Device.name == row["device_name"]))
+        name = row["device_name"]
+        result = await db.execute(
+            select(models.Device.id)
+            .where(
+                (func.lower(models.Device.name) == func.lower(name)) |
+                (func.lower(models.Device.asset_tag) == func.lower(name))
+            )
+        )
         device_id = result.scalar_one_or_none()
         if device_id is None:
-            raise HTTPException(status_code=400, detail=f"Unknown device_name: {row['device_name']}")
+            raise HTTPException(status_code=400, detail=f"Unknown Target Asset: {name}. Must be an existing asset name or tag.")
         next_row["device_id"] = device_id
 
     if "notification_recipients" in row:
@@ -426,24 +433,30 @@ async def build_monitoring_import_row(db: AsyncSession, raw_row: dict[str, Any])
     elif row.get("monitored_service_names"):
         names = split_multi_value(row.get("monitored_service_names"))
         if names:
-            result = await db.execute(select(models.LogicalService.id, models.LogicalService.name).where(models.LogicalService.name.in_(names)))
-            mapping = {name: service_id for service_id, name in result.all()}
-            missing = [name for name in names if name not in mapping]
+            result = await db.execute(
+                select(models.LogicalService.id, models.LogicalService.name)
+                .where(func.lower(models.LogicalService.name).in_([n.lower() for n in names]))
+            )
+            found = {name.lower(): service_id for service_id, name in result.all()}
+            missing = [name for name in names if name.lower() not in found]
             if missing:
                 raise HTTPException(status_code=400, detail=f"Unknown monitored services: {', '.join(missing)}")
-            next_row["monitored_services"] = [mapping[name] for name in names]
+            next_row["monitored_services"] = [found[name.lower()] for name in names]
 
     if row.get("recovery_docs") is not None:
         next_row["recovery_docs"] = row["recovery_docs"]
     elif row.get("recovery_doc_titles"):
         titles = split_multi_value(row.get("recovery_doc_titles"))
         if titles:
-            result = await db.execute(select(models.KnowledgeEntry.id, models.KnowledgeEntry.title).where(models.KnowledgeEntry.title.in_(titles)))
-            mapping = {title: knowledge_id for knowledge_id, title in result.all()}
-            missing = [title for title in titles if title not in mapping]
+            result = await db.execute(
+                select(models.KnowledgeEntry.id, models.KnowledgeEntry.title)
+                .where(func.lower(models.KnowledgeEntry.title).in_([t.lower() for t in titles]))
+            )
+            found = {title.lower(): knowledge_id for knowledge_id, title in result.all()}
+            missing = [title for title in titles if title.lower() not in found]
             if missing:
                 raise HTTPException(status_code=400, detail=f"Unknown recovery documents: {', '.join(missing)}")
-            next_row["recovery_docs"] = [mapping[title] for title in titles]
+            next_row["recovery_docs"] = [found[title.lower()] for title in titles]
 
     return next_row
 

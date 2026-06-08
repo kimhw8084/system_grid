@@ -29,6 +29,7 @@ export const AppDropdown = ({
   disabled = false
 }: AppDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
   const { triggerRef, panelRef, panelStyle } = useWorkspaceAnchoredLayer(isOpen, { minWidth: 200 })
 
   useEffect(() => {
@@ -42,6 +43,15 @@ export const AppDropdown = ({
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [panelRef, triggerRef])
+
+  useEffect(() => {
+    if (isOpen) setSearchTerm('')
+  }, [isOpen])
+
+  const filteredOptions = options.filter(opt => 
+    String(opt.label).toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(opt.value).toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
   const selectedOption = options.find(opt => opt.value === value)
 
@@ -77,10 +87,20 @@ export const AppDropdown = ({
             style={panelStyle}
             data-workspace-panel="true"
             onMouseDown={(e) => e.stopPropagation()}
-            className={`${getWorkspaceFloatingPanelClass('menu')} overflow-hidden shadow-2xl`}
+            className={`${getWorkspaceFloatingPanelClass('menu')} overflow-hidden shadow-2xl flex flex-col`}
           >
+            <div className="p-2 border-b border-white/5">
+              <input
+                autoFocus
+                type="text"
+                placeholder="Search options..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded px-3 py-1.5 text-[10px] text-white focus:outline-none focus:border-blue-500/50"
+              />
+            </div>
             <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-1">
-              {options.map((opt) => (
+              {filteredOptions.map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
@@ -93,12 +113,14 @@ export const AppDropdown = ({
                     ${opt.value === value ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:bg-white/5 hover:text-white'}
                   `}
                 >
-                  {opt.label}
-                  {opt.value === value && <Check size={12} />}
+                  <span className="truncate">{opt.label}</span>
+                  {opt.value === value && <Check size={12} className="shrink-0 ml-2" />}
                 </button>
               ))}
-              {options.length === 0 && (
-                <div className="px-3 py-2 text-[10px] text-slate-600 italic">No options available</div>
+              {filteredOptions.length === 0 && (
+                <div className="px-3 py-4 text-center">
+                  <p className="text-[10px] text-slate-500 italic">No matching options</p>
+                </div>
               )}
             </div>
           </div>,
