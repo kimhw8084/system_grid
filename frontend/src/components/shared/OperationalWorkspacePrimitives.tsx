@@ -1,5 +1,5 @@
 import React, { CSSProperties, useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Check } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { OPERATIONAL_WORKSPACE_VISUALS } from './OperationalWorkspace'
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { 
   Globe, Shield, Cpu, Sliders, Box, Network, Lock, Key, Activity, 
-  Save, RefreshCcw, Layout, Database, Palette, Bell, Server,
+  Save, RefreshCcw, Layout, Database, Palette, Bell, Server, Star,
   Sun, Moon, Check, Terminal, FolderTree, HardDrive, Link, Users, UserPlus, ShieldCheck, Fingerprint, X, ChevronRight, History, 
   Settings as SettingsIcon, Zap, AlertTriangle, Edit2, Clock, RotateCcw, ChevronDown, ChevronUp, FileCode, Search, Filter, ShieldAlert, MoreHorizontal, Eye, Plus, Trash2, Tag, Book, Microscope
 } from "lucide-react"
@@ -898,14 +898,16 @@ result_df = get_user_pool()`)
             </button>
           )}
           {topTab === 'environments' && (
+            <button 
+                onClick={() => envMutation.mutate(getPersistableEnvSettings())}
                 className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg font-black uppercase tracking-widest text-[10px] transition-all border ${isDirty() ? 'bg-amber-600/10 border-amber-500/30 text-amber-500 animate-pulse' : 'bg-emerald-600/10 border-emerald-500/30 text-emerald-500 hover:bg-emerald-600/20'}`}
                 title="Force Hot Reload Current Config"
             >
                 <Zap size={14} className={envMutation.isPending ? 'animate-pulse' : ''} />
                 <span>Force Hot Reload</span>
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-20">
