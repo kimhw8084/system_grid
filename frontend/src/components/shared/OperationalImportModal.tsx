@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo, useState } from 'react'
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -19,6 +19,7 @@ import {
   WorkspaceSplitView,
   WorkspaceInfoTooltip,
   WorkspaceValidationBanner,
+  WorkspaceCollapsibleHeader,
   getWorkspaceInputClass,
   getWorkspaceModalFrameClass,
   getWorkspaceModalShellClass,
@@ -171,7 +172,7 @@ export function OperationalImportModal({
   displayName,
 }: OperationalImportModalProps) {
   const queryClient = useQueryClient()
-  const fileInputId = useId()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [mode, setMode] = useState<ImportMode>('file')
   const [file, setFile] = useState<File | null>(null)
   const [pasteText, setPasteText] = useState('')
@@ -183,6 +184,7 @@ export function OperationalImportModal({
   const [exampleRecordId, setExampleRecordId] = useState<number | null>(null)
   const [isMaximized, setIsMaximized] = useState(false)
   const [isPickerOpening, setIsPickerOpening] = useState(false)
+  const [isTemplateCollapsed, setIsTemplateCollapsed] = useState(true)
 
   const schemaQuery = useQuery({
     queryKey: ['operational-import-schema', tableName],
@@ -232,17 +234,25 @@ export function OperationalImportModal({
       setExampleRecordId(null)
       setIsMaximized(false)
       setIsPickerOpening(false)
+      setIsTemplateCollapsed(true)
     }
   }, [isOpen])
 
   useEffect(() => {
     if (!isPickerOpening) return
-    const handleFocus = () => setIsPickerOpening(false)
-    window.addEventListener('focus', handleFocus, { once: true })
-    const timeout = window.setTimeout(() => setIsPickerOpening(false), 4000)
+    
+    // Use a slight delay before listening for focus to avoid immediate firing on click
+    const timer = setTimeout(() => {
+      const handleFocus = () => setIsPickerOpening(false)
+      window.addEventListener('focus', handleFocus, { once: true })
+    }, 500)
+
+    const safetyTimeout = window.setTimeout(() => setIsPickerOpening(false), 8000)
+    
     return () => {
-      window.removeEventListener('focus', handleFocus)
-      window.clearTimeout(timeout)
+      window.removeEventListener('focus', () => setIsPickerOpening(false))
+      window.clearTimeout(safetyTimeout)
+      clearTimeout(timer)
     }
   }, [isPickerOpening])
 
@@ -550,17 +560,341 @@ export function OperationalImportModal({
               <WorkspaceValidationBanner
                 message={schemaQuery.error ? 'Import schema failed to load. Refresh the workspace and try again.' : undefined}
               />
-              <WorkspaceSplitView
-                side="right"
-                sidebar={(
-                  <div className="space-y-4">
-                    <WorkspaceSectionCard>
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <WorkspacePanelTitle>Template</WorkspacePanelTitle>
-                          <WorkspacePanelSubtitle>Required columns stay included. Optional columns are selectable. Unsupported columns stay visible with reasons.</WorkspacePanelSubtitle>
+              
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                <div className="space-y-6">
+                  <WorkspaceSectionCard>
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div>
+                        <WorkspacePanelTitle>Source</WorkspacePanelTitle>
+                        <WorkspacePanelSubtitle>Choose one path, then validate before import.</WorkspacePanelSubtitle>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {SOURCE_MODES.map((sourceMode) => (
+                          <button
+                            key={sourceMode.id}
+                            type="button"
+                            onClick={() => {
+                              setMode(sourceMode.id)
+                              setPreview(null)
+                            }}
+                            className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[10px] font-black transition-colors ${
+                              mode === sourceMode.id
+                                ? 'border-blue-500/30 bg-blue-500/10 text-blue-300'
+                                : 'border-white/10 bg-black/20 text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            {sourceMode.icon}
+                            {sourceMode.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {mode === 'file' && (
+                      <div className="mt-4 space-y-4">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept=".csv,.xlsx,.xls"
+                          className="hidden"
+                          onChange={(event) => {
+                            setFile(event.target.files?.[0] || null)
+                            setPreview(null)
+                            setIsPickerOpening(false)
+                          }}
+                        />
+                        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsPickerOpening(true)
+                              fileInputRef.current?.click()
+                            }}
+                            className="flex min-h-[160px] w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-white/10 bg-black/20 text-slate-400 transition-colors hover:border-blue-500/30 hover:text-white"
+                          >
+                            <FileUp size={30} />
+                            <div className="text-center">
+                              <p className="text-[11px] font-black text-white">{file?.name || (isPickerOpening ? 'Opening...' : 'Open File Explorer')}</p>
+                              <p className="mt-1 text-[9px] font-semibold text-slate-500">Choose a CSV or Excel file from disk.</p>
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onPaste={handlePastedFile}
+                            onClick={() => setMode('file')}
+                            className="flex min-h-[160px] w-full flex-col items-center justify-center gap-3 rounded-lg border border-white/10 bg-slate-950/60 px-5 text-center text-slate-400 transition-colors hover:border-blue-500/30 hover:text-white focus:border-blue-500/40 focus:outline-none"
+                          >
+                            <Clipboard size={24} />
+                            <div>
+                              <p className="text-[11px] font-black text-white">Paste File From Clipboard</p>
+                              <p className="mt-1 text-[9px] font-semibold text-slate-500">Click here, then press <span className="text-slate-300">Ctrl+V</span> if your browser clipboard contains a real file.</p>
+                            </div>
+                          </button>
                         </div>
                       </div>
+                    )}
+
+                    {mode === 'paste' && (
+                      <div className="mt-4 space-y-3">
+                        <div>
+                          <WorkspaceFieldLabel label="Pasted data" required />
+                          <textarea
+                            value={pasteText}
+                            onChange={(event) => {
+                              setPasteText(event.target.value)
+                              setPreview(null)
+                            }}
+                            placeholder="Paste CSV with headers, or paste spreadsheet cells directly."
+                            className={`${getWorkspaceInputClass()} min-h-[180px] resize-y`}
+                          />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={loadPastedRows}
+                            className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[10px] font-black text-slate-200 transition-colors hover:border-blue-500/30 hover:text-white"
+                          >
+                            <Clipboard size={12} />
+                            Load Into Builder
+                          </button>
+                          <WorkspacePanelHint>
+                            Header row is optional. If omitted, the active template column order is used.
+                          </WorkspacePanelHint>
+                        </div>
+                      </div>
+                    )}
+
+                    {mode !== 'file' && (
+                      <div className="mt-5 space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <WorkspacePanelTitle>Builder</WorkspacePanelTitle>
+                            <WorkspacePanelSubtitle>Type by column, paste cell blocks, remove rows, then validate.</WorkspacePanelSubtitle>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={addDraftRow}
+                              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[10px] font-black text-slate-200 transition-colors hover:border-blue-500/30 hover:text-white"
+                            >
+                              <Plus size={12} />
+                              Add Row
+                            </button>
+                            <button
+                              type="button"
+                              onClick={clearDraftRows}
+                              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[10px] font-black text-slate-400 transition-colors hover:border-rose-500/30 hover:text-rose-200"
+                            >
+                              <Trash2 size={12} />
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="overflow-x-auto rounded-lg border border-white/10">
+                          <table className="min-w-full divide-y divide-white/10 bg-black/20">
+                            <thead className="bg-slate-950/90">
+                              <tr>
+                                <th className="px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Row</th>
+                                {activeColumns.map((field) => (
+                                  <th key={field.name} className="min-w-[180px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+                                    <div className="flex items-center gap-2">
+                                      <span>{field.label}</span>
+                                      {field.required && <span className="text-rose-400">*</span>}
+                                    </div>
+                                    {(field.options || []).length > 0 && (
+                                      <p className="mt-1 text-[8px] font-semibold normal-case tracking-normal text-blue-300/80">
+                                        Select from allowed values
+                                      </p>
+                                    )}
+                                  </th>
+                                ))}
+                                <th className="px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Remove</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                              {draftRows.map((row, rowIndex) => (
+                                <tr key={`draft-row-${rowIndex}`}>
+                                  <td className="px-3 py-2 text-[10px] font-black text-slate-500">{rowIndex + 1}</td>
+                                  {activeColumns.map((field, columnIndex) => (
+                                    <td key={`${rowIndex}-${field.name}`} className="px-2 py-2 align-top">
+                                      {field.input_control === 'select' ? (
+                                        <AppDropdown
+                                          value={row[field.name] || ''}
+                                          onChange={(value) => updateDraftCell(rowIndex, field.name, String(value))}
+                                          options={(field.options || []).map((option) => ({ value: option.value, label: option.label }))}
+                                          placeholder={field.required ? `Select ${field.label}` : `Optional ${field.label}`}
+                                          className="min-w-[180px]"
+                                        />
+                                      ) : field.input_control === 'number' ? (
+                                        <input
+                                          type="number"
+                                          value={row[field.name] || ''}
+                                          onChange={(event) => updateDraftCell(rowIndex, field.name, event.target.value)}
+                                          className={`${getWorkspaceInputClass()} h-[42px] px-3 py-2 text-[10px] leading-4 [appearance:textfield]`}
+                                        />
+                                      ) : field.input_control === 'url' ? (
+                                        <input
+                                          type="url"
+                                          value={row[field.name] || ''}
+                                          onChange={(event) => updateDraftCell(rowIndex, field.name, event.target.value)}
+                                          className={`${getWorkspaceInputClass()} h-[42px] px-3 py-2 text-[10px] leading-4`}
+                                        />
+                                      ) : field.input_kind === 'multiline' ? (
+                                        <textarea
+                                          value={row[field.name] || ''}
+                                          onChange={(event) => updateDraftCell(rowIndex, field.name, event.target.value)}
+                                          onPaste={(event) => {
+                                            const text = event.clipboardData.getData('text')
+                                            if (text.includes('\n') || text.includes('\t')) {
+                                              event.preventDefault()
+                                              handleCellPaste(rowIndex, columnIndex, text)
+                                            }
+                                          }}
+                                          className={`${getWorkspaceInputClass()} min-h-[42px] px-3 py-2 text-[10px] leading-4`}
+                                        />
+                                      ) : (
+                                        <input
+                                          value={row[field.name] || ''}
+                                          onChange={(event) => updateDraftCell(rowIndex, field.name, event.target.value)}
+                                          onPaste={(event) => {
+                                            const text = event.clipboardData.getData('text')
+                                            if (text.includes('\n') || text.includes('\t')) {
+                                              event.preventDefault()
+                                              handleCellPaste(rowIndex, columnIndex, text)
+                                            }
+                                          }}
+                                          className={`${getWorkspaceInputClass()} h-[42px] px-3 py-2 text-[10px] leading-4`}
+                                        />
+                                      )}
+                                      {(field.validation_rules || []).length > 0 && (
+                                        <p className="mt-1 px-1 text-[8px] font-semibold text-slate-500">
+                                          {(field.validation_rules || [])[0]}
+                                        </p>
+                                      )}
+                                    </td>
+                                  ))}
+                                  <td className="px-3 py-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => removeDraftRow(rowIndex)}
+                                      disabled={draftRows.length === 1}
+                                      className="rounded-lg border border-white/10 bg-black/20 p-2 text-slate-500 transition-colors hover:border-rose-500/30 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-40"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </WorkspaceSectionCard>
+
+                  <WorkspaceSectionCard>
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div>
+                        <WorkspacePanelTitle>Simulation</WorkspacePanelTitle>
+                        <WorkspacePanelSubtitle>Normalized rows, row selection, and final commit set.</WorkspacePanelSubtitle>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => previewMutation.mutate()}
+                        disabled={previewMutation.isPending || schemaQuery.isLoading}
+                        className="inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-4 py-2 text-[10px] font-black text-blue-300 transition-colors hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <AlertCircle size={12} />
+                        {previewMutation.isPending ? 'Validating...' : 'Validate Preview'}
+                      </button>
+                    </div>
+
+                    {!preview && (
+                      <div className="mt-4">
+                        <WorkspaceEmptyState
+                          compact
+                          icon={<CheckSquare size={18} />}
+                          title="Preview will appear here"
+                          description="Run validation to inspect normalized rows, errors, and the exact row subset that will be committed."
+                        />
+                      </div>
+                    )}
+
+                    {preview && (
+                      <div className="mt-4 space-y-4">
+                        <div className="overflow-x-auto rounded-lg border border-white/10">
+                          <table className="min-w-full divide-y divide-white/10 bg-black/20">
+                            <thead className="bg-slate-950/90">
+                              <tr>
+                                <th className="px-3 py-2 text-center text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Add</th>
+                                <th className="px-3 py-2 text-center text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Row</th>
+                                <th className="px-3 py-2 text-center text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Status</th>
+                                {activeColumns.map((field) => (
+                                  <th key={`preview-${field.name}`} className="min-w-[160px] px-3 py-2 text-center text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+                                    {field.label}
+                                  </th>
+                                ))}
+                                <th className="min-w-[260px] px-3 py-2 text-center text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Errors</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                              {preview.results.map((result) => {
+                                const selected = selectedPreviewRows.includes(result.row)
+                                return (
+                                  <tr key={`preview-row-${result.row}`} className={result.status === 'INVALID' ? 'bg-rose-500/[0.03]' : ''}>
+                                    <td className="px-3 py-2 align-middle text-center">
+                                      <input
+                                        type="checkbox"
+                                        checked={selected}
+                                        disabled={result.status !== 'VALID'}
+                                        onChange={() => togglePreviewRow(result.row)}
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2 align-middle text-center text-[10px] font-black text-slate-500">{result.row}</td>
+                                    <td className="px-3 py-2 align-middle text-center">
+                                      <WorkspaceSectionBadge tone={result.status === 'VALID' ? 'emerald' : 'rose'}>
+                                        {result.status}
+                                      </WorkspaceSectionBadge>
+                                    </td>
+                                    {activeColumns.map((field) => (
+                                    <td key={`preview-cell-${result.row}-${field.name}`} className="px-3 py-2 align-middle text-center text-[10px] font-semibold text-slate-200">
+                                      {stringifyPreviewValue(result.normalized[field.name] ?? result.source[field.name])}
+                                    </td>
+                                  ))}
+                                    <td className="px-3 py-2 align-middle text-center text-[10px] font-semibold text-rose-200">
+                                      {result.errors.length > 0 ? (
+                                        <div className="space-y-1">
+                                          {result.errors.map((error) => (
+                                            <p key={`${result.row}-${error}`} className="rounded-lg border border-rose-500/10 bg-rose-500/5 px-2 py-1">
+                                              {error}
+                                            </p>
+                                          ))}
+                                        </div>
+                                      ) : '—'}
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </WorkspaceSectionCard>
+                </div>
+
+                <div className="space-y-6">
+                  <WorkspaceSectionCard>
+                    <WorkspaceCollapsibleHeader
+                      title="Template"
+                      subtitle={!isTemplateCollapsed && "Required columns stay included. Optional columns are selectable. Unsupported columns stay visible with reasons."}
+                      collapsed={isTemplateCollapsed}
+                      onToggle={() => setIsTemplateCollapsed(!isTemplateCollapsed)}
+                    />
+                    
+                    {!isTemplateCollapsed && (
                       <div className="mt-4 grid grid-cols-1 gap-3">
                         {unsupportedFields.length > 0 && (
                           <div className="rounded-lg border border-amber-500/10 bg-amber-500/5 px-3 py-2 text-[9px] font-semibold text-amber-200">
@@ -578,15 +912,15 @@ export function OperationalImportModal({
                               <button
                                 key={option.id}
                                 type="button"
+                                title={option.description}
                                 onClick={() => setTemplateMode(option.id as TemplateMode)}
-                                className={`rounded-lg border px-3 py-2 text-left transition-all ${
+                                className={`rounded-lg border px-3 py-2 text-center transition-all ${
                                   templateMode === option.id
                                     ? 'border-blue-500/30 bg-blue-500/10 text-blue-300'
                                     : 'border-white/10 bg-slate-950/60 text-slate-400 hover:text-slate-200'
                                 }`}
                               >
                                 <p className="text-[10px] font-black">{option.label}</p>
-                                <p className="mt-1 text-[8px] font-semibold">{option.description}</p>
                               </button>
                             ))}
                           </div>
@@ -638,435 +972,115 @@ export function OperationalImportModal({
                           <Download size={12} />
                           Download Template
                         </button>
-                      </div>
-                      <div className="mt-4 space-y-2">
-                        {(schema?.fields || []).map((field) => {
-                          const checked = requiredFieldNames.includes(field.name) || selectedColumns.includes(field.name)
-                          const fieldOptions = field.options || []
-                          const fieldValidationRules = field.validation_rules || []
-                          const supportedInBuilder = field.supported_in_builder !== false
-                          return (
-                            <label
-                              key={field.name}
-                              className={`flex items-start gap-3 rounded-lg border px-3 py-2 ${
-                                supportedInBuilder
-                                  ? 'border-white/5 bg-black/20'
-                                  : 'border-white/5 bg-slate-950/70 opacity-70'
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                className="mt-0.5 h-4 w-4 rounded border-white/10 bg-slate-950 text-blue-500"
-                                checked={checked}
-                                disabled={requiredFieldNames.includes(field.name) || !supportedInBuilder}
-                                onChange={() => toggleColumn(field.name)}
-                              />
-                              <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="text-[10px] font-black text-slate-100">{field.label}</span>
-                                  {field.required && <WorkspaceSectionBadge tone="rose">Required</WorkspaceSectionBadge>}
-                                  {!supportedInBuilder && <WorkspaceSectionBadge>Unavailable In Builder</WorkspaceSectionBadge>}
-                                  {fieldOptions.length > 0 && <WorkspaceSectionBadge tone="blue">Strict Choice</WorkspaceSectionBadge>}
-                                </div>
-                                <p className="mt-1 text-[9px] font-semibold text-slate-500">
-                                  {supportedInBuilder
-                                    ? (field.template_hint || field.description || field.name)
-                                    : field.unsupported_reason}
-                                </p>
-                                {fieldOptions.length > 0 && (
-                                  <p className="mt-1 text-[8px] font-semibold text-blue-300/80">
-                                    Allowed values: {getChoicePreview(fieldOptions)}
-                                  </p>
-                                )}
-                                {fieldValidationRules.length > 0 && (
-                                  <p className="mt-1 text-[8px] font-semibold text-amber-300/80">
-                                    {fieldValidationRules.join(' ')}
-                                  </p>
-                                )}
-                              </div>
-                            </label>
-                          )
-                        })}
-                      </div>
-                    </WorkspaceSectionCard>
-
-                    <WorkspaceSectionCard>
-                      <WorkspacePanelTitle>Validation</WorkspacePanelTitle>
-                      <WorkspacePanelSubtitle>Preview runs before commit and invalid rows stay out of the import set.</WorkspacePanelSubtitle>
-                      <div className="mt-4 grid grid-cols-2 gap-3">
-                        <div className="rounded-lg border border-white/5 bg-black/20 px-3 py-3">
-                          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Rows</p>
-                          <p className="mt-1 text-lg font-black text-white">{preview?.total_rows ?? nonFileRows.length}</p>
-                        </div>
-                        <div className="rounded-lg border border-emerald-500/10 bg-emerald-500/5 px-3 py-3">
-                          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-emerald-400">Valid</p>
-                          <p className="mt-1 text-lg font-black text-emerald-300">{preview?.valid_rows ?? 0}</p>
-                        </div>
-                        <div className="rounded-lg border border-rose-500/10 bg-rose-500/5 px-3 py-3">
-                          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-rose-400">Invalid</p>
-                          <p className="mt-1 text-lg font-black text-rose-300">{preview?.invalid_rows ?? 0}</p>
-                        </div>
-                        <div className="rounded-lg border border-blue-500/10 bg-blue-500/5 px-3 py-3">
-                          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-400">Selected</p>
-                          <p className="mt-1 text-lg font-black text-blue-300">{selectedImportCount}</p>
-                        </div>
-                      </div>
-                      <div className="mt-4">
-                        <WorkspacePanelHint>
-                          Required: {requiredFieldNames.map((fieldName) => fieldMap.get(fieldName)?.label || fieldName).join(', ')}
-                        </WorkspacePanelHint>
-                      </div>
-                      <div className="mt-3 flex items-center gap-2">
-                        <WorkspaceInfoTooltip
-                          label={<span>{previewErrorCount} error{previewErrorCount === 1 ? '' : 's'} to fix</span>}
-                          content={
-                            previewErrors.length > 0
-                              ? previewErrors.map((error) => (
-                                  <div key={error} className="rounded-lg border border-rose-500/10 bg-rose-500/5 px-3 py-2">
-                                    {error}
+                        
+                        <div className="mt-4 space-y-2">
+                          {(schema?.fields || []).map((field) => {
+                            const checked = requiredFieldNames.includes(field.name) || selectedColumns.includes(field.name)
+                            const fieldOptions = field.options || []
+                            const fieldValidationRules = field.validation_rules || []
+                            const supportedInBuilder = field.supported_in_builder !== false
+                            return (
+                              <label
+                                key={field.name}
+                                className={`flex items-start gap-3 rounded-lg border px-3 py-2 ${
+                                  supportedInBuilder
+                                    ? 'border-white/5 bg-black/20'
+                                    : 'border-white/5 bg-slate-950/70 opacity-70'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="mt-0.5 h-4 w-4 rounded border-white/10 bg-slate-950 text-blue-500"
+                                  checked={checked}
+                                  disabled={requiredFieldNames.includes(field.name) || !supportedInBuilder}
+                                  onChange={() => toggleColumn(field.name)}
+                                />
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-[10px] font-black text-slate-100">{field.label}</span>
+                                    {field.required && <WorkspaceSectionBadge tone="rose">Required</WorkspaceSectionBadge>}
+                                    {!supportedInBuilder && <WorkspaceSectionBadge>Unavailable In Builder</WorkspaceSectionBadge>}
+                                    {fieldOptions.length > 0 && <WorkspaceSectionBadge tone="blue">Strict Choice</WorkspaceSectionBadge>}
                                   </div>
-                                ))
-                              : <p>No validation errors right now.</p>
-                          }
-                        />
-                      </div>
-                      <div className="mt-4 space-y-2">
-                        {previewErrors.slice(0, 8).map((error) => (
-                          <div key={error} className="rounded-lg border border-rose-500/10 bg-rose-500/5 px-3 py-2 text-[9px] font-semibold text-rose-200">
-                            {error}
-                          </div>
-                        ))}
-                        {previewErrors.length === 0 && (
-                          <div className="rounded-lg border border-white/5 bg-black/20 px-3 py-3 text-[9px] font-semibold text-slate-500">
-                            Validate the import set to see row-level issues and the normalized preview.
-                          </div>
-                        )}
-                      </div>
-                    </WorkspaceSectionCard>
-                  </div>
-                )}
-                main={(
-                  <div className="space-y-4">
-                    <WorkspaceSectionCard>
-                      <div className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                          <WorkspacePanelTitle>Source</WorkspacePanelTitle>
-                          <WorkspacePanelSubtitle>Choose one path, then validate before import.</WorkspacePanelSubtitle>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          {SOURCE_MODES.map((sourceMode) => (
-                            <button
-                              key={sourceMode.id}
-                              type="button"
-                              onClick={() => {
-                                setMode(sourceMode.id)
-                                setPreview(null)
-                              }}
-                              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[10px] font-black transition-colors ${
-                                mode === sourceMode.id
-                                  ? 'border-blue-500/30 bg-blue-500/10 text-blue-300'
-                                  : 'border-white/10 bg-black/20 text-slate-400 hover:text-white'
-                              }`}
-                            >
-                              {sourceMode.icon}
-                              {sourceMode.label}
-                            </button>
-                          ))}
+                                  <p className="mt-1 text-[9px] font-semibold text-slate-500">
+                                    {supportedInBuilder
+                                      ? (field.template_hint || field.description || field.name)
+                                      : field.unsupported_reason}
+                                  </p>
+                                  {fieldOptions.length > 0 && (
+                                    <p className="mt-1 text-[8px] font-semibold text-blue-300/80">
+                                      Allowed values: {getChoicePreview(fieldOptions)}
+                                    </p>
+                                  )}
+                                  {fieldValidationRules.length > 0 && (
+                                    <p className="mt-1 text-[8px] font-semibold text-amber-300/80">
+                                      {fieldValidationRules.join(' ')}
+                                    </p>
+                                  )}
+                                </div>
+                              </label>
+                            )
+                          })}
                         </div>
                       </div>
+                    )}
+                  </WorkspaceSectionCard>
 
-                      {mode === 'file' && (
-                        <div className="mt-4 space-y-4">
-                          <input
-                            id={fileInputId}
-                            type="file"
-                            accept=".csv,.xlsx,.xls"
-                            className="hidden"
-                            onChange={(event) => {
-                              setFile(event.target.files?.[0] || null)
-                              setPreview(null)
-                              setIsPickerOpening(false)
-                            }}
-                          />
-                          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
-                            <label
-                              htmlFor={fileInputId}
-                              onClick={() => setIsPickerOpening(true)}
-                              className="flex min-h-[160px] w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-white/10 bg-black/20 text-slate-400 transition-colors hover:border-blue-500/30 hover:text-white"
-                            >
-                              <FileUp size={30} />
-                              <div className="text-center">
-                                <p className="text-[11px] font-black text-white">{file?.name || (isPickerOpening ? 'Opening file explorer...' : 'Open File Explorer')}</p>
-                                <p className="mt-1 text-[9px] font-semibold text-slate-500">Choose a CSV or Excel file from disk.</p>
-                              </div>
-                            </label>
-                            <button
-                              type="button"
-                              onPaste={handlePastedFile}
-                              onClick={() => setMode('file')}
-                              className="flex min-h-[160px] w-full flex-col items-center justify-center gap-3 rounded-lg border border-white/10 bg-slate-950/60 px-5 text-center text-slate-400 transition-colors hover:border-blue-500/30 hover:text-white focus:border-blue-500/40 focus:outline-none"
-                            >
-                              <Clipboard size={24} />
-                              <div>
-                                <p className="text-[11px] font-black text-white">Paste File From Clipboard</p>
-                                <p className="mt-1 text-[9px] font-semibold text-slate-500">Click here, then press <span className="text-slate-300">Ctrl+V</span> if your browser clipboard contains a real file.</p>
-                              </div>
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {mode === 'paste' && (
-                        <div className="mt-4 space-y-3">
-                          <div>
-                            <WorkspaceFieldLabel label="Pasted data" required />
-                            <textarea
-                              value={pasteText}
-                              onChange={(event) => {
-                                setPasteText(event.target.value)
-                                setPreview(null)
-                              }}
-                              placeholder="Paste CSV with headers, or paste spreadsheet cells directly."
-                              className={`${getWorkspaceInputClass()} min-h-[180px] resize-y`}
-                            />
-                          </div>
-                          <div className="flex flex-wrap items-center gap-3">
-                            <button
-                              type="button"
-                              onClick={loadPastedRows}
-                              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[10px] font-black text-slate-200 transition-colors hover:border-blue-500/30 hover:text-white"
-                            >
-                              <Clipboard size={12} />
-                              Load Into Builder
-                            </button>
-                            <WorkspacePanelHint>
-                              Header row is optional. If omitted, the active template column order is used.
-                            </WorkspacePanelHint>
-                          </div>
-                        </div>
-                      )}
-
-                      {mode !== 'file' && (
-                        <div className="mt-5 space-y-3">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                              <WorkspacePanelTitle>Builder</WorkspacePanelTitle>
-                              <WorkspacePanelSubtitle>Type by column, paste cell blocks, remove rows, then validate.</WorkspacePanelSubtitle>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={addDraftRow}
-                                className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[10px] font-black text-slate-200 transition-colors hover:border-blue-500/30 hover:text-white"
-                              >
-                                <Plus size={12} />
-                                Add Row
-                              </button>
-                              <button
-                                type="button"
-                                onClick={clearDraftRows}
-                                className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[10px] font-black text-slate-400 transition-colors hover:border-rose-500/30 hover:text-rose-200"
-                              >
-                                <Trash2 size={12} />
-                                Clear
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="overflow-x-auto rounded-lg border border-white/10">
-                            <table className="min-w-full divide-y divide-white/10 bg-black/20">
-                              <thead className="bg-slate-950/90">
-                                <tr>
-                                  <th className="px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Row</th>
-                                  {activeColumns.map((field) => (
-                                    <th key={field.name} className="min-w-[180px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
-                                      <div className="flex items-center gap-2">
-                                        <span>{field.label}</span>
-                                        {field.required && <span className="text-rose-400">*</span>}
-                                      </div>
-                                      {(field.options || []).length > 0 && (
-                                        <p className="mt-1 text-[8px] font-semibold normal-case tracking-normal text-blue-300/80">
-                                          Select from allowed values
-                                        </p>
-                                      )}
-                                    </th>
-                                  ))}
-                                  <th className="px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Remove</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-white/5">
-                                {draftRows.map((row, rowIndex) => (
-                                  <tr key={`draft-row-${rowIndex}`}>
-                                    <td className="px-3 py-2 text-[10px] font-black text-slate-500">{rowIndex + 1}</td>
-                                    {activeColumns.map((field, columnIndex) => (
-                                      <td key={`${rowIndex}-${field.name}`} className="px-2 py-2 align-top">
-                                        {field.input_control === 'select' ? (
-                                          <AppDropdown
-                                            value={row[field.name] || ''}
-                                            onChange={(value) => updateDraftCell(rowIndex, field.name, String(value))}
-                                            options={(field.options || []).map((option) => ({ value: option.value, label: option.label }))}
-                                            placeholder={field.required ? `Select ${field.label}` : `Optional ${field.label}`}
-                                            className="min-w-[180px]"
-                                          />
-                                        ) : field.input_control === 'number' ? (
-                                          <input
-                                            type="number"
-                                            value={row[field.name] || ''}
-                                            onChange={(event) => updateDraftCell(rowIndex, field.name, event.target.value)}
-                                            className={`${getWorkspaceInputClass()} h-[42px] px-3 py-2 text-[10px] leading-4 [appearance:textfield]`}
-                                          />
-                                        ) : field.input_control === 'url' ? (
-                                          <input
-                                            type="url"
-                                            value={row[field.name] || ''}
-                                            onChange={(event) => updateDraftCell(rowIndex, field.name, event.target.value)}
-                                            className={`${getWorkspaceInputClass()} h-[42px] px-3 py-2 text-[10px] leading-4`}
-                                          />
-                                        ) : field.input_kind === 'multiline' ? (
-                                          <textarea
-                                            value={row[field.name] || ''}
-                                            onChange={(event) => updateDraftCell(rowIndex, field.name, event.target.value)}
-                                            onPaste={(event) => {
-                                              const text = event.clipboardData.getData('text')
-                                              if (text.includes('\n') || text.includes('\t')) {
-                                                event.preventDefault()
-                                                handleCellPaste(rowIndex, columnIndex, text)
-                                              }
-                                            }}
-                                            className={`${getWorkspaceInputClass()} min-h-[42px] px-3 py-2 text-[10px] leading-4`}
-                                          />
-                                        ) : (
-                                          <input
-                                            value={row[field.name] || ''}
-                                            onChange={(event) => updateDraftCell(rowIndex, field.name, event.target.value)}
-                                            onPaste={(event) => {
-                                              const text = event.clipboardData.getData('text')
-                                              if (text.includes('\n') || text.includes('\t')) {
-                                                event.preventDefault()
-                                                handleCellPaste(rowIndex, columnIndex, text)
-                                              }
-                                            }}
-                                            className={`${getWorkspaceInputClass()} h-[42px] px-3 py-2 text-[10px] leading-4`}
-                                          />
-                                        )}
-                                        {(field.validation_rules || []).length > 0 && (
-                                          <p className="mt-1 px-1 text-[8px] font-semibold text-slate-500">
-                                            {(field.validation_rules || [])[0]}
-                                          </p>
-                                        )}
-                                      </td>
-                                    ))}
-                                    <td className="px-3 py-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => removeDraftRow(rowIndex)}
-                                        disabled={draftRows.length === 1}
-                                        className="rounded-lg border border-white/10 bg-black/20 p-2 text-slate-500 transition-colors hover:border-rose-500/30 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-40"
-                                      >
-                                        <Trash2 size={12} />
-                                      </button>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      )}
-                    </WorkspaceSectionCard>
-
-                    <WorkspaceSectionCard>
-                      <div className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                          <WorkspacePanelTitle>Simulation</WorkspacePanelTitle>
-                          <WorkspacePanelSubtitle>Normalized rows, row selection, and final commit set.</WorkspacePanelSubtitle>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => previewMutation.mutate()}
-                          disabled={previewMutation.isPending || schemaQuery.isLoading}
-                          className="inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-4 py-2 text-[10px] font-black text-blue-300 transition-colors hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <AlertCircle size={12} />
-                          {previewMutation.isPending ? 'Validating...' : 'Validate Preview'}
-                        </button>
+                  <WorkspaceSectionCard>
+                    <WorkspacePanelTitle>Validation</WorkspacePanelTitle>
+                    <WorkspacePanelSubtitle>Preview runs before commit and invalid rows stay out of the import set.</WorkspacePanelSubtitle>
+                    <div className="mt-4 grid grid-cols-4 gap-2">
+                      <div className="rounded-lg border border-white/5 bg-black/20 px-2 py-2">
+                        <p className="text-[8px] font-black uppercase tracking-[0.1em] text-slate-500">Rows</p>
+                        <p className="text-sm font-black text-white">{preview?.total_rows ?? nonFileRows.length}</p>
                       </div>
-
-                      {!preview && (
-                        <div className="mt-4">
-                          <WorkspaceEmptyState
-                            compact
-                            icon={<CheckSquare size={18} />}
-                            title="Preview will appear here"
-                            description="Run validation to inspect normalized rows, errors, and the exact row subset that will be committed."
-                          />
+                      <div className="rounded-lg border border-emerald-500/10 bg-emerald-500/5 px-2 py-2">
+                        <p className="text-[8px] font-black uppercase tracking-[0.1em] text-emerald-400">Valid</p>
+                        <p className="text-sm font-black text-emerald-300">{preview?.valid_rows ?? 0}</p>
+                      </div>
+                      <div className="rounded-lg border border-rose-500/10 bg-rose-500/5 px-2 py-2">
+                        <p className="text-[8px] font-black uppercase tracking-[0.1em] text-rose-400">Invalid</p>
+                        <p className="text-sm font-black text-rose-300">{preview?.invalid_rows ?? 0}</p>
+                      </div>
+                      <div className="rounded-lg border border-blue-500/10 bg-blue-500/5 px-2 py-2">
+                        <p className="text-[8px] font-black uppercase tracking-[0.1em] text-blue-400">Select</p>
+                        <p className="text-sm font-black text-blue-300">{selectedImportCount}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <WorkspaceInfoTooltip
+                        label={<span>{previewErrorCount} error{previewErrorCount === 1 ? '' : 's'} to fix</span>}
+                        content={
+                          previewErrors.length > 0
+                            ? previewErrors.map((error) => (
+                                <div key={error} className="rounded-lg border border-rose-500/10 bg-rose-500/5 px-3 py-2">
+                                  {error}
+                                </div>
+                              ))
+                            : <p>No validation errors right now.</p>
+                        }
+                      />
+                      <WorkspacePanelHint>
+                        Required: {requiredFieldNames.map((fieldName) => fieldMap.get(fieldName)?.label || fieldName).join(', ')}
+                      </WorkspacePanelHint>
+                    </div>
+                    
+                    <div className="mt-4 max-h-48 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                      {previewErrors.slice(0, 12).map((error) => (
+                        <div key={error} className="rounded-lg border border-rose-500/10 bg-rose-500/5 px-3 py-2 text-[9px] font-semibold text-rose-200">
+                          {error}
+                        </div>
+                      ))}
+                      {previewErrors.length === 0 && (
+                        <div className="rounded-lg border border-white/5 bg-black/20 px-3 py-3 text-[9px] font-semibold text-slate-500">
+                          Validate the import set to see row-level issues and the normalized preview.
                         </div>
                       )}
-
-                      {preview && (
-                        <div className="mt-4 space-y-4">
-                          <div className="overflow-x-auto rounded-lg border border-white/10">
-                            <table className="min-w-full divide-y divide-white/10 bg-black/20">
-                              <thead className="bg-slate-950/90">
-                                <tr>
-                                  <th className="px-3 py-2 text-center text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Add</th>
-                                  <th className="px-3 py-2 text-center text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Row</th>
-                                  <th className="px-3 py-2 text-center text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Status</th>
-                                  {activeColumns.map((field) => (
-                                    <th key={`preview-${field.name}`} className="min-w-[160px] px-3 py-2 text-center text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
-                                      {field.label}
-                                    </th>
-                                  ))}
-                                  <th className="min-w-[260px] px-3 py-2 text-center text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Errors</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-white/5">
-                                {preview.results.map((result) => {
-                                  const selected = selectedPreviewRows.includes(result.row)
-                                  return (
-                                    <tr key={`preview-row-${result.row}`} className={result.status === 'INVALID' ? 'bg-rose-500/[0.03]' : ''}>
-                                      <td className="px-3 py-2 align-middle text-center">
-                                        <input
-                                          type="checkbox"
-                                          checked={selected}
-                                          disabled={result.status !== 'VALID'}
-                                          onChange={() => togglePreviewRow(result.row)}
-                                        />
-                                      </td>
-                                      <td className="px-3 py-2 align-middle text-center text-[10px] font-black text-slate-500">{result.row}</td>
-                                      <td className="px-3 py-2 align-middle text-center">
-                                        <WorkspaceSectionBadge tone={result.status === 'VALID' ? 'emerald' : 'rose'}>
-                                          {result.status}
-                                        </WorkspaceSectionBadge>
-                                      </td>
-                                      {activeColumns.map((field) => (
-                                      <td key={`preview-cell-${result.row}-${field.name}`} className="px-3 py-2 align-middle text-center text-[10px] font-semibold text-slate-200">
-                                        {stringifyPreviewValue(result.normalized[field.name] ?? result.source[field.name])}
-                                      </td>
-                                    ))}
-                                      <td className="px-3 py-2 align-middle text-center text-[10px] font-semibold text-rose-200">
-                                        {result.errors.length > 0 ? (
-                                          <div className="space-y-1">
-                                            {result.errors.map((error) => (
-                                              <p key={`${result.row}-${error}`} className="rounded-lg border border-rose-500/10 bg-rose-500/5 px-2 py-1">
-                                                {error}
-                                              </p>
-                                            ))}
-                                          </div>
-                                        ) : '—'}
-                                      </td>
-                                    </tr>
-                                  )
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      )}
-                    </WorkspaceSectionCard>
-                  </div>
-                )}
-              />
+                    </div>
+                  </WorkspaceSectionCard>
+                </div>
+              </div>
             </div>
 
             <WorkspaceModalFooter
