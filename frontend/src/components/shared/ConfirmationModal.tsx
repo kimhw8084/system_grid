@@ -1,7 +1,6 @@
 import React from 'react'
-import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle, X, Check, Trash2, HelpCircle } from 'lucide-react'
+import { AlertTriangle, Check, Trash2, HelpCircle } from 'lucide-react'
+import { WorkspaceModal } from './WorkspaceModal'
 
 interface ConfirmationModalProps {
   isOpen: boolean
@@ -24,8 +23,6 @@ export const ConfirmationModal = ({
   cancelText = 'Cancel',
   variant = 'info'
 }: ConfirmationModalProps) => {
-  if (!isOpen) return null
-
   const getVariantIcon = () => {
     switch (variant) {
       case 'danger': return <Trash2 size={24} className="text-rose-500" />
@@ -37,60 +34,45 @@ export const ConfirmationModal = ({
 
   const getVariantColor = () => {
     switch (variant) {
-      case 'danger': return 'bg-rose-600 shadow-rose-500/20'
-      case 'warning': return 'bg-amber-600 shadow-amber-500/20'
-      case 'success': return 'bg-emerald-600 shadow-emerald-500/20'
-      default: return 'bg-blue-600 shadow-blue-500/20'
+      case 'danger': return 'bg-rose-600 hover:bg-rose-500 shadow-rose-500/20'
+      case 'warning': return 'bg-amber-600 hover:bg-amber-500 shadow-amber-500/20'
+      case 'success': return 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'
+      default: return 'bg-blue-600 hover:bg-blue-500 shadow-blue-500/20'
     }
   }
 
-  const getVariantBorder = () => {
-    switch (variant) {
-      case 'danger': return 'border-rose-500/30'
-      case 'warning': return 'border-amber-500/30'
-      case 'success': return 'border-emerald-500/30'
-      default: return 'border-blue-500/30'
-    }
-  }
-
-  const modal = (
-    <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6">
-      <motion.div 
-        initial={{ scale: 0.95, opacity: 0 }} 
-        animate={{ scale: 1, opacity: 1 }} 
-        exit={{ scale: 0.95, opacity: 0 }}
-        className={`glass-panel w-[400px] p-10 rounded-lg border ${getVariantBorder()} shadow-[0_0_80px_rgba(244,63,94,0.05)] relative overflow-hidden`}
-      >
-        <div className="flex items-center space-x-4">
-          <div className="p-3 bg-white/5 rounded-lg">
-            {getVariantIcon()}
-          </div>
-          <h2 className="text-xl font-black uppercase tracking-tighter text-white">
-            {title}
-          </h2>
-        </div>
-        
-        <p className="text-xs font-bold text-slate-400 leading-relaxed uppercase tracking-wider">
-          {message}
-        </p>
-
-        <div className="flex space-x-3 pt-4">
+  return (
+    <WorkspaceModal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="compact"
+      title={title}
+      subtitle={message}
+      icon={getVariantIcon()}
+      footerRight={(
+        <>
           <button 
+            type="button"
             onClick={onClose} 
-            className="flex-1 py-4 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors"
+            className="rounded-lg border border-white/10 bg-black/20 px-4 py-2 text-[10px] font-black uppercase text-slate-500 transition-all hover:text-white"
           >
             {cancelText}
           </button>
           <button
+            type="button"
             onClick={() => { onConfirm(); onClose(); }}
-            className={`flex-1 py-4 px-6 ${getVariantColor()} text-white rounded-lg text-[10px] font-black uppercase shadow-lg active:scale-95 transition-all`}
+            className={`rounded-lg px-6 py-2 ${getVariantColor()} text-[10px] font-black uppercase text-white shadow-lg transition-all active:scale-95`}
           >
             {confirmText}
           </button>
-        </div>
-      </motion.div>
-    </div>
+        </>
+      )}
+    >
+      <div className="py-4">
+        <p className="text-[11px] font-bold leading-relaxed text-slate-400">
+          Please confirm you want to proceed with this action. This operation may be irreversible depending on the context.
+        </p>
+      </div>
+    </WorkspaceModal>
   )
-
-  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }

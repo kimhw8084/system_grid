@@ -1,14 +1,13 @@
 import React, { useState, useRef } from "react"
-import { createPortal } from "react-dom"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { 
-  Upload, Check, X, AlertCircle, FileText, Download, 
-  RefreshCcw, Database, Terminal, ChevronRight, Layout, Info,
-  Clipboard, FileUp, Copy, Trash2, CheckCircle2
+  Upload, Check, X, AlertCircle, RefreshCcw, Database, Terminal, Layout,
+  Clipboard, FileUp, Trash2, CheckCircle2, Download
 } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
 import { apiFetch } from "../../api/apiClient"
 import toast from "react-hot-toast"
+import { WorkspaceModal } from "./WorkspaceModal"
+import { motion } from "framer-motion"
 
 interface BulkImportModalProps {
   isOpen: boolean
@@ -109,8 +108,6 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
   const invalidRows = auditResults?.results?.filter((r: any) => r.status === "INVALID") || []
   const selectedRowsData = validRows.filter((r: any) => selectedRowIndices.has(r.row)).map((r: any) => r.data)
 
-  if (!isOpen) return null
-
   const toggleRowSelection = (rowIdx: number) => {
     const next = new Set(selectedRowIndices)
     if (next.has(rowIdx)) next.delete(rowIdx)
@@ -118,338 +115,314 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
     setSelectedRowIndices(next)
   }
 
-  const modal = (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-[3250] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-4">
-        <motion.div 
-          initial={{ scale: 0.98, opacity: 0, y: 10 }} 
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.98, opacity: 0, y: 10 }}
-          className="glass-panel w-full max-w-6xl h-[90vh] overflow-hidden flex flex-col rounded-lg border border-white/10 shadow-2xl bg-[#0f172a]/95"
+  return (
+    <WorkspaceModal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="wide"
+      title="Data Ingestion Pipeline"
+      subtitle={(
+        <div className="flex items-center gap-4">
+          <p className="flex items-center gap-1.5 font-bold uppercase tracking-widest text-slate-500">
+            <Layout size={10} className="text-blue-500" /> Matrix: <span className="text-white">{displayName}</span>
+          </p>
+          <p className="flex items-center gap-1.5 font-bold uppercase tracking-widest text-slate-500">
+            <Terminal size={10} className="text-blue-500" /> Table: <span className="text-white">{tableName}</span>
+          </p>
+        </div>
+      )}
+      icon={<Database size={24} />}
+      footerLeft={(
+        <button 
+          type="button"
+          onClick={reset}
+          className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/5 px-4 py-2 text-[9px] font-bold uppercase tracking-widest text-slate-500 transition-all hover:bg-white/10 hover:text-white"
         >
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/5 p-6 bg-white/[0.02]">
-            <div className="flex items-center space-x-5">
-               <div className="p-3 bg-blue-600 rounded-lg text-white shadow-xl shadow-blue-500/20">
-                  <Database size={24} />
-               </div>
-               <div>
-                  <h2 className="text-xl font-bold uppercase text-white tracking-tight leading-none">
-                    Data Ingestion <span className="text-blue-500">Pipeline</span>
-                  </h2>
-                  <div className="flex items-center gap-4 mt-2">
-                    <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest flex items-center gap-1.5">
-                      <Layout size={10} className="text-blue-500" /> Matrix: <span className="text-white">{displayName}</span>
-                    </p>
-                    <p className="text-[9px] text-slate-500 uppercase font-bold tracking-widest flex items-center gap-1.5">
-                      <Terminal size={10} className="text-blue-500" /> Table: <span className="text-white">{tableName}</span>
-                    </p>
-                  </div>
-               </div>
-            </div>
+          {step === 'upload' ? <X size={14} /> : <RefreshCcw size={14} />}
+          {step === 'upload' ? 'Abort' : 'Restart'}
+        </button>
+      )}
+      footerRight={(
+        <div className="flex items-center gap-3">
+          {step === 'upload' && (
             <button 
-              onClick={onClose} 
-              className="text-slate-500 hover:text-rose-500 transition-all p-2 hover:bg-white/5 rounded-lg"
+              type="button"
+              onClick={() => auditMutation.mutate()}
+              disabled={(uploadMode === 'file' ? !file : !pastedData.trim()) || auditMutation.isPending}
+              className="flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white shadow-xl shadow-blue-500/20 transition-all hover:bg-blue-500 disabled:opacity-30"
             >
-              <X size={24}/>
+              {auditMutation.isPending ? <RefreshCcw className="animate-spin" size={14} /> : <Terminal size={14} />}
+              Initiate Audit
             </button>
-          </div>
+          )}
 
-          {/* Stepper */}
-          <div className="flex items-center justify-center gap-10 py-4 border-b border-white/5 bg-white/[0.01] shrink-0">
-             {[
-               { id: 'upload', icon: Upload, label: 'Source' },
-               { id: 'audit', icon: Terminal, label: 'Audit' },
-               { id: 'confirm', icon: Check, label: 'Ingest' }
-             ].map((s, i) => (
-               <React.Fragment key={s.id}>
-                 <div className={`flex items-center gap-3 transition-all ${step === s.id ? 'text-blue-400' : 'text-slate-600'}`}>
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all ${step === s.id ? 'border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/10' : 'border-white/5 bg-black/20'}`}>
-                       <s.icon size={14} />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[7px] font-bold text-slate-600 uppercase tracking-widest">Step 0{i+1}</span>
-                      <span className="text-[9px] font-bold uppercase tracking-widest">{s.label}</span>
-                    </div>
-                 </div>
-                 {i < 2 && <div className="h-px w-12 bg-white/5" />}
-               </React.Fragment>
-             ))}
-          </div>
-
-          {/* Body */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-black/20">
-            {step === 'upload' && (
-              <div className="h-full flex flex-col space-y-6">
-                 <div className="flex flex-col items-center text-center space-y-4">
-                    <h3 className="text-lg font-bold uppercase text-white tracking-widest">Ingestion Method</h3>
-                    
-                    <div className="flex bg-black/40 p-1 rounded-lg border border-white/5 w-full max-w-lg">
-                      <button 
-                        onClick={() => setUploadMode('file')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold uppercase text-[9px] tracking-widest transition-all ${uploadMode === 'file' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
-                      >
-                        <FileUp size={14} /> File Upload
-                      </button>
-                      <button 
-                        onClick={() => setUploadMode('paste')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold uppercase text-[9px] tracking-widest transition-all ${uploadMode === 'paste' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
-                      >
-                        <Clipboard size={14} /> Clipboard
-                      </button>
-                    </div>
-                 </div>
-
-                 <div className="flex-1 flex items-center justify-center">
-                    {uploadMode === 'file' ? (
-                      <div className="w-full max-w-xl space-y-5">
-                        <div 
-                          onClick={() => fileInputRef.current?.click()}
-                          className="relative block w-full aspect-[21/9] border-2 border-dashed border-white/5 rounded-lg hover:border-blue-500/30 hover:bg-blue-500/5 transition-all cursor-pointer group"
-                        >
-                           <input 
-                              type="file" 
-                              ref={fileInputRef}
-                              className="hidden" 
-                              accept=".csv,.xlsx,.xls" 
-                              onChange={handleFileChange} 
-                           />
-                           <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4">
-                              {file ? (
-                                 <motion.div 
-                                    initial={{ scale: 0.9, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    className="flex flex-col items-center gap-3"
-                                 >
-                                    <div className="p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
-                                      <Check className="text-emerald-500" size={32} />
-                                    </div>
-                                    <div className="text-center">
-                                      <span className="text-sm font-bold uppercase text-white block truncate max-w-[300px]">{file.name}</span>
-                                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1 block">{(file.size / 1024).toFixed(1)} KB • {file.type || 'Data'}</span>
-                                    </div>
-                                    <button 
-                                      onClick={(e) => { e.stopPropagation(); setFile(null); }}
-                                      className="text-[8px] font-bold text-rose-500 uppercase hover:underline"
-                                    >
-                                      Remove
-                                    </button>
-                                 </motion.div>
-                              ) : (
-                                 <>
-                                    <div className="p-4 bg-blue-500/5 rounded-lg border border-blue-500/10 group-hover:scale-105 transition-transform">
-                                      <Upload className="text-blue-500" size={36} />
-                                    </div>
-                                    <div className="text-center space-y-1">
-                                      <span className="text-sm font-bold uppercase text-slate-400 group-hover:text-white transition-colors block">Browse Vector Source</span>
-                                      <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest block">XLSX, CSV (UTF-8)</span>
-                                    </div>
-                                 </>
-                              )}
-                           </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="w-full h-full max-w-4xl flex flex-col space-y-3">
-                        <div className="flex justify-between items-center px-1">
-                          <span className="text-[9px] font-bold uppercase text-slate-500 tracking-widest flex items-center gap-2">
-                            <Copy size={12} /> Paste CSV Data
-                          </span>
-                          {pastedData && (
-                            <button 
-                              onClick={() => setPastedData("")}
-                              className="text-[9px] font-bold text-rose-500 uppercase flex items-center gap-1.5 hover:bg-rose-500/5 px-2 py-1 rounded-lg transition-all"
-                            >
-                              <Trash2 size={12} /> Clear
-                            </button>
-                          )}
-                        </div>
-                        <textarea 
-                          value={pastedData}
-                          onChange={(e) => setPastedData(e.target.value)}
-                          placeholder="Hostname, IP, System..."
-                          className="flex-1 w-full bg-black/40 border border-white/5 rounded-lg p-5 font-mono text-[11px] text-blue-400 focus:border-blue-500/30 outline-none transition-all resize-none min-h-[260px]"
-                        />
-                      </div>
-                    )}
-                 </div>
-
-                 <div className="flex justify-center items-center gap-4 border-t border-white/5 pt-6 shrink-0">
-                    <button 
-                        onClick={handleDownloadTemplate}
-                        className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg font-bold uppercase text-[9px] tracking-widest transition-all border border-white/5"
-                    >
-                        <Download size={14} className="text-blue-500" /> Download Raw Template
-                    </button>
-                    <button 
-                        onClick={handleDownloadSnapshot}
-                        className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg font-bold uppercase text-[9px] tracking-widest transition-all border border-white/5"
-                    >
-                        <Download size={14} className="text-emerald-500" /> Export Snapshot
-                    </button>
-                 </div>
+          {step === 'audit' && (
+            <button 
+              type="button"
+              onClick={() => executeMutation.mutate(selectedRowsData)}
+              disabled={selectedRowIndices.size === 0 || executeMutation.isPending}
+              className="flex items-center gap-2 rounded-lg bg-emerald-600 px-6 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white shadow-xl shadow-emerald-500/20 transition-all hover:bg-emerald-700 disabled:opacity-30"
+            >
+              {executeMutation.isPending ? <RefreshCcw className="animate-spin" size={14} /> : <Database size={14} />}
+              Commit {selectedRowIndices.size} Vectors
+            </button>
+          )}
+        </div>
+      )}
+    >
+      <div className="flex flex-col space-y-6">
+        {/* Stepper */}
+        <div className="flex items-center justify-center gap-10 py-4 border-b border-white/5">
+          {[
+            { id: 'upload', icon: Upload, label: 'Source' },
+            { id: 'audit', icon: Terminal, label: 'Audit' },
+            { id: 'confirm', icon: Check, label: 'Ingest' }
+          ].map((s, i) => (
+            <React.Fragment key={s.id}>
+              <div className={`flex items-center gap-3 transition-all ${step === s.id ? 'text-blue-400' : 'text-slate-600'}`}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all ${step === s.id ? 'border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/10' : 'border-white/5 bg-black/20'}`}>
+                  <s.icon size={14} />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[7px] font-bold text-slate-600 uppercase tracking-widest">Step 0{i+1}</span>
+                  <span className="text-[9px] font-bold uppercase tracking-widest">{s.label}</span>
+                </div>
               </div>
-            )}
+              {i < 2 && <div className="h-px w-12 bg-white/5" />}
+            </React.Fragment>
+          ))}
+        </div>
 
-            {step === 'audit' && auditResults && (
-              <div className="space-y-6">
-                 <div className="grid grid-cols-4 gap-4 shrink-0">
-                    {[
-                      { label: 'Scanned', val: auditResults.total_rows, color: 'text-white', icon: Database, bg: 'bg-white/5' },
-                      { label: 'Valid', val: auditResults.valid_rows, color: 'text-emerald-400', icon: Check, bg: 'bg-emerald-500/5' },
-                      { label: 'Logic Error', val: auditResults.invalid_rows, color: 'text-rose-400', icon: X, bg: 'bg-rose-500/5' },
-                      { label: 'Violations', val: auditResults.total_errors, color: 'text-amber-500', icon: AlertCircle, bg: 'bg-amber-500/5' }
-                    ].map(s => (
-                      <div key={s.label} className={`p-4 ${s.bg} border border-white/5 rounded-lg flex flex-col items-center gap-1 shadow-lg`}>
-                         <s.icon size={16} className={s.color} />
-                         <span className={`text-xl font-bold ${s.color}`}>{s.val}</span>
-                         <span className="text-[7px] font-bold uppercase text-slate-500 tracking-widest">{s.label}</span>
-                      </div>
-                    ))}
-                 </div>
-
-                 {/* Valid Records Section */}
-                 <div className="space-y-3">
-                    <div className="flex justify-between items-center px-1">
-                      <h4 className="text-[10px] font-bold uppercase text-emerald-400 tracking-widest flex items-center gap-2">
-                         <CheckCircle2 size={14} /> Valid Neural Vectors ({validRows.length})
-                      </h4>
-                      <span className="text-[8px] font-bold text-slate-600 uppercase">Selected: {selectedRowIndices.size}</span>
-                    </div>
-
-                    <div className="bg-black/40 border border-white/5 rounded-lg overflow-hidden shadow-xl">
-                       <div className="max-h-[30vh] overflow-y-auto custom-scrollbar">
-                          <table className="w-full text-left border-collapse">
-                             <thead className="sticky top-0 bg-[#0d0e12] z-10">
-                                <tr className="text-[8px] font-bold uppercase text-slate-500 tracking-widest border-b border-white/5">
-                                   <th className="p-3 w-10 text-center">
-                                      <input 
-                                        type="checkbox" 
-                                        checked={selectedRowIndices.size === validRows.length && validRows.length > 0} 
-                                        onChange={() => {
-                                          if (selectedRowIndices.size === validRows.length) setSelectedRowIndices(new Set())
-                                          else setSelectedRowIndices(new Set(validRows.map((r: any) => r.row)))
-                                        }}
-                                        className="rounded border-white/20 bg-slate-900" 
-                                      />
-                                   </th>
-                                   <th className="p-3">Index</th>
-                                   {validRows.length > 0 && Object.keys(validRows[0].data).slice(0, 5).map(k => (
-                                     <th key={k} className="p-3 uppercase">{k.replace('_', ' ')}</th>
-                                   ))}
-                                   <th className="p-3">...</th>
-                                </tr>
-                             </thead>
-                             <tbody>
-                                {validRows.map((r: any, i: number) => (
-                                   <tr key={i} className={`border-b border-white/5 hover:bg-white/[0.02] transition-colors ${selectedRowIndices.has(r.row) ? 'bg-blue-500/5' : ''}`}>
-                                      <td className="p-3 text-center">
-                                         <input 
-                                          type="checkbox" 
-                                          checked={selectedRowIndices.has(r.row)} 
-                                          onChange={() => toggleRowSelection(r.row)}
-                                          className="rounded border-white/20 bg-slate-900" 
-                                         />
-                                      </td>
-                                      <td className="p-3 text-[10px] font-mono text-slate-500">#{r.row.toString().padStart(4, '0')}</td>
-                                      {Object.values(r.data).slice(0, 5).map((v: any, j: number) => (
-                                        <td key={j} className="p-3 text-[10px] font-bold text-slate-300 truncate max-w-[150px]">{String(v)}</td>
-                                      ))}
-                                      <td className="p-3 text-slate-600">...</td>
-                                   </tr>
-                                ))}
-                                {validRows.length === 0 && (
-                                  <tr><td colSpan={8} className="p-10 text-center text-slate-600 font-bold uppercase tracking-widest">No valid records identified</td></tr>
-                                )}
-                             </tbody>
-                          </table>
-                       </div>
-                    </div>
-                 </div>
-
-                 {/* Invalid Records Section */}
-                 {(invalidRows.length > 0) && (
-                   <div className="space-y-3">
-                      <div className="flex justify-between items-center px-1">
-                        <h4 className="text-[10px] font-bold uppercase text-rose-400 tracking-widest flex items-center gap-2">
-                           <AlertCircle size={14} /> Logic Errors & Violations ({invalidRows.length})
-                        </h4>
-                      </div>
-
-                      <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg overflow-hidden shadow-xl">
-                        <div className="max-h-[25vh] overflow-y-auto custom-scrollbar">
-                            <table className="w-full text-left border-collapse">
-                              <thead className="sticky top-0 bg-[#1a0a0c] z-10">
-                                  <tr className="text-[8px] font-bold uppercase text-rose-300 tracking-widest border-b border-white/5">
-                                    <th className="p-3">Index</th>
-                                    <th className="p-3">Diagnostic Findings</th>
-                                  </tr>
-                              </thead>
-                              <tbody>
-                                  {invalidRows.map((r: any, i: number) => (
-                                    <tr key={i} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors bg-rose-500/5">
-                                        <td className="p-3 text-[10px] font-mono text-rose-400/60">#{r.row.toString().padStart(4, '0')}</td>
-                                        <td className="p-3">
-                                          <div className="flex flex-col gap-1">
-                                              {r.errors.map((err: string, j: number) => (
-                                                <div key={j} className="flex items-center gap-2 text-rose-400">
-                                                    <div className="w-1 h-1 rounded-full bg-rose-500" />
-                                                    <span className="text-[9px] font-bold uppercase">{err}</span>
-                                                </div>
-                                              ))}
-                                          </div>
-                                        </td>
-                                    </tr>
-                                  ))}
-                              </tbody>
-                            </table>
-                        </div>
-                      </div>
-                   </div>
-                 )}
+        {step === 'upload' && (
+          <div className="space-y-6">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <h3 className="text-lg font-bold uppercase text-white tracking-widest">Ingestion Method</h3>
+              <div className="flex bg-black/40 p-1 rounded-lg border border-white/5 w-full max-w-lg">
+                <button 
+                  type="button"
+                  onClick={() => setUploadMode('file')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold uppercase text-[9px] tracking-widest transition-all ${uploadMode === 'file' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                >
+                  <FileUp size={14} /> File Upload
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setUploadMode('paste')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold uppercase text-[9px] tracking-widest transition-all ${uploadMode === 'paste' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                >
+                  <Clipboard size={14} /> Clipboard
+                </button>
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Footer Actions */}
-          <div className="border-t border-white/5 flex justify-between items-center bg-white/[0.01] p-4 px-6 rounded-b-2xl shrink-0">
-             <button 
-                onClick={reset}
-                className="px-4 py-2 border border-white/5 text-slate-500 hover:text-white hover:bg-white/5 rounded-lg font-bold uppercase text-[9px] tracking-widest transition-all flex items-center gap-2"
-             >
-                {step === 'upload' ? <X size={14} /> : <RefreshCcw size={14} />}
-                {step === 'upload' ? 'Abort' : 'Restart'}
-             </button>
-
-             <div className="flex items-center gap-3">
-                {step === 'upload' && (
-                  <button 
-                     onClick={() => auditMutation.mutate()}
-                     disabled={(uploadMode === 'file' ? !file : !pastedData.trim()) || auditMutation.isPending}
-                     className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold uppercase text-[9px] tracking-widest shadow-xl shadow-blue-500/20 transition-all disabled:opacity-30 flex items-center gap-2"
+            <div className="flex items-center justify-center py-4">
+              {uploadMode === 'file' ? (
+                <div className="w-full max-w-xl">
+                  <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="relative block w-full aspect-[21/9] border-2 border-dashed border-white/10 rounded-lg hover:border-blue-500/30 hover:bg-blue-500/5 transition-all cursor-pointer group"
                   >
-                     {auditMutation.isPending ? <RefreshCcw className="animate-spin" size={14} /> : <Terminal size={14} />}
-                     Initiate Audit
-                  </button>
-                )}
+                    <input 
+                      type="file" 
+                      ref={fileInputRef}
+                      className="hidden" 
+                      accept=".csv,.xlsx,.xls" 
+                      onChange={handleFileChange} 
+                    />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4">
+                      {file ? (
+                        <motion.div 
+                          initial={{ scale: 0.9, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          className="flex flex-col items-center gap-3"
+                        >
+                          <div className="p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                            <Check className="text-emerald-500" size={32} />
+                          </div>
+                          <div className="text-center px-4">
+                            <span className="text-sm font-bold uppercase text-white block truncate max-w-[300px]">{file.name}</span>
+                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1 block">{(file.size / 1024).toFixed(1)} KB • {file.type || 'Data'}</span>
+                          </div>
+                          <button 
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setFile(null); }}
+                            className="text-[8px] font-bold text-rose-500 uppercase hover:underline"
+                          >
+                            Remove
+                          </button>
+                        </motion.div>
+                      ) : (
+                        <>
+                          <div className="p-4 bg-blue-500/5 rounded-lg border border-blue-500/10 group-hover:scale-105 transition-transform">
+                            <Upload className="text-blue-500" size={36} />
+                          </div>
+                          <div className="text-center space-y-1">
+                            <span className="text-sm font-bold uppercase text-slate-400 group-hover:text-white transition-colors block">Browse Vector Source</span>
+                            <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest block">XLSX, CSV (UTF-8)</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full max-w-4xl space-y-3">
+                  <div className="flex justify-between items-center px-1">
+                    <span className="text-[9px] font-bold uppercase text-slate-500 tracking-widest flex items-center gap-2">
+                      <Clipboard size={12} /> Paste CSV Data
+                    </span>
+                    {pastedData && (
+                      <button 
+                        type="button"
+                        onClick={() => setPastedData("")}
+                        className="text-[9px] font-bold text-rose-500 uppercase flex items-center gap-1.5 hover:bg-rose-500/5 px-2 py-1 rounded-lg transition-all"
+                      >
+                        <Trash2 size={12} /> Clear
+                      </button>
+                    )}
+                  </div>
+                  <textarea 
+                    value={pastedData}
+                    onChange={(e) => setPastedData(e.target.value)}
+                    placeholder="Hostname, IP, System..."
+                    className="w-full bg-black/40 border border-white/5 rounded-lg p-5 font-mono text-[11px] text-blue-400 focus:border-blue-500/30 outline-none transition-all resize-none min-h-[260px] custom-scrollbar"
+                  />
+                </div>
+              )}
+            </div>
 
-                {step === 'audit' && (
-                   <button 
-                      onClick={() => executeMutation.mutate(selectedRowsData)}
-                      disabled={selectedRowIndices.size === 0 || executeMutation.isPending}
-                      className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold uppercase text-[9px] tracking-widest shadow-xl shadow-emerald-500/20 transition-all disabled:opacity-30 flex items-center gap-2"
-                   >
-                      {executeMutation.isPending ? <RefreshCcw className="animate-spin" size={14} /> : <Database size={14} />}
-                      Commit {selectedRowIndices.size} Vectors
-                   </button>
-                )}
-             </div>
+            <div className="flex justify-center items-center gap-4 pt-4">
+              <button 
+                type="button"
+                onClick={handleDownloadTemplate}
+                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg font-bold uppercase text-[9px] tracking-widest transition-all border border-white/5"
+              >
+                <Download size={14} className="text-blue-500" /> Download Raw Template
+              </button>
+              <button 
+                type="button"
+                onClick={handleDownloadSnapshot}
+                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg font-bold uppercase text-[9px] tracking-widest transition-all border border-white/5"
+              >
+                <Download size={14} className="text-emerald-500" /> Export Snapshot
+              </button>
+            </div>
           </div>
-        </motion.div>
-      </div>
-    </AnimatePresence>
-  )
+        )}
 
-  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
+        {step === 'audit' && auditResults && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-4 gap-4">
+              {[
+                { label: 'Scanned', val: auditResults.total_rows, color: 'text-white', icon: Database, bg: 'bg-white/5' },
+                { label: 'Valid', val: auditResults.valid_rows, color: 'text-emerald-400', icon: Check, bg: 'bg-emerald-500/5' },
+                { label: 'Logic Error', val: auditResults.invalid_rows, color: 'text-rose-400', icon: X, bg: 'bg-rose-500/5' },
+                { label: 'Violations', val: auditResults.total_errors, color: 'text-amber-500', icon: AlertCircle, bg: 'bg-amber-500/5' }
+              ].map(s => (
+                <div key={s.label} className={`p-4 ${s.bg} border border-white/5 rounded-lg flex flex-col items-center gap-1 shadow-lg`}>
+                  <s.icon size={16} className={s.color} />
+                  <span className={`text-xl font-bold ${s.color}`}>{s.val}</span>
+                  <span className="text-[7px] font-bold uppercase text-slate-500 tracking-widest">{s.label}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-center px-1">
+                <h4 className="text-[10px] font-bold uppercase text-emerald-400 tracking-widest flex items-center gap-2">
+                  <CheckCircle2 size={14} /> Valid Neural Vectors ({validRows.length})
+                </h4>
+                <span className="text-[8px] font-bold text-slate-600 uppercase">Selected: {selectedRowIndices.size}</span>
+              </div>
+
+              <div className="overflow-hidden rounded-lg border border-white/5 bg-black/40 shadow-xl">
+                <div className="max-h-[30vh] overflow-y-auto custom-scrollbar">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="sticky top-0 bg-slate-900 z-10 border-b border-white/5">
+                      <tr className="text-[8px] font-bold uppercase text-slate-500 tracking-widest">
+                        <th className="p-3 w-10 text-center">
+                          <input 
+                            type="checkbox" 
+                            checked={selectedRowIndices.size === validRows.length && validRows.length > 0} 
+                            onChange={() => {
+                              if (selectedRowIndices.size === validRows.length) setSelectedRowIndices(new Set())
+                              else setSelectedRowIndices(new Set(validRows.map((r: any) => r.row)))
+                            }}
+                          />
+                        </th>
+                        <th className="p-3">Index</th>
+                        {validRows.length > 0 && Object.keys(validRows[0].data).slice(0, 5).map(k => (
+                          <th key={k} className="p-3 uppercase">{k.replace('_', ' ')}</th>
+                        ))}
+                        <th className="p-3">...</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {validRows.map((r: any, i: number) => (
+                        <tr key={i} className={`hover:bg-white/[0.02] transition-colors ${selectedRowIndices.has(r.row) ? 'bg-blue-500/5' : ''}`}>
+                          <td className="p-3 text-center">
+                            <input 
+                              type="checkbox" 
+                              checked={selectedRowIndices.has(r.row)} 
+                              onChange={() => toggleRowSelection(r.row)}
+                            />
+                          </td>
+                          <td className="p-3 text-[10px] font-mono text-slate-500">#{r.row.toString().padStart(4, '0')}</td>
+                          {Object.values(r.data).slice(0, 5).map((v: any, j: number) => (
+                            <td key={j} className="p-3 text-[10px] font-bold text-slate-300 truncate max-w-[150px]">{String(v)}</td>
+                          ))}
+                          <td className="p-3 text-slate-600">...</td>
+                        </tr>
+                      ))}
+                      {validRows.length === 0 && (
+                        <tr><td colSpan={8} className="p-10 text-center text-slate-600 font-bold uppercase tracking-widest">No valid records identified</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {invalidRows.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-[10px] font-bold uppercase text-rose-400 tracking-widest flex items-center gap-2 px-1">
+                  <AlertCircle size={14} /> Logic Errors & Violations ({invalidRows.length})
+                </h4>
+                <div className="overflow-hidden rounded-lg border border-rose-500/10 bg-rose-500/5 shadow-xl">
+                  <div className="max-h-[25vh] overflow-y-auto custom-scrollbar">
+                    <table className="w-full text-left border-collapse">
+                      <thead className="sticky top-0 bg-[#1a0a0c] z-10 border-b border-white/10">
+                        <tr className="text-[8px] font-bold uppercase text-rose-300 tracking-widest">
+                          <th className="p-3">Index</th>
+                          <th className="p-3">Diagnostic Findings</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {invalidRows.map((r: any, i: number) => (
+                          <tr key={i} className="bg-rose-500/5 hover:bg-rose-500/10 transition-colors">
+                            <td className="p-3 text-[10px] font-mono text-rose-400/60">#{r.row.toString().padStart(4, '0')}</td>
+                            <td className="p-3">
+                              <div className="flex flex-col gap-1">
+                                {r.errors.map((err: string, j: number) => (
+                                  <div key={j} className="flex items-center gap-2 text-rose-400">
+                                    <div className="w-1 h-1 rounded-full bg-rose-500" />
+                                    <span className="text-[9px] font-bold uppercase">{err}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </WorkspaceModal>
+  )
 }
 
