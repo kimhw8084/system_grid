@@ -572,7 +572,7 @@ export function OperationalImportModal({
               )}
             />
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8">
+            <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8">
               <WorkspaceValidationBanner
                 message={schemaQuery.error ? 'Import schema failed to load. Refresh the workspace and try again.' : undefined}
               />

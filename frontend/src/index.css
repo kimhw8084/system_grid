@@ -328,6 +328,10 @@
   background: linear-gradient(135deg, var(--accent-primary) 0%, #034EA2 100%);
 }
 
+.custom-scrollbar {
+  scrollbar-gutter: stable;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;

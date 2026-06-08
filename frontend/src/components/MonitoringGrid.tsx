@@ -2293,7 +2293,7 @@ export default function MonitoringGrid() {
                   style={bulkMenuStyle}
                   className="bulk-menu-container"
                 >
-                  <WorkspaceFloatingPanel kind="context" className="max-h-[560px] overflow-y-auto p-3">
+                  <WorkspaceFloatingPanel kind="context" className="max-h-[560px] overflow-y-auto custom-scrollbar p-3">
                   <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
                     <p className="text-[10px] font-semibold text-slate-400">Bulk actions</p>
                     <p className="pt-1 text-[12px] font-semibold text-slate-100">{selectedIds.length} monitors selected</p>
@@ -3124,7 +3124,7 @@ function BulkEditTableModal({ items, teams, operators, severities, notificationM
             </button>
           }
         />
-        <div className="flex-1 overflow-y-auto px-6 py-6 sm:px-8">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8">
           <div className="mb-4 rounded-lg border border-white/10 bg-black/20 px-4 py-3">
             <p className="text-[10px] font-semibold text-slate-400">Selected monitors</p>
             <p className="pt-1 text-[12px] font-semibold text-slate-100">{rows.length} rows</p>
