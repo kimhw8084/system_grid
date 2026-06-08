@@ -2867,69 +2867,81 @@ function CompareMonitorsModal({ items, onClose }: any) {
 
   const gridCols = items.length === 2 ? 'md:grid-cols-2' : items.length === 3 ? 'md:grid-cols-3' : items.length === 4 ? 'md:grid-cols-4' : 'md:grid-cols-5'
 
-  const modal = (
-    <div onClick={onClose} className={`fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('wide')}`}>
-      <motion.div onClick={(e) => e.stopPropagation()} initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('wide')} overflow-y-auto custom-scrollbar rounded-lg border border-slate-700 bg-[#020617] p-6`}>
-        <WorkspaceCompareShell
-          header={
-            <>
-              <div>
-                <h3 className="text-sm font-semibold text-slate-100">Compare monitors</h3>
+  return (
+    <WorkspaceModal
+      isOpen={true}
+      onClose={onClose}
+      size="wide"
+      title="Compare Monitors"
+      subtitle="Side-by-side analysis of configuration vectors."
+      icon={<GitCompare size={20} />}
+      footerRight={
+        <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
+      }
+    >
+      <WorkspaceCompareShell
+        header={
+          <div>
+            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Temporal Variance Analysis</p>
+            <p className="mt-1 text-[11px] text-slate-400">Comparing {items.length} selected monitoring states for semantic drift.</p>
+          </div>
+        }
+        body={
+          <div className={`grid gap-4 ${gridCols}`}>
+            {items.map((item: any) => (
+              <div key={item.id} className="rounded-lg border border-white/5 bg-black/40 p-5 shadow-inner">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-[9px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">ID {item.id}</span>
+                  <StatusPill value={item.severity} />
+                </div>
+                <h4 className="text-sm font-black text-white truncate mb-1">{item.title}</h4>
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest truncate">{item.device_name || 'No Target Asset'}</p>
+                
+                <div className="mt-6 space-y-2.5">
+                  {fields.map(f => {
+                    const val = f.getValue(item)
+                    const diffSet = diffMap[f.label]
+                    const colorIndex = diffSet ? diffSet.indexOf(val) : -1
+                    return (
+                      <CompareRow 
+                        key={f.label} 
+                        label={f.label} 
+                        value={val} 
+                        multiline={f.multiline} 
+                        colorIndex={colorIndex}
+                      />
+                    )
+                  })}
+                </div>
               </div>
-              <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18} /></button>
-            </>
-          }
-          body={<div className={`grid gap-4 ${gridCols}`}>
-          {items.map((item: any) => (
-            <div key={item.id} className="rounded-lg border border-slate-800 bg-slate-950 p-4">
-              <p className="text-[9px] font-semibold text-slate-500">ID {item.id} · {item.device_name || 'No asset'}</p>
-              <h4 className="pt-2 text-sm font-semibold text-slate-100 truncate">{item.title}</h4>
-              <div className="mt-3 space-y-2 text-[11px] text-slate-300">
-                {fields.map(f => {
-                  const val = f.getValue(item)
-                  const diffSet = diffMap[f.label]
-                  const colorIndex = diffSet ? diffSet.indexOf(val) : -1
-                  return (
-                    <CompareRow 
-                      key={f.label} 
-                      label={f.label} 
-                      value={val} 
-                      multiline={f.multiline} 
-                      colorIndex={colorIndex}
-                    />
-                  )
-                })}
-              </div>
-            </div>
-          ))}
-        </div>}
-        />
-      </motion.div>
-    </div>
+            ))}
+          </div>
+        }
+      />
+    </WorkspaceModal>
   )
-  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
 function CompareRow({ label, value, multiline = false, colorIndex = -1 }: { label: string; value: string; multiline?: boolean; colorIndex?: number }) {
   const isDiff = colorIndex !== -1
   
   const diffStyles = [
-    { border: 'border-amber-500/40', bg: 'bg-amber-500/5', text: 'text-amber-400', val: 'text-amber-200' },
-    { border: 'border-sky-500/40', bg: 'bg-sky-500/5', text: 'text-sky-400', val: 'text-sky-200' },
-    { border: 'border-emerald-500/40', bg: 'bg-emerald-500/5', text: 'text-emerald-400', val: 'text-emerald-200' },
-    { border: 'border-rose-500/40', bg: 'bg-rose-500/5', text: 'text-rose-400', val: 'text-rose-200' },
-    { border: 'border-purple-500/40', bg: 'bg-purple-500/5', text: 'text-purple-400', val: 'text-purple-200' },
+    { border: 'border-amber-500/30', bg: 'bg-amber-500/5', text: 'text-amber-400', val: 'text-amber-200' },
+    { border: 'border-sky-500/30', bg: 'bg-sky-500/5', text: 'text-sky-400', val: 'text-sky-200' },
+    { border: 'border-emerald-500/30', bg: 'bg-emerald-500/5', text: 'text-emerald-400', val: 'text-emerald-200' },
+    { border: 'border-rose-500/30', bg: 'bg-rose-500/5', text: 'text-rose-400', val: 'text-rose-200' },
+    { border: 'border-purple-500/30', bg: 'bg-purple-500/5', text: 'text-purple-400', val: 'text-purple-200' },
   ]
 
-  const style = isDiff ? diffStyles[colorIndex % diffStyles.length] : { border: 'border-slate-800', bg: 'bg-[#0b1220]', text: 'text-slate-500', val: 'text-slate-200' }
+  const style = isDiff ? diffStyles[colorIndex % diffStyles.length] : { border: 'border-white/5', bg: 'bg-black/20', text: 'text-slate-500', val: 'text-slate-300' }
 
   return (
-    <div className={`rounded-lg border px-3 py-2 ${style.border} ${style.bg} ${isDiff ? 'shadow-[0_0_15px_rgba(0,0,0,0.1)]' : ''} ${multiline ? '' : 'flex items-center justify-between gap-3'}`}>
+    <div className={`rounded-lg border px-3 py-2.5 transition-all ${style.border} ${style.bg} ${isDiff ? 'shadow-lg' : ''} ${multiline ? '' : 'flex items-center justify-between gap-3'}`}>
       <div className="flex items-center gap-2">
-        <p className={`text-[8px] font-semibold ${style.text}`}>{label}</p>
+        <p className={`text-[8px] font-black uppercase tracking-widest ${style.text}`}>{label}</p>
         {isDiff && <div className={`w-1 h-1 rounded-full ${style.text.replace('text-', 'bg-')} animate-pulse`} />}
       </div>
-      <p className={`pt-1 font-bold ${style.val} ${multiline ? 'leading-5' : 'text-right'}`}>{value}</p>
+      <p className={`pt-0.5 font-bold ${style.val} ${multiline ? 'leading-relaxed text-[11px] mt-1' : 'text-right text-[10px]'}`}>{value}</p>
     </div>
   )
 }
@@ -2941,72 +2953,108 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     useEscapeDismiss(onClose)
 
     if (isStatusOpen) {
-        const modal = (
-            <div onClick={onClose} className={`fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('compact')}`}>
-               <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('compact')} p-10 rounded-lg border border-blue-500/30 space-y-6`}>
-                  <h2 className="text-xl font-black uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
-                      <Tag size={24}/> <span>Set Status</span>
-                  </h2>
-                  <AppDropdown
-                    value={val}
-                    onChange={v => setVal(v)}
-                    options={STATUSES}
-                    placeholder="Select Status..."
-                  />
-                  <div className="flex space-x-3 pt-2">
-                     <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
-                     <button disabled={!val} onClick={() => onApply('status', val)} className="flex-1 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Apply</button>
-                  </div>
-               </motion.div>
+        return (
+          <WorkspaceModal
+            isOpen={true}
+            onClose={onClose}
+            size="compact"
+            title="Update Status"
+            subtitle="Apply a global status change to selection."
+            icon={<Tag size={20} />}
+            footerRight={
+              <div className="flex items-center gap-3">
+                <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
+                <ToolbarButton 
+                  disabled={!val} 
+                  onClick={() => onApply('status', val)} 
+                  variant="primary"
+                >
+                  Apply Status
+                </ToolbarButton>
+              </div>
+            }
+          >
+            <div className="p-2">
+              <AppDropdown
+                value={val}
+                onChange={v => setVal(v)}
+                options={STATUSES}
+                placeholder="Select Target Status..."
+                label="New Status"
+              />
             </div>
+          </WorkspaceModal>
         )
-        return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
     }
 
     if (isSeverityOpen) {
-        const modal = (
-            <div onClick={onClose} className={`fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('compact')}`}>
-               <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('compact')} p-10 rounded-lg border border-rose-500/30 space-y-6`}>
-                  <h2 className="text-xl font-black uppercase tracking-tighter text-rose-400 flex items-center space-x-3">
-                      <Shield size={24}/> <span>Set Severity</span>
-                  </h2>
-                  <AppDropdown
-                    value={val}
-                    onChange={v => setVal(v)}
-                    options={severities.map((s:any) => ({ value: s.value, label: s.label }))}
-                    placeholder="Select Severity..."
-                  />
-                  <div className="flex space-x-3 pt-2">
-                     <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
-                     <button disabled={!val} onClick={() => onApply('severity', val)} className="flex-1 py-3 bg-rose-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-rose-500/20 active:scale-95 transition-all">Apply</button>
-                  </div>
-               </motion.div>
+        return (
+          <WorkspaceModal
+            isOpen={true}
+            onClose={onClose}
+            size="compact"
+            title="Update Severity"
+            subtitle="Recalibrate alert priorities for selection."
+            icon={<Shield size={20} />}
+            footerRight={
+              <div className="flex items-center gap-3">
+                <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
+                <ToolbarButton 
+                  disabled={!val} 
+                  onClick={() => onApply('severity', val)} 
+                  variant="danger"
+                >
+                  Apply Severity
+                </ToolbarButton>
+              </div>
+            }
+          >
+            <div className="p-2">
+              <AppDropdown
+                value={val}
+                onChange={v => setVal(v)}
+                options={severities.map((s:any) => ({ value: s.value, label: s.label }))}
+                placeholder="Select Severity..."
+                label="Target Severity"
+              />
             </div>
+          </WorkspaceModal>
         )
-        return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
     }
 
     if (isNotifyOpen) {
-        const modal = (
-            <div onClick={onClose} className={`fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('compact')}`}>
-               <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('compact')} p-10 rounded-lg border border-amber-500/30 space-y-6`}>
-                  <h2 className="text-xl font-black uppercase tracking-tighter text-amber-400 flex items-center space-x-3">
-                      <Bell size={24}/> <span>Set Notification</span>
-                  </h2>
-                  <AppDropdown
-                    value={val}
-                    onChange={v => setVal(v)}
-                    options={notificationMethods.map((m:any) => ({ value: m.value, label: m.label }))}
-                    placeholder="Select Method..."
-                  />
-                  <div className="flex space-x-3 pt-2">
-                     <button onClick={onClose} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
-                     <button disabled={!val} onClick={() => onApply('notification_method', val)} className="flex-1 py-3 bg-amber-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-black uppercase shadow-lg shadow-amber-500/20 active:scale-95 transition-all">Apply</button>
-                  </div>
-               </motion.div>
+        return (
+          <WorkspaceModal
+            isOpen={true}
+            onClose={onClose}
+            size="compact"
+            title="Update Notification"
+            subtitle="Reroute notification paths for selection."
+            icon={<Bell size={20} />}
+            footerRight={
+              <div className="flex items-center gap-3">
+                <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
+                <ToolbarButton 
+                  disabled={!val} 
+                  onClick={() => onApply('notification_method', val)} 
+                  variant="primary"
+                >
+                  Apply Method
+                </ToolbarButton>
+              </div>
+            }
+          >
+            <div className="p-2">
+              <AppDropdown
+                value={val}
+                onChange={v => setVal(v)}
+                options={notificationMethods.map((m:any) => ({ value: m.value, label: m.label }))}
+                placeholder="Select Method..."
+                label="Notification Path"
+              />
             </div>
+          </WorkspaceModal>
         )
-        return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
     }
 
     return null;
@@ -3065,150 +3113,139 @@ function BulkEditTableModal({ items, teams, operators, severities, notificationM
     onError: (error: any) => showWorkspaceToast(error.message || 'Bulk edit failed', { type: 'error' }),
   })
 
-  const modal = (
-    <div onClick={onClose} className={`fixed inset-0 z-[3245] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('workspace')}`}>
-      <motion.div
-        onClick={(event) => event.stopPropagation()}
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        className={`glass-panel w-full overflow-hidden flex flex-col rounded-lg border-blue-500/20 shadow-[0_0_80px_rgba(37,99,235,0.08)] ${isMaximized ? 'max-w-none h-[calc(100vh-3rem)]' : getWorkspaceModalShellClass('workspace')}`}
-      >
-        <WorkspaceModalHeader
-          icon={<Edit2 size={20} />}
-          title="Bulk Edit Monitoring"
-          subtitle="Safe table-based edits for selected monitors."
-          closeControl={
-            <button onClick={onClose} className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500/90 text-transparent transition-all hover:text-rose-950" title="Close">
-              <X size={10} strokeWidth={3} />
-            </button>
-          }
-          maximizeControl={
-            <button onClick={() => setIsMaximized((current) => !current)} className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500/90 text-transparent transition-all hover:text-emerald-950" title={isMaximized ? 'Restore size' : 'Maximize'}>
-              {isMaximized ? <Minimize2 size={8} strokeWidth={3} /> : <Maximize2 size={8} strokeWidth={3} />}
-            </button>
-          }
-        />
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-6 sm:px-8">
-          <div className="mb-4 rounded-lg border border-white/10 bg-black/20 px-4 py-3">
-            <p className="text-[10px] font-semibold text-slate-400">Selected monitors</p>
-            <p className="pt-1 text-[12px] font-semibold text-slate-100">{rows.length} rows</p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <WorkspaceInfoTooltip
-                label={<span>Allowed team names</span>}
-                content={
-                  (teams || []).length > 0
-                    ? (teams || []).map((team: any) => (
-                        <div key={team.id} className="rounded-lg border border-white/5 bg-black/20 px-3 py-2">
-                          <p className="text-[10px] font-semibold text-slate-100">{team.name}</p>
-                          <p className="mt-1 text-[9px] font-semibold text-slate-500">{team.operators?.length || 0} members</p>
-                        </div>
-                      ))
-                    : <p>No teams available.</p>
-                }
-              />
-              <WorkspaceInfoTooltip
-                label={<span>Allowed owner user IDs</span>}
-                content={
-                  (operators || []).length > 0
-                    ? (operators as OperatorRecord[]).map((operator) => (
-                        <div key={operator.id} className="rounded-lg border border-white/5 bg-black/20 px-3 py-2">
-                          <p className="text-[10px] font-semibold text-slate-100">{operator.external_id || operator.username || String(operator.id)}</p>
-                          <p className="mt-1 text-[9px] font-semibold text-slate-500">{operator.full_name || operator.team || 'No team'}</p>
-                        </div>
-                      ))
-                    : <p>No operators available.</p>
-                }
-              />
-            </div>
-          </div>
-          <div className="overflow-x-auto rounded-lg border border-white/10 bg-black/20">
-            <table className="min-w-full divide-y divide-white/10">
-              <thead className="bg-slate-950/90">
-                <tr>
-                  <th className="px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Title</th>
-                  <th className="min-w-[160px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Status</th>
-                  <th className="min-w-[160px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Severity</th>
-                  <th className="min-w-[180px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Notification</th>
-                  <th className="min-w-[220px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Owner Team(s)</th>
-                  <th className="min-w-[240px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Owner User ID(s)</th>
-                  <th className="min-w-[130px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Check Interval</th>
-                  <th className="min-w-[130px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Alert Duration</th>
-                  <th className="min-w-[150px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Throttle</th>
-                  <th className="min-w-[120px] px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Active</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {rows.map((row: any) => (
-                  <tr key={row.id}>
-                    <td className="px-3 py-2 text-[10px] font-semibold text-slate-100">{row.title}</td>
-                    <td className="px-2 py-2"><AppDropdown value={row.status} onChange={(value) => updateRow(row.id, 'status', value)} options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))} placeholder="Status" /></td>
-                    <td className="px-2 py-2"><AppDropdown value={row.severity} onChange={(value) => updateRow(row.id, 'severity', value)} options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))} placeholder="Severity" /></td>
-                    <td className="px-2 py-2"><AppDropdown value={row.notification_method} onChange={(value) => updateRow(row.id, 'notification_method', value)} options={notificationMethods.map((method: any) => ({ value: method.value, label: method.label }))} placeholder="Notification" /></td>
-                    <td className="px-2 py-2"><input value={row.owner_team} onChange={(event) => updateRow(row.id, 'owner_team', event.target.value)} placeholder="Comma-separated team names" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] leading-4`} /></td>
-                    <td className="px-2 py-2"><input value={row.owner_user_ids} onChange={(event) => updateRow(row.id, 'owner_user_ids', event.target.value)} placeholder="Comma-separated user IDs" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] leading-4`} /></td>
-                    <td className="px-2 py-2"><input type="number" value={row.check_interval} min={CHECK_INTERVAL_MIN} max={CHECK_INTERVAL_MAX} onChange={(event) => updateRow(row.id, 'check_interval', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] leading-4 [appearance:textfield]`} /></td>
-                    <td className="px-2 py-2"><input type="number" value={row.alert_duration} min={ALERT_DURATION_MIN} max={ALERT_DURATION_MAX} onChange={(event) => updateRow(row.id, 'alert_duration', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] leading-4 [appearance:textfield]`} /></td>
-                    <td className="px-2 py-2"><input type="number" value={row.notification_throttle} min={NOTIFICATION_THROTTLE_MIN} max={NOTIFICATION_THROTTLE_MAX} onChange={(event) => updateRow(row.id, 'notification_throttle', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] leading-4 [appearance:textfield]`} /></td>
-                    <td className="px-3 py-2">
-                      <button
-                        type="button"
-                        onClick={() => updateRow(row.id, 'is_active', !row.is_active)}
-                        className={`rounded-lg border px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${row.is_active ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300' : 'border-white/10 bg-black/20 text-slate-400'}`}
-                      >
-                        {row.is_active ? 'Active' : 'Paused'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+  return (
+    <WorkspaceModal
+      isOpen={true}
+      onClose={onClose}
+      size="workspace"
+      isMaximized={isMaximized}
+      onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+      title="Bulk Edit Monitoring"
+      subtitle="Safe table-based edits for selected monitors."
+      icon={<Edit2 size={20} />}
+      footerRight={
+        <div className="flex items-center gap-3">
+          <ToolbarButton onClick={onClose}>Abort</ToolbarButton>
+          <ToolbarButton 
+            onClick={() => mutation.mutate()} 
+            disabled={mutation.isPending} 
+            variant="primary"
+            className="px-8"
+          >
+            {mutation.isPending ? <Clock className="animate-spin mr-2" size={14} /> : <Check className="mr-2" size={14} />}
+            <span>Save Bulk Edit</span>
+          </ToolbarButton>
+        </div>
+      }
+    >
+      <div className="space-y-6">
+        <div className="rounded-lg border border-white/10 bg-black/20 px-5 py-4">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Active Selection</p>
+          <p className="mt-1 text-[12px] font-bold text-slate-200">{rows.length} rows staged for modification</p>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <WorkspaceInfoTooltip
+              label={<span>Allowed team names</span>}
+              content={
+                (teams || []).length > 0
+                  ? (teams || []).map((team: any) => (
+                      <div key={team.id} className="rounded-lg border border-white/5 bg-black/20 px-3 py-2">
+                        <p className="text-[10px] font-semibold text-slate-100">{team.name}</p>
+                        <p className="mt-1 text-[9px] font-semibold text-slate-500">{team.operators?.length || 0} members</p>
+                      </div>
+                    ))
+                  : <p>No teams available.</p>
+              }
+            />
+            <WorkspaceInfoTooltip
+              label={<span>Allowed owner user IDs</span>}
+              content={
+                (operators || []).length > 0
+                  ? (operators as OperatorRecord[]).map((operator) => (
+                      <div key={operator.id} className="rounded-lg border border-white/5 bg-black/20 px-3 py-2">
+                        <p className="text-[10px] font-semibold text-slate-100">{operator.external_id || operator.username || String(operator.id)}</p>
+                        <p className="mt-1 text-[9px] font-semibold text-slate-500">{operator.full_name || operator.team || 'No team'}</p>
+                      </div>
+                    ))
+                  : <p>No operators available.</p>
+              }
+            />
           </div>
         </div>
-        <WorkspaceModalFooter
-          right={
-            <>
-              <button onClick={onClose} className="px-6 sm:px-8 py-3 bg-white/5 hover:bg-white/10 text-slate-400 rounded-lg font-black uppercase tracking-widest text-[9px] sm:text-[10px] transition-all">Abort</button>
-              <button onClick={() => mutation.mutate()} disabled={mutation.isPending} className="px-8 sm:px-12 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-black uppercase tracking-widest text-[9px] sm:text-[10px] transition-all shadow-xl shadow-blue-500/20 active:scale-95 disabled:bg-slate-700 flex items-center space-x-2">
-                {mutation.isPending ? <Clock className="animate-spin" size={14} /> : <Check size={14} />}
-                <span>Save Bulk Edit</span>
-              </button>
-            </>
-          }
-        />
-      </motion.div>
-    </div>
-  )
 
-  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
+        <div className="overflow-x-auto rounded-lg border border-white/10 bg-black/20 custom-scrollbar">
+          <table className="min-w-full divide-y divide-white/10">
+            <thead className="bg-slate-950/90 sticky top-0 z-10">
+              <tr>
+                <th className="px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Title</th>
+                <th className="min-w-[160px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Status</th>
+                <th className="min-w-[160px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Severity</th>
+                <th className="min-w-[180px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Notification</th>
+                <th className="min-w-[220px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Owner Team(s)</th>
+                <th className="min-w-[240px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Owner User ID(s)</th>
+                <th className="min-w-[130px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Freq (s)</th>
+                <th className="min-w-[130px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Delay (s)</th>
+                <th className="min-w-[150px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Throttle (s)</th>
+                <th className="min-w-[120px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Control</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {rows.map((row: any) => (
+                <tr key={row.id} className="hover:bg-white/[0.02] transition-colors">
+                  <td className="px-4 py-3 text-[10px] font-bold text-slate-200">{row.title}</td>
+                  <td className="px-2 py-2"><AppDropdown value={row.status} onChange={(value) => updateRow(row.id, 'status', value)} options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))} placeholder="Status" /></td>
+                  <td className="px-2 py-2"><AppDropdown value={row.severity} onChange={(value) => updateRow(row.id, 'severity', value)} options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))} placeholder="Severity" /></td>
+                  <td className="px-2 py-2"><AppDropdown value={row.notification_method} onChange={(value) => updateRow(row.id, 'notification_method', value)} options={notificationMethods.map((method: any) => ({ value: method.value, label: method.label }))} placeholder="Notification" /></td>
+                  <td className="px-2 py-2"><input value={row.owner_team} onChange={(event) => updateRow(row.id, 'owner_team', event.target.value)} placeholder="Team names..." className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+                  <td className="px-2 py-2"><input value={row.owner_user_ids} onChange={(event) => updateRow(row.id, 'owner_user_ids', event.target.value)} placeholder="User IDs..." className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+                  <td className="px-2 py-2"><input type="number" value={row.check_interval} min={CHECK_INTERVAL_MIN} max={CHECK_INTERVAL_MAX} onChange={(event) => updateRow(row.id, 'check_interval', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] [appearance:textfield]`} /></td>
+                  <td className="px-2 py-2"><input type="number" value={row.alert_duration} min={ALERT_DURATION_MIN} max={ALERT_DURATION_MAX} onChange={(event) => updateRow(row.id, 'alert_duration', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] [appearance:textfield]`} /></td>
+                  <td className="px-2 py-2"><input type="number" value={row.notification_throttle} min={NOTIFICATION_THROTTLE_MIN} max={NOTIFICATION_THROTTLE_MAX} onChange={(event) => updateRow(row.id, 'notification_throttle', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] [appearance:textfield]`} /></td>
+                  <td className="px-4 py-2">
+                    <button
+                      type="button"
+                      onClick={() => updateRow(row.id, 'is_active', !row.is_active)}
+                      className={`w-full rounded-lg border px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${row.is_active ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400' : 'border-white/10 bg-black/20 text-slate-500'}`}
+                    >
+                      {row.is_active ? 'Active' : 'Paused'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </WorkspaceModal>
+  )
 }
 
 function RecipientsModal({ recipients, method, onClose }: any) {
   useEscapeDismiss(onClose)
-  const modal = (
-    <div onClick={onClose} className={`fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('compact')}`}>
-      <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('compact')} p-6 rounded-lg border-emerald-500/20`}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-emerald-400">Recipient matrix</h3>
-          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18}/></button>
-        </div>
-        <div className="flex items-center space-x-2 mb-4">
-          <Bell size={12} className="text-slate-500" />
-          <span className="text-[10px] text-slate-500 font-semibold">Method: {method}</span>
-        </div>
-        <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-          {recipients.map((r: string, i: number) => (
-            <div key={i} className="bg-white/5 border border-white/5 p-3 rounded-lg flex items-center space-x-3 group hover:border-emerald-500/30 transition-all">
-              <Mail size={14} className="text-emerald-500" />
-              <span className="text-[11px] font-bold text-slate-200">{r}</span>
-            </div>
-          ))}
-          {recipients.length === 0 && <p className="text-center py-4 text-slate-600 text-[10px]">No recipients defined</p>}
-        </div>
-      </motion.div>
-    </div>
+  return (
+    <WorkspaceModal
+      isOpen={true}
+      onClose={onClose}
+      size="compact"
+      title="Recipient matrix"
+      subtitle={`Method: ${method}`}
+      icon={<Users size={20} />}
+      footerRight={
+        <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
+      }
+    >
+      <div className="space-y-2">
+        {recipients.map((r: string, i: number) => (
+          <div key={i} className="bg-white/5 border border-white/5 p-3 rounded-lg flex items-center space-x-3 group hover:border-emerald-500/30 transition-all shadow-inner">
+            <Mail size={14} className="text-emerald-500" />
+            <span className="text-[11px] font-bold text-slate-100">{r}</span>
+          </div>
+        ))}
+        {recipients.length === 0 && (
+          <WorkspaceEmptyState compact title="No recipients defined" description="No direct delivery targets found for this monitoring item." />
+        )}
+      </div>
+    </WorkspaceModal>
   )
-  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
 function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
@@ -3253,11 +3290,14 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
     },
     onSuccess: (_data, newIds) => {
       const titleMap = new Map((knowledgeEntries || []).map((entry: any) => [entry.id, entry.title]))
+      const prevIds = [...linkedIds]
       setLinkedIds(newIds)
       setLinkedTitles(newIds.map((id: number) => String(titleMap.get(id) || `KB-${id}`)))
       queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
       queryClient.invalidateQueries({ queryKey: ['monitoring-history', monitorId] })
-      showWorkspaceToast('Recovery procedures updated')
+      showWorkspaceToast('Recovery procedures updated', {
+        onRevert: () => mutation.mutate(prevIds)
+      })
     },
     onError: (e: any) => showWorkspaceToast(e.message || 'Failed to update recovery procedures', { type: 'error' })
   })
@@ -3267,29 +3307,31 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
     mutation.mutate(nextIds)
   }
 
-  const modal = (
-    <div onClick={onClose} className={`fixed inset-0 z-[3220] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('standard')}`}>
-      <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('standard')} p-6 rounded-lg border-amber-500/20 flex flex-col`}>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-3">
-             <BookOpen size={20} className="text-amber-500" />
-             <h3 className="text-sm font-black uppercase text-amber-500 tracking-tight">Recovery Procedures</h3>
-          </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={18}/></button>
-        </div>
-
-        <div className="flex items-center justify-between mb-4">
+  return (
+    <WorkspaceModal
+      isOpen={true}
+      onClose={onClose}
+      size="standard"
+      title="Recovery Procedures"
+      subtitle="Knowledge-base linkage for operational triage."
+      icon={<BookOpen size={20} />}
+      footerRight={
+        <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
+      }
+    >
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
            <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Linked Procedures (BKM)</p>
            <button 
              onClick={() => setIsAdding(!isAdding)}
-             className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase transition-all flex items-center space-x-1.5 ${isAdding ? 'bg-amber-500 text-white' : 'bg-amber-500/10 text-amber-500 border border-amber-500/30 hover:bg-amber-500/20'}`}
+             className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all flex items-center space-x-1.5 ${isAdding ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-amber-500/10 text-amber-500 border border-amber-500/30 hover:bg-amber-500/20'}`}
            >
               {isAdding ? <X size={12}/> : <Plus size={12}/>}
               <span>{isAdding ? 'Close Search' : 'Link Procedure'}</span>
            </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
+        <div className="flex-1 space-y-3">
           {isAdding && (
             <div className="space-y-3 mb-6 p-4 bg-amber-500/5 border border-amber-500/10 rounded-lg animate-in fade-in slide-in-from-top-2">
                <div className="relative">
@@ -3298,62 +3340,66 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
                     value={recoverySearch}
                     onChange={e => setRecoverySearch(e.target.value)}
                     placeholder="Search Knowledge Base..."
-                    className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold outline-none focus:border-amber-500/50"
+                    className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold text-white outline-none focus:border-amber-500/50"
                   />
                </div>
-               <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
+               <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar pr-1">
                   {filteredKnowledge.map((entry: any) => (
                     <button 
                       key={entry.id}
                       onClick={() => toggleRecoveryDoc(entry.id)}
-                      className="w-full text-left p-2 hover:bg-white/5 rounded-lg flex items-center justify-between group transition-all"
+                      className="w-full text-left p-2.5 hover:bg-white/5 rounded-lg flex items-center justify-between group transition-all"
                     >
                        <span className="text-[10px] font-bold text-slate-300 group-hover:text-amber-400">{entry.title}</span>
                        <Plus size={12} className="text-slate-600 group-hover:text-amber-500" />
                     </button>
                   ))}
-                  {filteredKnowledge.length === 0 && <p className="text-center py-4 text-[9px] text-slate-600 uppercase font-black">No available procedures found</p>}
+                  {filteredKnowledge.length === 0 && (
+                    <p className="text-center py-6 text-[9px] text-slate-700 font-black uppercase tracking-widest">No available procedures found</p>
+                  )}
                </div>
             </div>
           )}
 
-          {linkedIds.map((id: number, i: number) => (
-            <div 
-              key={id} 
-              className="w-full bg-black/40 border border-white/5 p-4 rounded-lg flex items-center justify-between group hover:border-amber-500/50 hover:bg-amber-500/5 transition-all shadow-lg"
-            >
-              <button onClick={() => onOpenBkm(id)} className="flex items-center space-x-4 flex-1">
-                 <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all">
-                    <FileText size={16} />
-                 </div>
-                 <div>
-                    <span className="text-[11px] font-black uppercase text-slate-200 block leading-tight">{linkedTitles[i]}</span>
-                    <span className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">DOC ID: KB-{id}</span>
-                 </div>
-              </button>
-              <div className="flex items-center space-x-2">
-                 <button 
-                   onClick={() => toggleRecoveryDoc(id)}
-                   className="p-2 text-slate-600 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
-                   title="Unlink Procedure"
-                 >
-                    <Trash2 size={14} />
-                 </button>
-                 <ChevronRight size={14} className="text-slate-700 group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
+          <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-1">
+            {linkedIds.map((id: number, i: number) => (
+              <div 
+                key={id} 
+                className="w-full bg-black/40 border border-white/5 p-4 rounded-lg flex items-center justify-between group hover:border-amber-500/50 hover:bg-amber-500/5 transition-all shadow-lg"
+              >
+                <button onClick={() => onOpenBkm(id)} className="flex items-center space-x-4 flex-1 text-left">
+                   <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all">
+                      <FileText size={16} />
+                   </div>
+                   <div className="min-w-0">
+                      <span className="text-[11px] font-black uppercase text-slate-200 block truncate leading-tight">{linkedTitles[i]}</span>
+                      <span className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">DOC ID: KB-{id}</span>
+                   </div>
+                </button>
+                <div className="flex items-center space-x-2">
+                   <button 
+                     onClick={() => toggleRecoveryDoc(id)}
+                     className="p-2 text-slate-600 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                     title="Unlink Procedure"
+                   >
+                      <Trash2 size={14} />
+                   </button>
+                   <ChevronRight size={14} className="text-slate-700 group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
+                </div>
               </div>
-            </div>
-          ))}
-          {linkedIds.length === 0 && !isAdding && (
-             <div className="py-12 flex flex-col items-center justify-center space-y-3 border-2 border-dashed border-white/5 rounded-lg">
-                <BookOpen size={24} className="text-slate-800" />
-                <p className="text-[10px] text-slate-700 font-black uppercase tracking-widest text-center px-8">No recovery procedures linked to this monitor</p>
-             </div>
-          )}
+            ))}
+            {linkedIds.length === 0 && !isAdding && (
+               <WorkspaceEmptyState 
+                 icon={<BookOpen size={24} className="text-slate-800" />} 
+                 title="No procedures linked" 
+                 description="Link a recovery BKM from the knowledge base to guide operational response." 
+               />
+            )}
+          </div>
         </div>
-      </motion.div>
-    </div>
+      </div>
+    </WorkspaceModal>
   )
-  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
 function BkmDetailModal({ bkmId, onClose }: any) {
@@ -3365,69 +3411,73 @@ function BkmDetailModal({ bkmId, onClose }: any) {
     enabled: !!bkmId
   })
 
-  const modal = (
-    <div onClick={onClose} className={`fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('wide')}`}>
-      <motion.div onClick={e => e.stopPropagation()} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('wide')} flex flex-col p-8 rounded-lg border-amber-500/30`}>
-        <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-6">
-           <div className="flex items-center space-x-4">
-              <div className="p-3 bg-amber-500/10 rounded-lg text-amber-500 border border-amber-500/20">
-                <BookOpen size={24} />
-              </div>
-              <div>
-                <h2 className="text-xl font-black uppercase tracking-tighter text-white">{bkm?.title || 'Loading Document...'}</h2>
-                <div className="flex items-center space-x-2 mt-0.5">
-                   <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Operational Triage Instruction</span>
-                   <span className="w-1 h-1 rounded-full bg-slate-700" />
-                   <span className="text-[9px] font-black uppercase text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">BKM ID: KB-{bkmId}</span>
-                </div>
-              </div>
-           </div>
-           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-colors">
-              <X size={24} />
-           </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-8">
-           {isLoading ? (
-             <div className="h-full flex flex-col items-center justify-center space-y-4">
-                <Clock size={32} className="text-amber-500 animate-spin" />
-                <span className="text-[10px] font-black uppercase text-amber-500 tracking-widest animate-pulse">Retrieving Knowledge...</span>
+  return (
+    <WorkspaceModal
+      isOpen={true}
+      onClose={onClose}
+      size="wide"
+      title={bkm?.title || 'Loading Document...'}
+      subtitle={`BKM ID: KB-${bkmId}`}
+      icon={<BookOpen size={20} />}
+      footerRight={
+        <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
+      }
+    >
+      <div className="space-y-6">
+        {isLoading ? (
+          <div className="py-40 flex flex-col items-center justify-center space-y-4">
+             <Clock size={32} className="text-amber-500 animate-spin" />
+             <span className="text-[10px] font-black uppercase text-amber-500 tracking-widest animate-pulse">Retrieving Knowledge...</span>
+          </div>
+        ) : (
+          <>
+             <div className="bg-amber-500/5 border border-amber-500/10 rounded-lg p-8 shadow-inner">
+                <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-3 flex items-center space-x-2">
+                   <Zap size={12}/> <span>Executive Summary</span>
+                </h4>
+                <p className="text-[13px] font-bold text-slate-200 leading-[1.8] whitespace-pre-wrap">{bkm?.content || 'No content provided.'}</p>
              </div>
-           ) : (
-             <>
-                <div className="bg-amber-500/5 border border-amber-500/10 rounded-lg p-6">
-                   <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-3 flex items-center space-x-2">
-                      <Zap size={12}/> <span>Executive Summary</span>
-                   </h4>
-                   <p className="text-slate-300 font-bold leading-relaxed text-[13px]">{bkm.content || 'No content provided.'}</p>
-                </div>
 
-                {bkm.content_json?.steps?.length > 0 && (
-                  <div className="space-y-4">
-                     <h4 className="text-[11px] font-black text-white uppercase tracking-[0.2em] border-l-2 border-amber-500 pl-4">Resolution Workflow</h4>
-                     <div className="space-y-4 pl-4">
-                        {bkm.content_json.steps.map((step: any, i: number) => (
-                           <div key={i} className="flex space-x-6 relative">
-                              {i < bkm.content_json.steps.length - 1 && <div className="absolute left-5 top-10 bottom-0 w-0.5 bg-white/5" />}
-                              <div className="w-10 h-10 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center flex-shrink-0 z-10 text-[12px] font-black text-amber-500 shadow-lg">
-                                 {i + 1}
-                              </div>
-                              <div className="bg-black/20 border border-white/5 rounded-lg p-5 flex-1 hover:border-amber-500/20 transition-all">
-                                 <h5 className="text-[11px] font-black uppercase text-slate-200 mb-1">{step.title}</h5>
-                                 <p className="text-[12px] text-slate-400 font-bold leading-relaxed">{step.description}</p>
-                              </div>
+             {bkm?.content_json?.steps?.length > 0 && (
+               <div className="space-y-4">
+                  <h4 className="text-[11px] font-black text-white uppercase tracking-[0.2em] border-l-2 border-amber-500 pl-4">Resolution Workflow</h4>
+                  <div className="space-y-4 pl-4">
+                     {bkm.content_json.steps.map((step: any, i: number) => (
+                        <div key={i} className="flex space-x-6 relative">
+                           {i < bkm.content_json.steps.length - 1 && <div className="absolute left-5 top-10 bottom-0 w-0.5 bg-white/5" />}
+                           <div className="w-10 h-10 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center flex-shrink-0 z-10 text-[12px] font-black text-amber-500 shadow-lg">
+                              {i + 1}
                            </div>
-                        ))}
-                     </div>
+                           <div className="bg-black/20 border border-white/5 rounded-lg p-5 flex-1 hover:border-amber-500/20 transition-all">
+                              <h5 className="text-[11px] font-black uppercase text-slate-200 mb-1">{step.title}</h5>
+                              <p className="text-[12px] text-slate-400 font-bold leading-relaxed">{step.description}</p>
+                           </div>
+                        </div>
+                     ))}
                   </div>
-                )}
-             </>
-           )}
-        </div>
-      </motion.div>
-    </div>
+               </div>
+             )}
+             
+             <div className="flex items-center justify-between px-1 border-t border-white/5 pt-6 mt-6">
+                <div className="flex items-center space-x-3">
+                   <div className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 border border-white/5">
+                      <User size={16}/>
+                   </div>
+                   <div>
+                      <p className="text-[10px] font-black text-white">Operational Kernel</p>
+                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Knowledge Custodian</p>
+                   </div>
+                </div>
+                <div className="text-right">
+                   <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em]">Validated Protocol</p>
+                   <p className="text-[8px] font-bold text-slate-700 mt-1">Trace: KNOWLEDGE-SYS-772</p>
+                </div>
+             </div>
+          </>
+        )}
+      </div>
+    </WorkspaceModal>
   )
-  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
 function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm, onDelete, onOpenAsset, onOpenKnowledge, deleteConfirm }: any) {
@@ -3450,73 +3500,63 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
     }
   })
 
-  const modal = (
-    <div onClick={onClose} className={`fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('workspace')}`}>
-      <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('workspace')} flex flex-col p-6 sm:p-8 rounded-lg border-blue-500/20 overflow-hidden shadow-[0_0_120px_rgba(37,99,235,0.12)]`}>
-        <WorkspaceDossierShell
-          header={
-            <>
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-600/10 text-blue-400">
-                <Monitor size={24} strokeWidth={1.75} />
-              </div>
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[9px] font-semibold text-blue-400">Monitor {item.id}</span>
-                  <StatusPill value={item.status} />
-                  <StatusPill value={item.severity} />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-black tracking-tighter text-white">{item.title}</h2>
-                  <p className="mt-1 text-[10px] font-semibold text-slate-500">
-                    {item.device_name || 'No linked asset'} · {item.platform || 'No platform'} · {item.check_interval ? `${item.check_interval}s checks` : 'No frequency'}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <button onClick={onClose} className="rounded-lg border border-white/5 bg-white/5 p-2 text-slate-400 transition-all hover:bg-white/10 hover:text-white">
-              <X size={20} />
-            </button>
-            </>
-          }
-          actions={
-            <>
+  return (
+    <WorkspaceModal
+      isOpen={true}
+      onClose={onClose}
+      size="workspace"
+      title={item.title}
+      subtitle={`Monitor ID: ${item.id} · ${item.device_name || 'No Target Asset'}`}
+      icon={<Monitor size={20} />}
+      footerRight={
+        <div className="flex items-center gap-3">
             <ToolbarButton onClick={() => onEdit?.(item)}>Edit Monitor</ToolbarButton>
             <ToolbarButton onClick={() => onOpenHistory?.(item)}>History</ToolbarButton>
             <ToolbarButton onClick={() => onOpenBkm?.(item)}>Recovery</ToolbarButton>
             <ToolbarButton 
               variant="danger" 
               onClick={() => onDelete?.(item)}
-              className={deleteConfirm ? 'animate-pulse bg-rose-600 border-rose-500 text-white' : ''}
+              className={deleteConfirm ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : ''}
             >
               {deleteConfirm 
                 ? (item.is_deleted ? 'Confirm Purge?' : 'Confirm De-activate?') 
                 : (item.is_deleted ? 'Purge' : 'De-activate')}
             </ToolbarButton>
-            </>
+        </div>
+      }
+    >
+      <WorkspaceDossierShell
+          header={
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusPill value={item.status} />
+              <StatusPill value={item.severity} />
+              <span className="text-[10px] font-black text-slate-500 ml-2 uppercase tracking-widest">
+                {item.platform || 'No platform'} · {item.check_interval ? `${item.check_interval}s checks` : 'No frequency'}
+              </span>
+            </div>
           }
           body={
            <WorkspaceSplitView
              className="gap-8"
              sidebar={<div className="space-y-8">
                  <section className="space-y-3">
-                    <h3 className="px-1 text-[11px] font-semibold text-slate-400">Jump path</h3>
+                    <h3 className="px-1 text-[11px] font-black text-slate-500 uppercase tracking-widest">Jump path</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3">
                        <button
                          disabled={!item.device_id}
                          onClick={() => item.device_id && onOpenAsset?.(item.device_id)}
-                         className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 text-left transition-all hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-30"
+                         className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 text-left transition-all hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-30 shadow-inner"
                        >
-                         <p className="text-[9px] font-semibold text-blue-400">Open asset</p>
-                         <p className="mt-2 text-[10px] font-semibold text-slate-200">{item.device_name || 'No linked asset'}</p>
+                         <p className="text-[9px] font-black text-blue-400 uppercase">Open asset</p>
+                         <p className="mt-2 text-[10px] font-bold text-slate-200">{item.device_name || 'No linked asset'}</p>
                        </button>
                        <button
                          disabled={!item.recovery_docs?.length}
                          onClick={() => item.recovery_docs?.[0] && onOpenKnowledge?.(item.recovery_docs[0])}
-                         className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4 text-left transition-all hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-30"
+                         className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4 text-left transition-all hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-30 shadow-inner"
                        >
-                         <p className="text-[9px] font-semibold text-amber-400">Open recovery BKM</p>
-                         <p className="mt-2 text-[10px] font-semibold text-slate-200">
+                         <p className="text-[9px] font-black text-amber-400 uppercase">Open recovery BKM</p>
+                         <p className="mt-2 text-[10px] font-bold text-slate-200">
                            {item.recovery_doc_titles?.[0] || 'No recovery document linked'}
                          </p>
                        </button>
@@ -3524,7 +3564,7 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
                  </section>
 
                  <section className="space-y-3">
-                    <h3 className="px-1 text-[11px] font-semibold text-slate-400">Reliability matrix</h3>
+                    <h3 className="px-1 text-[11px] font-black text-slate-500 uppercase tracking-widest">Reliability matrix</h3>
                     <div className="grid grid-cols-2 gap-3">
                        {[
                           { label: 'Severity', value: item.severity, color: 'text-slate-200', icon: Shield },
@@ -3532,10 +3572,10 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
                           { label: 'Frequency', value: `${item.check_interval}s`, color: 'text-slate-300', icon: Clock },
                           { label: 'Throttle', value: `${item.notification_throttle}s`, color: 'text-amber-400', icon: Zap }
                        ].map((stat, i) => (
-                          <div key={i} className="bg-white/5 border border-white/5 rounded-lg p-4 flex flex-col justify-between hover:bg-white/10 transition-all">
+                          <div key={i} className="bg-white/5 border border-white/5 rounded-lg p-4 flex flex-col justify-between hover:bg-white/10 transition-all shadow-inner">
                             <div className="flex items-center justify-between mb-2">
                                <stat.icon size={12} className="text-slate-600" />
-                               <span className="text-[8px] font-semibold text-slate-500">{stat.label}</span>
+                               <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{stat.label}</span>
                             </div>
                                {stat.label === 'Severity' ? <StatusPill value={String(stat.value)} /> : <span className={`text-[12px] font-black ${stat.color} tracking-tighter`}>{stat.value}</span>}
                          </div>
@@ -3544,43 +3584,43 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
                  </section>
 
                  <section className="space-y-3">
-                    <h3 className="px-1 text-[11px] font-semibold text-slate-400">Recovery procedures</h3>
+                    <h3 className="px-1 text-[11px] font-black text-slate-500 uppercase tracking-widest">Recovery procedures</h3>
                     <div className="space-y-2">
                        {item.recovery_doc_titles?.map((title: string, i: number) => (
                          <button
                            key={i}
                            type="button"
                            onClick={() => item.recovery_docs?.[i] && onOpenKnowledge?.(item.recovery_docs[i])}
-                           className="w-full bg-amber-500/5 border border-amber-500/10 rounded-lg p-3 flex items-center space-x-3 hover:border-amber-500/30 transition-all cursor-pointer group text-left"
+                           className="w-full bg-amber-500/5 border border-amber-500/10 rounded-lg p-3 flex items-center space-x-3 hover:border-amber-500/30 transition-all cursor-pointer group text-left shadow-inner"
                          >
                             <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all"><FileText size={14}/></div>
-                            <span className="text-[11px] font-semibold text-slate-300 tracking-tight leading-tight">{title}</span>
+                            <span className="text-[11px] font-bold text-slate-300 tracking-tight leading-tight">{title}</span>
                          </button>
                        ))}
-                       {item.recovery_doc_titles?.length === 0 && (
-                         <WorkspaceEmptyState compact icon={<AlertCircle size={18} />} title="No recovery document linked" />
+                       {(!item.recovery_doc_titles || item.recovery_doc_titles.length === 0) && (
+                         <WorkspaceEmptyState compact icon={<AlertCircle size={18} />} title="No recovery procedures linked" description="Guaranteed operational response protocol missing." />
                        )}
                     </div>
                  </section>
 
                  <section className="space-y-3">
-                    <h3 className="px-1 text-[11px] font-semibold text-slate-400">Suggested runbooks</h3>
+                    <h3 className="px-1 text-[11px] font-black text-slate-500 uppercase tracking-widest">Suggested runbooks</h3>
                     <div className="space-y-2">
                        {suggestedKnowledge?.slice(0, 3).map((entry: any) => (
                          <button
                            key={entry.id}
                            type="button"
                            onClick={() => onOpenKnowledge?.(entry.id)}
-                           className="w-full rounded-lg border border-sky-500/15 bg-sky-500/5 p-3 text-left transition-all hover:bg-sky-500/10"
+                           className="w-full rounded-lg border border-sky-500/15 bg-sky-500/5 p-3 text-left transition-all hover:bg-sky-500/10 shadow-inner"
                          >
-                           <p className="text-[11px] font-semibold text-slate-200 tracking-tight">{entry.title}</p>
-                           <p className="mt-1 text-[8px] font-semibold text-slate-500">
+                           <p className="text-[11px] font-bold text-slate-200 tracking-tight">{entry.title}</p>
+                           <p className="mt-1 text-[8px] font-black text-slate-500 uppercase tracking-widest">
                              {entry.metadata_json?.entry_type || entry.category} · {entry.metadata_json?.verification?.state || entry.status}
                            </p>
                          </button>
                        ))}
                        {!suggestedKnowledge?.length && (
-                         <WorkspaceEmptyState compact title="No suggested runbooks yet" />
+                         <WorkspaceEmptyState compact title="No runbook suggestions" />
                        )}
                     </div>
                  </section>
@@ -3588,7 +3628,7 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
                  {item.monitoring_url && (
                     <button 
                        onClick={() => window.open(item.monitoring_url, '_blank')}
-                       className="w-full bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-lg font-semibold text-[10px] transition-all shadow-xl shadow-blue-500/20 flex items-center justify-center space-x-3"
+                       className="w-full bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-lg font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-blue-500/20 flex items-center justify-center space-x-3"
                     >
                        <ExternalLink size={14} />
                        <span>Open platform console</span>
@@ -3597,16 +3637,16 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
              </div>}
              main={<div className="space-y-8">
                  <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-white/[0.03] border border-white/5 rounded-lg p-5 group hover:border-white/10 transition-all">
-                       <h4 className="text-[10px] font-semibold text-slate-500 mb-2 flex items-center space-x-2">
+                    <div className="bg-white/[0.03] border border-white/5 rounded-lg p-5 group hover:border-white/10 transition-all shadow-inner">
+                       <h4 className="text-[10px] font-black text-slate-500 mb-2 flex items-center space-x-2 uppercase tracking-[0.2em]">
                           <Info size={12}/> <span>Purpose</span>
                        </h4>
                        <p className="text-[12px] font-bold text-slate-300 leading-relaxed">
                           {item.purpose || 'No purpose defined.'}
                        </p>
                     </div>
-                    <div className="bg-white/[0.03] border border-white/5 rounded-lg p-5 group hover:border-white/10 transition-all">
-                       <h4 className="text-[10px] font-semibold text-slate-500 mb-2 flex items-center space-x-2">
+                    <div className="bg-white/[0.03] border border-white/5 rounded-lg p-5 group hover:border-white/10 transition-all shadow-inner">
+                       <h4 className="text-[10px] font-black text-slate-500 mb-2 flex items-center space-x-2 uppercase tracking-[0.2em]">
                           <Zap size={12}/> <span>Impact</span>
                        </h4>
                        <p className="text-[12px] font-bold text-slate-300 leading-relaxed">
@@ -3617,25 +3657,25 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
 
                  <section className="space-y-3">
                     <div className="flex items-center justify-between px-1">
-                      <h3 className="text-[11px] font-semibold text-slate-400 flex items-center">
+                      <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center">
                          <Settings size={14} className="mr-3" /> Logic Specification
                       </h3>
                       <button 
                          onClick={() => setShowLineNumbers(!showLineNumbers)}
-                         className={`text-[8px] font-semibold px-2 py-1 rounded border transition-all ${showLineNumbers ? 'bg-blue-600/20 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-white/5 text-slate-500'}`}
+                         className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border transition-all ${showLineNumbers ? 'bg-blue-600/20 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-white/5 text-slate-500'}`}
                       >
                          {showLineNumbers ? 'Hide line numbers' : 'Show line numbers'}
                       </button>
                     </div>
                     <div className="space-y-3">
                        {item.logic_json?.map((log: any) => (
-                         <div key={log.id} className="bg-[#0f172a] border border-white/5 rounded-lg overflow-hidden transition-all hover:border-white/10">
+                         <div key={log.id} className="bg-[#0f172a] border border-white/5 rounded-lg overflow-hidden transition-all hover:border-white/10 shadow-lg">
                             <button 
                                onClick={() => setExpandedLogic(expandedLogic === log.id ? null : log.id)}
                                className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-all"
                             >
                                <div className="flex items-center space-x-4">
-                                  <span className="text-[9px] font-semibold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">{log.type}</span>
+                                  <span className="text-[9px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 uppercase tracking-widest">{log.type}</span>
                                   <span className="text-slate-300 font-bold text-[11px] tracking-tight">{log.description}</span>
                                </div>
                                {expandedLogic === log.id ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
@@ -3663,17 +3703,38 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
                             </AnimatePresence>
                          </div>
                        ))}
+                       {(!item.logic_json || item.logic_json.length === 0) && (
+                         <WorkspaceEmptyState icon={<Terminal size={32} />} title="No logic specification found" description="This monitor has no active logic entries defined." />
+                       )}
+                    </div>
+                 </section>
+
+                 <section className="space-y-3">
+                    <h3 className="px-1 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Ownership Context</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                       <div className="bg-white/[0.03] border border-white/5 rounded-lg p-5 shadow-inner">
+                          <h4 className="text-[10px] font-semibold text-slate-500 mb-2 uppercase tracking-widest">Primary Team</h4>
+                          <p className="text-[12px] font-bold text-slate-100">{item.owner_team || 'Unassigned'}</p>
+                       </div>
+                       <div className="bg-white/[0.03] border border-white/5 rounded-lg p-5 shadow-inner">
+                          <h4 className="text-[10px] font-semibold text-slate-500 mb-2 uppercase tracking-widest">Active Personnel</h4>
+                          <div className="flex flex-wrap gap-2">
+                             {item.owners?.map((o: any, i: number) => (
+                               <span key={i} className="bg-blue-600/10 border border-blue-500/20 text-blue-300 px-2 py-1 rounded text-[10px] font-bold">
+                                  {o.name} <span className="text-slate-500 font-normal ml-1">({o.role})</span>
+                               </span>
+                             ))}
+                             {(!item.owners || item.owners.length === 0) && <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">No individual owners</span>}
+                          </div>
+                       </div>
                     </div>
                  </section>
              </div>}
            />
-          }
-        />
-      </motion.div>
-    </div>
+        }
+      />
+    </WorkspaceModal>
   )
-
-  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
 
 // --- REST OF THE FORM COMPONENT ---
@@ -4210,40 +4271,58 @@ export function MonitoringForm({ item, devices, categories, severities, platform
     })
   }
 
-  const modal = (
-    <div onClick={onClose} className={`fixed inset-0 z-[3210] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('workspace')}`}>
-      <motion.div
-        onClick={e => e.stopPropagation()}
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        className={`glass-panel w-full overflow-hidden flex flex-col rounded-lg border-blue-500/20 shadow-[0_0_80px_rgba(37,99,235,0.08)] ${isMaximized ? 'max-w-none h-[calc(100vh-3rem)]' : getWorkspaceModalShellClass('workspace')}`}
-      >
-        <WorkspaceModalHeader
-          icon={<Plus size={20} />}
-          title={item ? 'Update Monitoring' : 'Add Monitoring'}
-          subtitle="Configure monitoring targets, logic, and alert routing."
-          status={<StatusPill value={formData.status} />}
-          closeControl={
-            <button onClick={onClose} className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500/90 text-transparent transition-all hover:text-rose-950" title="Close">
-              <X size={10} strokeWidth={3} />
-            </button>
-          }
-          maximizeControl={
-            <button onClick={() => setIsMaximized(prev => !prev)} className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500/90 text-transparent transition-all hover:text-emerald-950" title={isMaximized ? 'Restore size' : 'Maximize'}>
-              {isMaximized ? <Minimize2 size={8} strokeWidth={3} /> : <Maximize2 size={8} strokeWidth={3} />}
-            </button>
-          }
-          activeTab={activeTab}
-          onTabChange={(id) => setActiveTab(id as 'context' | 'logic' | 'alerting')}
-          tabs={[
-            { id: 'context', label: 'Context', badgeCount: tabErrors.context },
-            { id: 'logic', label: 'Logic', badgeCount: tabErrors.logic },
-            { id: 'alerting', label: 'Alerting', badgeCount: tabErrors.alerting },
-          ]}
-        />
-
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-10 sm:px-8">
+  return (
+    <WorkspaceModal
+      isOpen={true}
+      onClose={onClose}
+      size="workspace"
+      isMaximized={isMaximized}
+      onMaximizeToggle={() => setIsMaximized(prev => !prev)}
+      title={item ? 'Update Monitoring' : 'Add Monitoring'}
+      subtitle="Configure monitoring targets, logic, and alert routing."
+      icon={<Plus size={20} />}
+      status={<StatusPill value={formData.status} />}
+      activeTab={activeTab}
+      onTabChange={(id) => setActiveTab(id as 'context' | 'logic' | 'alerting')}
+      tabs={[
+        { id: 'context', label: 'Context', badgeCount: tabErrors.context },
+        { id: 'logic', label: 'Logic', badgeCount: tabErrors.logic },
+        { id: 'alerting', label: 'Alerting', badgeCount: tabErrors.alerting },
+      ]}
+      footerLeft={
+          <button 
+            onClick={() => {
+              if (formData.status === 'Existing') {
+                setFormData({...formData, is_active: !formData.is_active})
+              }
+            }}
+            disabled={formData.status !== 'Existing'}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-all ${
+              formData.is_active 
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20' 
+                : 'bg-slate-500/10 border-white/10 text-slate-500 hover:bg-white/5 hover:text-white'
+            } ${formData.status !== 'Existing' ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <div className={`w-2 h-2 rounded-full ${formData.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'}`} />
+            <span className="text-[10px] font-black uppercase tracking-widest">{formData.is_active ? 'Monitor Active' : 'Monitor Paused'}</span>
+          </button>
+      }
+      footerRight={
+        <div className="flex items-center gap-3">
+          <ToolbarButton onClick={onClose}>Abort</ToolbarButton>
+          <ToolbarButton 
+            onClick={handleSave} 
+            disabled={mutation.isPending} 
+            variant="primary"
+            className="px-8"
+          >
+            {mutation.isPending ? <Clock className="animate-spin mr-2" size={14} /> : <Check className="mr-2" size={14} />}
+            <span>{item ? 'Save Monitoring' : 'Add Monitoring'}</span>
+          </ToolbarButton>
+        </div>
+      }
+    >
+      <div className="space-y-6">
           <WorkspaceStickyIdentityBar>
             <div className="space-y-4">
               <div className="grid grid-cols-12 gap-4">
@@ -4320,13 +4399,13 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                       />
                       {!collapsedSections.target && <div className="mt-4 space-y-4">
                         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-                          <div className="space-y-4 rounded-lg border border-white/10 bg-black/20 p-4">
+                          <div className="space-y-4 rounded-lg border border-white/10 bg-black/20 p-4 shadow-inner">
                             <div className="flex items-center justify-between">
                               <div>
                                 <PanelTitle>Registry asset and service scope</PanelTitle>
                                 <PanelSubtitle>Link a registry asset and select the services covered by this monitor.</PanelSubtitle>
                               </div>
-                              <span className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[9px] font-semibold text-blue-300">
+                              <span className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[9px] font-black text-blue-300">
                                 {formData.monitored_services?.length || 0} linked
                               </span>
                             </div>
@@ -4347,10 +4426,10 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                         key={svc.id}
                                         type="button"
                                         onClick={() => toggleService(svc.id)}
-                                        className={`rounded-lg border px-2.5 py-1.5 text-[9px] font-semibold transition-all ${
+                                        className={`rounded-lg border px-2.5 py-1.5 text-[9px] font-black transition-all ${
                                           formData.monitored_services?.includes(svc.id)
                                             ? 'border-blue-500/40 bg-blue-500/12 text-blue-200'
-                                            : 'border-white/10 bg-slate-950/60 text-slate-400 hover:border-white/20 hover:text-slate-200'
+                                            : 'border-white/10 bg-slate-950/60 text-slate-500 hover:border-white/20 hover:text-slate-200'
                                         }`}
                                       >
                                         {svc.name}
@@ -4371,8 +4450,8 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                           <div className="space-y-4">
                             <div className="space-y-1.5">
                               <FieldLabel label="Monitoring URL" />
-                              <div className="relative">
-                                <Globe size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                              <div className="relative group">
+                                <Globe size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
                                 <input
                                   value={formData.monitoring_url}
                                   onChange={e => setFormData({ ...formData, monitoring_url: e.target.value })}
@@ -4383,20 +4462,20 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                               <FieldError message={formErrors.monitoring_url} />
                             </div>
 
-                            <div className="rounded-lg border border-white/10 bg-black/20 p-4">
-                              <h4 className="text-[10px] font-semibold text-slate-500 mb-2">Scope Summary</h4>
+                            <div className="rounded-lg border border-white/10 bg-black/20 p-4 shadow-inner">
+                              <h4 className="text-[10px] font-black text-slate-500 mb-2 uppercase tracking-widest">Scope Summary</h4>
                               <div className="space-y-3">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-[9px] text-slate-500 uppercase font-bold">Primary Asset</span>
-                                  <span className="text-[11px] font-semibold text-slate-100">{selectedDevice?.name || 'Unlinked'}</span>
+                                  <span className="text-[9px] text-slate-600 uppercase font-black tracking-widest">Primary Asset</span>
+                                  <span className="text-[11px] font-bold text-slate-100">{selectedDevice?.name || 'Unlinked'}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                  <span className="text-[9px] text-slate-500 uppercase font-bold">System</span>
-                                  <span className="text-[11px] font-semibold text-slate-100">{selectedDevice?.system || 'Unlinked'}</span>
+                                  <span className="text-[9px] text-slate-600 uppercase font-black tracking-widest">System</span>
+                                  <span className="text-[11px] font-bold text-slate-100">{selectedDevice?.system || 'Unlinked'}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
-                                  <span className="text-[9px] text-slate-500 uppercase font-bold">Platform</span>
-                                  <span className="text-[11px] font-semibold text-blue-400">{formData.platform}</span>
+                                  <span className="text-[9px] text-slate-600 uppercase font-black tracking-widest">Platform</span>
+                                  <span className="text-[11px] font-bold text-blue-400">{formData.platform}</span>
                                 </div>
                               </div>
                             </div>
@@ -4420,7 +4499,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                             onChange={e => setFormData({ ...formData, purpose: e.target.value })}
                             placeholder="Why are we monitoring this?"
                             rows={5}
-                            className={`${monitoringInputClass()} resize-none text-[10px]`}
+                            className={`${monitoringInputClass()} resize-none text-[11px] font-bold`}
                           />
                         </div>
                         <div className="space-y-1.5">
@@ -4430,7 +4509,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                             onChange={e => setFormData({ ...formData, impact: e.target.value })}
                             placeholder="What happens when this monitor triggers?"
                             rows={5}
-                            className={`${monitoringInputClass()} resize-none text-[10px]`}
+                            className={`${monitoringInputClass()} resize-none text-[11px] font-bold`}
                           />
                         </div>
                       </div>}
@@ -4454,7 +4533,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                               key={mode.id}
                               type="button"
                               onClick={() => setOwnershipModeAndNormalize(mode.id as 'team' | 'individual')}
-                              className={`rounded-lg px-3 py-2 text-[10px] font-semibold transition-all ${
+                              className={`rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${
                                 ownershipMode === mode.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-200'
                               }`}
                             >
@@ -4476,7 +4555,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                 />
                               </div>
                               <FieldError message={formErrors.owner_team} />
-                              <p className="text-[9px] font-semibold text-slate-500">
+                              <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">
                                 Optional. Use comma-separated team names from the registered team list.
                               </p>
                               <WorkspaceInfoTooltip
@@ -4493,9 +4572,9 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                 }
                               />
                               {selectedTeams.length > 0 && (
-                                <div className="rounded-lg border border-white/10 bg-black/20 p-4">
-                                  <p className="text-[11px] font-semibold text-slate-100">{selectedTeams.map((team) => team.name).join(', ')}</p>
-                                  <p className="mt-1 text-[9px] font-semibold text-slate-500">
+                                <div className="rounded-lg border border-white/10 bg-black/20 p-4 shadow-inner">
+                                  <p className="text-[11px] font-bold text-slate-100 uppercase tracking-tight">{selectedTeams.map((team) => team.name).join(', ')}</p>
+                                  <p className="mt-1 text-[9px] font-black text-slate-600 uppercase tracking-widest">
                                     {selectedTeams.length} selected team{selectedTeams.length === 1 ? '' : 's'}
                                   </p>
                                 </div>
@@ -4531,21 +4610,21 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                   <button
                                     type="button"
                                     onClick={addOwner}
-                                    className="w-full rounded-lg border border-blue-500/30 bg-blue-600 px-3 py-2.5 text-[10px] font-semibold text-white transition-all hover:bg-blue-500"
+                                    className="w-full rounded-lg border border-blue-500/30 bg-blue-600 px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-blue-500 active:scale-95 shadow-lg shadow-blue-500/20"
                                   >
-                                    Add owner
+                                    Add
                                   </button>
                                 </div>
                               </div>
                               <FieldError message={formErrors.owners} />
                               <div className="max-h-48 space-y-1.5 overflow-y-auto pr-1 custom-scrollbar">
                                 {formData.owners?.length ? formData.owners.map((o: any, idx: number) => (
-                                  <div key={idx} className="flex items-center justify-between rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                                  <div key={idx} className="flex items-center justify-between rounded-lg border border-white/5 bg-black/40 px-3 py-2 shadow-inner group hover:border-white/10 transition-all">
                                     <div className="min-w-0">
-                                      <p className="truncate text-[10px] font-semibold text-slate-100">{o.name}</p>
-                                      <p className="mt-0.5 text-[8px] font-semibold text-slate-500 truncate">{o.role}</p>
+                                      <p className="truncate text-[10px] font-bold text-slate-100">{o.name}</p>
+                                      <p className="mt-0.5 text-[8px] font-black text-slate-600 uppercase tracking-widest truncate">{o.role}</p>
                                     </div>
-                                    <button type="button" onClick={() => removeOwner(idx)} className="rounded-lg p-1.5 text-slate-500 transition-colors hover:text-rose-400">
+                                    <button type="button" onClick={() => removeOwner(idx)} className="rounded-lg p-1.5 text-slate-600 transition-all hover:text-rose-400 hover:bg-rose-500/10">
                                       <Trash2 size={12} />
                                     </button>
                                   </div>
@@ -4571,7 +4650,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                           action={
                             <button
                               onClick={(e) => { e.stopPropagation(); addLogicEntry() }}
-                              className="rounded-lg border border-emerald-500/30 bg-emerald-600/20 px-2.5 py-1.5 text-[9px] font-semibold text-emerald-400 transition-all hover:bg-emerald-600/35"
+                              className="rounded-lg border border-emerald-500/30 bg-emerald-600/20 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest text-emerald-400 transition-all hover:bg-emerald-600/35 active:scale-95"
                             >
                               Add entry
                             </button>
@@ -4582,26 +4661,26 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                             <div
                               key={entry.id}
                               onClick={() => setActiveLogicId(entry.id)}
-                              className={`rounded-lg border p-3 cursor-pointer transition-all relative group ${
+                              className={`rounded-lg border p-4 cursor-pointer transition-all relative group shadow-sm ${
                                 activeLogicId === entry.id
-                                  ? 'bg-blue-600/10 border-blue-500/40 shadow-lg shadow-blue-500/5'
-                                  : 'bg-black/40 border-white/5 hover:border-white/20'
+                                  ? 'bg-blue-600/10 border-blue-500/40 shadow-blue-500/5'
+                                  : 'bg-black/40 border-white/5 hover:border-white/20 shadow-inner'
                               }`}
                             >
                               <button
                                 onClick={(e) => { e.stopPropagation(); removeLogicEntry(entry.id) }}
-                                className="absolute right-2 top-2 rounded-lg p-1 text-slate-500 opacity-0 transition-all group-hover:opacity-100 hover:text-rose-400"
+                                className="absolute right-2 top-2 rounded-lg p-1.5 text-slate-700 opacity-0 transition-all group-hover:opacity-100 hover:text-rose-400 hover:bg-rose-500/10"
                               >
                                 <X size={10} />
                               </button>
                               <div className="flex items-center justify-between gap-3">
-                                <span className="text-[9px] font-semibold text-blue-400">{entry.type}</span>
-                                <span className="text-[8px] font-semibold text-slate-600">ID {entry.id.toString().slice(-4)}</span>
+                                <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{entry.type}</span>
+                                <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest">ID {entry.id.toString().slice(-4)}</span>
                               </div>
-                              <p className="mt-2 truncate text-[10px] font-semibold text-slate-200">{entry.description || 'No description'}</p>
-                              <p className="mt-1 text-[8px] font-semibold text-slate-500 truncate">{entry.logic_info || 'No definition yet'}</p>
+                              <p className="mt-2 truncate text-[11px] font-bold text-slate-200">{entry.description || 'No description provided'}</p>
+                              <p className="mt-1 text-[9px] font-bold text-slate-600 truncate uppercase tracking-tight">{entry.logic_info || 'No definition yet'}</p>
                               {(formErrors[`logic_${entry.id}_description`] || formErrors[`logic_${entry.id}_logic_info`]) && (
-                                <p className="mt-2 text-[8px] font-semibold text-rose-400">Required field missing</p>
+                                <p className="mt-2 text-[8px] font-black uppercase tracking-widest text-rose-500">Validation error</p>
                               )}
                             </div>
                           ))}
@@ -4624,17 +4703,17 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
                               <FieldLabel label="Check interval" required />
-                              <span className="text-[8px] font-semibold text-slate-600">{CHECK_INTERVAL_MIN}-{CHECK_INTERVAL_MAX}</span>
+                              <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest">{CHECK_INTERVAL_MIN}-{CHECK_INTERVAL_MAX}s</span>
                             </div>
-                            <div className="relative">
-                              <Clock size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <div className="relative group">
+                              <Clock size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-blue-400 transition-colors" />
                               <input
                                 type="number"
                                 value={formData.check_interval}
                                 min={CHECK_INTERVAL_MIN}
                                 max={CHECK_INTERVAL_MAX}
                                 onChange={e => setFormData({ ...formData, check_interval: Number(e.target.value) })}
-                                className={`${monitoringInputClass(formErrors.check_interval)} pl-9`}
+                                className={`${monitoringInputClass(formErrors.check_interval)} pl-9 font-bold`}
                               />
                             </div>
                             <FieldError message={formErrors.check_interval} />
@@ -4642,17 +4721,17 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
                               <FieldLabel label="Alert duration" required />
-                              <span className="text-[8px] font-semibold text-slate-600">{ALERT_DURATION_MIN}-{ALERT_DURATION_MAX}</span>
+                              <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest">{ALERT_DURATION_MIN}-{ALERT_DURATION_MAX}s</span>
                             </div>
-                            <div className="relative">
-                              <AlertCircle size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <div className="relative group">
+                              <AlertCircle size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-blue-400 transition-colors" />
                               <input
                                 type="number"
                                 value={formData.alert_duration}
                                 min={ALERT_DURATION_MIN}
                                 max={ALERT_DURATION_MAX}
                                 onChange={e => setFormData({ ...formData, alert_duration: Number(e.target.value) })}
-                                className={`${monitoringInputClass(formErrors.alert_duration)} pl-9`}
+                                className={`${monitoringInputClass(formErrors.alert_duration)} pl-9 font-bold`}
                               />
                             </div>
                             <FieldError message={formErrors.alert_duration} />
@@ -4660,7 +4739,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
                               <FieldLabel label="Notification throttle" required />
-                              <span className="text-[8px] font-semibold text-slate-600">{NOTIFICATION_THROTTLE_MIN}-{NOTIFICATION_THROTTLE_MAX}</span>
+                              <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest">{NOTIFICATION_THROTTLE_MIN}-{NOTIFICATION_THROTTLE_MAX}s</span>
                             </div>
                             <input
                               type="number"
@@ -4668,7 +4747,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                               min={NOTIFICATION_THROTTLE_MIN}
                               max={NOTIFICATION_THROTTLE_MAX}
                               onChange={e => setFormData({ ...formData, notification_throttle: Number(e.target.value) })}
-                              className={monitoringInputClass(formErrors.notification_throttle)}
+                              className={`${monitoringInputClass(formErrors.notification_throttle)} font-bold`}
                             />
                             <FieldError message={formErrors.notification_throttle} />
                           </div>
@@ -4699,7 +4778,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                   value={activeLogicEntry.description}
                                   onChange={e => updateLogicEntry(activeLogicEntry.id, 'description', e.target.value)}
                                   placeholder="Verification logic purpose"
-                                  className={monitoringInputClass(activeLogicErrors.description)}
+                                  className={`${monitoringInputClass(activeLogicErrors.description)} font-bold`}
                                 />
                                 <FieldError message={activeLogicErrors.description} />
                               </div>
@@ -4707,7 +4786,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                             <div className="mt-4 flex-1 flex flex-col space-y-2 min-h-0">
                               <div className="flex items-center justify-between px-1">
                                 <FieldLabel label="Logic Information" required />
-                                <span className="text-[8px] font-semibold text-slate-500">Editor</span>
+                                <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest">Logic Engine</span>
                               </div>
                               <div className={`flex-1 overflow-hidden rounded-lg border shadow-inner min-h-[280px] ${
                                 activeLogicErrors.logic_info ? 'border-rose-500/60 bg-rose-500/10' : 'border-white/10 bg-black/40'
@@ -4750,10 +4829,10 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                             options={notificationMethods.map((m:any) => ({ value: m.value, label: m.label }))}
                             error={formErrors.notification_method}
                           />
-                          <div className="rounded-lg border border-white/10 bg-black/20 p-4">
-                            <p className="text-[9px] font-semibold text-slate-500">Severity</p>
-                            <p className="mt-1 text-[11px] font-semibold text-slate-100">{formData.severity}</p>
-                            <p className="mt-1 text-[9px] font-semibold text-slate-500">Pinned in the identity header for constant context.</p>
+                          <div className="rounded-lg border border-white/5 bg-black/40 p-5 shadow-inner">
+                            <p className="text-[9px] font-black text-slate-700 uppercase tracking-widest">Severity Context</p>
+                            <p className="mt-2 text-[12px] font-bold text-slate-100">{formData.severity}</p>
+                            <p className="mt-2 text-[9px] font-bold text-slate-600 uppercase tracking-widest">Pinned in the identity header for constant operational context.</p>
                           </div>
                         </div>}
                       </WorkspaceSectionCard>
@@ -4765,22 +4844,22 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                           collapsed={collapsedSections.recipients}
                           onToggle={() => toggleSection('recipients')}
                         />
-                        {!collapsedSections.recipients && <div className="mt-4 space-y-3">
+                        {!collapsedSections.recipients && <div className="mt-4 space-y-4">
                           <div className="flex space-x-2">
                             <input
                               value={recipientInput}
                               onChange={e => setRecipientInput(e.target.value)}
                               onKeyDown={e => e.key === 'Enter' && addRecipient()}
                               placeholder="ID or Email..."
-                              className={`${monitoringInputClass()} flex-1 py-2 text-[10px]`}
+                              className={`${monitoringInputClass()} flex-1 py-2.5 text-[11px] font-bold`}
                             />
-                            <button onClick={addRecipient} className="rounded-lg bg-slate-800 px-3 text-white transition-all hover:bg-slate-700 shrink-0"><Plus size={12} /></button>
+                            <button onClick={addRecipient} className="rounded-lg bg-blue-600 px-4 text-white transition-all hover:bg-blue-500 shadow-lg shadow-blue-500/20 active:scale-95 shrink-0"><Plus size={14} /></button>
                           </div>
-                          <div className="flex flex-wrap gap-1.5">
+                          <div className="flex flex-wrap gap-2">
                             {formData.notification_recipients.map((r: string) => (
-                              <div key={r} className="flex items-center space-x-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2 py-1">
-                                <span className="text-[9px] font-semibold text-blue-300">{r}</span>
-                                <button onClick={() => removeRecipient(r)} className="text-slate-500 transition-colors hover:text-rose-400"><X size={10} /></button>
+                              <div key={r} className="flex items-center space-x-3 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 shadow-sm group hover:border-blue-500/40 transition-all">
+                                <span className="text-[10px] font-bold text-blue-300">{r}</span>
+                                <button onClick={() => removeRecipient(r)} className="text-slate-600 transition-colors hover:text-rose-400"><X size={10} /></button>
                               </div>
                             ))}
                             {formData.notification_recipients.length === 0 && (
@@ -4801,54 +4880,57 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                           onToggle={() => toggleSection('recovery')}
                         />
                         {!collapsedSections.recovery && <div className="mt-4 space-y-4">
-                          <div className={`space-y-4 rounded-lg border-2 p-4 ${formErrors.recovery_docs ? 'border-rose-500/40 bg-rose-500/10' : 'border-dashed border-white/10 bg-black/20'}`}>
+                          <div className={`space-y-4 rounded-lg border-2 p-6 shadow-inner ${formErrors.recovery_docs ? 'border-rose-500/40 bg-rose-500/10' : 'border-dashed border-white/5 bg-black/40'}`}>
                             <div className="flex items-center justify-between">
                               <div className="space-y-0.5">
-                                <PanelTitle>Link recovery documents</PanelTitle>
-                                <PanelSubtitle>Linked docs are presented to the on-call engineer.</PanelSubtitle>
+                                <PanelTitle>Link recovery documents (BKM)</PanelTitle>
+                                <PanelSubtitle>Linked protocols are presented to the on-call engineer.</PanelSubtitle>
                               </div>
-                              <div className="flex items-center space-x-2 rounded-lg border border-blue-600/20 bg-blue-600/10 px-2 py-1 shrink-0">
+                              <div className="flex items-center space-x-2 rounded-lg border border-blue-600/20 bg-blue-600/10 px-3 py-1.5 shrink-0">
                                 <List size={10} className="text-blue-400" />
-                                <span className="text-[9px] font-semibold text-blue-400">{formData.recovery_docs?.length || 0} linked</span>
+                                <span className="text-[10px] font-black text-blue-300 uppercase">{formData.recovery_docs?.length || 0} linked</span>
                               </div>
                             </div>
                             <div className="relative group">
-                              <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                              <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
                               <input
                                 value={recoverySearch}
                                 onChange={e => setRecoverySearch(e.target.value)}
                                 placeholder="Search Knowledge Base..."
-                                className={`${monitoringInputClass()} pl-11 py-3 text-[11px]`}
+                                className={`${monitoringInputClass()} pl-11 py-3 text-[11px] font-bold`}
                               />
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[280px] overflow-y-auto custom-scrollbar pr-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[320px] overflow-y-auto custom-scrollbar pr-2">
                               {filteredKnowledge?.map((entry: any) => (
                                 <button
                                   key={entry.id}
                                   type="button"
                                   onClick={() => toggleRecoveryDoc(entry.id)}
-                                  className={`p-3 rounded-lg border text-left transition-all relative overflow-hidden ${
+                                  className={`p-4 rounded-lg border text-left transition-all relative overflow-hidden group ${
                                     formData.recovery_docs?.includes(entry.id)
-                                      ? 'bg-blue-600/20 border-blue-500/50 shadow-[0_0_20px_rgba(37,99,235,0.1)]'
+                                      ? 'bg-blue-600/15 border-blue-500/50 shadow-lg shadow-blue-500/5'
                                       : 'bg-black/40 border-white/5 hover:border-white/20'
                                   }`}
                                 >
                                   {formData.recovery_docs?.includes(entry.id) && (
-                                    <div className="absolute top-0 right-0 w-6 h-6 bg-blue-600 flex items-center justify-center rounded-bl-lg shadow-lg">
-                                      <Check size={10} className="text-white" strokeWidth={4} />
+                                    <div className="absolute top-0 right-0 w-7 h-7 bg-blue-600 flex items-center justify-center rounded-bl-lg shadow-lg">
+                                      <Check size={12} className="text-white" strokeWidth={4} />
                                     </div>
                                   )}
-                                  <div className="flex items-center space-x-1.5 mb-1.5">
-                                    <span className="text-[8px] font-semibold px-1.5 py-0.5 bg-slate-800 text-slate-400 rounded border border-white/5 truncate">{entry.category}</span>
-                                    <span className="text-[8px] font-semibold text-slate-600 shrink-0">#{entry.id}</span>
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 bg-slate-800 text-slate-400 rounded border border-white/5 truncate">{entry.category}</span>
+                                    <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest shrink-0">#{entry.id}</span>
                                   </div>
-                                  <p className={`text-[10px] font-semibold leading-tight ${formData.recovery_docs?.includes(entry.id) ? 'text-blue-300' : 'text-slate-300'} line-clamp-2`}>
+                                  <p className={`text-[11px] font-bold leading-tight ${formData.recovery_docs?.includes(entry.id) ? 'text-blue-100' : 'text-slate-300'} line-clamp-2`}>
                                     {entry.title}
                                   </p>
                                 </button>
                               ))}
                               {filteredKnowledge?.length === 0 && (
-                                <div className="col-span-2 py-6 text-center text-slate-600 text-[9px] font-semibold">No entries found</div>
+                                <div className="col-span-2 py-10 text-center flex flex-col items-center justify-center space-y-3 opacity-30">
+                                   <Search size={32} className="text-slate-700" />
+                                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-700">No knowledge entries detected</p>
+                                </div>
                               )}
                             </div>
                             <FieldError message={formErrors.recovery_docs} />
@@ -4861,44 +4943,10 @@ export function MonitoringForm({ item, devices, categories, severities, platform
               </div>
             }
           />
-        </div>
-
-        <WorkspaceModalFooter
-          left={
-              <button 
-                onClick={() => {
-                  if (formData.status === 'Existing') {
-                    setFormData({...formData, is_active: !formData.is_active})
-                  }
-                }}
-                disabled={formData.status !== 'Existing'}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg border transition-all ${
-                  formData.is_active 
-                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20' 
-                    : 'bg-slate-500/10 border-white/10 text-slate-500 hover:bg-white/5 hover:text-white'
-                } ${formData.status !== 'Existing' ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <div className={`w-2 h-2 rounded-full ${formData.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'}`} />
-                <span className="text-[10px] font-black uppercase tracking-widest">{formData.is_active ? 'Monitor Active' : 'Monitor Paused'}</span>
-              </button>
-          }
-          right={
-            <>
-              <button onClick={onClose} className="px-6 sm:px-8 py-3 bg-white/5 hover:bg-white/10 text-slate-400 rounded-lg font-black uppercase tracking-widest text-[9px] sm:text-[10px] transition-all">Abort</button>
-              <button 
-                onClick={handleSave}
-                disabled={mutation.isPending}
-                className="px-8 sm:px-12 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-black uppercase tracking-widest text-[9px] sm:text-[10px] transition-all shadow-xl shadow-blue-500/20 active:scale-95 disabled:bg-slate-700 flex items-center space-x-2"
-              >
-                {mutation.isPending ? <Clock className="animate-spin" size={14} /> : <Check size={14} />}
-                <span>{item ? 'Save Monitoring' : 'Add Monitoring'}</span>
-              </button>
-            </>
-          }
-        />
-      </motion.div>
-    </div>
+      </div>
+    </WorkspaceModal>
   )
+}
 
   return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }
@@ -4948,30 +4996,23 @@ function MonitoringHistoryModal({ item, onClose }: any) {
 
   const diffs = getDiff(newer, older)
 
-  const modal = (
-    <div onClick={onClose} className={`fixed inset-0 z-[3240] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] ${getWorkspaceModalFrameClass('wide')}`}>
-      <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className={`glass-panel ${getWorkspaceModalShellClass('wide')} flex flex-col p-6 sm:p-8 rounded-lg border-white/10 shadow-[0_0_90px_rgba(15,23,42,0.35)]`}>
-        <WorkspaceHistoryShell
+  return (
+    <WorkspaceModal
+      isOpen={true}
+      onClose={onClose}
+      size="wide"
+      title="Revision history"
+      subtitle={`Temporal lineage for ${item.title}`}
+      icon={<Clock size={20} />}
+      footerRight={
+        <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
+      }
+    >
+      <WorkspaceHistoryShell
           header={
-            <>
-        <div className="flex items-center justify-between mb-8">
-           <div className="flex items-center space-x-6">
-              <div className="w-14 h-14 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-blue-400">
-                <Clock size={32} strokeWidth={1.5} />
-              </div>
-              <div>
-                <h2 className="text-2xl font-black tracking-tighter text-white leading-none">Revision history</h2>
-                <div className="flex items-center space-x-2 mt-1">
-                   <span className="text-[10px] text-slate-500 font-semibold">{item.title}</span>
-                   <span className="w-1 h-1 rounded-full bg-slate-700" />
-                   <span className="text-[10px] text-blue-400 font-semibold">Version lineage</span>
-                </div>
-              </div>
-           </div>
-           
-           <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4">
               <div className="px-4 py-2 bg-white/5 border border-white/5 rounded-lg">
-                 <p className="text-[8px] font-semibold text-slate-500 mb-1 text-center">Comparison mode</p>
+                 <p className="text-[8px] font-semibold text-slate-500 mb-1 text-center uppercase tracking-widest">Comparison mode</p>
                  <div className="flex items-center space-x-3">
                     <div className="flex items-center space-x-1.5">
                        <div className="w-2 h-2 rounded-full bg-blue-500" />
@@ -4984,24 +5025,19 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                     </div>
                  </div>
               </div>
-              <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all">
-                <X size={24} />
-              </button>
-           </div>
-        </div>
-            </>
+            </div>
           }
           sidebar={
            <div className="w-72 flex flex-col min-h-0">
               <div className="mb-4 flex items-center justify-between px-1">
-                 <h3 className="text-[10px] font-semibold text-slate-400">Revision history</h3>
-                 <span className="text-[9px] font-semibold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">{history?.length || 0} states</span>
+                 <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Revision Timeline</h3>
+                 <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">{history?.length || 0} states</span>
               </div>
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
                 {isLoading ? (
                    <div className="flex-1 flex flex-col items-center justify-center space-y-3 py-20">
-                      <RefreshCcw size={24} className="animate-spin text-purple-500" />
-                      <span className="text-[10px] font-semibold text-purple-500 animate-pulse">Syncing timeline...</span>
+                      <RefreshCcw size={24} className="animate-spin text-blue-500" />
+                      <span className="text-[10px] font-semibold text-blue-500 animate-pulse uppercase tracking-widest">Syncing timeline...</span>
                    </div>
                 ) : (
                   history?.map((h: any, idx: number) => {
@@ -5013,13 +5049,13 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                         onClick={() => toggleSelection(idx)}
                         className={`w-full p-4 rounded-lg border text-left transition-all relative group overflow-hidden ${
                           isSelected 
-                            ? isNewest ? 'bg-blue-600/20 border-blue-500/40 shadow-[0_0_20px_rgba(37,99,235,0.15)]' : 'bg-slate-700 border-slate-500' 
+                            ? isNewest ? 'bg-blue-600/20 border-blue-500/40 shadow-lg shadow-blue-500/5' : 'bg-slate-800 border-slate-600' 
                             : 'bg-white/5 border-white/5 hover:border-white/10'
                         }`}
                       >
                         {isSelected && (
-                          <div className={`absolute top-0 right-0 px-2 py-0.5 text-[8px] font-semibold rounded-bl-lg ${isNewest ? 'bg-blue-400 text-blue-950' : 'bg-slate-500 text-slate-200'}`}>
-                             {isNewest ? 'Primary' : 'Reference'}
+                          <div className={`absolute top-0 right-0 px-2 py-0.5 text-[8px] font-black uppercase rounded-bl-lg ${isNewest ? 'bg-blue-400 text-blue-950' : 'bg-slate-500 text-slate-200'}`}>
+                             {isNewest ? 'Primary' : 'Ref'}
                           </div>
                         )}
                         <div className="flex items-center justify-between mb-2">
@@ -5043,7 +5079,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                 )}
               </div>
               <div className="mt-4 p-4 bg-white/[0.03] border border-white/5 rounded-lg">
-                 <p className="text-[9px] text-slate-500 font-semibold leading-relaxed">Select two versions to perform a deep semantic comparison. If only one is selected, it compares to its immediate predecessor.</p>
+                 <p className="text-[9px] text-slate-500 font-semibold leading-relaxed">Select two versions to perform a deep semantic comparison. Defaults to immediate predecessor.</p>
               </div>
            </div>
           }
@@ -5057,13 +5093,13 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                        <div className="w-8 h-8 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-500 text-[12px] font-black">{older ? `v${older.version}` : 'Ø'}</div>
                     </div>
                     <div>
-                       <h3 className="text-[11px] font-semibold text-slate-300">Change analysis</h3>
-                       <p className="text-[8px] font-semibold text-slate-600">{diffs.length} modification vectors detected</p>
+                       <h3 className="text-[11px] font-black text-slate-300 uppercase tracking-widest">Change Analysis</h3>
+                       <p className="text-[9px] font-bold text-slate-600">{diffs.length} modification vectors detected</p>
                     </div>
                  </div>
                  <div className="flex items-center space-x-2">
-                    <span className="text-[9px] font-semibold text-slate-400 bg-white/5 px-3 py-1 rounded-full border border-white/10">
-                       Diff Ready
+                    <span className="text-[9px] font-black uppercase text-slate-400 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                       Diff Engine Ready
                     </span>
                  </div>
               </div>
@@ -5076,18 +5112,18 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                              <div className="flex items-center justify-between mb-3 px-1">
                                 <div className="flex items-center space-x-3">
                                    <div className="w-2 h-6 bg-blue-500 rounded-full" />
-                                   <span className="text-[12px] font-black text-white tracking-[0.08em]">{d.field.replace(/_/g, ' ')}</span>
+                                   <span className="text-[12px] font-black text-white tracking-[0.08em] uppercase">{d.field.replace(/_/g, ' ')}</span>
                                 </div>
-                                <span className="text-[9px] font-semibold text-slate-600">Field: {d.field}</span>
+                                <span className="text-[9px] font-semibold text-slate-600">Vector: {d.field}</span>
                              </div>
                              
                              <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                    <div className="flex items-center justify-between px-2">
-                                      <span className="text-[9px] font-semibold text-rose-500">Previous state</span>
+                                      <span className="text-[9px] font-black uppercase text-rose-500">Previous state</span>
                                       <Trash2 size={12} className="text-rose-900" />
                                    </div>
-                                   <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-5 relative overflow-hidden min-h-[100px] group transition-all hover:bg-rose-500/10 hover:border-rose-500/20">
+                                   <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-5 relative overflow-hidden min-h-[100px] group transition-all hover:bg-rose-500/10 hover:border-rose-500/20 shadow-inner">
                                       <pre className="text-[11px] text-slate-500 line-through whitespace-pre-wrap font-mono leading-relaxed">
                                          {typeof d.old === 'object' ? JSON.stringify(d.old, null, 2) : String(d.old || '(empty_state)')}
                                       </pre>
@@ -5096,10 +5132,10 @@ function MonitoringHistoryModal({ item, onClose }: any) {
 
                                 <div className="space-y-2">
                                    <div className="flex items-center justify-between px-2">
-                                      <span className="text-[9px] font-semibold text-emerald-400">Current state</span>
+                                      <span className="text-[9px] font-black uppercase text-emerald-400">Current state</span>
                                       <Zap size={12} className="text-emerald-900" />
                                    </div>
-                                   <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-5 relative overflow-hidden min-h-[100px] group transition-all hover:bg-emerald-500/10 hover:border-emerald-500/20">
+                                   <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-5 relative overflow-hidden min-h-[100px] group transition-all hover:bg-emerald-500/10 hover:border-emerald-500/20 shadow-inner">
                                       <pre className="text-[12px] text-emerald-300 whitespace-pre-wrap font-mono font-bold leading-relaxed">
                                          {typeof d.new === 'object' ? JSON.stringify(d.new, null, 2) : String(d.new || '(empty_state)')}
                                       </pre>
@@ -5111,7 +5147,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                     </div>
                  ) : !isLoading ? (
                     <WorkspaceEmptyState
-                      icon={<Check size={42} className="text-purple-400" strokeWidth={1} />}
+                      icon={<Check size={42} className="text-blue-400" strokeWidth={1} />}
                       title="No configuration variance detected"
                       description={
                         selectedIndices.length > 1
@@ -5127,21 +5163,18 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                  <div className="flex items-center space-x-6">
                     <div className="flex items-center space-x-2">
                        <User size={12} className="text-slate-600" />
-                       <span className="text-[9px] font-semibold text-slate-500">Authored by: Operational Kernel</span>
+                       <span className="text-[9px] font-bold text-slate-500">Authored by: Operational Kernel</span>
                     </div>
                     <div className="flex items-center space-x-2">
                        <Tag size={12} className="text-slate-600" />
-                       <span className="text-[9px] font-semibold text-slate-500">Trace ID: {newer?.id}</span>
+                       <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Trace: {newer?.id}</span>
                     </div>
                  </div>
-                 <div className="text-[9px] font-semibold text-slate-600">Temporal data repository · v4.2</div>
+                 <div className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Temporal data repository · v4.2</div>
               </div>
             </>
           }
         />
-      </motion.div>
-    </div>
+    </WorkspaceModal>
   )
-
-  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }

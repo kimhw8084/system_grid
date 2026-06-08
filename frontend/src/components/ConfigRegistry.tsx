@@ -5,6 +5,9 @@ import { Plus, Trash2, X, Check, Edit2, Layout, Database, RefreshCcw, Settings, 
 import { motion, AnimatePresence } from "framer-motion"
 import toast from "react-hot-toast"
 import { apiFetch } from "../api/apiClient"
+import { WorkspaceModal } from "./shared/WorkspaceModal"
+import { ToolbarButton } from "./shared/LayoutPrimitives"
+
 
 export const ConfigSection = ({ title, category, options, icon: Icon }: any) => {
   const queryClient = useQueryClient()
@@ -245,49 +248,32 @@ export const ConfigRegistryModal = ({ isOpen, onClose, sections, title }: any) =
         queryFn: async () => (await (await apiFetch("/api/v1/settings/options")).json()) 
     })
 
-    const modal = (
-        <AnimatePresence>
-            {isOpen && (
-                <div className="fixed inset-0 z-[3250] flex items-center justify-center bg-[rgba(2,6,23,0.62)] backdrop-blur-[14px] p-6 sm:p-10">
-                    <motion.div 
-                        initial={{ scale: 0.95, opacity: 0, y: 20 }} 
-                        animate={{ scale: 1, opacity: 1, y: 0 }} 
-                        exit={{ scale: 0.95, opacity: 0, y: 20 }} 
-                        className="glass-panel w-full max-w-5xl max-h-[90vh] overflow-hidden rounded-xl border border-blue-500/20 shadow-[0_0_80px_rgba(37,99,235,0.08)] flex flex-col bg-[#020617]/90"
-                    >
-                        <div className="p-8 pb-4 flex items-center justify-between border-b border-white/5 bg-white/[0.02]">
-                            <div className="flex items-center space-x-6">
-                                <div className="p-4 bg-blue-600/20 rounded-lg text-blue-400 border border-blue-500/30 shadow-inner"><Layout size={28} /></div>
-                                <div>
-                                    <h2 className="text-2xl font-bold uppercase text-white tracking-tighter">{title || 'Registry Configuration'}</h2>
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">Global System Parameters & Enumerations</p>
-                                </div>
-                            </div>
-                            <button onClick={onClose} className="p-3 bg-white/5 hover:bg-rose-500/20 text-slate-500 hover:text-rose-500 rounded-lg transition-all border border-white/10 group">
-                                <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
-                            </button>
-                        </div>
-                        
-                        <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-4">
-                            {sections.map((s: any) => (
-                                <ConfigSection 
-                                    key={s.category} 
-                                    title={s.title} 
-                                    category={s.category} 
-                                    icon={s.icon} 
-                                    options={Array.isArray(options) ? options.filter((o:any) => o.category === s.category) : []} 
-                                />
-                            ))}
-                        </div>
-
-                        <div className="p-6 bg-white/2 border-t border-white/5 text-center">
-                            <p className="text-[9px] font-bold text-slate-600 uppercase tracking-[0.4em]">SysGrid Core Configuration Node // v3.0.0</p>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
-        </AnimatePresence>
+    return (
+        <WorkspaceModal
+            isOpen={isOpen}
+            onClose={onClose}
+            size="workspace"
+            title={title || 'Registry Configuration'}
+            subtitle="Global System Parameters & Enumerations"
+            icon={<Layout size={20} />}
+            footerRight={
+                <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
+            }
+        >
+            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
+                {sections.map((s: any) => (
+                    <ConfigSection 
+                        key={s.category} 
+                        title={s.title} 
+                        category={s.category} 
+                        icon={s.icon} 
+                        options={Array.isArray(options) ? options.filter((o:any) => o.category === s.category) : []} 
+                    />
+                ))}
+            </div>
+            <div className="mt-8 border-t border-white/5 pt-6 text-center">
+                <p className="text-[9px] font-bold text-slate-600 uppercase tracking-[0.4em]">SysGrid Core Configuration Node // v3.0.0</p>
+            </div>
+        </WorkspaceModal>
     )
-
-    return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
 }

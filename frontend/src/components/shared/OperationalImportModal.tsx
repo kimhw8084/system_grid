@@ -561,24 +561,19 @@ export function OperationalImportModal({
         </div>
       )}
       footerRight={(
-        <>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-white/10 bg-black/20 px-4 py-2 text-[10px] font-black uppercase text-slate-300 transition-colors hover:text-white"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
+        <div className="flex items-center gap-3">
+          <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
+          <ToolbarButton
+            type="submit"
             onClick={() => executeMutation.mutate()}
             disabled={!preview || selectedImportCount === 0 || executeMutation.isPending}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2 text-[10px] font-black uppercase text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            variant="primary"
+            className="px-8"
           >
-            <CheckSquare size={12} />
-            {executeMutation.isPending ? 'Importing...' : `Import ${selectedImportCount || ''}`.trim()}
-          </button>
-        </>
+            {executeMutation.isPending ? <RefreshCcw className="animate-spin mr-2" size={12} /> : <CheckSquare className="mr-2" size={12} />}
+            <span>{executeMutation.isPending ? 'Importing...' : `Import ${selectedImportCount || ''}`.trim()}</span>
+          </ToolbarButton>
+        </div>
       )}
     >
       <div className="flex flex-col space-y-8">
