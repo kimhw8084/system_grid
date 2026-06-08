@@ -4280,7 +4280,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
     <WorkspaceModal
       isOpen={true}
       onClose={onClose}
-      size="workspace"
+      size="wide"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(prev => !prev)}
       title={item ? 'Update Monitoring' : 'Add Monitoring'}

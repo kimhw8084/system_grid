@@ -56,7 +56,7 @@ export function WorkspaceModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className={`${getWorkspaceModalShellClass(isMaximized ? 'workspace' : size)} flex flex-col overflow-hidden rounded-lg border border-white/10 bg-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.62)] ${className}`}
+          className={`${getWorkspaceModalShellClass(isMaximized ? 'workspace' : size)} flex flex-col overflow-hidden rounded-lg border border-white/10 bg-[#0b1222] shadow-[0_24px_80px_rgba(0,0,0,0.62)] ${className}`}
         >
           <WorkspaceModalHeader
             icon={icon}
@@ -64,22 +64,31 @@ export function WorkspaceModal({
             subtitle={subtitle || ''}
             status={status}
             closeControl={
-              <button
-                type="button"
-                onClick={onClose}
-                className="group flex h-6 w-6 items-center justify-center rounded-lg bg-black/40 text-slate-500 transition-all hover:bg-rose-500/10 hover:text-rose-400"
-              >
-                <X size={14} className="transition-transform group-hover:rotate-90" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="group flex h-3 w-3 items-center justify-center rounded-full bg-[#ff5f57] transition-all hover:bg-[#ff5f57]/80"
+                  title="Close"
+                >
+                  <X size={8} strokeWidth={4} className="text-[#4c0000] opacity-0 transition-opacity group-hover:opacity-100" />
+                </button>
+                <div className="h-3 w-3 rounded-full bg-[#ffbd2e] opacity-50 cursor-not-allowed" title="Minimize" />
+              </div>
             }
             maximizeControl={
               onMaximizeToggle && (
                 <button
                   type="button"
                   onClick={onMaximizeToggle}
-                  className="flex h-6 w-6 items-center justify-center rounded-lg bg-black/40 text-slate-500 transition-all hover:bg-blue-500/10 hover:text-blue-400"
+                  className="group flex h-3 w-3 items-center justify-center rounded-full bg-[#28c940] transition-all hover:bg-[#28c940]/80"
+                  title={isMaximized ? 'Restore size' : 'Maximize'}
                 >
-                  {isMaximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                  {isMaximized ? (
+                    <Minimize2 size={8} strokeWidth={4} className="text-[#003300] opacity-0 transition-opacity group-hover:opacity-100" />
+                  ) : (
+                    <Maximize2 size={8} strokeWidth={4} className="text-[#003300] opacity-0 transition-opacity group-hover:opacity-100" />
+                  )}
                 </button>
               )
             }
@@ -88,7 +97,7 @@ export function WorkspaceModal({
             onTabChange={onTabChange}
           />
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 sm:p-8">
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-10 sm:px-8 pt-8">
             {children}
           </div>
 

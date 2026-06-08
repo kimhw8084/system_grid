@@ -621,7 +621,7 @@ export function WorkspaceModalHeader({
   onTabChange?: (id: string) => void
 }) {
   return (
-    <div className="z-30 border-b border-white/10 bg-slate-950 px-6 py-5 sm:px-8">
+    <div className="z-30 border-b border-white/10 bg-[#0b1222] px-6 py-5 sm:px-8">
       <div className="flex items-start justify-between gap-6">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex items-center gap-2 self-start pt-1">
