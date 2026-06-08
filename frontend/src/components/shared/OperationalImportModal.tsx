@@ -273,11 +273,11 @@ export function OperationalImportModal({
   }, [isPickerOpening])
 
   const supportedFields = useMemo(
-    () => (schema?.fields || []),
+    () => (schema?.fields || []).filter((field) => field.supported_in_builder !== false),
     [schema?.fields]
   )
   const unsupportedFields = useMemo(
-    () => [],
+    () => (schema?.fields || []).filter((field) => field.supported_in_builder === false),
     [schema?.fields]
   )
   const activeColumns = useMemo(() => {

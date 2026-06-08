@@ -275,10 +275,10 @@ def build_monitoring_import_fields() -> list[ImportField]:
         ImportField("check_interval", "Check Interval (sec)", template_hint="[15-86400]", input_control="number", validation_rules=["Must be between 15 and 86400 seconds."]),
         ImportField("alert_duration", "Alert Duration (sec)", template_hint="[0-86400]", input_control="number", validation_rules=["Must be between 0 and 86400 seconds."]),
         ImportField("notification_throttle", "Notification Throttle (sec)", template_hint="[60-604800]", input_control="number", validation_rules=["Must be between 60 and 604800 seconds."]),
-        ImportField("spec", "Spec", input_kind="multiline", input_control="textarea", template_hint="[Standardized thresholds]", validation_rules=["Optional. Freeform threshold documentation."]),
-        ImportField("logic", "Logic", input_kind="multiline", input_control="textarea", template_hint="[Alert condition logic]", validation_rules=["Optional. Raw alert condition logic string."]),
-        ImportField("monitored_service_names", "Services", input_control="textarea", template_hint="[comma separated service names]", accepts_multiple=True, validation_rules=["Optional. Comma-separated logical service names."]),
-        ImportField("recovery_doc_titles", "Recovery Documents", input_control="textarea", template_hint="[comma separated doc titles]", accepts_multiple=True, validation_rules=["Optional. Comma-separated Knowledge Entry titles."]),
+        ImportField("spec", "Spec", input_kind="multiline", input_control="unsupported", template_hint="[Use add/edit workspace]", supported_in_builder=False, unsupported_reason="Spec content is freeform threshold documentation and is not standardized enough for strict bulk import."),
+        ImportField("logic", "Logic", input_kind="multiline", input_control="unsupported", template_hint="[Use add/edit workspace]", supported_in_builder=False, unsupported_reason="Logic belongs in the structured monitoring logic editor, not the simplified import grid."),
+        ImportField("monitored_service_names", "Services", input_control="unsupported", template_hint="[Use add/edit workspace]", accepts_multiple=True, supported_in_builder=False, unsupported_reason="Service coverage depends on the linked asset and must be chosen from the add/edit workspace."),
+        ImportField("recovery_doc_titles", "Recovery Documents", input_control="unsupported", template_hint="[Use add/edit workspace]", accepts_multiple=True, supported_in_builder=False, unsupported_reason="Recovery documents should be linked from the knowledge workspace search, not typed into bulk import."),
     ]
 
 
