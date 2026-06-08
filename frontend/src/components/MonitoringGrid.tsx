@@ -4948,9 +4948,6 @@ export function MonitoringForm({ item, devices, categories, severities, platform
   )
 }
 
-  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal
-}
-
 function MonitoringHistoryModal({ item, onClose }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
