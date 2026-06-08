@@ -127,14 +127,16 @@ const ViewPermissionIcon = ({ level, onClick }: any) => {
     )
 }
 
+import { SettingsStandards } from "./SettingsStandards"
+
 export default function SettingsPage() {
-  const [topTab, setTopTab] = useState<'environments' | 'permissions' | 'system' | 'tenants'>('environments')
+  const [topTab, setTopTab] = useState<'environments' | 'permissions' | 'system' | 'tenants' | 'standards'>('environments')
   
   // Use URL search params to set the initial tab if provided
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
-    if (tab && ['environments', 'permissions', 'system', 'tenants'].includes(tab)) {
+    if (tab && ['environments', 'permissions', 'system', 'tenants', 'standards'].includes(tab)) {
       setTopTab(tab as any);
     }
   }, []);
@@ -879,12 +881,23 @@ result_df = get_user_pool()`)
            <button onClick={() => setTopTab('tenants')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'tenants' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
               <Database size={14} /> Tenants
            </button>
+           <button onClick={() => setTopTab('standards')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'standards' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+              <Star size={14} /> Standards
+           </button>
         </div>
         
-        {topTab === 'environments' && (
-          <div className="flex items-center gap-2 pr-2">
+        <div className="flex items-center gap-2 pr-2">
+          {topTab !== 'standards' && (
             <button 
-                onClick={() => envMutation.mutate(getPersistableEnvSettings())}
+                onClick={() => setTopTab('standards')}
+                className="flex items-center space-x-2 px-6 py-2.5 rounded-lg font-black uppercase tracking-widest text-[10px] transition-all border bg-blue-600/10 border-blue-500/30 text-blue-400 hover:bg-blue-600/20"
+                title="View UI Standards & Golden Template"
+            >
+                <Layout size={14} />
+                <span>Golden Template</span>
+            </button>
+          )}
+          {topTab === 'environments' && (
                 className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg font-black uppercase tracking-widest text-[10px] transition-all border ${isDirty() ? 'bg-amber-600/10 border-amber-500/30 text-amber-500 animate-pulse' : 'bg-emerald-600/10 border-emerald-500/30 text-emerald-500 hover:bg-emerald-600/20'}`}
                 title="Force Hot Reload Current Config"
             >
@@ -1981,6 +1994,10 @@ result_df = get_user_pool()`)
                   </div>
                </div>
              </motion.div>
+          )}
+
+          {topTab === 'standards' && (
+            <SettingsStandards />
           )}
         </AnimatePresence>
       </div>
