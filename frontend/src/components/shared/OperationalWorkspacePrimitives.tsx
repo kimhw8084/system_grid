@@ -3,7 +3,7 @@ import { ChevronDown, Check } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { OPERATIONAL_WORKSPACE_VISUALS } from './OperationalWorkspace'
 
-export type WorkspaceModalSize = 'compact' | 'standard' | 'wide' | 'workspace'
+export type WorkspaceModalSize = 'compact' | 'standard' | 'wide' | 'workspace' | 'fullscreen'
 
 const join = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ')
 
@@ -15,13 +15,15 @@ export function getWorkspaceModalFrameClass(size: WorkspaceModalSize) {
   if (size === 'compact') return 'p-4 sm:p-6'
   if (size === 'standard') return 'p-4 sm:p-6'
   if (size === 'wide') return 'p-4 sm:p-8'
+  if (size === 'workspace') return 'p-6 sm:p-10'
   return 'p-4 sm:p-6'
 }
 
 export function getWorkspaceModalShellClass(size: WorkspaceModalSize) {
   if (size === 'compact') return 'w-full max-w-md max-h-[82vh]'
   if (size === 'standard') return 'w-full max-w-2xl max-h-[86vh]'
-  if (size === 'wide') return 'w-full max-w-6xl h-full sm:h-auto sm:max-h-[88vh]'
+  if (size === 'wide') return 'w-full max-w-4xl max-h-[88vh]'
+  if (size === 'workspace') return 'w-full max-w-7xl h-full sm:h-auto sm:max-h-[92vh]'
   return 'fixed inset-0 w-screen h-screen max-w-none max-h-none z-[4000]'
 }
 

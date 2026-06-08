@@ -56,7 +56,7 @@ export function WorkspaceModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className={`${getWorkspaceModalShellClass(isMaximized ? 'workspace' : size)} flex flex-col overflow-hidden bg-[#0b1222] ${isMaximized ? '' : 'rounded-lg border border-white/10 shadow-[0_24px_80px_rgba(0,0,0,0.62)]'} ${className}`}
+          className={`${getWorkspaceModalShellClass(isMaximized ? 'fullscreen' : size)} flex flex-col overflow-hidden bg-[#0b1222] ${(isMaximized || size === 'fullscreen') ? '' : 'rounded-lg border border-white/10 shadow-[0_24px_80px_rgba(0,0,0,0.62)]'} ${className}`}
         >
           <WorkspaceModalHeader
             icon={icon}
