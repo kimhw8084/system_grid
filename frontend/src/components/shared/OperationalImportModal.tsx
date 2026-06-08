@@ -8,6 +8,7 @@ import { showWorkspaceToast } from './WorkspaceToast'
 import { apiFetch, getApiBaseUrl } from '../../api/apiClient'
 import { AppDropdown } from './AppDropdown'
 import { WorkspaceModal } from './WorkspaceModal'
+import { ToolbarButton } from './LayoutPrimitives'
 import {
   WorkspaceEmptyState,
   WorkspaceFieldLabel,
@@ -21,7 +22,9 @@ import {
   useWorkspaceAnchoredLayer,
   WorkspaceCollapsibleHeader,
   WorkspaceValidationBanner,
-  getWorkspaceInputClass
+  getWorkspaceInputClass,
+  useEscapeDismiss,
+  useBodyModalFlag,
 } from './OperationalWorkspacePrimitives'
 
 type ImportMode = 'file' | 'paste' | 'builder'
@@ -170,6 +173,8 @@ export function OperationalImportModal({
   tableName,
   displayName,
 }: OperationalImportModalProps) {
+  useEscapeDismiss(onClose)
+  useBodyModalFlag()
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [mode, setMode] = useState<ImportMode>('file')
@@ -564,7 +569,6 @@ export function OperationalImportModal({
         <div className="flex items-center gap-3">
           <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
           <ToolbarButton
-            type="submit"
             onClick={() => executeMutation.mutate()}
             disabled={!preview || selectedImportCount === 0 || executeMutation.isPending}
             variant="primary"

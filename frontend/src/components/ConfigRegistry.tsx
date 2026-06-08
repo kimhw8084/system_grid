@@ -7,6 +7,7 @@ import toast from "react-hot-toast"
 import { apiFetch } from "../api/apiClient"
 import { WorkspaceModal } from "./shared/WorkspaceModal"
 import { ToolbarButton } from "./shared/LayoutPrimitives"
+import { useEscapeDismiss, useBodyModalFlag } from "./shared/OperationalWorkspacePrimitives"
 
 
 export const ConfigSection = ({ title, category, options, icon: Icon }: any) => {
@@ -243,6 +244,8 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
 }
 
 export const ConfigRegistryModal = ({ isOpen, onClose, sections, title }: any) => {
+    useEscapeDismiss(onClose)
+    useBodyModalFlag()
     const { data: options } = useQuery({ 
         queryKey: ["settings-options"], 
         queryFn: async () => (await (await apiFetch("/api/v1/settings/options")).json()) 

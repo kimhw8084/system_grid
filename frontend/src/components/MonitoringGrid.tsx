@@ -46,6 +46,8 @@ import {
   getWorkspaceModalShellClass,
   getWorkspaceInputClass,
   useWorkspaceAnchoredLayer,
+  useEscapeDismiss,
+  useBodyModalFlag,
 } from './shared/OperationalWorkspacePrimitives'
 import { StatusPill } from './shared/StatusPill'
 import { PageHeader, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch, ToolbarSegmented } from './shared/LayoutPrimitives'
@@ -356,37 +358,6 @@ const sanitizeMonitoringPayload = (item: any) => {
   delete next.recovery_doc_titles
   delete next.monitored_service_names
   return next
-}
-
-const useEscapeDismiss = (onClose: () => void) => {
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
-}
-
-const useBodyModalFlag = () => {
-  useEffect(() => {
-    if (typeof document === 'undefined') return
-    const body = document.body
-    const currentCount = Number(body.dataset.sysgridModalCount || '0')
-    const nextCount = currentCount + 1
-    body.dataset.sysgridModalCount = String(nextCount)
-    body.dataset.sysgridModalOpen = 'true'
-    return () => {
-      const updatedCount = Math.max(0, Number(body.dataset.sysgridModalCount || '1') - 1)
-      if (updatedCount === 0) {
-        delete body.dataset.sysgridModalCount
-        delete body.dataset.sysgridModalOpen
-      } else {
-        body.dataset.sysgridModalCount = String(updatedCount)
-        body.dataset.sysgridModalOpen = 'true'
-      }
-    }
-  }, [])
 }
 
 const ObservabilityHUD = ({ items }: any) => {

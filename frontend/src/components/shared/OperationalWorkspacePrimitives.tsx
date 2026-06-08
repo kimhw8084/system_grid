@@ -128,6 +128,37 @@ export function useWorkspaceAnchoredLayer(isOpen: boolean, options?: { offset?: 
   return { triggerRef, panelRef, panelStyle }
 }
 
+export const useEscapeDismiss = (onClose: () => void) => {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+}
+
+export const useBodyModalFlag = () => {
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const body = document.body
+    const currentCount = Number(body.dataset.sysgridModalCount || '0')
+    const nextCount = currentCount + 1
+    body.dataset.sysgridModalCount = String(nextCount)
+    body.dataset.sysgridModalOpen = 'true'
+    return () => {
+      const updatedCount = Math.max(0, Number(body.dataset.sysgridModalCount || '1') - 1)
+      if (updatedCount === 0) {
+        delete body.dataset.sysgridModalCount
+        delete body.dataset.sysgridModalOpen
+      } else {
+        body.dataset.sysgridModalCount = String(updatedCount)
+        body.dataset.sysgridModalOpen = 'true'
+      }
+    }
+  }, [])
+}
+
 export function WorkspaceFloatingPanel({
   children,
   className = '',
