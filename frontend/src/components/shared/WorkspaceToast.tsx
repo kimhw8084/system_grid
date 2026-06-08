@@ -10,7 +10,7 @@ interface WorkspaceToastProps {
 }
 
 export const WorkspaceToast = ({ t, message, onRevert, type = 'success' }: WorkspaceToastProps) => {
-  const [showConfirmRevert, setShowConfirmRevert] = useState(false)
+  const [isConfirmingRevert, setIsConfirmingRevert] = useState(false)
   const [progress, setProgress] = useState(100)
   const duration = t.duration || 4000
   
@@ -22,11 +22,14 @@ export const WorkspaceToast = ({ t, message, onRevert, type = 'success' }: Works
       const elapsed = Date.now() - startTime
       const remaining = Math.max(0, 100 - (elapsed / duration) * 100)
       setProgress(remaining)
-      if (remaining <= 0) clearInterval(interval)
+      if (remaining <= 0) {
+        clearInterval(interval)
+        toast.dismiss(t.id)
+      }
     }, 50)
 
     return () => clearInterval(interval)
-  }, [t.visible, duration])
+  }, [t.visible, duration, t.id])
 
   return (
     <div
@@ -51,21 +54,33 @@ export const WorkspaceToast = ({ t, message, onRevert, type = 'success' }: Works
           )}
         </div>
         <div className="ml-3 flex-1">
-          <p className="text-[11px] font-black uppercase tracking-widest text-slate-100">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-100">
             {type === 'success' ? 'Operation Success' : type === 'error' ? 'System Error' : 'Processing...'}
           </p>
-          <p className="mt-1 text-[12px] font-semibold text-slate-400 leading-snug">
+          <p className="mt-1 text-[12px] font-bold text-slate-400 leading-snug">
             {message}
           </p>
         </div>
         <div className="ml-4 flex-shrink-0 flex gap-2">
-          {onRevert && !showConfirmRevert && (
+          {onRevert && (
             <button
-              onClick={() => setShowConfirmRevert(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-tighter text-slate-300 hover:bg-white/10 hover:text-white transition-all"
+              onClick={() => {
+                if (isConfirmingRevert) {
+                  onRevert()
+                  toast.dismiss(t.id)
+                } else {
+                  setIsConfirmingRevert(true)
+                }
+              }}
+              onMouseLeave={() => setIsConfirmingRevert(false)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-[10px] font-black uppercase tracking-tighter transition-all ${
+                isConfirmingRevert 
+                  ? 'bg-rose-500/20 border-rose-500/40 text-rose-300 hover:bg-rose-500/30' 
+                  : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
+              }`}
             >
-              <RotateCcw size={12} />
-              Revert
+              <RotateCcw size={12} className={isConfirmingRevert ? 'animate-spin' : ''} />
+              {isConfirmingRevert ? 'Confirm Undo?' : 'Revert'}
             </button>
           )}
           
@@ -77,33 +92,6 @@ export const WorkspaceToast = ({ t, message, onRevert, type = 'success' }: Works
           </button>
         </div>
       </div>
-
-      {showConfirmRevert && (
-        <div className="px-4 pb-4 animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 flex flex-col gap-3">
-            <p className="text-[10px] font-bold text-rose-300 uppercase tracking-tight text-center">
-              Are you sure you want to undo this action?
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  onRevert()
-                  toast.dismiss(t.id)
-                }}
-                className="flex-1 py-1.5 rounded bg-rose-600 text-white text-[9px] font-black uppercase hover:bg-rose-500 transition-all"
-              >
-                Confirm Undo
-              </button>
-              <button
-                onClick={() => setShowConfirmRevert(false)}
-                className="flex-1 py-1.5 rounded bg-white/5 text-slate-400 text-[9px] font-black uppercase hover:bg-white/10 transition-all"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Progress Bar Gauge */}
       <div className="h-0.5 w-full bg-white/5 overflow-hidden">

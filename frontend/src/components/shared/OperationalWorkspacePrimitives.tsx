@@ -76,7 +76,13 @@ export function useWorkspaceAnchoredLayer(isOpen: boolean, options?: { offset?: 
   const minWidth = options?.minWidth ?? 0
   const triggerRef = useRef<HTMLElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
-  const [panelStyle, setPanelStyle] = useState<CSSProperties>({})
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>({
+    position: 'fixed',
+    top: -9999,
+    left: -9999,
+    visibility: 'hidden',
+    pointerEvents: 'none'
+  })
 
   const updatePosition = useCallback(() => {
     const trigger = triggerRef.current
@@ -103,6 +109,8 @@ export function useWorkspaceAnchoredLayer(isOpen: boolean, options?: { offset?: 
       left,
       width,
       zIndex: 3600,
+      visibility: 'visible',
+      pointerEvents: 'auto'
     })
   }, [minWidth, offset])
 

@@ -1377,11 +1377,12 @@ export default function MonitoringGrid() {
       })
     })
     Object.entries(quickFilters).forEach(([field, value]) => {
-      if (!value) return
+      if (!value || (Array.isArray(value) && value.length === 0)) return
+      const labelValue = Array.isArray(value) ? value.join(', ') : value
       chips.push({
         id: `quick-${field}`,
-        label: `${field}: ${value}`,
-        onRemove: () => setQuickFilters((current) => ({ ...current, [field]: '' }))
+        label: `${field}: ${labelValue}`,
+        onRemove: () => setQuickFilters((current) => ({ ...current, [field]: Array.isArray(value) ? [] : '' }))
       })
     })
     return chips
