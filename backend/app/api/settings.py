@@ -670,7 +670,7 @@ async def create_operator(data: dict, request: Request, db: AsyncSession = Depen
     op = res.scalar_one_or_none()
     
     # Allowed fields for direct update
-    allowed_fields = ["full_name", "email", "department", "registration_status", "is_admin", "custom_permissions", "role_id"]
+    allowed_fields = ["full_name", "email", "department", "registration_status", "is_admin", "custom_permissions", "role_id", "teams"]
     team = await resolve_team_assignment(
         db,
         team_id=data.get("team_id"),
@@ -689,7 +689,7 @@ async def create_operator(data: dict, request: Request, db: AsyncSession = Depen
     else:
         # For new operators, we take what we have
         # But we filter it just in case
-        allowed_fields_new = ["username", "external_id", "full_name", "email", "department", "registration_status", "is_admin", "custom_permissions", "role_id"]
+        allowed_fields_new = ["username", "external_id", "full_name", "email", "department", "registration_status", "is_admin", "custom_permissions", "role_id", "teams"]
         clean_data = {k: v for k, v in data.items() if k in allowed_fields_new}
         clean_data["team_id"] = team.id if team else None
         clean_data["team"] = team.name if team else None
@@ -716,7 +716,7 @@ async def update_operator(op_id: int, data: dict, request: Request, db: AsyncSes
     old_team_name = op.team
     
     # Allowed fields for direct update
-    allowed_fields = ["full_name", "email", "department", "registration_status", "is_admin", "custom_permissions", "role_id"]
+    allowed_fields = ["full_name", "email", "department", "registration_status", "is_admin", "custom_permissions", "role_id", "teams"]
     team = None
     if "team_id" in data or "team" in data:
         team = await resolve_team_assignment(

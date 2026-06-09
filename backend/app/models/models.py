@@ -1010,6 +1010,7 @@ class Operator(Base, BaseMixin):
     email = Column(String)
     department = Column(String)
     team = Column(String)
+    teams = Column(JSON, default=list)
     team_id = Column(Integer, ForeignKey("teams.id", ondelete="SET NULL"), nullable=True)
     team_source = Column(String, default="manual") # manual, synced, manual_override
     role_id = Column(Integer, ForeignKey("roles.id"), nullable=True)

@@ -12,7 +12,7 @@ interface WorkspaceToastProps {
 export const WorkspaceToast = ({ t, message, onRevert, type = 'success' }: WorkspaceToastProps) => {
   const [isConfirmingRevert, setIsConfirmingRevert] = useState(false)
   const [progress, setProgress] = useState(100)
-  const duration = t.duration || 4000
+  const duration = t.duration || 3000
   
   useEffect(() => {
     if (!t.visible) return

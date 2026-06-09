@@ -961,6 +961,7 @@ class OperatorUpdate(BaseModel):
     email: Optional[str] = None
     department: Optional[str] = None
     team: Optional[str] = None
+    teams: Optional[List[str]] = None
     role_id: Optional[int] = None
     custom_permissions: Optional[Dict[str, Any]] = None
     registration_status: Optional[str] = None
