@@ -156,9 +156,9 @@ const MiniBar = ({ value, max, colorFn, label, unit }: { value: number; max: num
           {value.toFixed(1)}<span className="text-slate-500 font-normal">/{max}{unit}</span>
         </span>
       </div>
-      <div className={`h-1.5 bg-white/5 rounded-full overflow-hidden relative border border-white/5 ${isOverflow ? 'ring-1 ring-rose-500/50 shadow-[0_0_8px_rgba(225,29,72,0.3)]' : ''}`}>
+      <div className={`h-1.5 bg-white/5 rounded-lg overflow-hidden relative border border-white/5 ${isOverflow ? 'ring-1 ring-rose-500/50 shadow-[0_0_8px_rgba(225,29,72,0.3)]' : ''}`}>
         <motion.div 
-          className={`h-full rounded-full transition-all duration-700 ease-out ${colorFn(pct)}`} 
+          className={`h-full rounded-lg transition-all duration-700 ease-out ${colorFn(pct)}`} 
           style={{ width: `${Math.min(pct, 100)}%` }} 
           animate={isOverflow ? { opacity: [1, 0.6, 1], scaleY: [1, 1.2, 1] } : {}}
           transition={isOverflow ? { repeat: Infinity, duration: 1 } : {}}
@@ -199,7 +199,7 @@ const PduBar = ({ side, isOver, name, capacity, load, onClick }: { side: 'A' | '
                 <span className="text-slate-500 uppercase">LOAD STATUS</span>
                 <span className={isOver ? 'text-rose-500 animate-pulse' : 'text-emerald-400'}>{isOver ? 'OVERLOADED' : 'NOMINAL'}</span>
               </div>
-              <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-1 bg-white/10 rounded-lg overflow-hidden">
                 <div className={`h-full ${isOver ? 'bg-rose-500' : 'bg-emerald-500'} w-[68%]`} />
               </div>
               <div className="flex justify-between text-[7px] font-bold text-slate-400">
@@ -549,7 +549,7 @@ const RackUnit = ({ uNumber, loc, isTop, isBottom, highlight, onSelect, onManage
     : 'border-b border-white/[0.06]'
 
   const roundedClass = device
-    ? `${isTop ? 'rounded-t-lg' : ''} ${isBottom ? 'rounded-b-lg' : ''}`
+    ? `${isTop ? 'rounded-lg' : ''} ${isBottom ? 'rounded-lg' : ''}`
     : ''
 
   return (
@@ -743,7 +743,7 @@ const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
             initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            className="glass-panel w-full max-w-6xl h-[85vh] rounded-[2.5rem] border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col"
+            className="glass-panel w-full max-w-6xl h-[85vh] rounded-lg border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col"
           >
             {/* Mission Control Bar */}
             <div className="h-20 bg-white/[0.02] border-b border-white/5 px-10 flex items-center justify-between shrink-0">
@@ -908,11 +908,11 @@ const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
                         {/* Visual Confirmation */}
                         <div className="w-64 p-8 flex flex-col items-center justify-center gap-4 bg-white/[0.02]">
-                           <div className="w-24 h-24 rounded-full border-4 border-emerald-500/20 flex items-center justify-center relative">
+                           <div className="w-24 h-24 rounded-lg border-4 border-emerald-500/20 flex items-center justify-center relative">
                               <motion.div 
                                 animate={{ rotate: 360 }}
                                 transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
-                                className="absolute inset-0 rounded-full border-4 border-emerald-500 border-t-transparent opacity-40" 
+                                className="absolute inset-0 rounded-lg border-4 border-emerald-500 border-t-transparent opacity-40" 
                               />
                               <Check size={48} className="text-emerald-500" />
                            </div>
@@ -1444,7 +1444,7 @@ const LabelGeneratorModal = ({ racks, onClose, devices, connections }: { racks: 
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-4xl max-h-[85vh] flex flex-col p-10 rounded-[2rem] border border-white/10 shadow-2xl">
+       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-4xl max-h-[85vh] flex flex-col p-10 rounded-lg border border-white/10 shadow-2xl">
           <div className="flex justify-between items-start mb-8">
              <div>
                 <h2 className="text-2xl font-black uppercase tracking-tighter text-white">Physical Cable Label Automation</h2>
@@ -1564,11 +1564,11 @@ const InfrastructureHistory = ({ onClose, onExecuteDiff }: { onClose: () => void
                     
                     <div className="flex items-center gap-4">
                        {isSelected && (
-                         <div className="px-3 py-1 bg-blue-600 text-white rounded-full text-[8px] font-black uppercase tracking-widest animate-in fade-in zoom-in">
+                         <div className="px-3 py-1 bg-blue-600 text-white rounded-lg text-[8px] font-black uppercase tracking-widest animate-in fade-in zoom-in">
                             Selected for Diff
                          </div>
                        )}
-                       <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'border-blue-500 bg-blue-500' : 'border-white/10 bg-black/20'}`}>
+                       <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isSelected ? 'border-blue-500 bg-blue-500' : 'border-white/10 bg-black/20'}`}>
                           {isSelected && <Check size={14} className="text-white" />}
                        </div>
                     </div>
@@ -1641,7 +1641,7 @@ const PlanBanner = ({ onAbort, onSave, onProceed, selectedCount, isInitialized, 
                    <span className="text-[9px] font-black text-violet-200 uppercase">Focus Sandbox</span>
                    <button 
                      onClick={() => onToggleShowOnly(!showOnlySandbox)}
-                     className={`w-10 h-5 rounded-full relative transition-colors ${showOnlySandbox ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                     className={`w-10 h-5 rounded-lg relative transition-colors ${showOnlySandbox ? 'bg-emerald-500' : 'bg-slate-700'}`}
                    >
                      <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${showOnlySandbox ? 'left-6' : 'left-1'}`} />
                    </button>
@@ -1651,7 +1651,7 @@ const PlanBanner = ({ onAbort, onSave, onProceed, selectedCount, isInitialized, 
                    <span className="text-[9px] font-black text-violet-200 uppercase">Visual Diff</span>
                    <button 
                      onClick={() => onToggleDiff(!showDiff)}
-                     className={`w-10 h-5 rounded-full relative transition-colors ${showDiff ? 'bg-blue-500' : 'bg-slate-700'}`}
+                     className={`w-10 h-5 rounded-lg relative transition-colors ${showDiff ? 'bg-blue-500' : 'bg-slate-700'}`}
                    >
                      <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${showDiff ? 'left-6' : 'left-1'}`} />
                    </button>
@@ -1671,7 +1671,7 @@ const PlanBanner = ({ onAbort, onSave, onProceed, selectedCount, isInitialized, 
 
 const PlanListModal = ({ plans, onClose, onLoadPlan, onAddPlan, onDeletePlan }: { plans: any[], onClose: () => void, onLoadPlan: (p: any) => void, onAddPlan: (type: 'blank' | 'asis') => void, onDeletePlan: (id: number) => void }) => (
   <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-md">
-     <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[600px] p-10 rounded-[2.5rem] border border-white/10 shadow-2xl space-y-8">
+     <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[600px] p-10 rounded-lg border border-white/10 shadow-2xl space-y-8">
         <div className="flex justify-between items-start">
            <div className="flex items-center gap-4">
               <div className="p-3 bg-violet-600 rounded-lg shadow-lg shadow-violet-600/20 text-white">
@@ -1692,7 +1692,7 @@ const PlanListModal = ({ plans, onClose, onLoadPlan, onAddPlan, onDeletePlan }: 
            <div className="grid grid-cols-2 gap-4">
               <button 
                 onClick={() => onAddPlan('blank')}
-                className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-white/5 border border-white/5 hover:border-violet-500/50 hover:bg-violet-600/5 transition-all group"
+                className="flex flex-col items-center justify-center p-6 rounded-lg bg-white/5 border border-white/5 hover:border-violet-500/50 hover:bg-violet-600/5 transition-all group"
               >
                  <div className="p-4 bg-slate-900 rounded-lg mb-4 group-hover:scale-110 transition-transform">
                     <Plus size={24} className="text-violet-400" />
@@ -1702,7 +1702,7 @@ const PlanListModal = ({ plans, onClose, onLoadPlan, onAddPlan, onDeletePlan }: 
               </button>
               <button 
                 onClick={() => onAddPlan('asis')}
-                className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-white/5 border border-white/5 hover:border-blue-500/50 hover:bg-blue-600/5 transition-all group"
+                className="flex flex-col items-center justify-center p-6 rounded-lg bg-white/5 border border-white/5 hover:border-blue-500/50 hover:bg-blue-600/5 transition-all group"
               >
                  <div className="p-4 bg-slate-900 rounded-lg mb-4 group-hover:scale-110 transition-transform">
                     <Upload size={24} className="text-blue-400" />
@@ -1720,7 +1720,7 @@ const PlanListModal = ({ plans, onClose, onLoadPlan, onAddPlan, onDeletePlan }: 
               <div className="h-px flex-1 bg-white/5" />
            </div>
            {plans.length === 0 ? (
-             <div className="p-10 text-center border-2 border-dashed border-white/5 rounded-[2rem] text-slate-600 font-bold uppercase text-[10px] tracking-widest">No plans found</div>
+             <div className="p-10 text-center border-2 border-dashed border-white/5 rounded-lg text-slate-600 font-bold uppercase text-[10px] tracking-widest">No plans found</div>
            ) : (
              plans.map(p => (
                <div key={p.id} className="flex items-center justify-between p-5 bg-white/5 border border-white/5 rounded-lg hover:border-violet-500/30 transition-all group">
@@ -2133,8 +2133,8 @@ const RackInfoModal = ({ rack, onClose }: { rack: any; onClose: () => void }) =>
                 <p className="text-[10px] font-bold text-emerald-400 uppercase">{freeU}U Available</p>
               </div>
             </div>
-            <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full transition-all ${fillColor(fillPct)}`} style={{ width: `${fillPct}%` }} />
+            <div className="h-1.5 bg-white/5 rounded-lg overflow-hidden">
+              <div className={`h-full rounded-lg transition-all ${fillColor(fillPct)}`} style={{ width: `${fillPct}%` }} />
             </div>
           </div>
 
@@ -2149,8 +2149,8 @@ const RackInfoModal = ({ rack, onClose }: { rack: any; onClose: () => void }) =>
                 <p className="text-[10px] font-bold text-blue-400 uppercase">{rack.max_power_kw || 10} kW Cap</p>
               </div>
             </div>
-            <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full transition-all ${powerColor(powerPct)}`} style={{ width: `${powerPct}%` }} />
+            <div className="h-1.5 bg-white/5 rounded-lg overflow-hidden">
+              <div className={`h-full rounded-lg transition-all ${powerColor(powerPct)}`} style={{ width: `${powerPct}%` }} />
             </div>
           </div>
         </div>
@@ -2168,7 +2168,7 @@ const RackInfoModal = ({ rack, onClose }: { rack: any; onClose: () => void }) =>
                       <div key={label} className="flex justify-between items-center py-2 border-b border-white/[0.03]">
                         <span className="text-[11px] font-bold text-slate-400 uppercase">{label}</span>
                         <div className="flex items-center gap-3">
-                          <div className="w-24 h-1 bg-white/5 rounded-full overflow-hidden hidden sm:block">
+                          <div className="w-24 h-1 bg-white/5 rounded-lg overflow-hidden hidden sm:block">
                             <div className="h-full bg-blue-500/40" style={{ width: `${(count / (rack.device_locations?.length || 1)) * 100}%` }} />
                           </div>
                           <span className="text-[11px] font-black text-white w-6 text-right tabular-nums">{count}</span>
@@ -2261,7 +2261,7 @@ const SpatialMap = ({ racks, onRackClick, siteColor }: { racks: any[]; onRackCli
                                          <span className="text-[7px] font-black text-slate-500 uppercase">Slot Usage</span>
                                          <span className={`text-[8px] font-black tabular-nums ${isOver ? 'text-rose-500' : 'text-slate-300'}`}>{fillPct}%</span>
                                       </div>
-                                      <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                      <div className="w-full h-1.5 bg-white/5 rounded-lg overflow-hidden">
                                         <div className={`h-full ${fillColor(fillPct)} transition-all duration-500`} style={{ width: `${fillPct}%` }} />
                                       </div>
                                    </div>
@@ -2276,7 +2276,7 @@ const SpatialMap = ({ racks, onRackClick, siteColor }: { racks: any[]; onRackCli
                                             <span className="text-[7px] font-black text-slate-500 uppercase">Power Load</span>
                                             <span className={`text-[8px] font-black tabular-nums ${powerPct >= 90 ? 'text-rose-500' : 'text-sky-400'}`}>{powerPct}%</span>
                                           </div>
-                                          <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                          <div className="w-full h-1.5 bg-white/5 rounded-lg overflow-hidden">
                                             <div className={`h-full ${powerColor(powerPct)} transition-all duration-500`} style={{ width: `${powerPct}%` }} />
                                           </div>
                                         </div>
@@ -3201,11 +3201,11 @@ export default function Racks() {
                             <div key={`diff-${r.id}`} className="flex gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-lg relative shrink-0 h-full">
                                <div className="absolute -top-7 left-1/2 -translate-x-1/2 flex items-center gap-4 z-30 scale-100 whitespace-nowrap">
                                   <div className="flex items-center">
-                                    <span className="px-6 py-2.5 bg-slate-900 text-slate-400 border border-white/10 rounded-l-lg-full text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl border-r-0">{baseLabel}</span>
-                                    <div className="w-10 h-10 bg-[#034EA2] rounded-full flex items-center justify-center border-4 border-slate-950 shadow-xl z-10 -mx-2">
+                                    <span className="px-6 py-2.5 bg-slate-900 text-slate-400 border border-white/10 rounded-lg-full text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl border-r-0">{baseLabel}</span>
+                                    <div className="w-10 h-10 bg-[#034EA2] rounded-lg flex items-center justify-center border-4 border-slate-950 shadow-xl z-10 -mx-2">
                                        <ArrowRightLeft size={16} className="text-white" />
                                     </div>
-                                    <span className="px-6 py-2.5 bg-[#034EA2] text-white border border-blue-400/30 rounded-r-lg-full text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl border-l-0">
+                                    <span className="px-6 py-2.5 bg-[#034EA2] text-white border border-blue-400/30 rounded-lg-full text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl border-l-0">
                                        {targetLabel}
                                     </span>
                                   </div>

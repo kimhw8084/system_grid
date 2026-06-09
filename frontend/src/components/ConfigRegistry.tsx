@@ -107,13 +107,13 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
             </div>
          </div>
          <div className="flex items-center space-x-6">
-            <div className="px-3 py-1 rounded-full bg-black/40 border border-white/10 flex items-center space-x-2">
+            <div className="px-3 py-1 rounded-lg bg-black/40 border border-white/10 flex items-center space-x-2">
                 <span className="text-[10px] font-bold text-blue-400">{options?.length || 0}</span>
                 <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Entries</span>
             </div>
             <button 
                 onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}
-                className="p-2 hover:bg-blue-600 hover:text-white text-blue-400 rounded-full transition-all active:scale-90"
+                className="p-2 hover:bg-blue-600 hover:text-white text-blue-400 rounded-lg transition-all active:scale-90"
             >
                 <PlusCircle size={20} />
             </button>
@@ -185,7 +185,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                                 ) : (
                                     <div className="flex flex-wrap gap-1">
                                         {opt.metadata_keys?.map((k: string) => (
-                                            <span key={k} className="px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-[4px] text-[7px] font-bold uppercase tracking-tighter">{k}</span>
+                                            <span key={k} className="px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg text-[7px] font-bold uppercase tracking-tighter">{k}</span>
                                         ))}
                                         {(!opt.metadata_keys || opt.metadata_keys.length === 0) && <span className="text-[7px] text-slate-600 font-bold uppercase tracking-widest">No keys</span>}
                                     </div>

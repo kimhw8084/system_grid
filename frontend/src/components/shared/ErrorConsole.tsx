@@ -254,7 +254,7 @@ export function ErrorConsole() {
                </div>
              ) : (
                <div className="flex-1 flex flex-col items-center justify-center p-20 text-center space-y-6">
-                  <div className="w-24 h-24 rounded-full border-4 border-dashed border-white/10 flex items-center justify-center text-slate-700 animate-[spin_10s_linear_infinite]">
+                  <div className="w-24 h-24 rounded-lg border-4 border-dashed border-white/10 flex items-center justify-center text-slate-700 animate-[spin_10s_linear_infinite]">
                      <TerminalSquare size={48} />
                   </div>
                   <div>

@@ -45,7 +45,7 @@ const StatCard = ({ title, total, metrics, icon: Icon, color, onClick, delay = 0
                 <span className="text-slate-400 truncate pr-2">{key}</span>
                 <span className="text-white">{(totalForType as number)}</span>
               </div>
-              <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-white/5">
+              <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-lg bg-white/5">
                  {Object.entries(value).map(([status, count]: any) => (
                     <div 
                       key={status} 
@@ -192,7 +192,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
   if (isLoading) return (
     <div className="h-full w-full flex items-center justify-center bg-[var(--bg-primary)]">
        <div className="relative">
-          <div className="absolute inset-0 bg-blue-500/20 blur-[100px] animate-pulse rounded-full" />
+          <div className="absolute inset-0 bg-blue-500/20 blur-[100px] animate-pulse rounded-lg" />
           <div className="flex flex-col items-center gap-6 relative z-10">
              <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin shadow-[0_0_30px_rgba(37,99,235,0.3)]" />
              <div className="flex flex-col items-center">
@@ -244,7 +244,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
       <div className="flex items-center justify-between shrink-0">
         <div className="flex items-center gap-6">
            <div className="relative group">
-              <div className="absolute inset-0 bg-blue-600/30 blur-2xl rounded-full group-hover:bg-blue-600/50 transition-colors" />
+              <div className="absolute inset-0 bg-blue-600/30 blur-2xl rounded-lg group-hover:bg-blue-600/50 transition-colors" />
               <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center border border-white/20 shadow-2xl relative z-10">
                  <Grid3X3 size={32} className="text-white" />
               </div>
@@ -483,7 +483,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
               transition={{ delay: 0.8 }}
               className="flex flex-col h-full rounded-lg border border-white/5 bg-black/20 p-8 backdrop-blur-xl hover:border-white/10 transition-all group overflow-hidden relative shadow-xl"
            >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 rounded-bl-full blur-3xl" />
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 rounded-lg blur-3xl" />
               <div className="flex items-center justify-between mb-8 relative z-10">
                  <div className="flex items-center gap-4">
                     <div className="p-3 rounded-lg bg-emerald-600/20 text-emerald-400 border border-emerald-500/20">

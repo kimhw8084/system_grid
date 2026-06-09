@@ -40,15 +40,15 @@ export const WorkspaceToast = ({ t, message, onRevert, type = 'success' }: Works
       <div className="flex items-center p-4">
         <div className="flex-shrink-0 pt-0.5">
           {type === 'success' ? (
-            <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
+            <div className="h-8 w-8 rounded-lg bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
               <Check size={16} className="text-emerald-400" />
             </div>
           ) : type === 'error' ? (
-            <div className="h-8 w-8 rounded-full bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
+            <div className="h-8 w-8 rounded-lg bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
               <AlertTriangle size={16} className="text-rose-400" />
             </div>
           ) : (
-            <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30 animate-pulse">
+            <div className="h-8 w-8 rounded-lg bg-blue-500/20 flex items-center justify-center border border-blue-500/30 animate-pulse">
               <div className="h-3 w-3 bg-blue-400 rounded-full" />
             </div>
           )}

@@ -1489,7 +1489,7 @@ export default function MonitoringGrid() {
         const author = p.data.created_by_user_id || 'System'
         return (
           <div className="group relative flex items-center justify-center h-full w-full">
-            <div className="absolute h-10 w-10 rounded-full bg-[radial-gradient(circle,_rgba(251,191,36,0.2)_0%,_transparent_70%)] blur-md animate-pulse" />
+            <div className="absolute h-10 w-10 rounded-lg bg-[radial-gradient(circle,_rgba(251,191,36,0.2)_0%,_transparent_70%)] blur-md animate-pulse" />
             <span className="relative z-[1] block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
             
             {/* Hover Peek Activity */}
@@ -1657,7 +1657,7 @@ export default function MonitoringGrid() {
             <div className="relative">
               <div className={`w-2 h-2 rounded-full ${isDeleted ? 'bg-slate-700' : isActive ? 'bg-emerald-500' : 'bg-rose-500/50'}`} />
               {(isActive && !isDeleted) && (
-                <div className="absolute -inset-1 rounded-full bg-emerald-500 animate-pulse opacity-40 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+                <div className="absolute -inset-1 rounded-lg bg-emerald-500 animate-pulse opacity-40 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
               )}
             </div>
           </div>
@@ -2038,7 +2038,7 @@ export default function MonitoringGrid() {
                             step="1"
                             value={fontSize}
                             onChange={e => setFontSize(Number(e.target.value))}
-                            className="h-1.5 w-28 cursor-pointer appearance-none rounded-full bg-slate-800 accent-blue-500"
+                            className="h-1.5 w-28 cursor-pointer appearance-none rounded-lg bg-slate-800 accent-blue-500"
                           />
                           <span className="w-8 text-right text-[10px] font-black tabular-nums text-white">{fontSize}px</span>
                         </div>
@@ -2053,7 +2053,7 @@ export default function MonitoringGrid() {
                             step="2"
                             value={rowDensity}
                             onChange={e => setRowDensity(Number(e.target.value))}
-                            className="h-1.5 w-28 cursor-pointer appearance-none rounded-full bg-slate-800 accent-blue-500"
+                            className="h-1.5 w-28 cursor-pointer appearance-none rounded-lg bg-slate-800 accent-blue-500"
                           />
                           <span className="w-8 text-right text-[10px] font-black tabular-nums text-white">{rowDensity}px</span>
                         </div>
@@ -2353,7 +2353,7 @@ export default function MonitoringGrid() {
                   </div>
                   <button
                     onClick={() => setRowActionMenu(null)}
-                    className="ml-3 flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-slate-400 transition-all hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
+                    className="ml-3 flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-slate-400 transition-all hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
                     aria-label="Close row actions"
                   >
                     <X size={13} />
@@ -2600,7 +2600,7 @@ export default function MonitoringGrid() {
                 </button>
                 {!isCollapsed && (
                   <div 
-                    className="monitoring-grid-shell monitoring-grid w-full glass-panel rounded-b-lg overflow-hidden ag-theme-alpine-dark relative"
+                    className="monitoring-grid-shell monitoring-grid w-full glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative"
                     style={{ 
                       '--ag-font-size': `${fontSize}px`,
                       '--ag-font-family': "'Inter', sans-serif",
@@ -3448,7 +3448,7 @@ function BkmDetailModal({ bkmId, onClose }: any) {
              
              <div className="flex items-center justify-between px-1 border-t border-white/5 pt-6 mt-6">
                 <div className="flex items-center space-x-3">
-                   <div className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 border border-white/5">
+                   <div className="w-9 h-9 rounded-lg bg-slate-800 flex items-center justify-center text-slate-500 border border-white/5">
                       <User size={16}/>
                    </div>
                    <div>
@@ -4914,7 +4914,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                   }`}
                                 >
                                   {formData.recovery_docs?.includes(entry.id) && (
-                                    <div className="absolute top-0 right-0 w-7 h-7 bg-blue-600 flex items-center justify-center rounded-bl-lg shadow-lg">
+                                    <div className="absolute top-0 right-0 w-7 h-7 bg-blue-600 flex items-center justify-center rounded-lg shadow-lg">
                                       <Check size={12} className="text-white" strokeWidth={4} />
                                     </div>
                                   )}
@@ -5032,7 +5032,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
            <div className="w-72 flex flex-col min-h-0">
               <div className="mb-4 flex items-center justify-between px-1">
                  <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Revision Timeline</h3>
-                 <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">{history?.length || 0} states</span>
+                 <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20">{history?.length || 0} states</span>
               </div>
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
                 {isLoading ? (
@@ -5055,7 +5055,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                         }`}
                       >
                         {isSelected && (
-                          <div className={`absolute top-0 right-0 px-2 py-0.5 text-[8px] font-black uppercase rounded-bl-lg ${isNewest ? 'bg-blue-400 text-blue-950' : 'bg-slate-500 text-slate-200'}`}>
+                          <div className={`absolute top-0 right-0 px-2 py-0.5 text-[8px] font-black uppercase rounded-lg ${isNewest ? 'bg-blue-400 text-blue-950' : 'bg-slate-500 text-slate-200'}`}>
                              {isNewest ? 'Primary' : 'Ref'}
                           </div>
                         )}
@@ -5099,7 +5099,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                     </div>
                  </div>
                  <div className="flex items-center space-x-2">
-                    <span className="text-[9px] font-black uppercase text-slate-400 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                    <span className="text-[9px] font-black uppercase text-slate-400 bg-white/5 px-3 py-1 rounded-lg border border-white/10">
                        Diff Engine Ready
                     </span>
                  </div>
@@ -5112,7 +5112,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                           <div key={i} className="animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${i * 50}ms` }}>
                              <div className="flex items-center justify-between mb-3 px-1">
                                 <div className="flex items-center space-x-3">
-                                   <div className="w-2 h-6 bg-blue-500 rounded-full" />
+                                   <div className="w-2 h-6 bg-blue-500 rounded-lg" />
                                    <span className="text-[12px] font-black text-white tracking-[0.08em] uppercase">{d.field.replace(/_/g, ' ')}</span>
                                 </div>
                                 <span className="text-[9px] font-semibold text-slate-600">Vector: {d.field}</span>

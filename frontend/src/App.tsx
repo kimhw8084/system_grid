@@ -680,7 +680,7 @@ function MainLayout() {
               >
                 <Bug size={18} />
                 {errors.filter(e => !e.acknowledged).length > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] rounded-full border-2 border-[var(--bg-header)] bg-rose-600 px-1.5 py-0.5 text-center text-[9px] font-black text-white">
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] rounded-lg border-2 border-[var(--bg-header)] bg-rose-600 px-1.5 py-0.5 text-center text-[9px] font-black text-white">
                     {errors.filter(e => !e.acknowledged).length}
                   </span>
                 )}

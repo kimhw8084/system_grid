@@ -344,7 +344,7 @@ export default function AuditLogs() {
                             <input 
                             type="range" min="8" max="14" step="1" 
                             value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
-                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
                             />
                             <span className="text-[10px] text-white w-4 font-bold tabular-nums">{fontSize}px</span>
                         </div>
@@ -356,7 +356,7 @@ export default function AuditLogs() {
                             <input 
                             type="range" min="0" max="24" step="2" 
                             value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
-                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
                             />
                             <span className="text-[10px] text-white w-4 font-bold tabular-nums">{rowDensity}px</span>
                         </div>

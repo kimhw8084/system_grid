@@ -131,7 +131,7 @@ const ViewPermissionIcon = ({ level, onClick }: any) => {
     return (
         <button 
             onClick={onClick}
-            className={`px-2 py-1 rounded border text-[9px] font-black tracking-widest transition-all hover:brightness-125 w-14 text-center ${colorClass}`}
+            className={`px-2 py-1 rounded-lg border text-[9px] font-black tracking-widest transition-all hover:brightness-125 w-14 text-center ${colorClass}`}
             title={label}
         >
             {label}
@@ -1218,7 +1218,7 @@ result_df = get_user_pool()`)
                             <td className="p-4">
                                <div className="flex items-center gap-2 flex-wrap">
                                   <select 
-                                    className="bg-black/40 border border-white/10 rounded px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-slate-300 outline-none focus:border-blue-500/50 hover:bg-white/5 transition-all"
+                                    className="bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-slate-300 outline-none focus:border-blue-500/50 hover:bg-white/5 transition-all"
                                     value={op.team_id || ''}
                                     onChange={(e) => {
                                       const newTeamId = e.target.value ? parseInt(e.target.value) : null;
@@ -1786,7 +1786,7 @@ result_df = get_user_pool()`)
                        </div>
                     </div>
                     <div className="mt-4 pt-3 border-t border-white/5 flex items-center gap-2">
-                       <div className="w-5 h-5 rounded-full bg-blue-600/20 flex items-center justify-center text-[9px] text-blue-400 font-black uppercase">{entry.user?.[0] || 'O'}</div>
+                       <div className="w-5 h-5 rounded-lg bg-blue-600/20 flex items-center justify-center text-[9px] text-blue-400 font-black uppercase">{entry.user?.[0] || 'O'}</div>
                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Action by: {entry.user || 'SYSTEM_OP'}</span>
                     </div>
                   </div>
@@ -1876,7 +1876,7 @@ result_df = get_user_pool()`)
                             )}
                             <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[9px] text-slate-400 font-black uppercase">{v.created_by?.[0]}</div>
+                                    <div className="w-5 h-5 rounded-lg bg-slate-700 flex items-center justify-center text-[9px] text-slate-400 font-black uppercase">{v.created_by?.[0]}</div>
                                     <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{v.created_by}</span>
                                 </div>
                                 <div className="flex gap-2">

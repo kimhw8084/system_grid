@@ -479,7 +479,7 @@ const ExternalSecretsTab = ({ entityId }: { entityId: number }) => {
       <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
           <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Authorized Credential Matrix</span>
-          <span className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-full">{entity?.secrets?.length || 0} Entries</span>
+          <span className="text-[8px] font-bold text-blue-500 uppercase bg-blue-500/10 px-2 py-0.5 rounded-lg">{entity?.secrets?.length || 0} Entries</span>
         </div>
         <table className="w-full text-left">
           <thead>
@@ -723,7 +723,7 @@ const ExternalDetailsView = ({ entity, links }: { entity: any, links: any[] }) =
         </div>
       </div>
 
-      <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-8 bg-black/20">
+      <div className="glass-panel rounded-lg border-white/5 overflow-hidden p-8 bg-black/20">
         {tab === 'overview' && (
           <div className="space-y-6">
             <div className="grid grid-cols-4 gap-4">
@@ -828,7 +828,7 @@ const ExternalDetailsView = ({ entity, links }: { entity: any, links: any[] }) =
             <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
               <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
                 <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Contact Matrix</span>
-                <span className="text-[8px] font-bold text-amber-500 uppercase bg-amber-500/10 px-2 py-0.5 rounded-full">{insights.contacts.length || 0} Contacts</span>
+                <span className="text-[8px] font-bold text-amber-500 uppercase bg-amber-500/10 px-2 py-0.5 rounded-lg">{insights.contacts.length || 0} Contacts</span>
               </div>
               <div className="p-3 grid grid-cols-2 gap-3">
                    {insights.contacts && insights.contacts.length > 0 ? insights.contacts.map((poc: any, idx: number) => (
@@ -1394,7 +1394,7 @@ export default function External() {
                             <input 
                             type="range" min="8" max="14" step="1" 
                             value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
-                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
                             />
                             <span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span>
                         </div>
@@ -1406,7 +1406,7 @@ export default function External() {
                             <input 
                             type="range" min="4" max="24" step="2" 
                             value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
-                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
                             />
                             <span className="text-[10px] text-white w-4 font-bold">{rowDensity}px</span>
                         </div>
@@ -1741,7 +1741,7 @@ function LinkForm({ entities, devices, onClose, onSave, isPending }: any) {
                })
              }}
              disabled={!formData.external_entity_id || !formData.device_id || isPending}
-             className="flex-1 py-5 bg-indigo-600 text-white rounded-[20px] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 active:scale-95 transition-all flex items-center justify-center space-x-3"
+             className="flex-1 py-5 bg-indigo-600 text-white rounded-lg text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 active:scale-95 transition-all flex items-center justify-center space-x-3"
            >
               {isPending && <RefreshCcw size={16} className="animate-spin" />}
               <span>Establish Interconnect Link</span>

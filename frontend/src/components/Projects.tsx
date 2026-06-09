@@ -701,7 +701,7 @@ const TaskRow = React.memo(({
        {/* Actual Execution Bar (Overlapping) */}
        {actualLeft !== null && (
          <div 
-           className="absolute h-1 top-[30px] bg-emerald-500/30 rounded-full z-10 pointer-events-none border border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.2)]" 
+           className="absolute h-1 top-[30px] bg-emerald-500/30 rounded-lg z-10 pointer-events-none border border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.2)]" 
            style={{ left: actualLeft, width: actualWidth || 0 }} 
          />
        )}
@@ -761,14 +761,14 @@ const TaskRow = React.memo(({
             dragMomentum={false} 
             onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'start'); }} 
             onDragEnd={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'start', true); }} 
-            className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-l-lg hover:bg-white/10" 
+            className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-lg hover:bg-white/10" 
           />
           <motion.div 
             drag="x" 
             dragMomentum={false} 
             onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'end'); }} 
             onDragEnd={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'end', true); }} 
-            className="absolute -right-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-r-lg hover:bg-white/10" 
+            className="absolute -right-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-lg hover:bg-white/10" 
           />
 
           <button 
@@ -1742,7 +1742,7 @@ const ProcessNode = ({ id, data }: any) => {
        <span className="text-[10px] font-black uppercase tracking-widest relative z-10">{data.label}</span>
        <button 
          onClick={(e) => { e.stopPropagation(); setNodes((nds) => nds.filter((n) => n.id !== id)); }}
-         className="absolute -top-1 -right-1 w-5 h-5 bg-rose-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-[60] shadow-xl hover:bg-rose-500"
+         className="absolute -top-1 -right-1 w-5 h-5 bg-rose-600 text-white rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-[60] shadow-xl hover:bg-rose-500"
        >
          <X size={10} strokeWidth={3} />
        </button>
@@ -1760,7 +1760,7 @@ const DiamondNode = ({ id, data }: any) => {
        <span className="-rotate-45 text-[9px] font-black uppercase tracking-tighter text-amber-400 text-center px-2">{data.label}</span>
        <button 
          onClick={(e) => { e.stopPropagation(); setNodes((nds) => nds.filter((n) => n.id !== id)); }}
-         className="absolute top-2 right-2 w-5 h-5 -rotate-45 bg-rose-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-[60] shadow-xl hover:bg-rose-500"
+         className="absolute top-2 right-2 w-5 h-5 -rotate-45 bg-rose-600 text-white rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-[60] shadow-xl hover:bg-rose-500"
        >
          <X size={10} strokeWidth={3} />
        </button>
@@ -1785,7 +1785,7 @@ const InfrastructureNode = ({ id, data, type }: any) => {
        <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">{data.label}</span>
        <button 
          onClick={(e) => { e.stopPropagation(); setNodes((nds) => nds.filter((n) => n.id !== id)); }}
-         className="absolute -top-1 -right-1 w-5 h-5 bg-rose-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-[60] shadow-xl hover:bg-rose-500"
+         className="absolute -top-1 -right-1 w-5 h-5 bg-rose-600 text-white rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-[60] shadow-xl hover:bg-rose-500"
        >
          <X size={10} strokeWidth={3} />
        </button>
@@ -2263,7 +2263,7 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                   )
                 })}
                 <div className="flex flex-col items-center justify-center gap-4 py-12 text-slate-700 group">
-                   <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform">
+                   <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform">
                       <Camera size={24} className="opacity-40" />
                    </div>
                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-center italic">{focusedField === 'images' ? 'CTRL+V TO ATTACH' : 'Select to attach evidence'}</p>
@@ -2719,7 +2719,7 @@ const DailyHuddleView = ({ projects, users }: any) => {
                               <span className="text-slate-500 uppercase tracking-widest">Maturity</span>
                               <span className="text-blue-400">{task.progress}%</span>
                            </div>
-                           <div className="h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                           <div className="h-1.5 bg-white/5 rounded-lg overflow-hidden border border-white/5">
                               <div 
                                 className={`h-full transition-all duration-1000 ${task.status === 'Blocked' ? 'bg-rose-500' : 'bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.5)]'}`} 
                                 style={{ width: `${task.progress}%` }} 
@@ -2750,9 +2750,9 @@ const DailyHuddleView = ({ projects, users }: any) => {
                 </div>
              ) : (
                 <div className="py-60 text-center">
-                   <div className="w-24 h-24 bg-blue-600/5 rounded-full flex items-center justify-center mx-auto border border-blue-500/10 mb-8 relative">
+                   <div className="w-24 h-24 bg-blue-600/5 rounded-lg flex items-center justify-center mx-auto border border-blue-500/10 mb-8 relative">
                       <Target size={40} className="text-blue-500/10" />
-                      <div className="absolute inset-0 border border-blue-500/20 rounded-full animate-ping opacity-20" />
+                      <div className="absolute inset-0 border border-blue-500/20 rounded-lg animate-ping opacity-20" />
                    </div>
                    <h3 className="text-2xl font-black text-slate-400 uppercase tracking-tighter">Strategic Deck Clear</h3>
                    <p className="text-[11px] font-bold text-slate-600 uppercase tracking-[0.3em] mt-3">All tactical vectors have reached terminal state</p>
@@ -3170,7 +3170,7 @@ export default function Projects() {
                         ) : !selectedProject ? (
                           <div className="h-full flex items-center justify-center">
                              <div className="text-center space-y-4">
-                                <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto border border-white/10">
+                                <div className="w-16 h-16 bg-white/5 rounded-lg flex items-center justify-center mx-auto border border-white/10">
                                    <Search size={24} className="text-slate-700" />
                                 </div>
                                 <p className="text-[10px] font-black text-slate-700 uppercase tracking-[0.3em] italic font-inter">Select a strategic vector from the rail</p>

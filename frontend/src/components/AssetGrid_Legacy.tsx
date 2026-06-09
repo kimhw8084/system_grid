@@ -889,7 +889,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
           </div>
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-4">
-            <div className="p-6 bg-white/5 rounded-full border border-white/10 opacity-20 animate-pulse">
+            <div className="p-6 bg-white/5 rounded-lg border border-white/10 opacity-20 animate-pulse">
                <FileText size={64} />
             </div>
             <p className="text-[10px] font-bold uppercase tracking-[0.5em]">Select Asset for Detailed Inspection</p>
@@ -1351,7 +1351,7 @@ export default function AssetGrid() {
                             <input 
                             type="range" min="8" max="14" step="1" 
                             value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
-                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
                             />
                             <span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span>
                         </div>
@@ -1363,7 +1363,7 @@ export default function AssetGrid() {
                             <input 
                             type="range" min="0" max="20" step="2" 
                             value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
-                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
                             />
                             <span className="text-[10px] text-white w-4 font-bold">{rowDensity}px</span>
                         </div>

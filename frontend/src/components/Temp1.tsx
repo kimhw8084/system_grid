@@ -442,7 +442,7 @@ export default function Temp1() {
              <GridControl active={isFixed} onClick={() => setIsFixed(!isFixed)} icon={isFixed ? <Lock size={16} /> : <Unlock size={16} />} label="Lock Matrix" />
              <div className="w-px h-10 bg-white/10" />
              <div className="flex flex-col space-y-2 w-40">
-                <input type="range" min="-1500" max="-300" step="50" value={nodeStrength} onChange={(e) => setNodeStrength(Number(e.target.value))} className="w-full accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer" />
+                <input type="range" min="-1500" max="-300" step="50" value={nodeStrength} onChange={(e) => setNodeStrength(Number(e.target.value))} className="w-full accent-blue-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer" />
                 <div className="flex justify-between text-[8px] font-black text-slate-500 uppercase tracking-widest"><span>Dense</span><span>Sparse</span></div>
              </div>
           </div>
@@ -528,7 +528,7 @@ export default function Temp1() {
                                        <button 
                                           key={idx} 
                                           onClick={() => setHighlightedNodeId(Number(partnerId))}
-                                          className={`w-full bg-black/40 border border-white/5 rounded-[20px] p-4 flex items-center justify-between group transition-all active:scale-[0.98] ${isImpacted ? 'hover:border-rose-500/40 shadow-[0_0_15px_rgba(225,68,68,0.1)]' : 'hover:border-blue-500/40'}`}
+                                          className={`w-full bg-black/40 border border-white/5 rounded-lg p-4 flex items-center justify-between group transition-all active:scale-[0.98] ${isImpacted ? 'hover:border-rose-500/40 shadow-[0_0_15px_rgba(225,68,68,0.1)]' : 'hover:border-blue-500/40'}`}
                                        >
                                           <div className="flex items-center space-x-4">
                                              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isImpacted ? 'bg-rose-500/10 text-rose-500' : 'bg-blue-500/10 text-blue-500'}`}>
@@ -549,7 +549,7 @@ export default function Temp1() {
                              <button 
                                onClick={() => triggerFailure(rawDevice.id)}
                                disabled={isSimulatingFailure}
-                               className={`w-full py-5 rounded-[24px] font-black uppercase text-[12px] tracking-[0.2em] transition-all active:scale-95 flex items-center justify-center space-x-3 shadow-2xl ${isSimulatingFailure ? 'bg-[#1e293b] text-slate-500 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-500/20'}`}
+                               className={`w-full py-5 rounded-lg font-black uppercase text-[12px] tracking-[0.2em] transition-all active:scale-95 flex items-center justify-center space-x-3 shadow-2xl ${isSimulatingFailure ? 'bg-[#1e293b] text-slate-500 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-500/20'}`}
                              >
                                 <Flame size={20} />
                                 <span>{isSimulatingFailure ? 'Simulation Active' : 'Engage Detonation'}</span>
@@ -596,7 +596,7 @@ const GridControl = ({ active, onClick, icon, label }: any) => (
 
 const ActionButton = ({ icon, onClick, active, danger, label }: any) => (
   <div className="flex flex-col items-end group/btn">
-    <button onClick={onClick} className={`p-4 rounded-[20px] border transition-all shadow-2xl ${active ? (danger ? 'bg-rose-600 border-rose-500 text-white' : 'bg-blue-600 border-blue-500 text-white') : 'bg-slate-900 border-white/10 text-slate-400 hover:text-white hover:border-white/20'}`}>
+    <button onClick={onClick} className={`p-4 rounded-lg border transition-all shadow-2xl ${active ? (danger ? 'bg-rose-600 border-rose-500 text-white' : 'bg-blue-600 border-blue-500 text-white') : 'bg-slate-900 border-white/10 text-slate-400 hover:text-white hover:border-white/20'}`}>
        {icon}
     </button>
     <span className="mr-2 mt-1.5 text-[7px] font-black text-slate-600 uppercase tracking-widest opacity-0 group-hover/btn:opacity-100 transition-all -translate-y-2 group-hover/btn:translate-y-0">{label}</span>
@@ -608,7 +608,7 @@ const StatusBadge = ({ label, color }: any) => (
 )
 
 const ForensicRow = ({ label, value, mono }: any) => (
-  <div className="bg-white/5 border border-white/5 p-4 rounded-[20px] flex items-center justify-between">
+  <div className="bg-white/5 border border-white/5 p-4 rounded-lg flex items-center justify-between">
      <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{label}</span>
      <span className={`text-[10px] font-black text-slate-200 uppercase tracking-tight truncate ml-4 ${mono ? 'font-mono' : ''}`}>{value}</span>
   </div>

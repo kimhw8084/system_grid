@@ -94,7 +94,7 @@ export const PriorityGauge = ({ value, onChange, disabled, type }: { value: stri
             onClick={() => onChange(typeof value === 'number' ? p.val : p.id)}
             className={`p-2 rounded-lg transition-all border-2 flex flex-col items-center gap-1 group ${idx === activeIdx ? p.border + ' bg-white/10 shadow-[0_0_30px_rgba(255,255,255,0.05)]' : 'border-white/5 bg-white/5 hover:border-white/10'}`}
           >
-            <div className={`w-6 h-0.5 rounded-full ${idx === activeIdx ? p.color : 'bg-slate-800'}`} />
+            <div className={`w-6 h-0.5 rounded-lg ${idx === activeIdx ? p.color : 'bg-slate-800'}`} />
             <span className={`text-[9px] font-bold uppercase tracking-widest transition-all ${idx === activeIdx ? p.text : 'text-slate-500 group-hover:text-slate-400'}`}>
               {p.label}
             </span>
@@ -605,12 +605,12 @@ export default function Research() {
                   <div className="flex items-center space-x-6">
                      <div className="flex items-center space-x-4">
                         <span className="text-[9px] font-bold text-slate-500 uppercase">Font Size</span>
-                        <input type="range" min="8" max="14" step="1" value={fontSize} onChange={e => setFontSize(Number(e.target.value))} className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer" />
+                        <input type="range" min="8" max="14" step="1" value={fontSize} onChange={e => setFontSize(Number(e.target.value))} className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer" />
                         <span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span>
                      </div>
                      <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
                         <span className="text-[9px] font-bold text-slate-500 uppercase">Row Density</span>
-                        <input type="range" min="4" max="24" step="2" value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))} className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer" />
+                        <input type="range" min="4" max="24" step="2" value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))} className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer" />
                         <span className="text-[10px] text-white w-4 font-bold">{rowDensity}px</span>
                      </div>
                   </div>
@@ -1813,7 +1813,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                 <div className="text-[8px] font-bold text-slate-500 uppercase mt-0.5">{new Date(item.event_time).toLocaleDateString([], { month: 'short', day: 'numeric' })}</div>
                                 
                                 {/* The Dot */}
-                                <div className={`absolute left-[80px] top-1.5 w-4 h-4 rounded-full border-2 border-[#020617] z-10 shadow-lg ${
+                                <div className={`absolute left-[80px] top-1.5 w-4 h-4 rounded-lg border-2 border-[#020617] z-10 shadow-lg ${
                                     item.event_type === 'RESOLUTION' ? 'bg-emerald-500 shadow-emerald-500/20' :
                                     item.event_type === 'MITIGATION' ? 'bg-amber-500 shadow-amber-500/20' :
                                     'bg-purple-500 shadow-purple-500/20'
@@ -2294,7 +2294,7 @@ function IntelligenceStream({ logs, compact = false }: any) {
        {logs.length > 0 ? logs.map((log: any, idx: number) => (
           <div key={log.id || idx} className="flex gap-6 group">
              <div className="flex flex-col items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] border ${log.entry_type === 'ACTION' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>{log.entry_type[0]}</div>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-[10px] border ${log.entry_type === 'ACTION' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>{log.entry_type[0]}</div>
                 <div className="w-px flex-1 bg-white/5 my-2" />
              </div>
              <div className="flex-1 pb-6">
@@ -2325,7 +2325,7 @@ export const ModernStatusPicker = ({ value, onChange, options }: any) => {
     <div className="relative flex justify-center">
       <button 
         onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
-        className={`px-3 py-1 rounded-full text-[9px] font-black uppercase transition-all border ${current.color.replace('text-', 'border-').replace('text-', 'bg-')}/10 ${current.color} hover:scale-105 active:scale-95`}
+        className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase transition-all border ${current.color.replace('text-', 'border-').replace('text-', 'bg-')}/10 ${current.color} hover:scale-105 active:scale-95`}
       >
         {current.label}
       </button>

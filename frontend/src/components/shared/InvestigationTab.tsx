@@ -689,7 +689,7 @@ function ActionSection({ cause, type, isEditing, queryClient, mode, onAdd }: any
                 type === 'WORKAROUND' ? 'text-amber-400' :
                 type === 'MONITORING' ? 'text-sky-400' : 'text-emerald-400'
              }`}>{type}</span>
-             <span className="px-2 py-0.5 rounded-full bg-white/5 text-[8px] font-black text-slate-500">{actions.length}</span>
+             <span className="px-2 py-0.5 rounded-lg bg-white/5 text-[8px] font-black text-slate-500">{actions.length}</span>
           </div>
           {isEditing && (
              <button onClick={onAdd} className="text-[9px] font-black text-blue-400 uppercase tracking-widest hover:text-white transition-colors">+ Add {type}</button>

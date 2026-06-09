@@ -341,7 +341,7 @@
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: var(--glass-border);
-  border-radius: 10px;
+  border-radius: 8px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--accent-primary);

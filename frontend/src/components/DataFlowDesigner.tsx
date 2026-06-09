@@ -66,18 +66,18 @@ const DeviceNode = ({ data, selected }: any) => {
   const overlay = data.operationalStatus || {};
   const isDimmed = data.isDimmed;
   return (
-    <div className={`glass-panel min-w-[320px] rounded-[22px] border transition-all duration-300 overflow-hidden relative shadow-[0_22px_60px_rgba(2,6,23,0.55)] ${selected ? 'border-sky-300 bg-sky-400/10 ring-1 ring-sky-300/35' : isImpacted ? 'border-rose-400/70 bg-rose-500/10 ring-1 ring-rose-400/20' : 'border-white/10 bg-slate-950/75'} ${isDimmed ? 'opacity-20 saturate-50 scale-[0.98]' : ''}`}>
+    <div className={`glass-panel min-w-[320px] rounded-lg border transition-all duration-300 overflow-hidden relative shadow-[0_22px_60px_rgba(2,6,23,0.55)] ${selected ? 'border-sky-300 bg-sky-400/10 ring-1 ring-sky-300/35' : isImpacted ? 'border-rose-400/70 bg-rose-500/10 ring-1 ring-rose-400/20' : 'border-white/10 bg-slate-950/75'} ${isDimmed ? 'opacity-20 saturate-50 scale-[0.98]' : ''}`}>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.12),transparent_42%),linear-gradient(180deg,rgba(15,23,42,0.18),rgba(2,6,23,0.78))]" />
       {visits.length > 0 && (
         <div className="absolute -top-3 -left-3 flex -space-x-1 z-50">
-          {visits.map((v: number) => <div key={v} className="w-6 h-6 rounded-full bg-amber-500 border-2 border-slate-950 flex items-center justify-center text-[10px] font-bold text-white shadow-xl animate-bounce" style={{ animationDelay: `${v * 0.1}s` }}>{v}</div>)}
+          {visits.map((v: number) => <div key={v} className="w-6 h-6 rounded-lg bg-amber-500 border-2 border-slate-950 flex items-center justify-center text-[10px] font-bold text-white shadow-xl animate-bounce" style={{ animationDelay: `${v * 0.1}s` }}>{v}</div>)}
         </div>
       )}
       {(overlay.incidentCount > 0 || overlay.maintenanceCount > 0 || overlay.monitorCount > 0) && (
         <div className="absolute -top-3 right-3 flex gap-1 z-50">
-          {overlay.incidentCount > 0 && <div className="px-2 py-1 rounded-full bg-rose-500 text-white text-[8px] font-bold uppercase shadow-xl">{overlay.incidentCount} Incident</div>}
-          {overlay.maintenanceCount > 0 && <div className="px-2 py-1 rounded-full bg-amber-500 text-slate-950 text-[8px] font-bold uppercase shadow-xl">{overlay.maintenanceCount} Maintenance</div>}
-          {overlay.monitorCount > 0 && <div className="px-2 py-1 rounded-full bg-blue-500 text-white text-[8px] font-bold uppercase shadow-xl">{overlay.monitorCount} Monitor</div>}
+          {overlay.incidentCount > 0 && <div className="px-2 py-1 rounded-lg bg-rose-500 text-white text-[8px] font-bold uppercase shadow-xl">{overlay.incidentCount} Incident</div>}
+          {overlay.maintenanceCount > 0 && <div className="px-2 py-1 rounded-lg bg-amber-500 text-slate-950 text-[8px] font-bold uppercase shadow-xl">{overlay.maintenanceCount} Maintenance</div>}
+          {overlay.monitorCount > 0 && <div className="px-2 py-1 rounded-lg bg-blue-500 text-white text-[8px] font-bold uppercase shadow-xl">{overlay.monitorCount} Monitor</div>}
         </div>
       )}
       <div className={`relative px-5 py-4 border-b border-white/5 flex items-center justify-between ${isImpacted ? 'bg-rose-500/10' : 'bg-white/[0.04]'}`}>
@@ -111,10 +111,10 @@ const DeviceNode = ({ data, selected }: any) => {
   )
 }
 
-const ServiceNode = ({ data, selected }: any) => (<div className={`glass-panel px-5 py-4 rounded-[20px] border transition-all duration-300 flex items-center space-x-3 w-full shadow-[0_18px_45px_rgba(2,6,23,0.4)] ${selected ? 'border-emerald-300 bg-emerald-500/10 ring-1 ring-emerald-300/30' : 'border-emerald-400/15 bg-slate-950/70'} ${data.isDimmed ? 'opacity-20 saturate-50 scale-[0.98]' : ''}`}><div className="p-2.5 bg-emerald-400/15 rounded-lg text-emerald-300 border border-emerald-400/20"><Database size={16}/></div><div className="flex-1 min-w-0"><p className="text-[12px] font-black uppercase text-emerald-200 truncate tracking-[0.14em]">{data.name}</p><p className="text-[7px] font-bold uppercase tracking-[0.35em] text-emerald-400/80 mt-1">Service Surface</p></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-emerald-400 border-none !left-[-4px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-emerald-400 border-none !right-[-4px]" /></div>)
-const ExternalNode = ({ data, selected }: any) => (<div className={`glass-panel min-w-[280px] rounded-[22px] border transition-all duration-300 p-6 border-dashed shadow-[0_18px_50px_rgba(49,46,129,0.22)] ${selected ? 'border-indigo-300 bg-indigo-500/12 ring-1 ring-indigo-300/30' : 'border-indigo-300/20 bg-slate-950/60'} ${data.isDimmed ? 'opacity-20 saturate-50 scale-[0.98]' : ''}`}><div className="absolute inset-0 rounded-[22px] bg-[radial-gradient(circle_at_top_left,rgba(129,140,248,0.14),transparent_40%)]" /><div className="relative flex items-center space-x-4"><div className="p-3 bg-indigo-400/15 rounded-lg text-indigo-300 border border-indigo-300/20"><Globe size={20}/></div><div className="min-w-0"><p className="text-[13px] font-black uppercase text-indigo-100 truncate tracking-[0.12em]">{data.name}</p>{data.environment && <p className="text-[8px] font-bold text-indigo-300/75 uppercase mt-2 tracking-[0.32em]">{data.environment}</p>}</div></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-indigo-400 border-none !left-[-4px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-indigo-400 border-none !right-[-4px]" /></div>)
+const ServiceNode = ({ data, selected }: any) => (<div className={`glass-panel px-5 py-4 rounded-lg border transition-all duration-300 flex items-center space-x-3 w-full shadow-[0_18px_45px_rgba(2,6,23,0.4)] ${selected ? 'border-emerald-300 bg-emerald-500/10 ring-1 ring-emerald-300/30' : 'border-emerald-400/15 bg-slate-950/70'} ${data.isDimmed ? 'opacity-20 saturate-50 scale-[0.98]' : ''}`}><div className="p-2.5 bg-emerald-400/15 rounded-lg text-emerald-300 border border-emerald-400/20"><Database size={16}/></div><div className="flex-1 min-w-0"><p className="text-[12px] font-black uppercase text-emerald-200 truncate tracking-[0.14em]">{data.name}</p><p className="text-[7px] font-bold uppercase tracking-[0.35em] text-emerald-400/80 mt-1">Service Surface</p></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-emerald-400 border-none !left-[-4px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-emerald-400 border-none !right-[-4px]" /></div>)
+const ExternalNode = ({ data, selected }: any) => (<div className={`glass-panel min-w-[280px] rounded-lg border transition-all duration-300 p-6 border-dashed shadow-[0_18px_50px_rgba(49,46,129,0.22)] ${selected ? 'border-indigo-300 bg-indigo-500/12 ring-1 ring-indigo-300/30' : 'border-indigo-300/20 bg-slate-950/60'} ${data.isDimmed ? 'opacity-20 saturate-50 scale-[0.98]' : ''}`}><div className="absolute inset-0 rounded-lg bg-[radial-gradient(circle_at_top_left,rgba(129,140,248,0.14),transparent_40%)]" /><div className="relative flex items-center space-x-4"><div className="p-3 bg-indigo-400/15 rounded-lg text-indigo-300 border border-indigo-300/20"><Globe size={20}/></div><div className="min-w-0"><p className="text-[13px] font-black uppercase text-indigo-100 truncate tracking-[0.12em]">{data.name}</p>{data.environment && <p className="text-[8px] font-bold text-indigo-300/75 uppercase mt-2 tracking-[0.32em]">{data.environment}</p>}</div></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-indigo-400 border-none !left-[-4px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-indigo-400 border-none !right-[-4px]" /></div>)
 const ConditionNode = ({ data, selected }: any) => (<div className={`w-24 h-24 rotate-45 border flex items-center justify-center transition-all shadow-[0_14px_30px_rgba(245,158,11,0.2)] ${selected ? 'border-amber-300 bg-amber-400/20 ring-1 ring-amber-300/25' : 'border-amber-400/40 bg-slate-950/75'}`}><div className="-rotate-45 flex flex-col items-center px-1"><Diamond size={16} className="text-amber-300 mb-2"/><span className="text-[8px] font-black uppercase tracking-[0.22em] text-white text-center">{data.label || 'IF'}</span></div><Handle type="target" position={Position.Left} className="w-2 h-2 bg-amber-400 border-none !left-[-1px]" /><Handle type="source" position={Position.Right} className="w-2 h-2 bg-amber-400 border-none !right-[-1px]" /></div>)
-const NoteNode = ({ data, selected }: any) => (<div className={`glass-panel p-5 min-w-[220px] rounded-[20px] border transition-all duration-300 shadow-[0_14px_38px_rgba(30,41,59,0.35)] ${selected ? 'border-sky-300 bg-sky-500/10 ring-1 ring-sky-300/30' : 'border-white/10 bg-slate-950/70'}`}><div className="flex items-center gap-2 text-sky-300 mb-3"><StickyNote size={12}/><span className="text-[8px] font-bold uppercase tracking-[0.3em]">Operator Note</span></div><p className="text-[11px] text-slate-200 font-bold leading-relaxed">{data.label}</p></div>)
+const NoteNode = ({ data, selected }: any) => (<div className={`glass-panel p-5 min-w-[220px] rounded-lg border transition-all duration-300 shadow-[0_14px_38px_rgba(30,41,59,0.35)] ${selected ? 'border-sky-300 bg-sky-500/10 ring-1 ring-sky-300/30' : 'border-white/10 bg-slate-950/70'}`}><div className="flex items-center gap-2 text-sky-300 mb-3"><StickyNote size={12}/><span className="text-[8px] font-bold uppercase tracking-[0.3em]">Operator Note</span></div><p className="text-[11px] text-slate-200 font-bold leading-relaxed">{data.label}</p></div>)
 
 const LabeledEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style = {}, markerEnd, data, selected, source, target }: any) => {
   const { getEdges } = useReactFlow();
@@ -261,9 +261,9 @@ const buildVersionDiff = (currentEntry: any, previousEntry?: any) => {
 const CanvasDomainBackdrop = ({ presentationMode }: { presentationMode: boolean }) => (
   <div className="absolute inset-0 pointer-events-none overflow-hidden">
     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.08),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(129,140,248,0.1),transparent_28%),linear-gradient(180deg,rgba(15,23,42,0.15),rgba(2,6,23,0.82))]" />
-    <div className={`absolute top-[16%] left-[14%] h-[72%] w-[19%] rounded-[36px] border ${presentationMode ? 'border-sky-300/22 bg-sky-400/8' : 'border-sky-400/12 bg-sky-400/[0.04]'} shadow-[0_0_80px_rgba(56,189,248,0.08)]`} />
-    <div className={`absolute top-[12%] left-[38%] h-[76%] w-[22%] rounded-[40px] border ${presentationMode ? 'border-emerald-300/20 bg-emerald-400/8' : 'border-emerald-400/12 bg-emerald-400/[0.035]'} shadow-[0_0_80px_rgba(16,185,129,0.08)]`} />
-    <div className={`absolute top-[14%] left-[64%] h-[70%] w-[22%] rounded-[40px] border ${presentationMode ? 'border-indigo-300/22 bg-indigo-400/8' : 'border-indigo-300/14 bg-indigo-400/[0.04]'} shadow-[0_0_80px_rgba(129,140,248,0.08)]`} />
+    <div className={`absolute top-[16%] left-[14%] h-[72%] w-[19%] rounded-lg border ${presentationMode ? 'border-sky-300/22 bg-sky-400/8' : 'border-sky-400/12 bg-sky-400/[0.04]'} shadow-[0_0_80px_rgba(56,189,248,0.08)]`} />
+    <div className={`absolute top-[12%] left-[38%] h-[76%] w-[22%] rounded-lg border ${presentationMode ? 'border-emerald-300/20 bg-emerald-400/8' : 'border-emerald-400/12 bg-emerald-400/[0.035]'} shadow-[0_0_80px_rgba(16,185,129,0.08)]`} />
+    <div className={`absolute top-[14%] left-[64%] h-[70%] w-[22%] rounded-lg border ${presentationMode ? 'border-indigo-300/22 bg-indigo-400/8' : 'border-indigo-300/14 bg-indigo-400/[0.04]'} shadow-[0_0_80px_rgba(129,140,248,0.08)]`} />
     <div className="absolute left-[18%] top-[13%] text-[9px] font-black uppercase tracking-[0.42em] text-sky-200/45">Ingress</div>
     <div className="absolute left-[44%] top-[10%] text-[9px] font-black uppercase tracking-[0.42em] text-emerald-200/45">Core Services</div>
     <div className="absolute left-[71%] top-[12%] text-[9px] font-black uppercase tracking-[0.42em] text-indigo-200/45">External</div>
@@ -275,7 +275,7 @@ const FocusEmptyState = ({ focusNodeId, focusEdgeId, presentationMode }: { focus
   if (focusNodeId || focusEdgeId) return null
   return (
     <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-      <div className={`max-w-md rounded-[28px] border px-8 py-7 text-center shadow-[0_30px_80px_rgba(2,6,23,0.55)] ${presentationMode ? 'bg-slate-950/78 border-fuchsia-300/25' : 'bg-slate-950/68 border-white/10 backdrop-blur-xl'}`}>
+      <div className={`max-w-md rounded-lg border px-8 py-7 text-center shadow-[0_30px_80px_rgba(2,6,23,0.55)] ${presentationMode ? 'bg-slate-950/78 border-fuchsia-300/25' : 'bg-slate-950/68 border-white/10 backdrop-blur-xl'}`}>
         <p className="text-[9px] font-black uppercase tracking-[0.45em] text-sky-300/80">Mission Focus</p>
         <h3 className="mt-4 text-2xl font-black uppercase tracking-[0.08em] text-white">Select A Node Or Flow</h3>
         <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.18em] leading-relaxed text-slate-300">Trace blast radius, inspect governance, follow live operational overlays, or open the service-level swimlane builder from a selected path.</p>
@@ -287,7 +287,7 @@ const FocusEmptyState = ({ focusNodeId, focusEdgeId, presentationMode }: { focus
 // --- Vertical Swimlane Flow Engine (Dynamic Participant Lanes) ---
 
 const ParticipantLaneHeader = ({ lane, onRemove, isPrimary, onAddNode, onMoveLeft, onMoveRight }: any) => (
-  <div className="flex flex-col gap-3 pointer-events-auto rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(15,23,42,0.68))] px-4 py-4 shadow-[0_18px_40px_rgba(2,6,23,0.28)]">
+  <div className="flex flex-col gap-3 pointer-events-auto rounded-lg border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(15,23,42,0.68))] px-4 py-4 shadow-[0_18px_40px_rgba(2,6,23,0.28)]">
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2.5">
         <div className="p-2.5 rounded-lg text-white shadow-lg border border-white/10" style={{ backgroundColor: lane.color }}>
@@ -337,7 +337,7 @@ const ProcessNode = ({ id, data, selected }: any) => {
   const laneColor = data.laneColor || '#3b82f6'
 
   return (
-    <div className={`glass-panel w-[280px] rounded-[24px] border transition-all duration-300 shadow-[0_20px_55px_rgba(2,6,23,0.42)] overflow-hidden ${selected ? 'ring-2 ring-sky-300/20 scale-[1.01]' : ''}`} style={{ borderColor: `${laneColor}45`, backgroundColor: '#0f172a' }}>
+    <div className={`glass-panel w-[280px] rounded-lg border transition-all duration-300 shadow-[0_20px_55px_rgba(2,6,23,0.42)] overflow-hidden ${selected ? 'ring-2 ring-sky-300/20 scale-[1.01]' : ''}`} style={{ borderColor: `${laneColor}45`, backgroundColor: '#0f172a' }}>
       <div className="flex items-center justify-between px-4 py-3 bg-white/[0.03] border-b border-white/5">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-lg text-white shadow-md border border-white/10" style={{ backgroundColor: laneColor }}>
@@ -779,7 +779,7 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
 
   return (
     <div className="fixed inset-0 z-[200] bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.15),transparent_28%),rgba(2,6,23,0.78)] backdrop-blur-sm flex items-center justify-center p-4">
-      <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="w-[95%] h-[92%] glass-panel flex overflow-hidden rounded-[30px] border border-white/10 shadow-[0_35px_120px_rgba(2,6,23,0.7)] bg-[#020617] relative">
+      <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="w-[95%] h-[92%] glass-panel flex overflow-hidden rounded-lg border border-white/10 shadow-[0_35px_120px_rgba(2,6,23,0.7)] bg-[#020617] relative">
         <div className="w-[320px] border-r border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.96))] flex flex-col z-30 shadow-2xl">
           <div className="p-7 border-b border-white/5 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))]">
             <div className="flex items-center gap-3">
@@ -800,7 +800,7 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
                 <RotateCw size={12}/> Redo
               </button>
             </div>
-            <div className="rounded-[22px] border border-amber-400/10 bg-[linear-gradient(180deg,rgba(251,191,36,0.08),rgba(2,6,23,0.25))] p-4 space-y-2 shadow-[0_18px_40px_rgba(15,23,42,0.28)]">
+            <div className="rounded-lg border border-amber-400/10 bg-[linear-gradient(180deg,rgba(251,191,36,0.08),rgba(2,6,23,0.25))] p-4 space-y-2 shadow-[0_18px_40px_rgba(15,23,42,0.28)]">
               <div className="flex items-center justify-between">
                 <span className="text-[9px] font-bold text-amber-400 uppercase tracking-widest">Validation</span>
                 <span className="text-[7px] font-bold text-slate-500 uppercase">Production Safety</span>
@@ -822,7 +822,7 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
                   <button 
                     key={svc.id} 
                     onClick={() => addLane(svc)} 
-                    className="w-full p-3.5 rounded-[18px] border border-white/8 bg-white/[0.04] hover:bg-white/[0.08] hover:border-sky-400/25 transition-all text-left group shadow-[0_12px_24px_rgba(2,6,23,0.25)]"
+                    className="w-full p-3.5 rounded-lg border border-white/8 bg-white/[0.04] hover:bg-white/[0.08] hover:border-sky-400/25 transition-all text-left group shadow-[0_12px_24px_rgba(2,6,23,0.25)]"
                   >
                     <div className="flex items-center justify-between mb-1">
                       <p className="text-[11px] font-bold uppercase tracking-tight text-slate-400 group-hover:text-white transition-colors truncate">{svc.name}</p>
@@ -1126,7 +1126,7 @@ const ArchDashboard = ({ flows, onEdit, onAdd }: any) => {
             </div>
             <p className="text-sky-200/55 text-[10px] font-bold uppercase tracking-[0.45em] pl-1 mt-3">Core Registry & Governance</p>
           </div>
-          <button onClick={onAdd} className="px-8 py-4 bg-sky-400 hover:bg-sky-300 text-slate-950 rounded-[18px] flex items-center space-x-3 transition-all shadow-[0_20px_50px_rgba(56,189,248,0.28)] active:scale-95">
+          <button onClick={onAdd} className="px-8 py-4 bg-sky-400 hover:bg-sky-300 text-slate-950 rounded-lg flex items-center space-x-3 transition-all shadow-[0_20px_50px_rgba(56,189,248,0.28)] active:scale-95">
             <Plus size={20}/><span className="text-sm font-bold uppercase tracking-widest">New Architecture</span>
           </button>
         </div>
@@ -1137,13 +1137,13 @@ const ArchDashboard = ({ flows, onEdit, onAdd }: any) => {
             ['Review Overdue', summary.stale, 'text-amber-400'],
             ['Needs Attention', summary.warnings, 'text-fuchsia-400'],
           ].map(([label, value, tone]) => (
-            <div key={label} className="glass-panel rounded-[22px] border border-white/8 p-5 bg-[linear-gradient(180deg,rgba(15,23,42,0.68),rgba(15,23,42,0.32))] shadow-[0_18px_44px_rgba(2,6,23,0.24)]">
+            <div key={label} className="glass-panel rounded-lg border border-white/8 p-5 bg-[linear-gradient(180deg,rgba(15,23,42,0.68),rgba(15,23,42,0.32))] shadow-[0_18px_44px_rgba(2,6,23,0.24)]">
               <p className="text-[8px] font-black uppercase tracking-[0.35em] text-slate-500">{label}</p>
               <p className={`text-3xl font-black mt-3 ${tone}`}>{value}</p>
             </div>
           ))}
         </div>
-        <div className="glass-panel rounded-[28px] border border-white/8 overflow-hidden shadow-[0_28px_80px_rgba(2,6,23,0.4)] bg-[#0f172a]/40 backdrop-blur-3xl flex flex-col h-[600px]">
+        <div className="glass-panel rounded-lg border border-white/8 overflow-hidden shadow-[0_28px_80px_rgba(2,6,23,0.4)] bg-[#0f172a]/40 backdrop-blur-3xl flex flex-col h-[600px]">
           <div className="p-6 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="relative flex-1 max-w-xl">
               <Search size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-600"/>
@@ -1227,7 +1227,7 @@ const ArchitectureHistoryPanel = ({ flow, historyEntries, isOpen, onClose, onRes
                 {diff.metadataChanged.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {diff.metadataChanged.map((field: string) => (
-                      <span key={field} className="px-2 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[7px] font-bold uppercase tracking-widest">{field.replaceAll('_', ' ')}</span>
+                      <span key={field} className="px-2 py-1 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[7px] font-bold uppercase tracking-widest">{field.replaceAll('_', ' ')}</span>
                     ))}
                   </div>
                 )}
@@ -1420,7 +1420,7 @@ const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, pathAnalysi
          </div>
        ) : (
          <div className="flex-1 flex flex-col items-center justify-center px-6">
-           <div className="w-full rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.72))] p-8 text-center shadow-[0_24px_60px_rgba(2,6,23,0.4)]">
+           <div className="w-full rounded-lg border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(2,6,23,0.72))] p-8 text-center shadow-[0_24px_60px_rgba(2,6,23,0.4)]">
              <Layers size={52} className="text-sky-300/40 mx-auto" />
              <p className="mt-5 text-[8px] font-black uppercase text-sky-300/70 tracking-[0.42em]">Focus Console</p>
              <p className="mt-4 text-[11px] font-bold uppercase text-slate-200 tracking-[0.16em] leading-relaxed">Select a node, edge, or service path to inspect impact, governance, and linked operational context.</p>
@@ -1577,7 +1577,7 @@ function ArchDesignerInner() {
          <>
             {/* Standardized Centered Top Bar */}
             <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-none">
-              <div className={`glass-panel p-2 rounded-[24px] border flex items-center space-x-2 shadow-[0_20px_60px_rgba(2,6,23,0.5)] pointer-events-auto ${isPresentationMode ? 'bg-slate-950/90 border-fuchsia-300/20 backdrop-blur-3xl' : 'bg-slate-900/82 border-white/10 backdrop-blur-2xl'}`}>
+              <div className={`glass-panel p-2 rounded-lg border flex items-center space-x-2 shadow-[0_20px_60px_rgba(2,6,23,0.5)] pointer-events-auto ${isPresentationMode ? 'bg-slate-950/90 border-fuchsia-300/20 backdrop-blur-3xl' : 'bg-slate-900/82 border-white/10 backdrop-blur-2xl'}`}>
                 <div className="flex flex-col min-w-[240px] px-5 py-1">
                   <span className={`${isPresentationMode ? 'text-xl' : 'text-sm'} font-black uppercase text-white tracking-[0.18em] truncate`}>{activeFlow?.name || 'Untitled Architecture'}</span>
                   <span className={`${isPresentationMode ? 'text-[9px]' : 'text-[7px]'} font-bold text-sky-300 uppercase tracking-[0.42em] mt-1`}>{activeFlow?.category || 'General'}</span>
@@ -1616,7 +1616,7 @@ function ArchDesignerInner() {
               </div>
             </div>
             <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[90] pointer-events-none">
-              <div className={`glass-panel px-5 py-4 rounded-[22px] border shadow-xl flex items-center gap-5 ${isPresentationMode ? 'bg-slate-950/88 border-fuchsia-300/15 backdrop-blur-3xl' : 'bg-slate-900/78 border-white/10 backdrop-blur-2xl'}`}>
+              <div className={`glass-panel px-5 py-4 rounded-lg border shadow-xl flex items-center gap-5 ${isPresentationMode ? 'bg-slate-950/88 border-fuchsia-300/15 backdrop-blur-3xl' : 'bg-slate-900/78 border-white/10 backdrop-blur-2xl'}`}>
                 <div>
                   <p className="text-[7px] font-bold uppercase tracking-[0.3em] text-slate-500">Owner</p>
                   <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white">{getFlowMeta(activeFlow, 'owner_team') || 'Unassigned'}</p>
@@ -1647,7 +1647,7 @@ function ArchDesignerInner() {
             </div>
             {isPresentationMode && (
               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[90] pointer-events-none">
-                <div className="glass-panel px-6 py-4 rounded-[22px] border border-fuchsia-300/30 bg-slate-950/86 backdrop-blur-3xl shadow-[0_22px_60px_rgba(2,6,23,0.55)] pointer-events-auto">
+                <div className="glass-panel px-6 py-4 rounded-lg border border-fuchsia-300/30 bg-slate-950/86 backdrop-blur-3xl shadow-[0_22px_60px_rgba(2,6,23,0.55)] pointer-events-auto">
                   <p className="text-[10px] font-black uppercase tracking-[0.42em] text-fuchsia-200">Presentation Mode Active</p>
                   <p className="mt-2 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-300">Boardroom-safe topology view with executive emphasis.</p>
                 </div>
@@ -1655,7 +1655,7 @@ function ArchDesignerInner() {
             )}
 
             {!isPresentationMode && !isSidebarOpen && (
-              <button onClick={() => setIsSidebarOpen(true)} className="absolute left-0 top-1/2 -translate-y-1/2 z-40 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-1.5 py-8 rounded-r-lg-xl border border-l-0 border-blue-500/30 transition-all group flex flex-col items-center gap-4">
+              <button onClick={() => setIsSidebarOpen(true)} className="absolute left-0 top-1/2 -translate-y-1/2 z-40 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-1.5 py-8 rounded-lg-xl border border-l-0 border-blue-500/30 transition-all group flex flex-col items-center gap-4">
                 <ChevronRight size={14} className="group-hover:scale-125 transition-transform"/>
                 <span className="[writing-mode:vertical-lr] text-[8px] font-bold uppercase tracking-[0.3em]">Inventory</span>
               </button>
@@ -1667,7 +1667,7 @@ function ArchDesignerInner() {
                  <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
                    {inventoryType === 'INTERNAL' ? (
                      <section className="space-y-3">
-                       <div className="flex items-center justify-between px-1"><h3 className="text-[9px] font-bold uppercase text-blue-400 tracking-widest">Internal Assets</h3><span className="text-[8px] font-bold text-slate-600 uppercase bg-white/5 px-2 py-0.5 rounded-full">{filteredAssets.length}</span></div>
+                       <div className="flex items-center justify-between px-1"><h3 className="text-[9px] font-bold uppercase text-blue-400 tracking-widest">Internal Assets</h3><span className="text-[8px] font-bold text-slate-600 uppercase bg-white/5 px-2 py-0.5 rounded-lg">{filteredAssets.length}</span></div>
                        <div className="grid grid-cols-1 gap-1.5">
                          {filteredAssets.slice(0, 50).map((a: any) => {
                            const isAdded = nodes.some(n => n.id === `device-${a.id}`);
@@ -1707,7 +1707,7 @@ function ArchDesignerInner() {
                      </section>
                    ) : (
                      <section className="space-y-3">
-                       <div className="flex items-center justify-between px-1"><h3 className="text-[9px] font-bold uppercase text-indigo-400 tracking-widest">External Entities</h3><span className="text-[8px] font-bold text-slate-600 uppercase bg-white/5 px-2 py-0.5 rounded-full">{filteredExternal.length}</span></div>
+                       <div className="flex items-center justify-between px-1"><h3 className="text-[9px] font-bold uppercase text-indigo-400 tracking-widest">External Entities</h3><span className="text-[8px] font-bold text-slate-600 uppercase bg-white/5 px-2 py-0.5 rounded-lg">{filteredExternal.length}</span></div>
                        <div className="grid grid-cols-1 gap-1.5">
                          {filteredExternal.map((e: any) => {
                            const isAdded = nodes.some(n => n.id === `external-${e.id}`);
@@ -1768,7 +1768,7 @@ function ArchDesignerInner() {
                </ReactFlow>
             </div>
             {!isPresentationMode && !isConfigSidebarOpen && (
-              <button onClick={() => setIsConfigSidebarOpen(true)} className="absolute right-0 top-1/2 -translate-y-1/2 z-40 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-1.5 py-8 rounded-l-lg-xl border border-r-0 border-blue-500/30 transition-all group flex flex-col items-center gap-4">
+              <button onClick={() => setIsConfigSidebarOpen(true)} className="absolute right-0 top-1/2 -translate-y-1/2 z-40 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-1.5 py-8 rounded-lg-xl border border-r-0 border-blue-500/30 transition-all group flex flex-col items-center gap-4">
                 <ChevronLeft size={14} className="group-hover:scale-125 transition-transform"/>
                 <span className="[writing-mode:vertical-lr] text-[8px] font-bold uppercase tracking-[0.3em] rotate-180">Configuration</span>
               </button>

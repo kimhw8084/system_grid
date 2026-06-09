@@ -155,15 +155,11 @@ export const SettingsStandards = () => {
   ]
 
   const radiusStandards = [
-    { label: 'rounded-none', value: '0px', class: 'rounded-none' },
-    { icon: Minimize2, label: 'rounded-lg', value: '8px (Was 2px)', class: 'rounded-lg' },
-    { icon: Box, label: 'rounded-lg', value: '8px (Was 4px)', class: 'rounded-lg' },
-    { label: 'rounded-lg', value: '8px (Was 6px)', class: 'rounded-lg' },
+    { label: 'rounded-none', value: '0px', class: 'rounded-lg', deprecated: true },
+    { icon: Minimize2, label: 'rounded-lg', value: '8px', class: 'rounded-lg', isStandard: true },
+    { icon: Box, label: 'rounded-lg', value: '8px', class: 'rounded-lg', isStandard: true },
     { label: 'rounded-lg', value: '8px', class: 'rounded-lg', isStandard: true },
-    { label: 'rounded-xl', value: '12px', class: 'rounded-xl' },
-    { label: 'rounded-2xl', value: '16px', class: 'rounded-2xl' },
-    { label: 'rounded-3xl', value: '24px', class: 'rounded-3xl' },
-    { label: 'rounded-full', value: '9999px', class: 'rounded-full' },
+    { label: 'rounded-full', value: '9999px', class: 'rounded-lg', deprecated: true },
   ]
 
   const visualTokens = Object.entries(OPERATIONAL_WORKSPACE_VISUALS)
@@ -302,6 +298,9 @@ export const SettingsStandards = () => {
             <div key={radius.label} className={`p-4 ${OPERATIONAL_WORKSPACE_VISUALS.panelSurface} group hover:border-blue-500/30 transition-all relative overflow-hidden`}>
               {radius.isStandard && (
                 <div className="absolute top-0 right-0 bg-blue-600 px-2 py-0.5 text-[8px] font-black uppercase text-white rounded-bl shadow-lg">Standard</div>
+              )}
+              {(radius as any).deprecated && (
+                <div className="absolute top-0 right-0 bg-rose-600 px-2 py-0.5 text-[8px] font-black uppercase text-white rounded-bl shadow-lg">Deprecated</div>
               )}
               <div className="flex flex-col items-center gap-3">
                 <div className={`w-12 h-12 bg-blue-500/10 border-2 border-blue-500/30 ${radius.class} flex items-center justify-center`}>

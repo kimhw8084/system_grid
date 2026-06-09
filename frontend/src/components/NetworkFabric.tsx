@@ -521,7 +521,7 @@ export default function NetworkFabric() {
                             <input 
                             type="range" min="8" max="14" step="1" 
                             value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
-                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
                             />
                             <span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span>
                         </div>
@@ -533,7 +533,7 @@ export default function NetworkFabric() {
                             <input 
                             type="range" min="4" max="24" step="2" 
                             value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
-                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"
+                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
                             />
                             <span className="text-[10px] text-white w-4 font-bold">{rowDensity}px</span>
                         </div>
@@ -777,7 +777,7 @@ export default function NetworkFabric() {
                     return toast.error("Source and peer assets must be different")
                   }
                   mutation.mutate(connData)
-                }} className="flex-1 py-5 bg-blue-600 text-white rounded-[20px] text-[11px] font-bold uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center space-x-3">
+                }} className="flex-1 py-5 bg-blue-600 text-white rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center space-x-3">
                   {mutation.isPending && <RefreshCcw size={16} className="animate-spin" />}
                   <span>{editingLink ? 'Synchronize Link Matrix' : 'Establish Physical Interconnect'}</span>
                 </button>

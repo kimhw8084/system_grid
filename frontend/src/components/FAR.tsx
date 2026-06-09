@@ -638,8 +638,8 @@ export default function FAR() {
                      <span className="text-[10px] font-bold uppercase tracking-widest text-rose-400">View Density Laboratory</span>
                   </div>
                   <div className="flex items-center space-x-6">
-                     <div className="flex items-center space-x-4"><span className="text-[9px] font-bold text-slate-500 uppercase">Font Size</span><div className="flex items-center space-x-2"><input type="range" min="8" max="14" step="1" value={fontSize} onChange={e => setFontSize(Number(e.target.value))} className="w-32 accent-rose-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"/><span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span></div></div>
-                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6"><span className="text-[9px] font-bold text-slate-500 uppercase">Row Density</span><div className="flex items-center space-x-2"><input type="range" min="4" max="24" step="2" value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))} className="w-32 accent-rose-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"/><span className="text-[10px] text-white w-4 font-bold">{rowDensity}px</span></div></div>
+                     <div className="flex items-center space-x-4"><span className="text-[9px] font-bold text-slate-500 uppercase">Font Size</span><div className="flex items-center space-x-2"><input type="range" min="8" max="14" step="1" value={fontSize} onChange={e => setFontSize(Number(e.target.value))} className="w-32 accent-rose-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"/><span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span></div></div>
+                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6"><span className="text-[9px] font-bold text-slate-500 uppercase">Row Density</span><div className="flex items-center space-x-2"><input type="range" min="4" max="24" step="2" value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))} className="w-32 accent-rose-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"/><span className="text-[10px] text-white w-4 font-bold">{rowDensity}px</span></div></div>
                   </div>
                </div>
                <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
@@ -673,7 +673,7 @@ export default function FAR() {
                       const pct = filteredModes?.length ? (count / filteredModes.length) * 100 : 0
                       return (
                         <div key={ml.lv} className="w-4 h-full relative group cursor-help">
-                            <div className={`w-full h-full rounded-t-lg transition-all ${ml.color} ${count === 0 ? 'opacity-5' : 'opacity-40 group-hover:opacity-100'}`} style={{ height: `${Math.max(10, pct)}%` }} />
+                            <div className={`w-full h-full rounded-lg transition-all ${ml.color} ${count === 0 ? 'opacity-5' : 'opacity-40 group-hover:opacity-100'}`} style={{ height: `${Math.max(10, pct)}%` }} />
                             <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100] whitespace-nowrap bg-black border border-white/10 px-2 py-1 rounded-lg text-[8px] font-bold uppercase tracking-widest">
                                {ml.label}: {count}
                             </div>
@@ -1068,8 +1068,8 @@ export function GaugeSelector({ label, value, onChange, levels, color, accent }:
              <span className="text-slate-700 text-[10px] font-bold">/ 10</span>
           </div>
        </div>
-       <div className="relative h-2 bg-black/40 rounded-full border border-white/5">
-          <div className={`absolute left-0 top-0 h-full rounded-full ${accent} transition-all duration-300`} style={{ width: `${(value / 10) * 100}%` }} />
+       <div className="relative h-2 bg-black/40 rounded-lg border border-white/5">
+          <div className={`absolute left-0 top-0 h-full rounded-lg ${accent} transition-all duration-300`} style={{ width: `${(value / 10) * 100}%` }} />
           <input 
             type="range" min="1" max="10" step="1" 
             value={value} 
@@ -1263,7 +1263,7 @@ function CausalTab({ mode, onUpdate }: any) {
           <div className="flex items-center gap-4">
              <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-amber-500 ">Root Cause Attribution Matrix</h3>
              {mode.linked_rcas?.length > 0 && (
-                <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-full">
+                <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-lg">
                    <Activity size={12} className="text-purple-400" />
                    <span className="text-[9px] font-black text-purple-400 uppercase tracking-widest">{mode.linked_rcas.length} Research Cases Linked</span>
                 </div>
@@ -1290,7 +1290,7 @@ function CausalTab({ mode, onUpdate }: any) {
                      <td className="px-8 py-5 text-white normal-case leading-relaxed">{c.cause_text}</td>
                      <td className="px-8 py-5 text-center">
                         <div className="flex items-center justify-center gap-2">
-                           <div className="w-12 h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                           <div className="w-12 h-1.5 bg-white/5 rounded-lg overflow-hidden border border-white/5">
                               <div className="h-full bg-amber-500" style={{ width: `${c.occurrence_level * 10}%` }} />
                            </div>
                            <span className="text-amber-500 w-4 font-black">{c.occurrence_level}</span>

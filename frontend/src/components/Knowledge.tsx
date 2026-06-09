@@ -762,7 +762,7 @@ function KnowledgeSummaryCard({ label, value, detail, icon, tone }: any) {
   }
 
   return (
-    <div className={`rounded-[28px] border bg-gradient-to-br ${toneClasses[tone] || toneClasses.blue} p-5 shadow-2xl`}>
+    <div className={`rounded-lg border bg-gradient-to-br ${toneClasses[tone] || toneClasses.blue} p-5 shadow-2xl`}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[9px] font-black uppercase tracking-[0.28em] text-slate-400">{label}</p>
@@ -779,7 +779,7 @@ function KnowledgeSummaryCard({ label, value, detail, icon, tone }: any) {
 
 function KnowledgeQueuePanel({ entries, onOpenEntry }: any) {
   return (
-    <div className="rounded-[28px] border border-white/5 bg-black/30 p-5 shadow-2xl">
+    <div className="rounded-lg border border-white/5 bg-black/30 p-5 shadow-2xl">
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white">Knowledge Action Queue</p>
@@ -855,7 +855,7 @@ function KnowledgeCard({ entry, onClick }: any) {
       }`}
     >
        {/* Background Accent */}
-       <div className={`absolute top-0 right-0 w-32 h-32 -mr-16 -mt-16 rounded-full blur-[60px] opacity-10 transition-all group-hover:opacity-20 ${
+       <div className={`absolute top-0 right-0 w-32 h-32 -mr-16 -mt-16 rounded-lg blur-[60px] opacity-10 transition-all group-hover:opacity-20 ${
          isBKM ? 'bg-rose-500' : isQA ? 'bg-amber-500' : isManual ? 'bg-emerald-500' : 'bg-blue-500'
        }`} />
 
@@ -948,7 +948,7 @@ function KnowledgeTimeline({ entries, onEntryClick }: any) {
                }`}>
                   {entry.category === 'BKM' ? <ShieldCheck size={20}/> : entry.category === 'Q&A' ? <HelpCircle size={20}/> : <FileText size={20}/>}
                </div>
-               {idx !== sortedEntries.length - 1 && <div className="absolute top-12 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-white/5 border border-white/10 mt-2" />}
+               {idx !== sortedEntries.length - 1 && <div className="absolute top-12 left-1/2 -translate-x-1/2 w-4 h-4 rounded-lg bg-white/5 border border-white/10 mt-2" />}
             </div>
             <div 
               onClick={() => onEntryClick(entry)}
@@ -975,7 +975,7 @@ function KnowledgeTimeline({ entries, onEntryClick }: any) {
                       <MessageSquare size={12} /> {entry.qa_threads.length} CONTRIBUTIONS
                     </div>
                     <div className="flex -space-x-2">
-                      {[1,2,3].map(i => <div key={i} className="w-6 h-6 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-[8px] font-black text-slate-400 uppercase">UA</div>)}
+                      {[1,2,3].map(i => <div key={i} className="w-6 h-6 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-[8px] font-black text-slate-400 uppercase">UA</div>)}
                     </div>
                  </div>
                )}
@@ -1009,7 +1009,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
        <motion.div 
          initial={{ scale: 0.95, opacity: 0 }} 
          animate={{ scale: 1, opacity: 1 }} 
-         className={`glass-panel w-full ${category === 'Manual' ? 'max-w-7xl' : 'max-w-5xl'} max-h-[95vh] p-0 rounded-[32px] border border-white/10 overflow-hidden flex flex-col shadow-2xl relative`}
+         className={`glass-panel w-full ${category === 'Manual' ? 'max-w-7xl' : 'max-w-5xl'} max-h-[95vh] p-0 rounded-lg border border-white/10 overflow-hidden flex flex-col shadow-2xl relative`}
        >
           {/* Header */}
           <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
@@ -1344,12 +1344,12 @@ function BKMStudio({ data, onChange }: any) {
         </div>
         <div className="space-y-6">
           {data.steps?.map((s: any, idx: number) => (
-            <div key={idx} className="flex gap-8 p-8 bg-slate-900/30 border border-white/5 rounded-[32px] relative group hover:border-rose-500/30 transition-all shadow-xl">
+            <div key={idx} className="flex gap-8 p-8 bg-slate-900/30 border border-white/5 rounded-lg relative group hover:border-rose-500/30 transition-all shadow-xl">
               <div className="flex flex-col items-center gap-4">
                  <div className="w-14 h-14 rounded-lg bg-rose-600 flex items-center justify-center text-xl font-black text-white shadow-2xl shadow-rose-600/30">
                    {String(idx + 1).padStart(2, '0')}
                  </div>
-                 <div className="flex-1 w-1 bg-gradient-to-b from-rose-600/50 to-transparent rounded-full" />
+                 <div className="flex-1 w-1 bg-gradient-to-b from-rose-600/50 to-transparent rounded-lg" />
               </div>
               <div className="flex-1 space-y-6">
                 <input 
@@ -1446,7 +1446,7 @@ function BKMStudio({ data, onChange }: any) {
                       placeholder="Corrective action..." 
                     />
                  </div>
-                 <button onClick={() => update('troubleshooting', data.troubleshooting.filter((_:any, i:any) => i !== idx))} className="absolute -right-2 -top-2 w-8 h-8 rounded-full bg-slate-900 border border-white/10 text-slate-700 hover:text-rose-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-xl">
+                 <button onClick={() => update('troubleshooting', data.troubleshooting.filter((_:any, i:any) => i !== idx))} className="absolute -right-2 -top-2 w-8 h-8 rounded-lg bg-slate-900 border border-white/10 text-slate-700 hover:text-rose-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-xl">
                    <Trash2 size={14}/>
                  </button>
               </div>
@@ -1488,7 +1488,7 @@ function BKMStudio({ data, onChange }: any) {
           <label className="text-[11px] font-black text-emerald-500 uppercase tracking-[0.3em] flex items-center gap-3 px-2">
             <RefreshCcw size={18}/> 06 // Next Steps & Verification
           </label>
-          <div className="bg-emerald-600/5 p-6 rounded-[32px] border border-emerald-500/10 space-y-4">
+          <div className="bg-emerald-600/5 p-6 rounded-lg border border-emerald-500/10 space-y-4">
              <textarea 
                value={data.next_steps} 
                onChange={e => update('next_steps', e.target.value)} 
@@ -1500,7 +1500,7 @@ function BKMStudio({ data, onChange }: any) {
       </div>
 
       <div className="grid grid-cols-3 gap-6">
-        <div className="bg-rose-500/[0.03] p-6 rounded-[32px] border border-rose-500/10 space-y-3">
+        <div className="bg-rose-500/[0.03] p-6 rounded-lg border border-rose-500/10 space-y-3">
           <label className="text-[10px] font-black text-rose-400 uppercase tracking-[0.3em]">Escalation Path</label>
           <textarea
             value={data.escalation || data.incident_mode?.escalation || ''}
@@ -1509,7 +1509,7 @@ function BKMStudio({ data, onChange }: any) {
             placeholder="Who to page, when to escalate, vendor chain, bridge expectations..."
           />
         </div>
-        <div className="bg-sky-500/[0.03] p-6 rounded-[32px] border border-sky-500/10 space-y-3">
+        <div className="bg-sky-500/[0.03] p-6 rounded-lg border border-sky-500/10 space-y-3">
           <label className="text-[10px] font-black text-sky-400 uppercase tracking-[0.3em]">Rollback</label>
           <textarea
             value={data.rollback || data.incident_mode?.rollback || ''}
@@ -1518,7 +1518,7 @@ function BKMStudio({ data, onChange }: any) {
             placeholder="Define how to safely back out the action if recovery worsens the incident..."
           />
         </div>
-        <div className="bg-emerald-500/[0.03] p-6 rounded-[32px] border border-emerald-500/10 space-y-3">
+        <div className="bg-emerald-500/[0.03] p-6 rounded-lg border border-emerald-500/10 space-y-3">
           <label className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em]">Validation</label>
           <textarea
             value={data.validation || data.incident_mode?.validation || ''}
@@ -1553,7 +1553,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                 <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">ROI, KPIs & Primary Beneficiaries</p>
              </div>
           </div>
-          <div className="grid grid-cols-2 gap-10 bg-white/[0.02] p-10 rounded-[40px] border border-white/5">
+          <div className="grid grid-cols-2 gap-10 bg-white/[0.02] p-10 rounded-lg border border-white/5">
              <div className="space-y-6">
                 <div className="space-y-2">
                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Business Problem Being Solved</label>
@@ -1634,7 +1634,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                 <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Architecture, Assets & Interfaces</p>
              </div>
           </div>
-          <div className="grid grid-cols-2 gap-10 bg-white/[0.02] p-10 rounded-[40px] border border-white/5">
+          <div className="grid grid-cols-2 gap-10 bg-white/[0.02] p-10 rounded-lg border border-white/5">
              <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                    <div className="space-y-2">
@@ -1709,7 +1709,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                 <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Availability Targets & Capacity Methods</p>
              </div>
           </div>
-          <div className="grid grid-cols-2 gap-10 bg-white/[0.02] p-10 rounded-[40px] border border-white/5">
+          <div className="grid grid-cols-2 gap-10 bg-white/[0.02] p-10 rounded-lg border border-white/5">
              <div className="space-y-6">
                 <div className="space-y-2">
                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Availability Target (%)</label>
@@ -1762,7 +1762,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                 <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">RACI, Maintenance & Failure Modes</p>
              </div>
           </div>
-          <div className="grid grid-cols-2 gap-10 bg-white/[0.02] p-10 rounded-[40px] border border-white/5">
+          <div className="grid grid-cols-2 gap-10 bg-white/[0.02] p-10 rounded-lg border border-white/5">
              <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                    <div className="space-y-2">
@@ -1912,7 +1912,7 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, onQuickUpdate, con
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-10">
        <motion.div 
          layoutId={`entry-${entry.id}`} 
-         className="glass-panel w-full max-w-7xl h-[90vh] rounded-[48px] border border-white/10 flex flex-col overflow-hidden shadow-3xl relative"
+         className="glass-panel w-full max-w-7xl h-[90vh] rounded-lg border border-white/10 flex flex-col overflow-hidden shadow-3xl relative"
        >
           {/* Detailed Header */}
           <div className={`p-10 border-b border-white/5 flex items-start justify-between relative overflow-hidden ${
@@ -2052,7 +2052,7 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, onQuickUpdate, con
           <div className="p-8 bg-black/60 border-t border-white/5 flex items-center justify-between">
              <div className="flex items-center space-x-12">
                 <div className="flex items-center space-x-3">
-                   <div className="w-10 h-10 rounded-full bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
+                   <div className="w-10 h-10 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
                       <User size={20}/>
                    </div>
                    <div>
@@ -2061,7 +2061,7 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, onQuickUpdate, con
                    </div>
                 </div>
                 <div className="flex items-center space-x-3">
-                   <div className="w-10 h-10 rounded-full bg-emerald-600/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+                   <div className="w-10 h-10 rounded-lg bg-emerald-600/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
                       <ShieldCheck size={20}/>
                    </div>
                    <div>
@@ -2094,7 +2094,7 @@ function KnowledgeBriefingModal({ entry, context, onClose }: any) {
 
   return (
     <div className="absolute inset-0 z-[130] flex items-center justify-center bg-black/85 backdrop-blur-2xl p-8">
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-4xl rounded-[36px] border border-white/10 bg-slate-950/95 p-8 shadow-2xl">
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-4xl rounded-lg border border-white/10 bg-slate-950/95 p-8 shadow-2xl">
         <div className="flex items-start justify-between gap-6">
           <div>
             <h3 className="text-2xl font-black uppercase tracking-tighter text-white">Knowledge Briefing</h3>
@@ -2107,7 +2107,7 @@ function KnowledgeBriefingModal({ entry, context, onClose }: any) {
         <textarea
           readOnly
           value={briefing}
-          className="mt-6 h-[420px] w-full rounded-[28px] border border-white/10 bg-black/40 p-6 text-sm font-medium leading-relaxed text-slate-200 outline-none"
+          className="mt-6 h-[420px] w-full rounded-lg border border-white/10 bg-black/40 p-6 text-sm font-medium leading-relaxed text-slate-200 outline-none"
         />
         <div className="mt-6 flex items-center justify-end gap-3">
           <button
@@ -2124,7 +2124,7 @@ function KnowledgeBriefingModal({ entry, context, onClose }: any) {
 
 function KnowledgeLinkSelector({ title, icon, items, selected, labelKey, sublabelKey, onToggle, formatSublabel }: any) {
   return (
-    <div className="bg-white/[0.02] border border-white/5 rounded-[28px] p-5 space-y-4">
+    <div className="bg-white/[0.02] border border-white/5 rounded-lg p-5 space-y-4">
       <div className="flex items-center gap-3">
         {icon}
         <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-300">{title}</p>
@@ -2154,7 +2154,7 @@ function KnowledgeLinkSelector({ title, icon, items, selected, labelKey, sublabe
 function IncidentModePanel({ entry }: any) {
   const data = entry.content_json || {}
   return (
-    <div className="mx-16 mt-12 rounded-[40px] border border-amber-500/20 bg-amber-500/[0.05] p-8 grid grid-cols-2 gap-6">
+    <div className="mx-16 mt-12 rounded-lg border border-amber-500/20 bg-amber-500/[0.05] p-8 grid grid-cols-2 gap-6">
       <div>
         <p className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-300">Symptoms</p>
         <p className="mt-3 text-sm font-medium text-slate-200 leading-relaxed">{data.symptoms || 'No incident signature documented.'}</p>
@@ -2207,15 +2207,15 @@ function KnowledgeOpsRail({ entry, metadata, versionHistory, currentVersion, pre
   const readiness = getKnowledgeReadiness(entry)
   return (
     <aside className="w-[380px] shrink-0 border-l border-white/5 bg-black/30 p-6 overflow-y-auto custom-scrollbar space-y-6">
-      <div className="rounded-[28px] border border-white/5 bg-white/[0.02] p-5 space-y-4">
+      <div className="rounded-lg border border-white/5 bg-white/[0.02] p-5 space-y-4">
         <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Operational Readiness</p>
         <div className="rounded-lg border border-white/5 bg-black/20 p-4">
           <div className="flex items-center justify-between">
             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Status</span>
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">{readiness.label}</span>
           </div>
-          <div className="mt-4 h-2 rounded-full bg-white/5">
-            <div className="h-2 rounded-full bg-gradient-to-r from-blue-500 via-emerald-500 to-emerald-300" style={{ width: `${(readiness.score / readiness.max) * 100}%` }} />
+          <div className="mt-4 h-2 rounded-lg bg-white/5">
+            <div className="h-2 rounded-lg bg-gradient-to-r from-blue-500 via-emerald-500 to-emerald-300" style={{ width: `${(readiness.score / readiness.max) * 100}%` }} />
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 text-[9px] font-black uppercase tracking-[0.18em]">
             <span className="rounded-lg border border-white/5 bg-white/5 px-3 py-2 text-slate-400">{getKnowledgeLinkCount(entry)} links</span>
@@ -2226,7 +2226,7 @@ function KnowledgeOpsRail({ entry, metadata, versionHistory, currentVersion, pre
         </div>
       </div>
 
-      <div className="rounded-[28px] border border-white/5 bg-white/[0.02] p-5 space-y-4">
+      <div className="rounded-lg border border-white/5 bg-white/[0.02] p-5 space-y-4">
         <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Ownership & Review</p>
         <div className="space-y-2 text-[10px] font-bold uppercase">
           <div className="flex items-center justify-between"><span className="text-slate-500">Owner</span><span className="text-white">{metadata.ownership.owner || 'UNOWNED'}</span></div>
@@ -2242,7 +2242,7 @@ function KnowledgeOpsRail({ entry, metadata, versionHistory, currentVersion, pre
         </button>
       </div>
 
-      <div className="rounded-[28px] border border-white/5 bg-white/[0.02] p-5 space-y-4">
+      <div className="rounded-lg border border-white/5 bg-white/[0.02] p-5 space-y-4">
         <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Feedback Loop</p>
         <div className="grid grid-cols-2 gap-2">
           {FEEDBACK_TYPES.map(type => (
@@ -2263,7 +2263,7 @@ function KnowledgeOpsRail({ entry, metadata, versionHistory, currentVersion, pre
         ))}
       </div>
 
-      <div className="rounded-[28px] border border-white/5 bg-white/[0.02] p-5 space-y-4">
+      <div className="rounded-lg border border-white/5 bg-white/[0.02] p-5 space-y-4">
         <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Deep Links</p>
         {linkGroups.map((group: any) => (
           <div key={group.label} className="space-y-2">
@@ -2277,7 +2277,7 @@ function KnowledgeOpsRail({ entry, metadata, versionHistory, currentVersion, pre
         ))}
       </div>
 
-      <div className="rounded-[28px] border border-white/5 bg-white/[0.02] p-5 space-y-4">
+      <div className="rounded-lg border border-white/5 bg-white/[0.02] p-5 space-y-4">
         <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Version History</p>
         <div className="space-y-2">
           {versionHistory.map((item: any) => (
@@ -2325,7 +2325,7 @@ function KnowledgeOpsRail({ entry, metadata, versionHistory, currentVersion, pre
 function BKMViewer({ data }: any) {
   return (
     <div className="max-w-6xl mx-auto p-16 space-y-24">
-       <section className="space-y-8 bg-slate-900/40 p-12 rounded-[48px] border border-white/5 relative overflow-hidden group">
+       <section className="space-y-8 bg-slate-900/40 p-12 rounded-lg border border-white/5 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-8 opacity-5 text-rose-500 group-hover:opacity-10 transition-all">
              <Target size={120} />
           </div>
@@ -2343,7 +2343,7 @@ function BKMViewer({ data }: any) {
           </h4>
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
              {data.prerequisites?.map((p: any, i: number) => (
-               <div key={i} className="bg-white/[0.02] border border-white/5 p-6 rounded-[32px] flex items-start gap-4 hover:border-rose-500/30 transition-all hover:bg-white/[0.04] group">
+               <div key={i} className="bg-white/[0.02] border border-white/5 p-6 rounded-lg flex items-start gap-4 hover:border-rose-500/30 transition-all hover:bg-white/[0.04] group">
                   <div className={`w-3 h-3 rounded-full mt-1 shrink-0 ${p.criticality === 'High' ? 'bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.5)]' : 'bg-blue-500'}`} />
                   <div className="space-y-1">
                      <span className="text-[12px] font-black text-white uppercase leading-tight block group-hover:text-rose-500 transition-colors">{p.description}</span>
@@ -2359,11 +2359,11 @@ function BKMViewer({ data }: any) {
              <PlayCircle size={20}/> 03 // EXECUTION_FLOW
           </h4>
           <div className="space-y-10 relative">
-             <div className="absolute left-8 top-10 bottom-10 w-1 bg-gradient-to-b from-rose-600/50 via-white/5 to-transparent rounded-full" />
+             <div className="absolute left-8 top-10 bottom-10 w-1 bg-gradient-to-b from-rose-600/50 via-white/5 to-transparent rounded-lg" />
              {data.steps?.map((s: any, i: number) => (
                <div key={i} className="flex gap-12 group relative">
                   <div className="relative z-10 shrink-0">
-                     <div className="w-16 h-16 rounded-[24px] bg-slate-900 border-2 border-rose-600/50 flex items-center justify-center text-2xl font-black text-rose-500 shadow-2xl group-hover:bg-rose-600 group-hover:text-white transition-all">
+                     <div className="w-16 h-16 rounded-lg bg-slate-900 border-2 border-rose-600/50 flex items-center justify-center text-2xl font-black text-rose-500 shadow-2xl group-hover:bg-rose-600 group-hover:text-white transition-all">
                         {String(i + 1).padStart(2, '0')}
                      </div>
                   </div>
@@ -2374,7 +2374,7 @@ function BKMViewer({ data }: any) {
                      </div>
                      <p className="text-base text-slate-400 leading-relaxed font-medium border-l-2 border-white/5 pl-6">{s.description}</p>
                      {s.image_url && (
-                        <div className="aspect-video bg-black/40 rounded-[40px] border border-white/10 overflow-hidden shadow-2xl relative group/img">
+                        <div className="aspect-video bg-black/40 rounded-lg border border-white/10 overflow-hidden shadow-2xl relative group/img">
                            <img src={s.image_url} className="w-full h-full object-cover opacity-60 group-hover/img:opacity-100 transition-opacity" alt={s.task} />
                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-8">
                               <p className="text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-2">
@@ -2395,7 +2395,7 @@ function BKMViewer({ data }: any) {
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
              {data.troubleshooting?.map((t: any, i: number) => (
-               <div key={i} className="bg-amber-500/[0.03] border border-amber-500/10 p-8 rounded-[40px] space-y-6 hover:bg-amber-500/[0.06] transition-all group">
+               <div key={i} className="bg-amber-500/[0.03] border border-amber-500/10 p-8 rounded-lg space-y-6 hover:bg-amber-500/[0.06] transition-all group">
                   <div className="flex items-center gap-4 border-b border-amber-500/10 pb-4">
                      <div className="p-3 bg-amber-500/20 rounded-lg text-amber-500">
                         <AlertTriangle size={20} />
@@ -2426,7 +2426,7 @@ function BKMViewer({ data }: any) {
              </h4>
              <div className="space-y-4">
                 {data.tips?.map((t: string, i: number) => (
-                  <div key={i} className="flex gap-6 p-6 bg-blue-600/5 border border-blue-500/10 rounded-[32px] items-start hover:bg-blue-600/10 transition-all">
+                  <div key={i} className="flex gap-6 p-6 bg-blue-600/5 border border-blue-500/10 rounded-lg items-start hover:bg-blue-600/10 transition-all">
                      <Zap size={20} className="text-blue-400 mt-1 shrink-0 animate-pulse" />
                      <p className="text-sm font-black text-blue-200 uppercase tracking-tight leading-relaxed">{t}</p>
                   </div>
@@ -2438,7 +2438,7 @@ function BKMViewer({ data }: any) {
              <h4 className="text-[12px] font-black text-emerald-500 uppercase tracking-[0.5em] flex items-center gap-4">
                 <RefreshCcw size={20}/> 06 // POST_SYNC_VERIFICATION
              </h4>
-             <div className="bg-emerald-500/[0.03] border border-emerald-500/10 p-10 rounded-[48px] relative overflow-hidden">
+             <div className="bg-emerald-500/[0.03] border border-emerald-500/10 p-10 rounded-lg relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 opacity-5 text-emerald-500">
                    <ShieldCheck size={100} />
                 </div>
@@ -2478,7 +2478,7 @@ function SystemManualViewer({ data, context }: any) {
                 <p className="text-[12px] text-slate-500 uppercase tracking-[0.4em] font-bold mt-2">Economic Impact & Primary Goals</p>
              </div>
           </div>
-          <div className="grid grid-cols-2 gap-12 bg-white/[0.02] p-12 rounded-[64px] border border-white/5 relative overflow-hidden">
+          <div className="grid grid-cols-2 gap-12 bg-white/[0.02] p-12 rounded-lg border border-white/5 relative overflow-hidden">
              <div className="space-y-10">
                 <div className="space-y-4">
                    <h5 className="text-[11px] font-black text-blue-500 uppercase tracking-[0.3em] flex items-center gap-3">
@@ -2489,11 +2489,11 @@ function SystemManualViewer({ data, context }: any) {
                    </p>
                 </div>
                 <div className="grid grid-cols-2 gap-8">
-                   <div className="bg-slate-900/50 p-6 rounded-[32px] border border-white/5 shadow-inner">
+                   <div className="bg-slate-900/50 p-6 rounded-lg border border-white/5 shadow-inner">
                       <h6 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3">ROI_PROJECTION</h6>
                       <p className="text-lg font-black text-white uppercase tracking-tighter">{data.business_value?.roi_projection}</p>
                    </div>
-                   <div className="bg-slate-900/50 p-6 rounded-[32px] border border-white/5 shadow-inner">
+                   <div className="bg-slate-900/50 p-6 rounded-lg border border-white/5 shadow-inner">
                       <h6 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3">KPI_ANCHORS</h6>
                       <div className="flex flex-wrap gap-2">
                         {data.business_value?.kpis?.map((k: string) => (
@@ -2535,7 +2535,7 @@ function SystemManualViewer({ data, context }: any) {
           </div>
           <div className="grid grid-cols-3 gap-10">
              <div className="col-span-1 space-y-8">
-                <div className="bg-emerald-600/[0.03] p-10 rounded-[48px] border border-emerald-500/10 space-y-8 h-full">
+                <div className="bg-emerald-600/[0.03] p-10 rounded-lg border border-emerald-500/10 space-y-8 h-full">
                    <div className="space-y-2">
                       <p className="text-[10px] font-black text-emerald-500/50 uppercase tracking-widest">OFFICIAL_IDENTIFIER</p>
                       <h4 className="text-3xl font-black text-white uppercase tracking-tighter leading-none">{data.overview?.official_name}</h4>
@@ -2605,28 +2605,28 @@ function SystemManualViewer({ data, context }: any) {
              </div>
           </div>
           <div className="grid grid-cols-4 gap-8">
-             <div className="bg-slate-900/80 p-10 rounded-[48px] border border-white/5 space-y-4 shadow-2xl relative overflow-hidden group">
+             <div className="bg-slate-900/80 p-10 rounded-lg border border-white/5 space-y-4 shadow-2xl relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-6 opacity-5 text-amber-500 group-hover:scale-110 transition-transform">
                    <Shield size={60} />
                 </div>
                 <p className="text-[9px] font-black text-amber-500/50 uppercase tracking-widest">AVAILABILITY_TARGET</p>
                 <p className="text-4xl font-black text-white tracking-tighter">{data.performance?.availability_target}</p>
              </div>
-             <div className="bg-slate-900/80 p-10 rounded-[48px] border border-white/5 space-y-4 shadow-2xl relative overflow-hidden group">
+             <div className="bg-slate-900/80 p-10 rounded-lg border border-white/5 space-y-4 shadow-2xl relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-6 opacity-5 text-amber-500 group-hover:scale-110 transition-transform">
                    <Clock size={60} />
                 </div>
                 <p className="text-[9px] font-black text-amber-500/50 uppercase tracking-widest">LATENCY_UPPER_BOUND</p>
                 <p className="text-4xl font-black text-white tracking-tighter">{data.performance?.latency_limits}</p>
              </div>
-             <div className="bg-slate-900/80 p-10 rounded-[48px] border border-white/5 space-y-4 shadow-2xl relative overflow-hidden group">
+             <div className="bg-slate-900/80 p-10 rounded-lg border border-white/5 space-y-4 shadow-2xl relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-6 opacity-5 text-amber-500 group-hover:scale-110 transition-transform">
                    <Zap size={60} />
                 </div>
                 <p className="text-[9px] font-black text-amber-500/50 uppercase tracking-widest">MAX_THROUGHPUT_CAP</p>
                 <p className="text-4xl font-black text-white tracking-tighter">{data.performance?.throughput_capacity}</p>
              </div>
-             <div className="bg-slate-900/80 p-10 rounded-[48px] border border-white/5 space-y-4 shadow-2xl flex flex-col justify-center">
+             <div className="bg-slate-900/80 p-10 rounded-lg border border-white/5 space-y-4 shadow-2xl flex flex-col justify-center">
                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">CAPACITY_STRATEGY</p>
                 <p className="text-xs font-bold text-slate-400 leading-relaxed">{data.performance?.capacity_methodology}</p>
              </div>
@@ -2642,7 +2642,7 @@ function SystemManualViewer({ data, context }: any) {
                 <p className="text-[12px] text-slate-500 uppercase tracking-[0.4em] font-bold mt-2">RACI, Failure Handling & Recovery Plan</p>
              </div>
           </div>
-          <div className="grid grid-cols-2 gap-12 bg-white/[0.02] p-12 rounded-[64px] border border-white/5 relative overflow-hidden">
+          <div className="grid grid-cols-2 gap-12 bg-white/[0.02] p-12 rounded-lg border border-white/5 relative overflow-hidden">
              <div className="space-y-10">
                 <div className="grid grid-cols-2 gap-8">
                    <div className="space-y-1">
@@ -2679,12 +2679,12 @@ function SystemManualViewer({ data, context }: any) {
                    <RefreshCcw size={16}/> Disaster Recovery Parameters
                 </h5>
                 <div className="grid grid-cols-2 gap-8">
-                   <div className="bg-emerald-600/5 p-8 rounded-[40px] border border-emerald-500/10 space-y-2 group hover:bg-emerald-600/10 transition-all">
+                   <div className="bg-emerald-600/5 p-8 rounded-lg border border-emerald-500/10 space-y-2 group hover:bg-emerald-600/10 transition-all">
                       <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">RECOVERY_TIME_OBJ (RTO)</p>
                       <p className="text-4xl font-black text-white tracking-tighter leading-none">{data.operation?.dr_strategy?.rto}</p>
                       <p className="text-[9px] font-bold text-slate-600 uppercase mt-4">MAX_ALLOWED_DOWNTIME</p>
                    </div>
-                   <div className="bg-emerald-600/5 p-8 rounded-[40px] border border-emerald-500/10 space-y-2 group hover:bg-emerald-600/10 transition-all">
+                   <div className="bg-emerald-600/5 p-8 rounded-lg border border-emerald-500/10 space-y-2 group hover:bg-emerald-600/10 transition-all">
                       <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">RECOVERY_POINT_OBJ (RPO)</p>
                       <p className="text-4xl font-black text-white tracking-tighter leading-none">{data.operation?.dr_strategy?.rpo}</p>
                       <p className="text-[9px] font-bold text-slate-600 uppercase mt-4">MAX_ALLOWED_DATA_LOSS</p>
@@ -2767,7 +2767,7 @@ function QAViewer({ entry }: any) {
        <div className="flex-1 overflow-y-auto custom-scrollbar p-12 space-y-12">
           {/* Main Question Context */}
           <div className="max-w-4xl mx-auto space-y-8">
-             <div className="bg-blue-600/5 border border-blue-500/20 p-10 rounded-[48px] relative overflow-hidden group">
+             <div className="bg-blue-600/5 border border-blue-500/20 p-10 rounded-lg relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-8 opacity-5 text-blue-500 group-hover:scale-110 transition-transform">
                    <HelpCircle size={100} />
                 </div>
@@ -2786,7 +2786,7 @@ function QAViewer({ entry }: any) {
 
              {/* Thread Timeline */}
              <div className="space-y-10 relative mt-16">
-                <div className="absolute left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-600/50 via-white/5 to-transparent rounded-full" />
+                <div className="absolute left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-600/50 via-white/5 to-transparent rounded-lg" />
                 
                 {entry.qa_threads?.filter((qa: any) => !qa.parent_qa_id).map((qa: any) => (
                   <QANode
@@ -2898,7 +2898,7 @@ function QANode({ qa, onReply, onVerify }: any) {
     <div className="space-y-6">
        <div className="flex gap-8 group">
           <div className="relative z-10 shrink-0">
-             <div className={`w-16 h-16 rounded-[24px] bg-slate-900 border-2 flex items-center justify-center text-xl font-black shadow-2xl transition-all group-hover:scale-110 ${
+             <div className={`w-16 h-16 rounded-lg bg-slate-900 border-2 flex items-center justify-center text-xl font-black shadow-2xl transition-all group-hover:scale-110 ${
                qa.entry_type === 'Answer' ? 'border-emerald-500/50 text-emerald-500 group-hover:bg-emerald-600 group-hover:text-white' : 
                'border-blue-500/50 text-blue-500 group-hover:bg-blue-600 group-hover:text-white'
              }`}>
@@ -2914,7 +2914,7 @@ function QANode({ qa, onReply, onVerify }: any) {
                 </div>
                 <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{formatAppDate(qa.created_at)}</span>
              </div>
-             <div className={`p-6 rounded-[32px] border border-white/5 shadow-xl relative group-hover:border-blue-500/30 transition-all ${
+             <div className={`p-6 rounded-lg border border-white/5 shadow-xl relative group-hover:border-blue-500/30 transition-all ${
                qa.entry_type === 'Answer' ? 'bg-emerald-600/5' : 'bg-slate-900/50'
              }`}>
                 <p className="text-sm font-medium text-slate-200 leading-relaxed">{qa.content}</p>

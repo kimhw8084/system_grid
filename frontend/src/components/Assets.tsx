@@ -1122,7 +1122,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
           </div>
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-slate-600 space-y-4">
-            <div className="p-6 bg-white/5 rounded-full border border-white/10 opacity-20 animate-pulse">
+            <div className="p-6 bg-white/5 rounded-lg border border-white/10 opacity-20 animate-pulse">
                <FileText size={64} />
             </div>
             <p className="text-[10px] font-bold uppercase tracking-[0.5em]">Select Asset for Detailed Inspection</p>
@@ -2763,7 +2763,7 @@ const DevicePortGrid = ({ device, connections, templates }: { device: any, conne
                     ${isDrift ? 'ring-2 ring-amber-500/50 ring-offset-2 ring-offset-slate-950 border-amber-500/40' : ''}`}
                 >
 
-                  <div className={`w-full h-1 absolute top-0 left-0 rounded-t-lg transition-all 
+                  <div className={`w-full h-1 absolute top-0 left-0 rounded-lg transition-all 
                     ${isDrift ? 'bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.6)]' : (isActive ? (isLogical ? 'bg-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]') : 'bg-transparent')}`} 
                   />
                   
@@ -3150,7 +3150,7 @@ const MonitoringTab = ({ deviceId }: { deviceId: number }) => {
           ))}
           {!items?.length && (
             <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-lg flex flex-col items-center justify-center space-y-4">
-               <div className="p-6 bg-white/5 rounded-full opacity-20"><Activity size={48} /></div>
+               <div className="p-6 bg-white/5 rounded-lg opacity-20"><Activity size={48} /></div>
                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-600 ">No monitoring logic bound to this asset</p>
             </div>
           )}
@@ -4536,7 +4536,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
       {!hasFilter ? (
         <div className="flex-1 flex flex-col items-center justify-center space-y-8 animate-in fade-in duration-1000">
            <div className="relative">
-              <div className="absolute inset-0 bg-indigo-500/20 blur-[100px] rounded-full animate-pulse" />
+              <div className="absolute inset-0 bg-indigo-500/20 blur-[100px] rounded-lg animate-pulse" />
               <div className="relative bg-slate-900/50 border border-white/10 p-12 rounded-lg backdrop-blur-3xl flex flex-col items-center text-center space-y-6 shadow-2xl">
                  <div className="w-24 h-24 bg-indigo-600/20 rounded-lg flex items-center justify-center border border-indigo-500/30 text-indigo-400 shadow-[0_0_50px_rgba(99,102,241,0.2)]">
                     <Share2 size={48} className="animate-pulse" />

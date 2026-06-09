@@ -73,7 +73,7 @@ export default function Intelligence() {
               </motion.div>
             ) : status === 'success' ? (
               <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center space-y-4">
-                <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                <div className="w-16 h-16 bg-emerald-500/20 rounded-lg flex items-center justify-center">
                   <CheckCircle2 size={32} className="text-emerald-400" />
                 </div>
                 <p className="text-[10px] font-black uppercase text-emerald-400 tracking-widest">Entities Provisioned</p>

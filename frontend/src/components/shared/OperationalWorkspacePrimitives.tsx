@@ -583,7 +583,7 @@ export function WorkspaceTabStrip({
           <span className="flex items-center gap-2">
             <span>{tab.label}</span>
             {!!tab.badgeCount && (
-              <span className="rounded-full bg-rose-500/20 px-1.5 py-0.5 text-[8px] text-rose-300">{tab.badgeCount}</span>
+              <span className="rounded-lg bg-rose-500/20 px-1.5 py-0.5 text-[8px] text-rose-300">{tab.badgeCount}</span>
             )}
           </span>
         </button>

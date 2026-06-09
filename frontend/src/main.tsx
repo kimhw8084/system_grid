@@ -181,7 +181,7 @@ const Bootstrap = () => {
       <div className="h-screen w-screen flex items-center justify-center bg-[var(--bg-primary)] text-[var(--accent-primary)] font-mono">
         <div className="flex flex-col items-center gap-6">
           <div className="relative">
-            <div className="w-16 h-16 border-2 border-[var(--glass-border)] rounded-full"></div>
+            <div className="w-16 h-16 border-2 border-[var(--glass-border)] rounded-lg"></div>
             <div className="absolute top-0 left-0 w-16 h-16 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin"></div>
           </div>
           <div className="flex flex-col items-center gap-2">

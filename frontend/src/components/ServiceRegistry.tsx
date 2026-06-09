@@ -266,7 +266,7 @@ export const ServiceDetailsView = ({ service, options, devices }: { service: any
                 )}
             </div>
             
-            <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-6 bg-black/20">
+            <div className="glass-panel rounded-lg border-white/5 overflow-hidden p-6 bg-black/20">
                 {tab === 'metadata' && <MetadataViewer data={formData.config_json} />}
                 {tab === 'editor' && (
                   <MetadataEditor 
@@ -530,8 +530,8 @@ export default function ServiceRegistry() {
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3"><Activity size={16} className="text-blue-400" /><span className="text-[10px] font-bold uppercase tracking-widest text-blue-400 ">View Density Laboratory</span></div>
                   <div className="flex items-center space-x-6">
-                     <div className="flex items-center space-x-4"><span className="text-[9px] font-bold text-slate-500 uppercase ">Font Size</span><div className="flex items-center space-x-2"><input type="range" min="8" max="14" step="1" value={fontSize} onChange={e => setFontSize(Number(e.target.value))} className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"/><span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span></div></div>
-                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6"><span className="text-[9px] font-bold text-slate-500 uppercase ">Row Density</span><div className="flex items-center space-x-2"><input type="range" min="4" max="24" step="2" value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))} className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer"/><span className="text-[10px] text-white w-4 font-bold">{rowDensity}px</span></div></div>
+                     <div className="flex items-center space-x-4"><span className="text-[9px] font-bold text-slate-500 uppercase ">Font Size</span><div className="flex items-center space-x-2"><input type="range" min="8" max="14" step="1" value={fontSize} onChange={e => setFontSize(Number(e.target.value))} className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"/><span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span></div></div>
+                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6"><span className="text-[9px] font-bold text-slate-500 uppercase ">Row Density</span><div className="flex items-center space-x-2"><input type="range" min="4" max="24" step="2" value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))} className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"/><span className="text-[10px] text-white w-4 font-bold">{rowDensity}px</span></div></div>
                   </div>
                </div>
                <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
