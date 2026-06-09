@@ -368,20 +368,30 @@ result_df = get_user_pool()`)
     onError: (e: any) => toast.error(`Sync Failed: ${e.message}`)
   })
 
+  const [syncPreviewData, setSyncPreviewData] = useState<any>(null)
+  const [isSyncPreviewOpen, setIsSyncPreviewOpen] = useState(false)
+
   const poolMutation = useMutation({
-    mutationFn: async (script: string) => {
+    mutationFn: async ({ script, preview = false }: { script: string, preview?: boolean }) => {
       const res = await apiFetch("/api/v1/settings/user-pool/refresh", {
         method: "POST",
-        body: JSON.stringify({ script })
+        body: JSON.stringify({ script, preview })
       })
       if (!res.ok) throw new Error(await res.text())
       return res.json()
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['operators'] })
-      queryClient.invalidateQueries({ queryKey: ['user-pool-versions'] })
-      setIsSyncEditable(false);
-      toast.success("User Pool synchronized via Python logic")
+    onSuccess: (data, variables) => {
+      if (variables.preview) {
+        setSyncPreviewData(data);
+        setIsSyncPreviewOpen(true);
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['operators'] })
+        queryClient.invalidateQueries({ queryKey: ['user-pool-versions'] })
+        setIsSyncEditable(false);
+        setIsSyncPreviewOpen(false);
+        setSyncPreviewData(null);
+        toast.success("User Pool synchronized via Python logic")
+      }
     },
     onError: (e: any) => toast.error(`Sync Failed: ${e.message}`)
   })
@@ -1148,7 +1158,49 @@ result_df = get_user_pool()`)
                        <div className="p-6 bg-indigo-600/5 border border-indigo-500/20 rounded-lg space-y-4 mb-4">
                           <div className="flex justify-between items-center">
                              <div>
-                                <h3 className="text-[12px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-2"><Terminal size={16} /> Identity Sync Pipeline</h3>
+                                <div className="flex items-center gap-3">
+                                   <h3 className="text-[12px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-2"><Terminal size={16} /> Identity Sync Pipeline</h3>
+                                   <div className="group relative">
+                                      <div className="p-1.5 bg-indigo-500/10 text-indigo-400 rounded-lg cursor-help border border-indigo-500/20 hover:bg-indigo-500/20 transition-all">
+                                         <AlertTriangle size={12} />
+                                      </div>
+                                      <div className="absolute bottom-full mb-3 left-0 w-80 p-5 bg-[#0f172a] border border-slate-700 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-all z-[100] pointer-events-none scale-95 group-hover:scale-100 origin-bottom-left backdrop-blur-xl">
+                                         <div className="flex items-center gap-2 mb-3 border-b border-white/5 pb-2">
+                                            <div className="p-1.5 bg-amber-500/10 text-amber-500 rounded-lg"><Activity size={12} /></div>
+                                            <p className="text-[11px] font-black uppercase text-amber-500 tracking-widest">Pipeline Data Structure</p>
+                                         </div>
+                                         <p className="text-[10px] text-slate-400 uppercase leading-relaxed font-bold">
+                                            The script must return a <span className="text-white">DataFrame</span> or <span className="text-white">List of Dicts</span> containing these mandatory keys:
+                                         </p>
+                                         <div className="mt-4 grid grid-cols-2 gap-3">
+                                            <div className="space-y-1">
+                                               <p className="text-[8px] font-black text-blue-400 uppercase tracking-tighter">• id (Key)</p>
+                                               <p className="text-[7px] text-slate-500 uppercase">Unique external ID</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                               <p className="text-[8px] font-black text-blue-400 uppercase tracking-tighter">• username</p>
+                                               <p className="text-[7px] text-slate-500 uppercase">LDAP/System ID</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                               <p className="text-[8px] font-black text-blue-400 uppercase tracking-tighter">• full_name</p>
+                                               <p className="text-[7px] text-slate-500 uppercase">Display label</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                               <p className="text-[8px] font-black text-blue-400 uppercase tracking-tighter">• email</p>
+                                               <p className="text-[7px] text-slate-500 uppercase">Contact address</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                               <p className="text-[8px] font-black text-blue-400 uppercase tracking-tighter">• department</p>
+                                               <p className="text-[7px] text-slate-500 uppercase">Entity category</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                               <p className="text-[8px] font-black text-indigo-400 uppercase tracking-tighter">• team</p>
+                                               <p className="text-[7px] text-slate-500 uppercase">Group (Optional)</p>
+                                            </div>
+                                         </div>
+                                      </div>
+                                   </div>
+                                </div>
                                 <p className="text-[9px] font-bold tracking-widest text-slate-400 uppercase mt-1">Python Script to sync users from external LDAP/AD.</p>
                              </div>
                              <div className="flex items-center gap-2">
@@ -1159,10 +1211,10 @@ result_df = get_user_pool()`)
                                   {isSyncEditable ? "Lock Editing" : "Edit Script"}
                                 </button>
                                 <button 
-                                  onClick={() => poolMutation.mutate(userPoolScript)}
-                                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-500/20"
+                                  onClick={() => poolMutation.mutate({ script: userPoolScript, preview: true })}
+                                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20"
                                 >
-                                  <RefreshCcw size={12} className={poolMutation.isPending ? 'animate-spin' : ''} /> Execute Sync Now
+                                  <RefreshCcw size={12} className={poolMutation.isPending ? 'animate-spin' : ''} /> Generate Preview
                                 </button>
                              </div>
                           </div>
@@ -1970,6 +2022,110 @@ result_df = get_user_pool()`)
                 </div>
                 <div className="flex-1 p-6 bg-black/40">
                     <pre className="text-[11px] font-mono text-emerald-400 whitespace-pre-wrap overflow-auto h-full custom-scrollbar">{viewVersionScript}</pre>
+                </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Sync Preview Modal */}
+      <AnimatePresence>
+        {isSyncPreviewOpen && syncPreviewData && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSyncPreviewOpen(false)} className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200]" />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] h-[85vh] bg-[var(--panel-bg)] border border-[var(--glass-border)] rounded-lg shadow-2xl z-[201] flex flex-col overflow-hidden">
+                <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-indigo-600/10 text-indigo-400 rounded-lg border border-indigo-500/20"><RefreshCcw size={24} /></div>
+                        <div>
+                            <h3 className="text-xl font-black uppercase text-[var(--text-primary)] tracking-widest">Sync Preview: {syncPreviewData.version_label}</h3>
+                            <div className="flex items-center gap-4 mt-1">
+                                <span className="text-[10px] font-black uppercase text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">+{syncPreviewData.summary.added} New</span>
+                                <span className="text-[10px] font-black uppercase text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">~{syncPreviewData.summary.changed} Changed</span>
+                                <p className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em]">Pending Confirmation</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex gap-3">
+                        <button 
+                            onClick={() => setIsSyncPreviewOpen(false)}
+                            className="px-6 py-3 bg-slate-800 text-slate-300 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all"
+                        >
+                            Abort Sync
+                        </button>
+                        <button 
+                            onClick={() => poolMutation.mutate({ script: userPoolScript, preview: false })}
+                            className="px-8 py-3 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 transition-all shadow-xl shadow-emerald-500/20"
+                        >
+                            Confirm & Execute
+                        </button>
+                    </div>
+                </div>
+                <div className="flex-1 overflow-auto custom-scrollbar p-6">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-black/40">
+                                <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-white/5">Identity</th>
+                                <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-white/5">ID</th>
+                                <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-white/5">Username</th>
+                                <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-white/5">Email</th>
+                                <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-white/5">Department</th>
+                                <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-white/5">Team</th>
+                                <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-white/5 text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {syncPreviewData.preview.map((item: any, i: number) => (
+                                <tr key={i} className={`hover:bg-white/5 border-b border-white/5 transition-colors ${item.status === 'new' ? 'bg-emerald-500/5' : item.status === 'changed' ? 'bg-amber-500/5' : ''}`}>
+                                    <td className="p-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] ${item.status === 'new' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                                                {item.username?.slice(0,2).toUpperCase()}
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-[11px] font-black text-white uppercase">{item.full_name}</span>
+                                                {item.changes.full_name && <span className="text-[8px] font-bold text-rose-400 line-through uppercase">{item.changes.full_name.old}</span>}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-[10px] font-mono text-slate-400">{item.id}</td>
+                                    <td className="p-4">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-mono text-blue-400">{item.username}</span>
+                                            {item.changes.username && <span className="text-[8px] font-bold text-rose-400 line-through uppercase">{item.changes.username.old}</span>}
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-mono text-slate-300">{item.email}</span>
+                                            {item.changes.email && <span className="text-[8px] font-bold text-rose-400 line-through uppercase">{item.changes.email.old}</span>}
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black text-slate-300 uppercase">{item.department}</span>
+                                            {item.changes.department && <span className="text-[8px] font-bold text-rose-400 line-through uppercase">{item.changes.department.old}</span>}
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black text-indigo-400 uppercase">{item.team || 'None'}</span>
+                                            {item.changes.team && <span className="text-[8px] font-bold text-rose-400 line-through uppercase">{item.changes.team.old || 'None'}</span>}
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${
+                                            item.status === 'new' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 
+                                            item.status === 'changed' ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20' : 
+                                            'bg-slate-700 text-slate-400'
+                                        }`}>
+                                            {item.status}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </motion.div>
           </>

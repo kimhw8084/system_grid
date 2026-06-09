@@ -770,24 +770,136 @@ async def get_user_pool_versions(db: AsyncSession = Depends(get_db)):
 
 @router.post("/user-pool/refresh")
 async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
-    # Placeholder for Python script execution logic
-    # In a real scenario, this would execute the provided script
+    preview = data.get("preview", False)
     user_id = get_current_user_id(request)
     
-    # Create a dummy version for now
+    # Create a dummy version label
     import datetime
     version_label = f"v{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
     
-    # Simple logic: create 5 dummy users
+    # Dynamic dummy users for testing variety
     dummy_users = [
         {"id": 101, "username": "admin_alpha", "full_name": "Alpha Admin", "email": f"alpha@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "Infrastructure", "team": "Platform Ops"},
-        {"id": 102, "username": "dev_beta", "full_name": "Beta Developer", "email": f"beta@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "R&D", "team": "Application Engineering"},
+        {"id": 102, "username": "dev_beta", "full_name": "Beta Developer (Updated)", "email": f"beta@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "R&D", "team": "App Engineering"},
         {"id": 103, "username": "sec_gamma", "full_name": "Gamma Security", "email": f"gamma@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "Security", "team": "Security Response"},
         {"id": 104, "username": "op_delta", "full_name": "Delta Operator", "email": f"delta@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "Operations", "team": "Platform Ops"},
-        {"id": 105, "username": "guest_epsilon", "full_name": "Epsilon Guest", "email": f"epsilon@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "External"}
+        {"id": 105, "username": "guest_epsilon", "full_name": "Epsilon Guest", "email": f"epsilon@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "External"},
+        {"id": 106, "username": "new_user_z", "full_name": "Z-New User", "email": f"new_z@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "Infrastructure", "team": "Platform Ops"}
     ]
-    diff_summary = {"added": 0, "removed": 0, "changed": 0, "script": data.get("script"), "team_conflicts": [], "team_updates": []}
     
+    diff_summary = {"added": 0, "removed": 0, "changed": 0, "script": data.get("script"), "team_conflicts": [], "team_updates": []}
+    preview_items = []
+    
+    # Sync logic
+    for u in dummy_users:
+        res = await db.execute(select(models.Operator).filter(models.Operator.external_id == str(u["id"])))
+        op = res.scalar_one_or_none()
+        
+        item_status = "unchanged"
+        item_changes = {}
+        
+        if not op:
+            item_status = "new"
+            diff_summary["added"] += 1
+            preview_items.append({
+                "id": u["id"],
+                "username": u["username"],
+                "full_name": u["full_name"],
+                "email": u["email"],
+                "department": u["department"],
+                "team": u["team"],
+                "status": "new",
+                "changes": {}
+            })
+            
+            if not preview:
+                team = await resolve_team_assignment(
+                    db,
+                    team_name=u.get("team"),
+                    source="synced",
+                    create_missing=bool(u.get("team"))
+                ) if u.get("team") else None
+                
+                db.add(models.Operator(
+                    external_id=str(u["id"]),
+                    username=u["username"],
+                    full_name=u["full_name"],
+                    email=u["email"],
+                    department=u["department"],
+                    registration_status="Verified",
+                    team=team.name if team else None,
+                    team_id=team.id if team else None,
+                    team_source="synced" if team else "manual"
+                ))
+                if team:
+                    diff_summary["team_updates"].append({"external_id": str(u["id"]), "team": team.name, "mode": "created"})
+                    await record_team_audit(db, team.id, "member_added_via_sync", user_id, {"external_id": str(u["id"]), "username": u["username"]})
+        else:
+            # Check for changes
+            fields = ["username", "full_name", "email", "department", "team"]
+            has_changes = False
+            for f in fields:
+                old_val = getattr(op, f)
+                new_val = u.get(f)
+                if str(old_val) != str(new_val):
+                    item_changes[f] = {"old": old_val, "new": new_val}
+                    has_changes = True
+            
+            if has_changes:
+                item_status = "changed"
+                diff_summary["changed"] += 1
+            
+            preview_items.append({
+                "id": u["id"],
+                "username": u["username"],
+                "full_name": u["full_name"],
+                "email": u["email"],
+                "department": u["department"],
+                "team": u["team"],
+                "status": item_status,
+                "changes": item_changes
+            })
+            
+            if not preview and has_changes:
+                op.username = u["username"]
+                op.full_name = u["full_name"]
+                op.email = u["email"]
+                op.department = u["department"]
+                op.registration_status = "Verified"
+                
+                team = await resolve_team_assignment(
+                    db,
+                    team_name=u.get("team"),
+                    source="synced",
+                    create_missing=bool(u.get("team"))
+                ) if u.get("team") else None
+                
+                if team:
+                    if op.team_source == "manual_override" and op.team and op.team != team.name:
+                        diff_summary["team_conflicts"].append({
+                            "external_id": op.external_id,
+                            "local_team": op.team,
+                            "synced_team": team.name
+                        })
+                    else:
+                        if op.team_id != team.id:
+                            if op.team_id:
+                                await record_team_audit(db, op.team_id, "member_removed_via_sync", user_id, {"external_id": op.external_id, "username": op.username})
+                            await record_team_audit(db, team.id, "member_added_via_sync", user_id, {"external_id": op.external_id, "username": op.username})
+                            diff_summary["team_updates"].append({"external_id": op.external_id, "team": team.name, "mode": "updated"})
+                        op.team = team.name
+                        op.team_id = team.id
+                        op.team_source = "synced"
+
+    if preview:
+        return {
+            "status": "success", 
+            "preview": preview_items, 
+            "summary": diff_summary,
+            "version_label": version_label
+        }
+
+    # Save the actual version
     new_version = models.UserPoolVersion(
         version_label=version_label,
         snapshot_data=dummy_users,
@@ -798,59 +910,8 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
     
     # Deactivate others
     await db.execute(update(models.UserPoolVersion).values(is_active=False))
-    
     db.add(new_version)
     
-    # Sync to Operators table
-    for u in dummy_users:
-        team = await resolve_team_assignment(
-            db,
-            team_name=u.get("team"),
-            source="synced",
-            create_missing=bool(u.get("team"))
-        ) if u.get("team") else None
-        res = await db.execute(select(models.Operator).filter(models.Operator.external_id == str(u["id"])))
-        op = res.scalar_one_or_none()
-        if not op:
-            db.add(models.Operator(
-                external_id=str(u["id"]),
-                username=u["username"],
-                full_name=u["full_name"],
-                email=u["email"],
-                department=u["department"],
-                registration_status="Verified",
-                team=team.name if team else None,
-                team_id=team.id if team else None,
-                team_source="synced" if team else "manual"
-            ))
-            if team:
-                diff_summary["team_updates"].append({"external_id": str(u["id"]), "team": team.name, "mode": "created"})
-                await record_team_audit(db, team.id, "member_added_via_sync", user_id, {"external_id": str(u["id"]), "username": u["username"]})
-            diff_summary["added"] += 1
-        else:
-            op.username = u["username"]
-            op.full_name = u["full_name"]
-            op.email = u["email"]
-            op.department = u["department"]
-            op.registration_status = "Verified"
-            if team:
-                if op.team_source == "manual_override" and op.team and op.team != team.name:
-                    diff_summary["team_conflicts"].append({
-                        "external_id": op.external_id,
-                        "local_team": op.team,
-                        "synced_team": team.name
-                    })
-                else:
-                    if op.team_id != team.id:
-                        if op.team_id:
-                            await record_team_audit(db, op.team_id, "member_removed_via_sync", user_id, {"external_id": op.external_id, "username": op.username})
-                        await record_team_audit(db, team.id, "member_added_via_sync", user_id, {"external_id": op.external_id, "username": op.username})
-                        diff_summary["team_updates"].append({"external_id": op.external_id, "team": team.name, "mode": "updated"})
-                    op.team = team.name
-                    op.team_id = team.id
-                    op.team_source = "synced"
-            diff_summary["changed"] += 1
-            
     await db.commit()
     return {"status": "success", "version": version_label}
 
