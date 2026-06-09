@@ -7,7 +7,7 @@ import {
   Settings as SettingsIcon, Zap, AlertTriangle, Edit2, Clock, RotateCcw, ChevronDown, ChevronUp, FileCode, Search, Filter, ShieldAlert, MoreHorizontal, Eye, Plus, Trash2, Tag, Book, Microscope
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import toast from "react-hot-toast"
+import { showWorkspaceToast } from './shared/WorkspaceToast'
 import { apiFetch, setApiOverride, getApiBaseUrl } from "../api/apiClient"
 import { formatAppDate, parseAppDate } from "../utils/dateUtils"
 import { 
@@ -109,14 +109,13 @@ const ToggleSwitch = ({ checked, onChange, disabled, activeColor = 'bg-blue-600'
     </label>
 )
 
-const ViewPermissionIcon = ({ level, onClick }: any) => {
+const ViewPermissionIcon = ({ level, onClick, isGlobalAdmin }: any) => {
     const colors = [
         "bg-slate-800 text-slate-500 border-slate-700/50",
         "bg-blue-500/10 text-blue-400 border-blue-500/20",
         "bg-amber-500/10 text-amber-400 border-amber-500/20",
         "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
     ];
-    const labels = ["NONE", "READ", "WRITE", "ADMIN"];
     
     let numericLevel = 0;
     if (typeof level === 'number') numericLevel = level;
@@ -126,6 +125,8 @@ const ViewPermissionIcon = ({ level, onClick }: any) => {
     
     numericLevel = Math.min(3, Math.max(0, Math.floor(numericLevel || 0)));
     const colorClass = colors[numericLevel];
+    
+    const labels = ["NONE", "READ", "WRITE", isGlobalAdmin ? "ADMIN" : "FULL"];
     const label = labels[numericLevel];
 
     return (
@@ -139,16 +140,51 @@ const ViewPermissionIcon = ({ level, onClick }: any) => {
     )
 }
 
+const SameButtonConfirm = ({ onConfirm, icon: Icon, label, danger = false }: any) => {
+    const [isConfirming, setIsConfirming] = useState(false)
+    const [timer, setTimer] = useState<any>(null)
+
+    const handleClick = (e: any) => {
+        e.stopPropagation()
+        if (isConfirming) {
+            onConfirm()
+            setIsConfirming(false)
+            if (timer) clearTimeout(timer)
+        } else {
+            setIsConfirming(true)
+            const t = setTimeout(() => setIsConfirming(false), 3000)
+            setTimer(t)
+        }
+    }
+
+    return (
+        <button 
+            onClick={handleClick}
+            className={`p-2 rounded-lg transition-all border flex items-center justify-center gap-2 ${
+                isConfirming 
+                    ? 'bg-rose-600 border-rose-500 text-white px-4' 
+                    : danger 
+                        ? 'text-rose-500/50 hover:text-rose-400 hover:bg-rose-500/10 border-transparent hover:border-rose-500/20'
+                        : 'text-slate-500 hover:text-white hover:bg-white/5 border-transparent'
+            }`}
+            title={isConfirming ? "Click again to confirm" : label}
+        >
+            <Icon size={16} />
+            {isConfirming && <span className="text-[10px] font-black uppercase tracking-widest animate-pulse whitespace-nowrap">Confirm?</span>}
+        </button>
+    )
+}
+
 import { SettingsStandards } from "./SettingsStandards"
 
 export default function SettingsPage() {
-  const [topTab, setTopTab] = useState<'environments' | 'permissions' | 'system' | 'tenants' | 'standards'>('environments')
+  const [topTab, setTopTab] = useState<'environments' | 'permissions' | 'groups' | 'system' | 'tenants' | 'standards'>('environments')
   
   // Use URL search params to set the initial tab if provided
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
-    if (tab && ['environments', 'permissions', 'system', 'tenants', 'standards'].includes(tab)) {
+    if (tab && ['environments', 'permissions', 'groups', 'system', 'tenants', 'standards'].includes(tab)) {
       setTopTab(tab as any);
     }
   }, []);
@@ -197,8 +233,8 @@ export default function SettingsPage() {
     },
     onSuccess: (data) => {
       setPreflightResult(data);
-      if (data.is_valid) toast.success("Preflight check passed");
-      else toast.error(`Preflight check failed: ${data.message}`);
+      if (data.is_valid) showWorkspaceToast("Preflight check passed");
+      else showWorkspaceToast(`Preflight check failed: ${data.message}`, { type: 'error' });
     }
   })
 
@@ -217,9 +253,9 @@ export default function SettingsPage() {
       setAttachName("");
       setAttachPath("");
       setPreflightResult(null);
-      toast.success("Existing database attached to registry")
+      showWorkspaceToast("Existing database attached to registry")
     },
-    onError: (e: any) => toast.error(`Attach Failed: ${e.message}`)
+    onError: (e: any) => showWorkspaceToast(`Attach Failed: ${e.message}`, { type: 'error' })
   })
   
   const toggleEdit = (field: string, action?: 'save') => {
@@ -264,7 +300,7 @@ export default function SettingsPage() {
     else document.documentElement.classList.add('dark')
     
     userSettingsMutation.mutate({ theme: normalizedTheme })
-    toast.success(`Theme switched to ${normalizedTheme === 'nordic-frost-v1' ? 'Dark Mode' : 'Light Mode'}`)
+    showWorkspaceToast(`Theme switched to ${normalizedTheme === 'nordic-frost-v1' ? 'Dark Mode' : 'Light Mode'}`)
   }
 
   const { data: envSettings, isLoading: isEnvLoading, isError: isEnvError } = useQuery({
@@ -288,14 +324,14 @@ export default function SettingsPage() {
   const handleApplyOverride = () => {
     setApiOverride(emergencyUrl);
     queryClient.invalidateQueries();
-    toast.success("API Override applied. Attempting reconnection...");
+    showWorkspaceToast("API Override applied. Attempting reconnection...");
   }
 
   const handleClearOverride = () => {
     setApiOverride(null);
     setEmergencyUrl(getApiBaseUrl());
     queryClient.invalidateQueries();
-    toast.success("API Override cleared. Resetting to defaults.");
+    showWorkspaceToast("API Override cleared. Resetting to defaults.");
   }
 
   const isDirty = (field?: string) => {
@@ -358,14 +394,14 @@ result_df = get_user_pool()`)
     onSuccess: (data, variables) => {
       if (variables.VITE_API_BASE_URL) {
         setApiOverride(variables.VITE_API_BASE_URL);
-        toast.success("UI Gateway updated & persisted locally");
+        showWorkspaceToast("UI Gateway updated & persisted locally");
       }
       queryClient.invalidateQueries({ queryKey: ['env-settings'] })
       queryClient.invalidateQueries({ queryKey: ['env-history'] })
       setEditableFields({})
-      toast.success("Global Configuration synchronized to Database")
+      showWorkspaceToast("Global Configuration synchronized to Database")
     },
-    onError: (e: any) => toast.error(`Sync Failed: ${e.message}`)
+    onError: (e: any) => showWorkspaceToast(`Sync Failed: ${e.message}`, { type: 'error' })
   })
 
   const [syncPreviewData, setSyncPreviewData] = useState<any>(null)
@@ -390,10 +426,10 @@ result_df = get_user_pool()`)
         setIsSyncEditable(false);
         setIsSyncPreviewOpen(false);
         setSyncPreviewData(null);
-        toast.success("User Pool synchronized via Python logic")
+        showWorkspaceToast("User Pool synchronized via Python logic")
       }
     },
-    onError: (e: any) => toast.error(`Sync Failed: ${e.message}`)
+    onError: (e: any) => showWorkspaceToast(`Sync Failed: ${e.message}`, { type: 'error' })
   })
 
   const { data: operators } = useQuery({
@@ -475,9 +511,9 @@ result_df = get_user_pool()`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-tenants'] })
-      toast.success("Database backup initiated and saved to storage")
+      showWorkspaceToast("Database backup initiated and saved to storage")
     },
-    onError: (e: any) => toast.error(`Backup Failed: ${e.message}`)
+    onError: (e: any) => showWorkspaceToast(`Backup Failed: ${e.message}`, { type: 'error' })
   })
 
   const { data: allTenants } = useQuery({
@@ -502,9 +538,9 @@ result_df = get_user_pool()`)
       queryClient.invalidateQueries({ queryKey: ['admin-tenants'] })
       queryClient.invalidateQueries({ queryKey: ['my-tenants'] })
       setNewTenantName(""); // Clear input on success
-      toast.success("New tenant database created and initialized")
+      showWorkspaceToast("New tenant database created and initialized")
     },
-    onError: (e: any) => toast.error(`Creation Failed: ${e.message}`)
+    onError: (e: any) => showWorkspaceToast(`Creation Failed: ${e.message}`, { type: 'error' })
   })
 
   const updateMasterSettingMutation = useMutation({
@@ -518,9 +554,9 @@ result_df = get_user_pool()`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['master-settings'] })
-      toast.success("System setting updated")
+      showWorkspaceToast("System setting updated")
     },
-    onError: (e: any) => toast.error(`Update Failed: ${e.message}`)
+    onError: (e: any) => showWorkspaceToast(`Update Failed: ${e.message}`, { type: 'error' })
   })
 
   const envHelp: any = {
@@ -582,9 +618,9 @@ result_df = get_user_pool()`)
       if (variables.username === userProfile?.username) {
         queryClient.invalidateQueries({ queryKey: ['user-profile'] })
       }
-      toast.success("Security profile synchronized")
+      showWorkspaceToast("Security profile synchronized")
     },
-    onError: (e: any) => toast.error(`Update Failed: ${e.message}`)
+    onError: (e: any) => showWorkspaceToast(`Update Failed: ${e.message}`, { type: 'error' })
   })
 
   const deleteOperatorMutation = useMutation({
@@ -594,9 +630,9 @@ result_df = get_user_pool()`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operators'] })
-      toast.success("Operator access revoked")
+      showWorkspaceToast("Operator access revoked")
     },
-    onError: (e: any) => toast.error(`Revocation Failed: ${e.message}`)
+    onError: (e: any) => showWorkspaceToast(`Revocation Failed: ${e.message}`, { type: 'error' })
   })
 
   const teamMutation = useMutation({
@@ -618,9 +654,9 @@ result_df = get_user_pool()`)
       }
       setNewTeamName("")
       setNewTeamDescription("")
-      toast.success("Team registry synchronized")
+      showWorkspaceToast("Team registry synchronized")
     },
-    onError: (e: any) => toast.error(`Team Update Failed: ${e.message}`)
+    onError: (e: any) => showWorkspaceToast(`Team Update Failed: ${e.message}`, { type: 'error' })
   })
 
   const deleteTeamMutation = useMutation({
@@ -632,9 +668,9 @@ result_df = get_user_pool()`)
       queryClient.invalidateQueries({ queryKey: ['teams'] })
       queryClient.invalidateQueries({ queryKey: ['operators'] })
       setSelectedTeamId(null)
-      toast.success("Team removed")
+      showWorkspaceToast("Team removed")
     },
-    onError: (e: any) => toast.error(`Team Deletion Failed: ${e.message}`)
+    onError: (e: any) => showWorkspaceToast(`Team Deletion Failed: ${e.message}`, { type: 'error' })
   })
 
   const bulkTeamMutation = useMutation({
@@ -655,9 +691,9 @@ result_df = get_user_pool()`)
       if (selectedTeamId) queryClient.invalidateQueries({ queryKey: ['team-audit', selectedTeamId] })
       setSelectedOperatorIds([])
       setTeamMemberPick("")
-      toast.success("Bulk team assignment completed")
+      showWorkspaceToast("Bulk team assignment completed")
     },
-    onError: (e: any) => toast.error(`Bulk Update Failed: ${e.message}`)
+    onError: (e: any) => showWorkspaceToast(`Bulk Update Failed: ${e.message}`, { type: 'error' })
   })
 
   const [newOpId, setNewOpId] = useState("")
@@ -726,7 +762,7 @@ result_df = get_user_pool()`)
     }
     const label = selectedTeamFilters.join(" + ")
     setSavedTeamFilters((current) => [...current, { id: `${Date.now()}`, label, teams: selectedTeamFilters }])
-    toast.success("Saved team filter preset")
+    showWorkspaceToast("Saved team filter preset")
   }
 
   const allViews = [
@@ -806,35 +842,32 @@ result_df = get_user_pool()`)
     }
   }, [teams, selectedTeamId])
 
-  const togglePermission = (op: any, view: string) => {
-    // Admin Lock-out Protection
-    if (op.username === userProfile?.username && view === 'settings') {
-        const current = getPermLevel(op.custom_permissions, view);
-        if (current === 3 && !confirm("WARNING: Reducing your own 'Settings' permission may lock you out of this console. Proceed?")) {
-            return;
-        }
-    }
-
-    const raw = op.custom_permissions?.[view] ?? op.role?.permissions?.[view] ?? op.role?.permissions?.['all'] ?? 0;
-    let current = 0;
-    if (typeof raw === 'number') current = raw;
-    else if (raw === 'read') current = 1;
-    else if (raw === 'add') current = 2;
-    else if (raw === 'edit' || raw === 'manage') current = 3;
-    
-    const next = (current + 1) % 4;
-    const newPerms = { ...(op.custom_permissions || {}), [view]: next };
-    operatorMutation.mutate({ ...op, custom_permissions: newPerms });
-  }
-
-  const getPermLevel = (perms: any, view: string) => {
+  const getPermLevel = (op: any, view: string) => {
+    const perms = { ...(op.role?.permissions || {}), ...(op.custom_permissions || {}) };
     const val = perms?.[view] ?? perms?.['all'] ?? 0;
     if (typeof val === 'number') return val;
     if (val === 'read') return 1;
     if (val === 'add') return 2;
     if (val === 'edit' || val === 'manage') return 3;
     return 0;
-  };
+  }
+
+  const togglePermission = (op: any, view: string) => {
+    // Admin Lock-out Protection
+    if (op.username === userProfile?.username && view === 'settings') {
+        const current = getPermLevel(op, view);
+        if (current === 3 && !confirm("WARNING: Reducing your own 'Settings' permission may lock you out of this console. Proceed?")) {
+            return;
+        }
+    }
+
+    const current = getPermLevel(op, view);
+    const next = (current + 1) % 4;
+    
+    // Always persist as numeric for simplicity in this update
+    const newPerms = { ...(op.custom_permissions || {}), [view]: next };
+    operatorMutation.mutate({ ...op, custom_permissions: newPerms });
+  }
 
   return (
     <div className="h-full flex flex-col space-y-6 w-full mx-auto px-4 overflow-hidden relative">
@@ -925,6 +958,7 @@ result_df = get_user_pool()`)
               options={[
                 { label: 'Parameters', value: 'environments' },
                 { label: 'Permission', value: 'permissions' },
+                { label: 'Groups', value: 'groups' },
                 { label: 'Analysis', value: 'system' },
                 { label: 'Tenants', value: 'tenants' },
                 { label: 'Standards', value: 'standards' }
@@ -1110,21 +1144,12 @@ result_df = get_user_pool()`)
                           value={operatorFilter}
                           onChange={e => setOperatorFilter(e.target.value)}
                           placeholder="Filter users or LDAP teams..."
-                          className="w-80 rounded-lg border border-white/10 bg-black/20 pl-10 pr-4 py-2.5 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-primary)] outline-none transition-all focus:border-blue-500/50 shadow-inner"
+                          className="w-80 h-[38px] rounded-lg border border-white/10 bg-black/20 pl-10 pr-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-primary)] outline-none transition-all focus:border-blue-500/50 shadow-inner"
                         />
                      </div>
-                     <select
-                       value={operatorSort}
-                       onChange={(e) => setOperatorSort(e.target.value as any)}
-                       className="rounded-lg border border-white/10 bg-black/20 px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-primary)] outline-none min-w-[160px]"
-                     >
-                       <option value="team">Sort: LDAP Team</option>
-                       <option value="name">Sort: Name</option>
-                       <option value="admin">Sort: Admin Status</option>
-                     </select>
                   </div>
                   <div className="flex gap-2">
-                    <div className="flex items-center bg-black/20 border border-white/10 rounded-lg overflow-hidden h-[41px]">
+                    <div className="flex items-center bg-black/20 border border-white/10 rounded-lg overflow-hidden h-[38px]">
                        <input 
                          value={newTeamName}
                          onChange={e => setNewTeamName(e.target.value)}
@@ -1141,12 +1166,12 @@ result_df = get_user_pool()`)
                     </div>
                     <button 
                         onClick={() => setShowPoolLogic(!showPoolLogic)}
-                        className="px-4 py-2.5 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+                        className="h-[38px] px-4 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
                         title="Configure Sync"
                     >
                         <RefreshCcw size={14} /> Identity Sync
                     </button>
-                    <button className="px-6 py-2.5 bg-blue-600/10 border border-blue-500/30 text-blue-400 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-blue-600/20 transition-all">
+                    <button className="h-[38px] px-6 bg-blue-600/10 border border-blue-500/30 text-blue-400 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-blue-600/20 transition-all">
                         <Users size={14} /> Visible {filteredOperators.length}
                     </button>
                   </div>
@@ -1154,17 +1179,17 @@ result_df = get_user_pool()`)
 
                <AnimatePresence>
                  {showPoolLogic && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-visible">
                        <div className="p-6 bg-indigo-600/5 border border-indigo-500/20 rounded-lg space-y-4 mb-4">
                           <div className="flex justify-between items-center">
                              <div>
                                 <div className="flex items-center gap-3">
                                    <h3 className="text-[12px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-2"><Terminal size={16} /> Identity Sync Pipeline</h3>
-                                   <div className="group relative">
+                                   <div className="group relative z-[200]">
                                       <div className="p-1.5 bg-indigo-500/10 text-indigo-400 rounded-lg cursor-help border border-indigo-500/20 hover:bg-indigo-500/20 transition-all">
                                          <AlertTriangle size={12} />
                                       </div>
-                                      <div className="absolute bottom-full mb-3 left-0 w-80 p-5 bg-[#0f172a] border border-slate-700 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-all z-[100] pointer-events-none scale-95 group-hover:scale-100 origin-bottom-left backdrop-blur-xl">
+                                      <div className="absolute bottom-full mb-3 left-0 w-80 p-5 bg-[#0f172a] border border-slate-700 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-all z-[300] pointer-events-none scale-95 group-hover:scale-100 origin-bottom-left backdrop-blur-xl">
                                          <div className="flex items-center gap-2 mb-3 border-b border-white/5 pb-2">
                                             <div className="p-1.5 bg-amber-500/10 text-amber-500 rounded-lg"><Activity size={12} /></div>
                                             <p className="text-[11px] font-black uppercase text-amber-500 tracking-widest">Pipeline Data Structure</p>
@@ -1206,13 +1231,13 @@ result_df = get_user_pool()`)
                              <div className="flex items-center gap-2">
                                 <button 
                                   onClick={() => setIsSyncEditable(!isSyncEditable)}
-                                  className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${isSyncEditable ? 'bg-rose-600 text-white' : 'bg-slate-700 text-slate-300 hover:text-white'}`}
+                                  className={`h-[32px] px-4 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${isSyncEditable ? 'bg-rose-600 text-white' : 'bg-slate-700 text-slate-300 hover:text-white'}`}
                                 >
                                   {isSyncEditable ? "Lock Editing" : "Edit Script"}
                                 </button>
                                 <button 
                                   onClick={() => poolMutation.mutate({ script: userPoolScript, preview: true })}
-                                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20"
+                                  className="h-[32px] px-4 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20"
                                 >
                                   <RefreshCcw size={12} className={poolMutation.isPending ? 'animate-spin' : ''} /> Generate Preview
                                 </button>
@@ -1248,7 +1273,12 @@ result_df = get_user_pool()`)
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredOperators.map((op: any) => (
+                        {filteredOperators.map((op: any) => {
+                          const assignedGroups = teams?.filter((t: any) => op.team_id === t.id || (op.teams || []).includes(t.name)) || []
+                          const firstName = assignedGroups[0]?.name || 'NO GROUP'
+                          const remainingCount = assignedGroups.length > 1 ? assignedGroups.length - 1 : 0
+
+                          return (
                           <tr key={op.id} className={`hover:bg-white/5 transition-colors border-b border-[var(--glass-border)] last:border-0 group ${op.username === userProfile?.username ? 'bg-blue-600/[0.03]' : ''}`}>
                             <td className="p-4 sticky left-0 bg-[#0f172a]/95 backdrop-blur-sm z-10 border-r border-white/5">
                               <div className="flex items-center gap-3">
@@ -1268,26 +1298,25 @@ result_df = get_user_pool()`)
                               <span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">{op.department || 'Unknown'}</span>
                             </td>
                             <td className="p-4">
-                               <div className="flex items-center gap-2 flex-wrap">
-                                  <select 
-                                    className="bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-slate-300 outline-none focus:border-blue-500/50 hover:bg-white/5 transition-all"
-                                    value={op.team_id || ''}
-                                    onChange={(e) => {
-                                      const newTeamId = e.target.value ? parseInt(e.target.value) : null;
-                                      const newTeam = teams?.find((t: any) => t.id === newTeamId);
-                                      bulkTeamMutation.mutate({ 
-                                        ids: [op.id], 
-                                        teamId: newTeam?.id || null, 
-                                        teamName: newTeam?.name || null,
-                                        teamSource: 'manual_override'
-                                      });
-                                    }}
-                                  >
-                                    <option value="">NO GROUP</option>
-                                    {teams?.map((t: any) => (
-                                      <option key={t.id} value={t.id}>{t.name}</option>
-                                    ))}
-                                  </select>
+                               <div className="group relative">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">{firstName}</span>
+                                    {remainingCount > 0 && (
+                                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-[8px] font-black text-blue-400 cursor-help">
+                                        <Plus size={8} /> {remainingCount}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {assignedGroups.length > 0 && (
+                                    <div className="absolute top-full mt-2 left-0 p-3 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-all z-[100] pointer-events-none min-w-[140px]">
+                                      <p className="text-[8px] font-black uppercase text-slate-500 mb-2 tracking-widest border-b border-white/5 pb-1">All Groups</p>
+                                      <div className="space-y-1.5">
+                                        {assignedGroups.map((g: any) => (
+                                          <p key={g.id} className="text-[9px] font-bold text-slate-300 uppercase truncate">• {g.name}</p>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                </div>
                             </td>
                             <td className="p-4 text-center">
@@ -1303,20 +1332,20 @@ result_df = get_user_pool()`)
                             {allViews.map(view => (
                               <td key={view} className="p-1 text-center border-x border-white/[0.02]">
                                 <ViewPermissionIcon 
-                                  level={op.is_admin ? 3 : getPermLevel(op.custom_permissions, view)}
+                                  level={op.is_admin ? 3 : getPermLevel(op, view)}
                                   onClick={() => !op.is_admin && togglePermission(op, view)}
+                                  isGlobalAdmin={op.is_admin}
                                 />
                               </td>
                             ))}
                             <td className="p-4 text-center">
                               {op.username !== userProfile?.username ? (
-                                <button 
-                                  onClick={() => { if(confirm(`Revoke all access for ${op.full_name}?`)) deleteOperatorMutation.mutate(op.id) }}
-                                  className="p-2 text-rose-500/50 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all border border-transparent hover:border-rose-500/20"
-                                  title="Revoke Access"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
+                                <SameButtonConfirm 
+                                  danger
+                                  onConfirm={() => deleteOperatorMutation.mutate(op.id)}
+                                  icon={Trash2}
+                                  label="Revoke Access"
+                                />
                               ) : (
                                 <div className="p-2 text-slate-700 flex justify-center cursor-not-allowed" title="Protected Identity">
                                   <Lock size={16} />
@@ -1324,7 +1353,7 @@ result_df = get_user_pool()`)
                               )}
                             </td>
                           </tr>
-                        ))}
+                        )})}
                         {filteredOperators.length === 0 && (
                           <tr>
                             <td colSpan={allViews.length + 5} className="p-8 text-center text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -1710,6 +1739,180 @@ result_df = get_user_pool()`)
             </motion.div>
           )}
 
+          {topTab === 'groups' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+              <div className="flex justify-between items-end">
+                <div>
+                   <h2 className="text-xl font-black uppercase tracking-tighter text-white italic">Group <span className="text-blue-500">Architecture</span></h2>
+                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mt-1">Entity relationship mapping & access containment</p>
+                </div>
+                <div className="flex gap-2">
+                   <div className="flex items-center bg-black/20 border border-white/10 rounded-lg overflow-hidden h-[38px]">
+                       <input 
+                         value={newTeamName}
+                         onChange={e => setNewTeamName(e.target.value)}
+                         placeholder="New Group ID..."
+                         className="bg-transparent px-3 py-2 text-[10px] font-black uppercase outline-none w-48 placeholder:text-slate-600"
+                         onKeyDown={e => e.key === 'Enter' && teamMutation.mutate({ name: newTeamName, source: 'manual' })}
+                       />
+                       <button 
+                         onClick={() => teamMutation.mutate({ name: newTeamName, source: 'manual' })}
+                         className="h-full px-4 bg-blue-600/10 border-l border-white/10 text-blue-400 hover:bg-blue-600/20 transition-all font-black text-[10px] uppercase tracking-widest"
+                       >
+                         Initialize
+                       </button>
+                    </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                 {/* Group List */}
+                 <div className="space-y-4">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Active Groups</p>
+                    <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                       {teams?.map((team: any) => (
+                         <button
+                           key={team.id}
+                           onClick={() => setSelectedTeamId(team.id)}
+                           className={`w-full p-4 rounded-lg border transition-all text-left flex justify-between items-center group relative overflow-hidden ${
+                             selectedTeamId === team.id 
+                               ? 'bg-blue-600/10 border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.1)]' 
+                               : 'bg-black/20 border-white/5 hover:border-white/10 hover:bg-white/5'
+                           }`}
+                         >
+                           <div className="flex items-center gap-3">
+                              <div className={`p-2 rounded-lg ${selectedTeamId === team.id ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-800 text-slate-500'}`}>
+                                 <Users size={16} />
+                              </div>
+                              <div>
+                                 <p className={`text-[11px] font-black uppercase tracking-widest ${selectedTeamId === team.id ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>{team.name}</p>
+                                 <p className="text-[8px] font-bold text-slate-600 uppercase mt-1">ID: {team.id}</p>
+                              </div>
+                           </div>
+                           <ChevronRight size={14} className={`transition-transform ${selectedTeamId === team.id ? 'text-blue-400 translate-x-1' : 'text-slate-700'}`} />
+                         </button>
+                       ))}
+                    </div>
+                 </div>
+
+                 {/* Group Detail & User Management */}
+                 <div className="lg:col-span-2">
+                    <AnimatePresence mode="wait">
+                       {selectedTeamId ? (
+                         <motion.div key={selectedTeamId} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                            <div className={`p-8 rounded-lg border border-white/5 bg-black/40 backdrop-blur-xl relative overflow-hidden`}>
+                               <div className="absolute top-0 right-0 p-4">
+                                  <SameButtonConfirm 
+                                    danger
+                                    onConfirm={() => deleteTeamMutation.mutate(selectedTeamId)}
+                                    icon={Trash2}
+                                    label="Destroy Group"
+                                  />
+                               </div>
+                               <div className="flex items-center gap-4 mb-6">
+                                  <div className="p-4 bg-blue-600/10 rounded-lg text-blue-400 border border-blue-500/20"><Users size={32} /></div>
+                                  <div>
+                                     <h3 className="text-2xl font-black uppercase tracking-tighter text-white italic">{teams?.find((t: any) => t.id === selectedTeamId)?.name}</h3>
+                                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mt-1">Registry Identity: {selectedTeamId}</p>
+                                  </div>
+                               </div>
+
+                               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-white/5">
+                                  <div className="space-y-4">
+                                     <div className="flex justify-between items-center">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><UserPlus size={14} className="text-emerald-500" /> Membership Registry</p>
+                                        <span className="text-[8px] font-black text-slate-600">TOGGLE ACCESS</span>
+                                     </div>
+                                     <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {operators?.map((op: any) => {
+                                          const isMember = op.team_id === selectedTeamId || (op.teams || []).includes(teams?.find((t: any) => t.id === selectedTeamId)?.name)
+                                          return (
+                                            <button
+                                              key={op.id}
+                                              onClick={() => {
+                                                const currentTeams = op.teams || []
+                                                const teamName = teams?.find((t: any) => t.id === selectedTeamId)?.name
+                                                let nextTeams = []
+                                                if (isMember) {
+                                                  nextTeams = currentTeams.filter((tn: string) => tn !== teamName)
+                                                } else {
+                                                  nextTeams = [...currentTeams, teamName]
+                                                }
+                                                // Assuming backend supports multiple teams via metadata or similar
+                                                // For now, let's use the single team_id if that's what's available
+                                                bulkTeamMutation.mutate({ 
+                                                  ids: [op.id], 
+                                                  teamId: isMember ? null : selectedTeamId,
+                                                  teamName: isMember ? null : teamName,
+                                                  teamSource: 'manual_override'
+                                                })
+                                              }}
+                                              className={`w-full p-3 rounded-lg border transition-all flex items-center justify-between group ${
+                                                isMember 
+                                                  ? 'bg-emerald-600/5 border-emerald-500/30' 
+                                                  : 'bg-black/20 border-white/5 hover:border-white/10'
+                                              }`}
+                                            >
+                                              <div className="flex items-center gap-3">
+                                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] ${isMember ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                                                    {op.username?.slice(0,2).toUpperCase()}
+                                                 </div>
+                                                 <div className="text-left">
+                                                    <p className={`text-[10px] font-black uppercase tracking-widest ${isMember ? 'text-emerald-400' : 'text-slate-400'}`}>{op.full_name}</p>
+                                                    <p className="text-[7px] font-bold text-slate-600 uppercase mt-0.5">{op.username}</p>
+                                                 </div>
+                                              </div>
+                                              {isMember ? <ShieldCheck size={14} className="text-emerald-500" /> : <Plus size={14} className="text-slate-700 group-hover:text-slate-500" />}
+                                            </button>
+                                          )
+                                        })}
+                                     </div>
+                                  </div>
+
+                                  <div className="space-y-4">
+                                     <div className="flex justify-between items-center">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><Settings size={14} className="text-blue-500" /> Group Configuration</p>
+                                     </div>
+                                     <div className="space-y-6">
+                                        <div className="space-y-2">
+                                           <label className="text-[9px] font-black uppercase tracking-widest text-slate-600">Display Name</label>
+                                           <input 
+                                             value={teamEditName}
+                                             onChange={e => setTeamEditName(e.target.value)}
+                                             className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-[11px] font-black uppercase text-white outline-none focus:border-blue-500/50"
+                                           />
+                                        </div>
+                                        <div className="space-y-2">
+                                           <label className="text-[9px] font-black uppercase tracking-widest text-slate-600">Description / Metadata</label>
+                                           <textarea 
+                                             value={teamEditDescription}
+                                             onChange={e => setTeamEditDescription(e.target.value)}
+                                             className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-[11px] font-bold uppercase text-slate-400 outline-none focus:border-blue-500/50 h-24 custom-scrollbar"
+                                           />
+                                        </div>
+                                        <button 
+                                          onClick={() => teamMutation.mutate({ id: selectedTeamId, name: teamEditName, description: teamEditDescription })}
+                                          className="w-full h-[38px] bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-500 transition-all active:scale-[0.98]"
+                                        >
+                                          Commit Changes
+                                        </button>
+                                     </div>
+                                  </div>
+                               </div>
+                            </div>
+                         </motion.div>
+                       ) : (
+                         <div className="h-full min-h-[400px] flex flex-col items-center justify-center border border-dashed border-white/10 rounded-lg bg-black/10">
+                            <Users size={48} className="text-slate-800 mb-4" />
+                            <p className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-600">Select group to manage</p>
+                         </div>
+                       )}
+                    </AnimatePresence>
+                 </div>
+              </div>
+            </motion.div>
+          )}
+
           {topTab === 'system' && (
              <motion.div key="system" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10 pt-4">
                 <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-6 shadow-2xl">
@@ -1825,7 +2028,7 @@ result_df = get_user_pool()`)
                   <div key={i} className="p-5 bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-lg relative group hover:border-blue-500/30 transition-all">
                     <div className="flex justify-between items-start mb-3">
                        <span className="text-[9px] font-black uppercase text-blue-400 tracking-[0.2em]">{entry.timestamp}</span>
-                       <button onClick={() => { setLocalEnv({...localEnv, [historyField]: entry.old_value}); setHistoryField(null); toast.success("Staged for revert. Save to apply."); }} className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] font-black uppercase text-amber-500 hover:underline">Stage Revert</button>
+                       <button onClick={() => { setLocalEnv({...localEnv, [historyField]: entry.old_value}); setHistoryField(null); showWorkspaceToast("Staged for revert. Save to apply."); }} className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] font-black uppercase text-amber-500 hover:underline">Stage Revert</button>
                     </div>
                     <div className="space-y-3">
                        <div className="flex flex-col">
@@ -2012,7 +2215,7 @@ result_df = get_user_pool()`)
                     </div>
                     <div className="flex gap-2">
                         <button 
-                            onClick={() => { setUserPoolScript(viewVersionScript); setViewVersionScript(null); setShowPoolLogic(true); toast.success("Script restored to editor"); }}
+                            onClick={() => { setUserPoolScript(viewVersionScript); setViewVersionScript(null); setShowPoolLogic(true); showWorkspaceToast("Script restored to editor"); }}
                             className="px-4 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all"
                         >
                             Restore to Editor

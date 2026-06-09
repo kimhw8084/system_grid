@@ -220,6 +220,16 @@ export const SettingsStandards = () => {
              usage="Use Segmented Navigation over traditional tabs for layout parity."
            />
            <LexiconEntry 
+             term="Golden Toast" 
+             definition="Standardized notification system with gauges, exit confirm, and revert capability." 
+             usage="Utilize showWorkspaceToast for all system feedback events."
+           />
+           <LexiconEntry 
+             term="In-Situ Confirmation" 
+             definition="A 'Same Button Location' confirmation pattern for destructive actions to prevent cognitive drift." 
+             usage="Apply SameButtonConfirm to all delete/revoke actions."
+           />
+           <LexiconEntry 
              term="Outer Join Analysis" 
              definition="The simultaneous comparison of raw variables from multiple environments (e.g., Backend vs Frontend .env)." 
              usage="Use Outer Join Analysis to debug configuration drift."
@@ -274,6 +284,84 @@ export const SettingsStandards = () => {
                </div>
             </div>
          </div>
+      </Section>
+
+      <Section id="notification-standards" title="Notification Standards" description="Golden Toast Protocol and Interactive Feedback" count={2}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+           <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                 <div className="p-2 bg-emerald-600/10 text-emerald-400 rounded-lg"><Bell size={20} /></div>
+                 <h4 className="text-[12px] font-black uppercase text-white tracking-widest">Golden Toast Protocol</h4>
+              </div>
+              <div className={`p-6 ${OPERATIONAL_WORKSPACE_VISUALS.panelSurface} border border-white/5 space-y-6`}>
+                 <div className="flex items-center justify-between">
+                    <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Active State Preview</p>
+                    <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[6px] font-black rounded-lg">LIVE GAUGE</span>
+                 </div>
+                 
+                 {/* Mock Toast */}
+                 <div className="max-w-md w-full bg-[#0f172a]/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-lg flex flex-col overflow-hidden mx-auto">
+                    <div className="flex items-center p-4">
+                      <div className="h-8 w-8 rounded-lg bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
+                        <Check size={16} className="text-emerald-400" />
+                      </div>
+                      <div className="ml-3 flex-1">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-100">Operation Success</p>
+                        <p className="mt-1 text-[12px] font-bold text-slate-400 leading-snug">Identity Matrix Synchronized</p>
+                      </div>
+                      <div className="ml-4 flex gap-2">
+                         <div className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[10px] font-black uppercase text-slate-300">Revert</div>
+                         <div className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500"><X size={14} /></div>
+                      </div>
+                    </div>
+                    <div className="h-0.5 w-full bg-white/5 overflow-hidden">
+                       <div className="h-full bg-emerald-500 w-[65%]" />
+                    </div>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                       <p className="text-[9px] font-black text-white uppercase tracking-widest">Impact Gauge</p>
+                       <p className="text-[8px] font-bold text-slate-500 uppercase leading-relaxed">Visual countdown of persistence window.</p>
+                    </div>
+                    <div className="space-y-1">
+                       <p className="text-[9px] font-black text-white uppercase tracking-widest">Exit Confirm</p>
+                       <p className="text-[8px] font-bold text-slate-500 uppercase leading-relaxed">Mandatory dismiss capability on all tiers.</p>
+                    </div>
+                 </div>
+              </div>
+           </div>
+
+           <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                 <div className="p-2 bg-rose-600/10 text-rose-400 rounded-lg"><ShieldAlert size={20} /></div>
+                 <h4 className="text-[12px] font-black uppercase text-white tracking-widest">In-Situ Confirmation</h4>
+              </div>
+              <div className={`p-6 ${OPERATIONAL_WORKSPACE_VISUALS.panelSurface} border border-white/5 space-y-6`}>
+                 <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Destructive Action Pattern</p>
+                 
+                 <div className="flex flex-col items-center gap-6 py-4">
+                    <div className="flex items-center gap-12">
+                       <div className="flex flex-col items-center gap-2">
+                          <div className="p-2 bg-black/40 border border-white/5 text-rose-500/50 rounded-lg"><Trash2 size={20} /></div>
+                          <span className="text-[7px] font-black uppercase text-slate-600 tracking-widest">REST STATE</span>
+                       </div>
+                       <ArrowRightLeft className="text-slate-800" size={16} />
+                       <div className="flex flex-col items-center gap-2">
+                          <div className="px-4 py-2 bg-rose-600 border border-rose-500 text-white rounded-lg flex items-center gap-2 shadow-lg shadow-rose-600/20">
+                             <Trash2 size={16} />
+                             <span className="text-[9px] font-black uppercase tracking-widest animate-pulse">Confirm?</span>
+                          </div>
+                          <span className="text-[7px] font-black uppercase text-rose-500 tracking-widest">ACTIVE STATE</span>
+                       </div>
+                    </div>
+                    <p className="text-[9px] font-bold text-slate-500 uppercase text-center max-w-sm leading-relaxed">
+                       Eliminates modal fatigue. Requires two clicks in the exact same physical location to execute destruction.
+                    </p>
+                 </div>
+              </div>
+           </div>
+        </div>
       </Section>
 
       <Section id="visual-tokens" title="Visual Design Tokens" description="Canonical visual tokens used throughout the SysGrid Engine" count={visualTokens.length}>

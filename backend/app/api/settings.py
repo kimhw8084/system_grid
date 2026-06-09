@@ -807,7 +807,7 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
                 "full_name": u["full_name"],
                 "email": u["email"],
                 "department": u["department"],
-                "team": u["team"],
+                "team": u.get("team"),
                 "status": "new",
                 "changes": {}
             })
@@ -855,7 +855,7 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
                 "full_name": u["full_name"],
                 "email": u["email"],
                 "department": u["department"],
-                "team": u["team"],
+                "team": u.get("team"),
                 "status": item_status,
                 "changes": item_changes
             })
