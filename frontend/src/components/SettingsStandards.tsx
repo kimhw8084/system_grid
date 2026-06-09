@@ -92,9 +92,9 @@ const LexiconEntry = ({ term, definition, usage }: { term: string, definition: s
   <div className="space-y-2 group">
     <div className="flex items-center gap-2">
       <div className="w-1.5 h-1.5 rounded-full bg-blue-500 group-hover:scale-150 transition-transform" />
-      <span className="text-[11px] font-black uppercase text-white tracking-widest">{term}</span>
+      <span className="text-[11px] font-black text-white tracking-widest">{term}</span>
     </div>
-    <p className="text-[10px] font-bold text-slate-400 leading-relaxed uppercase tracking-tight pl-3.5 border-l border-white/5 group-hover:border-blue-500/30 transition-colors">
+    <p className="text-[10px] font-bold text-slate-400 leading-relaxed tracking-tight pl-3.5 border-l border-white/5 group-hover:border-blue-500/30 transition-colors">
       {definition}
     </p>
     {usage && (

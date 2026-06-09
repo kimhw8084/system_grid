@@ -11,7 +11,7 @@ import {
   Globe, Bell, Info, ChevronRight, X, Check, Save,
   AlertCircle, Clock, Zap, Settings,
   BookOpen, Eye, EyeOff, FileText, User, Users, Mail, MessageSquare, Monitor, MoreVertical,
-  Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, Star, GitCompare, Undo2, List, LayoutGrid, Upload, Terminal
+  Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, Star, GitCompare, Undo2, List, LayoutGrid, Upload, Terminal, History as HistoryIcon, Edit2 as EditIcon
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AgGridReact } from "ag-grid-react"
@@ -1502,7 +1502,7 @@ export default function MonitoringGrid() {
                  <p className="text-[11px] text-slate-100 font-bold leading-tight">{dateStr}</p>
                  <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/5">
                     <User size={10} className="text-slate-500" />
-                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">@{author}</p>
+                    <p className="text-[9px] text-slate-500 font-bold tracking-widest">@{author}</p>
                  </div>
                </div>
                {/* Arrow */}
@@ -2872,7 +2872,7 @@ function CompareMonitorsModal({ items, onClose }: any) {
                   <StatusPill value={item.severity} />
                 </div>
                 <h4 className="text-sm font-black text-white truncate mb-1">{item.title}</h4>
-                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest truncate">{item.device_name || 'No Target Asset'}</p>
+                <p className="text-[9px] font-bold text-slate-500 tracking-widest truncate">{item.device_name || 'No Target Asset'}</p>
                 
                 <div className="mt-6 space-y-2.5">
                   {fields.map(f => {
@@ -3357,7 +3357,7 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
                       <FileText size={16} />
                    </div>
                    <div className="min-w-0">
-                      <span className="text-[11px] font-black uppercase text-slate-200 block truncate leading-tight">{linkedTitles[i]}</span>
+                      <span className="text-[11px] font-black text-slate-200 block truncate leading-tight">{linkedTitles[i]}</span>
                       <span className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">DOC ID: KB-{id}</span>
                    </div>
                 </button>
@@ -4574,7 +4574,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                               />
                               {selectedTeams.length > 0 && (
                                 <div className="rounded-lg border border-white/10 bg-black/20 p-4 shadow-inner">
-                                  <p className="text-[11px] font-bold text-slate-100 uppercase tracking-tight">{selectedTeams.map((team) => team.name).join(', ')}</p>
+                                  <p className="text-[11px] font-bold text-slate-100 tracking-tight">{selectedTeams.map((team) => team.name).join(', ')}</p>
                                   <p className="mt-1 text-[9px] font-black text-slate-600 uppercase tracking-widest">
                                     {selectedTeams.length} selected team{selectedTeams.length === 1 ? '' : 's'}
                                   </p>
@@ -4623,7 +4623,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                   <div key={idx} className="flex items-center justify-between rounded-lg border border-white/5 bg-black/40 px-3 py-2 shadow-inner group hover:border-white/10 transition-all">
                                     <div className="min-w-0">
                                       <p className="truncate text-[10px] font-bold text-slate-100">{o.name}</p>
-                                      <p className="mt-0.5 text-[8px] font-black text-slate-600 uppercase tracking-widest truncate">{o.role}</p>
+                                      <p className="mt-0.5 text-[8px] font-black text-slate-600 tracking-widest truncate">{o.role}</p>
                                     </div>
                                     <button type="button" onClick={() => removeOwner(idx)} className="rounded-lg p-1.5 text-slate-600 transition-all hover:text-rose-400 hover:bg-rose-500/10">
                                       <Trash2 size={12} />
@@ -4679,7 +4679,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                 <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest">ID {entry.id.toString().slice(-4)}</span>
                               </div>
                               <p className="mt-2 truncate text-[11px] font-bold text-slate-200">{entry.description || 'No description provided'}</p>
-                              <p className="mt-1 text-[9px] font-bold text-slate-600 truncate uppercase tracking-tight">{entry.logic_info || 'No definition yet'}</p>
+                              <p className="mt-1 text-[9px] font-bold text-slate-600 truncate tracking-tight">{entry.logic_info || 'No definition yet'}</p>
                               {(formErrors[`logic_${entry.id}_description`] || formErrors[`logic_${entry.id}_logic_info`]) && (
                                 <p className="mt-2 text-[8px] font-black uppercase tracking-widest text-rose-500">Validation error</p>
                               )}
@@ -5019,27 +5019,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
       }
     >
       <WorkspaceHistoryShell
-          header={
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                 <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                    <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                    <span className="text-[10px] font-black text-white">v{newer?.v_num}</span>
-                    <span className="text-[9px] font-bold text-slate-400">{newer?.label}</span>
-                 </div>
-                 {older && (
-                   <>
-                     <ChevronRight size={12} className="text-slate-600" />
-                     <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 border border-white/5 rounded-lg">
-                        <div className="w-2 h-2 rounded-full bg-slate-600" />
-                        <span className="text-[10px] font-black text-slate-300">v{older.v_num}</span>
-                        <span className="text-[9px] font-bold text-slate-500">{older.label}</span>
-                     </div>
-                   </>
-                 )}
-              </div>
-            </div>
-          }
+          header={null}
           sidebar={
            <div className="flex h-full flex-col min-h-0">
               <div className="mb-4 flex items-center justify-between px-1">

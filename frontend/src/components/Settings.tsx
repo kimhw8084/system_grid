@@ -4,7 +4,7 @@ import {
   Globe, Shield, Cpu, Sliders, Box, Network, Lock, Key, Activity, 
   Save, RefreshCcw, RefreshCw, Layout, Database, Palette, Bell, Server, Star,
   Sun, Moon, Check, Terminal, FolderTree, HardDrive, Link, Users, UserPlus, ShieldCheck, Fingerprint, X, ChevronRight, History as HistoryIcon, 
-  Settings as SettingsIcon, Zap, AlertTriangle, Edit2, Clock, RotateCcw, ChevronDown, ChevronUp, FileCode, Search, Filter, ShieldAlert, MoreHorizontal, Eye, Plus, Trash2, Tag, Book, Microscope
+  Settings as SettingsIcon, Zap, AlertTriangle, Edit2, Edit2 as EditIcon, Clock, RotateCcw, ChevronDown, ChevronUp, FileCode, Search, Filter, ShieldAlert, MoreHorizontal, Eye, Plus, Trash2, Tag, Book, Microscope
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from 'react-hot-toast'
@@ -252,27 +252,7 @@ function PermissionHistoryModal({ versions, onClose }: { versions: any[], onClos
       }
     >
       <WorkspaceHistoryShell
-          header={
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                 <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                    <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                    <span className="text-[10px] font-black text-white">v{newer?.v_num}</span>
-                    <span className="text-[9px] font-bold text-slate-400">{newer?.label}</span>
-                 </div>
-                 {older && (
-                   <>
-                     <ChevronRight size={12} className="text-slate-600" />
-                     <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 border border-white/5 rounded-lg">
-                        <div className="w-2 h-2 rounded-full bg-slate-600" />
-                        <span className="text-[10px] font-black text-slate-300">v{older.v_num}</span>
-                        <span className="text-[9px] font-bold text-slate-500">{older.label}</span>
-                     </div>
-                   </>
-                 )}
-              </div>
-            </div>
-          }
+          header={null}
           sidebar={
            <div className="flex h-full flex-col min-h-0">
               <div className="mb-4 flex items-center justify-between px-1">
@@ -1242,35 +1222,6 @@ result_df = get_user_pool()`)
                </div>
 
                <div className="space-y-8">
-                  {/* Theme / Operator Preferences Integrated */}
-                  <div className="space-y-4">
-                     <div className="flex items-center gap-2 px-1">
-                        <Palette size={14} className="text-blue-500" />
-                        <h3 className="text-[10px] font-black text-white uppercase tracking-[0.3em]">Visual Interface Preferences</h3>
-                     </div>
-                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {themeOptions.map((theme) => {
-                          const selected = currentTheme === theme.id
-                          return (
-                            <button
-                              key={theme.id}
-                              onClick={() => changeTheme(theme.id)}
-                              className={`group rounded-lg border p-4 text-left transition-all ${selected ? 'border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/10' : 'border-white/5 bg-black/20 hover:border-blue-500/30 hover:bg-blue-500/5'}`}
-                            >
-                              <div className={`h-12 rounded-lg bg-gradient-to-br ${theme.swatch} border border-white/10`} />
-                              <div className="mt-3 flex items-start justify-between gap-3">
-                                <div>
-                                  <div className={`text-[11px] font-black uppercase tracking-widest ${selected ? 'text-white' : 'text-slate-400'}`}>{theme.label}</div>
-                                  <div className="mt-1 text-[8px] font-bold text-slate-500 leading-tight">{theme.helper}</div>
-                                </div>
-                                {selected && <Check size={12} className="text-blue-500 mt-0.5" />}
-                              </div>
-                            </button>
-                          )
-                        })}
-                     </div>
-                  </div>
-
                   {visibleCategories.map((cat: any) => (
                       <div key={cat} className="space-y-4">
                           <div className="flex items-center justify-between gap-4 px-1">
@@ -1499,7 +1450,7 @@ result_df = get_user_pool()`)
                                 <div className="flex items-center gap-4">
                                     <div className="p-2 bg-indigo-600/20 text-indigo-400 rounded-lg"><RefreshCcw size={16} /></div>
                                     <div>
-                                        <h3 className="text-[12px] font-black uppercase text-white tracking-widest">Sync Preview: {syncPreviewData.version_label}</h3>
+                                        <h3 className="text-[12px] font-black text-white tracking-widest">Sync Preview: {syncPreviewData.version_label}</h3>
                                         <div className="flex items-center gap-3 mt-0.5">
                                             <span className="text-[8px] font-black uppercase text-emerald-500">+{syncPreviewData.summary.added} New</span>
                                             <span className="text-[8px] font-black uppercase text-amber-500">~{syncPreviewData.summary.changed} Changed</span>
@@ -1570,9 +1521,9 @@ result_df = get_user_pool()`)
                       <thead>
                         <tr className="bg-white/5">
                           <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 sticky left-0 bg-[#0c121e] z-10 min-w-[280px] uppercase tracking-widest">Identity</th>
-                          <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 min-w-[140px] uppercase tracking-widest">LDAP Department</th>
-                          <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 min-w-[140px] uppercase tracking-widest">LDAP Team</th>
-                          <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 min-w-[200px] uppercase tracking-widest">Assigned Groups</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 min-w-[140px] uppercase tracking-widest">Department</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 min-w-[140px] uppercase tracking-widest">Team</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 min-w-[200px] uppercase tracking-widest">Group(s)</th>
                           <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 text-center uppercase tracking-widest">Admin Status</th>
                           {allViews.map(view => (
                             <th key={view} className="p-2 text-[8px] font-bold text-slate-600 border-b border-white/5 text-center min-w-[60px] hover:text-blue-400 transition-colors uppercase tracking-tighter">
@@ -1584,7 +1535,7 @@ result_df = get_user_pool()`)
                       </thead>
                       <tbody>
                         {filteredOperators?.map((op: any) => {
-                          const assignedGroups = teams?.filter((t: any) => op.team_id === t.id || (op.teams || []).includes(t.name)) || []
+                          const assignedGroups = teams?.filter((t: any) => (op.teams || []).includes(t.name)) || []
                           const firstName = assignedGroups[0]?.name || 'No Groups'
                           const remainingCount = assignedGroups.length > 1 ? assignedGroups.length - 1 : 0
 
@@ -1600,7 +1551,7 @@ result_df = get_user_pool()`)
                                     {op.full_name}
                                     {op.username === userProfile?.username && <span className="text-[7px] bg-blue-500 text-white px-1.5 py-0.5 rounded-lg font-black uppercase tracking-normal">You</span>}
                                   </p>
-                                  <p className="text-[8px] font-bold text-slate-500 mt-1 tracking-tighter truncate opacity-60">ID: {op.external_id} • {op.username}</p>
+                                  <p className="text-[8px] font-bold text-slate-500 mt-1 tracking-tighter truncate opacity-60">{op.username}</p>
                                 </div>
                               </div>
                             </td>
@@ -1749,7 +1700,7 @@ result_df = get_user_pool()`)
                                              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
                                                 <Database size={14} />
                                              </div>
-                                             <span className="text-[11px] font-bold uppercase text-white tracking-tight">{t.name}</span>
+                                             <span className="text-[11px] font-bold text-white tracking-tight">{t.name}</span>
                                           </div>
                                        </td>
                                        <td className="p-4">
@@ -1846,7 +1797,7 @@ result_df = get_user_pool()`)
                                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
                                     <div className={`p-4 rounded-lg border ${preflightResult.is_valid ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'} space-y-2`}>
                                        <div className="flex items-center justify-between">
-                                          <span className={`text-[8px] font-black uppercase ${preflightResult.is_valid ? 'text-emerald-400' : 'text-rose-400'}`}>STATUS: {preflightResult.status}</span>
+                                          <span className={`text-[8px] font-black ${preflightResult.is_valid ? 'text-emerald-400' : 'text-rose-400'}`}>STATUS: {preflightResult.status}</span>
                                           <span className="text-[8px] font-black uppercase text-slate-600">SCHEMAS: {preflightResult.table_count}</span>
                                        </div>
                                        {preflightResult.is_valid && (
@@ -2079,7 +2030,7 @@ result_df = get_user_pool()`)
                               </div>
                               <div>
                                  <p className={`text-[11px] font-bold tracking-tight ${selectedTeamId === team.id ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>{team.name}</p>
-                                 <p className="text-[8px] font-bold text-slate-600 mt-1 tracking-widest">v{team.id}</p>
+                                 <p className="text-[8px] font-bold text-slate-600 mt-1 tracking-widest uppercase">{team.source || 'Manual'}</p>
                               </div>
                            </div>
                            <ChevronRight size={14} className={`transition-transform ${selectedTeamId === team.id ? 'text-blue-400 translate-x-1' : 'text-slate-800'}`} />
@@ -2110,10 +2061,8 @@ result_df = get_user_pool()`)
                                   <div>
                                      <h3 className="text-2xl font-black tracking-tighter text-white italic leading-none">{teams?.find((t: any) => t.id === selectedTeamId)?.name}</h3>
                                      <div className="flex items-center gap-3 mt-3">
-                                        <div className="px-2 py-0.5 bg-white/5 border border-white/5 rounded-lg text-[9px] font-black text-slate-500 uppercase tracking-widest">UID: {selectedTeamId}</div>
-                                        <div className="w-1 h-1 rounded-full bg-slate-700" />
                                         <div className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-[9px] font-black text-blue-400 uppercase tracking-widest">
-                                           {operators?.filter((op: any) => op.team_id === selectedTeamId || (op.teams || []).includes(teams?.find((t: any) => t.id === selectedTeamId)?.name)).length} Active Members
+                                           {operators?.filter((op: any) => (op.teams || []).includes(teams?.find((t: any) => t.id === selectedTeamId)?.name)).length} Active Members
                                         </div>
                                      </div>
                                   </div>
@@ -2132,14 +2081,13 @@ result_df = get_user_pool()`)
                                      </div>
                                      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar p-1">
                                         {operators?.map((op: any) => {
-                                          const isMember = op.team_id === selectedTeamId || (op.teams || []).includes(teams?.find((t: any) => t.id === selectedTeamId)?.name)
+                                          const teamName = teams?.find((t: any) => t.id === selectedTeamId)?.name
+                                          const isMember = (op.teams || []).includes(teamName)
                                           return (
                                             <button
                                               key={op.id}
                                               onClick={() => {
                                                 const currentTeams = op.teams || []
-                                                const teamName = teams?.find((t: any) => t.id === selectedTeamId)?.name
-
                                                 let updatedTeams = [...currentTeams]
                                                 if (isMember) {
                                                   updatedTeams = updatedTeams.filter((t: string) => t !== teamName)
@@ -2151,8 +2099,6 @@ result_df = get_user_pool()`)
 
                                                 bulkTeamMutation.mutate({ 
                                                   ids: [op.id], 
-                                                  teamId: updatedTeams.length > 0 ? selectedTeamId : null,
-                                                  teamName: updatedTeams.length > 0 ? updatedTeams[0] : null,
                                                   teams: updatedTeams,
                                                   teamSource: 'manual_override'
                                                 })
@@ -2457,27 +2403,7 @@ function ConfigHistoryModal({ field, versions, onClose, onRevert }: { field: str
       }
     >
       <WorkspaceHistoryShell
-          header={
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                 <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                    <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                    <span className="text-[10px] font-black text-white">v{newer?.v_num}</span>
-                    <span className="text-[9px] font-bold text-slate-400">{newer?.label}</span>
-                 </div>
-                 {older && (
-                   <>
-                     <ChevronRight size={12} className="text-slate-600" />
-                     <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 border border-white/5 rounded-lg">
-                        <div className="w-2 h-2 rounded-full bg-slate-600" />
-                        <span className="text-[10px] font-black text-slate-300">v{older.v_num}</span>
-                        <span className="text-[9px] font-bold text-slate-500">{older.label}</span>
-                     </div>
-                   </>
-                 )}
-              </div>
-            </div>
-          }
+          header={null}
           sidebar={
            <div className="flex h-full flex-col min-h-0">
               <div className="mb-4 flex items-center justify-between px-1">
@@ -2515,7 +2441,7 @@ function ConfigHistoryModal({ field, versions, onClose, onRevert }: { field: str
                             onClick={(e) => { e.stopPropagation(); onRevert(h.new_value); }}
                             className="opacity-0 group-hover:opacity-100 transition-opacity text-[8px] font-black uppercase text-amber-500 hover:text-amber-400"
                          >
-                            Revert to this
+                            Restore Vector
                          </button>
                       </div>
                     </button>
