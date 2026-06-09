@@ -7,6 +7,7 @@ import {
   Settings as SettingsIcon, Zap, AlertTriangle, Edit2, Clock, RotateCcw, ChevronDown, ChevronUp, FileCode, Search, Filter, ShieldAlert, MoreHorizontal, Eye, Plus, Trash2, Tag, Book, Microscope
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import { toast } from 'react-hot-toast'
 import { showWorkspaceToast } from './shared/WorkspaceToast'
 import { apiFetch, setApiOverride, getApiBaseUrl } from "../api/apiClient"
 import { formatAppDate, parseAppDate } from "../utils/dateUtils"
@@ -630,7 +631,6 @@ result_df = get_user_pool()`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operators'] })
-      showWorkspaceToast("Operator access revoked")
     },
     onError: (e: any) => showWorkspaceToast(`Revocation Failed: ${e.message}`, { type: 'error' })
   })
@@ -953,27 +953,25 @@ result_df = get_user_pool()`)
 
       <PageToolbar 
         left={
-          <ToolbarGroup>
-            <ToolbarSegmented 
-              options={[
-                { label: 'Parameters', value: 'environments' },
-                { label: 'Permission', value: 'permissions' },
-                { label: 'Groups', value: 'groups' },
-                { label: 'Analysis', value: 'system' },
-                { label: 'Tenants', value: 'tenants' },
-                { label: 'Standards', value: 'standards' }
-              ]}
-              value={topTab}
-              onChange={(val: any) => setTopTab(val)}
-            />
-          </ToolbarGroup>
+          <ToolbarSegmented 
+            options={[
+              { label: 'Parameters', value: 'environments' },
+              { label: 'Permission', value: 'permissions' },
+              { label: 'Groups', value: 'groups' },
+              { label: 'Analysis', value: 'system' },
+              { label: 'Tenants', value: 'tenants' },
+              { label: 'Standards', value: 'standards' }
+            ]}
+            value={topTab}
+            onChange={(val: any) => setTopTab(val)}
+          />
         }
       />
 
       <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-20">
         <AnimatePresence mode="wait">
           {topTab === 'environments' && (
-            <motion.div key="environments" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6 pt-4">
+            <motion.div key="environments" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4 pt-2">
                <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
                   <div className="p-6 rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] shadow-2xl space-y-6">
                     <div className="flex flex-col gap-2">
@@ -1135,48 +1133,29 @@ result_df = get_user_pool()`)
           )}
 
           {topTab === 'permissions' && (
-            <motion.div key="permissions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8 pt-4">
-               <div className="flex justify-between items-center pb-2">
+            <motion.div key="permissions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4 pt-2">
+               <div className="flex justify-between items-center">
                   <div className="flex gap-4 items-center">
                      <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
                         <input
                           value={operatorFilter}
                           onChange={e => setOperatorFilter(e.target.value)}
-                          placeholder="Filter users or LDAP teams..."
-                          className="w-80 h-[38px] rounded-lg border border-white/10 bg-black/20 pl-10 pr-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-primary)] outline-none transition-all focus:border-blue-500/50 shadow-inner"
+                          placeholder="Search users, teams, or departments..."
+                          className="w-80 h-[38px] rounded-lg border border-white/10 bg-black/20 pl-10 pr-4 py-2 text-[10px] font-bold tracking-widest text-[var(--text-primary)] outline-none transition-all focus:border-blue-500/50 shadow-inner"
                         />
                      </div>
                   </div>
                   <div className="flex gap-2">
-                    <div className="flex items-center bg-black/20 border border-white/10 rounded-lg overflow-hidden h-[38px]">
-                       <input 
-                         value={newTeamName}
-                         onChange={e => setNewTeamName(e.target.value)}
-                         placeholder="New Group..."
-                         className="bg-transparent px-3 py-2 text-[10px] font-black uppercase outline-none w-32 placeholder:text-slate-600"
-                         onKeyDown={e => e.key === 'Enter' && teamMutation.mutate({ name: newTeamName, source: 'manual' })}
-                       />
-                       <button 
-                         onClick={() => teamMutation.mutate({ name: newTeamName, source: 'manual' })}
-                         className="h-full px-3 bg-blue-600/10 border-l border-white/10 text-blue-400 hover:bg-blue-600/20 transition-all"
-                       >
-                         <Plus size={14} />
-                       </button>
-                    </div>
-                    <button 
+                    <button
                         onClick={() => setShowPoolLogic(!showPoolLogic)}
                         className="h-[38px] px-4 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
                         title="Configure Sync"
                     >
                         <RefreshCcw size={14} /> Identity Sync
                     </button>
-                    <button className="h-[38px] px-6 bg-blue-600/10 border border-blue-500/30 text-blue-400 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-blue-600/20 transition-all">
-                        <Users size={14} /> Visible {filteredOperators.length}
-                    </button>
                   </div>
                </div>
-
                <AnimatePresence>
                  {showPoolLogic && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-visible">
@@ -1185,11 +1164,11 @@ result_df = get_user_pool()`)
                              <div>
                                 <div className="flex items-center gap-3">
                                    <h3 className="text-[12px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-2"><Terminal size={16} /> Identity Sync Pipeline</h3>
-                                   <div className="group relative z-[200]">
+                                   <div className="group relative z-[300]">
                                       <div className="p-1.5 bg-indigo-500/10 text-indigo-400 rounded-lg cursor-help border border-indigo-500/20 hover:bg-indigo-500/20 transition-all">
                                          <AlertTriangle size={12} />
                                       </div>
-                                      <div className="absolute bottom-full mb-3 left-0 w-80 p-5 bg-[#0f172a] border border-slate-700 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-all z-[300] pointer-events-none scale-95 group-hover:scale-100 origin-bottom-left backdrop-blur-xl">
+                                      <div className="absolute top-full mt-2 left-0 w-80 p-5 bg-[#0f172a] border border-slate-700 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-all z-[400] pointer-events-none scale-95 group-hover:scale-100 origin-top-left backdrop-blur-xl">
                                          <div className="flex items-center gap-2 mb-3 border-b border-white/5 pb-2">
                                             <div className="p-1.5 bg-amber-500/10 text-amber-500 rounded-lg"><Activity size={12} /></div>
                                             <p className="text-[11px] font-black uppercase text-amber-500 tracking-widest">Pipeline Data Structure</p>
@@ -1255,52 +1234,124 @@ result_df = get_user_pool()`)
                  )}
                </AnimatePresence>
 
+               <AnimatePresence>
+                 {isSyncPreviewOpen && syncPreviewData && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-6">
+                        <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/5 shadow-2xl overflow-hidden">
+                            <div className="p-4 border-b border-indigo-500/20 bg-indigo-500/10 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-2 bg-indigo-600/20 text-indigo-400 rounded-lg"><RefreshCcw size={16} /></div>
+                                    <div>
+                                        <h3 className="text-[12px] font-black uppercase text-white tracking-widest">Sync Preview: {syncPreviewData.version_label}</h3>
+                                        <div className="flex items-center gap-3 mt-0.5">
+                                            <span className="text-[8px] font-black uppercase text-emerald-500">+{syncPreviewData.summary.added} New</span>
+                                            <span className="text-[8px] font-black uppercase text-amber-500">~{syncPreviewData.summary.changed} Changed</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={() => setIsSyncPreviewOpen(false)}
+                                        className="px-3 py-1.5 bg-slate-800 text-slate-400 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all"
+                                    >
+                                        Abort
+                                    </button>
+                                    <button 
+                                        onClick={() => poolMutation.mutate({ script: userPoolScript, preview: false })}
+                                        className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-500 transition-all shadow-lg shadow-indigo-500/20"
+                                    >
+                                        Confirm & Execute
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="max-h-[400px] overflow-auto custom-scrollbar">
+                                <table className="w-full text-left border-collapse text-[10px]">
+                                    <thead>
+                                        <tr className="bg-black/40">
+                                            <th className="p-3 font-bold uppercase text-slate-500 tracking-widest border-b border-white/5">Identity</th>
+                                            <th className="p-3 font-bold uppercase text-slate-500 tracking-widest border-b border-white/5">Username</th>
+                                            <th className="p-3 font-bold uppercase text-slate-500 tracking-widest border-b border-white/5 text-center">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {syncPreviewData.preview.map((item: any, i: number) => (
+                                            <tr key={i} className={`hover:bg-white/5 border-b border-white/5 transition-colors ${item.status === 'new' ? 'bg-emerald-500/5' : item.status === 'changed' ? 'bg-amber-500/5' : ''}`}>
+                                                <td className="p-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-[9px] ${item.status === 'new' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                                                            {item.username?.slice(0,2).toUpperCase()}
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold text-white uppercase">{item.full_name}</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="p-3 font-mono text-blue-400">{item.username}</td>
+                                                <td className="p-3 text-center">
+                                                    <span className={`px-2 py-0.5 rounded-lg text-[7px] font-black uppercase tracking-widest ${
+                                                        item.status === 'new' ? 'bg-emerald-500 text-white' : 
+                                                        item.status === 'changed' ? 'bg-amber-500 text-black' : 
+                                                        'bg-slate-700 text-slate-400'
+                                                    }`}>
+                                                        {item.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </motion.div>
+                 )}
+               </AnimatePresence>
+
                <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] shadow-2xl overflow-hidden">
                   <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-black/20">
-                          <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-[var(--glass-border)] sticky left-0 bg-[#0f172a] z-10 min-w-[280px]">Identity</th>
-                          <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-[var(--glass-border)] min-w-[140px]">LDAP Team</th>
-                          <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-[var(--glass-border)] min-w-[200px]">Assigned Groups</th>
-                          <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-[var(--glass-border)] text-center">Admin Status</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 border-b border-[var(--glass-border)] sticky left-0 bg-[#0f172a] z-10 min-w-[280px]">Identity</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 border-b border-[var(--glass-border)] min-w-[140px]">LDAP Team</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 border-b border-[var(--glass-border)] min-w-[200px]">Assigned Groups</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 border-b border-[var(--glass-border)] text-center">Admin Status</th>
                           {allViews.map(view => (
-                            <th key={view} className="p-2 text-[8px] font-black uppercase text-slate-500 tracking-tighter border-b border-[var(--glass-border)] text-center min-w-[60px] hover:text-blue-400 transition-colors">
+                            <th key={view} className="p-2 text-[8px] font-bold text-slate-500 border-b border-[var(--glass-border)] text-center min-w-[60px] hover:text-blue-400 transition-colors uppercase tracking-tighter">
                               {view}
                             </th>
                           ))}
-                          <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-[var(--glass-border)] text-center">Action</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 border-b border-[var(--glass-border)] text-center">Action</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredOperators.map((op: any) => {
                           const assignedGroups = teams?.filter((t: any) => op.team_id === t.id || (op.teams || []).includes(t.name)) || []
-                          const firstName = assignedGroups[0]?.name || 'NO GROUP'
+                          const firstName = assignedGroups[0]?.name || 'No Group'
                           const remainingCount = assignedGroups.length > 1 ? assignedGroups.length - 1 : 0
 
                           return (
                           <tr key={op.id} className={`hover:bg-white/5 transition-colors border-b border-[var(--glass-border)] last:border-0 group ${op.username === userProfile?.username ? 'bg-blue-600/[0.03]' : ''}`}>
                             <td className="p-4 sticky left-0 bg-[#0f172a]/95 backdrop-blur-sm z-10 border-r border-white/5">
                               <div className="flex items-center gap-3">
-                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-black text-[11px] shadow-lg ${op.is_admin ? 'bg-blue-600 text-white shadow-blue-500/20' : 'bg-slate-800 text-slate-400'}`}>
+                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-[11px] shadow-lg ${op.is_admin ? 'bg-blue-600 text-white shadow-blue-500/20' : 'bg-slate-800 text-slate-400'}`}>
                                   {op.username?.slice(0,2).toUpperCase()}
                                 </div>
                                 <div className="flex flex-col min-w-0">
-                                  <p className="text-[11px] font-black text-[var(--text-primary)] uppercase leading-none truncate flex items-center gap-1.5">
+                                  <p className="text-[11px] font-bold text-[var(--text-primary)] leading-none truncate flex items-center gap-1.5">
                                     {op.full_name}
-                                    {op.username === userProfile?.username && <span className="text-[7px] bg-blue-500 text-white px-1.5 py-0.5 rounded-lg uppercase">You</span>}
+                                    {op.username === userProfile?.username && <span className="text-[7px] bg-blue-500 text-white px-1.5 py-0.5 rounded-lg font-black uppercase">You</span>}
                                   </p>
-                                  <p className="text-[8px] font-bold text-slate-500 uppercase mt-1 tracking-tighter truncate">ID: {op.external_id}</p>
+                                  <p className="text-[8px] font-bold text-slate-500 mt-1 tracking-tighter truncate">ID: {op.external_id}</p>
                                 </div>
                               </div>
                             </td>
                             <td className="p-4">
-                              <span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">{op.department || 'Unknown'}</span>
+                              <span className="text-[10px] font-bold text-slate-300">{op.department || 'Unknown'}</span>
                             </td>
                             <td className="p-4">
                                <div className="group relative">
                                   <div className="flex items-center gap-1.5">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">{firstName}</span>
+                                    <span className="text-[10px] font-bold text-slate-300">{firstName}</span>
                                     {remainingCount > 0 && (
                                       <div className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-[8px] font-black text-blue-400 cursor-help">
                                         <Plus size={8} /> {remainingCount}
@@ -1312,7 +1363,7 @@ result_df = get_user_pool()`)
                                       <p className="text-[8px] font-black uppercase text-slate-500 mb-2 tracking-widest border-b border-white/5 pb-1">All Groups</p>
                                       <div className="space-y-1.5">
                                         {assignedGroups.map((g: any) => (
-                                          <p key={g.id} className="text-[9px] font-bold text-slate-300 uppercase truncate">• {g.name}</p>
+                                          <p key={g.id} className="text-[9px] font-bold text-slate-300 truncate">• {g.name}</p>
                                         ))}
                                       </div>
                                     </div>
@@ -1342,7 +1393,13 @@ result_df = get_user_pool()`)
                               {op.username !== userProfile?.username ? (
                                 <SameButtonConfirm 
                                   danger
-                                  onConfirm={() => deleteOperatorMutation.mutate(op.id)}
+                                  onConfirm={() => {
+                                    const backup = {...op};
+                                    deleteOperatorMutation.mutate(op.id);
+                                    showWorkspaceToast(`Access revoked for ${op.full_name}`, { 
+                                      onRevert: () => operatorMutation.mutate(backup) 
+                                    });
+                                  }}
                                   icon={Trash2}
                                   label="Revoke Access"
                                 />
@@ -2231,109 +2288,6 @@ result_df = get_user_pool()`)
         )}
       </AnimatePresence>
 
-      {/* Sync Preview Modal */}
-      <AnimatePresence>
-        {isSyncPreviewOpen && syncPreviewData && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSyncPreviewOpen(false)} className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200]" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95vw] h-[85vh] bg-[var(--panel-bg)] border border-[var(--glass-border)] rounded-lg shadow-2xl z-[201] flex flex-col overflow-hidden">
-                <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-indigo-600/10 text-indigo-400 rounded-lg border border-indigo-500/20"><RefreshCcw size={24} /></div>
-                        <div>
-                            <h3 className="text-xl font-black uppercase text-[var(--text-primary)] tracking-widest">Sync Preview: {syncPreviewData.version_label}</h3>
-                            <div className="flex items-center gap-4 mt-1">
-                                <span className="text-[10px] font-black uppercase text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">+{syncPreviewData.summary.added} New</span>
-                                <span className="text-[10px] font-black uppercase text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">~{syncPreviewData.summary.changed} Changed</span>
-                                <p className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em]">Pending Confirmation</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex gap-3">
-                        <button 
-                            onClick={() => setIsSyncPreviewOpen(false)}
-                            className="px-6 py-3 bg-slate-800 text-slate-300 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all"
-                        >
-                            Abort Sync
-                        </button>
-                        <button 
-                            onClick={() => poolMutation.mutate({ script: userPoolScript, preview: false })}
-                            className="px-8 py-3 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 transition-all shadow-xl shadow-emerald-500/20"
-                        >
-                            Confirm & Execute
-                        </button>
-                    </div>
-                </div>
-                <div className="flex-1 overflow-auto custom-scrollbar p-6">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-black/40">
-                                <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-white/5">Identity</th>
-                                <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-white/5">ID</th>
-                                <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-white/5">Username</th>
-                                <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-white/5">Email</th>
-                                <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-white/5">Department</th>
-                                <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-white/5">Team</th>
-                                <th className="p-4 text-[9px] font-black uppercase text-slate-500 tracking-widest border-b border-white/5 text-center">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {syncPreviewData.preview.map((item: any, i: number) => (
-                                <tr key={i} className={`hover:bg-white/5 border-b border-white/5 transition-colors ${item.status === 'new' ? 'bg-emerald-500/5' : item.status === 'changed' ? 'bg-amber-500/5' : ''}`}>
-                                    <td className="p-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] ${item.status === 'new' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-500'}`}>
-                                                {item.username?.slice(0,2).toUpperCase()}
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[11px] font-black text-white uppercase">{item.full_name}</span>
-                                                {item.changes.full_name && <span className="text-[8px] font-bold text-rose-400 line-through uppercase">{item.changes.full_name.old}</span>}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="p-4 text-[10px] font-mono text-slate-400">{item.id}</td>
-                                    <td className="p-4">
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-mono text-blue-400">{item.username}</span>
-                                            {item.changes.username && <span className="text-[8px] font-bold text-rose-400 line-through uppercase">{item.changes.username.old}</span>}
-                                        </div>
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-mono text-slate-300">{item.email}</span>
-                                            {item.changes.email && <span className="text-[8px] font-bold text-rose-400 line-through uppercase">{item.changes.email.old}</span>}
-                                        </div>
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-black text-slate-300 uppercase">{item.department}</span>
-                                            {item.changes.department && <span className="text-[8px] font-bold text-rose-400 line-through uppercase">{item.changes.department.old}</span>}
-                                        </div>
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-black text-indigo-400 uppercase">{item.team || 'None'}</span>
-                                            {item.changes.team && <span className="text-[8px] font-bold text-rose-400 line-through uppercase">{item.changes.team.old || 'None'}</span>}
-                                        </div>
-                                    </td>
-                                    <td className="p-4 text-center">
-                                        <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${
-                                            item.status === 'new' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 
-                                            item.status === 'changed' ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20' : 
-                                            'bg-slate-700 text-slate-400'
-                                        }`}>
-                                            {item.status}
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
     </div>
   )
 }
