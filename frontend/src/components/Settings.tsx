@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { 
   Globe, Shield, Cpu, Sliders, Box, Network, Lock, Key, Activity, 
-  Save, RefreshCcw, Layout, Database, Palette, Bell, Server, Star,
-  Sun, Moon, Check, Terminal, FolderTree, HardDrive, Link, Users, UserPlus, ShieldCheck, Fingerprint, X, ChevronRight, History, 
+  Save, RefreshCcw, RefreshCw, Layout, Database, Palette, Bell, Server, Star,
+  Sun, Moon, Check, Terminal, FolderTree, HardDrive, Link, Users, UserPlus, ShieldCheck, Fingerprint, X, ChevronRight, History as HistoryIcon, 
   Settings as SettingsIcon, Zap, AlertTriangle, Edit2, Clock, RotateCcw, ChevronDown, ChevronUp, FileCode, Search, Filter, ShieldAlert, MoreHorizontal, Eye, Plus, Trash2, Tag, Book, Microscope
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -66,7 +66,7 @@ const SettingField = ({ label, description, children, icon: Icon, onHistory, isE
               className="p-1.5 text-[var(--text-muted)] hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
               title="View Change History"
             >
-              <History size={14} />
+              <HistoryIcon size={14} />
             </button>
           )}
         </div>
@@ -954,7 +954,7 @@ result_df = get_user_pool()`)
       <ToolbarSegmented 
         options={[
           { label: 'Parameters', value: 'environments' },
-          { label: 'Permission', value: 'permissions' },
+          { label: 'Permissions', value: 'permissions' },
           { label: 'Groups', value: 'groups' },
           { label: 'Analysis', value: 'system' },
           { label: 'Tenants', value: 'tenants' },
@@ -974,7 +974,7 @@ result_df = get_user_pool()`)
                       <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.35em] text-blue-400">
                         <Palette size={14} /> Operator Preferences
                       </div>
-                      <h3 className="text-xl font-black uppercase tracking-tight text-[var(--text-primary)]">Theme Persistence</h3>
+                      <h3 className="text-xl font-black uppercase tracking-tight text-[var(--text-primary)]">Core Infrastructure</h3>
                       <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">
                         User-level theme selection is persisted locally and through `/settings/user/settings`.
                       </p>
@@ -1130,6 +1130,18 @@ result_df = get_user_pool()`)
 
           {topTab === 'permissions' && (
             <motion.div key="permissions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4 pt-2">
+               <div className="flex justify-between items-center mb-2">
+                  <h2 className="text-xl font-black uppercase tracking-tighter text-white italic">User Permission</h2>
+                  <div className="flex gap-2">
+                    <button
+                        onClick={() => setShowPoolLogic(!showPoolLogic)}
+                        className="h-[38px] px-4 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+                        title="Configure Sync"
+                    >
+                        <RefreshCcw size={14} /> Identity Sync
+                    </button>
+                  </div>
+               </div>
                <div className="flex justify-between items-center">
                   <div className="flex gap-4 items-center">
                      <div className="relative">
@@ -1141,15 +1153,6 @@ result_df = get_user_pool()`)
                           className="w-80 h-[38px] rounded-lg border border-white/10 bg-black/20 pl-10 pr-4 py-2 text-[10px] font-bold tracking-widest text-[var(--text-primary)] outline-none transition-all focus:border-blue-500/50 shadow-inner"
                         />
                      </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                        onClick={() => setShowPoolLogic(!showPoolLogic)}
-                        className="h-[38px] px-4 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
-                        title="Configure Sync"
-                    >
-                        <RefreshCcw size={14} /> Identity Sync
-                    </button>
                   </div>
                </div>
                <AnimatePresence>
@@ -1209,6 +1212,13 @@ result_df = get_user_pool()`)
                                   className={`h-[32px] px-4 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${isSyncEditable ? 'bg-rose-600 text-white' : 'bg-slate-700 text-slate-300 hover:text-white'}`}
                                 >
                                   {isSyncEditable ? "Lock Editing" : "Edit Script"}
+                                </button>
+                                <button 
+                                  onClick={() => setShowPoolHistory(true)}
+                                  className="h-[32px] px-4 bg-slate-800 text-slate-300 rounded-lg border border-white/5 hover:bg-slate-700 transition-all text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+                                  title="View Sync History"
+                                >
+                                  <HistoryIcon size={14} /> View Sync History
                                 </button>
                                 <button 
                                   onClick={() => poolMutation.mutate({ script: userPoolScript, preview: true })}
@@ -1320,7 +1330,7 @@ result_df = get_user_pool()`)
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredOperators.map((op: any) => {
+                        {filteredOperators?.map((op: any) => {
                           const assignedGroups = teams?.filter((t: any) => op.team_id === t.id || (op.teams || []).includes(t.name)) || []
                           const firstName = assignedGroups[0]?.name || 'No Group'
                           const remainingCount = assignedGroups.length > 1 ? assignedGroups.length - 1 : 0
@@ -1409,8 +1419,8 @@ result_df = get_user_pool()`)
                         )})}
                         {filteredOperators.length === 0 && (
                           <tr>
-                            <td colSpan={allViews.length + 5} className="p-8 text-center text-[10px] font-black uppercase tracking-widest text-slate-500">
-                              No users match the current filters
+                            <td colSpan={allViews.length + 5} className="p-8 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                              No operators match the current filter
                             </td>
                           </tr>
                         )}
@@ -1422,79 +1432,82 @@ result_df = get_user_pool()`)
           )}
 
           {topTab === 'tenants' && (
-            <motion.div key="tenants" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8 pt-4">
+            <motion.div key="tenants" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4 pt-2">
                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5">
+                  <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5 shadow-sm">
                     <div className="text-[8px] font-black uppercase tracking-[0.35em] text-emerald-400">Registered</div>
                     <div className="mt-3 text-3xl font-black text-[var(--text-primary)]">{allTenants?.length || 0}</div>
-                    <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Known database tenants</div>
+                    <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]">Database Tenants</div>
                   </div>
-                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-5">
+                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-5 shadow-sm">
                     <div className="text-[8px] font-black uppercase tracking-[0.35em] text-emerald-400">Online</div>
                     <div className="mt-3 text-3xl font-black text-emerald-300">{onlineTenants}</div>
-                    <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-emerald-200/70">Healthy attached databases</div>
+                    <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.18em] text-emerald-200/70">Healthy Clusters</div>
                   </div>
-                  <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-5">
+                  <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-5 shadow-sm">
                     <div className="text-[8px] font-black uppercase tracking-[0.35em] text-rose-400">Offline</div>
                     <div className="mt-3 text-3xl font-black text-rose-300">{offlineTenants}</div>
-                    <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-rose-200/70">Require operational attention</div>
+                    <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.18em] text-rose-200/70">Critical Errors</div>
                   </div>
-                  <div className={`rounded-lg border p-5 ${hasTenantStorageRoot ? 'border-blue-500/20 bg-blue-500/5' : 'border-amber-500/20 bg-amber-500/5'}`}>
+                  <div className={`rounded-lg border p-5 shadow-sm ${hasTenantStorageRoot ? 'border-blue-500/20 bg-blue-500/5' : 'border-amber-500/20 bg-amber-500/5'}`}>
                     <div className={`text-[8px] font-black uppercase tracking-[0.35em] ${hasTenantStorageRoot ? 'text-blue-400' : 'text-amber-400'}`}>Storage Root</div>
-                    <div className={`mt-3 text-3xl font-black ${hasTenantStorageRoot ? 'text-blue-300' : 'text-amber-300'}`}>{hasTenantStorageRoot ? 'Set' : 'Unset'}</div>
-                    <div className={`mt-2 text-[9px] font-black uppercase tracking-[0.18em] ${hasTenantStorageRoot ? 'text-blue-200/70' : 'text-amber-200/70'}`}>Tenant storage registry path</div>
+                    <div className={`mt-3 text-3xl font-black ${hasTenantStorageRoot ? 'text-blue-300' : 'text-amber-300'}`}>{hasTenantStorageRoot ? 'Defined' : 'Missing'}</div>
+                    <div className={`mt-1 text-[9px] font-bold uppercase tracking-[0.18em] ${hasTenantStorageRoot ? 'text-blue-200/70' : 'text-amber-200/70'}`}>Registry Path</div>
                   </div>
                </div>
 
-               <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                  <div className="lg:col-span-2 xl:col-span-3 space-y-6">
-                     <div className="bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-lg overflow-hidden shadow-2xl">
+               <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  <div className="lg:col-span-2 xl:col-span-3 space-y-4">
+                     <div className="bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-lg overflow-hidden shadow-xl">
                         <div className="p-4 border-b border-[var(--glass-border)] bg-white/2 flex items-center justify-between">
                            <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                              <Database size={14} className="text-emerald-500" /> Registered Databases
+                              <Database size={14} className="text-emerald-500" /> Infrastructure Registry
                            </h3>
-                           <span className="text-[8px] font-black uppercase text-slate-600">Total: {allTenants?.length || 0}</span>
+                           <div className="flex items-center gap-2">
+                              <button onClick={() => queryClient.invalidateQueries({ queryKey: ['tenants'] })} className="p-1.5 hover:bg-white/5 rounded-lg text-slate-500 transition-all"><RefreshCw size={12} /></button>
+                              <span className="text-[8px] font-black uppercase text-slate-600">Total Units: {allTenants?.length || 0}</span>
+                           </div>
                         </div>
                         <div className="overflow-x-auto">
                            <table className="w-full text-left border-collapse">
                               <thead>
                                  <tr className="bg-black/20 text-[8px] font-black uppercase text-slate-500 tracking-widest">
-                                    <th className="p-4 border-b border-white/5">Name</th>
-                                    <th className="p-4 border-b border-white/5">Storage Path</th>
-                                    <th className="p-4 border-b border-white/5">Last Backup</th>
-                                    <th className="p-4 border-b border-white/5">Health</th>
-                                    <th className="p-4 border-b border-white/5 text-right">Actions</th>
+                                    <th className="p-4 border-b border-white/5">Identity</th>
+                                    <th className="p-4 border-b border-white/5">Resolved Target</th>
+                                    <th className="p-4 border-b border-white/5">Recovery State</th>
+                                    <th className="p-4 border-b border-white/5">Operational</th>
+                                    <th className="p-4 border-b border-white/5 text-right">Maintenance</th>
                                  </tr>
                               </thead>
                               <tbody>
                                  {allTenants?.map((t: any) => (
-                                    <tr key={t.id} className="hover:bg-white/2 border-b border-white/5 last:border-0 transition-colors">
+                                    <tr key={t.id} className="hover:bg-white/[0.03] border-b border-white/5 last:border-0 transition-colors">
                                        <td className="p-4">
                                           <div className="flex items-center gap-3">
                                              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
                                                 <Database size={14} />
                                              </div>
-                                             <span className="text-[11px] font-black uppercase text-white">{t.name}</span>
+                                             <span className="text-[11px] font-bold uppercase text-white tracking-tight">{t.name}</span>
                                           </div>
                                        </td>
                                        <td className="p-4">
-                                          <div className="overflow-x-auto custom-scrollbar-mini max-w-[300px]">
-                                             <code className="text-[9px] font-mono text-slate-400 bg-black/30 px-2 py-1 rounded-lg border border-white/5 whitespace-nowrap inline-block select-all" title="Click to select all">
+                                          <div className="overflow-x-auto custom-scrollbar-mini max-w-[260px]">
+                                             <code className="text-[9px] font-mono text-slate-500 bg-black/30 px-2 py-1 rounded-lg border border-white/5 whitespace-nowrap inline-block select-all">
                                                 {t.db_url}
                                              </code>
                                           </div>
                                        </td>
                                        <td className="p-4">
                                           <div className="flex items-center gap-2">
-                                             <Clock size={12} className="text-slate-500" />
-                                             <span className="text-[9px] font-bold text-slate-400 uppercase">
-                                                {t.last_backup ? formatAppDate(t.last_backup) : 'Never Backed Up'}
+                                             <Clock size={12} className="text-slate-600" />
+                                             <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">
+                                                {t.last_backup ? formatAppDate(t.last_backup) : 'NO BACKUP'}
                                              </span>
                                           </div>
                                        </td>
                                        <td className="p-4">
-                                          <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${t.is_online ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
-                                             {t.is_online ? 'Online' : 'Offline'}
+                                          <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-[0.1em] ${t.is_online ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+                                             {t.is_online ? 'SYNCED' : 'OFFLINE'}
                                           </span>
                                        </td>
                                        <td className="p-4 text-right">
@@ -1503,7 +1516,7 @@ result_df = get_user_pool()`)
                                              disabled={backupTenantMutation.isPending && backupTenantMutation.variables === t.id}
                                              className="px-3 py-1.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all disabled:opacity-50"
                                           >
-                                             {backupTenantMutation.isPending && backupTenantMutation.variables === t.id ? 'Backing up...' : 'Backup Now'}
+                                             {backupTenantMutation.isPending && backupTenantMutation.variables === t.id ? 'Snapshotting...' : 'Snapshot'}
                                           </button>
                                        </td>
                                     </tr>
@@ -1514,106 +1527,68 @@ result_df = get_user_pool()`)
                      </div>
                   </div>
 
-                  <div className="space-y-6">
-                     <div className="p-6 bg-blue-600/5 border border-blue-500/20 rounded-lg shadow-xl">
-                        <div className="flex items-center gap-3 mb-6">
-                           <div className="p-2 bg-blue-600 rounded-lg text-white shadow-lg shadow-blue-500/20"><Plus size={18} /></div>
+                  <div className="space-y-4">
+                     <div className="p-5 bg-blue-600/5 border border-blue-500/20 rounded-lg shadow-xl">
+                        <div className="flex items-center gap-3 mb-5">
+                           <div className="p-2 bg-blue-600 rounded-lg text-white shadow-lg shadow-blue-500/20"><Plus size={16} /></div>
                            <div>
-                              <h3 className="text-sm font-black uppercase text-white tracking-widest leading-none">Spawn New DB</h3>
-                              <p className="text-[9px] font-black text-slate-500 uppercase mt-1">Initialize Fresh Schema</p>
+                              <h3 className="text-[12px] font-black uppercase text-white tracking-widest leading-none">Spawn Identity</h3>
+                              <p className="text-[8px] font-bold text-slate-500 uppercase mt-1">Fresh Schema Generation</p>
                            </div>
                         </div>
-                        <div className="space-y-4">
-                           <div className="space-y-2">
-                              <label className="text-[8px] font-black uppercase text-slate-400 ml-1">Tenant Identity</label>
-                              <input 
-                                 value={newTenantName} onChange={e => setNewTenantName(e.target.value)}
-                                 placeholder="e.g. Asia_Production" 
-                                 className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-black uppercase text-blue-400 outline-none focus:border-blue-500"
-                              />
-                           </div>
+                        <div className="space-y-3">
+                           <input 
+                              value={newTenantName} onChange={e => setNewTenantName(e.target.value)}
+                              placeholder="CLUSTER_ID" 
+                              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[11px] font-black uppercase text-blue-400 outline-none focus:border-blue-500"
+                           />
                            <button 
-                              onClick={() => {
-                                 if (!newTenantName) return;
-                                 createTenantMutation.mutate(newTenantName);
-                              }}
+                              onClick={() => { if (!newTenantName) return; createTenantMutation.mutate(newTenantName); }}
                               disabled={createTenantMutation.isPending || !newTenantName}
-                              className="w-full py-4 bg-blue-600 text-white rounded-lg font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-500/20 hover:bg-blue-500 transition-all disabled:opacity-50"
+                              className="w-full py-3 bg-blue-600 text-white rounded-lg font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-500/20 hover:bg-blue-500 transition-all disabled:opacity-50"
                            >
-                              {createTenantMutation.isPending ? 'Spinning up...' : 'Create Database'}
+                              {createTenantMutation.isPending ? 'Provisioning...' : 'Provision Cluster'}
                            </button>
                         </div>
                      </div>
 
-                     <div className="p-6 bg-emerald-600/5 border border-emerald-500/20 rounded-lg shadow-xl">
-                        <div className="flex items-center gap-3 mb-6">
-                           <div className="p-2 bg-emerald-600 rounded-lg text-white shadow-lg shadow-emerald-500/20"><Link size={18} /></div>
+                     <div className="p-5 bg-emerald-600/5 border border-emerald-500/20 rounded-lg shadow-xl">
+                        <div className="flex items-center gap-3 mb-5">
+                           <div className="p-2 bg-emerald-600 rounded-lg text-white shadow-lg shadow-emerald-500/20"><Link size={16} /></div>
                            <div>
-                              <h3 className="text-sm font-black uppercase text-white tracking-widest leading-none">Attach Existing</h3>
-                              <p className="text-[9px] font-black text-slate-500 uppercase mt-1">Register External Database</p>
+                              <h3 className="text-[12px] font-black uppercase text-white tracking-widest leading-none">Map External</h3>
+                              <p className="text-[8px] font-bold text-slate-500 uppercase mt-1">Resolve Remote Database</p>
                            </div>
                         </div>
-                        <div className="space-y-4">
-                           <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 p-1">
-                              <button
-                                 onClick={() => { setAttachMode('path'); setAttachPath(""); setPreflightResult(null) }}
-                                 className={`flex-1 rounded-lg px-3 py-2 text-[9px] font-black uppercase tracking-[0.18em] transition-all ${attachMode === 'path' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                              >
-                                 File Path
-                              </button>
-                              <button
-                                 onClick={() => { setAttachMode('url'); setAttachPath(""); setPreflightResult(null) }}
-                                 className={`flex-1 rounded-lg px-3 py-2 text-[9px] font-black uppercase tracking-[0.18em] transition-all ${attachMode === 'url' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                              >
-                                 DB URL
-                              </button>
+                        <div className="space-y-3">
+                           <div className="flex items-center gap-1.5 rounded-lg border border-white/5 bg-black/20 p-1">
+                              <button onClick={() => { setAttachMode('path'); setAttachPath(""); setPreflightResult(null) }} className={`flex-1 rounded-lg px-3 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all ${attachMode === 'path' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-white'}`}>FS PATH</button>
+                              <button onClick={() => { setAttachMode('url'); setAttachPath(""); setPreflightResult(null) }} className={`flex-1 rounded-lg px-3 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all ${attachMode === 'url' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-white'}`}>URI</button>
                            </div>
-                           <div className="space-y-2">
-                              <label className="text-[8px] font-black uppercase text-slate-400 ml-1">Friendly Name</label>
+                           <input 
+                              value={attachName} onChange={e => setAttachName(e.target.value)}
+                              placeholder="ENTITY_LABEL" 
+                              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[11px] font-black uppercase text-emerald-400 outline-none focus:border-emerald-500"
+                           />
+                           <div className="relative">
                               <input 
-                                 value={attachName} onChange={e => setAttachName(e.target.value)}
-                                 placeholder="e.g. Legacy_Archive" 
-                                 className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-black uppercase text-emerald-400 outline-none focus:border-emerald-500"
+                                 value={attachPath} onChange={e => { setAttachPath(e.target.value); setPreflightResult(null); }}
+                                 placeholder={attachMode === 'url' ? 'postgresql+asyncpg://...' : '/registry/db.sqlite'} 
+                                 className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[9px] font-mono text-slate-400 outline-none focus:border-emerald-500"
                               />
-                           </div>
-                           <div className="space-y-2">
-                              <label className="text-[8px] font-black uppercase text-slate-400 ml-1">{attachMode === 'url' ? 'Database URL' : 'Absolute File Path'}</label>
-                              <div className="relative">
-                                 <input 
-                                    value={attachPath} onChange={e => { setAttachPath(e.target.value); setPreflightResult(null); }}
-                                    placeholder={attachMode === 'url' ? 'postgresql+asyncpg://user:pass@host:5432/sysgrid' : '/absolute/path/to/system_grid.db'} 
-                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[10px] font-mono text-slate-300 outline-none focus:border-emerald-500"
-                                 />
-                                 <button 
-                                    onClick={() => preflightMutation.mutate(attachPath)}
-                                    disabled={preflightMutation.isPending || !attachPath}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-emerald-500 transition-all disabled:opacity-30"
-                                    title="Run Preflight Schema Check"
-                                 >
-                                    <Microscope size={14} className={preflightMutation.isPending ? 'animate-pulse' : ''} />
-                                 </button>
-                              </div>
+                              <button onClick={() => preflightMutation.mutate(attachPath)} disabled={preflightMutation.isPending || !attachPath} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-emerald-500 transition-all disabled:opacity-30"><Microscope size={12} /></button>
                            </div>
 
                            <AnimatePresence>
                               {preflightResult && (
-                                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
                                     <div className={`p-4 rounded-lg border ${preflightResult.is_valid ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'} space-y-2`}>
                                        <div className="flex items-center justify-between">
-                                          <span className={`text-[8px] font-black uppercase tracking-widest ${preflightResult.is_valid ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                             Status: {preflightResult.status}
-                                          </span>
-                                          <span className="text-[8px] font-black uppercase text-slate-500">Tables: {preflightResult.table_count}</span>
+                                          <span className={`text-[8px] font-black uppercase ${preflightResult.is_valid ? 'text-emerald-400' : 'text-rose-400'}`}>STATUS: {preflightResult.status}</span>
+                                          <span className="text-[8px] font-black uppercase text-slate-600">SCHEMAS: {preflightResult.table_count}</span>
                                        </div>
-                                       <p className="text-[9px] font-bold text-slate-300 uppercase leading-relaxed">{preflightResult.message}</p>
                                        {preflightResult.is_valid && (
-                                          <button 
-                                             onClick={() => attachMutation.mutate(attachMode === 'url' ? { name: attachName, db_url: attachPath } : { name: attachName, db_path: attachPath })}
-                                             disabled={attachMutation.isPending || !attachName}
-                                             className="w-full py-2.5 bg-emerald-600 text-white rounded-lg font-black uppercase text-[9px] tracking-widest hover:bg-emerald-500 transition-all mt-2"
-                                          >
-                                             {attachMutation.isPending ? 'Linking...' : 'Confirm & Attach'}
-                                          </button>
+                                          <button onClick={() => attachMutation.mutate(attachMode === 'url' ? { name: attachName, db_url: attachPath } : { name: attachName, db_path: attachPath })} className="w-full py-2 bg-emerald-600 text-white rounded-lg font-black uppercase text-[8px] tracking-widest hover:bg-emerald-500 transition-all mt-1">MAP REGISTRY</button>
                                        )}
                                     </div>
                                  </motion.div>
@@ -1793,11 +1768,11 @@ result_df = get_user_pool()`)
           )}
 
           {topTab === 'groups' && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 pt-2">
               <div className="flex justify-between items-end">
                 <div>
                    <h2 className="text-xl font-black uppercase tracking-tighter text-white italic">Group <span className="text-blue-500">Architecture</span></h2>
-                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mt-1">Entity relationship mapping & access containment</p>
+                   <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 mt-1">Entity relationship mapping & access containment</p>
                 </div>
                 <div className="flex gap-2">
                    <div className="flex items-center bg-black/20 border border-white/10 rounded-lg overflow-hidden h-[38px]">
@@ -1805,12 +1780,12 @@ result_df = get_user_pool()`)
                          value={newTeamName}
                          onChange={e => setNewTeamName(e.target.value)}
                          placeholder="New Group ID..."
-                         className="bg-transparent px-3 py-2 text-[10px] font-black uppercase outline-none w-48 placeholder:text-slate-600"
+                         className="bg-transparent px-3 py-2 text-[10px] font-bold uppercase outline-none w-48 placeholder:text-slate-600"
                          onKeyDown={e => e.key === 'Enter' && teamMutation.mutate({ name: newTeamName, source: 'manual' })}
                        />
                        <button 
                          onClick={() => teamMutation.mutate({ name: newTeamName, source: 'manual' })}
-                         className="h-full px-4 bg-blue-600/10 border-l border-white/10 text-blue-400 hover:bg-blue-600/20 transition-all font-black text-[10px] uppercase tracking-widest"
+                         className="h-full px-4 bg-blue-600/10 border-l border-white/10 text-blue-400 hover:bg-blue-600/20 transition-all font-bold text-[10px] uppercase tracking-widest"
                        >
                          Initialize
                        </button>
@@ -1838,7 +1813,7 @@ result_df = get_user_pool()`)
                                  <Users size={16} />
                               </div>
                               <div>
-                                 <p className={`text-[11px] font-black uppercase tracking-widest ${selectedTeamId === team.id ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>{team.name}</p>
+                                 <p className={`text-[11px] font-bold uppercase tracking-widest ${selectedTeamId === team.id ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>{team.name}</p>
                                  <p className="text-[8px] font-bold text-slate-600 uppercase mt-1">ID: {team.id}</p>
                               </div>
                            </div>
@@ -1852,8 +1827,8 @@ result_df = get_user_pool()`)
                  <div className="lg:col-span-2">
                     <AnimatePresence mode="wait">
                        {selectedTeamId ? (
-                         <motion.div key={selectedTeamId} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-                            <div className={`p-8 rounded-lg border border-white/5 bg-black/40 backdrop-blur-xl relative overflow-hidden`}>
+                         <motion.div key={selectedTeamId} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
+                            <div className={`p-8 rounded-lg border border-white/5 bg-black/40 backdrop-blur-xl relative overflow-hidden shadow-2xl`}>
                                <div className="absolute top-0 right-0 p-4">
                                   <SameButtonConfirm 
                                     danger
@@ -1866,7 +1841,7 @@ result_df = get_user_pool()`)
                                   <div className="p-4 bg-blue-600/10 rounded-lg text-blue-400 border border-blue-500/20"><Users size={32} /></div>
                                   <div>
                                      <h3 className="text-2xl font-black uppercase tracking-tighter text-white italic">{teams?.find((t: any) => t.id === selectedTeamId)?.name}</h3>
-                                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mt-1">Registry Identity: {selectedTeamId}</p>
+                                     <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 mt-1">Registry Identity: {selectedTeamId}</p>
                                   </div>
                                </div>
 
@@ -1874,7 +1849,7 @@ result_df = get_user_pool()`)
                                   <div className="space-y-4">
                                      <div className="flex justify-between items-center">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><UserPlus size={14} className="text-emerald-500" /> Membership Registry</p>
-                                        <span className="text-[8px] font-black text-slate-600">TOGGLE ACCESS</span>
+                                        <span className="text-[8px] font-bold text-slate-600">TOGGLE ACCESS</span>
                                      </div>
                                      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                                         {operators?.map((op: any) => {
@@ -1885,14 +1860,6 @@ result_df = get_user_pool()`)
                                               onClick={() => {
                                                 const currentTeams = op.teams || []
                                                 const teamName = teams?.find((t: any) => t.id === selectedTeamId)?.name
-                                                let nextTeams = []
-                                                if (isMember) {
-                                                  nextTeams = currentTeams.filter((tn: string) => tn !== teamName)
-                                                } else {
-                                                  nextTeams = [...currentTeams, teamName]
-                                                }
-                                                // Assuming backend supports multiple teams via metadata or similar
-                                                // For now, let's use the single team_id if that's what's available
                                                 bulkTeamMutation.mutate({ 
                                                   ids: [op.id], 
                                                   teamId: isMember ? null : selectedTeamId,
@@ -1911,7 +1878,7 @@ result_df = get_user_pool()`)
                                                     {op.username?.slice(0,2).toUpperCase()}
                                                  </div>
                                                  <div className="text-left">
-                                                    <p className={`text-[10px] font-black uppercase tracking-widest ${isMember ? 'text-emerald-400' : 'text-slate-400'}`}>{op.full_name}</p>
+                                                    <p className={`text-[10px] font-bold uppercase tracking-widest ${isMember ? 'text-emerald-400' : 'text-slate-400'}`}>{op.full_name}</p>
                                                     <p className="text-[7px] font-bold text-slate-600 uppercase mt-0.5">{op.username}</p>
                                                  </div>
                                               </div>
@@ -1924,7 +1891,7 @@ result_df = get_user_pool()`)
 
                                   <div className="space-y-4">
                                      <div className="flex justify-between items-center">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><Settings size={14} className="text-blue-500" /> Group Configuration</p>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><SettingsIcon size={14} className="text-blue-500" /> Group Configuration</p>
                                      </div>
                                      <div className="space-y-6">
                                         <div className="space-y-2">
@@ -1932,7 +1899,7 @@ result_df = get_user_pool()`)
                                            <input 
                                              value={teamEditName}
                                              onChange={e => setTeamEditName(e.target.value)}
-                                             className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-[11px] font-black uppercase text-white outline-none focus:border-blue-500/50"
+                                             className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-[11px] font-bold uppercase text-white outline-none focus:border-blue-500/50"
                                            />
                                         </div>
                                         <div className="space-y-2">
@@ -1957,7 +1924,7 @@ result_df = get_user_pool()`)
                        ) : (
                          <div className="h-full min-h-[400px] flex flex-col items-center justify-center border border-dashed border-white/10 rounded-lg bg-black/10">
                             <Users size={48} className="text-slate-800 mb-4" />
-                            <p className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-600">Select group to manage</p>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.4em] text-slate-600">Select group to manage</p>
                          </div>
                        )}
                     </AnimatePresence>
@@ -2068,7 +2035,7 @@ result_df = get_user_pool()`)
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed top-0 right-0 bottom-0 w-[450px] bg-[var(--bg-primary)] border-l border-[var(--glass-border)] shadow-2xl z-[101] flex flex-col p-8">
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg"><History size={20} /></div>
+                  <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg"><HistoryIcon size={20} /></div>
                   <div>
                     <h3 className="text-sm font-black uppercase text-[var(--text-primary)] tracking-widest leading-none">Parameter History</h3>
                     <p className="text-[9px] font-bold text-slate-500 uppercase mt-1 tracking-tighter">{historyField}</p>

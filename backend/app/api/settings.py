@@ -689,7 +689,8 @@ async def create_operator(data: dict, request: Request, db: AsyncSession = Depen
     else:
         # For new operators, we take what we have
         # But we filter it just in case
-        clean_data = {k: v for k, v in data.items() if hasattr(models.Operator, k) and k not in ["id", "created_at", "updated_at"]}
+        allowed_fields_new = ["username", "external_id", "full_name", "email", "department", "registration_status", "is_admin", "custom_permissions", "role_id"]
+        clean_data = {k: v for k, v in data.items() if k in allowed_fields_new}
         clean_data["team_id"] = team.id if team else None
         clean_data["team"] = team.name if team else None
         clean_data["team_source"] = data.get("team_source") or ("manual" if team else "manual")

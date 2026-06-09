@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Terminal, AlertTriangle, Bug, Clock, Search, Trash2, ChevronRight, ChevronDown, Copy, ShieldAlert, TerminalSquare, Filter, Database, Cpu, CheckCircle2, History, Activity, Globe } from 'lucide-react'
+import { X, Terminal, AlertTriangle, Bug, Clock, Search, Trash2, ChevronRight, ChevronDown, Copy, ShieldAlert, TerminalSquare, Filter, Database, Cpu, CheckCircle2, History as HistoryIcon, Activity, Globe } from 'lucide-react'
 import { useErrors, SysError } from '../../stores/errorStore'
 import { formatAppDate, formatAppTime } from '../../utils/dateUtils'
 import { toast } from 'react-hot-toast'
@@ -114,7 +114,7 @@ export function ErrorConsole() {
              onClick={() => setShowAcknowledged(!showAcknowledged)}
              className={`flex items-center gap-2 px-4 py-3 rounded-lg border text-[10px] font-black uppercase tracking-widest transition-all ${showAcknowledged ? 'bg-blue-600/10 border-blue-500/20 text-blue-400' : 'bg-white/5 border-white/5 text-slate-500'}`}
            >
-              <History size={14} /> {showAcknowledged ? 'Showing All' : 'Active Only'}
+              <HistoryIcon size={14} /> {showAcknowledged ? 'Showing All' : 'Active Only'}
            </button>
         </div>
 

@@ -13,7 +13,7 @@ import {
   CheckCircle2, HelpCircle, ShieldAlert, TerminalSquare, ShieldCheck, Monitor, 
   Loader2, Briefcase, PlusCircle, Target, CheckSquare, FileSpreadsheet, FileUp, 
   RotateCcw, Lock, Unlock, Key, Fingerprint, Wifi, Signal, Radio, Cloud, Waves, 
-  Timer, Wrench, Hammer, LifeBuoy, Book, Scale, Compass, Map, Flag
+  Timer, Wrench, Hammer, LifeBuoy, Book, Scale, Compass, Map as MapIcon, Flag, Bell
 } from 'lucide-react'
 import { 
   PageHeader, 
@@ -251,7 +251,7 @@ export const SettingsStandards = () => {
          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             <div className="space-y-6">
                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-600/10 text-blue-400 rounded-lg"><Map size={20} /></div>
+                  <div className="p-2 bg-blue-600/10 text-blue-400 rounded-lg"><MapIcon size={20} /></div>
                   <h4 className="text-[12px] font-black uppercase text-white tracking-widest">Global Composition</h4>
                </div>
                <div className="space-y-4 border-l-2 border-blue-600/20 pl-6">
