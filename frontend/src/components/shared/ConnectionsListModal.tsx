@@ -23,7 +23,7 @@ export const ConnectionsListModal: React.FC<ConnectionsListModalProps> = ({ isOp
       subtitle={(
         <div className="flex items-center gap-4 mt-1 text-[10px] font-bold text-slate-400">
           <p className="flex items-center gap-1.5 uppercase tracking-widest">
-            <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 font-mono tracking-normal text-slate-300">{deviceName}</span>
+            <span className="px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 font-mono tracking-normal text-slate-300">{deviceName}</span>
           </p>
           <p className="flex items-center gap-1.5 uppercase tracking-widest">
             <Zap size={10} className="text-amber-500" /> {connections.length} Active Physical Paths Detected
@@ -114,7 +114,7 @@ export const ConnectionsListModal: React.FC<ConnectionsListModalProps> = ({ isOp
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${
                         conn.status === 'Active' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 
                         conn.status === 'Requested' ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' :
                         conn.status === 'Planned' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :

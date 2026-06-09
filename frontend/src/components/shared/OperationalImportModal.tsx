@@ -691,7 +691,7 @@ export function OperationalImportModal({
                           >
                             <input
                               type="checkbox"
-                              className="mt-0.5 h-4 w-4 rounded border-white/20 bg-slate-900 text-blue-500 focus:ring-blue-500/40 focus:ring-offset-0 focus:ring-offset-transparent cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                              className="mt-0.5 h-4 w-4 rounded-lg border-white/20 bg-slate-900 text-blue-500 focus:ring-blue-500/40 focus:ring-offset-0 focus:ring-offset-transparent cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                               checked={checked}
                               disabled={requiredFieldNames.includes(field.name) || !supportedInBuilder}
                               onChange={() => toggleColumn(field.name)}
@@ -986,7 +986,7 @@ export function OperationalImportModal({
                                   <Terminal size={14} className="text-blue-500" />
                                   <p className="text-[10px] font-black uppercase tracking-widest text-white">Validation Audit</p>
                                 </div>
-                                <button onClick={() => setIsValidationPopoutOpen(false)} className="text-slate-500 hover:text-rose-400 transition-colors p-1 bg-white/5 rounded">
+                                <button onClick={() => setIsValidationPopoutOpen(false)} className="text-slate-500 hover:text-rose-400 transition-colors p-1 bg-white/5 rounded-lg">
                                   <X size={12} />
                                 </button>
                               </div>
@@ -1076,7 +1076,7 @@ export function OperationalImportModal({
                               <th className="px-4 py-3 text-center w-12">
                                 <input
                                   type="checkbox"
-                                  className="rounded border-white/20 bg-slate-900 text-blue-500 focus:ring-0 cursor-pointer"
+                                  className="rounded-lg border-white/20 bg-slate-900 text-blue-500 focus:ring-0 cursor-pointer"
                                   checked={selectedPreviewRows.length > 0 && selectedPreviewRows.length === preview.valid_rows}
                                   onChange={(e) => {
                                     if (e.target.checked) {
@@ -1108,7 +1108,7 @@ export function OperationalImportModal({
                                       checked={selected}
                                       disabled={result.status !== 'VALID'}
                                       onChange={() => togglePreviewRow(result.row)}
-                                      className="rounded border-white/20 bg-slate-900 text-blue-500 focus:ring-0 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                                      className="rounded-lg border-white/20 bg-slate-900 text-blue-500 focus:ring-0 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
                                     />
                                   </td>
                                   <td className="px-4 py-3 align-middle text-left text-[10px] font-mono font-bold text-slate-500">#{result.row}</td>

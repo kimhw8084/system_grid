@@ -10,6 +10,9 @@ import { parseAppDate, formatAppDate, formatAppDay } from '../utils/dateUtils'
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { StyledSelect } from "./shared/StyledSelect"
+import { WorkspaceModal } from "./shared/WorkspaceModal"
+import { PageHeader, PageToolbar, ToolbarGroup, ToolbarSearch, ToolbarButton } from "./shared/LayoutPrimitives"
+import { WorkspaceEmptyState, WorkspaceSectionCard, WorkspaceSelectField, WorkspaceTabStrip } from "./shared/OperationalWorkspacePrimitives"
 import { ServiceDetailsView, ServiceForm } from "./ServiceRegistry"
 
 const SharedServiceModals = ({ 
@@ -22,6 +25,7 @@ const SharedServiceModals = ({
   onServiceUpdate
 }: any) => {
   const queryClient = useQueryClient()
+  const [isMaximized, setIsMaximized] = useState(false)
   const mutation = useMutation({
     mutationFn: async (data: any) => {
       const url = `/api/v1/logical-services/${data.id}`
@@ -41,40 +45,41 @@ const SharedServiceModals = ({
 
   return (
     <>
-      <AnimatePresence>
-        {activeEdit && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[800px] max-h-[90vh] overflow-y-auto p-10 rounded-lg border border-blue-500/30 custom-scrollbar">
-               <div className="flex items-center justify-between border-b border-white/5 pb-6">
-                  <h2 className="text-2xl font-bold uppercase flex items-center space-x-4 text-blue-400">
-                     <Layers size={28}/> <span>Modify Service Configuration</span>
-                  </h2>
-                  <button onClick={() => setActiveEdit(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
-               </div>
-               <ServiceForm initialData={activeEdit} onSave={mutation.mutate} options={options} devices={devices} />
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <WorkspaceModal
+        isOpen={!!activeEdit}
+        onClose={() => setActiveEdit(null)}
+        size="workspace"
+        isMaximized={isMaximized}
+        onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+        title="Modify Service Configuration"
+        subtitle="Logical Service Identity & Environment"
+        icon={<Layers size={20}/>}
+        footerRight={
+          <ToolbarButton onClick={() => setActiveEdit(null)}>Close</ToolbarButton>
+        }
+      >
+        <div className="pt-6">
+          <ServiceForm initialData={activeEdit} onSave={mutation.mutate} options={options} devices={devices} />
+        </div>
+      </WorkspaceModal>
 
-      <AnimatePresence>
-        {activeDetails && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-lg border border-blue-500/30 flex flex-col">
-               <div className="flex items-center justify-between border-b border-white/5 pb-6">
-                  <div>
-                    <h2 className="text-2xl font-bold uppercase text-blue-400">{activeDetails.name}</h2>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{activeDetails.service_type} // {activeDetails.environment}</p>
-                  </div>
-                  <button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
-               </div>
-               <div className="flex-1 overflow-y-auto custom-scrollbar pt-6">
-                  <ServiceDetailsView service={activeDetails} options={options} devices={devices} />
-               </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <WorkspaceModal
+        isOpen={!!activeDetails}
+        onClose={() => setActiveDetails(null)}
+        size="workspace"
+        isMaximized={isMaximized}
+        onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+        title={activeDetails?.name || 'Service Details'}
+        subtitle={`${activeDetails?.service_type} // ${activeDetails?.environment}`}
+        icon={<Eye size={20}/>}
+        footerRight={
+          <ToolbarButton onClick={() => setActiveDetails(null)}>Close</ToolbarButton>
+        }
+      >
+        <div className="pt-6">
+          <ServiceDetailsView service={activeDetails} options={options} devices={devices} />
+        </div>
+      </WorkspaceModal>
     </>
   )
 }
@@ -110,11 +115,11 @@ const AssetServicesTable = ({ deviceId, onViewDetails, onEdit }: { deviceId: num
               <td className="px-4 py-3 font-bold text-blue-400">{s.name}</td>
               <td className="px-4 py-3 text-slate-400 uppercase font-bold text-[11px]">{s.service_type}</td>
               <td className="px-4 py-3 text-center">
-                 <span className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase border ${
-                    s.status === 'Running' || s.status === 'Active' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' :
-                    s.status === 'Stopped' ? 'text-slate-400 border-slate-500/20 bg-slate-500/5' :
-                    s.status === 'Maintenance' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' :
-                    'text-rose-400 border-rose-500/20 bg-rose-500/5'
+                 <span className={`px-2 py-0.5 rounded-lg text-[11px] font-bold uppercase border ${
+                    s.status === 'Running' || s.status === 'Active' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10' :
+                    s.status === 'Stopped' ? 'text-slate-400 border-slate-500/20 bg-slate-500/10' :
+                    s.status === 'Maintenance' ? 'text-amber-400 border-amber-500/20 bg-amber-500/10' :
+                    'text-rose-400 border-rose-500/20 bg-rose-500/10'
                  }`}>{s.status}</span>
               </td>
               <td className="px-4 py-3 text-center text-slate-500 uppercase font-bold">{s.environment}</td>
@@ -140,7 +145,16 @@ const AssetServicesTable = ({ deviceId, onViewDetails, onEdit }: { deviceId: num
             </tr>
           ))}
           {!services?.length && !isLoading && (
-            <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-600 font-bold uppercase tracking-widest">No logical services bound to this asset</td></tr>
+            <tr>
+              <td colSpan={6} className="px-4 py-8">
+                <WorkspaceEmptyState
+                  compact
+                  title="No logical services bound to this asset"
+                  description="This device does not have any logical services mapped in the registry."
+                  icon={<Layers size={20} className="text-slate-600" />}
+                />
+              </td>
+            </tr>
           )}
         </tbody>
       </table>
@@ -155,36 +169,37 @@ const StatusBulkUpdateModal = ({ isOpen, onClose, onApply, options, count }: { i
     if (isOpen) setSelectedStatus('')
   }, [isOpen])
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
-       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-blue-500/30 space-y-6">
-          <div>
-            <h2 className="text-xl font-bold uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
-               <Tag size={24}/> <span>Update Status</span>
-            </h2>
-            {count && <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-2">Updating {count} asset{count !== 1 ? 's' : ''}</p>}
-          </div>
-          <StyledSelect
-            label="Target Operational State"
-            value={selectedStatus}
-            onChange={e => setSelectedStatus(e.target.value)}
-            options={STATUS_ITEMS}
-            placeholder="Select Status..."
-          />
-          <div className="flex space-x-3 pt-2">
-             <button onClick={onClose} className="flex-1 py-3 text-[10px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
-             <button 
-               disabled={!selectedStatus}
-               onClick={() => onApply(selectedStatus)} 
-               className="flex-2 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
-             >
-                Apply to Selection
-             </button>
-          </div>
-       </motion.div>
-    </div>
+    <WorkspaceModal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="compact"
+      title="Update Status"
+      subtitle={count ? `Updating ${count} asset${count !== 1 ? 's' : ''}` : 'Select target operational state'}
+      icon={<Tag size={20}/>}
+      footerRight={
+        <>
+          <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
+          <ToolbarButton 
+            disabled={!selectedStatus}
+            onClick={() => onApply(selectedStatus)}
+            variant="primary"
+          >
+            Apply to Selection
+          </ToolbarButton>
+        </>
+      }
+    >
+      <div className="pt-6">
+        <StyledSelect
+          label="Target Operational State"
+          value={selectedStatus}
+          onChange={e => setSelectedStatus(e.target.value)}
+          options={STATUS_ITEMS}
+          placeholder="Select Status..."
+        />
+      </div>
+    </WorkspaceModal>
   )
 }
 
@@ -195,36 +210,37 @@ const BulkEnvUpdateModal = ({ isOpen, onClose, onApply, options, count }: { isOp
     if (isOpen) setSelectedEnv('')
   }, [isOpen])
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md">
-       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[400px] p-10 rounded-lg border border-blue-500/30 space-y-6">
-          <div>
-            <h2 className="text-xl font-bold uppercase tracking-tighter text-blue-400 flex items-center space-x-3">
-               <Globe size={24}/> <span>Update Environment</span>
-            </h2>
-            {count && <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-2">Updating {count} asset{count !== 1 ? 's' : ''}</p>}
-          </div>
-          <StyledSelect
-            label="Target Environment"
-            value={selectedEnv}
-            onChange={e => setSelectedEnv(e.target.value)}
-            options={ENVIRONMENT_ITEMS}
-            placeholder="Select Environment..."
-          />
-          <div className="flex space-x-3 pt-2">
-             <button onClick={onClose} className="flex-1 py-3 text-[10px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
-             <button
-               disabled={!selectedEnv}
-               onClick={() => onApply(selectedEnv)}
-               className="flex-1 py-3 bg-blue-600 disabled:opacity-50 text-white rounded-lg text-[10px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
-             >
-                Apply to Selection
-             </button>
-          </div>
-       </motion.div>
-    </div>
+    <WorkspaceModal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="compact"
+      title="Update Environment"
+      subtitle={count ? `Updating ${count} asset${count !== 1 ? 's' : ''}` : 'Select target logical environment'}
+      icon={<Globe size={20}/>}
+      footerRight={
+        <>
+          <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
+          <ToolbarButton 
+            disabled={!selectedEnv}
+            onClick={() => onApply(selectedEnv)}
+            variant="primary"
+          >
+            Apply to Selection
+          </ToolbarButton>
+        </>
+      }
+    >
+      <div className="pt-6">
+        <StyledSelect
+          label="Target Environment"
+          value={selectedEnv}
+          onChange={e => setSelectedEnv(e.target.value)}
+          options={ENVIRONMENT_ITEMS}
+          placeholder="Select Environment..."
+        />
+      </div>
+    </WorkspaceModal>
   )
 }
 
@@ -303,8 +319,8 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
             {error && <div className="flex items-center space-x-1 text-rose-500"><AlertCircle size={12} className="animate-pulse" /><span className="text-[8px] font-bold uppercase tracking-tighter">{error}</span></div>}
          </div>
          <div className="flex bg-black/40 rounded-lg p-1">
-            <button onClick={() => setMode('table')} className={`px-2 py-1 rounded-md transition-all ${mode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><List size={12}/></button>
-            <button onClick={() => setMode('json')} className={`px-2 py-1 rounded-md transition-all ${mode === 'json' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><FileJson size={12}/></button>
+            <button onClick={() => setMode('table')} className={`px-2 py-1 rounded-lg transition-all ${mode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><List size={12}/></button>
+            <button onClick={() => setMode('json')} className={`px-2 py-1 rounded-lg transition-all ${mode === 'json' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><FileJson size={12}/></button>
          </div>
       </div>
       <div className="p-4 min-h-[120px]">
@@ -407,7 +423,7 @@ const MiniMonitoringTable = ({ deviceId }: { deviceId: number }) => {
               <td className="px-4 py-3 font-bold text-slate-400 uppercase">{m.category}</td>
               <td className="px-4 py-3 font-bold text-white group-hover:text-blue-400 transition-colors">{m.title}</td>
               <td className="px-4 py-3 text-center">
-                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
+                 <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase border ${
                     m.status === 'Healthy' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' :
                     m.status === 'Degraded' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' :
                     'text-rose-400 border-rose-500/20 bg-rose-500/5'
@@ -627,7 +643,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="font-bold text-[11px] uppercase tracking-tighter truncate pr-2">{a.name}</span>
-                <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded border ${
+                <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-lg border ${
                   a.status === 'Active' ? 'bg-emerald-500/20 border-emerald-500/20 text-emerald-400' :
                   a.status === 'Maintenance' ? 'bg-amber-500/20 border-amber-500/20 text-amber-400' :
                   a.status === 'Failed' ? 'bg-rose-500/20 border-rose-500/20 text-rose-400' :
@@ -660,7 +676,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             <div className="flex items-start justify-between">
               <div className="space-y-6">
                 <div className="flex items-center space-x-6">
-                   <div className="bg-blue-600 p-3 rounded-xl text-white shadow-xl shadow-blue-500/20 ring-4 ring-blue-500/10">
+                   <div className="bg-blue-600 p-3 rounded-lg text-white shadow-xl shadow-blue-500/20 ring-4 ring-blue-500/10">
                       <Box size={48} />
                    </div>
                    <div>
@@ -673,7 +689,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                    </div>
                 </div>
 
-                <div className="flex items-center space-x-8 bg-black/40 p-6 rounded-xl border border-white/5">
+                <div className="flex items-center space-x-8 bg-black/40 p-6 rounded-lg border border-white/5">
                    <div className="flex flex-col">
                       <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Operational State</span>
                       <span className={`px-4 py-1 rounded-lg text-[11px] font-bold uppercase border w-fit ${
@@ -706,7 +722,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             </div>
 
             {/* Quick Stats Banner */}
-            <div className="grid grid-cols-6 gap-4 bg-white/5 p-6 rounded-xl border border-white/5">
+            <div className="grid grid-cols-6 gap-4 bg-white/5 p-6 rounded-lg border border-white/5">
                <div className="flex flex-col">
                   <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Power Avg/Max</span>
                   <span className="text-xs font-mono text-white font-bold">{selectedAsset.power_typical_w}W / {selectedAsset.power_max_w}W</span>
@@ -740,7 +756,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <CpuIcon size={16} className="text-amber-400" />
                      <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Hardware & System Architecture</h3>
                   </div>
-                  <div className="bg-black/20 p-8 rounded-xl border border-white/5 grid grid-cols-2 gap-y-8 gap-x-12 flex-1">
+                  <div className="bg-black/20 p-8 rounded-lg border border-white/5 grid grid-cols-2 gap-y-8 gap-x-12 flex-1">
                      <div>
                         <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1">Platform Identity</p>
                         <p className="text-sm font-bold text-white uppercase">{selectedAsset.manufacturer} {selectedAsset.model}</p>
@@ -766,7 +782,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <Calendar size={16} className="text-rose-400" />
                      <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Lifecycle & Logistics Registry</h3>
                   </div>
-                  <div className="bg-black/20 p-8 rounded-xl border border-white/5 grid grid-cols-2 gap-8 flex-1">
+                  <div className="bg-black/20 p-8 rounded-lg border border-white/5 grid grid-cols-2 gap-8 flex-1">
                      <div className="space-y-8">
                         <div>
                            <p className="text-[8px] font-bold text-slate-500 uppercase mb-1">Deployment Phase</p>
@@ -817,7 +833,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <Layers size={16} className="text-blue-400" />
                      <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Hosted Logical Services</h3>
                   </div>
-                  <div className="glass-panel rounded-xl overflow-hidden border-white/5 bg-black/10">
+                  <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
                      <AssetServicesTable 
                        deviceId={selectedAsset.id} 
                        onViewDetails={onViewServiceDetails} 
@@ -831,7 +847,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <Activity size={16} className="text-emerald-400" />
                      <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Monitoring & Telemetry Nodes</h3>
                   </div>
-                  <div className="glass-panel rounded-xl overflow-hidden border-white/5 bg-black/10">
+                  <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
                      <MiniMonitoringTable deviceId={selectedAsset.id} />
                   </div>
                </div>
@@ -844,7 +860,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <Shield size={16} className="text-amber-500" />
                      <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Security Credentials & Secrets</h3>
                   </div>
-                  <div className="glass-panel rounded-xl overflow-hidden border-white/5 bg-black/10">
+                  <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
                      <SecretsTable deviceId={selectedAsset.id} />
                   </div>
                </div>
@@ -854,7 +870,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                      <FileJson size={16} className="text-slate-400" />
                      <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Registry Metadata Payload</h3>
                   </div>
-                  <div className="glass-panel rounded-xl overflow-hidden border-white/5 bg-black/10 min-h-[150px]">
+                  <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10 min-h-[150px]">
                      <MetadataViewer data={selectedAsset.metadata_json} />
                   </div>
                </div>
@@ -866,7 +882,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
                   <HardDrive size={16} className="text-emerald-400" />
                   <h3 className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400">Physical Component Inventory</h3>
                </div>
-               <div className="glass-panel rounded-xl overflow-hidden border-white/5 bg-black/10">
+               <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
                   <HWTable deviceId={selectedAsset.id} />
                </div>
             </div>
@@ -1062,7 +1078,7 @@ export default function AssetGrid() {
         }
         return (
           <div className="flex items-center justify-center h-full">
-            <div className={`flex items-center justify-center w-24 h-6 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+            <div className={`flex items-center justify-center w-24 h-6 rounded-lg border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
               <span className="font-bold tracking-tighter leading-none" style={{ fontSize: `${fontSize}px` }}>
                 {p.value}
               </span>
@@ -1123,7 +1139,7 @@ export default function AssetGrid() {
       headerClass: 'text-center',
       cellRenderer: (p: any) => p.value > 0 ? (
         <div className="flex items-center justify-center h-full">
-           <div className="flex items-center space-x-1 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded-md text-rose-500">
+           <div className="flex items-center space-x-1 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded-lg text-rose-500">
               <AlertCircle size={10} className="animate-pulse" />
               <span className="font-bold" style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
            </div>
@@ -1188,87 +1204,130 @@ export default function AssetGrid() {
   const { data: allRelationships } = useQuery({ queryKey: ['all-relationships'], queryFn: async () => (await (await apiFetch('/api/v1/devices/relationships/all')).json()) })
 
   return (
-    <div className="h-full flex flex-col space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-6">
-           <div>
-              <h1 className="text-2xl font-bold uppercase tracking-tight text-white">Assets</h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Infrastructure Asset Registry</p>
-           </div>
+    <div className="flex h-full flex-col gap-6">
+      <PageHeader
+        eyebrow="Infrastructure Asset Registry"
+        title="Assets"
+        subtitle="Manage logical and physical compute, storage, and networking resources."
+        actions={
+          <ToolbarGroup>
+            <ToolbarButton onClick={() => setShowConfig(true)} icon={<Settings size={14} />}>
+              Registry Config
+            </ToolbarButton>
+            <ToolbarButton 
+              variant="primary" 
+              onClick={() => setActiveModal({})} 
+              icon={<Plus size={14} />}
+            >
+              Register Asset
+            </ToolbarButton>
+          </ToolbarGroup>
+        }
+      />
 
-           <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 ml-2">
-                <button onClick={() => { setViewMode('grid'); setShowStyleLab(true); }} className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center space-x-2 ${viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                    <LayoutGrid size={14}/> <span>Table</span>
+      <PageToolbar
+        left={
+          <>
+            <ToolbarGroup>
+              <ToolbarButton 
+                active={viewMode === 'grid'} 
+                onClick={() => { setViewMode('grid'); setShowStyleLab(true); }}
+              >
+                <div className="flex items-center gap-2">
+                  <LayoutGrid size={14}/> <span>Table</span>
+                </div>
+              </ToolbarButton>
+              <ToolbarButton 
+                active={viewMode === 'report'} 
+                onClick={() => { setViewMode('report'); setShowStyleLab(false); }}
+              >
+                <div className="flex items-center gap-2">
+                  <FileText size={14}/> <span>List</span>
+                </div>
+              </ToolbarButton>
+              <ToolbarButton 
+                active={viewMode === 'map'} 
+                onClick={() => { setViewMode('map'); setShowStyleLab(false); }}
+              >
+                <div className="flex items-center gap-2">
+                  <Globe size={14}/> <span>Map</span>
+                </div>
+              </ToolbarButton>
+            </ToolbarGroup>
+
+            {viewMode !== 'map' && (
+              <div className="h-6 w-px bg-white/10 mx-2" />
+            )}
+
+            {viewMode !== 'map' && (
+              <ToolbarGroup>
+                <ToolbarButton 
+                  variant={activeTab === 'inventory' ? 'primary' : 'secondary'}
+                  onClick={() => { setActiveTab('inventory'); setSelectedIds([]) }}
+                >
+                  Existing
+                </ToolbarButton>
+                <ToolbarButton 
+                  variant={activeTab === 'deleted' ? 'primary' : 'secondary'}
+                  onClick={() => { setActiveTab('deleted'); setSelectedIds([]) }}
+                >
+                  Purged
+                </ToolbarButton>
+              </ToolbarGroup>
+            )}
+          </>
+        }
+        right={
+          viewMode !== 'map' ? (
+            <ToolbarGroup>
+              <ToolbarSearch 
+                value={searchTerm} 
+                onChange={e => setSearchTerm(e.target.value)} 
+                placeholder="Search assets..." 
+              />
+              
+              <div className="relative bulk-menu-container">
+                <button 
+                  onClick={() => setShowBulkMenu(!showBulkMenu)} 
+                  disabled={selectedIds.length === 0} 
+                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 transition-all ${selectedIds.length > 0 ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-700 cursor-not-allowed'}`}
+                >
+                  <MoreVertical size={18}/>
+                  {selectedIds.length > 0 && <span className="text-[10px] font-black">{selectedIds.length}</span>}
                 </button>
-                <button onClick={() => { setViewMode('report'); setShowStyleLab(false); }} className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center space-x-2 ${viewMode === 'report' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                    <FileText size={14}/> <span>List</span>
-                </button>
-                <button onClick={() => { setViewMode('map'); setShowStyleLab(false); }} className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center space-x-2 ${viewMode === 'map' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                    <Globe size={14}/> <span>Map</span>
-                </button>
-           </div>
+                <AnimatePresence>
+                  {showBulkMenu && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-50 p-2 space-y-1">
+                      <p className="px-3 py-2 text-[8px] font-bold text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">{selectedIds.length} Assets Selected</p>
+                      {activeTab === 'deleted' ? (
+                        <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
+                      ) : (
+                        <>
+                            <button onClick={() => { setIsBulkStatusOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-blue-400 transition-all">Set Status...</button>
+                            <button onClick={() => { setIsBulkEnvOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-slate-400 transition-all">Set Environment...</button>
+                        </>
+                      )}
+                      <div className="h-px bg-white/5 mx-2 my-1" />
+                      <button onClick={() => { 
+                          const title = activeTab === 'deleted' ? 'Purge Assets' : 'Soft Delete'
+                          const msg = activeTab === 'deleted' ? 'PURGE PERMANENTLY?' : 'Soft-delete assets?'
+                          openConfirm(title, msg, () => bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' }))
+                        }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">{activeTab === 'deleted' ? 'Bulk Purge' : 'Bulk Delete'}</button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
-           {viewMode !== 'map' && (
-             <div className="flex bg-white/5 p-1 rounded-lg border border-white/5">
-                  <button onClick={() => { setActiveTab('inventory'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'inventory' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                      Existing
-                  </button>
-                  <button onClick={() => { setActiveTab('deleted'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                      Purged
-                  </button>
-             </div>
-           )}
-        </div>
-
-        {viewMode !== 'map' && (
-          <div className="flex items-center space-x-3">
-            <div className="relative">
-               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-               <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search assets..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
-            </div>
-
-            <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5">
-               <button 
-                  onClick={() => setShowStyleLab(!showStyleLab)} 
-                  className={`p-1.5 rounded-lg transition-all ${showStyleLab ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-slate-500 hover:text-blue-400'}`}
-                  title="Style Laboratory"
-               >
-                  <Activity size={16} />
-               </button>
-               <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Registry Config">
-                  <Settings size={16} />
-               </button>
-            </div>
-
-            <div className="relative bulk-menu-container">
-              <button onClick={() => setShowBulkMenu(!showBulkMenu)} disabled={selectedIds.length === 0} className={`p-1.5 rounded-lg border transition-all ${selectedIds.length > 0 ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-700 cursor-not-allowed'}`}><MoreVertical size={18}/></button>
-              <AnimatePresence>
-                {showBulkMenu && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-50 p-2 space-y-1">
-                     <p className="px-3 py-2 text-[8px] font-bold text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">{selectedIds.length} Assets Selected</p>
-                     {activeTab === 'deleted' ? (
-                       <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
-                     ) : (
-                       <>
-                          <button onClick={() => { setIsBulkStatusOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-blue-400 transition-all">Set Status...</button>
-                          <button onClick={() => { setIsBulkEnvOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-slate-400 transition-all">Set Environment...</button>
-                       </>
-                     )}
-                     <div className="h-px bg-white/5 mx-2 my-1" />
-                     <button onClick={() => { 
-                         const title = activeTab === 'deleted' ? 'Purge Assets' : 'Soft Delete'
-                         const msg = activeTab === 'deleted' ? 'PURGE PERMANENTLY?' : 'Soft-delete assets?'
-                         openConfirm(title, msg, () => bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' }))
-                      }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">{activeTab === 'deleted' ? 'Bulk Purge' : 'Bulk Delete'}</button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Register Asset</button>
-          </div>
-        )}
-      </div>
+              <ToolbarButton 
+                active={showStyleLab} 
+                onClick={() => setShowStyleLab(!showStyleLab)} 
+              >
+                <Activity size={16} />
+              </ToolbarButton>
+            </ToolbarGroup>
+          ) : null
+        }
+      />
 
       <AnimatePresence>
         {showStyleLab && (
@@ -1390,55 +1449,42 @@ export default function AssetGrid() {
         variant={confirmModal.variant}
       />
 
-      <AnimatePresence>
-        {activeModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[950px] max-h-[90vh] overflow-y-auto p-10 rounded-lg border border-blue-500/30 custom-scrollbar">
-               <div className="flex items-center justify-between border-b border-white/5 pb-6">
-                  <h2 className="text-2xl font-bold uppercase flex items-center space-x-4 text-blue-400">
-                     <Package size={28}/> <span>{activeModal.id ? 'MODIFY ASSET CONFIGURATION' : 'New Asset Registration'}</span>
-                  </h2>
-                  <button onClick={() => setActiveModal(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
-               </div>
-               
-               <AssetForm initialData={activeModal} onSave={mutation.mutate} options={options} isSaving={mutation.isPending} />
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <WorkspaceModal
+        isOpen={!!activeModal}
+        onClose={() => setActiveModal(null)}
+        size="workspace"
+        title={activeModal?.id ? 'MODIFY ASSET CONFIGURATION' : 'New Asset Registration'}
+        subtitle={activeModal?.id ? `Instance ID: ${activeModal.id}` : 'Infrastructure Onboarding'}
+        icon={<Package size={20}/>}
+        footerRight={
+          <ToolbarButton onClick={() => setActiveModal(null)}>Close</ToolbarButton>
+        }
+      >
+        <div className="pt-6">
+          <AssetForm initialData={activeModal} onSave={mutation.mutate} options={options} isSaving={mutation.isPending} />
+        </div>
+      </WorkspaceModal>
 
-      <AnimatePresence>
-        {activeDetails && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-lg border border-blue-500/30 flex flex-col">
-               <div className="flex items-center justify-between border-b border-white/5 pb-6">
-                  <div>
-                    <h2 className="text-2xl font-bold uppercase text-blue-400">{activeDetails.name}</h2>
-                    <div className="flex items-center space-x-3 mt-1">
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{activeDetails.system} · {activeDetails.type}</p>
-                      <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <p className="text-[10px] font-mono text-blue-400/80 uppercase tracking-widest" title="Primary IP">{activeDetails.primary_ip || 'NO PRIMARY IP'}</p>
-                      <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <p className="text-[10px] font-mono text-indigo-400/80 uppercase tracking-widest" title="Management IP">{activeDetails.management_ip || 'NO MGMT IP'}</p>
-                      <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">AGE: {activeDetails.hardware_age}</p>
-                    </div>
-                  </div>
-                  <button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
-               </div>
-               
-               <div className="flex-1 overflow-y-auto custom-scrollbar pt-6">
-                 <AssetDetailsView 
-                   device={activeDetails} 
-                   options={options} 
-                   onViewServiceDetails={(s:any) => setActiveServiceDetails(s)}
-                   onEditService={(s:any) => setActiveServiceEdit(s)}
-                 />
-               </div>
-               </motion.div>
-               </div>
-               )}
-               </AnimatePresence>
+      <WorkspaceModal
+        isOpen={!!activeDetails}
+        onClose={() => setActiveDetails(null)}
+        size="workspace"
+        title={activeDetails?.name || 'Asset Details'}
+        subtitle={`${activeDetails?.system} · ${activeDetails?.type} · ${activeDetails?.primary_ip || 'NO IP'}`}
+        icon={<Eye size={20}/>}
+        footerRight={
+          <ToolbarButton onClick={() => setActiveDetails(null)}>Close</ToolbarButton>
+        }
+      >
+        <div className="pt-6">
+          <AssetDetailsView 
+            device={activeDetails} 
+            options={options} 
+            onViewServiceDetails={(s:any) => setActiveServiceDetails(s)}
+            onEditService={(s:any) => setActiveServiceEdit(s)}
+          />
+        </div>
+      </WorkspaceModal>
 
                <SharedServiceModals 
                activeDetails={activeServiceDetails}
@@ -1520,7 +1566,7 @@ const MetadataTab = ({ device, onSave }: { device: any, onSave: (d: any) => void
                 )}
             </div>
             
-            <div className="bg-black/20 rounded-[20px] p-2">
+            <div className="bg-black/20 rounded-lg p-2">
                 {mode === 'view' ? (
                     <MetadataViewer data={localData.metadata_json} />
                 ) : (
@@ -1551,18 +1597,24 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
         onError: (e: any) => toast.error(e.message || 'Failed to update asset')
     })
 
+    const detailTabs = [
+      { id: 'hardware', label: 'Hardware' },
+      { id: 'secrets', label: 'Secrets' },
+      { id: 'relations', label: 'Relations' },
+      { id: 'services', label: 'Services' },
+      { id: 'metadata', label: 'Metadata' }
+    ]
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <div className="flex space-x-1 bg-black/40 p-1 rounded-lg w-fit">
-                    {['hardware', 'secrets', 'relations', 'services', 'metadata'].map(t => (
-                        <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
-                            {t}
-                        </button>
-                    ))}
-                </div>
+                <WorkspaceTabStrip
+                  tabs={detailTabs}
+                  activeTab={tab}
+                  onChange={setTab}
+                />
             </div>
-            <div className="glass-panel rounded-[30px] border-white/5 overflow-hidden p-6">
+            <div className="glass-panel rounded-lg border-white/5 overflow-hidden p-6">
                 {tab === 'metadata' && (
                   <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                     <MetadataTab device={device} onSave={(d:any) => mutation.mutate(d)} />
@@ -1947,7 +1999,7 @@ const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white/5 p-6 rounded-[30px] border border-white/5 space-y-6">
+      <div className="bg-white/5 p-6 rounded-lg border border-white/5 space-y-6">
          <div className="grid grid-cols-11 gap-4 items-end">
             <div className="col-span-3">
                <label className="text-[9px] font-bold text-slate-500 uppercase block mb-2 px-1">Local Asset (A)</label>
@@ -1998,7 +2050,7 @@ const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
          <div className="flex items-center justify-between pt-2 border-t border-white/5">
             <div className="flex items-center space-x-2">
                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Vector Classification:</span>
-               <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">{newRel.relationship_type}</span>
+               <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20">{newRel.relationship_type}</span>
             </div>
             <button 
               onClick={() => { if(!newRel.target_device_id) return toast.error("Select peer asset"); mutation.mutate(newRel) }} 
@@ -2060,7 +2112,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
               <tr key={r.id} className="hover:bg-white/5 transition-colors">
                 <td className="px-4 py-3">
                    {editingId === r.id ? (
-                     <select value={isSource ? editData.source_role : editData.target_role} onChange={e => isSource ? setEditData({...editData, source_role: e.target.value}) : setEditData({...editData, target_role: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[11px] w-full outline-none focus:border-blue-500">
+                     <select value={isSource ? editData.source_role : editData.target_role} onChange={e => isSource ? setEditData({...editData, source_role: e.target.value}) : setEditData({...editData, target_role: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-[11px] w-full outline-none focus:border-blue-500">
                        <option>Consumer</option>
                        <option>Provider</option>
                        <option>Hypervisor</option>
@@ -2083,7 +2135,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
                 </td>
                 <td className="px-4 py-3 text-center">
                   {editingId === r.id ? (
-                    <select value={editData.relationship_type} onChange={e => setEditData({...editData, relationship_type: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[11px] w-full outline-none focus:border-blue-500">
+                    <select value={editData.relationship_type} onChange={e => setEditData({...editData, relationship_type: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-[11px] w-full outline-none focus:border-blue-500">
                       <option>Depends On</option>
                       <option>Hosts</option>
                       <option>Backs Up</option>
@@ -2103,7 +2155,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
                 </td>
                 <td className="px-4 py-3">
                     {editingId === r.id ? (
-                      <select value={!isSource ? editData.source_role : editData.target_role} onChange={e => !isSource ? setEditData({...editData, source_role: e.target.value}) : setEditData({...editData, target_role: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[11px] w-full outline-none focus:border-blue-500">
+                      <select value={!isSource ? editData.source_role : editData.target_role} onChange={e => !isSource ? setEditData({...editData, source_role: e.target.value}) : setEditData({...editData, target_role: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-[11px] w-full outline-none focus:border-blue-500">
                         <option>Consumer</option>
                         <option>Provider</option>
                         <option>Hypervisor</option>
@@ -2546,7 +2598,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                   <Share2 size={18} className="text-blue-400" />
                   <h3 className="text-xs font-black uppercase tracking-widest text-white">Vector Intelligence</h3>
                </div>
-               <div className="px-2 py-0.5 rounded bg-blue-600/20 border border-blue-500/30 text-[8px] font-black text-blue-400 uppercase tracking-widest">
+               <div className="px-2 py-0.5 rounded-lg bg-blue-600/20 border border-blue-500/30 text-[8px] font-black text-blue-400 uppercase tracking-widest">
                  {hasFilter ? `${graphData.nodes.length} NODES` : 'NO FILTER'}
                </div>
             </div>
@@ -2569,7 +2621,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                         <button
                            key={sys}
                            onClick={() => setSelectedSystems(prev => prev.includes(sys) ? prev.filter(s => s !== sys) : [...prev, sys])}
-                           className={`px-2 py-1 rounded text-[8px] font-bold uppercase transition-all border ${selectedSystems.includes(sys) ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20'}`}
+                           className={`px-2 py-1 rounded-lg text-[8px] font-bold uppercase transition-all border ${selectedSystems.includes(sys) ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/5 text-slate-500 hover:border-white/20'}`}
                         >
                            {sys}
                         </button>
@@ -2591,7 +2643,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                         value={assetSearch} 
                         onChange={e => setAssetSearch(e.target.value)}
                         placeholder="FILTER ASSETS..." 
-                        className="w-full bg-black/60 border border-white/5 rounded-md pl-7 pr-3 py-1.5 text-[8px] font-bold text-slate-400 outline-none focus:border-blue-500/30 uppercase"
+                        className="w-full bg-black/60 border border-white/5 rounded-lg pl-7 pr-3 py-1.5 text-[8px] font-bold text-slate-400 outline-none focus:border-blue-500/30 uppercase"
                       />
                     </div>
                     <div className="max-h-32 overflow-y-auto custom-scrollbar bg-black/40 border border-white/5 rounded-lg p-1.5 space-y-0.5">
@@ -2599,7 +2651,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                         <button
                           key={a.id}
                           onClick={() => setSelectedAssetIds(prev => prev.includes(a.id) ? prev.filter(id => id !== a.id) : [...prev, a.id])}
-                          className={`w-full text-left px-2 py-1 rounded text-[8px] font-bold uppercase transition-all ${selectedAssetIds.includes(a.id) ? 'bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 shadow-lg shadow-indigo-500/10' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
+                          className={`w-full text-left px-2 py-1 rounded-lg text-[8px] font-bold uppercase transition-all ${selectedAssetIds.includes(a.id) ? 'bg-indigo-600/30 text-indigo-400 border border-indigo-500/30 shadow-lg shadow-indigo-500/10' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
                         >
                           {a.name}
                         </button>
@@ -2629,7 +2681,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="glass-panel p-6 rounded-lg border border-blue-500/30 shadow-2xl pointer-events-auto space-y-4 bg-slate-900/95 backdrop-blur-xl">
                <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                     <div className="w-10 h-10 rounded bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                     <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
                         <Box size={24} />
                      </div>
                      <div>
@@ -2640,17 +2692,17 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                   <button onClick={() => setSelectedNode(null)} className="text-slate-500 hover:text-white"><X size={14}/></button>
                </div>
                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-2 rounded bg-black/40 border border-white/5">
+                  <div className="p-2 rounded-lg bg-black/40 border border-white/5">
                      <p className="text-[7px] font-bold text-slate-500 uppercase mb-1">Status</p>
                      <p className="text-[9px] font-black text-emerald-400 uppercase">{selectedNode.status}</p>
                   </div>
-                  <div className="p-2 rounded bg-black/40 border border-white/5">
+                  <div className="p-2 rounded-lg bg-black/40 border border-white/5">
                      <p className="text-[7px] font-bold text-slate-500 uppercase mb-1">Type</p>
                      <p className="text-[9px] font-black text-indigo-400 uppercase">{selectedNode.type}</p>
                   </div>
                </div>
                <div className="pt-2">
-                  <button className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-[9px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-500/20">Vector Inspection</button>
+                  <button className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[9px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-500/20">Vector Inspection</button>
                </div>
             </motion.div>
          )}
@@ -2790,10 +2842,10 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
 
       <div className="absolute bottom-6 right-6 flex flex-col gap-2 z-10 pointer-events-none">
          <div className="glass-panel p-2 rounded-lg border border-white/10 flex flex-col gap-1 pointer-events-auto bg-slate-950/80 backdrop-blur-xl">
-            <button onClick={() => fgRef.current?.zoom(fgRef.current?.zoom() * 1.2, 400)} className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Zoom In"><ZoomIn size={16}/></button>
-            <button onClick={() => fgRef.current?.zoom(fgRef.current?.zoom() / 1.2, 400)} className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Zoom Out"><ZoomOut size={16}/></button>
+            <button onClick={() => fgRef.current?.zoom(fgRef.current?.zoom() * 1.2, 400)} className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded-lg transition-all" title="Zoom In"><ZoomIn size={16}/></button>
+            <button onClick={() => fgRef.current?.zoom(fgRef.current?.zoom() / 1.2, 400)} className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded-lg transition-all" title="Zoom Out"><ZoomOut size={16}/></button>
             <div className="h-px bg-white/5 mx-1" />
-            <button onClick={() => fgRef.current?.zoomToFit(400, 50)} className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded transition-all" title="Reset View"><Maximize2 size={16}/></button>
+            <button onClick={() => fgRef.current?.zoomToFit(400, 50)} className="p-2 text-slate-500 hover:text-white hover:bg-white/5 rounded-lg transition-all" title="Reset View"><Maximize2 size={16}/></button>
          </div>
       </div>
     </div>

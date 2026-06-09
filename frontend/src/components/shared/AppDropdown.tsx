@@ -126,7 +126,7 @@ export const AppDropdown = ({
                 placeholder="Search options..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded px-3 py-1.5 text-[10px] text-white focus:outline-none focus:border-blue-500/50"
+                className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] text-white focus:outline-none focus:border-blue-500/50"
               />
             </div>
             <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-1">
@@ -144,7 +144,7 @@ export const AppDropdown = ({
                   >
                     <div className="flex items-center gap-2 truncate">
                       {multi && (
-                        <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${active ? 'bg-white border-white' : 'border-white/20 bg-black/20'}`}>
+                        <div className={`w-3.5 h-3.5 rounded-lg border flex items-center justify-center transition-colors ${active ? 'bg-white border-white' : 'border-white/20 bg-black/20'}`}>
                           {active && <Check size={10} className="text-blue-600" />}
                         </div>
                       )}

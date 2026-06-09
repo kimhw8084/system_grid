@@ -21,7 +21,7 @@ const StatCard = ({ title, total, metrics, icon: Icon, color, onClick, delay = 0
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay, duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-      className="group relative h-full cursor-pointer overflow-hidden rounded-xl border border-white/5 bg-black/20 p-6 backdrop-blur-xl transition-all hover:border-white/10 hover:bg-white/[0.03] shadow-lg"
+      className="group relative h-full cursor-pointer overflow-hidden rounded-lg border border-white/5 bg-black/20 p-6 backdrop-blur-xl transition-all hover:border-white/10 hover:bg-white/[0.03] shadow-lg"
       onClick={onClick}
     >
       <div className={`absolute -right-4 -top-4 h-24 w-24 bg-gradient-to-br ${color} opacity-[0.03] blur-2xl group-hover:opacity-[0.1] transition-opacity`} />
@@ -86,7 +86,7 @@ const SiteClock = ({ site, delay }: any) => {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
-      className="px-4 py-3 bg-white/[0.03] border border-white/5 rounded-xl flex items-center justify-between group hover:border-blue-500/20 transition-all shadow-md"
+      className="px-4 py-3 bg-white/[0.03] border border-white/5 rounded-lg flex items-center justify-between group hover:border-blue-500/20 transition-all shadow-md"
     >
       <div className="flex flex-col">
         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{site.name}</span>
@@ -106,11 +106,11 @@ const RecentListCard = ({ title, items = [], icon: Icon, color, path, delay = 0 
     initial={{ opacity: 0, x: -10 }}
     animate={{ opacity: 1, x: 0 }}
     transition={{ delay, duration: 0.4 }}
-    className="flex flex-col h-full rounded-xl border border-white/5 bg-black/20 p-6 backdrop-blur-xl hover:border-white/10 transition-all group shadow-lg"
+    className="flex flex-col h-full rounded-lg border border-white/5 bg-black/20 p-6 backdrop-blur-xl hover:border-white/10 transition-all group shadow-lg"
   >
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center gap-3">
-        <div className={`p-2.5 rounded-xl bg-gradient-to-br ${color} bg-opacity-10 text-white`}>
+        <div className={`p-2.5 rounded-lg bg-gradient-to-br ${color} bg-opacity-10 text-white`}>
           <Icon size={18} />
         </div>
         <h3 className="text-[12px] font-black uppercase tracking-widest text-white">{title}</h3>
@@ -125,7 +125,7 @@ const RecentListCard = ({ title, items = [], icon: Icon, color, path, delay = 0 
         <Link 
           key={item.id || idx} 
           to={`${path}?id=${item.id}`}
-          className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.05] transition-all group/item"
+          className="flex items-center justify-between p-3.5 rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.05] transition-all group/item"
         >
           <div className="flex flex-col min-w-0">
             <span className="text-[11px] font-bold text-slate-200 uppercase tracking-tight truncate group-hover/item:text-blue-400 transition-colors">{item.title}</span>
@@ -151,14 +151,14 @@ const ProjectSection = ({ title, projects = [], color, delay }: any) => (
     </div>
     <div className="space-y-3">
       {projects && projects.length > 0 ? projects.map((p: any) => (
-        <Link key={p.id} to={`/projects?id=${p.id}`} className="block p-3.5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.05] transition-all group/item shadow-sm">
+        <Link key={p.id} to={`/projects?id=${p.id}`} className="block p-3.5 rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.05] transition-all group/item shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-slate-200 uppercase truncate group-hover/item:text-blue-400">{p.title}</span>
             <span className="text-[9px] font-bold text-slate-600 uppercase shrink-0">{formatAppDay(p.updated_at)}</span>
           </div>
         </Link>
       )) : (
-        <div className="p-4 rounded-xl bg-white/[0.01] border border-dashed border-white/5 text-center">
+        <div className="p-4 rounded-lg bg-white/[0.01] border border-dashed border-white/5 text-center">
            <span className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">No Projects Found</span>
         </div>
       )}
@@ -245,7 +245,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
         <div className="flex items-center gap-6">
            <div className="relative group">
               <div className="absolute inset-0 bg-blue-600/30 blur-2xl rounded-full group-hover:bg-blue-600/50 transition-colors" />
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center border border-white/20 shadow-2xl relative z-10">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center border border-white/20 shadow-2xl relative z-10">
                  <Grid3X3 size={32} className="text-white" />
               </div>
            </div>
@@ -271,12 +271,12 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                 value={globalSearch}
                 onChange={e => setGlobalSearch(e.target.value)}
                 placeholder="Find assets, projects, or incidents..."
-                className="w-full bg-black/40 border border-white/5 rounded-xl pl-12 pr-4 py-3.5 text-[11px] font-bold text-white outline-none focus:border-blue-500/50 focus:bg-white/[0.03] transition-all shadow-inner"
+                className="w-full bg-black/40 border border-white/5 rounded-lg pl-12 pr-4 py-3.5 text-[11px] font-bold text-white outline-none focus:border-blue-500/50 focus:bg-white/[0.03] transition-all shadow-inner"
               />
            </div>
         </form>
 
-        <div className="flex items-center gap-8 bg-black/30 px-8 py-4 rounded-xl border border-white/5 backdrop-blur-xl">
+        <div className="flex items-center gap-8 bg-black/30 px-8 py-4 rounded-lg border border-white/5 backdrop-blur-xl">
            <Link to="/asset" className="flex flex-col items-center hover:opacity-70 transition-opacity">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nodes</span>
               <span className="text-2xl font-black text-white tabular-nums">{metrics?.asset_overview.total || 0}</span>
@@ -327,21 +327,21 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
               delay={0.3}
            />
            <div className="grid grid-rows-2 gap-4">
-              <div className="glass-panel p-6 rounded-xl border-white/5 bg-gradient-to-br from-emerald-600/10 to-transparent flex items-center justify-between group hover:border-emerald-500/20 transition-all cursor-pointer shadow-lg" onClick={() => onNavigate('racks')}>
+              <div className="glass-panel p-6 rounded-lg border-white/5 bg-gradient-to-br from-emerald-600/10 to-transparent flex items-center justify-between group hover:border-emerald-500/20 transition-all cursor-pointer shadow-lg" onClick={() => onNavigate('racks')}>
                  <div>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Infrastructure Racks</p>
                     <h3 className="text-3xl font-black text-white tracking-tighter tabular-nums">{metrics?.rack_overview.total_racks}</h3>
                  </div>
-                 <div className="w-12 h-12 rounded-xl bg-emerald-600/20 flex items-center justify-center text-emerald-400 border border-emerald-500/20 group-hover:scale-110 transition-transform">
+                 <div className="w-12 h-12 rounded-lg bg-emerald-600/20 flex items-center justify-center text-emerald-400 border border-emerald-500/20 group-hover:scale-110 transition-transform">
                     <Box size={24} />
                  </div>
               </div>
-              <div className="glass-panel p-6 rounded-xl border-white/5 bg-gradient-to-br from-rose-600/10 to-transparent flex items-center justify-between group hover:border-rose-500/20 transition-all cursor-pointer shadow-lg" onClick={() => onNavigate('monitoring')}>
+              <div className="glass-panel p-6 rounded-lg border-white/5 bg-gradient-to-br from-rose-600/10 to-transparent flex items-center justify-between group hover:border-rose-500/20 transition-all cursor-pointer shadow-lg" onClick={() => onNavigate('monitoring')}>
                  <div>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Active Monitors</p>
                     <h3 className="text-3xl font-black text-white tracking-tighter tabular-nums">{metrics?.monitoring_overview.total}</h3>
                  </div>
-                 <div className="w-12 h-12 rounded-xl bg-rose-600/20 flex items-center justify-center text-rose-400 border border-rose-500/20 group-hover:scale-110 transition-transform">
+                 <div className="w-12 h-12 rounded-lg bg-rose-600/20 flex items-center justify-center text-rose-400 border border-rose-500/20 group-hover:scale-110 transition-transform">
                     <Activity size={24} />
                  </div>
               </div>
@@ -350,7 +350,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
 
         {/* Second Level: Mid-Sized Detail Cards */}
         <div className="grid grid-cols-4 gap-6">
-           <div className="glass-panel p-8 rounded-xl border-white/5 bg-gradient-to-br from-blue-600/10 to-transparent flex flex-col group h-[320px] shadow-xl">
+           <div className="glass-panel p-8 rounded-lg border-white/5 bg-gradient-to-br from-blue-600/10 to-transparent flex flex-col group h-[320px] shadow-xl">
               <div className="flex items-center justify-between mb-6">
                  <div>
                     <p className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-400">
@@ -360,37 +360,37 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                       {userProfile?.username || 'SYSTEM'}
                     </h3>
                  </div>
-                 <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4 text-blue-400">
+                 <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 text-blue-400">
                     <Target size={22} />
                  </div>
               </div>
 
               <div className="space-y-4">
-                 <div className="flex justify-between items-center p-4 rounded-xl border border-white/5 bg-black/40">
+                 <div className="flex justify-between items-center p-4 rounded-lg border border-white/5 bg-black/40">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Active Incidents</span>
                     <span className="text-xl font-black text-rose-400 tabular-nums">{metrics?.critical_alerts?.length || 0}</span>
                  </div>
-                 <div className="flex justify-between items-center p-4 rounded-xl border border-white/5 bg-black/40">
+                 <div className="flex justify-between items-center p-4 rounded-lg border border-white/5 bg-black/40">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total Audits</span>
                     <span className="text-xl font-black text-white tabular-nums">{metrics?.recent.activity?.length || 0}</span>
                  </div>
               </div>
 
               <div className="mt-auto grid grid-cols-2 gap-3">
-                 <button onClick={() => navigate('/monitoring')} className="rounded-xl border border-blue-500/20 bg-blue-600 text-white px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-blue-500 shadow-lg shadow-blue-500/20">
+                 <button onClick={() => navigate('/monitoring')} className="rounded-lg border border-blue-500/20 bg-blue-600 text-white px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-blue-500 shadow-lg shadow-blue-500/20">
                     Review Monitoring
                  </button>
-                 <button onClick={() => navigate('/logs')} className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-300 transition-all hover:bg-white/[0.08]">
+                 <button onClick={() => navigate('/logs')} className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-300 transition-all hover:bg-white/[0.08]">
                     Audit Log
                  </button>
               </div>
            </div>
 
            {/* Activity Feed */}
-           <div className="glass-panel p-8 rounded-xl border-white/5 bg-black/20 flex flex-col group h-[320px] shadow-xl">
+           <div className="glass-panel p-8 rounded-lg border-white/5 bg-black/20 flex flex-col group h-[320px] shadow-xl">
               <div className="flex items-center justify-between mb-8">
                  <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-blue-600/10 text-blue-400 border border-blue-500/20">
+                    <div className="p-3 rounded-lg bg-blue-600/10 text-blue-400 border border-blue-500/20">
                        <History size={18} />
                     </div>
                     <h3 className="text-[12px] font-black uppercase tracking-widest text-white">Execution Stream</h3>
@@ -399,7 +399,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
               </div>
               <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar pr-2">
                  {metrics?.recent.activity?.map((log: any) => (
-                    <div key={log.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] transition-all group/log">
+                    <div key={log.id} className="p-4 rounded-lg bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] transition-all group/log">
                        <div className="flex items-center justify-between mb-2">
                           <span className="text-[9px] font-black text-blue-400 uppercase tracking-tighter">{log.user}</span>
                           <span className="text-[9px] font-bold text-slate-600 uppercase tabular-nums">
@@ -419,9 +419,9 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
            </div>
 
            {/* Quick Actions */}
-           <div className="glass-panel p-8 rounded-xl border-white/5 bg-black/20 flex flex-col group h-[320px] shadow-xl">
+           <div className="glass-panel p-8 rounded-lg border-white/5 bg-black/20 flex flex-col group h-[320px] shadow-xl">
               <div className="flex items-center gap-4 mb-8">
-                 <div className="p-3 rounded-xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/20">
+                 <div className="p-3 rounded-lg bg-emerald-600/20 text-emerald-400 border border-emerald-500/20">
                     <Zap size={18} />
                  </div>
                  <h3 className="text-[12px] font-black uppercase tracking-widest text-white">Direct Access</h3>
@@ -438,7 +438,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                     <button 
                       key={i} 
                       onClick={() => navigate(act.path)}
-                      className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all group/btn"
+                      className="flex flex-col items-center justify-center gap-2 p-4 rounded-lg bg-white/[0.02] border border-white/5 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all group/btn"
                     >
                        <act.icon size={20} className="text-slate-500 group-hover/btn:text-blue-400 transition-colors" />
                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest group-hover/btn:text-white transition-colors text-center leading-none">{act.label}</span>
@@ -448,9 +448,9 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
            </div>
 
            {/* Site Clocks */}
-           <div className="glass-panel p-8 rounded-xl border-white/5 bg-black/20 flex flex-col group h-[320px] shadow-xl">
+           <div className="glass-panel p-8 rounded-lg border-white/5 bg-black/20 flex flex-col group h-[320px] shadow-xl">
               <div className="flex items-center gap-4 mb-8">
-                 <div className="p-3 rounded-xl bg-amber-600/20 text-amber-400 border border-amber-500/20">
+                 <div className="p-3 rounded-lg bg-amber-600/20 text-amber-400 border border-amber-500/20">
                     <Globe size={18} />
                  </div>
                  <h3 className="text-[12px] font-black uppercase tracking-widest text-white">Global Chronos</h3>
@@ -481,12 +481,12 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.8 }}
-              className="flex flex-col h-full rounded-xl border border-white/5 bg-black/20 p-8 backdrop-blur-xl hover:border-white/10 transition-all group overflow-hidden relative shadow-xl"
+              className="flex flex-col h-full rounded-lg border border-white/5 bg-black/20 p-8 backdrop-blur-xl hover:border-white/10 transition-all group overflow-hidden relative shadow-xl"
            >
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 rounded-bl-full blur-3xl" />
               <div className="flex items-center justify-between mb-8 relative z-10">
                  <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/20">
+                    <div className="p-3 rounded-lg bg-emerald-600/20 text-emerald-400 border border-emerald-500/20">
                        <Briefcase size={18} />
                     </div>
                     <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-white">Project Pipeline</h3>

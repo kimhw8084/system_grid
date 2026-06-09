@@ -96,7 +96,7 @@ const CopyButton = ({ value, label }: { value: string, label?: string }) => {
     setTimeout(() => setCopied(false), 2000);
   };
   return (
-    <button onClick={handleCopy} className="p-1 hover:bg-white/10 rounded transition-all text-slate-500 hover:text-blue-400">
+    <button onClick={handleCopy} className="p-1 hover:bg-white/10 rounded-lg transition-all text-slate-500 hover:text-blue-400">
       {copied ? <Check size={10} /> : <Clipboard size={10} />}
     </button>
   );
@@ -314,7 +314,7 @@ const AssetServicesTable = ({ deviceId, onViewDetails, onEdit }: { deviceId: num
                 {s.purpose ? <span title={s.purpose}>{s.purpose}</span> : '-'}
               </td>
               <td className="px-4 py-3 text-center">
-                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
+                 <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase border ${
                     s.status === 'Running' || s.status === 'Active' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' :
                     s.status === 'Stopped' ? 'text-slate-400 border-slate-500/20 bg-slate-500/5' :
                     s.status === 'Maintenance' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' :
@@ -516,8 +516,8 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
             {error && <div className="flex items-center space-x-1 text-rose-500"><AlertCircle size={12} className="animate-pulse" /><span className="text-[8px] font-bold uppercase tracking-tighter">{error}</span></div>}
          </div>
          <div className="flex bg-black/40 rounded-lg p-1">
-            <button onClick={() => setMode('table')} className={`px-2 py-1 rounded-md transition-all ${mode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><List size={12}/></button>
-            <button onClick={() => setMode('json')} className={`px-2 py-1 rounded-md transition-all ${mode === 'json' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><FileJson size={12}/></button>
+            <button onClick={() => setMode('table')} className={`px-2 py-1 rounded-lg transition-all ${mode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><List size={12}/></button>
+            <button onClick={() => setMode('json')} className={`px-2 py-1 rounded-lg transition-all ${mode === 'json' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><FileJson size={12}/></button>
          </div>
       </div>
       <div className="p-4 min-h-[120px]">
@@ -620,7 +620,7 @@ const MiniMonitoringTable = ({ deviceId }: { deviceId: number }) => {
               <td className="px-4 py-3 font-bold text-slate-400 uppercase">{m.category}</td>
               <td className="px-4 py-3 font-bold text-white group-hover:text-blue-400 transition-colors">{m.title}</td>
               <td className="px-4 py-3 text-center">
-                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
+                 <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase border ${
                     m.status === 'Healthy' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' :
                     m.status === 'Degraded' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' :
                     'text-rose-400 border-rose-500/20 bg-rose-500/5'
@@ -876,7 +876,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="font-bold text-[11px] uppercase tracking-tighter truncate pr-2">{a.name}</span>
-                <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded border ${
+                <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-lg border ${
                   a.status === 'Active' ? 'bg-emerald-500/20 border-emerald-500/20 text-emerald-400' :
                   a.status === 'Maintenance' ? 'bg-amber-500/20 border-amber-500/20 text-amber-400' :
                   a.status === 'Failed' ? 'bg-rose-500/20 border-rose-500/20 text-rose-400' :
@@ -1307,13 +1307,13 @@ const AssetComparisonView = ({ assets, selectedIds, onBack, onSync }: { assets: 
                                                 })
                                                 setSyncTargets(selectedAssets.filter(a => a.id !== asset.id).map(a => a.id))
                                               }}
-                                              className="p-1.5 bg-blue-600 text-white rounded shadow-lg hover:scale-110 active:scale-95 transition-all"
+                                              className="p-1.5 bg-blue-600 text-white rounded-lg shadow-lg hover:scale-110 active:scale-95 transition-all"
                                               title={`Sync all to this ${field.label}`}
                                             >
                                               <RefreshCw size={10} />
                                             </button>
                                           ) : (
-                                            <div className="p-1.5 bg-slate-800 text-slate-500 rounded cursor-not-allowed" title="Unique Identifier: Sync Disabled">
+                                            <div className="p-1.5 bg-slate-800 text-slate-500 rounded-lg cursor-not-allowed" title="Unique Identifier: Sync Disabled">
                                               <Shield size={10} />
                                             </div>
                                           )}
@@ -1348,7 +1348,7 @@ const AssetComparisonView = ({ assets, selectedIds, onBack, onSync }: { assets: 
                  initial={{ scale: 0.96, opacity: 0 }}
                  animate={{ scale: 1, opacity: 1 }}
                  exit={{ scale: 0.96, opacity: 0 }}
-                 className="w-full max-w-2xl rounded-2xl border border-white/10 bg-slate-950 p-6 shadow-2xl"
+                 className="w-full max-w-2xl rounded-lg border border-white/10 bg-slate-950 p-6 shadow-2xl"
                >
                  <div className="flex items-start justify-between gap-4">
                    <div>
@@ -1363,7 +1363,7 @@ const AssetComparisonView = ({ assets, selectedIds, onBack, onSync }: { assets: 
                    </button>
                  </div>
 
-                 <div className="mt-5 rounded-xl border border-white/5 bg-black/30 p-4">
+                 <div className="mt-5 rounded-lg border border-white/5 bg-black/30 p-4">
                    <p className="mb-3 text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Apply To Selected Targets</p>
                    <div className="space-y-2">
                      {selectedAssets.filter(asset => asset.id !== pendingSync.sourceId).map(asset => (
@@ -1433,22 +1433,22 @@ const AssetInsightBar = ({ assets }: any) => {
 
   return (
     <div className="grid grid-cols-4 gap-6 mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
-       <div className="bg-black/40 border border-white/5 p-6 rounded-2xl backdrop-blur-xl shadow-xl group hover:border-rose-500/20 transition-all">
+       <div className="bg-black/40 border border-white/5 p-6 rounded-lg backdrop-blur-xl shadow-xl group hover:border-rose-500/20 transition-all">
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-rose-400 transition-colors">Operational Health</p>
           <div className="flex items-center gap-4">
              <div className={`w-3 h-3 rounded-full ${insights.critical > 0 ? 'bg-rose-500 animate-pulse shadow-[0_0_12px_rgba(244,63,94,0.5)]' : 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]'}`} />
              <h4 className="text-2xl font-black text-white tracking-tighter">{insights.critical > 0 ? `${insights.critical} Critical Alerts` : 'System Nominal'}</h4>
           </div>
        </div>
-       <div className="bg-black/40 border border-white/5 p-6 rounded-2xl backdrop-blur-xl shadow-xl group hover:border-blue-500/20 transition-all">
+       <div className="bg-black/40 border border-white/5 p-6 rounded-lg backdrop-blur-xl shadow-xl group hover:border-blue-500/20 transition-all">
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-blue-400 transition-colors">Ecosystem Breadth</p>
           <h4 className="text-2xl font-black text-blue-400 tracking-tighter">{insights.systems} Active Systems</h4>
        </div>
-       <div className="bg-black/40 border border-white/5 p-6 rounded-2xl backdrop-blur-xl shadow-xl group hover:border-emerald-500/20 transition-all">
+       <div className="bg-black/40 border border-white/5 p-6 rounded-lg backdrop-blur-xl shadow-xl group hover:border-emerald-500/20 transition-all">
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-emerald-400 transition-colors">Human Activity</p>
           <h4 className="text-2xl font-black text-emerald-400 tracking-tighter">{insights.recent} Updates (24H)</h4>
        </div>
-       <div className="bg-blue-600/10 border border-blue-500/20 p-6 rounded-2xl backdrop-blur-xl shadow-xl flex items-center justify-between group hover:bg-blue-600/20 transition-all">
+       <div className="bg-blue-600/10 border border-blue-500/20 p-6 rounded-lg backdrop-blur-xl shadow-xl flex items-center justify-between group hover:bg-blue-600/20 transition-all">
           <div>
              <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-1">Registry Density</p>
              <h4 className="text-2xl font-black text-white tracking-tighter">{assets.length} Global Nodes</h4>
@@ -1818,7 +1818,7 @@ export default function Assets() {
         }
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+            <div className={`flex items-center justify-center w-24 h-5 rounded-lg border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
               <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">
                 {p.value || 'Unknown'}
               </span>
@@ -1886,7 +1886,7 @@ export default function Assets() {
       headerClass: 'text-center',
       cellRenderer: (p: any) => p.value > 0 ? (
         <div className="flex items-center justify-center h-full w-full">
-           <div className="flex items-center space-x-1 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded-md text-rose-500">
+           <div className="flex items-center space-x-1 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded-lg text-rose-500">
               <AlertCircle size={10} className="animate-pulse" />
               <span style={{ fontSize: `${fontSize}px` }} className="font-bold">{p.value}</span>
            </div>
@@ -1992,7 +1992,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
     >
        <div className="p-8 border-b border-white/5 flex items-center justify-between bg-blue-600/5">
           <div className="flex items-center gap-4">
-             <div className="p-3 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/20">
+             <div className="p-3 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/20">
                 <Search size={24} />
              </div>
              <div>
@@ -2007,14 +2007,14 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
 
        <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-8">
           <div className="grid grid-cols-2 gap-4">
-             <div className="p-4 bg-black/40 border border-white/5 rounded-xl">
+             <div className="p-4 bg-black/40 border border-white/5 rounded-lg">
                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Status</p>
                 <div className="flex items-center gap-2">
                    <div className={`w-2 h-2 rounded-full ${asset.status === 'Active' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                    <span className={`text-xs font-black uppercase ${asset.status === 'Active' ? 'text-emerald-400' : 'text-amber-400'}`}>{asset.status}</span>
                 </div>
              </div>
-             <div className="p-4 bg-black/40 border border-white/5 rounded-xl">
+             <div className="p-4 bg-black/40 border border-white/5 rounded-lg">
                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Environment</p>
                 <span className="text-xs font-black uppercase text-blue-400">{asset.environment}</span>
              </div>
@@ -2042,7 +2042,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
           <div className="pt-8">
              <button 
                onClick={() => onEdit(asset)}
-               className="w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase text-[11px] tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-500 transition-all flex items-center justify-center gap-3"
+               className="w-full py-4 bg-blue-600 text-white rounded-lg font-black uppercase text-[11px] tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-500 transition-all flex items-center justify-center gap-3"
              >
                 <Edit2 size={16} />
                 Engage Full Configuration
@@ -2190,7 +2190,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
 
       {/* STYLE LABORATORY BAR REMOVED AND MOVED TO SIDEBAR */}
       {viewMode === 'grid' ? (
-        <div className="flex-1 w-full glass-panel rounded-xl overflow-hidden ag-theme-alpine-dark relative shadow-2xl border border-white/5">
+        <div className="flex-1 w-full glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative shadow-2xl border border-white/5">
           {isLoading && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
                <RefreshCcw size={32} className="animate-spin" />
@@ -2252,7 +2252,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
                           }}
                           className="sr-only"
                         />
-                        <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
+                        <div className={`w-4 h-4 rounded-lg border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
                            {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
                         </div>
                       </div>
@@ -2592,7 +2592,7 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-1">
                       <span className="text-indigo-400 font-black uppercase tracking-tighter">{c.farm || 'N/A'}</span>
-                      <span className={`w-fit px-1.5 py-0.5 rounded text-[8px] font-black uppercase border ${statusColors[c.status] || 'text-slate-400 bg-white/5 border-white/10'}`}>
+                      <span className={`w-fit px-1.5 py-0.5 rounded-lg text-[8px] font-black uppercase border ${statusColors[c.status] || 'text-slate-400 bg-white/5 border-white/10'}`}>
                         {c.status || 'Active'}
                       </span>
                     </div>
@@ -2771,7 +2771,7 @@ const DevicePortGrid = ({ device, connections, templates }: { device: any, conne
                     {p.name}
                   </div>
                   
-                  <div className={`w-8 h-6 rounded-md border flex items-center justify-center transition-all
+                  <div className={`w-8 h-6 rounded-lg border flex items-center justify-center transition-all
                     ${isDrift ? 'border-amber-500/50 bg-amber-500/10 text-amber-400' : (isActive ? (isLogical ? 'border-blue-500/50 bg-blue-500/10 text-blue-400' : 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400') : 'border-white/10 bg-slate-900 text-slate-700')}`}
                   >
                     {p.type === 'SFP+' ? <Zap size={12} /> : (p.type === 'Virtual' ? <Globe size={12} /> : <div className="grid grid-cols-2 gap-0.5">
@@ -2786,7 +2786,7 @@ const DevicePortGrid = ({ device, connections, templates }: { device: any, conne
                     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-48 bg-slate-900 border border-white/10 p-3 rounded-lg shadow-2xl backdrop-blur-xl">
                         {isDrift && (
-                          <div className="mb-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded-md">
+                          <div className="mb-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                              <div className="flex items-center gap-1 text-[8px] font-black text-amber-400 uppercase tracking-widest mb-1">
                                 <AlertTriangle size={10} /> Forensic Drift Detected
                              </div>
@@ -3035,7 +3035,7 @@ const SecurityTab = ({ device }: { device: any }) => {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <span className="px-2 py-0.5 rounded bg-black/40 border border-white/10 text-indigo-400 font-bold text-[10px]">
+                    <span className="px-2 py-0.5 rounded-lg bg-black/40 border border-white/10 text-indigo-400 font-bold text-[10px]">
                       {r.protocol} // {r.port_range}
                     </span>
                   </td>
@@ -3093,7 +3093,7 @@ const MonitoringTab = ({ deviceId }: { deviceId: number }) => {
                        <h4 className="text-sm font-bold text-white uppercase tracking-tight">{item.title}</h4>
                        <div className="flex items-center space-x-3 mt-1">
                           <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{item.category} // {item.platform}</span>
-                          <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest border ${
+                          <span className={`px-2 py-0.5 rounded-lg text-[8px] font-bold uppercase tracking-widest border ${
                              item.status === 'Existing' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' :
                              'text-blue-400 border-blue-500/20 bg-blue-500/5'
                           }`}>{item.status}</span>
@@ -3243,7 +3243,7 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
 
     return (
         <div className="space-y-6">
-            <div className="rounded-2xl border border-blue-500/20 bg-gradient-to-r from-blue-600/10 to-transparent p-5">
+            <div className="rounded-lg border border-blue-500/20 bg-gradient-to-r from-blue-600/10 to-transparent p-5">
                 <div className="flex items-start justify-between gap-6">
                     <div>
                         <p className="text-[9px] font-black uppercase tracking-[0.28em] text-blue-400">Asset Command Workspace</p>
@@ -3261,7 +3261,7 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
                           { label: 'Runbooks', value: runbookCount, tone: 'text-amber-400' },
                           { label: 'Maintenance', value: maintenanceCount, tone: 'text-fuchsia-400' }
                         ].map((item) => (
-                          <div key={item.label} className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-center">
+                          <div key={item.label} className="rounded-lg border border-white/10 bg-black/20 px-4 py-3 text-center">
                               <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500">{item.label}</p>
                               <p className={`mt-1 text-2xl font-black tabular-nums ${item.tone}`}>{item.value}</p>
                           </div>
@@ -3273,35 +3273,35 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
                     <button
                       disabled={!consoleUrl}
                       onClick={() => consoleUrl && window.open(consoleUrl, '_blank')}
-                      className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-200 transition-all hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-30"
+                      className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-200 transition-all hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-30"
                     >
                       Open Console
                     </button>
-                    <button onClick={() => setTab('services')} className="rounded-xl border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-blue-400 transition-all hover:bg-blue-500/20">
+                    <button onClick={() => setTab('services')} className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-blue-400 transition-all hover:bg-blue-500/20">
                       Focus Services
                     </button>
-                    <button onClick={() => setTab('monitoring')} className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-emerald-400 transition-all hover:bg-emerald-500/20">
+                    <button onClick={() => setTab('monitoring')} className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-emerald-400 transition-all hover:bg-emerald-500/20">
                       Focus Monitoring
                     </button>
-                    <button onClick={() => setTab('network')} className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-indigo-400 transition-all hover:bg-indigo-500/20">
+                    <button onClick={() => setTab('network')} className="rounded-lg border border-indigo-500/20 bg-indigo-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-indigo-400 transition-all hover:bg-indigo-500/20">
                       Focus Network
                     </button>
                     <button
                       disabled={!farModes?.[0]?.id}
                       onClick={() => farModes?.[0]?.id && navigate(`/far?id=${farModes[0].id}`)}
-                      className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-rose-400 transition-all hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-30"
+                      className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-rose-400 transition-all hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-30"
                     >
                       Open FAR
                     </button>
                     <button
                       onClick={() => navigate(`/logs?target_table=devices&target_id=${device.id}`)}
-                      className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-200 transition-all hover:bg-white/[0.08]"
+                      className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-200 transition-all hover:bg-white/[0.08]"
                     >
                       Audit Trail
                     </button>
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-amber-500/15 bg-amber-500/[0.05] p-4">
+                <div className="mt-4 rounded-lg border border-amber-500/15 bg-amber-500/[0.05] p-4">
                     <div className="flex items-center justify-between gap-4">
                         <div>
                             <p className="text-[9px] font-black uppercase tracking-[0.24em] text-amber-300">Suggested Runbooks Now</p>
@@ -3309,14 +3309,14 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
                         </div>
                         <button
                           onClick={() => navigate(`/knowledge?device_id=${device.id}${primaryMonitoringId ? `&monitoring_id=${primaryMonitoringId}` : ''}&mode=incident`)}
-                          className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-amber-300 transition-all hover:bg-amber-500/20"
+                          className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-amber-300 transition-all hover:bg-amber-500/20"
                         >
                           Open Knowledge Context
                         </button>
                     </div>
                     <div className="mt-3 grid grid-cols-3 gap-3">
                         {Array.isArray(suggestedKnowledge) && suggestedKnowledge.slice(0, 3).map((entry: any) => (
-                          <button key={entry.id} onClick={() => navigate(`/knowledge?id=${entry.id}`)} className="rounded-xl border border-white/5 bg-black/20 px-3 py-3 text-left hover:bg-white/[0.06] transition-all">
+                          <button key={entry.id} onClick={() => navigate(`/knowledge?id=${entry.id}`)} className="rounded-lg border border-white/5 bg-black/20 px-3 py-3 text-left hover:bg-white/[0.06] transition-all">
                             <p className="text-[10px] font-black uppercase tracking-tight text-white">{entry.title}</p>
                             <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500">
                               {entry.metadata_json?.entry_type || entry.category} // {entry.metadata_json?.verification?.state || entry.status}
@@ -3329,7 +3329,7 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
             </div>
 
             <div className="grid grid-cols-3 gap-4">
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="rounded-lg border border-white/10 bg-black/20 p-4">
                     <p className="text-[9px] font-black uppercase tracking-[0.22em] text-emerald-400">Incident Flow</p>
                     <div className="mt-3 space-y-2">
                         {Array.isArray(monitoringItems) && monitoringItems.slice(0, 3).map((item: any) => (
@@ -3342,7 +3342,7 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="rounded-lg border border-white/10 bg-black/20 p-4">
                     <p className="text-[9px] font-black uppercase tracking-[0.22em] text-amber-400">Runbooks & Knowledge</p>
                     <div className="mt-3 space-y-2">
                         {Array.isArray(relatedKnowledge) && relatedKnowledge.slice(0, 3).map((entry: any) => (
@@ -3355,7 +3355,7 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="rounded-lg border border-white/10 bg-black/20 p-4">
                     <p className="text-[9px] font-black uppercase tracking-[0.22em] text-fuchsia-400">Recent Change & Care</p>
                     <div className="mt-3 space-y-2">
                         {Array.isArray(maintenanceWindows) && maintenanceWindows.slice(0, 2).map((window: any) => (
@@ -3393,7 +3393,7 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
                       onClick={() => setShowFarRisks(!showFarRisks)}
                       className="group flex items-center space-x-3 px-4 py-2 bg-rose-500/10 border border-rose-500/20 rounded-lg hover:bg-rose-500/20 transition-all animate-pulse hover:animate-none"
                     >
-                       <div className="p-1 bg-rose-500 rounded-md text-white">
+                       <div className="p-1 bg-rose-500 rounded-lg text-white">
                           <AlertTriangle size={14} />
                        </div>
                        <div className="text-left">
@@ -3408,7 +3408,7 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
                           initial={{ opacity: 0, y: 10, scale: 0.95 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="absolute top-full right-0 mt-3 w-80 bg-slate-950 border border-rose-500/30 rounded-xl shadow-2xl p-4 z-50 backdrop-blur-xl"
+                          className="absolute top-full right-0 mt-3 w-80 bg-slate-950 border border-rose-500/30 rounded-lg shadow-2xl p-4 z-50 backdrop-blur-xl"
                         >
                            <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
                               <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-[0.2em]">FAR Risk Registry</h4>
@@ -3419,7 +3419,7 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
                                 <div key={m.id} className="p-3 bg-white/5 rounded-lg border border-white/5 hover:border-rose-500/20 transition-all group">
                                    <div className="flex items-start justify-between">
                                       <p className="text-[10px] font-bold text-white uppercase leading-tight group-hover:text-rose-300 transition-colors">{m.title}</p>
-                                      <span className={`px-1.5 py-0.5 rounded text-[8px] font-black ${m.rpn > 100 ? 'bg-rose-500 text-white' : 'bg-amber-500 text-black'}`}>
+                                      <span className={`px-1.5 py-0.5 rounded-lg text-[8px] font-black ${m.rpn > 100 ? 'bg-rose-500 text-white' : 'bg-amber-500 text-black'}`}>
                                          RPN {m.rpn}
                                       </span>
                                    </div>
@@ -3559,7 +3559,7 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
                         className="w-24 mx-auto"
                     />
                 ) : (
-                    <span className="text-[10px] font-bold uppercase text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md">{h.category}</span>
+                    <span className="text-[10px] font-bold uppercase text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg">{h.category}</span>
                 )}
               </td>
               <td className="px-4 py-2 font-bold text-slate-200 text-center text-[10px]">
@@ -3885,7 +3885,7 @@ const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
          <div className="flex items-center justify-between pt-2 border-t border-white/5">
             <div className="flex items-center space-x-2">
                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Vector Classification:</span>
-               <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">{newRel.relationship_type}</span>
+               <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20">{newRel.relationship_type}</span>
             </div>
             <button 
               onClick={() => { if(!newRel.target_device_id) return toast.error("Select peer asset"); mutation.mutate(newRel) }} 
@@ -3947,7 +3947,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
               <tr key={r.id} className="hover:bg-white/5 transition-colors">
                 <td className="px-4 py-3">
                    {editingId === r.id ? (
-                     <select value={isSource ? editData.source_role : editData.target_role} onChange={e => isSource ? setEditData({...editData, source_role: e.target.value}) : setEditData({...editData, target_role: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] w-full outline-none focus:border-blue-500">
+                     <select value={isSource ? editData.source_role : editData.target_role} onChange={e => isSource ? setEditData({...editData, source_role: e.target.value}) : setEditData({...editData, target_role: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-[10px] w-full outline-none focus:border-blue-500">
                        <option>Consumer</option>
                        <option>Provider</option>
                        <option>Hypervisor</option>
@@ -3962,7 +3962,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
                    ) : (
                      <div className="flex flex-col">
                         <span className="font-bold text-white uppercase tracking-tight text-[10px]">{currentDevice?.name || 'Local'}</span>
-                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded w-fit mt-1 ${isSource ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'}`}>
+                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-lg w-fit mt-1 ${isSource ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'}`}>
                           {localRole}
                         </span>
                      </div>
@@ -3970,7 +3970,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
                 </td>
                 <td className="px-4 py-3 text-center">
                   {editingId === r.id ? (
-                    <select value={editData.relationship_type} onChange={e => setEditData({...editData, relationship_type: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] w-full outline-none focus:border-blue-500">
+                    <select value={editData.relationship_type} onChange={e => setEditData({...editData, relationship_type: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-[10px] w-full outline-none focus:border-blue-500">
                       <option>Depends On</option>
                       <option>Hosts</option>
                       <option>Backs Up</option>
@@ -3990,7 +3990,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
                 </td>
                 <td className="px-4 py-3">
                     {editingId === r.id ? (
-                      <select value={!isSource ? editData.source_role : editData.target_role} onChange={e => !isSource ? setEditData({...editData, source_role: e.target.value}) : setEditData({...editData, target_role: e.target.value})} className="bg-slate-900 border border-white/10 rounded px-2 py-1 text-[10px] w-full outline-none focus:border-blue-500">
+                      <select value={!isSource ? editData.source_role : editData.target_role} onChange={e => !isSource ? setEditData({...editData, source_role: e.target.value}) : setEditData({...editData, target_role: e.target.value})} className="bg-slate-900 border border-white/10 rounded-lg px-2 py-1 text-[10px] w-full outline-none focus:border-blue-500">
                         <option>Consumer</option>
                         <option>Provider</option>
                         <option>Hypervisor</option>
@@ -4005,7 +4005,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
                     ) : (
                       <div className="flex flex-col">
                          <span className="font-bold text-blue-400 uppercase tracking-tight text-[10px]">{peer?.name || 'Unknown Entity'}</span>
-                         <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded w-fit mt-1 ${!isSource ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'}`}>
+                         <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-lg w-fit mt-1 ${!isSource ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'}`}>
                            {peerRole}
                          </span>
                       </div>

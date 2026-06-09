@@ -10,6 +10,15 @@ import { motion, AnimatePresence } from "framer-motion"
 import toast from "react-hot-toast"
 import { apiFetch, setApiOverride, getApiBaseUrl } from "../api/apiClient"
 import { formatAppDate, parseAppDate } from "../utils/dateUtils"
+import { 
+  PageHeader, 
+  PageToolbar, 
+  ToolbarGroup, 
+  ToolbarSegmented,
+  ToolbarButton,
+  ToolbarIconButton
+} from "./shared/LayoutPrimitives"
+import { WorkspaceEmptyState } from "./shared/OperationalWorkspacePrimitives"
 
 const normalizeTheme = (theme?: string | null) => {
   if (theme === 'dark') return 'nordic-frost-v1'
@@ -20,19 +29,19 @@ const normalizeTheme = (theme?: string | null) => {
 
 const SettingField = ({ label, description, children, icon: Icon, onHistory, isEditable, onEdit, isPending, absPath, isModified, paramName }: any) => {
   return (
-    <div className={`flex flex-col space-y-3 p-5 bg-[var(--panel-item-bg)] rounded-xl border transition-all group relative overflow-hidden ${isEditable ? 'border-blue-500/50 bg-blue-500/5' : 'border-[var(--glass-border)] hover:border-blue-500/30'}`}>
+    <div className={`flex flex-col space-y-3 p-5 bg-[var(--panel-item-bg)] rounded-lg border transition-all group relative overflow-hidden ${isEditable ? 'border-blue-500/50 bg-blue-500/5' : 'border-[var(--glass-border)] hover:border-blue-500/30'}`}>
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-4">
-          {Icon && <div className={`p-2.5 rounded-xl transition-transform group-hover:scale-110 ${isEditable ? 'bg-blue-600 text-white' : 'bg-blue-500/10 text-blue-400'}`}><Icon size={16} /></div>}
+          {Icon && <div className={`p-2.5 rounded-lg transition-transform group-hover:scale-110 ${isEditable ? 'bg-blue-600 text-white' : 'bg-blue-500/10 text-blue-400'}`}><Icon size={16} /></div>}
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-primary)] leading-none">{label}</label>
               {isModified ? (
-                <span className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded-md text-[7px] font-black text-amber-500 uppercase animate-pulse">
+                <span className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-[7px] font-black text-amber-500 uppercase animate-pulse">
                    Modified
                 </span>
               ) : (
-                <span className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-[7px] font-black text-emerald-500 uppercase">
+                <span className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-[7px] font-black text-emerald-500 uppercase">
                   Loaded
                 </span>
               )}
@@ -83,7 +92,7 @@ const SettingField = ({ label, description, children, icon: Icon, onHistory, isE
             <motion.button 
                 initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                 onClick={() => onEdit('save')}
-                className="p-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95"
+                className="p-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg shadow-lg shadow-blue-500/20 transition-all active:scale-95"
             >
                 <Save size={16} />
             </motion.button>
@@ -820,11 +829,11 @@ result_df = get_user_pool()`)
         {isDisconnected && (
           <motion.div 
             initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            className="shrink-0 bg-rose-600/10 border border-rose-500/30 rounded-2xl p-4 flex flex-col gap-3 backdrop-blur-md"
+            className="shrink-0 bg-rose-600/10 border border-rose-500/30 rounded-lg p-4 flex flex-col gap-3 backdrop-blur-md"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-rose-600 text-white rounded-xl animate-pulse"><ShieldAlert size={18} /></div>
+                <div className="p-2 bg-rose-600 text-white rounded-lg animate-pulse"><ShieldAlert size={18} /></div>
                 <div>
                   <h3 className="text-[11px] font-black uppercase text-rose-500 tracking-widest leading-none">Connectivity Failure</h3>
                   <p className="text-[9px] font-bold text-rose-400/70 uppercase mt-1 tracking-tighter">Backend engine unreachable via {getApiBaseUrl() || 'Relative Proxy'}</p>
@@ -832,7 +841,7 @@ result_df = get_user_pool()`)
               </div>
               <button 
                 onClick={() => setShowEmergencyPanel(!showEmergencyPanel)}
-                className="px-4 py-2 bg-rose-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-500 transition-all shadow-lg shadow-rose-500/20"
+                className="px-4 py-2 bg-rose-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-rose-500 transition-all shadow-lg shadow-rose-500/20"
               >
                 {showEmergencyPanel ? 'Hide Rescue Tools' : 'Emergency Override'}
               </button>
@@ -845,18 +854,18 @@ result_df = get_user_pool()`)
                   <input
                     value={emergencyUrl} onChange={e => setEmergencyUrl(e.target.value)}
                     placeholder="e.g. http://10.0.0.1:8000"
-                    className="w-full bg-black/40 border border-rose-500/30 rounded-xl pl-10 pr-4 py-2.5 text-[10px] font-mono text-rose-400 outline-none focus:border-rose-500"
+                    className="w-full bg-black/40 border border-rose-500/30 rounded-lg pl-10 pr-4 py-2.5 text-[10px] font-mono text-rose-400 outline-none focus:border-rose-500"
                   />                </div>
                 <div className="flex gap-2">
                   <button 
                     onClick={handleApplyOverride}
-                    className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-500 transition-all"
+                    className="px-6 py-2.5 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-500 transition-all"
                   >
                     Apply Override
                   </button>
                   <button 
                     onClick={handleClearOverride}
-                    className="px-6 py-2.5 bg-slate-700 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-600 transition-all"
+                    className="px-6 py-2.5 bg-slate-700 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-slate-600 transition-all"
                   >
                     Reset Defaults
                   </button>
@@ -867,60 +876,59 @@ result_df = get_user_pool()`)
         )}
       </AnimatePresence>
 
-      <div className="flex items-center justify-between bg-[var(--bg-header)] p-1.5 rounded-xl border border-[var(--glass-border)] shadow-xl backdrop-blur-xl shrink-0">
-        <div className="flex space-x-1">
-           <button onClick={() => setTopTab('environments')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'environments' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-              <Cpu size={14} /> Parameters
-           </button>
-           <button onClick={() => setTopTab('permissions')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'permissions' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-              <Shield size={14} /> Permission
-           </button>
-           <button onClick={() => setTopTab('system')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'system' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-              <Terminal size={14} /> Analysis
-           </button>
-           <button onClick={() => setTopTab('tenants')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'tenants' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-              <Database size={14} /> Tenants
-           </button>
-           <button onClick={() => setTopTab('standards')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${topTab === 'standards' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-              <Star size={14} /> Standards
-           </button>
-        </div>
-        
-        <div className="flex items-center gap-2 pr-2">
-          {topTab !== 'standards' && (
-            <button 
-                onClick={() => setTopTab('standards')}
-                className="flex items-center space-x-2 px-6 py-2.5 rounded-lg font-black uppercase tracking-widest text-[10px] transition-all border bg-blue-600/10 border-blue-500/30 text-blue-400 hover:bg-blue-600/20"
-                title="View UI Standards & Golden Template"
-            >
-                <Layout size={14} />
-                <span>Golden Template</span>
-            </button>
-          )}
-          {topTab === 'environments' && (
-            <button 
-                onClick={() => envMutation.mutate(getPersistableEnvSettings())}
-                className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg font-black uppercase tracking-widest text-[10px] transition-all border ${isDirty() ? 'bg-amber-600/10 border-amber-500/30 text-amber-500 animate-pulse' : 'bg-emerald-600/10 border-emerald-500/30 text-emerald-500 hover:bg-emerald-600/20'}`}
-                title="Force Hot Reload Current Config"
-            >
-                <Zap size={14} className={envMutation.isPending ? 'animate-pulse' : ''} />
-                <span>Force Hot Reload</span>
-            </button>
-          )}
-        </div>
-      </div>
+      <PageHeader 
+        title="Settings" 
+        subtitle="System Configuration & Golden Template"
+        actions={
+          <div className="flex items-center gap-2 pr-2">
+            {topTab !== 'standards' && (
+              <ToolbarButton
+                  onClick={() => setTopTab('standards')}
+                  variant="secondary"
+                  className="bg-blue-600/10 border-blue-500/30 text-blue-400 hover:bg-blue-600/20"
+              >
+                  <Layout size={14} className="mr-2 inline-block" />
+                  <span>Golden Template</span>
+              </ToolbarButton>
+            )}
+            {topTab === 'environments' && (
+              <ToolbarButton
+                  onClick={() => envMutation.mutate(getPersistableEnvSettings())}
+                  variant="secondary"
+                  className={isDirty() ? 'bg-amber-600/10 border-amber-500/30 text-amber-500 animate-pulse' : 'bg-emerald-600/10 border-emerald-500/30 text-emerald-500 hover:bg-emerald-600/20'}
+              >
+                  <Zap size={14} className={`mr-2 inline-block ${envMutation.isPending ? 'animate-pulse' : ''}`} />
+                  <span>Force Hot Reload</span>
+              </ToolbarButton>
+            )}
+          </div>
+        }
+      />
+
+      <PageToolbar 
+        left={
+          <ToolbarGroup>
+            <ToolbarSegmented 
+              options={[
+                { label: 'Parameters', value: 'environments' },
+                { label: 'Permission', value: 'permissions' },
+                { label: 'Analysis', value: 'system' },
+                { label: 'Tenants', value: 'tenants' },
+                { label: 'Standards', value: 'standards' }
+              ]}
+              value={topTab}
+              onChange={(val: any) => setTopTab(val)}
+            />
+          </ToolbarGroup>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-20">
         <AnimatePresence mode="wait">
           {topTab === 'environments' && (
-            <motion.div key="environments" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
-               <div className="border-b border-[var(--glass-border)] pb-6">
-                  <h2 className="text-3xl font-black uppercase tracking-tighter text-[var(--text-primary)] leading-none">Core Infrastructure</h2>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">Global Environment & .env Management</p>
-               </div>
-
+            <motion.div key="environments" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6 pt-4">
                <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
-                  <div className="p-6 rounded-2xl border border-[var(--glass-border)] bg-[var(--panel-item-bg)] shadow-2xl space-y-6">
+                  <div className="p-6 rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] shadow-2xl space-y-6">
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.35em] text-blue-400">
                         <Palette size={14} /> Operator Preferences
@@ -937,16 +945,16 @@ result_df = get_user_pool()`)
                           <button
                             key={theme.id}
                             onClick={() => changeTheme(theme.id)}
-                            className={`group rounded-2xl border p-4 text-left transition-all ${selected ? 'border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/10' : 'border-[var(--glass-border)] bg-black/20 hover:border-blue-500/30 hover:bg-blue-500/5'}`}
+                            className={`group rounded-lg border p-4 text-left transition-all ${selected ? 'border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/10' : 'border-[var(--glass-border)] bg-black/20 hover:border-blue-500/30 hover:bg-blue-500/5'}`}
                           >
-                            <div className={`h-20 rounded-xl bg-gradient-to-br ${theme.swatch} border border-white/10`} />
+                            <div className={`h-20 rounded-lg bg-gradient-to-br ${theme.swatch} border border-white/10`} />
                             <div className="mt-4 flex items-start justify-between gap-3">
                               <div>
                                 <div className="text-sm font-black uppercase tracking-widest text-[var(--text-primary)]">{theme.label}</div>
                                 <div className="mt-1 text-[9px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">{theme.helper}</div>
                               </div>
                               {selected && (
-                                <div className="p-2 rounded-xl bg-blue-600 text-white">
+                                <div className="p-2 rounded-lg bg-blue-600 text-white">
                                   <Check size={14} />
                                 </div>
                               )}
@@ -958,22 +966,22 @@ result_df = get_user_pool()`)
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5 shadow-xl">
+                    <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5 shadow-xl">
                       <div className="text-[8px] font-black uppercase tracking-[0.35em] text-slate-500">Parameters</div>
                       <div className="mt-3 text-3xl font-black text-[var(--text-primary)]">{totalEnvParams}</div>
                       <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Loaded from merged config</div>
                     </div>
-                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 shadow-xl">
+                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-5 shadow-xl">
                       <div className="text-[8px] font-black uppercase tracking-[0.35em] text-amber-400">Modified</div>
                       <div className="mt-3 text-3xl font-black text-amber-300">{dirtyEnvCount}</div>
                       <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-amber-200/70">Pending unsaved changes</div>
                     </div>
-                    <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-5 shadow-xl">
+                    <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-5 shadow-xl">
                       <div className="text-[8px] font-black uppercase tracking-[0.35em] text-rose-400">Critical</div>
                       <div className="mt-3 text-3xl font-black text-rose-300">{criticalEnvCount}</div>
                       <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-rose-200/70">High-sensitivity parameters</div>
                     </div>
-                    <div className={`rounded-2xl border p-5 shadow-xl ${isDisconnected ? 'border-rose-500/20 bg-rose-500/5' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
+                    <div className={`rounded-lg border p-5 shadow-xl ${isDisconnected ? 'border-rose-500/20 bg-rose-500/5' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
                       <div className={`text-[8px] font-black uppercase tracking-[0.35em] ${isDisconnected ? 'text-rose-400' : 'text-emerald-400'}`}>Backend</div>
                       <div className={`mt-3 text-3xl font-black ${isDisconnected ? 'text-rose-300' : 'text-emerald-300'}`}>{isDisconnected ? 'Down' : 'Live'}</div>
                       <div className={`mt-2 text-[9px] font-black uppercase tracking-[0.18em] ${isDisconnected ? 'text-rose-200/70' : 'text-emerald-200/70'}`}>{getApiBaseUrl() || 'Relative proxy in use'}</div>
@@ -981,7 +989,7 @@ result_df = get_user_pool()`)
                   </div>
                </div>
 
-               <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5 shadow-xl">
+               <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5 shadow-xl">
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     <div>
                       <div className="text-[10px] font-black uppercase tracking-[0.35em] text-blue-400">Config Surface</div>
@@ -994,10 +1002,10 @@ result_df = get_user_pool()`)
                           value={envSearch}
                           onChange={(e) => setEnvSearch(e.target.value)}
                           placeholder="Search parameter, path, category, impact..."
-                          className="w-full rounded-xl border border-white/10 bg-black/20 pl-9 pr-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-primary)] outline-none transition-all focus:border-blue-500/50"
+                          className="w-full rounded-lg border border-white/10 bg-black/20 pl-9 pr-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-primary)] outline-none transition-all focus:border-blue-500/50"
                         />
                       </div>
-                      <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5">
+                      <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2.5">
                         <Filter size={14} className="text-slate-500" />
                         <select
                           value={envImpactFilter}
@@ -1057,7 +1065,7 @@ result_df = get_user_pool()`)
                                             <input 
                                                 disabled={!editableFields[key]} value={value || ''} 
                                                 onChange={e => setLocalEnv({...localEnv, [key]: e.target.value})} 
-                                                className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-xl px-4 py-3 text-xs font-mono text-blue-400 outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
+                                                className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-blue-400 outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
                                             />
                                         )}
                                       </div>
@@ -1067,14 +1075,12 @@ result_df = get_user_pool()`)
                       </div>
                   ))}
                   {visibleCategories.length === 0 && (
-                    <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 p-10 text-center">
-                      <div className="mx-auto w-fit rounded-2xl bg-blue-500/10 p-3 text-blue-400">
-                        <Search size={22} />
-                      </div>
-                      <h3 className="mt-4 text-lg font-black uppercase tracking-widest text-[var(--text-primary)]">No Parameters Match</h3>
-                      <p className="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">
-                        Adjust the search or impact filter to expose additional configuration fields.
-                      </p>
+                    <div className="py-10">
+                      <WorkspaceEmptyState 
+                        icon={<Search size={32} />}
+                        title="No Parameters Match"
+                        message="Adjust the search or impact filter to expose additional configuration fields."
+                      />
                     </div>
                   )}
                </div>
@@ -1082,27 +1088,23 @@ result_df = get_user_pool()`)
           )}
 
           {topTab === 'permissions' && (
-            <motion.div key="permissions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
-               <div className="border-b border-[var(--glass-border)] pb-6 flex justify-between items-end">
-                  <div>
-                     <h2 className="text-3xl font-black uppercase tracking-tighter text-[var(--text-primary)] leading-none text-blue-500">User Permission</h2>
-                     <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">Identity Governance & Team Access Matrix</p>
-                  </div>
+            <motion.div key="permissions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8 pt-4">
+               <div className="flex justify-end items-center pb-2">
                   <div className="flex gap-2">
                     <button 
                         onClick={() => setShowPoolHistory(true)}
-                        className="p-2.5 bg-amber-500/10 text-amber-500 rounded-xl hover:bg-amber-500/20 transition-all border border-amber-500/20"
+                        className="p-2.5 bg-amber-500/10 text-amber-500 rounded-lg hover:bg-amber-500/20 transition-all border border-amber-500/20"
                         title="View Sync History"
                     >
                         <History size={18} />
                     </button>
-                    <button className="px-6 py-2.5 bg-blue-600/10 border border-blue-500/30 text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-blue-600/20 transition-all">
+                    <button className="px-6 py-2.5 bg-blue-600/10 border border-blue-500/30 text-blue-400 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-blue-600/20 transition-all">
                         <Users size={14} /> Visible {filteredOperators.length}
                     </button>
                   </div>
                </div>
 
-               <div className="sticky top-0 z-20 rounded-2xl border border-blue-500/20 bg-[rgba(2,6,23,0.86)] p-4 shadow-[0_10px_40px_rgba(2,6,23,0.35)] backdrop-blur-xl">
+               <div className="sticky top-0 z-20 rounded-lg border border-blue-500/20 bg-[rgba(2,6,23,0.86)] p-4 shadow-[0_10px_40px_rgba(2,6,23,0.35)] backdrop-blur-xl">
                   <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_auto_auto_auto_auto]">
                      <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
@@ -1110,18 +1112,18 @@ result_df = get_user_pool()`)
                           value={operatorFilter}
                           onChange={e => setOperatorFilter(e.target.value)}
                           placeholder="Filter operators, IDs, departments, teams..."
-                          className="w-full rounded-xl border border-white/10 bg-black/20 pl-10 pr-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-primary)] outline-none transition-all focus:border-blue-500/50"
+                          className="w-full rounded-lg border border-white/10 bg-black/20 pl-10 pr-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-primary)] outline-none transition-all focus:border-blue-500/50"
                         />
                      </div>
                      <div className="relative">
                         <button
                           onClick={() => setTeamFilterOpen(!teamFilterOpen)}
-                          className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-300 transition-all hover:border-blue-500/30 min-w-[220px]"
+                          className="w-full rounded-lg border border-white/10 bg-black/20 px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-300 transition-all hover:border-blue-500/30 min-w-[220px]"
                         >
                           {selectedTeamFilters.length ? `${selectedTeamFilters.length} Team Filters` : 'All Teams'}
                         </button>
                         {teamFilterOpen && (
-                          <div className="absolute right-0 top-[calc(100%+0.5rem)] z-30 w-72 rounded-2xl border border-white/10 bg-[#020617] p-4 shadow-2xl">
+                          <div className="absolute right-0 top-[calc(100%+0.5rem)] z-30 w-72 rounded-lg border border-white/10 bg-[#020617] p-4 shadow-2xl">
                             <div className="flex items-center justify-between">
                               <p className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-400">Team Filter</p>
                               <button onClick={() => setSelectedTeamFilters([])} className="text-[8px] font-black uppercase text-slate-500 hover:text-white">Clear</button>
@@ -1131,7 +1133,7 @@ result_df = get_user_pool()`)
                                 <button
                                   key={teamName}
                                   onClick={() => toggleTeamFilter(teamName)}
-                                  className={`flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.14em] transition-all ${selectedTeamFilters.includes(teamName) ? 'border-blue-500/30 bg-blue-500/10 text-blue-300' : 'border-white/5 bg-black/20 text-slate-400 hover:border-white/10'}`}
+                                  className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.14em] transition-all ${selectedTeamFilters.includes(teamName) ? 'border-blue-500/30 bg-blue-500/10 text-blue-300' : 'border-white/5 bg-black/20 text-slate-400 hover:border-white/10'}`}
                                 >
                                   <span>{teamName}</span>
                                   {selectedTeamFilters.includes(teamName) && <Check size={12} />}
@@ -1144,7 +1146,7 @@ result_df = get_user_pool()`)
                      <select
                        value={operatorSort}
                        onChange={(e) => setOperatorSort(e.target.value as any)}
-                       className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-primary)] outline-none min-w-[160px]"
+                       className="rounded-lg border border-white/10 bg-black/20 px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-primary)] outline-none min-w-[160px]"
                      >
                        <option value="team">Sort: Team</option>
                        <option value="name">Sort: Name</option>
@@ -1152,11 +1154,11 @@ result_df = get_user_pool()`)
                      </select>
                      <button
                        onClick={saveCurrentTeamFilter}
-                       className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-300 transition-all hover:border-blue-500/30 hover:text-white"
+                       className="rounded-lg border border-white/10 bg-black/20 px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-300 transition-all hover:border-blue-500/30 hover:text-white"
                      >
                        Save Filter
                      </button>
-                     <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">
+                     <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">
                        Selected {selectedOperatorIds.length}
                      </div>
                   </div>
@@ -1177,13 +1179,13 @@ result_df = get_user_pool()`)
 
                <div className="grid grid-cols-1 gap-8 xl:grid-cols-[360px_minmax(0,1fr)]">
                   <div className="space-y-6">
-                    <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5 shadow-2xl">
+                    <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5 shadow-2xl">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-[10px] font-black uppercase tracking-[0.32em] text-blue-400">Team Registry</p>
                           <h3 className="mt-2 text-lg font-black uppercase tracking-tight text-[var(--text-primary)]">Create And Govern Teams</h3>
                         </div>
-                        <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">
+                        <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">
                           {teams?.length || 0} Teams
                         </div>
                       </div>
@@ -1192,32 +1194,32 @@ result_df = get_user_pool()`)
                           value={newTeamName}
                           onChange={(e) => setNewTeamName(e.target.value)}
                           placeholder="New team name..."
-                          className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-primary)] outline-none focus:border-blue-500/40"
+                          className="w-full rounded-lg border border-white/10 bg-black/20 px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-primary)] outline-none focus:border-blue-500/40"
                         />
                         <textarea
                           value={newTeamDescription}
                           onChange={(e) => setNewTeamDescription(e.target.value)}
                           placeholder="Optional team description..."
                           rows={3}
-                          className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--text-primary)] outline-none focus:border-blue-500/40 resize-none"
+                          className="w-full rounded-lg border border-white/10 bg-black/20 px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--text-primary)] outline-none focus:border-blue-500/40 resize-none"
                         />
                         <button
                           onClick={() => teamMutation.mutate({ name: newTeamName, description: newTeamDescription, source: 'manual' })}
-                          className="w-full rounded-xl bg-blue-600 px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-500"
+                          className="w-full rounded-lg bg-blue-600 px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-500"
                         >
                           Create Team
                         </button>
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5 shadow-2xl">
+                    <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5 shadow-2xl">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
                         <input
                           value={teamSearch}
                           onChange={(e) => setTeamSearch(e.target.value)}
                           placeholder="Search teams..."
-                          className="w-full rounded-xl border border-white/10 bg-black/20 pl-10 pr-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-primary)] outline-none transition-all focus:border-blue-500/50"
+                          className="w-full rounded-lg border border-white/10 bg-black/20 pl-10 pr-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-primary)] outline-none transition-all focus:border-blue-500/50"
                         />
                       </div>
                       <div className="mt-4 space-y-3 max-h-[420px] overflow-y-auto custom-scrollbar pr-1">
@@ -1225,7 +1227,7 @@ result_df = get_user_pool()`)
                           <button
                             key={team.id}
                             onClick={() => setSelectedTeamId(team.id)}
-                            className={`w-full rounded-2xl border p-4 text-left transition-all ${selectedTeamId === team.id ? 'border-blue-500/30 bg-blue-500/10 shadow-lg shadow-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10'}`}
+                            className={`w-full rounded-lg border p-4 text-left transition-all ${selectedTeamId === team.id ? 'border-blue-500/30 bg-blue-500/10 shadow-lg shadow-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10'}`}
                           >
                             <div className="flex items-center justify-between gap-3">
                               <div>
@@ -1245,7 +1247,7 @@ result_df = get_user_pool()`)
                     </div>
 
                     {selectedTeam && (
-                      <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5 shadow-2xl">
+                      <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5 shadow-2xl">
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="text-[10px] font-black uppercase tracking-[0.32em] text-amber-400">Team Detail</p>
@@ -1256,7 +1258,7 @@ result_df = get_user_pool()`)
                             onClick={() => {
                               if (confirm(`Delete team ${selectedTeam.name}?`)) deleteTeamMutation.mutate(selectedTeam.id)
                             }}
-                            className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-2 text-rose-400 transition-all hover:bg-rose-500/20"
+                            className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-2 text-rose-400 transition-all hover:bg-rose-500/20"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -1265,24 +1267,24 @@ result_df = get_user_pool()`)
                           <input
                             value={teamEditName}
                             onChange={(e) => setTeamEditName(e.target.value)}
-                            className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-primary)] outline-none"
+                            className="w-full rounded-lg border border-white/10 bg-black/20 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-primary)] outline-none"
                           />
                           <textarea
                             value={teamEditDescription}
                             onChange={(e) => setTeamEditDescription(e.target.value)}
                             rows={3}
-                            className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--text-primary)] outline-none resize-none"
+                            className="w-full rounded-lg border border-white/10 bg-black/20 px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--text-primary)] outline-none resize-none"
                           />
                           <button
                             onClick={() => teamMutation.mutate({ id: selectedTeam.id, name: teamEditName, description: teamEditDescription })}
-                            className="w-full rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-blue-300 transition-all hover:bg-blue-500/20"
+                            className="w-full rounded-lg border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-blue-300 transition-all hover:bg-blue-500/20"
                           >
                             Save Team Details
                           </button>
                           <select
                             value={teamMemberPick}
                             onChange={(e) => setTeamMemberPick(e.target.value)}
-                            className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-primary)] outline-none"
+                            className="w-full rounded-lg border border-white/10 bg-black/20 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-[var(--text-primary)] outline-none"
                           >
                             <option value="">Add operator to team...</option>
                             {availableTeamCandidates.map((op: any) => (
@@ -1294,14 +1296,14 @@ result_df = get_user_pool()`)
                               if (!teamMemberPick) return
                               bulkTeamMutation.mutate({ ids: [Number(teamMemberPick)], teamId: selectedTeam.id, teamName: selectedTeam.name, teamSource: 'manual_override' })
                             }}
-                            className="w-full rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300 transition-all hover:bg-emerald-500/20"
+                            className="w-full rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300 transition-all hover:bg-emerald-500/20"
                           >
                             Add Selected Operator
                           </button>
                         </div>
                         <div className="mt-5 space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
                           {selectedTeamMembers.map((member: any) => (
-                            <div key={member.id} className="flex items-center justify-between rounded-xl border border-white/5 bg-black/20 px-3 py-3">
+                            <div key={member.id} className="flex items-center justify-between rounded-lg border border-white/5 bg-black/20 px-3 py-3">
                               <div>
                                 <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--text-primary)]">{member.full_name || member.username}</p>
                                 <p className="mt-1 text-[8px] font-black uppercase tracking-[0.14em] text-slate-500">ID {member.external_id}</p>
@@ -1319,7 +1321,7 @@ result_df = get_user_pool()`)
                           <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Audit Trail</p>
                           <div className="mt-3 space-y-2 max-h-44 overflow-y-auto custom-scrollbar pr-1">
                             {selectedTeamAudit?.map((entry: any) => (
-                              <div key={entry.id} className="rounded-xl border border-white/5 bg-black/20 px-3 py-3">
+                              <div key={entry.id} className="rounded-lg border border-white/5 bg-black/20 px-3 py-3">
                                 <p className="text-[8px] font-black uppercase tracking-[0.18em] text-blue-400">{entry.action.replace(/_/g, ' ')}</p>
                                 <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">{entry.actor} • {formatAppDate(entry.created_at)}</p>
                               </div>
@@ -1331,7 +1333,7 @@ result_df = get_user_pool()`)
                   </div>
 
                   <div className="space-y-6">
-                    <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--panel-item-bg)] shadow-2xl overflow-hidden">
+                    <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] shadow-2xl overflow-hidden">
                       <div className="border-b border-[var(--glass-border)] bg-white/[0.03] p-5">
                         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                           <div>
@@ -1339,7 +1341,7 @@ result_df = get_user_pool()`)
                             <h3 className="mt-2 text-lg font-black uppercase tracking-tight text-[var(--text-primary)]">Identity, Team, And Access Controls</h3>
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <div className="flex items-center gap-2 rounded-xl border border-blue-500/20 bg-blue-500/10 px-3 py-2">
+                            <div className="flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2">
                               <Shield size={12} className="text-blue-400" />
                               <span className="text-[8px] font-black uppercase tracking-[0.18em] text-blue-300">Policy Enforced</span>
                             </div>
@@ -1350,9 +1352,9 @@ result_df = get_user_pool()`)
                                 onChange={e => setNewOpId(e.target.value)}
                                 placeholder="Add operator ID..."
                                 onKeyDown={e => e.key === 'Enter' && handleAddOperator()}
-                                className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.16em] text-blue-300 outline-none w-44"
+                                className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.16em] text-blue-300 outline-none w-44"
                               />
-                              <button onClick={handleAddOperator} className="rounded-xl bg-blue-600 p-2.5 text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-500"><Plus size={14} /></button>
+                              <button onClick={handleAddOperator} className="rounded-lg bg-blue-600 p-2.5 text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-500"><Plus size={14} /></button>
                             </div>
                           </div>
                         </div>
@@ -1360,7 +1362,7 @@ result_df = get_user_pool()`)
                           {selectedOperatorIds.length > 0 && selectedTeam && (
                             <button
                               onClick={() => bulkTeamMutation.mutate({ ids: selectedOperatorIds, teamId: selectedTeam.id, teamName: selectedTeam.name, teamSource: 'manual_override' })}
-                              className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-emerald-300"
+                              className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-emerald-300"
                             >
                               Move Selected To {selectedTeam.name}
                             </button>
@@ -1368,7 +1370,7 @@ result_df = get_user_pool()`)
                           {selectedOperatorIds.length > 0 && (
                             <button
                               onClick={() => bulkTeamMutation.mutate({ ids: selectedOperatorIds, teamId: null, teamName: null, teamSource: 'manual' })}
-                              className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-rose-300"
+                              className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-rose-300"
                             >
                               Remove Team From Selected
                             </button>
@@ -1400,18 +1402,18 @@ result_df = get_user_pool()`)
                                     type="checkbox"
                                     checked={selectedOperatorIds.includes(op.id)}
                                     onChange={() => toggleOperatorSelection(op.id)}
-                                    className="h-4 w-4 rounded border-white/20 bg-black/30"
+                                    className="h-4 w-4 rounded-lg border-white/20 bg-black/30"
                                   />
                                 </td>
                                 <td className="p-4 sticky left-0 bg-[#0f172a]/95 backdrop-blur-sm z-10 border-r border-white/5">
                                   <div className="flex items-center gap-3">
-                                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-[11px] shadow-lg ${op.is_admin ? 'bg-blue-600 text-white shadow-blue-500/20' : 'bg-slate-800 text-slate-400'}`}>
+                                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-black text-[11px] shadow-lg ${op.is_admin ? 'bg-blue-600 text-white shadow-blue-500/20' : 'bg-slate-800 text-slate-400'}`}>
                                       {op.username?.slice(0,2).toUpperCase()}
                                     </div>
                                     <div className="flex flex-col min-w-0">
                                       <p className="text-[11px] font-black text-[var(--text-primary)] uppercase leading-none truncate flex items-center gap-1.5">
                                         {op.full_name}
-                                        {op.username === userProfile?.username && <span className="text-[7px] bg-blue-500 text-white px-1.5 py-0.5 rounded uppercase">You</span>}
+                                        {op.username === userProfile?.username && <span className="text-[7px] bg-blue-500 text-white px-1.5 py-0.5 rounded-lg uppercase">You</span>}
                                       </p>
                                       <p className="text-[8px] font-bold text-slate-500 uppercase mt-1 tracking-tighter truncate">Team: {op.team || 'Unassigned'}</p>
                                       <p className="text-[8px] font-bold text-slate-600 uppercase mt-1 tracking-tighter truncate">ID: {op.external_id}</p>
@@ -1446,7 +1448,7 @@ result_df = get_user_pool()`)
                                   {op.username !== userProfile?.username ? (
                                     <button 
                                       onClick={() => { if(confirm(`Revoke all access for ${op.full_name}?`)) deleteOperatorMutation.mutate(op.id) }}
-                                      className="p-2.5 text-rose-500/30 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100 border border-transparent hover:border-rose-500/20"
+                                      className="p-2.5 text-rose-500/30 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100 border border-transparent hover:border-rose-500/20"
                                       title="Revoke Access"
                                     >
                                       <Trash2 size={16} />
@@ -1471,10 +1473,10 @@ result_df = get_user_pool()`)
                       </div>
                     </div>
 
-                    <div className={`transition-all duration-300 ${showPoolLogic ? 'p-6 bg-indigo-600/5 border-indigo-500/20' : 'p-4 bg-slate-800/10 border-white/5'} border rounded-2xl`}>
+                    <div className={`transition-all duration-300 ${showPoolLogic ? 'p-6 bg-indigo-600/5 border-indigo-500/20' : 'p-4 bg-slate-800/10 border-white/5'} border rounded-lg`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-xl transition-all ${showPoolLogic ? 'bg-indigo-600 text-white' : 'bg-slate-700/50 text-slate-400'}`}><Terminal size={16} /></div>
+                          <div className={`p-2 rounded-lg transition-all ${showPoolLogic ? 'bg-indigo-600 text-white' : 'bg-slate-700/50 text-slate-400'}`}><Terminal size={16} /></div>
                           <div>
                             <h3 className="text-[10px] font-black uppercase text-[var(--text-primary)] tracking-widest">Identity Sync Pipeline</h3>
                             <p className="text-[8px] text-slate-500 uppercase font-black tracking-widest mt-0.5">Optional team metadata is supported through the sync payload.</p>
@@ -1509,11 +1511,11 @@ result_df = get_user_pool()`)
                               <textarea 
                                 readOnly={!isSyncEditable}
                                 value={userPoolScript} onChange={e => setUserPoolScript(e.target.value)}
-                                className={`w-full h-64 bg-black/40 border ${isSyncEditable ? 'border-indigo-500/50' : 'border-white/5'} rounded-2xl p-6 font-mono text-[11px] text-emerald-400 outline-none transition-all custom-scrollbar leading-relaxed`}
+                                className={`w-full h-64 bg-black/40 border ${isSyncEditable ? 'border-indigo-500/50' : 'border-white/5'} rounded-lg p-6 font-mono text-[11px] text-emerald-400 outline-none transition-all custom-scrollbar leading-relaxed`}
                               />
                               <button 
                                 onClick={() => { navigator.clipboard.writeText(userPoolScript); toast.success("Script copied"); }}
-                                className="absolute top-4 right-4 p-2 bg-slate-800/80 text-slate-400 hover:text-white rounded-xl opacity-0 group-hover:opacity-100 transition-all border border-white/5"
+                                className="absolute top-4 right-4 p-2 bg-slate-800/80 text-slate-400 hover:text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all border border-white/5"
                               >
                                 <FileCode size={18} />
                               </button>
@@ -1528,31 +1530,24 @@ result_df = get_user_pool()`)
           )}
 
           {topTab === 'tenants' && (
-            <motion.div key="tenants" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
-               <div className="border-b border-[var(--glass-border)] pb-6 flex justify-between items-end">
-                  <div>
-                     <h2 className="text-3xl font-black uppercase tracking-tighter text-[var(--text-primary)] leading-none text-emerald-500">Tenant Management</h2>
-                     <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">Multi-Database Orchestration & S3 Storage Config</p>
-                  </div>
-               </div>
-
+            <motion.div key="tenants" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8 pt-4">
                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5">
+                  <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5">
                     <div className="text-[8px] font-black uppercase tracking-[0.35em] text-emerald-400">Registered</div>
                     <div className="mt-3 text-3xl font-black text-[var(--text-primary)]">{allTenants?.length || 0}</div>
                     <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Known database tenants</div>
                   </div>
-                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-5">
                     <div className="text-[8px] font-black uppercase tracking-[0.35em] text-emerald-400">Online</div>
                     <div className="mt-3 text-3xl font-black text-emerald-300">{onlineTenants}</div>
                     <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-emerald-200/70">Healthy attached databases</div>
                   </div>
-                  <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-5">
+                  <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-5">
                     <div className="text-[8px] font-black uppercase tracking-[0.35em] text-rose-400">Offline</div>
                     <div className="mt-3 text-3xl font-black text-rose-300">{offlineTenants}</div>
                     <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-rose-200/70">Require operational attention</div>
                   </div>
-                  <div className={`rounded-2xl border p-5 ${hasTenantStorageRoot ? 'border-blue-500/20 bg-blue-500/5' : 'border-amber-500/20 bg-amber-500/5'}`}>
+                  <div className={`rounded-lg border p-5 ${hasTenantStorageRoot ? 'border-blue-500/20 bg-blue-500/5' : 'border-amber-500/20 bg-amber-500/5'}`}>
                     <div className={`text-[8px] font-black uppercase tracking-[0.35em] ${hasTenantStorageRoot ? 'text-blue-400' : 'text-amber-400'}`}>Storage Root</div>
                     <div className={`mt-3 text-3xl font-black ${hasTenantStorageRoot ? 'text-blue-300' : 'text-amber-300'}`}>{hasTenantStorageRoot ? 'Set' : 'Unset'}</div>
                     <div className={`mt-2 text-[9px] font-black uppercase tracking-[0.18em] ${hasTenantStorageRoot ? 'text-blue-200/70' : 'text-amber-200/70'}`}>Tenant storage registry path</div>
@@ -1561,7 +1556,7 @@ result_df = get_user_pool()`)
 
                <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                   <div className="lg:col-span-2 xl:col-span-3 space-y-6">
-                     <div className="bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-2xl overflow-hidden shadow-2xl">
+                     <div className="bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-lg overflow-hidden shadow-2xl">
                         <div className="p-4 border-b border-[var(--glass-border)] bg-white/2 flex items-center justify-between">
                            <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
                               <Database size={14} className="text-emerald-500" /> Registered Databases
@@ -1592,7 +1587,7 @@ result_df = get_user_pool()`)
                                        </td>
                                        <td className="p-4">
                                           <div className="overflow-x-auto custom-scrollbar-mini max-w-[300px]">
-                                             <code className="text-[9px] font-mono text-slate-400 bg-black/30 px-2 py-1 rounded border border-white/5 whitespace-nowrap inline-block select-all" title="Click to select all">
+                                             <code className="text-[9px] font-mono text-slate-400 bg-black/30 px-2 py-1 rounded-lg border border-white/5 whitespace-nowrap inline-block select-all" title="Click to select all">
                                                 {t.db_url}
                                              </code>
                                           </div>
@@ -1606,7 +1601,7 @@ result_df = get_user_pool()`)
                                           </div>
                                        </td>
                                        <td className="p-4">
-                                          <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest ${t.is_online ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                          <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${t.is_online ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
                                              {t.is_online ? 'Online' : 'Offline'}
                                           </span>
                                        </td>
@@ -1628,9 +1623,9 @@ result_df = get_user_pool()`)
                   </div>
 
                   <div className="space-y-6">
-                     <div className="p-6 bg-blue-600/5 border border-blue-500/20 rounded-2xl shadow-xl">
+                     <div className="p-6 bg-blue-600/5 border border-blue-500/20 rounded-lg shadow-xl">
                         <div className="flex items-center gap-3 mb-6">
-                           <div className="p-2 bg-blue-600 rounded-xl text-white shadow-lg shadow-blue-500/20"><Plus size={18} /></div>
+                           <div className="p-2 bg-blue-600 rounded-lg text-white shadow-lg shadow-blue-500/20"><Plus size={18} /></div>
                            <div>
                               <h3 className="text-sm font-black uppercase text-white tracking-widest leading-none">Spawn New DB</h3>
                               <p className="text-[9px] font-black text-slate-500 uppercase mt-1">Initialize Fresh Schema</p>
@@ -1642,7 +1637,7 @@ result_df = get_user_pool()`)
                               <input 
                                  value={newTenantName} onChange={e => setNewTenantName(e.target.value)}
                                  placeholder="e.g. Asia_Production" 
-                                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-black uppercase text-blue-400 outline-none focus:border-blue-500"
+                                 className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-black uppercase text-blue-400 outline-none focus:border-blue-500"
                               />
                            </div>
                            <button 
@@ -1651,23 +1646,23 @@ result_df = get_user_pool()`)
                                  createTenantMutation.mutate(newTenantName);
                               }}
                               disabled={createTenantMutation.isPending || !newTenantName}
-                              className="w-full py-4 bg-blue-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-500/20 hover:bg-blue-500 transition-all disabled:opacity-50"
+                              className="w-full py-4 bg-blue-600 text-white rounded-lg font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-500/20 hover:bg-blue-500 transition-all disabled:opacity-50"
                            >
                               {createTenantMutation.isPending ? 'Spinning up...' : 'Create Database'}
                            </button>
                         </div>
                      </div>
 
-                     <div className="p-6 bg-emerald-600/5 border border-emerald-500/20 rounded-2xl shadow-xl">
+                     <div className="p-6 bg-emerald-600/5 border border-emerald-500/20 rounded-lg shadow-xl">
                         <div className="flex items-center gap-3 mb-6">
-                           <div className="p-2 bg-emerald-600 rounded-xl text-white shadow-lg shadow-emerald-500/20"><Link size={18} /></div>
+                           <div className="p-2 bg-emerald-600 rounded-lg text-white shadow-lg shadow-emerald-500/20"><Link size={18} /></div>
                            <div>
                               <h3 className="text-sm font-black uppercase text-white tracking-widest leading-none">Attach Existing</h3>
                               <p className="text-[9px] font-black text-slate-500 uppercase mt-1">Register External Database</p>
                            </div>
                         </div>
                         <div className="space-y-4">
-                           <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 p-1">
+                           <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 p-1">
                               <button
                                  onClick={() => { setAttachMode('path'); setAttachPath(""); setPreflightResult(null) }}
                                  className={`flex-1 rounded-lg px-3 py-2 text-[9px] font-black uppercase tracking-[0.18em] transition-all ${attachMode === 'path' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
@@ -1686,7 +1681,7 @@ result_df = get_user_pool()`)
                               <input 
                                  value={attachName} onChange={e => setAttachName(e.target.value)}
                                  placeholder="e.g. Legacy_Archive" 
-                                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs font-black uppercase text-emerald-400 outline-none focus:border-emerald-500"
+                                 className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs font-black uppercase text-emerald-400 outline-none focus:border-emerald-500"
                               />
                            </div>
                            <div className="space-y-2">
@@ -1695,7 +1690,7 @@ result_df = get_user_pool()`)
                                  <input 
                                     value={attachPath} onChange={e => { setAttachPath(e.target.value); setPreflightResult(null); }}
                                     placeholder={attachMode === 'url' ? 'postgresql+asyncpg://user:pass@host:5432/sysgrid' : '/absolute/path/to/system_grid.db'} 
-                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-mono text-slate-300 outline-none focus:border-emerald-500"
+                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[10px] font-mono text-slate-300 outline-none focus:border-emerald-500"
                                  />
                                  <button 
                                     onClick={() => preflightMutation.mutate(attachPath)}
@@ -1711,7 +1706,7 @@ result_df = get_user_pool()`)
                            <AnimatePresence>
                               {preflightResult && (
                                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                    <div className={`p-4 rounded-xl border ${preflightResult.is_valid ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'} space-y-2`}>
+                                    <div className={`p-4 rounded-lg border ${preflightResult.is_valid ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'} space-y-2`}>
                                        <div className="flex items-center justify-between">
                                           <span className={`text-[8px] font-black uppercase tracking-widest ${preflightResult.is_valid ? 'text-emerald-500' : 'text-rose-500'}`}>
                                              Status: {preflightResult.status}
@@ -1735,9 +1730,9 @@ result_df = get_user_pool()`)
                         </div>
                      </div>
 
-                     <div className="p-6 bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-2xl">
+                     <div className="p-6 bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-lg">
                         <div className="flex items-center gap-3 mb-6">
-                           <div className="p-2 bg-emerald-600/10 text-emerald-500 rounded-xl border border-emerald-500/20"><HardDrive size={18} /></div>
+                           <div className="p-2 bg-emerald-600/10 text-emerald-500 rounded-lg border border-emerald-500/20"><HardDrive size={18} /></div>
                            <div>
                               <h3 className="text-sm font-black uppercase text-white tracking-widest leading-none">Storage Config</h3>
                               <p className="text-[9px] font-black text-slate-500 uppercase mt-1">Persistent S3 Mount Root</p>
@@ -1765,11 +1760,11 @@ result_df = get_user_pool()`)
                                  {storageRootEdit !== null ? (
                                     <input 
                                        value={storageRootEdit} onChange={e => setStorageRootEdit(e.target.value)}
-                                       className="w-full bg-black/40 border border-blue-500/30 rounded-xl px-4 py-3 text-[10px] font-mono text-emerald-400 outline-none"
+                                       className="w-full bg-black/40 border border-blue-500/30 rounded-lg px-4 py-3 text-[10px] font-mono text-emerald-400 outline-none"
                                     />
                                  ) : (
                                     <div className="overflow-x-auto custom-scrollbar-mini">
-                                       <div className="p-3 bg-black/30 border border-white/5 rounded-xl text-[10px] font-mono text-slate-400 whitespace-nowrap select-all">
+                                       <div className="p-3 bg-black/30 border border-white/5 rounded-lg text-[10px] font-mono text-slate-400 whitespace-nowrap select-all">
                                           {setting.value}
                                        </div>
                                     </div>
@@ -1777,7 +1772,7 @@ result_df = get_user_pool()`)
                                  <p className="text-[8px] font-bold text-slate-600 uppercase leading-relaxed px-1">{setting.description}</p>
                               </div>
                            ))}
-                           <div className="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-4">
+                           <div className="rounded-lg border border-white/10 bg-black/20 p-4 space-y-4">
                               <div className="flex items-start justify-between gap-4">
                                  <div>
                                     <h4 className="text-[11px] font-black text-white tracking-tight">Accessible storage explorer</h4>
@@ -1815,7 +1810,7 @@ result_df = get_user_pool()`)
                                  </div>
                               </div>
 
-                              <div className="rounded-xl border border-white/10 bg-slate-950/70 p-4 space-y-4">
+                              <div className="rounded-lg border border-white/10 bg-slate-950/70 p-4 space-y-4">
                                  <div className="flex items-center justify-between gap-3">
                                     <div className="min-w-0">
                                        <div className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Current location</div>
@@ -1852,7 +1847,7 @@ result_df = get_user_pool()`)
                                     </span>
                                  </div>
 
-                                 <div className="rounded-xl border border-white/5 bg-black/20 p-3">
+                                 <div className="rounded-lg border border-white/5 bg-black/20 p-3">
                                     <div className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Runtime visibility</div>
                                     <div className="mt-2 space-y-1 text-[9px] font-mono text-slate-400">
                                        <div>Workspace: {storageExplorer?.runtime_context?.workspace_root || 'Unknown'}</div>
@@ -1864,13 +1859,13 @@ result_df = get_user_pool()`)
                                     <div className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Folders</div>
                                     <div className="max-h-64 overflow-y-auto custom-scrollbar pr-1 space-y-2">
                                        {isStorageExplorerLoading ? (
-                                          <div className="rounded-xl border border-white/5 bg-black/20 px-3 py-4 text-[9px] font-black text-slate-500">Loading folders...</div>
+                                          <div className="rounded-lg border border-white/5 bg-black/20 px-3 py-4 text-[9px] font-black text-slate-500">Loading folders...</div>
                                        ) : storageExplorer?.entries?.length ? (
                                           storageExplorer.entries.map((entry: any) => (
                                              <button
                                                 key={entry.path}
                                                 onClick={() => setStorageExplorerPath(entry.path)}
-                                                className="w-full rounded-xl border border-white/5 bg-black/20 px-3 py-3 text-left hover:border-white/10 hover:bg-white/[0.03] transition-all"
+                                                className="w-full rounded-lg border border-white/5 bg-black/20 px-3 py-3 text-left hover:border-white/10 hover:bg-white/[0.03] transition-all"
                                              >
                                                 <div className="flex items-center justify-between gap-3">
                                                    <div className="flex items-center gap-3 min-w-0">
@@ -1890,7 +1885,7 @@ result_df = get_user_pool()`)
                                              </button>
                                           ))
                                        ) : (
-                                          <div className="rounded-xl border border-dashed border-white/10 px-3 py-5 text-center text-[9px] font-black text-slate-500">
+                                          <div className="rounded-lg border border-dashed border-white/10 px-3 py-5 text-center text-[9px] font-black text-slate-500">
                                              No subfolders visible from this location.
                                           </div>
                                        )}
@@ -1906,15 +1901,10 @@ result_df = get_user_pool()`)
           )}
 
           {topTab === 'system' && (
-             <motion.div key="system" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10">
-                <div className="border-b border-[var(--glass-border)] pb-6">
-                  <h2 className="text-3xl font-black uppercase tracking-tighter text-[var(--text-primary)] leading-none">System Inspect</h2>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-black mt-2">Outer Join .env Analysis (Raw Variables)</p>
-               </div>
-
-               <div className="rounded-2xl border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-6 shadow-2xl">
+             <motion.div key="system" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10 pt-4">
+                <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-6 shadow-2xl">
                   <div className="flex items-center gap-3 mb-5">
-                    <div className="p-2 rounded-xl bg-blue-600/10 text-blue-400 border border-blue-500/20"><Server size={18} /></div>
+                    <div className="p-2 rounded-lg bg-blue-600/10 text-blue-400 border border-blue-500/20"><Server size={18} /></div>
                     <div>
                       <h3 className="text-sm font-black uppercase tracking-widest text-[var(--text-primary)]">Deployment Runtime</h3>
                       <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Resolved backend paths, defaults, and admin bootstrap policy</p>
@@ -1922,7 +1912,7 @@ result_df = get_user_pool()`)
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {Object.entries(localEnv._deployment || {}).map(([key, value]: any) => (
-                      <div key={key} className="rounded-xl border border-white/5 bg-black/20 p-4">
+                      <div key={key} className="rounded-lg border border-white/5 bg-black/20 p-4">
                         <div className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500">{key.replace(/_/g, ' ')}</div>
                         <div className="mt-2 text-[10px] font-mono text-blue-300 break-all">
                           {Array.isArray(value) ? value.join(", ") : String(value)}
@@ -1935,7 +1925,7 @@ result_df = get_user_pool()`)
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   <div className="space-y-4">
                       <h3 className="text-[10px] font-black uppercase text-amber-500 tracking-[0.4em] flex items-center gap-2"><Server size={12} /> Backend .env Raw</h3>
-                      <div className="bg-black/40 border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
+                      <div className="bg-black/40 border border-white/5 rounded-lg overflow-hidden shadow-2xl">
                           <table className="w-full text-left border-collapse">
                               <thead>
                                   <tr className="bg-white/5">
@@ -1953,7 +1943,7 @@ result_df = get_user_pool()`)
                                               </div>
                                           </td>
                                           <td className="p-3">
-                                              <div className="p-2 bg-black/20 rounded border border-white/5 text-[9px] font-mono text-slate-300 break-all max-h-20 overflow-y-auto custom-scrollbar">
+                                              <div className="p-2 bg-black/20 rounded-lg border border-white/5 text-[9px] font-mono text-slate-300 break-all max-h-20 overflow-y-auto custom-scrollbar">
                                                 {String(data.value)}
                                               </div>
                                           </td>
@@ -1966,7 +1956,7 @@ result_df = get_user_pool()`)
 
                   <div className="space-y-4">
                       <h3 className="text-[10px] font-black uppercase text-indigo-500 tracking-[0.4em] flex items-center gap-2"><Layout size={12} /> Frontend .env Raw</h3>
-                      <div className="bg-black/40 border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
+                      <div className="bg-black/40 border border-white/5 rounded-lg overflow-hidden shadow-2xl">
                           <table className="w-full text-left border-collapse">
                               <thead>
                                   <tr className="bg-white/5">
@@ -1984,7 +1974,7 @@ result_df = get_user_pool()`)
                                               </div>
                                           </td>
                                           <td className="p-3">
-                                              <div className="p-2 bg-black/20 rounded border border-white/5 text-[9px] font-mono text-slate-300 break-all max-h-20 overflow-y-auto custom-scrollbar">
+                                              <div className="p-2 bg-black/20 rounded-lg border border-white/5 text-[9px] font-mono text-slate-300 break-all max-h-20 overflow-y-auto custom-scrollbar">
                                                 {String(data.value)}
                                               </div>
                                           </td>
@@ -2022,7 +2012,7 @@ result_df = get_user_pool()`)
               </div>
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
                 {envHistory?.map((entry: any, i: number) => (
-                  <div key={i} className="p-5 bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-xl relative group hover:border-blue-500/30 transition-all">
+                  <div key={i} className="p-5 bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-lg relative group hover:border-blue-500/30 transition-all">
                     <div className="flex justify-between items-start mb-3">
                        <span className="text-[9px] font-black uppercase text-blue-400 tracking-[0.2em]">{entry.timestamp}</span>
                        <button onClick={() => { setLocalEnv({...localEnv, [historyField]: entry.old_value}); setHistoryField(null); toast.success("Staged for revert. Save to apply."); }} className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] font-black uppercase text-amber-500 hover:underline">Stage Revert</button>
@@ -2068,7 +2058,7 @@ result_df = get_user_pool()`)
                 
                 <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
                     {poolVersions?.map((v: any, i: number) => (
-                        <div key={i} className={`p-5 rounded-xl border transition-all relative group ${v.is_active ? 'bg-indigo-600/5 border-indigo-500/30' : 'bg-slate-800/20 border-white/5 hover:border-white/10'}`}>
+                        <div key={i} className={`p-5 rounded-lg border transition-all relative group ${v.is_active ? 'bg-indigo-600/5 border-indigo-500/30' : 'bg-slate-800/20 border-white/5 hover:border-white/10'}`}>
                             {v.is_active && <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500" />}
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex flex-col">
@@ -2076,7 +2066,7 @@ result_df = get_user_pool()`)
                                     <span className="text-[8px] font-black text-slate-500 uppercase mt-1">{formatAppDate(v.created_at)}</span>
                                 </div>
                                 {v.is_active ? (
-                                    <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-400 rounded text-[8px] font-black uppercase tracking-widest">Active</span>
+                                    <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-400 rounded-lg text-[8px] font-black uppercase tracking-widest">Active</span>
                                 ) : (
                                     <button 
                                         onClick={() => toast.promise(apiFetch(`/api/v1/settings/user-pool/restore/${v.id}`, { method: 'POST' }), {
@@ -2084,7 +2074,7 @@ result_df = get_user_pool()`)
                                             success: () => { queryClient.invalidateQueries({ queryKey: ['operators'] }); queryClient.invalidateQueries({ queryKey: ['teams'] }); queryClient.invalidateQueries({ queryKey: ['user-pool-versions'] }); return "Restored successfully"; },
                                             error: "Restore failed"
                                         })}
-                                        className="px-3 py-1 bg-white/5 hover:bg-white/10 text-amber-500 rounded text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all"
+                                        className="px-3 py-1 bg-white/5 hover:bg-white/10 text-amber-500 rounded-lg text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all"
                                     >
                                         <RotateCcw size={10} /> Restore
                                     </button>
@@ -2161,13 +2151,13 @@ result_df = get_user_pool()`)
         {viewVersionData && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setViewVersionData(null)} className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200]" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[80vh] bg-[var(--panel-bg)] border border-[var(--glass-border)] rounded-3xl shadow-2xl z-[201] flex flex-col overflow-hidden">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[80vh] bg-[var(--panel-bg)] border border-[var(--glass-border)] rounded-lg shadow-2xl z-[201] flex flex-col overflow-hidden">
                 <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between">
                     <div>
                         <h3 className="text-xl font-black uppercase text-[var(--text-primary)] tracking-widest">Snapshot Raw Data</h3>
                         <p className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mt-1">Direct view of pulled user pool entities</p>
                     </div>
-                    <button onClick={() => setViewVersionData(null)} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all"><X size={24} /></button>
+                    <button onClick={() => setViewVersionData(null)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-all"><X size={24} /></button>
                 </div>
                 <div className="flex-1 overflow-auto custom-scrollbar p-6">
                     <table className="w-full text-left border-collapse">
@@ -2201,7 +2191,7 @@ result_df = get_user_pool()`)
         {viewVersionScript && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setViewVersionScript(null)} className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200]" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] bg-[var(--panel-bg)] border border-[var(--glass-border)] rounded-3xl shadow-2xl z-[201] flex flex-col overflow-hidden">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] bg-[var(--panel-bg)] border border-[var(--glass-border)] rounded-lg shadow-2xl z-[201] flex flex-col overflow-hidden">
                 <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <FileCode className="text-amber-500" size={24} />
@@ -2213,11 +2203,11 @@ result_df = get_user_pool()`)
                     <div className="flex gap-2">
                         <button 
                             onClick={() => { setUserPoolScript(viewVersionScript); setViewVersionScript(null); setShowPoolLogic(true); toast.success("Script restored to editor"); }}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all"
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all"
                         >
                             Restore to Editor
                         </button>
-                        <button onClick={() => setViewVersionScript(null)} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-all"><X size={24} /></button>
+                        <button onClick={() => setViewVersionScript(null)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-all"><X size={24} /></button>
                     </div>
                 </div>
                 <div className="flex-1 p-6 bg-black/40">

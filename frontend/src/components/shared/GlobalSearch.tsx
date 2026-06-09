@@ -183,7 +183,7 @@ export const GlobalSearch = ({ isOpen, onClose }: { isOpen: boolean; onClose: ()
                               </div>
                             </div>
                             <div className="flex items-center gap-3">
-                              <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
+                              <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-lg border ${
                                 isSelected ? 'bg-white/20 border-white/30 text-white' : 'bg-white/5 border-white/10 text-slate-500'
                               }`}>
                                 {result.tag}
@@ -219,15 +219,15 @@ export const GlobalSearch = ({ isOpen, onClose }: { isOpen: boolean; onClose: ()
             <div className="p-4 border-t border-white/5 bg-black/20 flex items-center justify-between">
                <div className="flex gap-6">
                   <div className="flex items-center gap-2">
-                     <kbd className="px-1.5 py-0.5 bg-white/10 rounded text-[9px] text-slate-400 font-mono font-bold border border-white/10">↑↓</kbd>
+                     <kbd className="px-1.5 py-0.5 bg-white/10 rounded-lg text-[9px] text-slate-400 font-mono font-bold border border-white/10">↑↓</kbd>
                      <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Navigate</span>
                   </div>
                   <div className="flex items-center gap-2">
-                     <kbd className="px-1.5 py-0.5 bg-white/10 rounded text-[9px] text-slate-400 font-mono font-bold border border-white/10">ENTER</kbd>
+                     <kbd className="px-1.5 py-0.5 bg-white/10 rounded-lg text-[9px] text-slate-400 font-mono font-bold border border-white/10">ENTER</kbd>
                      <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Execute</span>
                   </div>
                   <div className="flex items-center gap-2">
-                     <kbd className="px-1.5 py-0.5 bg-white/10 rounded text-[9px] text-slate-400 font-mono font-bold border border-white/10">ESC</kbd>
+                     <kbd className="px-1.5 py-0.5 bg-white/10 rounded-lg text-[9px] text-slate-400 font-mono font-bold border border-white/10">ESC</kbd>
                      <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Terminate</span>
                   </div>
                </div>

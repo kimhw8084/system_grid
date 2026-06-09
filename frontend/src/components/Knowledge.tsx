@@ -15,7 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
 import { toast } from 'react-hot-toast'
-import { formatAppDate } from '../utils/dateUtils'
+import { formatAppDate, parseAppDate } from '../utils/dateUtils'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { StyledSelect } from './shared/StyledSelect'
 
@@ -214,7 +214,7 @@ const CategoryPill = ({ label, active, onClick, count }: any) => (
       active ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-500/20' : 'bg-white/5 text-slate-500 border-white/5 hover:border-white/10 hover:text-slate-300'
     }`}
   >
-    {label} {count !== undefined && <span className={`px-1.5 py-0.5 rounded ${active ? 'bg-white/20 text-white' : 'bg-white/10 text-slate-500'}`}>{count}</span>}
+    {label} {count !== undefined && <span className={`px-1.5 py-0.5 rounded-lg ${active ? 'bg-white/20 text-white' : 'bg-white/10 text-slate-500'}`}>{count}</span>}
   </button>
 )
 
@@ -514,10 +514,10 @@ export default function Knowledge() {
   return (
     <div className="h-full flex flex-col space-y-6">
       {/* Header Section */}
-      <div className="flex items-center justify-between bg-slate-900/50 p-6 rounded-2xl border border-white/5 shadow-2xl backdrop-blur-xl">
+      <div className="flex items-center justify-between bg-slate-900/50 p-6 rounded-lg border border-white/5 shadow-2xl backdrop-blur-xl">
         <div>
           <h1 className="text-4xl font-black uppercase tracking-tighter flex items-center gap-4 text-white">
-            <div className="p-3 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/20">
+            <div className="p-3 bg-blue-600 rounded-lg shadow-lg shadow-blue-500/20">
               <BookOpen size={32} className="text-white" />
             </div>
             Collective Intelligence
@@ -533,14 +533,14 @@ export default function Knowledge() {
               value={searchTerm} 
               onChange={e => setSearchTerm(e.target.value)} 
               placeholder="Query Matrix..." 
-              className="bg-black/40 border border-white/10 rounded-xl pl-12 pr-6 py-3 text-[11px] font-black uppercase outline-none focus:border-blue-500/50 w-80 transition-all focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-700" 
+              className="bg-black/40 border border-white/10 rounded-lg pl-12 pr-6 py-3 text-[11px] font-black uppercase outline-none focus:border-blue-500/50 w-80 transition-all focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-700" 
             />
           </div>
           <div className="flex items-center gap-3">
             {(researchParam || monitoringParam) && (
               <button
                 onClick={() => setActiveModal(buildConversionDraft())}
-                className="bg-amber-600 hover:bg-amber-500 text-white px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 active:scale-95 transition-all flex items-center gap-2"
+                className="bg-amber-600 hover:bg-amber-500 text-white px-5 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 active:scale-95 transition-all flex items-center gap-2"
               >
                 <FileText size={16} /> Convert Incident
               </button>
@@ -556,19 +556,19 @@ export default function Knowledge() {
                   operation: { owner_team: '', owner_individual: '', raci: [], cpm_workflow: '', far_ids: [], dr_strategy: { rto: '', rpo: '', plan: '' }, operational_logs: [] }
                 } 
               })} 
-              className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-2"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-2"
             >
               <Workflow size={16} /> + System Manual
             </button>
             <button 
               onClick={() => setActiveModal(buildBkmTemplate())} 
-              className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-500/20 active:scale-95 transition-all flex items-center gap-2"
+              className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-500/20 active:scale-95 transition-all flex items-center gap-2"
             >
               <ShieldCheck size={16} /> + New BKM
             </button>
             <button 
               onClick={() => setActiveModal({ category: 'Q&A', title: '', question_context: '', content: '', tags: [], linked_device_ids: [], impacted_systems: [], status: 'Draft', metadata_json: mergeDeep(emptyKnowledgeMetadata(), { entry_type: 'FAQ' }), qa_threads: [] })} 
-              className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"
+              className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"
             >
               <HelpCircle size={16} /> + Ask Question
             </button>
@@ -601,7 +601,7 @@ export default function Knowledge() {
               </button>
             ))}
          </div>
-         <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+         <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
             {(['Grid', 'Timeline'] as const).map(mode => (
               <button
                 key={mode}
@@ -653,7 +653,7 @@ export default function Knowledge() {
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
          {!!(deviceParam || serviceParam || monitoringParam || farParam || researchParam || vendorParam || projectParam) && (
-           <div className="mb-6 rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] px-5 py-4 flex items-center justify-between gap-6">
+           <div className="mb-6 rounded-lg border border-amber-500/15 bg-amber-500/[0.04] px-5 py-4 flex items-center justify-between gap-6">
              <div>
                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-300">Suggested Knowledge Context</p>
                <p className="text-xs font-bold text-slate-300 mt-2">This workspace is scoped to the linked system context so operators land on the most relevant runbooks first.</p>
@@ -663,7 +663,7 @@ export default function Knowledge() {
                  setSearchParams(idParam ? { id: idParam } : {})
                  setActiveLens('All')
                }}
-               className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-widest text-slate-300 hover:text-white"
+               className="px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-widest text-slate-300 hover:text-white"
              >
                Clear Context
              </button>
@@ -675,7 +675,7 @@ export default function Knowledge() {
                <button
                  key={`suggestion-${entry.id}`}
                  onClick={() => openEntry(entry)}
-                 className="rounded-2xl border border-blue-500/15 bg-blue-500/[0.04] p-4 text-left hover:bg-blue-500/[0.08] transition-all"
+                 className="rounded-lg border border-blue-500/15 bg-blue-500/[0.04] p-4 text-left hover:bg-blue-500/[0.08] transition-all"
                >
                  <p className="text-[9px] font-black uppercase tracking-[0.26em] text-blue-300">Suggested Runbook</p>
                  <h3 className="mt-2 text-sm font-black uppercase tracking-tight text-white">{entry.title}</h3>
@@ -768,7 +768,7 @@ function KnowledgeSummaryCard({ label, value, detail, icon, tone }: any) {
           <p className="text-[9px] font-black uppercase tracking-[0.28em] text-slate-400">{label}</p>
           <p className="mt-3 text-4xl font-black tracking-tighter text-white">{value}</p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
           {icon}
         </div>
       </div>
@@ -785,13 +785,13 @@ function KnowledgeQueuePanel({ entries, onOpenEntry }: any) {
           <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white">Knowledge Action Queue</p>
           <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Highest-value records to harden next</p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-300">
+        <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-300">
           {entries.length} items
         </div>
       </div>
       <div className="mt-4 space-y-3">
         {entries.length === 0 && (
-          <div className="rounded-2xl border border-emerald-500/10 bg-emerald-500/5 px-4 py-5 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-300">
+          <div className="rounded-lg border border-emerald-500/10 bg-emerald-500/5 px-4 py-5 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-300">
             No urgent governance debt detected
           </div>
         )}
@@ -806,14 +806,14 @@ function KnowledgeQueuePanel({ entries, onOpenEntry }: any) {
             <button
               key={`queue-${entry.id}`}
               onClick={() => onOpenEntry(entry)}
-              className="w-full rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-4 text-left hover:border-blue-500/25 hover:bg-blue-500/[0.04] transition-all"
+              className="w-full rounded-lg border border-white/5 bg-white/[0.03] px-4 py-4 text-left hover:border-blue-500/25 hover:bg-blue-500/[0.04] transition-all"
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-[0.24em] text-slate-500">{entry.category} // {entry.metadata_json?.entry_type}</p>
                   <p className="mt-2 text-sm font-black uppercase tracking-tight text-white">{entry.title}</p>
                 </div>
-                <span className="rounded-xl border border-white/10 bg-black/20 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-slate-300">
+                <span className="rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-slate-300">
                   {entry.__readiness.label}
                 </span>
               </div>
@@ -848,7 +848,7 @@ function KnowledgeCard({ entry, onClick }: any) {
       animate={{ opacity: 1, y: 0 }}
       layoutId={`entry-${entry.id}`}
       onClick={onClick}
-      className={`glass-panel border border-white/5 p-6 rounded-2xl hover:border-blue-500/40 transition-all cursor-pointer group flex flex-col h-80 relative overflow-hidden ${
+      className={`glass-panel border border-white/5 p-6 rounded-lg hover:border-blue-500/40 transition-all cursor-pointer group flex flex-col h-80 relative overflow-hidden ${
         isBKM ? 'bg-rose-500/[0.02] border-rose-500/10' : 
         isQA ? 'bg-amber-500/[0.02] border-amber-500/10' :
         isManual ? 'bg-emerald-500/[0.02] border-emerald-500/10' : ''
@@ -860,32 +860,32 @@ function KnowledgeCard({ entry, onClick }: any) {
        }`} />
 
        <div className="flex items-start justify-between mb-6 relative z-10">
-          <div className={`p-3 rounded-xl bg-white/5 border border-white/5 shadow-xl transition-transform group-hover:scale-110 ${
+          <div className={`p-3 rounded-lg bg-white/5 border border-white/5 shadow-xl transition-transform group-hover:scale-110 ${
             isQA ? 'text-amber-400' :
             isManual ? 'text-emerald-400' :
             isBKM ? 'text-rose-500' : 'text-blue-400'
           }`}>
              {isQA ? <HelpCircle size={20} /> : isBKM ? <ShieldCheck size={20} /> : isManual ? <Workflow size={20} /> : <FileText size={20} />}
           </div>
-          <div className="text-[9px] font-black text-slate-600 uppercase tracking-widest bg-black/20 px-2 py-1 rounded border border-white/5">
+          <div className="text-[9px] font-black text-slate-600 uppercase tracking-widest bg-black/20 px-2 py-1 rounded-lg border border-white/5">
             REV.{new Date(entry.updated_at).getFullYear()}.{new Date(entry.updated_at).getMonth() + 1}
           </div>
        </div>
 
        <div className="flex flex-wrap items-center gap-2 mb-4 relative z-10">
-         <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest border ${critical ? 'bg-rose-500/15 text-rose-300 border-rose-500/20' : 'bg-white/5 text-slate-400 border-white/5'}`}>
+         <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border ${critical ? 'bg-rose-500/15 text-rose-300 border-rose-500/20' : 'bg-white/5 text-slate-400 border-white/5'}`}>
            {entry.metadata_json?.entry_type}
          </span>
-         <span className="px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest border bg-blue-500/10 text-blue-300 border-blue-500/20">
+         <span className="px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border bg-blue-500/10 text-blue-300 border-blue-500/20">
            {verification}
          </span>
          {isStale && (
-           <span className="px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest border bg-amber-500/10 text-amber-300 border-amber-500/20">
+           <span className="px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border bg-amber-500/10 text-amber-300 border-amber-500/20">
              Stale
            </span>
          )}
          {isBKM && isKnowledgeIncidentReady(entry) && (
-           <span className="px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest border bg-emerald-500/10 text-emerald-300 border-emerald-500/20">
+           <span className="px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border bg-emerald-500/10 text-emerald-300 border-emerald-500/20">
              Incident Ready
            </span>
          )}
@@ -941,7 +941,7 @@ function KnowledgeTimeline({ entries, onEntryClick }: any) {
        {sortedEntries.map((entry: any, idx: number) => (
          <div key={entry.id} className="flex gap-10 items-start group">
             <div className="relative z-10">
-               <div className={`w-12 h-12 rounded-xl bg-slate-900 border-2 flex items-center justify-center transition-all group-hover:scale-110 shadow-2xl ${
+               <div className={`w-12 h-12 rounded-lg bg-slate-900 border-2 flex items-center justify-center transition-all group-hover:scale-110 shadow-2xl ${
                  entry.category === 'BKM' ? 'border-rose-500/50 text-rose-500 group-hover:bg-rose-500 group-hover:text-white' :
                  entry.category === 'Q&A' ? 'border-amber-500/50 text-amber-500 group-hover:bg-amber-500 group-hover:text-white' :
                  'border-blue-500/50 text-blue-500 group-hover:bg-blue-500 group-hover:text-white'
@@ -952,11 +952,11 @@ function KnowledgeTimeline({ entries, onEntryClick }: any) {
             </div>
             <div 
               onClick={() => onEntryClick(entry)}
-              className="flex-1 glass-panel p-6 rounded-2xl border border-white/5 hover:border-blue-500/30 transition-all cursor-pointer group-hover:translate-x-2"
+              className="flex-1 glass-panel p-6 rounded-lg border border-white/5 hover:border-blue-500/30 transition-all cursor-pointer group-hover:translate-x-2"
             >
                <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <span className="text-[10px] font-black text-white uppercase bg-blue-600 px-2 py-0.5 rounded">NODE_{entry.id}</span>
+                    <span className="text-[10px] font-black text-white uppercase bg-blue-600 px-2 py-0.5 rounded-lg">NODE_{entry.id}</span>
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{formatAppDate(entry.created_at)}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -1030,7 +1030,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
                 </h2>
                 <p className="text-[10px] text-slate-500 uppercase tracking-[0.3em] font-bold mt-2 ml-14">Collective Intelligence Synchronization Layer</p>
              </div>
-             <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-slate-500 hover:text-white transition-all">
+             <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all">
                 <X size={24}/>
              </button>
           </div>
@@ -1055,7 +1055,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
                    <input 
                      value={formData.title} 
                      onChange={e => setFormData({...formData, title: e.target.value})} 
-                     className="w-full bg-white/5 border border-white/10 rounded-xl px-6 py-4 text-sm text-white font-black uppercase tracking-tight outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all" 
+                     className="w-full bg-white/5 border border-white/10 rounded-lg px-6 py-4 text-sm text-white font-black uppercase tracking-tight outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all" 
                      placeholder="e.g. MISSION_CRITICAL_RECOVERY_FLOW" 
                    />
                 </div>
@@ -1074,7 +1074,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
                     <textarea 
                       value={formData.question_context} 
                       onChange={e => setFormData({...formData, question_context: e.target.value})} 
-                      className="w-full bg-slate-900/50 border border-white/10 rounded-2xl p-6 text-sm text-slate-300 min-h-[150px] outline-none focus:border-blue-500/50 leading-relaxed font-medium" 
+                      className="w-full bg-slate-900/50 border border-white/10 rounded-lg p-6 text-sm text-slate-300 min-h-[150px] outline-none focus:border-blue-500/50 leading-relaxed font-medium" 
                       placeholder="Describe the technical challenge or inquiry in detail..."
                     />
                  </div>
@@ -1083,7 +1083,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
                     <textarea 
                       value={formData.content} 
                       onChange={e => setFormData({...formData, content: e.target.value})} 
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-[11px] text-slate-400 min-h-[200px] outline-none focus:border-blue-500/50 leading-relaxed font-mono" 
+                      className="w-full bg-white/5 border border-white/10 rounded-lg p-6 text-[11px] text-slate-400 min-h-[200px] outline-none focus:border-blue-500/50 leading-relaxed font-mono" 
                       placeholder="Optional additional documentation..."
                     />
                  </div>
@@ -1116,7 +1116,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
                          <input
                            value={metadata.ownership.owner}
                            onChange={e => updateMetadata({ ownership: { owner: e.target.value } })}
-                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
+                           className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
                            placeholder="PRIMARY_DRI"
                          />
                       </div>
@@ -1125,7 +1125,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
                          <input
                            value={metadata.ownership.backup_owner}
                            onChange={e => updateMetadata({ ownership: { backup_owner: e.target.value } })}
-                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
+                           className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
                            placeholder="SECONDARY_DRI"
                          />
                       </div>
@@ -1134,7 +1134,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
                          <input
                            value={metadata.ownership.review_team}
                            onChange={e => updateMetadata({ ownership: { review_team: e.target.value } })}
-                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
+                           className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
                            placeholder="TEAM_SCOPE"
                          />
                       </div>
@@ -1143,7 +1143,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
                          <input
                            value={metadata.ownership.escalation_contact}
                            onChange={e => updateMetadata({ ownership: { escalation_contact: e.target.value } })}
-                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
+                           className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
                            placeholder="CONTACT_CHAIN"
                          />
                       </div>
@@ -1162,7 +1162,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
                          <input
                            value={metadata.verification.verified_by}
                            onChange={e => updateMetadata({ verification: { verified_by: e.target.value } })}
-                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
+                           className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
                            placeholder="VERIFIER"
                          />
                       </div>
@@ -1172,7 +1172,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
                            type="date"
                            value={metadata.verification.last_verified_at?.slice?.(0, 10) || ''}
                            onChange={e => updateMetadata({ verification: { last_verified_at: e.target.value } })}
-                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
+                           className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
                          />
                       </div>
                       <div className="space-y-2">
@@ -1181,7 +1181,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
                            type="date"
                            value={metadata.verification.next_review_at?.slice?.(0, 10) || ''}
                            onChange={e => updateMetadata({ verification: { next_review_at: e.target.value } })}
-                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
+                           className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-[10px] text-white font-black uppercase tracking-widest"
                          />
                       </div>
                    </div>
@@ -1200,10 +1200,10 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
                         value={tagInput} 
                         onChange={e => setTagInput(e.target.value)} 
                         onKeyDown={e => e.key === 'Enter' && addTag()}
-                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] text-white uppercase font-black tracking-widest outline-none focus:border-blue-500/50" 
+                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-[10px] text-white uppercase font-black tracking-widest outline-none focus:border-blue-500/50" 
                         placeholder="ADD_SYSTEM_TAG..." 
                       />
-                      <button onClick={addTag} className="px-4 bg-white/5 border border-white/10 rounded-xl text-slate-500 hover:text-white transition-all"><Plus size={20}/></button>
+                      <button onClick={addTag} className="px-4 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><Plus size={20}/></button>
                    </div>
                 </div>
                 <div className="space-y-3">
@@ -1242,7 +1242,7 @@ function KnowledgeForm({ item, onClose, onSave, isSaving, context }: any) {
                <button 
                  onClick={() => onSave(formData)} 
                  disabled={isSaving}
-                 className={`px-10 py-4 rounded-2xl text-[11px] font-black uppercase shadow-xl active:scale-95 transition-all flex items-center gap-3 ${
+                 className={`px-10 py-4 rounded-lg text-[11px] font-black uppercase shadow-xl active:scale-95 transition-all flex items-center gap-3 ${
                    category === 'BKM' ? 'bg-rose-600 text-white shadow-rose-500/20' : 
                    category === 'Manual' ? 'bg-emerald-600 text-white shadow-emerald-500/20' : 'bg-blue-600 text-white shadow-blue-500/20'
                  }`}
@@ -1267,7 +1267,7 @@ function BKMStudio({ data, onChange }: any) {
 
   return (
     <div className="space-y-12">
-      <section className="bg-slate-900/50 p-8 rounded-3xl border border-white/5 space-y-4 shadow-inner">
+      <section className="bg-slate-900/50 p-8 rounded-lg border border-white/5 space-y-4 shadow-inner">
         <label className="text-[11px] font-black text-rose-500 uppercase tracking-[0.3em] flex items-center gap-3">
           <Target size={18} className="animate-pulse" /> 01 // Mission Objective & Purpose
         </label>
@@ -1280,7 +1280,7 @@ function BKMStudio({ data, onChange }: any) {
       </section>
 
       <section className="grid grid-cols-2 gap-8">
-        <div className="bg-amber-500/[0.03] p-8 rounded-3xl border border-amber-500/10 space-y-4">
+        <div className="bg-amber-500/[0.03] p-8 rounded-lg border border-amber-500/10 space-y-4">
           <label className="text-[11px] font-black text-amber-400 uppercase tracking-[0.3em] flex items-center gap-3">
             <AlertCircle size={18}/> 01A // Incident Signature
           </label>
@@ -1291,7 +1291,7 @@ function BKMStudio({ data, onChange }: any) {
             placeholder="List operator-visible symptoms and trigger conditions..."
           />
         </div>
-        <div className="bg-blue-500/[0.03] p-8 rounded-3xl border border-blue-500/10 space-y-4">
+        <div className="bg-blue-500/[0.03] p-8 rounded-lg border border-blue-500/10 space-y-4">
           <label className="text-[11px] font-black text-blue-400 uppercase tracking-[0.3em] flex items-center gap-3">
             <Zap size={18}/> 01B // First Five Minutes
           </label>
@@ -1309,13 +1309,13 @@ function BKMStudio({ data, onChange }: any) {
           <label className="text-[11px] font-black text-rose-500 uppercase tracking-[0.3em] flex items-center gap-3">
             <List size={18}/> 02 // Pre-Flight Conditions & Prerequisites
           </label>
-          <button onClick={addPrereq} className="p-2 rounded-xl bg-rose-600/10 text-rose-500 hover:bg-rose-600 hover:text-white transition-all border border-rose-500/20">
+          <button onClick={addPrereq} className="p-2 rounded-lg bg-rose-600/10 text-rose-500 hover:bg-rose-600 hover:text-white transition-all border border-rose-500/20">
             <Plus size={18}/>
           </button>
         </div>
         <div className="grid grid-cols-2 gap-4">
           {data.prerequisites?.map((p: any, idx: number) => (
-            <div key={idx} className="flex gap-4 items-center bg-white/[0.03] p-5 rounded-2xl border border-white/5 group relative">
+            <div key={idx} className="flex gap-4 items-center bg-white/[0.03] p-5 rounded-lg border border-white/5 group relative">
               <div className={`w-2 h-2 rounded-full ${p.criticality === 'High' ? 'bg-rose-500 shadow-lg shadow-rose-500/50' : 'bg-blue-500'}`} />
               <input 
                 value={p.description} 
@@ -1338,7 +1338,7 @@ function BKMStudio({ data, onChange }: any) {
           <label className="text-[11px] font-black text-rose-500 uppercase tracking-[0.3em] flex items-center gap-3">
             <PlayCircle size={18}/> 03 // Sequential Execution Workflow
           </label>
-          <button onClick={addStep} className="p-2 rounded-xl bg-rose-600/10 text-rose-500 hover:bg-rose-600 hover:text-white transition-all border border-rose-500/20">
+          <button onClick={addStep} className="p-2 rounded-lg bg-rose-600/10 text-rose-500 hover:bg-rose-600 hover:text-white transition-all border border-rose-500/20">
             <Plus size={18}/>
           </button>
         </div>
@@ -1346,7 +1346,7 @@ function BKMStudio({ data, onChange }: any) {
           {data.steps?.map((s: any, idx: number) => (
             <div key={idx} className="flex gap-8 p-8 bg-slate-900/30 border border-white/5 rounded-[32px] relative group hover:border-rose-500/30 transition-all shadow-xl">
               <div className="flex flex-col items-center gap-4">
-                 <div className="w-14 h-14 rounded-2xl bg-rose-600 flex items-center justify-center text-xl font-black text-white shadow-2xl shadow-rose-600/30">
+                 <div className="w-14 h-14 rounded-lg bg-rose-600 flex items-center justify-center text-xl font-black text-white shadow-2xl shadow-rose-600/30">
                    {String(idx + 1).padStart(2, '0')}
                  </div>
                  <div className="flex-1 w-1 bg-gradient-to-b from-rose-600/50 to-transparent rounded-full" />
@@ -1365,11 +1365,11 @@ function BKMStudio({ data, onChange }: any) {
                   onChange={e => {
                     const next = [...data.steps]; next[idx].description = e.target.value; update('steps', next)
                   }} 
-                  className="w-full bg-black/40 border border-white/5 rounded-2xl p-6 text-sm font-medium text-slate-300 min-h-[120px] leading-relaxed shadow-inner" 
+                  className="w-full bg-black/40 border border-white/5 rounded-lg p-6 text-sm font-medium text-slate-300 min-h-[120px] leading-relaxed shadow-inner" 
                   placeholder="Detailed execution logic..." 
                 />
                 <div className="flex gap-4">
-                   <div className="flex-1 bg-white/5 border border-white/5 rounded-xl px-4 py-3 flex items-center gap-3">
+                   <div className="flex-1 bg-white/5 border border-white/5 rounded-lg px-4 py-3 flex items-center gap-3">
                       <Cpu size={14} className="text-rose-500" />
                       <input 
                         value={s.tool} 
@@ -1380,7 +1380,7 @@ function BKMStudio({ data, onChange }: any) {
                         placeholder="REQUIRED_TOOLING..." 
                       />
                    </div>
-                   <div className="flex-1 bg-white/5 border border-white/5 rounded-xl px-4 py-3 flex items-center gap-3">
+                   <div className="flex-1 bg-white/5 border border-white/5 rounded-lg px-4 py-3 flex items-center gap-3">
                       <LinkIcon size={14} className="text-blue-500" />
                       <input 
                         value={s.image_url} 
@@ -1406,13 +1406,13 @@ function BKMStudio({ data, onChange }: any) {
             <label className="text-[11px] font-black text-amber-500 uppercase tracking-[0.3em] flex items-center gap-3">
               <AlertTriangle size={18}/> 04 // Troubleshooting & Failure Recovery
             </label>
-            <button onClick={addTrouble} className="p-2 rounded-xl bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white transition-all border border-amber-500/20">
+            <button onClick={addTrouble} className="p-2 rounded-lg bg-amber-500/10 text-amber-500 hover:bg-amber-500 hover:text-white transition-all border border-amber-500/20">
               <Plus size={18}/>
             </button>
          </div>
          <div className="space-y-4">
             {data.troubleshooting?.map((t: any, idx: number) => (
-              <div key={idx} className="grid grid-cols-3 gap-6 bg-white/[0.02] p-6 rounded-3xl border border-white/5 group relative">
+              <div key={idx} className="grid grid-cols-3 gap-6 bg-white/[0.02] p-6 rounded-lg border border-white/5 group relative">
                  <div className="space-y-2">
                     <label className="text-[9px] font-black text-amber-500/50 uppercase tracking-widest">Symptom</label>
                     <input 
@@ -1420,7 +1420,7 @@ function BKMStudio({ data, onChange }: any) {
                       onChange={e => {
                         const next = [...data.troubleshooting]; next[idx].symptom = e.target.value; update('troubleshooting', next)
                       }} 
-                      className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-[11px] font-black text-white uppercase outline-none focus:border-amber-500/30" 
+                      className="w-full bg-white/5 border border-white/5 rounded-lg px-4 py-3 text-[11px] font-black text-white uppercase outline-none focus:border-amber-500/30" 
                       placeholder="Identify symptom..." 
                     />
                  </div>
@@ -1431,7 +1431,7 @@ function BKMStudio({ data, onChange }: any) {
                       onChange={e => {
                         const next = [...data.troubleshooting]; next[idx].cause = e.target.value; update('troubleshooting', next)
                       }} 
-                      className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-[11px] font-black text-white uppercase outline-none focus:border-amber-500/30" 
+                      className="w-full bg-white/5 border border-white/5 rounded-lg px-4 py-3 text-[11px] font-black text-white uppercase outline-none focus:border-amber-500/30" 
                       placeholder="Probable cause..." 
                     />
                  </div>
@@ -1442,7 +1442,7 @@ function BKMStudio({ data, onChange }: any) {
                       onChange={e => {
                         const next = [...data.troubleshooting]; next[idx].solution = e.target.value; update('troubleshooting', next)
                       }} 
-                      className="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-[11px] font-black text-white uppercase outline-none focus:border-amber-500/30" 
+                      className="w-full bg-white/5 border border-white/5 rounded-lg px-4 py-3 text-[11px] font-black text-white uppercase outline-none focus:border-amber-500/30" 
                       placeholder="Corrective action..." 
                     />
                  </div>
@@ -1466,7 +1466,7 @@ function BKMStudio({ data, onChange }: any) {
           </div>
           <div className="space-y-3">
             {data.tips?.map((t: string, idx: number) => (
-              <div key={idx} className="flex gap-4 items-center bg-blue-600/5 p-4 rounded-2xl border border-blue-500/10 group">
+              <div key={idx} className="flex gap-4 items-center bg-blue-600/5 p-4 rounded-lg border border-blue-500/10 group">
                 <Zap size={16} className="text-blue-500 shrink-0" />
                 <input 
                   value={t} 
@@ -1560,7 +1560,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                    <textarea 
                      value={data.business_value?.business_problem} 
                      onChange={e => update('business_value', 'business_problem', e.target.value)}
-                     className="w-full bg-slate-900 border border-white/10 rounded-2xl p-6 text-sm text-slate-300 min-h-[120px] outline-none focus:border-blue-500/50 leading-relaxed" 
+                     className="w-full bg-slate-900 border border-white/10 rounded-lg p-6 text-sm text-slate-300 min-h-[120px] outline-none focus:border-blue-500/50 leading-relaxed" 
                      placeholder="Define the critical business challenge this system addresses..."
                    />
                 </div>
@@ -1569,7 +1569,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                    <input 
                      value={data.business_value?.roi_projection} 
                      onChange={e => update('business_value', 'roi_projection', e.target.value)}
-                     className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm text-white font-black uppercase outline-none focus:border-blue-500/50" 
+                     className="w-full bg-slate-900 border border-white/10 rounded-lg px-6 py-4 text-sm text-white font-black uppercase outline-none focus:border-blue-500/50" 
                      placeholder="e.g. 18 Month Payback // $2.4M Annual Stop-Loss"
                    />
                 </div>
@@ -1579,7 +1579,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Target KPIs</label>
                    <div className="flex flex-wrap gap-2 mb-3">
                       {data.business_value?.kpis?.map((k: string) => (
-                        <span key={k} className="bg-blue-600/10 text-blue-400 border border-blue-500/20 text-[9px] font-black uppercase px-3 py-1.5 rounded-xl flex items-center gap-2">
+                        <span key={k} className="bg-blue-600/10 text-blue-400 border border-blue-500/20 text-[9px] font-black uppercase px-3 py-1.5 rounded-lg flex items-center gap-2">
                            {k} <X size={12} className="cursor-pointer hover:text-white" onClick={() => update('business_value', 'kpis', data.business_value.kpis.filter((x:any) => x !== k))} />
                         </span>
                       ))}
@@ -1600,7 +1600,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                              onChange={e => {
                                const next = [...data.business_value.beneficiaries]; next[idx].who = e.target.value; update('business_value', 'beneficiaries', next)
                              }}
-                             className="flex-1 bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] text-white font-black uppercase" 
+                             className="flex-1 bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-[10px] text-white font-black uppercase" 
                              placeholder="Stakeholder..." 
                            />
                            <input 
@@ -1608,14 +1608,14 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                              onChange={e => {
                                const next = [...data.business_value.beneficiaries]; next[idx].value = e.target.value; update('business_value', 'beneficiaries', next)
                              }}
-                             className="flex-[2] bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] text-slate-400 font-bold uppercase" 
+                             className="flex-[2] bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-[10px] text-slate-400 font-bold uppercase" 
                              placeholder="Value Delivered..." 
                            />
                         </div>
                       ))}
                       <button 
                         onClick={() => update('business_value', 'beneficiaries', [...(data.business_value?.beneficiaries || []), { who: '', value: '' }])}
-                        className="w-full py-2 bg-blue-600/10 text-blue-500 rounded-xl text-[9px] font-black uppercase hover:bg-blue-600/20 border border-blue-500/20 transition-all mt-2"
+                        className="w-full py-2 bg-blue-600/10 text-blue-500 rounded-lg text-[9px] font-black uppercase hover:bg-blue-600/20 border border-blue-500/20 transition-all mt-2"
                       >
                          + Add Beneficiary Node
                       </button>
@@ -1642,7 +1642,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                       <input 
                         value={data.overview?.official_name} 
                         onChange={e => update('overview', 'official_name', e.target.value)}
-                        className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-[11px] text-white font-black uppercase" 
+                        className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-[11px] text-white font-black uppercase" 
                         placeholder="SYSTEM_ID_ALPHA" 
                       />
                    </div>
@@ -1651,7 +1651,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                       <input 
                         value={data.overview?.version} 
                         onChange={e => update('overview', 'version', e.target.value)}
-                        className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-[11px] text-white font-black uppercase" 
+                        className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-[11px] text-white font-black uppercase" 
                         placeholder="v2.4.0-GA" 
                       />
                    </div>
@@ -1660,7 +1660,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Core Modules & Purpose</label>
                    <div className="space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
                       {services?.map((s: any) => (
-                        <div key={s.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+                        <div key={s.id} className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
                           data.overview?.service_ids?.includes(s.id) ? 'bg-emerald-600/20 border-emerald-500/50' : 'bg-white/5 border-white/5 opacity-50'
                         }`} onClick={() => {
                           const current = data.overview?.service_ids || []
@@ -1681,7 +1681,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Asset Composition (Hardware Nodes)</label>
                    <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
                       {devices?.map((d: any) => (
-                        <div key={d.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+                        <div key={d.id} className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
                           data.overview?.asset_ids?.includes(d.id) ? 'bg-emerald-600/20 border-emerald-500/50' : 'bg-white/5 border-white/5 opacity-50'
                         }`} onClick={() => {
                           const current = data.overview?.asset_ids || []
@@ -1716,7 +1716,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                    <input 
                      value={data.performance?.availability_target} 
                      onChange={e => update('performance', 'availability_target', e.target.value)}
-                     className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-[11px] text-white font-black uppercase" 
+                     className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-[11px] text-white font-black uppercase" 
                      placeholder="e.g. 99.95% (Excluding Planned Maintenance)" 
                    />
                 </div>
@@ -1725,7 +1725,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                    <input 
                      value={data.performance?.latency_limits} 
                      onChange={e => update('performance', 'latency_limits', e.target.value)}
-                     className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-[11px] text-white font-black uppercase" 
+                     className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-[11px] text-white font-black uppercase" 
                      placeholder="e.g. <50ms End-to-End // <10ms DB IO" 
                    />
                 </div>
@@ -1736,7 +1736,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                    <input 
                      value={data.performance?.throughput_capacity} 
                      onChange={e => update('performance', 'throughput_capacity', e.target.value)}
-                     className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-[11px] text-white font-black uppercase" 
+                     className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-[11px] text-white font-black uppercase" 
                      placeholder="e.g. 1500 Requests/sec // 500 Wafers/hr" 
                    />
                 </div>
@@ -1745,7 +1745,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                    <textarea 
                      value={data.performance?.capacity_methodology} 
                      onChange={e => update('performance', 'capacity_methodology', e.target.value)}
-                     className="w-full bg-slate-900 border border-white/10 rounded-xl p-4 text-[11px] text-slate-400 min-h-[100px] outline-none focus:border-amber-500/30 font-medium" 
+                     className="w-full bg-slate-900 border border-white/10 rounded-lg p-4 text-[11px] text-slate-400 min-h-[100px] outline-none focus:border-amber-500/30 font-medium" 
                      placeholder="Define how capacity is forecasted and scaled..." 
                    />
                 </div>
@@ -1770,7 +1770,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                       <input 
                         value={data.operation?.owner_team} 
                         onChange={e => update('operation', 'owner_team', e.target.value)}
-                        className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-[11px] text-white font-black uppercase" 
+                        className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-[11px] text-white font-black uppercase" 
                         placeholder="FAB_AUTOMATION" 
                       />
                    </div>
@@ -1779,7 +1779,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                       <input 
                         value={data.operation?.owner_individual} 
                         onChange={e => update('operation', 'owner_individual', e.target.value)}
-                        className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-[11px] text-white font-black uppercase" 
+                        className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-[11px] text-white font-black uppercase" 
                         placeholder="NAME_OR_ID" 
                       />
                    </div>
@@ -1788,7 +1788,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Top Failure Modes (from FAR)</label>
                    <div className="space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
                       {farModes?.map((fm: any) => (
-                        <div key={fm.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+                        <div key={fm.id} className={`flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer ${
                           data.operation?.far_ids?.includes(fm.id) ? 'bg-rose-600/20 border-rose-500/50' : 'bg-white/5 border-white/5 opacity-50'
                         }`} onClick={() => {
                           const current = data.operation?.far_ids || []
@@ -1811,7 +1811,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                       <input 
                         value={data.operation?.dr_strategy?.rto} 
                         onChange={e => update('operation', 'dr_strategy', { ...data.operation?.dr_strategy, rto: e.target.value })}
-                        className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-[11px] text-white font-black uppercase" 
+                        className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-[11px] text-white font-black uppercase" 
                         placeholder="e.g. 4 Hours" 
                       />
                    </div>
@@ -1820,7 +1820,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                       <input 
                         value={data.operation?.dr_strategy?.rpo} 
                         onChange={e => update('operation', 'dr_strategy', { ...data.operation?.dr_strategy, rpo: e.target.value })}
-                        className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-[11px] text-white font-black uppercase" 
+                        className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-[11px] text-white font-black uppercase" 
                         placeholder="e.g. 15 Minutes" 
                       />
                    </div>
@@ -1840,7 +1840,7 @@ function SystemManualBuilder({ data, onChange, context }: any) {
                                else next.push({ role, DRI: e.target.value })
                                update('operation', 'raci', next)
                              }}
-                             className="flex-1 bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] text-white font-black uppercase" 
+                             className="flex-1 bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-[10px] text-white font-black uppercase" 
                              placeholder="Responsible Team/DRI..." 
                            />
                         </div>
@@ -1922,7 +1922,7 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, onQuickUpdate, con
           }`}>
              <div className="space-y-6 relative z-10">
                 <div className="flex items-center space-x-3">
-                   <span className={`px-4 py-1 rounded-xl border text-[10px] font-black uppercase tracking-[0.2em] shadow-lg ${
+                   <span className={`px-4 py-1 rounded-lg border text-[10px] font-black uppercase tracking-[0.2em] shadow-lg ${
                      isBKM ? 'bg-rose-600/20 border-rose-500/30 text-rose-500' : 
                      isQA ? 'bg-amber-600/20 border-amber-500/30 text-amber-500' :
                      isManual ? 'bg-emerald-600/20 border-emerald-500/30 text-emerald-500' :
@@ -1939,16 +1939,16 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, onQuickUpdate, con
                    {entry.title}
                 </h1>
                 <div className="flex flex-wrap gap-2">
-                   <span className="px-3 py-1.5 rounded-xl border border-white/10 bg-black/20 text-[9px] font-black uppercase tracking-[0.2em] text-slate-300">
+                   <span className="px-3 py-1.5 rounded-lg border border-white/10 bg-black/20 text-[9px] font-black uppercase tracking-[0.2em] text-slate-300">
                      {readiness.label} // {readiness.score}/{readiness.max}
                    </span>
-                   <span className="px-3 py-1.5 rounded-xl border border-white/10 bg-black/20 text-[9px] font-black uppercase tracking-[0.2em] text-slate-300">
+                   <span className="px-3 py-1.5 rounded-lg border border-white/10 bg-black/20 text-[9px] font-black uppercase tracking-[0.2em] text-slate-300">
                      {getKnowledgeLinkCount(entry)} linked records
                    </span>
                 </div>
                 <div className="flex flex-wrap gap-2 pt-2">
                    {entry.tags?.map((t: string) => (
-                     <span key={t} className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-[9px] font-black text-slate-400 uppercase flex items-center gap-2 hover:bg-white/10 transition-all cursor-default">
+                     <span key={t} className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[9px] font-black text-slate-400 uppercase flex items-center gap-2 hover:bg-white/10 transition-all cursor-default">
                         <Tag size={12} className="text-blue-500" /> {t}
                      </span>
                    ))}
@@ -1956,21 +1956,21 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, onQuickUpdate, con
              </div>
              <div className="flex items-center space-x-3 relative z-10">
                 {isBKM && (
-                  <button onClick={() => setIncidentMode(!incidentMode)} className={`px-5 py-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-all ${incidentMode ? 'bg-amber-500 text-slate-950 border-amber-300' : 'bg-white/5 border-white/10 text-amber-300 hover:bg-white/10'}`}>
+                  <button onClick={() => setIncidentMode(!incidentMode)} className={`px-5 py-4 rounded-lg border text-[10px] font-black uppercase tracking-widest transition-all ${incidentMode ? 'bg-amber-500 text-slate-950 border-amber-300' : 'bg-white/5 border-white/10 text-amber-300 hover:bg-white/10'}`}>
                     Incident Mode
                   </button>
                 )}
-                <button onClick={() => setShowBriefing(true)} className="px-5 py-4 rounded-2xl border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:text-white">
+                <button onClick={() => setShowBriefing(true)} className="px-5 py-4 rounded-lg border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:text-white">
                   <Share2 size={16} className="inline mr-2" /> Export Briefing
                 </button>
-                <button onClick={onEdit} className="p-4 bg-white/5 border border-white/10 rounded-2xl text-slate-500 hover:text-blue-400 hover:border-blue-500/30 transition-all shadow-xl group">
+                <button onClick={onEdit} className="p-4 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-blue-400 hover:border-blue-500/30 transition-all shadow-xl group">
                    <Edit2 size={24} className="group-hover:rotate-12 transition-transform" />
                 </button>
-                <button onClick={onDelete} className="p-4 bg-white/5 border border-white/10 rounded-2xl text-slate-500 hover:text-rose-500 hover:border-rose-500/30 transition-all shadow-xl group">
+                <button onClick={onDelete} className="p-4 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-rose-500 hover:border-rose-500/30 transition-all shadow-xl group">
                    <Trash2 size={24} className="group-hover:scale-110 transition-transform" />
                 </button>
                 <div className="w-px h-12 bg-white/10 mx-3" />
-                <button onClick={onClose} className="p-4 bg-white/5 border border-white/10 rounded-2xl text-slate-500 hover:text-white hover:bg-white/10 transition-all shadow-xl">
+                <button onClick={onClose} className="p-4 bg-white/5 border border-white/10 rounded-lg text-slate-500 hover:text-white hover:bg-white/10 transition-all shadow-xl">
                    <X size={32}/>
                 </button>
              </div>
@@ -2071,15 +2071,15 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, onQuickUpdate, con
                 </div>
              </div>
              <div className="flex items-center gap-4">
-                <button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/knowledge?id=${entry.id}`)} className="flex items-center space-x-3 px-6 py-3 bg-blue-600/10 border border-blue-500/20 rounded-xl text-[10px] font-black text-blue-400 uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-lg group">
+                <button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/knowledge?id=${entry.id}`)} className="flex items-center space-x-3 px-6 py-3 bg-blue-600/10 border border-blue-500/20 rounded-lg text-[10px] font-black text-blue-400 uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-lg group">
                    <LinkIcon size={16} className="group-hover:rotate-45 transition-transform" /> <span>Copy SysLink</span>
                 </button>
                 <button onClick={() => {
                   onQuickUpdate?.({ metadata_json: { verification: { state: 'Verified', verified_by: metadata.ownership.owner || 'system_admin', last_verified_at: new Date().toISOString().slice(0, 10) } } })
-                }} className="flex items-center space-x-3 px-6 py-3 bg-emerald-600/10 border border-emerald-500/20 rounded-xl text-[10px] font-black text-emerald-400 uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-lg group">
+                }} className="flex items-center space-x-3 px-6 py-3 bg-emerald-600/10 border border-emerald-500/20 rounded-lg text-[10px] font-black text-emerald-400 uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-lg group">
                    <CheckCircle2 size={16} className="group-hover:-translate-y-0.5 transition-transform" /> <span>Mark Verified</span>
                 </button>
-                <button className="flex items-center space-x-3 px-6 py-3 bg-rose-600/10 border border-rose-500/20 rounded-xl text-[10px] font-black text-rose-500 uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-lg group">
+                <button className="flex items-center space-x-3 px-6 py-3 bg-rose-600/10 border border-rose-500/20 rounded-lg text-[10px] font-black text-rose-500 uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-lg group">
                    <Share2 size={16} className="group-hover:-translate-y-0.5 transition-transform" /> <span>Distribute Node</span>
                 </button>
              </div>
@@ -2100,7 +2100,7 @@ function KnowledgeBriefingModal({ entry, context, onClose }: any) {
             <h3 className="text-2xl font-black uppercase tracking-tighter text-white">Knowledge Briefing</h3>
             <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">Operator-ready handoff summary</p>
           </div>
-          <button onClick={onClose} aria-label="Close briefing" className="rounded-2xl border border-white/10 bg-white/5 p-3 text-slate-400 hover:text-white">
+          <button onClick={onClose} aria-label="Close briefing" className="rounded-lg border border-white/10 bg-white/5 p-3 text-slate-400 hover:text-white">
             <X size={18} />
           </button>
         </div>
@@ -2112,7 +2112,7 @@ function KnowledgeBriefingModal({ entry, context, onClose }: any) {
         <div className="mt-6 flex items-center justify-end gap-3">
           <button
             onClick={() => navigator.clipboard.writeText(briefing)}
-            className="rounded-2xl border border-blue-500/20 bg-blue-500/10 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-blue-300"
+            className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-blue-300"
           >
             Copy Briefing
           </button>
@@ -2137,7 +2137,7 @@ function KnowledgeLinkSelector({ title, icon, items, selected, labelKey, sublabe
               key={`${title}-${item.id}`}
               type="button"
               onClick={() => onToggle(item.id)}
-              className={`w-full rounded-2xl border px-3 py-3 text-left transition-all ${active ? 'bg-blue-600/15 border-blue-500/30' : 'bg-white/5 border-white/5 hover:bg-white/[0.08]'}`}
+              className={`w-full rounded-lg border px-3 py-3 text-left transition-all ${active ? 'bg-blue-600/15 border-blue-500/30' : 'bg-white/5 border-white/5 hover:bg-white/[0.08]'}`}
             >
               <p className="text-[10px] font-black uppercase tracking-tight text-white">{item[labelKey]}</p>
               {(formatSublabel ? formatSublabel(item) : item[sublabelKey]) && (
@@ -2192,7 +2192,7 @@ function VersionDiff({ currentVersion, previousVersion }: any) {
     <div className="space-y-3">
       {!changedFields.length && <p className="text-[10px] font-bold uppercase text-slate-600">No previous delta available</p>}
       {changedFields.map(change => (
-        <div key={change.field} className="rounded-2xl border border-white/5 bg-black/20 p-3">
+        <div key={change.field} className="rounded-lg border border-white/5 bg-black/20 p-3">
           <p className="text-[9px] font-black uppercase tracking-widest text-blue-300">{change.field}</p>
           <p className="mt-2 text-[10px] font-bold text-slate-500 line-clamp-2">{change.before || 'empty'}</p>
           <p className="mt-1 text-[10px] font-bold text-white line-clamp-2">{change.after || 'empty'}</p>
@@ -2209,7 +2209,7 @@ function KnowledgeOpsRail({ entry, metadata, versionHistory, currentVersion, pre
     <aside className="w-[380px] shrink-0 border-l border-white/5 bg-black/30 p-6 overflow-y-auto custom-scrollbar space-y-6">
       <div className="rounded-[28px] border border-white/5 bg-white/[0.02] p-5 space-y-4">
         <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Operational Readiness</p>
-        <div className="rounded-2xl border border-white/5 bg-black/20 p-4">
+        <div className="rounded-lg border border-white/5 bg-black/20 p-4">
           <div className="flex items-center justify-between">
             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Status</span>
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">{readiness.label}</span>
@@ -2218,10 +2218,10 @@ function KnowledgeOpsRail({ entry, metadata, versionHistory, currentVersion, pre
             <div className="h-2 rounded-full bg-gradient-to-r from-blue-500 via-emerald-500 to-emerald-300" style={{ width: `${(readiness.score / readiness.max) * 100}%` }} />
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 text-[9px] font-black uppercase tracking-[0.18em]">
-            <span className="rounded-xl border border-white/5 bg-white/5 px-3 py-2 text-slate-400">{getKnowledgeLinkCount(entry)} links</span>
-            <span className="rounded-xl border border-white/5 bg-white/5 px-3 py-2 text-slate-400">{versionHistory.length} versions</span>
-            <span className="rounded-xl border border-white/5 bg-white/5 px-3 py-2 text-slate-400">{metadata.feedback?.length || 0} feedback</span>
-            <span className="rounded-xl border border-white/5 bg-white/5 px-3 py-2 text-slate-400">{entry.category === 'BKM' && isKnowledgeIncidentReady(entry) ? 'incident-ready' : 'needs drill'}</span>
+            <span className="rounded-lg border border-white/5 bg-white/5 px-3 py-2 text-slate-400">{getKnowledgeLinkCount(entry)} links</span>
+            <span className="rounded-lg border border-white/5 bg-white/5 px-3 py-2 text-slate-400">{versionHistory.length} versions</span>
+            <span className="rounded-lg border border-white/5 bg-white/5 px-3 py-2 text-slate-400">{metadata.feedback?.length || 0} feedback</span>
+            <span className="rounded-lg border border-white/5 bg-white/5 px-3 py-2 text-slate-400">{entry.category === 'BKM' && isKnowledgeIncidentReady(entry) ? 'incident-ready' : 'needs drill'}</span>
           </div>
         </div>
       </div>
@@ -2236,7 +2236,7 @@ function KnowledgeOpsRail({ entry, metadata, versionHistory, currentVersion, pre
         </div>
         <button
           onClick={() => onQuickUpdate?.({ metadata_json: { verification: { state: 'Needs Review' } } })}
-          className="w-full rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-amber-300"
+          className="w-full rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-amber-300"
         >
           Flag For Review
         </button>
@@ -2249,14 +2249,14 @@ function KnowledgeOpsRail({ entry, metadata, versionHistory, currentVersion, pre
             <button
               key={type}
               onClick={() => onFeedback(type)}
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-[9px] font-black uppercase tracking-widest text-slate-300 hover:text-white"
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-3 text-[9px] font-black uppercase tracking-widest text-slate-300 hover:text-white"
             >
               {type}
             </button>
           ))}
         </div>
         {(metadata.feedback || []).slice(-3).reverse().map((item: any, index: number) => (
-          <div key={`${item.type}-${item.at}-${index}`} className="rounded-xl border border-white/5 bg-black/20 px-3 py-2">
+          <div key={`${item.type}-${item.at}-${index}`} className="rounded-lg border border-white/5 bg-black/20 px-3 py-2">
             <p className="text-[9px] font-black uppercase tracking-widest text-white">{item.type}</p>
             <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500 mt-1">{formatAppDate(item.at)}</p>
           </div>
@@ -2269,7 +2269,7 @@ function KnowledgeOpsRail({ entry, metadata, versionHistory, currentVersion, pre
           <div key={group.label} className="space-y-2">
             <p className="text-[8px] font-black uppercase tracking-[0.24em] text-slate-500">{group.label}</p>
             {group.items.filter((item: any) => item.title).length ? group.items.filter((item: any) => item.title).map((item: any) => (
-              <button key={`${group.label}-${item.id}`} onClick={() => onOpenPath(item.path)} className="w-full rounded-xl border border-white/5 bg-black/20 px-3 py-2 text-left hover:bg-white/[0.08]">
+              <button key={`${group.label}-${item.id}`} onClick={() => onOpenPath(item.path)} className="w-full rounded-lg border border-white/5 bg-black/20 px-3 py-2 text-left hover:bg-white/[0.08]">
                 <p className="text-[10px] font-black uppercase tracking-tight text-white">{item.title}</p>
               </button>
             )) : <p className="text-[9px] font-bold uppercase text-slate-600">No linked records</p>}
@@ -2281,7 +2281,7 @@ function KnowledgeOpsRail({ entry, metadata, versionHistory, currentVersion, pre
         <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Version History</p>
         <div className="space-y-2">
           {versionHistory.map((item: any) => (
-            <button aria-label={`Version ${item.version}`} key={item.version} onClick={() => onSelectVersion(item.version)} className="w-full rounded-xl border border-white/5 bg-black/20 px-3 py-3 text-left hover:bg-white/[0.08]">
+            <button aria-label={`Version ${item.version}`} key={item.version} onClick={() => onSelectVersion(item.version)} className="w-full rounded-lg border border-white/5 bg-black/20 px-3 py-3 text-left hover:bg-white/[0.08]">
               <div className="flex items-center justify-between">
                 <p className="text-[10px] font-black uppercase tracking-widest text-white">v{item.version}</p>
                 <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">{item.changed_by}</p>
@@ -2295,7 +2295,7 @@ function KnowledgeOpsRail({ entry, metadata, versionHistory, currentVersion, pre
             {initialVersion && initialVersion.version !== currentVersion.version && (
               <button
                 onClick={() => onRestoreVersion?.(initialVersion)}
-                className="w-full rounded-2xl border border-fuchsia-500/20 bg-fuchsia-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fuchsia-300"
+                className="w-full rounded-lg border border-fuchsia-500/20 bg-fuchsia-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-fuchsia-300"
               >
                 Restore Initial Version
               </button>
@@ -2303,14 +2303,14 @@ function KnowledgeOpsRail({ entry, metadata, versionHistory, currentVersion, pre
             {previousVersion && (
               <button
                 onClick={() => onRestoreVersion?.(previousVersion)}
-                className="w-full rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-emerald-300"
+                className="w-full rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-emerald-300"
               >
                 Restore Previous Version
               </button>
             )}
             <button
               onClick={() => onRestoreVersion?.(currentVersion)}
-              className="w-full rounded-2xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-blue-300"
+              className="w-full rounded-lg border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-blue-300"
             >
               Restore Selected Version
             </button>
@@ -2397,7 +2397,7 @@ function BKMViewer({ data }: any) {
              {data.troubleshooting?.map((t: any, i: number) => (
                <div key={i} className="bg-amber-500/[0.03] border border-amber-500/10 p-8 rounded-[40px] space-y-6 hover:bg-amber-500/[0.06] transition-all group">
                   <div className="flex items-center gap-4 border-b border-amber-500/10 pb-4">
-                     <div className="p-3 bg-amber-500/20 rounded-2xl text-amber-500">
+                     <div className="p-3 bg-amber-500/20 rounded-lg text-amber-500">
                         <AlertTriangle size={20} />
                      </div>
                      <h5 className="text-lg font-black text-white uppercase tracking-tight">{t.symptom}</h5>
@@ -2509,8 +2509,8 @@ function SystemManualViewer({ data, context }: any) {
                 </h5>
                 <div className="space-y-4">
                    {data.business_value?.beneficiaries?.map((b: any, i: number) => (
-                     <div key={i} className="flex items-center gap-6 p-5 bg-white/[0.03] rounded-3xl border border-white/5 group hover:bg-blue-600/10 transition-all">
-                        <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-white/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                     <div key={i} className="flex items-center gap-6 p-5 bg-white/[0.03] rounded-lg border border-white/5 group hover:bg-blue-600/10 transition-all">
+                        <div className="w-12 h-12 rounded-lg bg-slate-900 border border-white/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-600 group-hover:text-white transition-all">
                            <User size={20} />
                         </div>
                         <div>
@@ -2560,7 +2560,7 @@ function SystemManualViewer({ data, context }: any) {
                       </h5>
                       <div className="space-y-3">
                          {linkedServices.map((s: any) => (
-                           <div key={s.id} className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between group hover:border-emerald-500/30 transition-all">
+                           <div key={s.id} className="p-4 bg-white/[0.02] border border-white/5 rounded-lg flex items-center justify-between group hover:border-emerald-500/30 transition-all">
                               <div className="flex items-center gap-3">
                                  <div className="w-8 h-8 rounded-lg bg-emerald-600/10 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-600 group-hover:text-white transition-all">
                                     <Cpu size={14} />
@@ -2578,7 +2578,7 @@ function SystemManualViewer({ data, context }: any) {
                       </h5>
                       <div className="space-y-3">
                          {linkedAssets.map((d: any) => (
-                           <div key={d.id} className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between group hover:border-emerald-500/30 transition-all">
+                           <div key={d.id} className="p-4 bg-white/[0.02] border border-white/5 rounded-lg flex items-center justify-between group hover:border-emerald-500/30 transition-all">
                               <div className="flex items-center gap-3">
                                  <div className="w-8 h-8 rounded-lg bg-emerald-600/10 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-600 group-hover:text-white transition-all">
                                     <Server size={14} />
@@ -2660,14 +2660,14 @@ function SystemManualViewer({ data, context }: any) {
                    </h5>
                    <div className="space-y-3">
                       {linkedFar.map((fm: any) => (
-                        <div key={fm.id} className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between group hover:bg-rose-600/10 transition-all">
+                        <div key={fm.id} className="p-4 bg-white/[0.02] border border-white/5 rounded-lg flex items-center justify-between group hover:bg-rose-600/10 transition-all">
                            <div className="flex items-center gap-3">
                               <AlertTriangle size={14} className="text-rose-500" />
                               <span className="text-[10px] font-black text-white uppercase">{fm.title}</span>
                            </div>
                            <div className="flex items-center gap-4">
                               <span className="text-[8px] font-black text-slate-500 uppercase">SEV_{fm.severity}</span>
-                              <span className="px-2 py-0.5 rounded bg-rose-600 text-white text-[8px] font-black">RPN_{fm.rpn}</span>
+                              <span className="px-2 py-0.5 rounded-lg bg-rose-600 text-white text-[8px] font-black">RPN_{fm.rpn}</span>
                            </div>
                         </div>
                       ))}
@@ -2696,7 +2696,7 @@ function SystemManualViewer({ data, context }: any) {
                    </h6>
                    <div className="grid grid-cols-2 gap-4">
                       {data.operation?.raci?.map((r: any, i: number) => (
-                        <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
+                        <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5">
                            <span className="text-[9px] font-black text-slate-500 uppercase">{r.role}</span>
                            <span className="text-[10px] font-black text-white uppercase tracking-tighter">{r.DRI}</span>
                         </div>
@@ -2824,7 +2824,7 @@ function QAViewer({ entry }: any) {
        <div className="p-8 bg-black/60 border-t border-white/10 backdrop-blur-3xl">
           <div className="max-w-4xl mx-auto space-y-4">
              {activeReplyTo && (
-               <div className="flex items-center justify-between bg-blue-600/10 px-6 py-2 rounded-xl border border-blue-500/20">
+               <div className="flex items-center justify-between bg-blue-600/10 px-6 py-2 rounded-lg border border-blue-500/20">
                   <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
                     <Reply size={12}/> Replying to contribution by {activeReplyTo.author}
                   </span>
@@ -2835,13 +2835,13 @@ function QAViewer({ entry }: any) {
                 <input
                   value={replyMeta.author}
                   onChange={e => setReplyMeta(prev => ({ ...prev, author: e.target.value }))}
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white outline-none"
+                  className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white outline-none"
                   placeholder="AUTHOR"
                 />
                 <input
                   value={replyMeta.author_team}
                   onChange={e => setReplyMeta(prev => ({ ...prev, author_team: e.target.value }))}
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white outline-none"
+                  className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white outline-none"
                   placeholder="TEAM"
                 />
                 <StyledSelect
@@ -2858,7 +2858,7 @@ function QAViewer({ entry }: any) {
                     { value: 'Answer', label: 'Answer' }
                   ]}
                 />
-                <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-3">
                   <label className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-300">
                     <input type="checkbox" checked={replyMeta.is_answer} onChange={e => setReplyMeta(prev => ({ ...prev, is_answer: e.target.checked }))} />
                     Answer
@@ -2874,7 +2874,7 @@ function QAViewer({ entry }: any) {
                    <textarea 
                      value={replyText} 
                      onChange={e => setReplyText(e.target.value)}
-                     className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm text-white placeholder:text-slate-700 outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all min-h-[60px] max-h-[200px] font-medium"
+                     className="w-full bg-white/5 border border-white/10 rounded-lg px-6 py-4 text-sm text-white placeholder:text-slate-700 outline-none focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 transition-all min-h-[60px] max-h-[200px] font-medium"
                      placeholder={activeReplyTo ? "Synchronize reply..." : "Inject new collaborative node..."}
                    />
                 </div>
@@ -2882,7 +2882,7 @@ function QAViewer({ entry }: any) {
                   onClick={() => handleSubmit(activeReplyTo?.id)}
                   disabled={!replyText || qaMutation.isPending}
                   aria-label="Send knowledge reply"
-                  className="bg-blue-600 hover:bg-blue-500 text-white w-16 h-16 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
+                  className="bg-blue-600 hover:bg-blue-500 text-white w-16 h-16 rounded-lg flex items-center justify-center shadow-xl shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
                 >
                    {qaMutation.isPending ? <RefreshCcw size={24} className="animate-spin"/> : <Send size={24}/>}
                 </button>
@@ -2906,11 +2906,11 @@ function QANode({ qa, onReply, onVerify }: any) {
              </div>
           </div>
           <div className="flex-1 space-y-3 pb-4">
-             <div className="flex items-center justify-between bg-white/[0.02] px-6 py-2 rounded-xl border border-white/5">
+             <div className="flex items-center justify-between bg-white/[0.02] px-6 py-2 rounded-lg border border-white/5">
                 <div className="flex items-center gap-4">
                    <span className="text-[10px] font-black text-white uppercase tracking-tighter">{qa.author}</span>
                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-[0.2em]">{qa.author_team}</span>
-                   {qa.is_verified && <span className="text-[8px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded">VERIFIED_DRI</span>}
+                   {qa.is_verified && <span className="text-[8px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-lg">VERIFIED_DRI</span>}
                 </div>
                 <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{formatAppDate(qa.created_at)}</span>
              </div>

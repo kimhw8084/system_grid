@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate 
 import { motion, AnimatePresence } from "framer-motion"
 import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3, Clock, AlertTriangle, Upload, Workflow, Package, Globe, Target, BookOpen, FileText, Briefcase, Share2, Bug, Check, ShieldAlert } from "lucide-react"
 import { Toaster, toast } from "react-hot-toast"
-import { apiFetch, subscribeToLatency } from "./api/apiClient"
+import { apiFetch, subscribeToLatency, getConfig } from "./api/apiClient"
 import { errorManager, useErrors } from "./stores/errorStore"
 import { ErrorConsole } from "./components/shared/ErrorConsole"
 
@@ -69,8 +69,8 @@ const queryClient = new QueryClient({
         stack: error.traceback || error.stack,
         status: error.status,
         data: error.data,
-        type: 'BACKEND',
-        severity: 'ERROR'
+        type: 'backend',
+        severity: 'error'
       });
       showWorkspaceToast(error.message || 'API Query Failure', { type: 'error' });
     }
@@ -82,8 +82,8 @@ const queryClient = new QueryClient({
         stack: error.traceback || error.stack,
         status: error.status,
         data: error.data,
-        type: 'BACKEND',
-        severity: 'ERROR'
+        type: 'backend',
+        severity: 'error'
       });
       showWorkspaceToast(error.message || 'API Mutation Failure', { type: 'error' });
     }
@@ -280,7 +280,7 @@ const PatchNotesModal = ({ onClose }: any) => {
                          <div className="px-6 pb-6 pt-2 space-y-3">
                             {patch.changes.map((change, cIdx) => (
                               <div key={cIdx} className="flex space-x-3 text-[11px] font-bold uppercase tracking-tight">
-                                 <span className={`text-[8px] px-1.5 py-0.5 rounded h-fit ${change.type === 'New' ? 'bg-emerald-500/20 text-emerald-400' : change.type === 'Fixed' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'}`}>{change.type}</span>
+                                 <span className={`text-[8px] px-1.5 py-0.5 rounded-lg h-fit ${change.type === 'New' ? 'bg-emerald-500/20 text-emerald-400' : change.type === 'Fixed' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'}`}>{change.type}</span>
                                  <span className="text-slate-300 leading-tight">{change.text}</span>
                               </div>
                             ))}
@@ -376,6 +376,10 @@ function MainLayout() {
       hour12: false
     }).format(date);
   };
+
+  useEffect(() => {
+    document.title = getConfig('VITE_APP_TITLE', 'SYSGRID INFRASTRUCTURE');
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -651,8 +655,8 @@ function MainLayout() {
                 <Search size={16} className="transition-colors group-hover:text-blue-400" />
                 <span className="flex-1 text-left text-[11px] font-bold tracking-tight">Search assets, projects, or incidents...</span>
                 <div className="flex items-center gap-1 opacity-40 transition-opacity group-hover:opacity-100">
-                  <span className="rounded border border-white/10 bg-black/40 px-1.5 py-0.5 text-[8px]">⌘</span>
-                  <span className="rounded border border-white/10 bg-black/40 px-1.5 py-0.5 text-[8px]">K</span>
+                  <span className="rounded-lg border border-white/10 bg-black/40 px-1.5 py-0.5 text-[8px]">⌘</span>
+                  <span className="rounded-lg border border-white/10 bg-black/40 px-1.5 py-0.5 text-[8px]">K</span>
                 </div>
               </button>
             </>

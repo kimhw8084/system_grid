@@ -85,8 +85,8 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
             {error && <span className="text-[8px] font-bold text-rose-500 uppercase animate-pulse ">!! {error}</span>}
          </div>
          <div className="flex bg-black/40 rounded-lg p-0.5">
-            <button onClick={() => setMode('table')} className={`p-1.5 rounded-md transition-all ${mode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><List size={10}/></button>
-            <button onClick={() => setMode('json')} className={`p-1.5 rounded-md transition-all ${mode === 'json' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><FileJson size={10}/></button>
+            <button onClick={() => setMode('table')} className={`p-1.5 rounded-lg transition-all ${mode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><List size={10}/></button>
+            <button onClick={() => setMode('json')} className={`p-1.5 rounded-lg transition-all ${mode === 'json' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><FileJson size={10}/></button>
          </div>
       </div>
       <div className="p-3 min-h-[100px]">
@@ -458,7 +458,7 @@ export default function ServiceRegistry() {
       field: "status", 
       headerName: "Runtime State", 
       width: 130, filter: true, cellClass: 'text-center', headerClass: 'text-center',
-      cellRenderer: (p: any) => <div className="flex items-center justify-center h-full"><div className={`flex items-center justify-center w-24 h-6 rounded-md border shadow-sm font-bold uppercase tracking-tighter ${p.value === 'Active' ? 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20' : 'text-slate-400 border-white/20 bg-white/10'}`}>{p.value || 'Unknown'}</div></div>,
+      cellRenderer: (p: any) => <div className="flex items-center justify-center h-full"><div className={`flex items-center justify-center w-24 h-6 rounded-lg border shadow-sm font-bold uppercase tracking-tighter ${p.value === 'Active' ? 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20' : 'text-slate-400 border-white/20 bg-white/10'}`}>{p.value || 'Unknown'}</div></div>,
       hide: hiddenColumns.includes("status")
     },
     { field: "device_name", headerName: "Host Node", width: 140, filter: true, cellClass: "font-bold text-center uppercase text-indigo-400", headerClass: 'text-center', hide: hiddenColumns.includes("device_name") },

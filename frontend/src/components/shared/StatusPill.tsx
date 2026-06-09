@@ -51,7 +51,7 @@ export const StatusPill = ({ value, fontSize }: { value: string, fontSize?: numb
   return (
     <span 
       style={fontSize ? { fontSize: `${fontSize}px` } : {}}
-      className={`inline-flex items-center justify-center w-24 h-5 rounded ${!fontSize ? 'text-[8px]' : ''} font-bold uppercase border tracking-tighter transition-colors duration-500 ${colors[value] || colors[displayValue] || 'text-slate-600 dark:text-slate-400 border-slate-500/20 bg-slate-500/10 dark:bg-slate-500/5'}`}
+      className={`inline-flex items-center justify-center w-24 h-5 rounded-lg ${!fontSize ? 'text-[8px]' : ''} font-bold uppercase border tracking-tighter transition-colors duration-500 ${colors[value] || colors[displayValue] || 'text-slate-600 dark:text-slate-400 border-slate-500/20 bg-slate-500/10 dark:bg-slate-500/5'}`}
     >
       {displayValue}
     </span>

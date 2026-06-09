@@ -10,8 +10,17 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from '../api/apiClient'
+import { 
+  PageHeader, 
+  PageToolbar, 
+  ToolbarGroup, 
+  ToolbarSearch, 
+  ToolbarButton, 
+  ToolbarIconButton, 
+  ToolbarSegmented 
+} from './shared/LayoutPrimitives'
 import { WorkspaceModal } from './shared/WorkspaceModal'
-import { ToolbarButton } from './shared/LayoutPrimitives'
+import { WorkspaceTabStrip, WorkspaceEmptyState } from './shared/OperationalWorkspacePrimitives'
 import { formatAppDate, parseAppDate } from '../utils/dateUtils'
 import { BulkImportModal } from './shared/BulkImportModal'
 import { ConfirmationModal } from './shared/ConfirmationModal'
@@ -172,16 +181,16 @@ const PduBar = ({ side, isOver, name, capacity, load, onClick }: { side: 'A' | '
   return (
     <div 
       onClick={onClick}
-      className={`absolute ${side === 'A' ? 'left-1' : 'right-1'} top-1 bottom-1 w-2.5 rounded bg-slate-900 border border-white/10 flex flex-col items-center justify-around py-4 cursor-pointer hover:bg-slate-800 transition-all z-20 group/pdu ${!hasPdu ? 'opacity-30 grayscale' : ''}`}
+      className={`absolute ${side === 'A' ? 'left-1' : 'right-1'} top-1 bottom-1 w-2.5 rounded-lg bg-slate-900 border border-white/10 flex flex-col items-center justify-around py-4 cursor-pointer hover:bg-slate-800 transition-all z-20 group/pdu ${!hasPdu ? 'opacity-30 grayscale' : ''}`}
     >
       {Array.from({ length: 14 }).map((_, i) => (
-        <div key={i} className={`w-1.5 h-1 rounded-sm transition-all duration-300 ${!hasPdu ? 'bg-slate-700' : isOver ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500/50 group-hover/pdu:bg-emerald-400'}`} />
+        <div key={i} className={`w-1.5 h-1 rounded-lg transition-all duration-300 ${!hasPdu ? 'bg-slate-700' : isOver ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500/50 group-hover/pdu:bg-emerald-400'}`} />
       ))}
       
       {/* Tooltip on hover */}
       {hasPdu && (
         <div className={`absolute top-1/2 -translate-y-1/2 ${side === 'A' ? 'left-6' : 'right-6'} opacity-0 group-hover/pdu:opacity-100 pointer-events-none transition-all duration-200 z-50`}>
-          <div className="bg-slate-950/95 backdrop-blur-2xl border border-white/10 p-3 rounded-xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] min-w-[140px]">
+          <div className="bg-slate-950/95 backdrop-blur-2xl border border-white/10 p-3 rounded-lg shadow-[0_20px_60px_rgba(0,0,0,0.8)] min-w-[140px]">
             <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-2 flex items-center gap-2">
               <Zap size={10} /> {name}
             </p>
@@ -443,18 +452,18 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
               })()}
               
               <div className="grid grid-cols-2 gap-2 mb-1.5">
-                <div className="bg-white/5 rounded px-2 py-1 border border-white/5">
+                <div className="bg-white/5 rounded-lg px-2 py-1 border border-white/5">
                   <p className="text-[6px] text-slate-500 font-black uppercase mb-0.5">FARM</p>
                   <p className="text-[8px] text-indigo-400 font-bold truncate">{hoveredLine.connection.farm || 'N/A'}</p>
                 </div>
-                <div className="bg-white/5 rounded px-2 py-1 border border-white/5">
+                <div className="bg-white/5 rounded-lg px-2 py-1 border border-white/5">
                   <p className="text-[6px] text-slate-500 font-black uppercase mb-0.5">STATUS</p>
                   <p className="text-[8px] text-emerald-400 font-bold truncate">{hoveredLine.connection.status || 'Active'}</p>
                 </div>
               </div>
 
               {hoveredLine.connection.purpose && (
-                <div className="bg-black/20 rounded-md px-2 py-1 border border-white/5 mb-1.5">
+                <div className="bg-black/20 rounded-lg px-2 py-1 border border-white/5 mb-1.5">
                   <p className="text-[7px] text-slate-500 font-black uppercase mb-0.5">PURPOSE</p>
                   <p className="text-[8px] text-slate-300 ">{hoveredLine.connection.purpose}</p>
                 </div>
@@ -540,7 +549,7 @@ const RackUnit = ({ uNumber, loc, isTop, isBottom, highlight, onSelect, onManage
     : 'border-b border-white/[0.06]'
 
   const roundedClass = device
-    ? `${isTop ? 'rounded-t-md' : ''} ${isBottom ? 'rounded-b-md' : ''}`
+    ? `${isTop ? 'rounded-t-lg' : ''} ${isBottom ? 'rounded-b-lg' : ''}`
     : ''
 
   return (
@@ -585,11 +594,11 @@ const RackUnit = ({ uNumber, loc, isTop, isBottom, highlight, onSelect, onManage
               {loc?.size_u > 1 && (
                 <span className="text-[7px] text-slate-600 font-mono">{loc.size_u}U</span>
               )}
-              <span className={`text-[7px] font-black uppercase px-1 py-0.5 rounded border ${typeCfg?.color} border-current/20 bg-current/5`}>
+              <span className={`text-[7px] font-black uppercase px-1 py-0.5 rounded-lg border ${typeCfg?.color} border-current/20 bg-current/5`}>
                 {typeCfg?.short}
               </span>
               {loc.orientation === 'Back' && (
-                <span className="text-[7px] font-black px-1 py-0.5 rounded bg-slate-800 text-slate-400 border border-white/5">REAR</span>
+                <span className="text-[7px] font-black px-1 py-0.5 rounded-lg bg-slate-800 text-slate-400 border border-white/5">REAR</span>
               )}
             </div>
           </div>
@@ -676,7 +685,7 @@ const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
       width: 100,
       cellClass: 'text-center',
       cellRenderer: (p: any) => (
-        <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
+        <div className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest ${
           p.value === 'MOUNT' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
           p.value === 'UNMOUNT' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' :
           p.value === 'MOVE' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' :
@@ -740,7 +749,7 @@ const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
             <div className="h-20 bg-white/[0.02] border-b border-white/5 px-10 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-8">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-indigo-600 rounded-2xl shadow-2xl shadow-indigo-600/20 flex items-center justify-center text-white">
+                  <div className="w-12 h-12 bg-indigo-600 rounded-lg shadow-2xl shadow-indigo-600/20 flex items-center justify-center text-white">
                     <Activity size={24} />
                   </div>
                   <div>
@@ -763,12 +772,12 @@ const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                       gridRef.current?.api?.setQuickFilter(e.target.value)
                     }}
                     placeholder="SCAN TRANSACTION MATRIX..." 
-                    className="bg-black/40 border border-white/5 rounded-xl pl-12 pr-6 py-3 text-[11px] font-black uppercase tracking-widest text-white outline-none focus:border-blue-500/30 focus:bg-white/[0.08] transition-all min-w-[350px]"
+                    className="bg-black/40 border border-white/5 rounded-lg pl-12 pr-6 py-3 text-[11px] font-black uppercase tracking-widest text-white outline-none focus:border-blue-500/30 focus:bg-white/[0.08] transition-all min-w-[350px]"
                   />
                 </div>
               </div>
 
-              <button onClick={onClose} className="p-3 hover:bg-rose-500/10 text-slate-500 hover:text-rose-500 rounded-xl transition-all">
+              <button onClick={onClose} className="p-3 hover:bg-rose-500/10 text-slate-500 hover:text-rose-500 rounded-lg transition-all">
                 <X size={24} />
               </button>
             </div>
@@ -783,7 +792,7 @@ const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                       <button 
                         key={f} 
                         onClick={() => setActiveCategory(f)}
-                        className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${activeCategory === f ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl shadow-indigo-600/20' : 'border-white/5 text-slate-500 hover:border-white/20 hover:bg-white/5'}`}
+                        className={`w-full text-left px-4 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${activeCategory === f ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl shadow-indigo-600/20' : 'border-white/5 text-slate-500 hover:border-white/20 hover:bg-white/5'}`}
                       >
                         {f}
                       </button>
@@ -794,21 +803,21 @@ const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                 <section>
                   <h3 className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] mb-6">Integrity Metrics</h3>
                   <div className="grid grid-cols-1 gap-4">
-                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5 group hover:border-blue-500/30 transition-all">
+                    <div className="p-4 bg-white/5 rounded-lg border border-white/5 group hover:border-blue-500/30 transition-all">
                       <div className="flex justify-between items-center mb-1">
                         <p className="text-[8px] font-black text-slate-500 uppercase">Total TX</p>
                         <Layers size={10} className="text-blue-500 opacity-50" />
                       </div>
                       <p className="text-2xl font-black text-white">{stats.total}</p>
                     </div>
-                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5 group hover:border-emerald-500/30 transition-all">
+                    <div className="p-4 bg-white/5 rounded-lg border border-white/5 group hover:border-emerald-500/30 transition-all">
                       <div className="flex justify-between items-center mb-1">
                         <p className="text-[8px] font-black text-slate-500 uppercase">Administrators</p>
                         <Zap size={10} className="text-emerald-500 opacity-50" />
                       </div>
                       <p className="text-2xl font-black text-white">{stats.distinctAdmins}</p>
                     </div>
-                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                    <div className="p-4 bg-white/5 rounded-lg border border-white/5">
                       <div className="flex justify-between items-center mb-1">
                         <p className="text-[8px] font-black text-slate-500 uppercase">Mount / Unmount</p>
                       </div>
@@ -889,7 +898,7 @@ const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                         {/* Diff Logic Viewer */}
                         <div className="flex-1 p-8 flex flex-col min-h-0">
                           <h4 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-4">Transformation Delta</h4>
-                          <div className="flex-1 bg-black/40 rounded-2xl border border-white/5 p-6 overflow-y-auto custom-scrollbar">
+                          <div className="flex-1 bg-black/40 rounded-lg border border-white/5 p-6 overflow-y-auto custom-scrollbar">
                             <DiffViewer changes={selectedLog.changes} />
                             {!selectedLog.changes && (
                               <p className="text-[10px] text-slate-600 italic font-bold uppercase tracking-widest text-center mt-10">No detailed change vectors recorded for this operation</p>
@@ -1064,7 +1073,7 @@ interface RackElevationProps {
         <div className="absolute top-4 left-4 z-20" onClick={e => e.stopPropagation()}>
           <div
             onClick={() => onToggleSelect(rack.id)}
-            className={`w-4 h-4 rounded flex items-center justify-center cursor-pointer border transition-all ${
+            className={`w-4 h-4 rounded-lg flex items-center justify-center cursor-pointer border transition-all ${
               isSelected ? 'bg-blue-600 border-blue-500 text-white shadow-sm shadow-blue-500/50' : 'border-white/20 bg-black/30 hover:border-blue-400'
             }`}
           >
@@ -1095,7 +1104,7 @@ interface RackElevationProps {
                 </button>
                 <button
                   onClick={() => onDelete(rack.id)}
-                  className="p-1 hover:bg-rose-500/10 rounded text-rose-500 transition-colors"
+                  className="p-1 hover:bg-rose-500/10 rounded-lg text-rose-500 transition-colors"
                   title="Permanent Delete"
                 >
                   <Trash2 size={11} />
@@ -1243,7 +1252,7 @@ const AssetLegend = () => (
       { label: 'Offline',        color: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
       { label: 'Reserved',       color: 'bg-violet-500/20 text-violet-400 border-violet-500/30' },
     ].map(l => (
-      <div key={l.label} className={`flex items-center gap-1.5 px-2 py-0.5 rounded border ${l.color}`}>
+      <div key={l.label} className={`flex items-center gap-1.5 px-2 py-0.5 rounded-lg border ${l.color}`}>
         <span className="text-[7px] font-black uppercase tracking-tighter">{l.label}</span>
       </div>
     ))}
@@ -1286,7 +1295,7 @@ const AssetImpactWindow = ({ deviceId, devices, connections, onClose, coords }: 
       dragMomentum={false}
       initial={{ x: initialX, y: initialY, opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed top-0 left-0 z-[300] w-[450px] bg-slate-900/95 backdrop-blur-xl border border-blue-500/30 rounded-2xl shadow-[0_30px_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col cursor-move"
+      className="fixed top-0 left-0 z-[300] w-[450px] bg-slate-900/95 backdrop-blur-xl border border-blue-500/30 rounded-lg shadow-[0_30px_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col cursor-move"
     >       <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-white/5">
           <div className="flex items-center gap-3">
              <div className="p-2 bg-blue-600 rounded-lg shadow-lg shadow-blue-500/20 text-white">
@@ -1302,11 +1311,11 @@ const AssetImpactWindow = ({ deviceId, devices, connections, onClose, coords }: 
 
        <div className="p-6 space-y-6 max-h-[500px] overflow-y-auto custom-scrollbar">
           <div className="grid grid-cols-2 gap-3">
-             <div className="p-3 bg-black/40 rounded-xl border border-white/5">
+             <div className="p-3 bg-black/40 rounded-lg border border-white/5">
                 <p className="text-[7px] font-black text-slate-500 uppercase mb-1">Total Vector Paths</p>
                 <p className="text-xl font-black text-white leading-none">{deviceConns.length}</p>
              </div>
-             <div className="p-3 bg-black/40 rounded-xl border border-white/5">
+             <div className="p-3 bg-black/40 rounded-lg border border-white/5">
                 <p className="text-[7px] font-black text-slate-500 uppercase mb-1">Downstream Systems</p>
                 <p className="text-xl font-black text-blue-400 leading-none">{Object.keys(distribution.system).length}</p>
              </div>
@@ -1316,7 +1325,7 @@ const AssetImpactWindow = ({ deviceId, devices, connections, onClose, coords }: 
             {Object.entries(distribution).map(([category, data]) => (
               <div key={category} className="space-y-2">
                 <h4 className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-1">{category} Distribution</h4>
-                <div className="bg-black/20 rounded-xl border border-white/5 overflow-hidden">
+                <div className="bg-black/20 rounded-lg border border-white/5 overflow-hidden">
                   {Object.entries(data).length === 0 ? (
                     <p className="p-3 text-[8px] text-slate-600 italic">None</p>
                   ) : (
@@ -1443,27 +1452,27 @@ const LabelGeneratorModal = ({ racks, onClose, devices, connections }: { racks: 
                    <Tag size={12} className="text-emerald-500" /> Sourcing from {allConnections.length} active links in {racks.length} selected racks
                 </p>
              </div>
-             <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-xl text-slate-500 transition-colors"><X size={24}/></button>
+             <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-lg text-slate-500 transition-colors"><X size={24}/></button>
           </div>
 
-          <div className="space-y-3 mb-8 bg-white/5 p-6 rounded-2xl border border-white/5">
+          <div className="space-y-3 mb-8 bg-white/5 p-6 rounded-lg border border-white/5">
              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                 <Terminal size={12} /> Label Pattern Engine
              </label>
              <input 
                value={pattern}
                onChange={e => setPattern(e.target.value)}
-               className="w-full bg-slate-950 border border-white/10 rounded-xl px-5 py-4 text-sm text-emerald-400 font-mono outline-none focus:border-emerald-500/30 transition-all"
+               className="w-full bg-slate-950 border border-white/10 rounded-lg px-5 py-4 text-sm text-emerald-400 font-mono outline-none focus:border-emerald-500/30 transition-all"
                placeholder="[$src_name] $src_port -> $dest_port [$dest_name]"
              />
              <div className="flex flex-wrap gap-2 pt-1 px-1">
                 {['$src_name', '$dest_name', '$src_port', '$dest_port', '$vlan', '$farm', '$speed'].map(v => (
-                  <button key={v} onClick={() => setPattern(prev => prev + ' ' + v)} className="text-[8px] font-black text-slate-500 hover:text-white uppercase tracking-widest px-2 py-1 bg-white/5 rounded-md border border-white/5 transition-all">{v}</button>
+                  <button key={v} onClick={() => setPattern(prev => prev + ' ' + v)} className="text-[8px] font-black text-slate-500 hover:text-white uppercase tracking-widest px-2 py-1 bg-white/5 rounded-lg border border-white/5 transition-all">{v}</button>
                 ))}
              </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar border border-white/5 rounded-2xl bg-black/40">
+          <div className="flex-1 overflow-y-auto custom-scrollbar border border-white/5 rounded-lg bg-black/40">
              <table className="w-full text-left">
                 <thead className="sticky top-0 bg-slate-900 z-10 shadow-lg">
                    <tr className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/10">
@@ -1496,7 +1505,7 @@ const LabelGeneratorModal = ({ racks, onClose, devices, connections }: { racks: 
                    navigator.clipboard.writeText(allConnections.map(c => formatLabel(c)).join('\n')); 
                    toast.success(`Exported ${allConnections.length} Labels`);
                 }} 
-                className="px-10 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-emerald-600/20 active:scale-95 transition-all"
+                className="px-10 py-3 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-emerald-600/20 active:scale-95 transition-all"
              >
                 Commit All to Clipboard
              </button>
@@ -1523,7 +1532,7 @@ const InfrastructureHistory = ({ onClose, onExecuteDiff }: { onClose: () => void
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-4xl max-h-[85vh] flex flex-col p-10 rounded-2xl border border-white/10 shadow-2xl">
+       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-4xl max-h-[85vh] flex flex-col p-10 rounded-lg border border-white/10 shadow-2xl">
           <div className="flex justify-between items-start mb-8">
              <div>
                 <h2 className="text-3xl font-black uppercase tracking-tighter text-white">Infrastructure Time Machine</h2>
@@ -1531,7 +1540,7 @@ const InfrastructureHistory = ({ onClose, onExecuteDiff }: { onClose: () => void
                    <History size={14} className="text-blue-500" /> Delta Analysis & Historical Configuration Diffs
                 </p>
              </div>
-             <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-xl text-slate-500 transition-colors"><X size={24}/></button>
+             <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-lg text-slate-500 transition-colors"><X size={24}/></button>
           </div>
 
           <div className="grid grid-cols-1 gap-4 mb-8">
@@ -1541,10 +1550,10 @@ const InfrastructureHistory = ({ onClose, onExecuteDiff }: { onClose: () => void
                  <div 
                    key={s.id} 
                    onClick={() => toggleVersion(s.id)}
-                   className={`group flex items-center justify-between p-6 rounded-xl border transition-all cursor-pointer ${isSelected ? 'bg-blue-600/10 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.1)]' : 'bg-white/5 border-white/5 hover:border-white/20'}`}
+                   className={`group flex items-center justify-between p-6 rounded-lg border transition-all cursor-pointer ${isSelected ? 'bg-blue-600/10 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.1)]' : 'bg-white/5 border-white/5 hover:border-white/20'}`}
                  >
                     <div className="flex items-center gap-6">
-                       <div className={`p-4 rounded-xl transition-all ${isSelected ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-900 text-slate-500'}`}>
+                       <div className={`p-4 rounded-lg transition-all ${isSelected ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-900 text-slate-500'}`}>
                           <History size={20} />
                        </div>
                        <div>
@@ -1568,7 +1577,7 @@ const InfrastructureHistory = ({ onClose, onExecuteDiff }: { onClose: () => void
              })}
           </div>
 
-          <div className="flex justify-between items-center bg-white/5 p-8 rounded-2xl border border-white/5">
+          <div className="flex justify-between items-center bg-white/5 p-8 rounded-lg border border-white/5">
              <div>
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Analysis Engine</p>
                 <p className="text-xs text-slate-400 mt-1 italic">
@@ -1580,7 +1589,7 @@ const InfrastructureHistory = ({ onClose, onExecuteDiff }: { onClose: () => void
              <button 
                disabled={selectedVersions.length === 0}
                onClick={() => onExecuteDiff(selectedVersions)}
-               className="px-10 py-4 bg-blue-600 disabled:opacity-30 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-600/20 active:scale-95 transition-all"
+               className="px-10 py-4 bg-blue-600 disabled:opacity-30 text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-600/20 active:scale-95 transition-all"
              >
                 Execute Visual Diff Analysis
              </button>
@@ -1597,7 +1606,7 @@ const PlanBanner = ({ onAbort, onSave, onProceed, selectedCount, isInitialized, 
     className="fixed top-0 inset-x-0 z-[100] bg-violet-600/95 backdrop-blur-xl border-b border-violet-400/30 py-4 flex items-center justify-center gap-12 shadow-2xl"
   >
      <div className="flex items-center gap-4">
-        <div className="p-2 bg-white/10 rounded-xl border border-white/20">
+        <div className="p-2 bg-white/10 rounded-lg border border-white/20">
            <Eye size={20} className="text-white" />
         </div>
         <div>
@@ -1624,7 +1633,7 @@ const PlanBanner = ({ onAbort, onSave, onProceed, selectedCount, isInitialized, 
              <input 
                 value={planName}
                 onChange={e => onNameChange(e.target.value)}
-                className="bg-violet-700/50 border border-violet-400/30 rounded px-4 py-2 text-[10px] font-black uppercase text-white outline-none w-64 placeholder:text-violet-300"
+                className="bg-violet-700/50 border border-violet-400/30 rounded-lg px-4 py-2 text-[10px] font-black uppercase text-white outline-none w-64 placeholder:text-violet-300"
                 placeholder="PLAN NAME (e.g. Migration Phase 1)"
              />
              <div className="flex items-center gap-6 bg-black/20 px-4 py-1.5 rounded-lg border border-white/10">
@@ -1665,7 +1674,7 @@ const PlanListModal = ({ plans, onClose, onLoadPlan, onAddPlan, onDeletePlan }: 
      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[600px] p-10 rounded-[2.5rem] border border-white/10 shadow-2xl space-y-8">
         <div className="flex justify-between items-start">
            <div className="flex items-center gap-4">
-              <div className="p-3 bg-violet-600 rounded-2xl shadow-lg shadow-violet-600/20 text-white">
+              <div className="p-3 bg-violet-600 rounded-lg shadow-lg shadow-violet-600/20 text-white">
                  <List size={24} />
               </div>
               <div>
@@ -1673,7 +1682,7 @@ const PlanListModal = ({ plans, onClose, onLoadPlan, onAddPlan, onDeletePlan }: 
                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Stored sandbox configurations & matrix models</p>
               </div>
            </div>
-           <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-xl text-slate-500 transition-colors"><X size={24}/></button>
+           <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-lg text-slate-500 transition-colors"><X size={24}/></button>
         </div>
 
         <div className="space-y-4">
@@ -1685,7 +1694,7 @@ const PlanListModal = ({ plans, onClose, onLoadPlan, onAddPlan, onDeletePlan }: 
                 onClick={() => onAddPlan('blank')}
                 className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-white/5 border border-white/5 hover:border-violet-500/50 hover:bg-violet-600/5 transition-all group"
               >
-                 <div className="p-4 bg-slate-900 rounded-2xl mb-4 group-hover:scale-110 transition-transform">
+                 <div className="p-4 bg-slate-900 rounded-lg mb-4 group-hover:scale-110 transition-transform">
                     <Plus size={24} className="text-violet-400" />
                  </div>
                  <span className="text-[11px] font-black text-white uppercase tracking-widest">New Blank Plan</span>
@@ -1695,7 +1704,7 @@ const PlanListModal = ({ plans, onClose, onLoadPlan, onAddPlan, onDeletePlan }: 
                 onClick={() => onAddPlan('asis')}
                 className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-white/5 border border-white/5 hover:border-blue-500/50 hover:bg-blue-600/5 transition-all group"
               >
-                 <div className="p-4 bg-slate-900 rounded-2xl mb-4 group-hover:scale-110 transition-transform">
+                 <div className="p-4 bg-slate-900 rounded-lg mb-4 group-hover:scale-110 transition-transform">
                     <Upload size={24} className="text-blue-400" />
                  </div>
                  <span className="text-[11px] font-black text-white uppercase tracking-widest">Import Live Site</span>
@@ -1714,9 +1723,9 @@ const PlanListModal = ({ plans, onClose, onLoadPlan, onAddPlan, onDeletePlan }: 
              <div className="p-10 text-center border-2 border-dashed border-white/5 rounded-[2rem] text-slate-600 font-bold uppercase text-[10px] tracking-widest">No plans found</div>
            ) : (
              plans.map(p => (
-               <div key={p.id} className="flex items-center justify-between p-5 bg-white/5 border border-white/5 rounded-2xl hover:border-violet-500/30 transition-all group">
+               <div key={p.id} className="flex items-center justify-between p-5 bg-white/5 border border-white/5 rounded-lg hover:border-violet-500/30 transition-all group">
                   <div className="flex items-center gap-4">
-                     <div className="p-3 bg-slate-950 rounded-xl text-slate-500 group-hover:text-violet-400 transition-colors">
+                     <div className="p-3 bg-slate-950 rounded-lg text-slate-500 group-hover:text-violet-400 transition-colors">
                         <Package size={18} />
                      </div>
                      <div>
@@ -1725,7 +1734,7 @@ const PlanListModal = ({ plans, onClose, onLoadPlan, onAddPlan, onDeletePlan }: 
                      </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => onLoadPlan(p)} className="px-6 py-2.5 bg-violet-600/10 text-violet-400 border border-violet-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-violet-600 hover:text-white transition-all">
+                    <button onClick={() => onLoadPlan(p)} className="px-6 py-2.5 bg-violet-600/10 text-violet-400 border border-violet-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-violet-600 hover:text-white transition-all">
                        Load Matrix
                     </button>
                     <button 
@@ -2113,7 +2122,7 @@ const RackInfoModal = ({ rack, onClose }: { rack: any; onClose: () => void }) =>
       <div className="pt-8 space-y-8">
         {/* Capacity Gauges */}
         <div className="grid grid-cols-2 gap-6">
-          <div className="bg-black/40 rounded-xl p-6 border border-white/5 space-y-4">
+          <div className="bg-black/40 rounded-lg p-6 border border-white/5 space-y-4">
             <div className="flex justify-between items-end">
               <div>
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Space Utilization</p>
@@ -2129,7 +2138,7 @@ const RackInfoModal = ({ rack, onClose }: { rack: any; onClose: () => void }) =>
             </div>
           </div>
 
-          <div className="bg-black/40 rounded-xl p-6 border border-white/5 space-y-4">
+          <div className="bg-black/40 rounded-lg p-6 border border-white/5 space-y-4">
             <div className="flex justify-between items-end">
               <div>
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Power Consumption</p>
@@ -2195,7 +2204,7 @@ const SpatialMap = ({ racks, onRackClick, siteColor }: { racks: any[]; onRackCli
   }, [racks])
 
   return (
-    <div className="flex-1 overflow-auto p-8 custom-scrollbar bg-slate-950/20 rounded-xl border border-white/5 relative">
+    <div className="flex-1 overflow-auto p-8 custom-scrollbar bg-slate-950/20 rounded-lg border border-white/5 relative">
       <div className="flex flex-col gap-16">
         {Object.entries(siteGroups).sort().map(([siteName, aisles]) => (
           <div key={siteName} className="space-y-10">
@@ -2225,7 +2234,7 @@ const SpatialMap = ({ racks, onRackClick, siteColor }: { racks: any[]; onRackCli
                                 key={rack.id}
                                 whileHover={{ scale: 1.05, y: -4 }}
                                 onClick={() => onRackClick(rack)}
-                                className={`w-44 h-32 rounded-xl border flex flex-col p-4 cursor-pointer transition-all relative overflow-hidden group
+                                className={`w-44 h-32 rounded-lg border flex flex-col p-4 cursor-pointer transition-all relative overflow-hidden group
                                   ${isOver ? 'bg-rose-500/10 border-rose-500/30' : 'bg-slate-900/60 border-white/10 hover:border-blue-500/50 shadow-lg'}
                                 `}
                               >
@@ -2312,8 +2321,43 @@ export default function Racks() {
   const [viewMode, setViewMode] = useState<'elevation' | 'spatial'>('elevation')
   const [isPlanMode, setIsPlanMode] = useState(false)
   const [isPlanInitialized, setIsPlanInitialized] = useState(false)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [activePlanId, setActivePlanId] = useState<number | null>(null)
   const [virtualRacks, setVirtualRacks] = useState<any[]>([])
+
+  const addDeviceToPlan = (rackId: number, deviceId: number, startU: number, sizeU: number, orientation: string) => {
+    setVirtualRacks(prev => prev.map(r => {
+      if (r.id === rackId) {
+        const device = devices.find((d: any) => d.id === deviceId)
+        return {
+          ...r,
+          device_locations: [
+            ...(r.device_locations || []),
+            { device_id: deviceId, u_start: startU, size_u: sizeU, orientation, device }
+          ]
+        }
+      }
+      return r
+    }))
+    setHasUnsavedChanges(true)
+  }
+
+  const addReservationToPlan = (rackId: number, startU: number, sizeU: number, name: string, date: string, poc: string) => {
+    setVirtualRacks(prev => prev.map(r => {
+      if (r.id === rackId) {
+        return {
+          ...r,
+          device_locations: [
+            ...(r.device_locations || []),
+            { is_reservation: true, u_start: startU, size_u: sizeU, temporary_name: name, est_racking_date: date, poc_name: poc }
+          ]
+        }
+      }
+      return r
+    }))
+    setHasUnsavedChanges(true)
+  }
+
   const [showDiff, setShowDiff] = useState(false)
   const [sandboxRackIds, setSandboxRackIds] = useState<number[]>([])
   const [showOnlySandbox, setShowOnlySandbox] = useState(false)
@@ -2863,7 +2907,7 @@ export default function Racks() {
           className="fixed top-0 inset-x-0 z-[100] bg-blue-600/95 backdrop-blur-xl border-b border-blue-400/30 py-4 flex items-center justify-center gap-12 shadow-2xl"
         >
            <div className="flex items-center gap-4">
-              <div className="p-2 bg-white/10 rounded-xl border border-white/20">
+              <div className="p-2 bg-white/10 rounded-lg border border-white/20">
                  <History size={20} className="text-white" />
               </div>
               <div>
@@ -2880,139 +2924,26 @@ export default function Racks() {
       )}
 
       {/* ── Page Header ── */}
-      <div className={`flex flex-wrap items-center justify-between gap-4 shrink-0 transition-all`}>
-        <div className={`flex items-center gap-6 flex-wrap transition-all ${isMaskMode ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
-          <div className="shrink-0">
-            <h1 className="text-2xl font-black uppercase tracking-tight leading-none">Racks</h1>
-            <p className="text-[9px] text-slate-500 uppercase tracking-[0.3em] font-bold mt-1">Physical Capacity & Spatial Intelligence</p>
-          </div>
-          <div className="flex bg-white/5 p-1 rounded-lg border border-white/[0.06] h-9 items-center">
-            <button
-              onClick={() => { setActiveTab('active'); setSelectedRacks([]) }}
-              className={`px-5 h-full rounded-lg text-[8px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'active' ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-            >Active</button>
-            <button
-              onClick={() => { setActiveTab('deleted'); setSelectedRacks([]) }}
-              className={`px-5 h-full rounded-lg text-[8px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'deleted' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-            >Purged</button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* Width slider */}
-          {viewMode === 'elevation' && (
-            <div className="flex items-center gap-2 bg-white/5 px-3 h-9 rounded-lg border border-white/[0.06]">
-              <Layers size={11} className="text-slate-500" />
-              <input 
-                type="range" min={160} max={400} value={rackWidth}
-                onChange={e => setRackWidth(parseInt(e.target.value))}
-                className="w-24 accent-blue-500 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
-              />
-              <span className="text-[8px] font-black text-slate-500 w-8 tabular-nums">{rackWidth}px</span>
-            </div>
-          )}
-
-          {/* View Mode Toggle */}
-          <div className="flex bg-white/5 p-1 h-9 rounded-lg border border-white/[0.06] items-center">
-            <button onClick={() => setViewMode('elevation')}
-              className={`p-1.5 h-full aspect-square flex items-center justify-center rounded-lg transition-all ${viewMode === 'elevation' ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`} title="Elevation View">
-              <Layers size={14} />
-            </button>
-            <button onClick={() => setViewMode('spatial')}
-              className={`p-1.5 h-full aspect-square flex items-center justify-center rounded-lg transition-all ${viewMode === 'spatial' ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`} title="Spatial Map">
-              <MapPin size={14} />
-            </button>
-          </div>
-
-          {/* Intelligence Overlays */}
-          <div className={`flex bg-white/5 p-1 h-9 rounded-lg border border-white/[0.06] items-center transition-all ${isMaskMode ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
-            <button onClick={() => setIsComparing(true)}
-              className="px-3 h-full rounded-lg text-slate-500 hover:text-blue-400 hover:bg-white/5 transition-all flex items-center justify-center" title="Time Machine / Diff">
-              <History size={14} />
-            </button>
-            <button onClick={() => setShowPlanList(true)}
-              className="px-3 h-full rounded-lg text-slate-500 hover:text-violet-400 hover:bg-white/5 transition-all flex items-center justify-center" title="View Plans">
-              <List size={14} />
-            </button>
-          </div>
-
-          {/* Site View / Compare */}
-          <div className={`flex bg-white/5 p-1 h-9 rounded-lg border border-white/[0.06] items-center transition-all ${isMaskMode ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
-            {viewMode === 'elevation' && (
-              <>
-                <button onClick={() => setShowCompareOnly(false)}
-                  className={`px-4 h-full rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${!showCompareOnly ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
-                  All
-                </button>
-                <button onClick={() => setShowCompareOnly(true)}
-                  className={`px-4 h-full rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${showCompareOnly ? 'bg-[#034EA2] text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
-                  Compare {selectedRacks.length > 0 && `(${selectedRacks.length})`}
-                </button>
-              </>
-            )}
-          </div>
-
-          {/* Search */}
-          <div className="relative h-9">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-            <input
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              placeholder="Search racks & devices..."
-              className="bg-white/5 border border-white/[0.06] rounded-lg pl-9 pr-8 h-full text-[10px] font-bold outline-none focus:border-blue-500/50 w-56 transition-all placeholder:text-slate-600"
-            />
-            {searchTerm && (
-              <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors">
-                <X size={11} />
-              </button>
-            )}
-          </div>
-
-          {/* Connection Clear */}
-          {focusedConnection && (
-            <div className="flex items-center gap-2 h-10">
-              <button
-                onClick={() => setShowConnectionsList(true)}
-                className="px-4 h-full bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center gap-2"
-              >
-                <List size={13} /> View List
-              </button>
-              <button
-                onClick={() => setFocusedConnection(null)}
-                className="px-4 h-full bg-rose-600/10 text-rose-400 border border-rose-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-rose-600/20 transition-all flex items-center gap-2"
-              >
-                <X size={13} /> Clear
-              </button>
-            </div>
-          )}
-
-          {/* Add Actions */}
-          {activeTab === 'active' && !isMaskMode && (
-            <div className="flex items-center gap-2 transition-all">
-              <button
-                onClick={() => setShowImportModal(true)}
-                className="w-10 h-10 flex items-center justify-center bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-600/20 transition-all shrink-0"
-                title="Import Bulk"
-              >
+      <PageHeader 
+        title="Racks"
+        subtitle="Physical Capacity & Spatial Intelligence"
+        className={isMaskMode ? 'opacity-40 grayscale pointer-events-none' : ''}
+        actions={
+          activeTab === 'active' && !isMaskMode && (
+            <>
+              <ToolbarIconButton title="Import Bulk" onClick={() => setShowImportModal(true)}>
                 <Upload size={16} />
-              </button>
-              <button
-                onClick={() => setShowAuditLogs(true)}
-                className="px-4 h-10 bg-slate-600/10 text-slate-400 border border-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-white/5 transition-all flex items-center gap-2 shrink-0"
-              >
-                <BarChart3 size={14} /> Logs
-              </button>
-              
+              </ToolbarIconButton>
+              <ToolbarButton onClick={() => setShowAuditLogs(true)}>
+                <BarChart3 size={14} className="mr-2 inline-block" /> Logs
+              </ToolbarButton>
               <div className="relative shrink-0">
-                <button
-                  onClick={() => setShowAddMenu(!showAddMenu)}
-                  className="w-10 h-10 bg-blue-600 text-white rounded-lg shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center"
-                >
-                  <Plus size={20} />
-                </button>
+                <ToolbarButton variant="primary" onClick={() => setShowAddMenu(!showAddMenu)}>
+                  <Plus size={14} className="mr-2 inline-block" /> Add
+                </ToolbarButton>
                 {showAddMenu && (
                   <div className="absolute right-0 top-full pt-2 z-[110]">
-                    <div className="bg-slate-900 border border-white/10 rounded-xl shadow-2xl overflow-hidden p-1.5 min-w-[140px]">
+                    <div className="bg-slate-900 border border-white/10 rounded-lg shadow-2xl overflow-hidden p-1.5 min-w-[140px]">
                       <button
                         onClick={() => { 
                           setNewRack({ 
@@ -3036,10 +2967,95 @@ export default function Racks() {
                   </div>
                 )}
               </div>
-            </div>
-          )}
-        </div>
-      </div>
+            </>
+          )
+        }
+      />
+
+      {/* ── Page Toolbar ── */}
+      <PageToolbar 
+        className={isMaskMode ? 'opacity-40 grayscale pointer-events-none' : ''}
+        left={
+          <>
+            <ToolbarSegmented 
+              options={[
+                { label: 'Active', value: 'active' },
+                { label: 'Purged', value: 'deleted' }
+              ]}
+              value={activeTab}
+              onChange={(val: any) => { setActiveTab(val); setSelectedRacks([]) }}
+            />
+            
+            <ToolbarSegmented 
+              options={[
+                { label: 'Elevation', value: 'elevation' },
+                { label: 'Spatial', value: 'spatial' }
+              ]}
+              value={viewMode}
+              onChange={(val: any) => setViewMode(val as any)}
+            />
+
+            {viewMode === 'elevation' && (
+              <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/[0.06]">
+                <Layers size={11} className="text-slate-500" />
+                <input 
+                  type="range" min={160} max={400} value={rackWidth}
+                  onChange={e => setRackWidth(parseInt(e.target.value))}
+                  className="w-24 accent-blue-500 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                />
+                <span className="text-[8px] font-black text-slate-500 w-8 tabular-nums">{rackWidth}px</span>
+              </div>
+            )}
+          </>
+        }
+        right={
+          <>
+            <ToolbarSearch 
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Search racks & devices..."
+            />
+
+            <ToolbarIconButton 
+              title="Time Machine / Diff"
+              onClick={() => setIsComparing(true)}
+              active={isComparing}
+            >
+              <History size={14} />
+            </ToolbarIconButton>
+
+            <ToolbarIconButton 
+              title="View Plans"
+              onClick={() => setShowPlanList(true)}
+            >
+              <List size={14} />
+            </ToolbarIconButton>
+
+            {viewMode === 'elevation' && (
+              <ToolbarSegmented 
+                options={[
+                  { label: 'All', value: 'all' },
+                  { label: `Compare ${selectedRacks.length > 0 ? `(${selectedRacks.length})` : ''}`, value: 'compare' }
+                ]}
+                value={showCompareOnly ? 'compare' : 'all'}
+                onChange={(val: any) => setShowCompareOnly(val === 'compare')}
+              />
+            )}
+
+            {focusedConnection && (
+              <>
+                <div className="w-px h-6 bg-white/10 mx-1" />
+                <ToolbarButton onClick={() => setShowConnectionsList(true)} variant="secondary" className="text-blue-400 border-blue-500/20 bg-blue-600/10 hover:bg-blue-600/20">
+                  <List size={13} className="mr-2 inline-block" /> View List
+                </ToolbarButton>
+                <ToolbarButton onClick={() => setFocusedConnection(null)} variant="danger">
+                  <X size={13} className="mr-2 inline-block" /> Clear
+                </ToolbarButton>
+              </>
+            )}
+          </>
+        }
+      />
 
       {/* ── Capacity Summary Bar ── */}
       {activeRacks && activeRacks.length > 0 && !showCompareOnly && !isMaskMode && (
@@ -3076,7 +3092,7 @@ export default function Racks() {
                     style={isActive && s.color ? { backgroundColor: s.color, borderColor: 'rgba(255,255,255,0.1)' } : {}}
                   >
                     {s.name}
-                    <span className={`text-[7px] font-black px-1 py-0.5 rounded-md tabular-nums ${
+                    <span className={`text-[7px] font-black px-1 py-0.5 rounded-lg tabular-nums ${
                       siteFill >= 90 ? 'bg-rose-500/30 text-rose-300' :
                       siteFill >= 70 ? 'bg-amber-500/30 text-amber-300' :
                       isActive ? 'bg-white/20 text-white/70' : 'bg-white/5 text-slate-500'
@@ -3182,14 +3198,14 @@ export default function Racks() {
                           const targetLabel = diffTargetVersion ? (snapshotInfoTarget?.date || 'V2') : (snapshotInfoBase ? snapshotInfoBase.date : (isPlanInitialized ? planDraftName : 'PROPOSED'))
 
                           return (
-                            <div key={`diff-${r.id}`} className="flex gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl relative shrink-0 h-full">
+                            <div key={`diff-${r.id}`} className="flex gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-lg relative shrink-0 h-full">
                                <div className="absolute -top-7 left-1/2 -translate-x-1/2 flex items-center gap-4 z-30 scale-100 whitespace-nowrap">
                                   <div className="flex items-center">
-                                    <span className="px-6 py-2.5 bg-slate-900 text-slate-400 border border-white/10 rounded-l-full text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl border-r-0">{baseLabel}</span>
+                                    <span className="px-6 py-2.5 bg-slate-900 text-slate-400 border border-white/10 rounded-l-lg-full text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl border-r-0">{baseLabel}</span>
                                     <div className="w-10 h-10 bg-[#034EA2] rounded-full flex items-center justify-center border-4 border-slate-950 shadow-xl z-10 -mx-2">
                                        <ArrowRightLeft size={16} className="text-white" />
                                     </div>
-                                    <span className="px-6 py-2.5 bg-[#034EA2] text-white border border-blue-400/30 rounded-r-full text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl border-l-0">
+                                    <span className="px-6 py-2.5 bg-[#034EA2] text-white border border-blue-400/30 rounded-r-lg-full text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl border-l-0">
                                        {targetLabel}
                                     </span>
                                   </div>
@@ -3329,15 +3345,12 @@ export default function Racks() {
         </>)}
 
         {displayedRacks.length === 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center text-center">
-            <div className="p-8 rounded-lg bg-white/[0.03] border border-white/[0.06] space-y-3">
-              <Server size={40} className="text-slate-700 mx-auto" />
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-600">
-                {activeTab === 'deleted' ? 'No Purged Records' :
-                 searchTerm ? `No results for "${searchTerm}"` :
-                 'No Racks in Scope'}
-              </p>
-            </div>
+          <div className="flex-1 flex items-center justify-center p-8">
+            <WorkspaceEmptyState 
+              icon={<Server size={32} />}
+              title={activeTab === 'deleted' ? 'No Purged Records' : searchTerm ? `No results for "${searchTerm}"` : 'No Racks in Scope'}
+              message="No physical assets found matching the current filters or site selection."
+            />
           </div>
         )}
       </div>
@@ -3550,7 +3563,7 @@ export default function Racks() {
         {patchSource && (
           <motion.div
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 16 }}
-            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-4 px-6 py-4 bg-indigo-950/95 backdrop-blur-xl border border-indigo-500/30 rounded-xl shadow-2xl"
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-4 px-6 py-4 bg-indigo-950/95 backdrop-blur-xl border border-indigo-500/30 rounded-lg shadow-2xl"
           >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-indigo-500/20 rounded-lg">
@@ -3622,7 +3635,7 @@ export default function Racks() {
                   if (isPlanInitialized) {
                     addDeviceToPlan(isProvisioning.rackId, parseInt(isProvisioning.device_id), isProvisioning.start_u, isProvisioning.size_u, isProvisioning.orientation)
                   } else {
-                    provisionMutation.mutate({
+                    mountMutation.mutate({
                       rack_id: isProvisioning.rackId,
                       device_id: parseInt(isProvisioning.device_id),
                       u_start: isProvisioning.start_u,
@@ -3634,7 +3647,7 @@ export default function Racks() {
                   if (isPlanInitialized) {
                     addReservationToPlan(isProvisioning.rackId, isProvisioning.start_u, isProvisioning.size_u, reserveInfo.temporary_name, reserveInfo.est_date, reserveInfo.poc)
                   } else {
-                    provisionMutation.mutate({
+                    mountMutation.mutate({
                       rack_id: isProvisioning.rackId,
                       is_reservation: true,
                       u_start: isProvisioning.start_u,
@@ -3655,139 +3668,141 @@ export default function Racks() {
           </div>
         }
       >
-        <div className="space-y-6 pt-6">
-              {/* Asset / Reserve Toggle */}
-              <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
-                <button 
-                  onClick={() => setProvisionMode('asset')}
-                  className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${provisionMode === 'asset' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-                >Asset Registry</button>
-                <button 
-                  onClick={() => setProvisionMode('reserve')}
-                  className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${provisionMode === 'reserve' ? 'bg-violet-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-                >Temporary Reserve</button>
-              </div>
+        {isProvisioning && (
+          <div className="space-y-6 pt-6">
+                {/* Asset / Reserve Toggle */}
+                <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
+                  <button 
+                    onClick={() => setProvisionMode('asset')}
+                    className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${provisionMode === 'asset' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                  >Asset Registry</button>
+                  <button 
+                    onClick={() => setProvisionMode('reserve')}
+                    className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${provisionMode === 'reserve' ? 'bg-violet-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                  >Temporary Reserve</button>
+                </div>
 
-              {provisionMode === 'asset' ? (
-                <div className="space-y-3">
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Asset Search</label>
-                  <div className="relative">
-                    <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
-                    <input 
-                      autoFocus
-                      value={mountSearch}
-                      onChange={e => setMountSearch(e.target.value)}
-                      placeholder="Filter by name, type, or system..."
-                      className="w-full bg-black border border-white/10 rounded-lg pl-11 pr-4 py-3 text-[11px] font-bold text-white outline-none focus:border-blue-500/60 transition-all placeholder:text-slate-700"
+                {provisionMode === 'asset' ? (
+                  <div className="space-y-3">
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Asset Search</label>
+                    <div className="relative">
+                      <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
+                      <input 
+                        autoFocus
+                        value={mountSearch}
+                        onChange={e => setMountSearch(e.target.value)}
+                        placeholder="Filter by name, type, or system..."
+                        className="w-full bg-black border border-white/10 rounded-lg pl-11 pr-4 py-3 text-[11px] font-bold text-white outline-none focus:border-blue-500/60 transition-all placeholder:text-slate-700"
+                      />
+                    </div>
+                    
+                    <div className="max-h-[180px] overflow-y-auto custom-scrollbar bg-black/40 border border-white/5 rounded-lg p-1.5 space-y-1">
+                      {availableDevices?.filter((d: any) => {
+                        const term = mountSearch.toLowerCase()
+                        return d.name.toLowerCase().includes(term) || d.type.toLowerCase().includes(term) || d.system?.toLowerCase().includes(term)
+                      }).map((d: any) => {
+                        const isSelected = String(d.id) === String(isProvisioning.device_id)
+                        const planLoc = isPlanInitialized ? getPlanDeviceLocation(d.id) : null
+                        const realLoc = d.rack_id ? { rackName: d.rack_name, uStart: d.u_start } : null
+                        
+                        const locInfo = isPlanInitialized 
+                          ? (planLoc ? `MOUNTED @ ${planLoc.rackName} U${planLoc.uStart}` : '') 
+                          : (realLoc ? `MOUNTED @ ${realLoc.rackName} U${realLoc.uStart}` : '')
+                        
+                        const isMounted = isPlanInitialized ? !!planLoc : !!realLoc
+
+                        return (
+                          <button
+                            key={d.id}
+                            onClick={() => setIsProvisioning({ ...isProvisioning, device_id: String(d.id), size_u: d.size_u || 1 })}
+                            className={`w-full text-left px-4 py-2.5 rounded-lg transition-all flex items-center justify-between group ${isSelected ? 'bg-[#034EA2] text-white shadow-lg' : isMounted ? 'bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/10' : 'hover:bg-white/5 text-slate-400 hover:text-white'}`}
+                          >
+                            <div className="min-w-0">
+                              <p className={`text-[10px] font-black uppercase tracking-tight truncate ${isSelected ? 'text-white' : isMounted ? 'text-emerald-400' : 'group-hover:text-blue-400'}`}>{d.name}</p>
+                              <p className={`text-[8px] font-bold uppercase ${isSelected ? 'text-blue-100' : 'text-slate-600'}`}>
+                                {d.type} · {d.system || 'N/A'}
+                                {locInfo && <span className={`ml-2 px-1.5 py-0.5 rounded-lg bg-black/40 ${isSelected ? 'text-white' : 'text-emerald-500/80 border border-emerald-500/10'}`}>[{locInfo}]</span>}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0 ml-4">
+                              <span className={`text-[8px] font-mono ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>{d.size_u || 1}U</span>
+                              {(isSelected || isMounted) && <Check size={12} strokeWidth={3} className={isSelected ? 'text-white' : 'text-emerald-500'} />}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2">
+                        <label className="text-[8px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Temporary Asset/Project Name</label>
+                        <input 
+                          value={reserveInfo.temporary_name}
+                          onChange={e => setReserveInfo({ ...reserveInfo, temporary_name: e.target.value.toUpperCase() })}
+                          placeholder="e.g. AI-NODE-CLUSTER-01"
+                          className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs outline-none focus:border-violet-500/60 transition-colors text-white" 
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[8px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Est. Racking Date</label>
+                        <input 
+                          type="date"
+                          value={reserveInfo.est_date}
+                          onChange={e => setReserveInfo({ ...reserveInfo, est_date: e.target.value })}
+                          className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs outline-none focus:border-violet-500/60 transition-colors text-white" 
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[8px] font-black text-slate-500 uppercase block mb-1.5 ml-1">POC Name</label>
+                        <input 
+                          value={reserveInfo.poc}
+                          onChange={e => setReserveInfo({ ...reserveInfo, poc: e.target.value })}
+                          placeholder="Engineer Name"
+                          className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs outline-none focus:border-violet-500/60 transition-colors text-white" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Common Fields */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-[8px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Size (U)</label>
+                    <input type="number" min={1} value={isProvisioning.size_u || 1}
+                      onChange={e => setIsProvisioning({ ...isProvisioning, size_u: parseInt(e.target.value) || 1 })}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors font-mono text-white" />
+                  </div>
+                  <div>
+                    <label className="text-[8px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Mount Side</label>
+                    <StyledSelect
+                      options={[{ label: 'FRONT', value: 'Front' }, { label: 'BACK', value: 'Back' }]}
+                      value={isProvisioning.orientation || 'Front'}
+                      onChange={e => setIsProvisioning({ ...isProvisioning, orientation: e.target.value })}
                     />
                   </div>
-                  
-                  <div className="max-h-[180px] overflow-y-auto custom-scrollbar bg-black/40 border border-white/5 rounded-lg p-1.5 space-y-1">
-                    {availableDevices?.filter((d: any) => {
-                      const term = mountSearch.toLowerCase()
-                      return d.name.toLowerCase().includes(term) || d.type.toLowerCase().includes(term) || d.system?.toLowerCase().includes(term)
-                    }).map((d: any) => {
-                      const isSelected = String(d.id) === String(isProvisioning.device_id)
-                      const planLoc = isPlanInitialized ? getPlanDeviceLocation(d.id) : null
-                      const realLoc = d.rack_id ? { rackName: d.rack_name, uStart: d.u_start } : null
-                      
-                      const locInfo = isPlanInitialized 
-                        ? (planLoc ? `MOUNTED @ ${planLoc.rackName} U${planLoc.uStart}` : '') 
-                        : (realLoc ? `MOUNTED @ ${realLoc.rackName} U${realLoc.uStart}` : '')
-                      
-                      const isMounted = isPlanInitialized ? !!planLoc : !!realLoc
-
-                      return (
-                        <button
-                          key={d.id}
-                          onClick={() => setIsProvisioning({ ...isProvisioning, device_id: String(d.id), size_u: d.size_u || 1 })}
-                          className={`w-full text-left px-4 py-2.5 rounded-lg transition-all flex items-center justify-between group ${isSelected ? 'bg-[#034EA2] text-white shadow-lg' : isMounted ? 'bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/10' : 'hover:bg-white/5 text-slate-400 hover:text-white'}`}
-                        >
-                          <div className="min-w-0">
-                            <p className={`text-[10px] font-black uppercase tracking-tight truncate ${isSelected ? 'text-white' : isMounted ? 'text-emerald-400' : 'group-hover:text-blue-400'}`}>{d.name}</p>
-                            <p className={`text-[8px] font-bold uppercase ${isSelected ? 'text-blue-100' : 'text-slate-600'}`}>
-                              {d.type} · {d.system || 'N/A'}
-                              {locInfo && <span className={`ml-2 px-1.5 py-0.5 rounded bg-black/40 ${isSelected ? 'text-white' : 'text-emerald-500/80 border border-emerald-500/10'}`}>[{locInfo}]</span>}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-3 shrink-0 ml-4">
-                            <span className={`text-[8px] font-mono ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>{d.size_u || 1}U</span>
-                            {(isSelected || isMounted) && <Check size={12} strokeWidth={3} className={isSelected ? 'text-white' : 'text-emerald-500'} />}
-                          </div>
-                        </button>
-                      )
-                    })}
+                  <div>
+                    <label className="text-[8px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Depth</label>
+                    <StyledSelect
+                      options={[{ label: 'FULL', value: 'Full' }, { label: 'HALF', value: 'Half' }]}
+                      value={isProvisioning.depth || 'Full'}
+                      onChange={e => setIsProvisioning({ ...isProvisioning, depth: e.target.value })}
+                    />
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="col-span-2">
-                      <label className="text-[8px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Temporary Asset/Project Name</label>
-                      <input 
-                        value={reserveInfo.temporary_name}
-                        onChange={e => setReserveInfo({ ...reserveInfo, temporary_name: e.target.value.toUpperCase() })}
-                        placeholder="e.g. AI-NODE-CLUSTER-01"
-                        className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs outline-none focus:border-violet-500/60 transition-colors text-white" 
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[8px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Est. Racking Date</label>
-                      <input 
-                        type="date"
-                        value={reserveInfo.est_date}
-                        onChange={e => setReserveInfo({ ...reserveInfo, est_date: e.target.value })}
-                        className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs outline-none focus:border-violet-500/60 transition-colors text-white" 
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[8px] font-black text-slate-500 uppercase block mb-1.5 ml-1">POC Name</label>
-                      <input 
-                        value={reserveInfo.poc}
-                        onChange={e => setReserveInfo({ ...reserveInfo, poc: e.target.value })}
-                        placeholder="Engineer Name"
-                        className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs outline-none focus:border-violet-500/60 transition-colors text-white" 
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
 
-              {/* Common Fields */}
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="text-[8px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Size (U)</label>
-                  <input type="number" min={1} value={isProvisioning.size_u || 1}
-                    onChange={e => setIsProvisioning({ ...isProvisioning, size_u: parseInt(e.target.value) || 1 })}
-                    className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-xs outline-none focus:border-blue-500/60 transition-colors font-mono text-white" />
-                </div>
-                <div>
-                  <label className="text-[8px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Mount Side</label>
-                  <StyledSelect
-                    options={[{ label: 'FRONT', value: 'Front' }, { label: 'BACK', value: 'Back' }]}
-                    value={isProvisioning.orientation || 'Front'}
-                    onChange={e => setIsProvisioning({ ...isProvisioning, orientation: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-[8px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Depth</label>
-                  <StyledSelect
-                    options={[{ label: 'FULL', value: 'Full' }, { label: 'HALF', value: 'Half' }]}
-                    value={isProvisioning.depth || 'Full'}
-                    onChange={e => setIsProvisioning({ ...isProvisioning, depth: e.target.value })}
-                  />
-                </div>
-              </div>
-
-        </div>
+          </div>
+        )}
       </WorkspaceModal>
 
       {(isAddingSite || isEditingSite) && (
           <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-              className="glass-panel w-[420px] p-8 rounded-xl space-y-6 border border-emerald-500/20 shadow-2xl">
+              className="glass-panel w-[420px] p-8 rounded-lg space-y-6 border border-emerald-500/20 shadow-2xl">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-emerald-500/15 rounded-xl border border-emerald-500/20">
+                <div className="p-3 bg-emerald-500/15 rounded-lg border border-emerald-500/20">
                   <MapPin size={22} className="text-emerald-400" />
                 </div>
                 <div>
@@ -3847,9 +3862,9 @@ export default function Racks() {
         {(isAddingRack || isEditingRack) && (
           <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 overflow-y-auto">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-              className="glass-panel w-[500px] p-8 rounded-xl space-y-6 border border-blue-500/20 shadow-2xl my-auto">
+              className="glass-panel w-[500px] p-8 rounded-lg space-y-6 border border-blue-500/20 shadow-2xl my-auto">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-500/15 rounded-xl border border-blue-500/20">
+                <div className="p-3 bg-blue-500/15 rounded-lg border border-blue-500/20">
                   <Server size={22} className="text-blue-400" />
                 </div>
                 <div>

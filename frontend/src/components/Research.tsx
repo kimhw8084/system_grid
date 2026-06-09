@@ -113,7 +113,7 @@ export const CompactSummary = ({ label, value, icon: Icon, color }: any) => (
       <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-0.5">{label}</p>
       <p className="text-2xl font-bold text-white tracking-tighter">{value}</p>
     </div>
-    <div className={`p-2 rounded-md bg-white/5 ${color}`}><Icon size={18} /></div>
+    <div className={`p-2 rounded-lg bg-white/5 ${color}`}><Icon size={18} /></div>
   </div>
 )
 
@@ -415,7 +415,7 @@ export default function Research() {
         const pInfo = getPriorityInfo(p.value)
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${pInfo.color}`}>
+            <div className={`flex items-center justify-center w-24 h-5 rounded-lg border shadow-sm ${pInfo.color}`}>
               <span style={{ fontSize: `${fontSize + 1}px` }} className="font-bold uppercase tracking-tighter leading-none">{pInfo.label}</span>
             </div>
           </div>
@@ -433,7 +433,7 @@ export default function Research() {
       cellRenderer: (p: any) => {
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-24 h-5 rounded-md border shadow-sm ${getResearchStatusColor(p.value)}`}>
+            <div className={`flex items-center justify-center w-24 h-5 rounded-lg border shadow-sm ${getResearchStatusColor(p.value)}`}>
               <span style={{ fontSize: `${fontSize + 1}px` }} className="font-bold uppercase tracking-tighter leading-none">
                 {getResearchDisplayStatus(p.value)}
               </span>
@@ -627,7 +627,7 @@ export default function Research() {
             <button
               key={year}
               onClick={() => setSelectedYear(year)}
-              className={`px-4 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all ${selectedYear === year ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`px-4 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${selectedYear === year ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
             >
               {year}
             </button>
@@ -672,7 +672,7 @@ export default function Research() {
                 {columnDefs.filter((c: any) => c.field && !c.lockVisible).map((col: any) => (
                   <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
                     <input type="checkbox" checked={!hiddenColumns.includes(col.field)} onChange={() => setHiddenColumns(hiddenColumns.includes(col.field) ? hiddenColumns.filter(f => f !== col.field) : [...hiddenColumns, col.field])} className="sr-only" />
-                    <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
+                    <div className={`w-4 h-4 rounded-lg border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
                        {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
                     </div>
                     <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
@@ -807,7 +807,7 @@ export function SearchableMultiSelect({ label, selected = [], onChange, options 
               const val = typeof s === 'string' ? s : (s.value || s)
               const lbl = typeof s === 'string' ? s : (s.label || s)
               return (
-                <span key={val} className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-md text-[9px] font-bold uppercase border border-blue-500/30 flex items-center gap-1 group/badge">
+                <span key={val} className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase border border-blue-500/30 flex items-center gap-1 group/badge">
                   {lbl}
                   <button onClick={(e) => { e.stopPropagation(); toggleOption(s); }} className="hover:text-rose-400 transition-colors">
                     <X size={10} />
@@ -857,7 +857,7 @@ export function SearchableMultiSelect({ label, selected = [], onChange, options 
                       className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-all group ${isSelected ? 'bg-blue-500/10 text-blue-400' : 'hover:bg-white/5 text-slate-400'}`}
                     >
                       <span className={`text-[10px] font-bold uppercase tracking-tight ${isNew ? 'text-blue-400' : ''}`}>{lbl}</span>
-                      <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 border-blue-500' : 'border-white/10 bg-black/40'}`}>
+                      <div className={`w-3.5 h-3.5 rounded-lg border flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 border-blue-500' : 'border-white/10 bg-black/40'}`}>
                         {isSelected && <Check size={10} className="text-white" />}
                         {isNew && !isSelected && <Plus size={10} className="text-blue-400" />}
                       </div>
@@ -1347,8 +1347,8 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
             <div>
               <div className="flex items-center space-x-4 mb-1.5">
                 <div className="flex items-center gap-2">
-                   <div className={`px-3 py-1 rounded border text-[10px] font-bold uppercase ${pInfo.color}`}>{safeUpper(formData.status)}</div>
-                   <div className={`px-3 py-1 rounded border text-[10px] font-bold uppercase ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
+                   <div className={`px-3 py-1 rounded-lg border text-[10px] font-bold uppercase ${pInfo.color}`}>{safeUpper(formData.status)}</div>
+                   <div className={`px-3 py-1 rounded-lg border text-[10px] font-bold uppercase ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
                    <div className="flex items-center gap-4 ml-4 pl-4 border-l border-white/10">
                       <div className="flex flex-col">
                          <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Record Created</span>
@@ -1501,7 +1501,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Impacted Assets</label>
                                <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto custom-scrollbar pr-1">
                                   {filteredAssets.map((a: any) => (
-                                    <label key={a.id} className={`flex items-center gap-2 p-1.5 rounded hover:bg-white/5 transition-all text-[10px] font-bold uppercase ${formData.impacted_asset_ids?.includes(a.id) ? 'text-amber-400' : 'text-slate-500'}`}>
+                                    <label key={a.id} className={`flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/5 transition-all text-[10px] font-bold uppercase ${formData.impacted_asset_ids?.includes(a.id) ? 'text-amber-400' : 'text-slate-500'}`}>
                                        <input type="checkbox" disabled={!isEditing} checked={formData.impacted_asset_ids?.includes(a.id)} onChange={e => {
                                          const ids = formData.impacted_asset_ids || []
                                          setFormData({...formData, impacted_asset_ids: e.target.checked ? [...ids, a.id] : ids.filter((i:any)=>i!==a.id), linked_failure_mode_ids: []})
@@ -1516,7 +1516,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Impacted Services</label>
                                <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto custom-scrollbar pr-1">
                                   {filteredServices.map((s: any) => (
-                                    <label key={s.id} className={`flex items-center gap-2 p-1.5 rounded hover:bg-white/5 transition-all text-[10px] font-bold uppercase ${formData.impacted_service_ids?.includes(s.id) ? 'text-indigo-400' : 'text-slate-500'}`}>
+                                    <label key={s.id} className={`flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/5 transition-all text-[10px] font-bold uppercase ${formData.impacted_service_ids?.includes(s.id) ? 'text-indigo-400' : 'text-slate-500'}`}>
                                        <input type="checkbox" disabled={!isEditing} checked={formData.impacted_service_ids?.includes(s.id)} onChange={e => {
                                          const ids = formData.impacted_service_ids || []
                                          setFormData({...formData, impacted_service_ids: e.target.checked ? [...ids, s.id] : ids.filter((i:any)=>i!==s.id)})
@@ -1554,7 +1554,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                             <span className="text-[10px] font-bold uppercase tracking-widest text-white/70">Linked Failure Modes (FAR)</span>
                          </div>
                          <div className="flex items-center gap-3">
-                            <div className="px-2 py-0.5 rounded bg-purple-500/20 border border-purple-500/30 text-[9px] font-bold text-purple-400">{(formData.linked_failure_mode_ids || []).length} VECTORS</div>
+                            <div className="px-2 py-0.5 rounded-lg bg-purple-500/20 border border-purple-500/30 text-[9px] font-bold text-purple-400">{(formData.linked_failure_mode_ids || []).length} VECTORS</div>
                             <ChevronDown size={14} className={`text-slate-500 transition-transform ${isFailureModesOpen ? 'rotate-180' : ''}`} />
                          </div>
                       </button>
@@ -1604,7 +1604,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                               </td>
                                               <td className="py-2 px-2">
                                                  <div className="group relative cursor-help inline-block">
-                                                    <div className="text-[9px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">{(fm.affected_assets || []).length}</div>
+                                                    <div className="text-[9px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-lg border border-amber-500/20">{(fm.affected_assets || []).length}</div>
                                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-[10000] pointer-events-none">
                                                        <div className="bg-slate-900 border border-white/20 rounded-lg p-3 shadow-2xl min-w-[250px] max-w-[400px]">
                                                           <p className="text-[9px] font-bold uppercase text-slate-500 mb-2 border-b border-white/5 pb-1">Impacted Assets</p>
@@ -1633,7 +1633,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                                         }
                                                         setFormData({...formData, linked_failure_mode_ids: formData.linked_failure_mode_ids.filter((id:number)=>id!==fm.id)})
                                                       }} 
-                                                      className="text-rose-500 hover:text-rose-300 transition-all p-1 hover:bg-rose-500/10 rounded"
+                                                      className="text-rose-500 hover:text-rose-300 transition-all p-1 hover:bg-rose-500/10 rounded-lg"
                                                     >
                                                        <Trash2 size={12}/>
                                                     </button>
@@ -1693,7 +1693,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                e.stopPropagation(); 
                                const nextEvidence = formData.evidence_json.filter((_:any,idx:number)=>idx!==i);
                                setFormData({...formData, evidence_json: nextEvidence});
-                            }} className="p-1.5 bg-rose-600 text-white rounded hover:bg-rose-500 transition-colors shadow-lg"><Trash2 size={12}/></button>
+                            }} className="p-1.5 bg-rose-600 text-white rounded-lg hover:bg-rose-500 transition-colors shadow-lg"><Trash2 size={12}/></button>
                          </div>
                       </div>
                    ))}
@@ -1717,7 +1717,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                    <button
                      key={tab}
                      onClick={() => setActiveTab(tab)}
-                     className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-all rounded-md ${activeTab === tab ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                     className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-all rounded-lg ${activeTab === tab ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
                    >
                       {tab === 'Timeline' && <History size={14} className="inline mr-2" />}
                       {tab === 'Investigation' && <Search size={14} className="inline mr-2" />}
@@ -1746,7 +1746,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                <div className="grid grid-cols-2 gap-4">
                                   <div className="space-y-1">
                                      <label className="text-[9px] font-bold text-slate-500 uppercase">Occurrence At</label>
-                                     <input type="datetime-local" value={newTimeline.event_time} onChange={e => setNewTimeline({...newTimeline, event_time: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-purple-500/50" />
+                                     <input type="datetime-local" value={newTimeline.event_time} onChange={e => setNewTimeline({...newTimeline, event_time: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-purple-500/50" />
                                   </div>
                                   <div className="space-y-1">
                                      <label className="text-[9px] font-bold text-slate-500 uppercase">Event Type</label>
@@ -1756,11 +1756,11 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                <div className="grid grid-cols-2 gap-4">
                                   <div className="space-y-1">
                                      <label className="text-[9px] font-bold text-slate-500 uppercase">Owner / Reporter</label>
-                                     <input value={newTimeline.owner} onChange={e => setNewTimeline({...newTimeline, owner: e.target.value.toUpperCase()})} placeholder="E.G. J. DOE..." className="w-full bg-slate-950 border border-white/10 rounded px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-purple-500/50 uppercase" />
+                                     <input value={newTimeline.owner} onChange={e => setNewTimeline({...newTimeline, owner: e.target.value.toUpperCase()})} placeholder="E.G. J. DOE..." className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-purple-500/50 uppercase" />
                                   </div>
                                   <div className="space-y-1">
                                      <label className="text-[9px] font-bold text-slate-500 uppercase">Responsible Team</label>
-                                     <input value={newTimeline.owner_team} onChange={e => setNewTimeline({...newTimeline, owner_team: e.target.value.toUpperCase()})} placeholder="E.G. SRE..." className="w-full bg-slate-950 border border-white/10 rounded px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-purple-500/50 uppercase" />
+                                     <input value={newTimeline.owner_team} onChange={e => setNewTimeline({...newTimeline, owner_team: e.target.value.toUpperCase()})} placeholder="E.G. SRE..." className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-purple-500/50 uppercase" />
                                   </div>
                                </div>
                                <div className="space-y-1">
@@ -1784,7 +1784,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                      {(newTimeline.images || []).map((img: string, i: number) => (
                                         <div key={i} className="relative w-16 h-16 shrink-0 rounded-lg border border-white/10 overflow-hidden group">
                                            <img src={img} className="w-full h-full object-cover" />
-                                           <button onClick={() => setNewTimeline({...newTimeline, images: newTimeline.images.filter((_, idx) => idx !== i)})} className="absolute top-1 right-1 bg-rose-600 text-white p-1 rounded-md opacity-0 group-hover:opacity-100"><X size={10}/></button>
+                                           <button onClick={() => setNewTimeline({...newTimeline, images: newTimeline.images.filter((_, idx) => idx !== i)})} className="absolute top-1 right-1 bg-rose-600 text-white p-1 rounded-lg opacity-0 group-hover:opacity-100"><X size={10}/></button>
                                         </div>
                                      ))}
                                      {(newTimeline.images || []).length === 0 && (
@@ -1824,13 +1824,13 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                 {editingTimelineId === item.id ? (
                                    <div className="space-y-4">
                                       <div className="grid grid-cols-2 gap-4">
-                                         <input type="datetime-local" value={editTimelineData.event_time} onChange={e => setEditTimelineData({...editTimelineData, event_time: e.target.value})} className="bg-slate-950 border border-white/10 rounded px-2 py-1 text-[10px] font-bold text-white outline-none" />
+                                         <input type="datetime-local" value={editTimelineData.event_time} onChange={e => setEditTimelineData({...editTimelineData, event_time: e.target.value})} className="bg-slate-950 border border-white/10 rounded-lg px-2 py-1 text-[10px] font-bold text-white outline-none" />
                                          <StyledSelect options={[{value:'DETECTION',label:'DETECTION'},{value:'MITIGATION',label:'MITIGATION'},{value:'OBSERVATION',label:'OBSERVATION'},{value:'RESOLUTION',label:'RESOLUTION'}]} value={editTimelineData.event_type} onChange={(e:any) => setEditTimelineData({...editTimelineData, event_type: e.target.value})} />
                                       </div>
-                                      <textarea value={editTimelineData.description} onChange={e => setEditTimelineData({...editTimelineData, description: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded p-2 text-[11px] font-bold text-white outline-none min-h-[60px] uppercase" />
+                                      <textarea value={editTimelineData.description} onChange={e => setEditTimelineData({...editTimelineData, description: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-lg p-2 text-[11px] font-bold text-white outline-none min-h-[60px] uppercase" />
                                       <div className="flex gap-2">
-                                         <button onClick={saveTimelineUpdate} className="flex-1 py-2 bg-purple-600 text-white rounded text-[9px] font-bold uppercase">Save</button>
-                                         <button onClick={() => setEditingTimelineId(null)} className="flex-1 py-2 bg-white/5 text-slate-400 rounded text-[9px] font-bold uppercase">Cancel</button>
+                                         <button onClick={saveTimelineUpdate} className="flex-1 py-2 bg-purple-600 text-white rounded-lg text-[9px] font-bold uppercase">Save</button>
+                                         <button onClick={() => setEditingTimelineId(null)} className="flex-1 py-2 bg-white/5 text-slate-400 rounded-lg text-[9px] font-bold uppercase">Cancel</button>
                                       </div>
                                    </div>
                                 ) : (
@@ -1842,7 +1842,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                                {item.owner && <span className="text-[9px] font-black text-purple-400/60 uppercase">@ {item.owner}</span>}
                                             </div>
                                             <div className="flex items-center gap-2">
-                                               <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
+                                               <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-lg border ${
                                                   item.event_type === 'RESOLUTION' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' :
                                                   item.event_type === 'MITIGATION' ? 'text-amber-400 border-amber-500/30 bg-amber-500/10' :
                                                   'text-blue-400 border-blue-500/30 bg-blue-500/10'
@@ -1994,15 +1994,15 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                          <div className="grid grid-cols-3 gap-4">
                                          <div className="space-y-2">
                                          <label className="text-[10px] text-slate-500 text-center block">S</label>
-                                         <input type="number" min="1" max="10" value={formData.severity} onChange={e => setFormData({...formData, severity: parseInt(e.target.value)})} className="w-full bg-slate-950 border border-white/10 rounded text-center py-2 text-rose-500 font-bold" />
+                                         <input type="number" min="1" max="10" value={formData.severity} onChange={e => setFormData({...formData, severity: parseInt(e.target.value)})} className="w-full bg-slate-950 border border-white/10 rounded-lg text-center py-2 text-rose-500 font-bold" />
                                          </div>
                                          <div className="space-y-2">
                                          <label className="text-[10px] text-slate-500 text-center block">O</label>
-                                         <input type="number" min="1" max="10" value={formData.occurrence} onChange={e => setFormData({...formData, occurrence: parseInt(e.target.value)})} className="w-full bg-slate-950 border border-white/10 rounded text-center py-2 text-amber-500 font-bold" />
+                                         <input type="number" min="1" max="10" value={formData.occurrence} onChange={e => setFormData({...formData, occurrence: parseInt(e.target.value)})} className="w-full bg-slate-950 border border-white/10 rounded-lg text-center py-2 text-amber-500 font-bold" />
                                          </div>
                                          <div className="space-y-2">
                                          <label className="text-[10px] text-slate-500 text-center block">D</label>
-                                         <input type="number" min="1" max="10" value={formData.detection} onChange={e => setFormData({...formData, detection: parseInt(e.target.value)})} className="w-full bg-slate-950 border border-white/10 rounded text-center py-2 text-sky-400 font-bold" />
+                                         <input type="number" min="1" max="10" value={formData.detection} onChange={e => setFormData({...formData, detection: parseInt(e.target.value)})} className="w-full bg-slate-950 border border-white/10 rounded-lg text-center py-2 text-sky-400 font-bold" />
                                          </div>
                                          </div>
                                          <div className="flex items-center justify-between px-4 py-3 bg-black/40 border border-white/5 rounded-lg">
@@ -2131,8 +2131,8 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
             <div>
               <div className="flex items-center space-x-4 mb-2">
                 <div className="flex items-center gap-2">
-                   <div className="px-3 py-1 rounded bg-blue-500/10 border border-blue-500/30 text-[9px] font-black text-blue-400 uppercase tracking-widest">RESEARCH_{item.id}</div>
-                   <div className={`px-3 py-1 rounded border text-[9px] font-black uppercase tracking-widest ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
+                   <div className="px-3 py-1 rounded-lg bg-blue-500/10 border border-blue-500/30 text-[9px] font-black text-blue-400 uppercase tracking-widest">RESEARCH_{item.id}</div>
+                   <div className={`px-3 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest ${pInfo.color}`}>PRIORITY: {pInfo.label}</div>
                 </div>
                 <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Pulse: {formatAppDate(formData.updated_at || formData.created_at)}</span>
@@ -2279,7 +2279,7 @@ function IntelligenceInput({ newLog, setNewLog, logMutation, compact = false }: 
           <h3 className="text-xs font-bold uppercase tracking-widest text-blue-400 flex items-center gap-2"><Plus size={14}/> Capture Intelligence Pulse</h3>
           <div className="flex gap-2">
              <StyledSelect label="Log Type" value={newLog.entry_type} onChange={(e:any) => setNewLog({...newLog, entry_type: e.target.value.toUpperCase()})} options={['DIAGNOSIS', 'HYPOTHESIS', 'OBSERVATION', 'ACTION', 'RESULT'].map(t => ({value: t, label: t}))} />
-             <input value={newLog.poc} onChange={e => setNewLog({...newLog, poc: e.target.value.toUpperCase()})} placeholder="POC..." className="w-32 bg-slate-950 border border-white/10 rounded px-3 text-[10px] font-bold text-white outline-none focus:border-blue-500 uppercase" />
+             <input value={newLog.poc} onChange={e => setNewLog({...newLog, poc: e.target.value.toUpperCase()})} placeholder="POC..." className="w-32 bg-slate-950 border border-white/10 rounded-lg px-3 text-[10px] font-bold text-white outline-none focus:border-blue-500 uppercase" />
           </div>
        </div>
        <textarea value={newLog.entry_text} onChange={e => setNewLog({...newLog, entry_text: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[11px] font-bold text-white outline-none focus:border-blue-500/50 min-h-[100px] uppercase placeholder:text-slate-700" placeholder="Capture logical system findings..." />
@@ -2392,7 +2392,7 @@ function MitigationTab({ formData, setFormData, isEditing }: any) {
              <div key={log.id || idx} className="bg-white/5 border border-white/10 rounded-lg p-5 flex items-center justify-between group hover:bg-white/[0.08] transition-all">
                 <div className="flex items-center gap-6">
                    <div className="w-32 text-center">
-                      <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded border ${log.type === 'Prevention' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-blue-400 border-blue-500/30 bg-blue-500/10'}`}>{log.type}</span>
+                      <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded-lg border ${log.type === 'Prevention' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-blue-400 border-blue-500/30 bg-blue-500/10'}`}>{log.type}</span>
                       <p className={`text-[8px] font-bold uppercase mt-1.5 ${log.status === 'Completed' ? 'text-emerald-400' : 'text-amber-400'}`}>{log.status}</p>
                    </div>
                    <div className="space-y-1">
@@ -2413,7 +2413,7 @@ export function ImageThumbnail({ src }: { src: string }) {
   const [isOpen, setIsOpen] = useState(false)
   return (
     <>
-      <div onClick={() => setIsOpen(true)} className="relative w-16 h-16 shrink-0 border border-white/10 rounded overflow-hidden shadow-lg cursor-zoom-in hover:border-blue-500/50 transition-all group">
+      <div onClick={() => setIsOpen(true)} className="relative w-16 h-16 shrink-0 border border-white/10 rounded-lg overflow-hidden shadow-lg cursor-zoom-in hover:border-blue-500/50 transition-all group">
          <img src={src} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
       </div>
       <AnimatePresence>

@@ -327,7 +327,7 @@ export default function FAR() {
                       'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div onClick={() => setShowRpnHelp(true)} className={`flex items-center justify-center w-14 h-5 rounded-md border shadow-sm cursor-pointer hover:scale-105 transition-all ${color}`}>
+            <div onClick={() => setShowRpnHelp(true)} className={`flex items-center justify-center w-14 h-5 rounded-lg border shadow-sm cursor-pointer hover:scale-105 transition-all ${color}`}>
               <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{val}</span>
             </div>
           </div>
@@ -348,7 +348,7 @@ export default function FAR() {
                       'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div onClick={() => setShowRpnHelp(true)} className={`flex items-center justify-center w-14 h-5 rounded-md border shadow-sm cursor-pointer hover:scale-105 transition-all ${color}`}>
+            <div onClick={() => setShowRpnHelp(true)} className={`flex items-center justify-center w-14 h-5 rounded-lg border shadow-sm cursor-pointer hover:scale-105 transition-all ${color}`}>
               <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{val}</span>
             </div>
           </div>
@@ -369,7 +369,7 @@ export default function FAR() {
                       'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div onClick={() => setShowRpnHelp(true)} className={`flex items-center justify-center w-14 h-5 rounded-md border shadow-sm cursor-pointer hover:scale-105 transition-all ${color}`}>
+            <div onClick={() => setShowRpnHelp(true)} className={`flex items-center justify-center w-14 h-5 rounded-lg border shadow-sm cursor-pointer hover:scale-105 transition-all ${color}`}>
               <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{val}</span>
             </div>
           </div>
@@ -390,7 +390,7 @@ export default function FAR() {
                       'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div onClick={() => setShowRpnHelp(true)} className={`flex items-center justify-center w-14 h-5 rounded-md border shadow-sm cursor-pointer hover:scale-105 transition-all ${color}`}>
+            <div onClick={() => setShowRpnHelp(true)} className={`flex items-center justify-center w-14 h-5 rounded-lg border shadow-sm cursor-pointer hover:scale-105 transition-all ${color}`}>
               <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{val}</span>
             </div>
           </div>
@@ -430,7 +430,7 @@ export default function FAR() {
 
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div onClick={() => setShowMaturityHelp(true)} className={`flex items-center justify-center w-28 h-5 rounded-md border shadow-sm cursor-pointer hover:scale-105 transition-all ${colorClass}`}>
+            <div onClick={() => setShowMaturityHelp(true)} className={`flex items-center justify-center w-28 h-5 rounded-lg border shadow-sm cursor-pointer hover:scale-105 transition-all ${colorClass}`}>
               <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">
                 Lv{ml.lv} {ml.label}
               </span>
@@ -493,7 +493,7 @@ export default function FAR() {
             <div className="group relative">
               <button 
                 onClick={() => setIncidentListModal({ show: true, rcas })}
-                className={`flex items-center justify-center w-14 h-5 rounded-md border shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer ${color}`}
+                className={`flex items-center justify-center w-14 h-5 rounded-lg border shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer ${color}`}
               >
                 <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{count}</span>
               </button>
@@ -673,8 +673,8 @@ export default function FAR() {
                       const pct = filteredModes?.length ? (count / filteredModes.length) * 100 : 0
                       return (
                         <div key={ml.lv} className="w-4 h-full relative group cursor-help">
-                            <div className={`w-full h-full rounded-t-sm transition-all ${ml.color} ${count === 0 ? 'opacity-5' : 'opacity-40 group-hover:opacity-100'}`} style={{ height: `${Math.max(10, pct)}%` }} />
-                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100] whitespace-nowrap bg-black border border-white/10 px-2 py-1 rounded text-[8px] font-bold uppercase tracking-widest">
+                            <div className={`w-full h-full rounded-t-lg transition-all ${ml.color} ${count === 0 ? 'opacity-5' : 'opacity-40 group-hover:opacity-100'}`} style={{ height: `${Math.max(10, pct)}%` }} />
+                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100] whitespace-nowrap bg-black border border-white/10 px-2 py-1 rounded-lg text-[8px] font-bold uppercase tracking-widest">
                                {ml.label}: {count}
                             </div>
                         </div>
@@ -706,7 +706,7 @@ export default function FAR() {
                       {columnDefs.filter((c: any) => c.field && !c.lockVisible).map((col: any) => (
                         <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
                           <input type="checkbox" checked={!hiddenColumns.includes(col.field)} onChange={() => setHiddenColumns(prev => prev.includes(col.field) ? prev.filter(f => f !== col.field) : [...prev, col.field])} className="sr-only" />
-                          <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-rose-600 border-rose-500 shadow-lg shadow-rose-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>{!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}</div>
+                          <div className={`w-4 h-4 rounded-lg border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-rose-600 border-rose-500 shadow-lg shadow-rose-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>{!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}</div>
                           <span className={`text-[10px] font-bold uppercase tracking-widest ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
                         </label>
                       ))}
@@ -781,7 +781,7 @@ export default function FAR() {
                           </td>
                           <td className="py-4 px-4">
                              <div className="flex justify-center">
-                                <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded border ${
+                                <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-lg border ${
                                    r.status === 'RESOLVED' || r.status === 'CLOSED' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-purple-400 border-purple-500/30 bg-purple-500/10'
                                 }`}>{r.status}</span>
                              </div>
@@ -835,7 +835,7 @@ export default function FAR() {
                       <tbody className="divide-y divide-white/5">
                          {[...maturityLevels].reverse().map(ml => (
                            <tr key={ml.lv} className="hover:bg-white/5 transition-colors">
-                              <td className="px-4 py-3 text-center"><span className={`px-2 py-1 rounded font-bold text-white shadow-lg ${ml.color}`}>{ml.lv}</span></td>
+                              <td className="px-4 py-3 text-center"><span className={`px-2 py-1 rounded-lg font-bold text-white shadow-lg ${ml.color}`}>{ml.lv}</span></td>
                               <td className="px-4 py-3 font-bold text-white uppercase ">{ml.label}</td>
                               <td className="px-4 py-3 text-slate-400 font-bold tracking-tight">{ml.tooltip}</td>
                            </tr>

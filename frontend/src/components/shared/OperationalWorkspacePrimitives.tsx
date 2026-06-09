@@ -20,10 +20,10 @@ export function getWorkspaceModalFrameClass(size: WorkspaceModalSize) {
 }
 
 export function getWorkspaceModalShellClass(size: WorkspaceModalSize) {
-  if (size === 'compact') return 'w-full max-w-md max-h-[82vh]'
-  if (size === 'standard') return 'w-full max-w-2xl max-h-[86vh]'
-  if (size === 'wide') return 'w-full max-w-4xl max-h-[88vh]'
-  if (size === 'workspace') return 'w-full max-w-7xl h-full sm:h-auto sm:max-h-[92vh]'
+  if (size === 'compact') return 'w-full max-w-lg max-h-[82vh]'
+  if (size === 'standard') return 'w-full max-w-3xl max-h-[86vh]'
+  if (size === 'wide') return 'w-full max-w-5xl max-h-[88vh]'
+  if (size === 'workspace') return 'w-full max-w-[1440px] h-full sm:h-auto sm:max-h-[92vh]'
   return 'fixed inset-0 w-screen h-screen max-w-none max-h-none z-[4000]'
 }
 
@@ -68,7 +68,7 @@ export function getWorkspaceFloatingPanelClass(kind: 'menu' | 'context' | 'detai
         : 'border-white/10 bg-slate-950/95 shadow-[0_24px_60px_rgba(2,6,23,0.48)]'
 
   return join(
-    'rounded-lg backdrop-blur-xl',
+    `${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} backdrop-blur-xl`,
     tone,
   )
 }
@@ -192,7 +192,7 @@ export function WorkspaceSectionBadge({
             : 'border-white/10 bg-black/30 text-slate-400'
 
   return (
-    <span className={join('rounded-lg border px-2.5 py-1 text-[9px] font-semibold', toneClass)}>
+    <span className={join(`${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} border px-2.5 py-1 text-[9px] font-semibold`, toneClass)}>
       {children}
     </span>
   )
@@ -214,7 +214,7 @@ export function WorkspaceEmptyState({
   return (
     <div
       className={join(
-        'flex flex-col items-center justify-center rounded-lg border border-dashed border-white/10 bg-black/10 text-center',
+        `flex flex-col items-center justify-center ${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} border border-dashed border-white/10 bg-black/10 text-center`,
         compact ? 'px-4 py-8 space-y-2' : 'px-6 py-12 space-y-4'
       )}
     >
@@ -247,7 +247,7 @@ export function WorkspaceCollapsibleHeader({
     <button
       type="button"
       onClick={onToggle}
-      className="flex w-full items-start justify-between gap-4 rounded-lg text-left transition-colors hover:text-white"
+      className={`flex w-full items-start justify-between gap-4 ${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} text-left transition-colors hover:text-white`}
     >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
@@ -258,7 +258,7 @@ export function WorkspaceCollapsibleHeader({
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {action}
-        <span className="rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-[9px] font-semibold text-slate-400">
+        <span className={`${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} border border-white/10 bg-black/20 px-2 py-1 text-[9px] font-semibold text-slate-400`}>
           {collapsed ? 'Show' : 'Hide'}
         </span>
       </div>
@@ -355,7 +355,7 @@ export function WorkspaceInfoTooltip({
           triggerRef.current = node
         }}
         onClick={() => setIsOpen((current) => !current)}
-        className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5 text-[9px] font-semibold text-slate-300 transition-colors hover:border-blue-500/30 hover:text-white"
+        className={`${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} border border-white/10 bg-black/20 px-2.5 py-1.5 text-[9px] font-semibold text-slate-300 transition-colors hover:border-blue-500/30 hover:text-white`}
       >
         {label}
       </button>
@@ -471,7 +471,7 @@ export function WorkspaceSelectField({
           ref={(node) => {
             triggerRef.current = node
           }}
-          className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10 shadow-[0_0_0_1px_rgba(244,63,94,0.18)]' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+          className={`flex w-full items-center justify-between ${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} border px-3 py-2 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10 shadow-[0_0_0_1px_rgba(244,63,94,0.18)]' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
         >
           <span className={`text-[clamp(10px,0.85vw,12px)] font-black truncate pr-4 ${(value && (!Array.isArray(value) || value.length > 0)) ? 'text-slate-100' : 'text-slate-500'}`}>
             {getLabel()}
@@ -484,7 +484,7 @@ export function WorkspaceSelectField({
             style={panelStyle}
             data-workspace-panel="true"
             onMouseDown={(e) => e.stopPropagation()}
-            className="rounded-lg border border-white/10 bg-[#020617] p-2 shadow-[0_24px_60px_rgba(2,6,23,0.48)] backdrop-blur-xl flex flex-col"
+            className={`${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} border border-white/10 bg-[#020617] p-2 shadow-[0_24px_60px_rgba(2,6,23,0.48)] backdrop-blur-xl flex flex-col`}
           >
             {searchable && (
               <div className="mb-2">
@@ -493,7 +493,7 @@ export function WorkspaceSelectField({
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={`Search ${label.toLowerCase()}...`}
-                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[10px] font-black text-slate-100 outline-none focus:border-blue-500/40"
+                  className={`w-full ${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} border border-white/10 bg-black/20 px-3 py-2 text-[10px] font-black text-slate-100 outline-none focus:border-blue-500/40`}
                 />
               </div>
             )}
@@ -505,11 +505,11 @@ export function WorkspaceSelectField({
                     key={String(option.value)}
                     type="button"
                     onClick={() => handleSelect(option.value)}
-                    className={`w-full rounded-lg border px-3 py-2 text-left transition-all ${active ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10 hover:bg-white/[0.03]'}`}
+                    className={`w-full ${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} border px-3 py-2 text-left transition-all ${active ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10 hover:bg-white/[0.03]'}`}
                   >
                     <div className="flex items-center gap-2">
                       {multi && (
-                        <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${active ? 'bg-blue-500 border-blue-500' : 'border-white/20 bg-black/20'}`}>
+                        <div className={`w-3.5 h-3.5 ${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} border flex items-center justify-center transition-colors ${active ? 'bg-blue-500 border-blue-500' : 'border-white/20 bg-black/20'}`}>
                           {active && <Check size={10} className="text-white" />}
                         </div>
                       )}
@@ -523,7 +523,7 @@ export function WorkspaceSelectField({
                 )
               })}
               {filteredOptions.length === 0 && (
-                <div className="rounded-lg border border-white/5 bg-black/20 px-3 py-4 text-center text-[9px] font-black text-slate-500">
+                <div className={`${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} border border-white/5 bg-black/20 px-3 py-4 text-center text-[9px] font-black text-slate-500`}>
                   No matching options
                 </div>
               )}
@@ -572,13 +572,13 @@ export function WorkspaceTabStrip({
   onChange: (id: string) => void
 }) {
   return (
-    <div className="flex shrink-0 items-center gap-1 rounded-lg border border-white/5 bg-white/5 p-1">
+    <div className={`flex shrink-0 items-center gap-1 ${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} border border-white/5 bg-white/5 p-1`}>
       {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
           onClick={() => onChange(tab.id)}
-          className={`rounded-lg px-4 py-2 text-[10px] font-semibold transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+          className={`${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} px-4 py-2 text-[10px] font-semibold transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
         >
           <span className="flex items-center gap-2">
             <span>{tab.label}</span>
@@ -595,7 +595,7 @@ export function WorkspaceTabStrip({
 export function WorkspaceValidationBanner({ message }: { message?: string }) {
   if (!message) return null
   return (
-    <div className="mb-6 rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3">
+    <div className={`mb-6 ${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} border border-rose-500/20 bg-rose-500/10 px-4 py-3`}>
       <p className="text-[10px] font-semibold text-rose-300">{message}</p>
     </div>
   )
@@ -630,7 +630,7 @@ export function WorkspaceModalHeader({
             {closeControl}
             {maximizeControl}
           </div>
-          <div className="ml-2 flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-600/10 text-blue-400">
+          <div className={`ml-2 flex h-12 w-12 shrink-0 items-center justify-center ${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} border border-blue-500/20 bg-blue-600/10 text-blue-400`}>
             {icon}
           </div>
           <div className="min-w-0">

@@ -331,7 +331,7 @@ const ProjectRail = ({
                       <div className="flex items-center gap-2">
                          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{p.type || 'N/A'}</span>
                          <span className="text-slate-800 text-[9px]">•</span>
-                         <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter ${
+                         <div className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-tighter ${
                             p.priority === 'High' || p.priority === 'Highest' ? 'bg-rose-600/10 text-rose-500 border border-rose-500/20' :
                             p.priority === 'Medium' ? 'bg-amber-600/10 text-amber-500 border border-amber-500/20' :
                             'bg-slate-800 text-slate-500 border border-white/5'
@@ -341,7 +341,7 @@ const ProjectRail = ({
                       </div>
 
                       <div className="mt-1 flex items-center justify-between gap-4">
-                         <div className="flex-1 px-2 py-1 bg-white/5 rounded-md text-[9px] font-bold text-blue-400/80 uppercase truncate border border-white/5">
+                         <div className="flex-1 px-2 py-1 bg-white/5 rounded-lg text-[9px] font-bold text-blue-400/80 uppercase truncate border border-white/5">
                             {p.owners?.length > 0 ? p.owners.join(', ') : (p.owner || 'Unassigned')}
                          </div>
                          <div className="flex items-center gap-1.5 shrink-0 opacity-40">
@@ -450,7 +450,7 @@ const ProjectLedger = ({
                   <h4 className="text-[9px] font-bold text-slate-500 uppercase tracking-widest px-1">Select ROI Streams</h4>
                   <div className="grid grid-cols-1 gap-1">
                      {ROI_TYPES.map(t => (
-                       <label key={t.value} className={`flex items-center gap-2 px-3 py-2 rounded transition-all cursor-pointer ${activeROI.includes(t.value) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-600'}`}>
+                       <label key={t.value} className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all cursor-pointer ${activeROI.includes(t.value) ? 'bg-blue-600/20 text-blue-400' : 'hover:bg-white/5 text-slate-600'}`}>
                           <input 
                             type="checkbox" 
                             checked={activeROI.includes(t.value)}
@@ -458,7 +458,7 @@ const ProjectLedger = ({
                               const updated = e.target.checked ? [...activeROI, t.value] : activeROI.filter((v:any) => v !== t.value)
                               handleChange('roi_types', updated)
                             }}
-                            className="rounded border-white/10 bg-black/40 text-blue-600"
+                            className="rounded-lg border-white/10 bg-black/40 text-blue-600"
                           />
                           <span className="text-[10px] font-bold uppercase tracking-tight">{t.label}</span>
                        </label>
@@ -476,7 +476,7 @@ const ProjectLedger = ({
                           <select 
                             value={project.roi_defense_line || 'DL0'}
                             onChange={e => handleChange('roi_defense_line', e.target.value)}
-                            className="w-full bg-slate-900 text-xl font-bold text-white outline-none border border-white/10 rounded p-1"
+                            className="w-full bg-slate-900 text-xl font-bold text-white outline-none border border-white/10 rounded-lg p-1"
                           >
                             <option value="DL0">DL0: BASE</option>
                             <option value="DL1">DL1: FORTIFIED</option>
@@ -492,7 +492,7 @@ const ProjectLedger = ({
                           <textarea 
                             value={project.roi_defense_line_desc || ''} 
                             onChange={e => handleChange('roi_defense_line_desc', e.target.value)}
-                            className="w-full bg-black/40 border border-white/10 rounded p-2 text-[10px] font-bold text-slate-400 outline-none h-16 resize-none"
+                            className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-[10px] font-bold text-slate-400 outline-none h-16 resize-none"
                             placeholder="Why this DL level?"
                           />
                         ) : (
@@ -521,7 +521,7 @@ const ProjectLedger = ({
                           <p className="text-xl font-bold text-blue-400 tracking-tighter">+{project.man_hours_saved || 0} <span className="text-xs">hr/yr</span></p>
                         )}
                      </div>
-                     <div className="space-y-1 bg-black/40 p-2 rounded border border-white/5">
+                     <div className="space-y-1 bg-black/40 p-2 rounded-lg border border-white/5">
                         <p className="text-[8px] font-bold text-blue-400/60 uppercase tracking-widest flex items-center gap-1"><Binary size={10} /> Math Builder</p>
                         {isEditing ? (
                           <textarea 
@@ -540,7 +540,7 @@ const ProjectLedger = ({
                           <textarea 
                             value={project.man_hours_saved_desc || ''} 
                             onChange={e => handleChange('man_hours_saved_desc', e.target.value)}
-                            className="w-full bg-black/40 border border-white/10 rounded p-2 text-[10px] font-bold text-slate-400 outline-none h-16 resize-none"
+                            className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-[10px] font-bold text-slate-400 outline-none h-16 resize-none"
                             placeholder="Context for these hours..."
                           />
                         ) : (
@@ -569,7 +569,7 @@ const ProjectLedger = ({
                           <p className="text-xl font-bold text-blue-400 tracking-tighter">+{project.stoploss_minutes_saved || 0} <span className="text-xs">min/yr</span></p>
                         )}
                      </div>
-                     <div className="space-y-1 bg-black/40 p-2 rounded border border-white/5">
+                     <div className="space-y-1 bg-black/40 p-2 rounded-lg border border-white/5">
                         <p className="text-[8px] font-bold text-blue-400/60 uppercase tracking-widest flex items-center gap-1"><Binary size={10} /> Math Builder</p>
                         {isEditing ? (
                           <textarea 
@@ -588,7 +588,7 @@ const ProjectLedger = ({
                           <textarea 
                             value={project.stoploss_minutes_saved_desc || ''} 
                             onChange={e => handleChange('stoploss_minutes_saved_desc', e.target.value)}
-                            className="w-full bg-black/40 border border-white/10 rounded p-2 text-[10px] font-bold text-slate-400 outline-none h-16 resize-none"
+                            className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-[10px] font-bold text-slate-400 outline-none h-16 resize-none"
                             placeholder="Business impact context..."
                           />
                         ) : (
@@ -617,7 +617,7 @@ const ProjectLedger = ({
                           <p className="text-xl font-bold text-blue-400 tracking-tighter">+{project.wafers_gained || 0} <span className="text-xs font-bold">WPD</span></p>
                         )}
                      </div>
-                     <div className="space-y-1 bg-black/40 p-2 rounded border border-white/5">
+                     <div className="space-y-1 bg-black/40 p-2 rounded-lg border border-white/5">
                         <p className="text-[8px] font-bold text-blue-400/60 uppercase tracking-widest flex items-center gap-1"><Binary size={10} /> Math Builder</p>
                         {isEditing ? (
                           <textarea 
@@ -636,7 +636,7 @@ const ProjectLedger = ({
                           <textarea 
                             value={project.wafers_gained_desc || ''} 
                             onChange={e => handleChange('wafers_gained_desc', e.target.value)}
-                            className="w-full bg-black/40 border border-white/10 rounded p-2 text-[10px] font-bold text-slate-400 outline-none h-16 resize-none"
+                            className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-[10px] font-bold text-slate-400 outline-none h-16 resize-none"
                             placeholder="Yield optimization details..."
                           />
                         ) : (
@@ -722,7 +722,7 @@ const TaskRow = React.memo(({
          onMouseLeave={() => setShowHologram(false)}
          onDoubleClick={() => setSelectedTaskId(task.id)}
          onClick={(e) => handleSelectTask(task.id, e.shiftKey)}
-         className={`absolute h-5 top-2.5 rounded-sm flex items-center gap-2 border shadow-lg z-20 group/bar transition-shadow pointer-events-auto
+         className={`absolute h-5 top-2.5 rounded-lg flex items-center gap-2 border shadow-lg z-20 group/bar transition-shadow pointer-events-auto
            ${selectedTaskIds.has(task.id) ? 'shadow-[0_0_0_2px_rgba(59,130,246,0.5)] z-40 border-blue-400' : 'border-white/10'} 
            ${isCritical ? 'shadow-[0_0_15px_rgba(244,63,94,0.3)] border-rose-500/60' : ''}
            ${
@@ -734,7 +734,7 @@ const TaskRow = React.memo(({
          }`}
          style={{ left, width }}
        >
-          {isCritical && <div className="absolute -inset-[1px] rounded-sm bg-rose-500/20 animate-pulse pointer-events-none" />}
+          {isCritical && <div className="absolute -inset-[1px] rounded-lg bg-rose-500/20 animate-pulse pointer-events-none" />}
 
           <div 
             onPointerDown={(e) => dragControls.start(e)}
@@ -761,14 +761,14 @@ const TaskRow = React.memo(({
             dragMomentum={false} 
             onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'start'); }} 
             onDragEnd={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'start', true); }} 
-            className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-l-md hover:bg-white/10" 
+            className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-l-lg hover:bg-white/10" 
           />
           <motion.div 
             drag="x" 
             dragMomentum={false} 
             onDrag={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'end'); }} 
             onDragEnd={(e, info) => { e.stopPropagation(); handleTaskResize(task.id, info.offset.x, 'end', true); }} 
-            className="absolute -right-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-r-md hover:bg-white/10" 
+            className="absolute -right-1 top-0 bottom-0 w-2 cursor-ew-resize z-50 rounded-r-lg hover:bg-white/10" 
           />
 
           <button 
@@ -1211,7 +1211,7 @@ const DependencyLines = React.memo(({ lines }: any) => {
                   <button
                     key={g}
                     onClick={() => setGranularity(g)}
-                    className={`px-3 py-1 rounded text-[9px] font-bold transition-all ${
+                    className={`px-3 py-1 rounded-lg text-[9px] font-bold transition-all ${
                       granularity === g ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'
                     }`}
                   >
@@ -1299,7 +1299,7 @@ const DependencyLines = React.memo(({ lines }: any) => {
              <div className="relative pt-0 pb-24" style={{ width: days.length * zoomLevel, height: (maxRow + 1) * ROW_HEIGHT + 100 }}>
                 {/* Today Line */}
                 <div className="absolute top-0 bottom-0 w-px bg-blue-500/40 z-10 pointer-events-none" style={{ left: todayX }}>
-                   <div className="absolute top-[-44px] left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[9px] font-black px-2 py-1 rounded shadow-[0_0_20px_rgba(37,99,235,0.4)] uppercase tracking-widest z-[60] border border-blue-400/30">TODAY</div>
+                   <div className="absolute top-[-44px] left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[9px] font-black px-2 py-1 rounded-lg shadow-[0_0_20px_rgba(37,99,235,0.4)] uppercase tracking-widest z-[60] border border-blue-400/30">TODAY</div>
                    <div className="h-full w-full border-l border-dashed border-blue-500/40" />
                 </div>
 
@@ -1339,7 +1339,7 @@ const DependencyLines = React.memo(({ lines }: any) => {
 
           {dragStatus && cursorDate && (
             <div 
-              className="fixed pointer-events-none z-[1000] bg-white text-black text-[10px] font-black px-3 py-1.5 rounded shadow-2xl border border-white/20 whitespace-nowrap flex flex-col gap-1"
+              className="fixed pointer-events-none z-[1000] bg-white text-black text-[10px] font-black px-3 py-1.5 rounded-lg shadow-2xl border border-white/20 whitespace-nowrap flex flex-col gap-1"
               style={{ left: cursorDate.x + 15, top: cursorDate.y + 15 }}
             >
               <span className="text-[8px] text-slate-500 uppercase tracking-widest">
@@ -1454,7 +1454,7 @@ const DependencyLines = React.memo(({ lines }: any) => {
                               <section className="space-y-6">
                                  <div className="flex items-center justify-between">
                                     <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Subtasks</h4>
-                                    <button onClick={addSubtask} className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 text-slate-400 hover:text-white rounded text-[9px] font-bold uppercase tracking-widest transition-all"><Plus size={12}/> Add</button>
+                                    <button onClick={addSubtask} className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 text-slate-400 hover:text-white rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all"><Plus size={12}/> Add</button>
                                  </div>
                                  <div className="space-y-2">
                                     {subtasks.map((s: any, idx: number) => (
@@ -1463,7 +1463,7 @@ const DependencyLines = React.memo(({ lines }: any) => {
                                            type="checkbox" 
                                            checked={s.completed} 
                                            onChange={e => updateSubtask(idx, { completed: e.target.checked })}
-                                           className="w-4 h-4 rounded border-white/10 bg-black/40 text-blue-500 focus:ring-blue-500 cursor-pointer"
+                                           className="w-4 h-4 rounded-lg border-white/10 bg-black/40 text-blue-500 focus:ring-blue-500 cursor-pointer"
                                          />
                                          <input 
                                            value={s.label} 
@@ -1578,7 +1578,7 @@ const DependencyLines = React.memo(({ lines }: any) => {
                                        <p className="text-[8px] font-bold text-slate-600 uppercase px-1">Dependent From (Blocks these tasks)</p>
                                        <div className="flex flex-wrap gap-2">
                                           {dependentTo.map(t => (
-                                            <span key={t.id} className="px-2 py-1 bg-blue-600/10 border border-blue-500/20 rounded text-[9px] font-bold text-blue-400 uppercase tracking-widest">{t.name}</span>
+                                            <span key={t.id} className="px-2 py-1 bg-blue-600/10 border border-blue-500/20 rounded-lg text-[9px] font-bold text-blue-400 uppercase tracking-widest">{t.name}</span>
                                           ))}
                                           {dependentTo.length === 0 && <span className="text-[8px] font-bold text-slate-800 uppercase px-1">No downstream blocks</span>}
                                        </div>
@@ -1587,7 +1587,7 @@ const DependencyLines = React.memo(({ lines }: any) => {
                                        <p className="text-[8px] font-bold text-slate-600 uppercase px-1">Dependent To (Blocked by these tasks)</p>
                                        <div className="flex flex-wrap gap-2">
                                           {dependentFrom.map(t => (
-                                            <span key={t.id} className="px-2 py-1 bg-amber-600/10 border border-amber-500/20 rounded text-[9px] font-bold text-amber-400 uppercase tracking-widest">{t.name}</span>
+                                            <span key={t.id} className="px-2 py-1 bg-amber-600/10 border border-amber-500/20 rounded-lg text-[9px] font-bold text-amber-400 uppercase tracking-widest">{t.name}</span>
                                           ))}
                                           {dependentFrom.length === 0 && <span className="text-[8px] font-bold text-slate-800 uppercase px-1">No upstream blocks</span>}
                                        </div>
@@ -1710,7 +1710,7 @@ const ExecutiveChart = ({ tasks }: { tasks: any[] }) => {
                   <div className="space-y-3">
                      <p className="text-[8px] font-bold text-blue-400/60 uppercase tracking-widest px-1">Planned Completions</p>
                      {selectedPoint.plannedTasks.length > 0 ? selectedPoint.plannedTasks.map((t: any) => (
-                       <div key={t.id} className="p-2.5 bg-white/5 rounded border border-white/5">
+                       <div key={t.id} className="p-2.5 bg-white/5 rounded-lg border border-white/5">
                          <p className="text-[10px] font-bold text-slate-300 truncate">{t.name}</p>
                          <p className="text-[8px] font-bold text-slate-600 mt-1 uppercase">Target: {format(parseAppDate(t.end_date)!, 'MMM dd')}</p>
                        </div>
@@ -1719,7 +1719,7 @@ const ExecutiveChart = ({ tasks }: { tasks: any[] }) => {
                   <div className="space-y-3 border-t border-white/5 pt-4">
                      <p className="text-[8px] font-bold text-emerald-400/60 uppercase tracking-widest px-1">Actual Completions</p>
                      {selectedPoint.actualTasks.length > 0 ? selectedPoint.actualTasks.map((t: any) => (
-                       <div key={t.id} className="p-2.5 bg-emerald-500/5 rounded border border-emerald-500/20">
+                       <div key={t.id} className="p-2.5 bg-emerald-500/5 rounded-lg border border-emerald-500/20">
                          <p className="text-[10px] font-bold text-emerald-400 truncate">{t.name}</p>
                          <p className="text-[8px] font-bold text-emerald-600 mt-1 uppercase">Finalized: {format(parseAppDate(t.actual_end_date)!, 'MMM dd')}</p>
                        </div>
@@ -1737,7 +1737,7 @@ const ExecutiveChart = ({ tasks }: { tasks: any[] }) => {
 const ProcessNode = ({ id, data }: any) => {
   const { setNodes } = useReactFlow();
   return (
-    <div className="px-6 py-3 shadow-2xl rounded-xl bg-[#0a0c14] border-2 border-blue-500/50 text-white min-w-[140px] flex items-center justify-center relative overflow-hidden group">
+    <div className="px-6 py-3 shadow-2xl rounded-lg bg-[#0a0c14] border-2 border-blue-500/50 text-white min-w-[140px] flex items-center justify-center relative overflow-hidden group">
        <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
        <span className="text-[10px] font-black uppercase tracking-widest relative z-10">{data.label}</span>
        <button 
@@ -1778,8 +1778,8 @@ const InfrastructureNode = ({ id, data, type }: any) => {
   const color = type === 'db' ? 'emerald' : type === 'cloud' ? 'sky' : type === 'storage' ? 'purple' : 'slate'
   
   return (
-    <div className={`px-4 py-3 rounded-2xl bg-[#0a0c14] border-2 border-${color}-500/40 text-white min-w-[120px] flex flex-col items-center gap-2 shadow-2xl group transition-all hover:border-${color}-500 relative`}>
-       <div className={`w-10 h-10 bg-${color}-600/10 rounded-xl flex items-center justify-center border border-${color}-500/20 group-hover:scale-110 transition-transform`}>
+    <div className={`px-4 py-3 rounded-lg bg-[#0a0c14] border-2 border-${color}-500/40 text-white min-w-[120px] flex flex-col items-center gap-2 shadow-2xl group transition-all hover:border-${color}-500 relative`}>
+       <div className={`w-10 h-10 bg-${color}-600/10 rounded-lg flex items-center justify-center border border-${color}-500/20 group-hover:scale-110 transition-transform`}>
           <Icon size={20} className={`text-${color}-400`} />
        </div>
        <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">{data.label}</span>
@@ -2061,7 +2061,7 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                                         const updated = e.target.checked ? [...current, val] : current.filter((x:any) => x !== val)
                                         handleFieldChange(group.key, updated)
                                      }}
-                                     className="w-3.5 h-3.5 rounded border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
+                                     className="w-3.5 h-3.5 rounded-lg border-white/10 bg-black/40 text-blue-600 focus:ring-blue-600"
                                    />
                                  )}
                                  <span className="text-[9px] font-black uppercase tracking-tight truncate font-inter">{o.label || o.name}</span>
@@ -2103,7 +2103,7 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                                 const updated = e.target.checked ? [...current, o.value] : current.filter((x:any) => x !== o.value)
                                 handleFieldChange('owners', updated)
                              }}
-                             className="w-3.5 h-3.5 rounded border-white/10 bg-black/40 text-blue-600"
+                             className="w-3.5 h-3.5 rounded-lg border-white/10 bg-black/40 text-blue-600"
                            />
                            <span className="text-[9px] font-black uppercase tracking-tight font-inter">{o.label}</span>
                         </label>
@@ -2145,7 +2145,7 @@ const WorkbenchView = ({ project, onUpdate, isEditing, devices, services, option
                   </div>
                   <div className="space-y-1">
                     {(project.metadata_json?.links || []).map((link: any, i: number) => (
-                      <div key={i} className="flex items-center justify-between p-2 bg-white/5 rounded border border-white/5 group">
+                      <div key={i} className="flex items-center justify-between p-2 bg-white/5 rounded-lg border border-white/5 group">
                         <a href={link.url} target="_blank" rel="noreferrer" className="text-[9px] font-bold text-slate-400 uppercase hover:text-blue-400">{link.label}</a>
                         <button onClick={() => {
                           const metadata = project.metadata_json || {}
@@ -2530,12 +2530,12 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, devices, 
                    <h5 className="text-[8px] font-bold text-slate-500 uppercase tracking-widest px-1">Active ROI Streams</h5>
                    <div className="grid grid-cols-2 gap-2">
                       {ROI_TYPES.map(t => (
-                        <label key={t.value} className={`flex items-center gap-2 px-3 py-1.5 rounded border transition-all cursor-pointer ${formData.roi_types?.includes(t.value) ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-600'}`}>
+                        <label key={t.value} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${formData.roi_types?.includes(t.value) ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-600'}`}>
                            <input type="checkbox" checked={formData.roi_types?.includes(t.value)} onChange={e => {
                              const current = formData.roi_types || []
                              const updated = e.target.checked ? [...current, t.value] : current.filter((v:any) => v !== t.value)
                              setFormData({ ...formData, roi_types: updated })
-                           }} className="rounded border-white/10 bg-black/40 text-blue-600"/><span className="text-[9px] font-bold uppercase tracking-tight">{t.label}</span>
+                           }} className="rounded-lg border-white/10 bg-black/40 text-blue-600"/><span className="text-[9px] font-bold uppercase tracking-tight">{t.label}</span>
                         </label>
                       ))}
                    </div>
@@ -2572,7 +2572,7 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, devices, 
                                   const prunedServices = (formData.target_services || []).filter((id:any) => validServices.includes(id))
 
                                   setFormData({ ...formData, target_systems: updated, target_assets: prunedAssets, target_services: prunedServices })
-                               }} className="rounded border-white/10 bg-black/40 text-blue-600"/><span className="text-[9px] font-bold text-slate-400 group-hover:text-slate-200 uppercase">{o.label}</span>
+                               }} className="rounded-lg border-white/10 bg-black/40 text-blue-600"/><span className="text-[9px] font-bold text-slate-400 group-hover:text-slate-200 uppercase">{o.label}</span>
                             </label>
                          ))}
                       </div>
@@ -2591,7 +2591,7 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, devices, 
                                   const prunedServices = (formData.target_services || []).filter((id:any) => validServices.includes(id))
 
                                   setFormData({ ...formData, target_assets: updated, target_services: prunedServices })
-                               }} className="rounded border-white/10 bg-black/40 text-blue-600"/><span className="text-[9px] font-bold text-slate-400 group-hover:text-slate-200 uppercase truncate">{d.name}</span>
+                               }} className="rounded-lg border-white/10 bg-black/40 text-blue-600"/><span className="text-[9px] font-bold text-slate-400 group-hover:text-slate-200 uppercase truncate">{d.name}</span>
                             </label>
                          ))}
                       </div>
@@ -2605,7 +2605,7 @@ export const ProjectForm = ({ initialData, onSave, isSaving, onCancel, devices, 
                                   const current = formData.target_services || []
                                   const updated = e.target.checked ? [...current, s.id] : current.filter((x:any) => x !== s.id)
                                   setFormData({ ...formData, target_services: updated })
-                               }} className="rounded border-white/10 bg-black/40 text-blue-600"/><span className="text-[9px] font-bold text-slate-400 group-hover:text-slate-200 uppercase truncate">{s.name}</span>
+                               }} className="rounded-lg border-white/10 bg-black/40 text-blue-600"/><span className="text-[9px] font-bold text-slate-400 group-hover:text-slate-200 uppercase truncate">{s.name}</span>
                             </label>
                          ))}
                       </div>
@@ -2705,7 +2705,7 @@ const DailyHuddleView = ({ projects, users }: any) => {
                         <div className="flex items-center justify-between mb-5">
                            <div className="flex flex-col gap-1">
                               <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest truncate max-w-[150px]">{task.projectName}</span>
-                              <div className={`text-[7px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded w-fit ${
+                              <div className={`text-[7px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded-lg w-fit ${
                                  task.projectPriority === 'High' || task.projectPriority === 'Highest' ? 'bg-rose-600/20 text-rose-500' : 'bg-slate-800 text-slate-500'
                               }`}>
                                  {task.projectPriority} Priority
@@ -2740,7 +2740,7 @@ const DailyHuddleView = ({ projects, users }: any) => {
                               </span>
                            </div>
                            <div className="flex items-center gap-2">
-                              <div className="px-2 py-1 bg-white/5 rounded text-[8px] font-black text-slate-500 uppercase">
+                              <div className="px-2 py-1 bg-white/5 rounded-lg text-[8px] font-black text-slate-500 uppercase">
                                  {task.owner || 'Unassigned'}
                               </div>
                            </div>
@@ -2865,7 +2865,7 @@ const ProjectAdoptionView = ({ project, onUpdate, isEditing }: any) => {
                   <div key={log.id} className="group bg-[#0d0f17]/50 border border-white/5 rounded-lg p-5 hover:border-emerald-500/20 transition-all">
                      <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-3">
-                           <div className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter ${
+                           <div className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-tighter ${
                               log.score >= 8 ? 'bg-emerald-600/20 text-emerald-400' :
                               log.score >= 5 ? 'bg-blue-600/20 text-blue-400' : 'bg-rose-600/20 text-rose-400'
                            }`}>
@@ -2874,8 +2874,8 @@ const ProjectAdoptionView = ({ project, onUpdate, isEditing }: any) => {
                            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{log.author}</span>
                         </div>
                         <div className="flex items-center gap-4">
-                           <span className="text-[8px] font-bold text-slate-600 uppercase">{c.timestamp ? format(parseAppDate(c.timestamp)!, 'MMM dd, HH:mm') : 'N/A'}</span>
-                           <button onClick={() => handleDeleteLog(log.id)} className="text-slate-800 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={14}/></button>
+                          <span className="text-[8px] font-bold text-slate-600 uppercase">{log.timestamp ? format(parseAppDate(log.timestamp)!, 'MMM dd, HH:mm') : 'N/A'}</span>
+                          <button onClick={() => handleDeleteLog(log.id)} className="text-slate-800 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={14}/></button>
                         </div>
                      </div>
                      <p className="text-xs font-bold text-slate-300 leading-relaxed italic">"{log.content}"</p>

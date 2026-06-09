@@ -206,7 +206,7 @@ export default function NetworkFabric() {
         }
         return (
           <div className="flex items-center justify-center h-full">
-            <div className={`flex items-center justify-center w-24 h-6 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+            <div className={`flex items-center justify-center w-24 h-6 rounded-lg border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
               <span className="font-bold tracking-tighter leading-none" style={{ fontSize: `${fontSize}px` }}>
                 {p.value || 'Active'}
               </span>
@@ -597,7 +597,7 @@ export default function NetworkFabric() {
                         }}
                         className="sr-only"
                       />
-                      <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
+                      <div className={`w-4 h-4 rounded-lg border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
                          {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
                       </div>
                     </div>
@@ -760,7 +760,7 @@ export default function NetworkFabric() {
                       </div>
                       <div className="space-y-2">
                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Narrative</label>
-                         <textarea value={connData.purpose || ''} onChange={e => setConnData({...connData, purpose: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500 h-[60px] resize-none" placeholder="Purpose..." />
+                         <textarea value={connData.purpose || ''} onChange={e => setConnData({...connData, purpose: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-blue-500 h-[60px] resize-none" placeholder="Purpose..." />
                       </div>
                     </div>
                   </div>

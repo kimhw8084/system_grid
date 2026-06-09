@@ -49,7 +49,7 @@ export const ConnectionForensicsModal: React.FC<ConnectionForensicsModalProps> =
             <div className="mt-6 space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Port</span>
-                <span className="text-[10px] font-mono font-bold text-blue-300 bg-blue-500/20 px-2 py-0.5 rounded">{connection.source_port}</span>
+                <span className="text-[10px] font-mono font-bold text-blue-300 bg-blue-500/20 px-2 py-0.5 rounded-lg">{connection.source_port}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-bold text-slate-400 uppercase">IP Address</span>
@@ -79,7 +79,7 @@ export const ConnectionForensicsModal: React.FC<ConnectionForensicsModalProps> =
             <div className="mt-6 space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Port</span>
-                <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded">{connection.target_port}</span>
+                <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-lg">{connection.target_port}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-bold text-slate-400 uppercase">IP Address</span>

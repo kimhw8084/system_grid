@@ -129,7 +129,7 @@ const Bootstrap = () => {
             <h1 className="text-xl font-bold uppercase tracking-tighter text-[var(--text-primary)]">Connection Failure</h1>
           </div>
           
-          <div className="bg-black/40 p-4 rounded mb-4 border border-white/5">
+          <div className="bg-black/40 p-4 rounded-lg mb-4 border border-white/5">
             <p className="text-xs opacity-80 leading-relaxed text-red-200 mb-2 font-bold">
               Failed to reach backend API. If you recently entered a custom API URL, it might be routing through a corporate proxy (APISIX) that rejects unauthenticated requests.
             </p>

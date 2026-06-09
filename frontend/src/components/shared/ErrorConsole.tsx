@@ -78,7 +78,7 @@ export function ErrorConsole() {
                    <button 
                      key={type}
                      onClick={() => setFilterType(type as any)}
-                     className={`px-4 py-1.5 rounded text-[10px] font-black uppercase tracking-widest transition-all ${filterType === type ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                     className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${filterType === type ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-slate-300'}`}
                    >
                       {type}
                    </button>
@@ -107,12 +107,12 @@ export function ErrorConsole() {
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Search error messages, stack traces, or endpoints..."
-                className="w-full bg-black/40 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-xs font-bold text-white uppercase outline-none focus:border-rose-500/40 transition-all placeholder:text-slate-600"
+                className="w-full bg-black/40 border border-white/10 rounded-lg pl-12 pr-4 py-3 text-xs font-bold text-white uppercase outline-none focus:border-rose-500/40 transition-all placeholder:text-slate-600"
               />
            </div>
            <button 
              onClick={() => setShowAcknowledged(!showAcknowledged)}
-             className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${showAcknowledged ? 'bg-blue-600/10 border-blue-500/20 text-blue-400' : 'bg-white/5 border-white/5 text-slate-500'}`}
+             className={`flex items-center gap-2 px-4 py-3 rounded-lg border text-[10px] font-black uppercase tracking-widest transition-all ${showAcknowledged ? 'bg-blue-600/10 border-blue-500/20 text-blue-400' : 'bg-white/5 border-white/5 text-slate-500'}`}
            >
               <History size={14} /> {showAcknowledged ? 'Showing All' : 'Active Only'}
            </button>
@@ -130,14 +130,14 @@ export function ErrorConsole() {
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
-                       <span className={`text-[8px] font-black px-1.5 py-0.5 rounded ${error.type.toLowerCase() === 'backend' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                       <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-lg ${error.type.toLowerCase() === 'backend' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
                          {error.type}
                        </span>
-                       <span className={`text-[8px] font-black px-1.5 py-0.5 rounded ${error.severity === 'critical' ? 'bg-rose-600 text-white' : 'bg-rose-500/20 text-rose-400'}`}>
+                       <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-lg ${error.severity === 'critical' ? 'bg-rose-600 text-white' : 'bg-rose-500/20 text-rose-400'}`}>
                           {error.severity}
                        </span>
                        {error.acknowledged && (
-                         <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 uppercase">ACKNOWLEDGED</span>
+                         <span className="text-[8px] font-black px-1.5 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-400 uppercase">ACKNOWLEDGED</span>
                        )}
                     </div>
                     <span className="text-[9px] font-bold text-slate-600 tabular-nums">
@@ -199,7 +199,7 @@ export function ErrorConsole() {
                            { label: 'Severity Level', val: selectedError.severity, icon: ShieldAlert },
                            { label: 'Execution Path', val: selectedError.view || '/', icon: TerminalSquare }
                         ].map(m => (
-                          <div key={m.label} className="bg-white/[0.03] border border-white/5 rounded-xl p-4">
+                          <div key={m.label} className="bg-white/[0.03] border border-white/5 rounded-lg p-4">
                              <div className="flex items-center gap-2 text-slate-500 mb-1">
                                 <m.icon size={12} />
                                 <span className="text-[9px] font-bold uppercase tracking-widest">{m.label}</span>
@@ -215,7 +215,7 @@ export function ErrorConsole() {
                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
                           <Globe size={14} /> Request Context
                        </h4>
-                       <div className="bg-slate-950 border border-white/5 rounded-xl p-6 font-mono text-[11px] space-y-2">
+                       <div className="bg-slate-950 border border-white/5 rounded-lg p-6 font-mono text-[11px] space-y-2">
                           <div className="flex gap-4"><span className="text-blue-400 w-16">ENDPOINT</span> <span className="text-slate-300">{selectedError.url}</span></div>
                           <div className="flex gap-4"><span className="text-blue-400 w-16">METHOD</span> <span className="text-emerald-400">{selectedError.method || 'GET'}</span></div>
                           <div className="flex gap-4"><span className="text-blue-400 w-16">STATUS</span> <span className="text-amber-400">{selectedError.status || 'N/A'}</span></div>
@@ -228,7 +228,7 @@ export function ErrorConsole() {
                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
                           <Terminal size={14} /> Kernel Traceback
                        </h4>
-                       <div className="bg-[#020617] border border-rose-500/20 rounded-xl p-6 font-mono text-[11px] leading-relaxed relative group shadow-2xl">
+                       <div className="bg-[#020617] border border-rose-500/20 rounded-lg p-6 font-mono text-[11px] leading-relaxed relative group shadow-2xl">
                           <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                              <button onClick={() => copyToClipboard(selectedError.stack || '')} className="text-slate-600 hover:text-white"><Copy size={16}/></button>
                           </div>
@@ -244,7 +244,7 @@ export function ErrorConsole() {
                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
                           <Database size={14} /> Payload Inspection
                        </h4>
-                       <div className="bg-slate-950 border border-white/5 rounded-xl p-6 font-mono text-[11px]">
+                       <div className="bg-slate-950 border border-white/5 rounded-lg p-6 font-mono text-[11px]">
                           <pre className="text-emerald-400/80 overflow-x-auto custom-scrollbar">
                              {JSON.stringify(selectedError.data, null, 2)}
                           </pre>

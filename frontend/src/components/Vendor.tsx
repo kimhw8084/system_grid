@@ -441,7 +441,7 @@ export default function Vendor() {
                         }}
                         className="sr-only"
                       />
-                      <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
+                      <div className={`w-4 h-4 rounded-lg border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
                          {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
                       </div>
                     </div>
@@ -803,7 +803,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                 <div className="pt-10 mt-10 border-t border-white/5">
                    <SectionHeader icon={LayoutGrid} title="Entity Summary Dashboard" />
                    <div className="grid grid-cols-4 gap-4">
-                      <div className="bg-white/5 border border-white/5 p-6 rounded-xl space-y-2">
+                      <div className="bg-white/5 border border-white/5 p-6 rounded-lg space-y-2">
                         <div className="flex items-center gap-3 text-blue-400">
                           <User size={20} />
                           <span className="text-[10px] font-bold uppercase tracking-widest">Personnel</span>
@@ -811,7 +811,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                         <p className="text-3xl font-bold text-white">{vendor.personnel?.length || 0}</p>
                         <p className="text-[8px] font-bold text-slate-500 uppercase">Assigned Members</p>
                       </div>
-                      <div className="bg-white/5 border border-white/5 p-6 rounded-xl space-y-2">
+                      <div className="bg-white/5 border border-white/5 p-6 rounded-lg space-y-2">
                         <div className="flex items-center gap-3 text-amber-400">
                           <FileText size={20} />
                           <span className="text-[10px] font-bold uppercase tracking-widest">Contracts</span>
@@ -819,7 +819,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                         <p className="text-3xl font-bold text-white">{vendor.contracts?.length || 0}</p>
                         <p className="text-[8px] font-bold text-slate-500 uppercase">Total SLAs</p>
                       </div>
-                      <div className="bg-white/5 border border-white/5 p-6 rounded-xl space-y-2">
+                      <div className="bg-white/5 border border-white/5 p-6 rounded-lg space-y-2">
                         <div className="flex items-center gap-3 text-emerald-400">
                           <Check size={20} />
                           <span className="text-[10px] font-bold uppercase tracking-widest">Active</span>
@@ -835,7 +835,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                         </p>
                         <p className="text-[8px] font-bold text-slate-500 uppercase">Valid Contracts</p>
                       </div>
-                      <div className="bg-white/5 border border-white/5 p-6 rounded-xl space-y-2 text-slate-500 opacity-50">
+                      <div className="bg-white/5 border border-white/5 p-6 rounded-lg space-y-2 text-slate-500 opacity-50">
                         <div className="flex items-center gap-3">
                           <Activity size={20} />
                           <span className="text-[10px] font-bold uppercase tracking-widest">Insights</span>
@@ -868,7 +868,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                                 <div className="space-y-2">
                                    <div className="flex items-center gap-3">
                                       <h4 className="text-sm font-bold text-white uppercase tracking-tight">{c.title}</h4>
-                                      <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${
+                                      <span className={`px-2 py-0.5 rounded-lg text-[8px] font-bold uppercase ${
                                         c.status === 'Completed' ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 
                                         c.status === 'In Review' ? 'bg-amber-600/20 text-amber-400 border border-amber-500/30' : 
                                         'bg-slate-800 text-slate-500 border border-white/5'
@@ -904,10 +904,10 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                                                {c.covered_systems?.length > 1 && (
                                                  <div className="relative group/tip">
                                                     <span className="text-slate-500 cursor-help hover:text-white transition-colors">+{c.covered_systems.length - 1}</span>
-                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-900 border border-white/10 p-2 rounded shadow-2xl opacity-0 invisible group-hover/tip:opacity-100 group-hover/tip:visible transition-all z-50">
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-900 border border-white/10 p-2 rounded-lg shadow-2xl opacity-0 invisible group-hover/tip:opacity-100 group-hover/tip:visible transition-all z-50">
                                                        <div className="flex flex-wrap gap-1">
                                                           {c.covered_systems.slice(1).map((s: string) => (
-                                                            <span key={s} className="px-1.5 py-0.5 bg-white/5 rounded text-[8px] text-indigo-400 border border-white/5">{s}</span>
+                                                            <span key={s} className="px-1.5 py-0.5 bg-white/5 rounded-lg text-[8px] text-indigo-400 border border-white/5">{s}</span>
                                                           ))}
                                                        </div>
                                                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-900"></div>
@@ -924,7 +924,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                                                {c.covered_assets?.length > 0 && (
                                                  <div className="relative group/tip">
                                                     <Plus size={10} className="text-slate-500 cursor-help hover:text-white transition-colors" />
-                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-900 border border-white/10 p-2 rounded shadow-2xl opacity-0 invisible group-hover/tip:opacity-100 group-hover/tip:visible transition-all z-50">
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-900 border border-white/10 p-2 rounded-lg shadow-2xl opacity-0 invisible group-hover/tip:opacity-100 group-hover/tip:visible transition-all z-50">
                                                        <div className="flex flex-col gap-1">
                                                           {c.covered_assets.map((assetId: number) => {
                                                             const asset = devices?.find((d: any) => d.id === assetId);
@@ -954,7 +954,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                                       deleteContractMutation.mutate(c.id); 
                                       setConfirmingContractId(null);
                                     }} 
-                                    className="px-3 py-1 bg-rose-600 text-white rounded text-[10px] font-bold uppercase tracking-widest animate-pulse"
+                                    className="px-3 py-1 bg-rose-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest animate-pulse"
                                   >
                                     Confirm?
                                   </button>
@@ -1015,7 +1015,7 @@ function VendorDetails({ vendor, devices, onClose }: any) {
                                 deletePersonnelMutation.mutate(p.id); 
                                 setConfirmingPersonnelId(null);
                               }} 
-                              className="px-3 py-1 bg-rose-600 text-white rounded text-[10px] font-bold uppercase tracking-widest animate-pulse"
+                              className="px-3 py-1 bg-rose-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest animate-pulse"
                             >
                               Confirm?
                             </button>
@@ -1699,7 +1699,7 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
                     <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Infrastructure Coverage</h3>
                     {isInfraCollapsed && formData.covered_systems?.length > 0 && (
                       <div className="flex items-center space-x-2 ml-4">
-                         <span className="px-2 py-0.5 rounded bg-indigo-600/20 text-indigo-400 text-[8px] font-bold uppercase">{formData.covered_systems[0]}</span>
+                         <span className="px-2 py-0.5 rounded-lg bg-indigo-600/20 text-indigo-400 text-[8px] font-bold uppercase">{formData.covered_systems[0]}</span>
                          {formData.covered_systems.length > 1 && (
                            <span className="text-[8px] font-bold text-slate-600">+{formData.covered_systems.length - 1} MORE</span>
                          )}
@@ -1719,7 +1719,7 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
                              {usedSystems.length === 0 && <p className="text-[8px] text-slate-600 text-center py-16 uppercase font-bold">No active systems found in assets</p>}
                              {usedSystems.map((s: any) => (
                                 <label key={s.value} className={`flex items-center space-x-3 p-2 rounded-lg transition-all ${isEditing ? 'hover:bg-white/5 cursor-pointer' : ''}`}>
-                                   <input disabled={!isEditing} type="checkbox" checked={formData.covered_systems?.includes(s.value)} onChange={() => toggleSystem(s.value)} className="w-4 h-4 rounded border-white/10 bg-slate-900 text-blue-600 focus:ring-blue-500/20" />
+                                   <input disabled={!isEditing} type="checkbox" checked={formData.covered_systems?.includes(s.value)} onChange={() => toggleSystem(s.value)} className="w-4 h-4 rounded-lg border-white/10 bg-slate-900 text-blue-600 focus:ring-blue-500/20" />
                                    <span className={`text-[10px] font-bold uppercase tracking-tight ${formData.covered_systems?.includes(s.value) ? 'text-white' : 'text-slate-500'}`}>{s.label}</span>
                                 </label>
                              ))}
@@ -1736,7 +1736,7 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
                              )}
                              {filteredAssets.map((a: any) => (
                                 <label key={a.id} className={`flex items-center space-x-3 p-2 rounded-lg transition-all ${isEditing ? 'hover:bg-white/5 cursor-pointer' : ''}`}>
-                                   <input disabled={!isEditing} type="checkbox" checked={formData.covered_assets?.includes(a.id)} onChange={() => toggleAsset(a.id)} className="w-4 h-4 rounded border-white/10 bg-slate-900 text-indigo-600 focus:ring-indigo-500/20" />
+                                   <input disabled={!isEditing} type="checkbox" checked={formData.covered_assets?.includes(a.id)} onChange={() => toggleAsset(a.id)} className="w-4 h-4 rounded-lg border-white/10 bg-slate-900 text-indigo-600 focus:ring-indigo-500/20" />
                                    <div className="flex flex-col min-w-0">
                                       <span className={`text-[10px] font-bold uppercase tracking-tight truncate ${formData.covered_assets?.includes(a.id) ? 'text-white' : 'text-slate-500'}`}>{a.name}</span>
                                       <span className="text-[8px] text-slate-600 font-bold uppercase tracking-tighter">{a.system}</span>
@@ -1773,7 +1773,7 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
                           >
                              <div className="flex items-center justify-between">
                                 <span className={`text-[10px] font-bold uppercase tracking-tight truncate flex-1 ${selectedSowIndex === i ? 'text-white' : 'text-slate-400'}`}>{s.work_description || 'Untitled Work'}</span>
-                                <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ml-2 ${
+                                <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-lg ml-2 ${
                                    s.importance === 'Critical' ? 'bg-rose-500/20 text-rose-400' : 'bg-slate-800 text-slate-500'
                                 }`}>{s.importance}</span>
                              </div>
@@ -1845,7 +1845,7 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
                                       ) : (
                                         <div className="flex items-center justify-between w-full p-4 bg-black/20 rounded-lg border border-white/5">
                                           <p className="text-xs font-bold text-slate-400 uppercase tracking-tight">{formData.scope_of_work[selectedSowIndex].objective_description || 'No objective defined'}</p>
-                                          <span className={`px-3 py-1 rounded text-[10px] font-bold uppercase tracking-widest ${
+                                          <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${
                                             formData.scope_of_work[selectedSowIndex].importance === 'Critical' ? 'bg-rose-600 text-white' : 
                                             formData.scope_of_work[selectedSowIndex].importance === 'High' ? 'bg-amber-600 text-white' : 
                                             'bg-slate-700 text-slate-300'

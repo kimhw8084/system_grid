@@ -517,7 +517,7 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
                       <button 
                         key={view}
                         onClick={(e) => { e.stopPropagation(); setActiveSubView(view as any); }}
-                        className={`flex-1 py-2 text-[9px] font-black uppercase tracking-widest transition-all rounded ${activeSubView === view ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                        className={`flex-1 py-2 text-[9px] font-black uppercase tracking-widest transition-all rounded-lg ${activeSubView === view ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-slate-300'}`}
                       >
                          {view === 'PROCEDURE' ? 'Identification Procedure' : 'Strategic Actions'}
                       </button>
@@ -566,7 +566,7 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
                                            {newStep.images.map((img: string, i: number) => (
                                               <div key={i} className="relative w-16 h-16 shrink-0 rounded-lg border border-white/10 overflow-hidden group">
                                                  <img src={img} className="w-full h-full object-cover" />
-                                                 <button onClick={() => setNewStep({...newStep, images: newStep.images.filter((_, idx) => idx !== i)})} className="absolute top-1 right-1 bg-rose-600 text-white p-1 rounded-md opacity-0 group-hover:opacity-100"><X size={10}/></button>
+                                                 <button onClick={() => setNewStep({...newStep, images: newStep.images.filter((_, idx) => idx !== i)})} className="absolute top-1 right-1 bg-rose-600 text-white p-1 rounded-lg opacity-0 group-hover:opacity-100"><X size={10}/></button>
                                               </div>
                                            ))}
                                            {newStep.images.length === 0 && (
@@ -610,23 +610,23 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
                                            <textarea 
                                               value={newStep.text}
                                               onChange={e => setNewStep({...newStep, text: e.target.value.toUpperCase()})}
-                                              className="w-full bg-slate-950 border border-white/10 rounded p-3 text-[11px] font-bold text-white outline-none min-h-[80px] uppercase"
+                                              className="w-full bg-slate-950 border border-white/10 rounded-lg p-3 text-[11px] font-bold text-white outline-none min-h-[80px] uppercase"
                                            />
                                            <div 
                                               onClick={() => setFocusedField(`investigation_${cause.id}`)}
                                               className={`flex gap-2 overflow-x-auto pb-1 scrollbar-hide focus-trigger p-2 border-2 rounded-lg transition-all min-h-[60px] ${focusedField === `investigation_${cause.id}` ? 'border-blue-500/50 bg-blue-500/5' : 'border-white/5 bg-slate-950'}`}
                                            >
                                               {newStep.images.map((img: string, i: number) => (
-                                                 <div key={i} className="relative w-12 h-12 shrink-0 rounded border border-white/10 overflow-hidden group">
+                                                 <div key={i} className="relative w-12 h-12 shrink-0 rounded-lg border border-white/10 overflow-hidden group">
                                                     <img src={img} className="w-full h-full object-cover" />
-                                                    <button onClick={() => setNewStep({...newStep, images: newStep.images.filter((_, idx) => idx !== i)})} className="absolute top-0.5 right-0.5 bg-rose-600 text-white p-0.5 rounded opacity-0 group-hover:opacity-100"><X size={8}/></button>
+                                                    <button onClick={() => setNewStep({...newStep, images: newStep.images.filter((_, idx) => idx !== i)})} className="absolute top-0.5 right-0.5 bg-rose-600 text-white p-0.5 rounded-lg opacity-0 group-hover:opacity-100"><X size={8}/></button>
                                                  </div>
                                               ))}
                                               {newStep.images.length === 0 && <span className="text-[7px] font-black text-slate-700 uppercase m-auto">PASTE FIGURES (CTRL+V)</span>}
                                            </div>
                                            <div className="flex gap-2">
-                                              <button onClick={handleCommitStep} className="flex-1 py-2 bg-blue-600 text-white rounded text-[9px] font-black uppercase">Save</button>
-                                              <button onClick={() => { setEditingStepId(null); setNewStep({text:'', images:[], status:'DONE'}); }} className="flex-1 py-2 bg-white/5 text-slate-400 rounded text-[9px] font-black uppercase">Cancel</button>
+                                              <button onClick={handleCommitStep} className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase">Save</button>
+                                              <button onClick={() => { setEditingStepId(null); setNewStep({text:'', images:[], status:'DONE'}); }} className="flex-1 py-2 bg-white/5 text-slate-400 rounded-lg text-[9px] font-black uppercase">Cancel</button>
                                            </div>
                                         </div>
                                      ) : (

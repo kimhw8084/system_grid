@@ -135,7 +135,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                         <div className="flex items-center justify-between">
                             {editingId === opt.id ? (
                                 <div className="flex items-center space-x-2 flex-1">
-                                    <input autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} className="flex-1 bg-black/40 border border-blue-500/50 rounded px-2 py-1 text-[10px] outline-none text-white font-bold" onKeyDown={e => e.key === 'Enter' && updateMutation.mutate({ id: opt.id, value: editValue, metadata_keys: isTeamCategory ? editTeamMembers : editMetadata.split(',').map(s => s.trim()).filter(Boolean) })} />
+                                    <input autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} className="flex-1 bg-black/40 border border-blue-500/50 rounded-lg px-2 py-1 text-[10px] outline-none text-white font-bold" onKeyDown={e => e.key === 'Enter' && updateMutation.mutate({ id: opt.id, value: editValue, metadata_keys: isTeamCategory ? editTeamMembers : editMetadata.split(',').map(s => s.trim()).filter(Boolean) })} />
                                     <button onClick={() => updateMutation.mutate({ id: opt.id, value: editValue, metadata_keys: isTeamCategory ? editTeamMembers : editMetadata.split(',').map(s => s.trim()).filter(Boolean) })} className="text-emerald-400 hover:text-emerald-300"><Check size={16}/></button>
                                     <button onClick={() => setEditingId(null)} className="text-slate-500 hover:text-white"><X size={16}/></button>
                                 </div>
@@ -171,7 +171,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                                                             key={operator.id}
                                                             type="button"
                                                             onClick={() => setEditTeamMembers((current) => active ? current.filter((value) => value !== externalId) : [...current, externalId])}
-                                                            className={`rounded-md border px-2 py-1 text-[8px] font-bold uppercase tracking-tight transition-all ${active ? 'border-blue-500/40 bg-blue-500/15 text-blue-300' : 'border-white/10 bg-black/30 text-slate-400'}`}
+                                                            className={`rounded-lg border px-2 py-1 text-[8px] font-bold uppercase tracking-tight transition-all ${active ? 'border-blue-500/40 bg-blue-500/15 text-blue-300' : 'border-white/10 bg-black/30 text-slate-400'}`}
                                                         >
                                                             {operator.full_name || operator.username || externalId}
                                                         </button>
@@ -179,7 +179,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                                                 })}
                                             </div>
                                         ) : (
-                                            <input value={editMetadata} onChange={e => setEditMetadata(e.target.value)} placeholder="port, dbname..." className="w-full bg-black/40 border border-white/5 rounded px-2 py-1 text-[9px] outline-none focus:border-blue-500/30 text-white" />
+                                            <input value={editMetadata} onChange={e => setEditMetadata(e.target.value)} placeholder="port, dbname..." className="w-full bg-black/40 border border-white/5 rounded-lg px-2 py-1 text-[9px] outline-none focus:border-blue-500/30 text-white" />
                                         )}
                                     </div>
                                 ) : (
@@ -226,7 +226,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                                         key={operator.id}
                                         type="button"
                                         onClick={() => setNewTeamMembers((current) => active ? current.filter((value) => value !== externalId) : [...current, externalId])}
-                                        className={`rounded-md border px-2 py-1 text-[8px] font-bold uppercase tracking-tight transition-all ${active ? 'border-blue-500/40 bg-blue-500/15 text-blue-300' : 'border-white/10 bg-black/30 text-slate-400'}`}
+                                        className={`rounded-lg border px-2 py-1 text-[8px] font-bold uppercase tracking-tight transition-all ${active ? 'border-blue-500/40 bg-blue-500/15 text-blue-300' : 'border-white/10 bg-black/30 text-slate-400'}`}
                                     >
                                         {operator.full_name || operator.username || externalId}
                                     </button>

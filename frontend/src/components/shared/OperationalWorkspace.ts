@@ -26,6 +26,7 @@ export interface WorkspaceDefinition {
 // Canonical visual tokens extracted from the Monitoring workspace.
 // Future operational views should compose these tokens rather than copy raw class strings.
 export const OPERATIONAL_WORKSPACE_VISUALS = {
+  standardRadius: 'rounded-lg',
   shellRadius: 'rounded-lg',
   panelSurface: 'rounded-lg border border-white/10 bg-white/[0.03]',
   insetSurface: 'rounded-lg border border-white/10 bg-black/20',

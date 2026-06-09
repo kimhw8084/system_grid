@@ -73,7 +73,7 @@ export const WorkspaceToast = ({ t, message, onRevert, type = 'success' }: Works
                 }
               }}
               onMouseLeave={() => setIsConfirmingRevert(false)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-[10px] font-black uppercase tracking-tighter transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[10px] font-black uppercase tracking-tighter transition-all ${
                 isConfirmingRevert 
                   ? 'bg-rose-500/20 border-rose-500/40 text-rose-300 hover:bg-rose-500/30' 
                   : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
@@ -86,7 +86,7 @@ export const WorkspaceToast = ({ t, message, onRevert, type = 'success' }: Works
           
           <button
             onClick={() => toast.dismiss(t.id)}
-            className="w-8 h-8 flex items-center justify-center rounded-md text-slate-500 hover:bg-white/5 hover:text-white transition-all"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:bg-white/5 hover:text-white transition-all"
           >
             <X size={14} />
           </button>

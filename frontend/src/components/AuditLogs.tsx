@@ -7,7 +7,7 @@ import { apiFetch } from '../api/apiClient'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PageHeader, PageToolbar, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
-import { formatAppDate, formatAppTime, formatAppDay } from '../utils/dateUtils'
+import { formatAppDate, formatAppTime, formatAppDay, parseAppDate } from '../utils/dateUtils'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
 
@@ -123,7 +123,7 @@ export default function AuditLogs() {
             LINK: 'bg-amber-500/10 text-amber-400 border-amber-500/20' 
         }
         return (
-          <div className={`px-2 py-1 rounded-md border ${colors[params.value] || 'bg-slate-500/10 text-slate-400'} font-black text-[9px] uppercase tracking-widest`}>
+          <div className={`px-2 py-1 rounded-lg border ${colors[params.value] || 'bg-slate-500/10 text-slate-400'} font-black text-[9px] uppercase tracking-widest`}>
              {params.value || 'N/A'}
           </div>
         )
@@ -138,7 +138,7 @@ export default function AuditLogs() {
         headerClass: 'text-center',
         cellRenderer: (p: any) => (
             <div className="flex items-center justify-center gap-2">
-               <div className="w-5 h-5 rounded bg-blue-600/20 border border-blue-500/20 flex items-center justify-center text-[8px]">{p.value?.slice(0,2).toUpperCase()}</div>
+               <div className="w-5 h-5 rounded-lg bg-blue-600/20 border border-blue-500/20 flex items-center justify-center text-[8px]">{p.value?.slice(0,2).toUpperCase()}</div>
                <span className="truncate">{p.value || 'SYSTEM'}</span>
             </div>
         )
@@ -408,7 +408,7 @@ export default function AuditLogs() {
               initial={{ scale: 0.96, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.96, opacity: 0 }}
-              className="w-full max-w-4xl overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl"
+              className="w-full max-w-4xl overflow-hidden rounded-lg border border-white/10 bg-slate-950 shadow-2xl"
             >
               <div className="flex items-center justify-between border-b border-white/5 p-5">
                 <div>
@@ -423,11 +423,11 @@ export default function AuditLogs() {
               </div>
 
               <div className="grid gap-4 p-5 md:grid-cols-2">
-                <div className="rounded-xl border border-white/5 bg-black/30 p-4">
+                <div className="rounded-lg border border-white/5 bg-black/30 p-4">
                   <p className="mb-2 text-[9px] font-black uppercase tracking-[0.2em] text-blue-400">Description</p>
                   <p className="text-[11px] font-bold leading-relaxed text-slate-300">{activeLog.description || 'No description captured.'}</p>
                 </div>
-                <div className="rounded-xl border border-white/5 bg-black/30 p-4">
+                <div className="rounded-lg border border-white/5 bg-black/30 p-4">
                   <p className="mb-2 text-[9px] font-black uppercase tracking-[0.2em] text-blue-400">Change JSON</p>
                   <pre className="max-h-[40vh] overflow-auto whitespace-pre-wrap break-words text-[10px] text-slate-300 custom-scrollbar">
                     {JSON.stringify(activeLog.changes || {}, null, 2)}

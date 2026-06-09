@@ -10,7 +10,7 @@ import {
   Trash2, Edit2, Shield, Cpu, Database, Network, 
   Globe, Bell, Info, ChevronRight, X, Check, Save,
   AlertCircle, Clock, Zap, Settings,
-  BookOpen, Eye, EyeOff, FileText, User, Mail, MessageSquare, Monitor, MoreVertical,
+  BookOpen, Eye, EyeOff, FileText, User, Users, Mail, MessageSquare, Monitor, MoreVertical,
   Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, Star, GitCompare, Undo2, List, LayoutGrid, Upload, Terminal
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -2087,7 +2087,7 @@ export default function MonitoringGrid() {
                             }}
                             className="sr-only"
                           />
-                          <div className={`flex h-4 w-4 items-center justify-center rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500' : 'border-white/10 bg-black/40'}`}>
+                          <div className={`flex h-4 w-4 items-center justify-center rounded-lg border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500' : 'border-white/10 bg-black/40'}`}>
                             {!hiddenColumns.includes(col.field) && <Check size={11} className="text-white" />}
                           </div>
                           <span className={`text-[10px] font-semibold ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>
@@ -2868,7 +2868,7 @@ function CompareMonitorsModal({ items, onClose }: any) {
             {items.map((item: any) => (
               <div key={item.id} className="rounded-lg border border-white/5 bg-black/40 p-5 shadow-inner">
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-[9px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">ID {item.id}</span>
+                  <span className="text-[9px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20">ID {item.id}</span>
                   <StatusPill value={item.severity} />
                 </div>
                 <h4 className="text-sm font-black text-white truncate mb-1">{item.title}</h4>
@@ -3663,7 +3663,7 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
                       </h3>
                       <button 
                          onClick={() => setShowLineNumbers(!showLineNumbers)}
-                         className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded border transition-all ${showLineNumbers ? 'bg-blue-600/20 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-white/5 text-slate-500'}`}
+                         className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg border transition-all ${showLineNumbers ? 'bg-blue-600/20 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-white/5 text-slate-500'}`}
                       >
                          {showLineNumbers ? 'Hide line numbers' : 'Show line numbers'}
                       </button>
@@ -3676,7 +3676,7 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
                                className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-all"
                             >
                                <div className="flex items-center space-x-4">
-                                  <span className="text-[9px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 uppercase tracking-widest">{log.type}</span>
+                                  <span className="text-[9px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20 uppercase tracking-widest">{log.type}</span>
                                   <span className="text-slate-300 font-bold text-[11px] tracking-tight">{log.description}</span>
                                </div>
                                {expandedLogic === log.id ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
@@ -3721,7 +3721,7 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
                           <h4 className="text-[10px] font-semibold text-slate-500 mb-2 uppercase tracking-widest">Active Personnel</h4>
                           <div className="flex flex-wrap gap-2">
                              {item.owners?.map((o: any, i: number) => (
-                               <span key={i} className="bg-blue-600/10 border border-blue-500/20 text-blue-300 px-2 py-1 rounded text-[10px] font-bold">
+                               <span key={i} className="bg-blue-600/10 border border-blue-500/20 text-blue-300 px-2 py-1 rounded-lg text-[10px] font-bold">
                                   {o.name} <span className="text-slate-500 font-normal ml-1">({o.role})</span>
                                </span>
                              ))}
@@ -4919,7 +4919,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                     </div>
                                   )}
                                   <div className="flex items-center space-x-2 mb-2">
-                                    <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 bg-slate-800 text-slate-400 rounded border border-white/5 truncate">{entry.category}</span>
+                                    <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 bg-slate-800 text-slate-400 rounded-lg border border-white/5 truncate">{entry.category}</span>
                                     <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest shrink-0">#{entry.id}</span>
                                   </div>
                                   <p className={`text-[11px] font-bold leading-tight ${formData.recovery_docs?.includes(entry.id) ? 'text-blue-100' : 'text-slate-300'} line-clamp-2`}>

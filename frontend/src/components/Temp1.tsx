@@ -127,7 +127,7 @@ const MultiSelectHeader = ({ options, selected, onChange }: any) => {
                         <div className={`w-2.5 h-2.5 rounded-full border-2 ${selected.includes(opt.value) ? 'bg-white border-white' : 'bg-transparent border-slate-700'}`} />
                         <span className="truncate tracking-tight">{opt.label}</span>
                      </div>
-                     <span className={`text-[8px] px-2 py-0.5 rounded-md ${selected.includes(opt.value) ? 'bg-white/20' : 'bg-black/40'} border border-white/5 text-slate-500 font-bold`}>{opt.system}</span>
+                     <span className={`text-[8px] px-2 py-0.5 rounded-lg ${selected.includes(opt.value) ? 'bg-white/20' : 'bg-black/40'} border border-white/5 text-slate-500 font-bold`}>{opt.system}</span>
                    </div>
                  ))
                )}
@@ -319,7 +319,7 @@ export default function Temp1() {
                  <span className="text-[7px] font-black text-slate-600 uppercase tracking-widest">Radius</span>
                  <div className="flex space-x-1">
                     {[1, 2, 3, 5].map(d => (
-                      <button key={d} onClick={() => setBlastDepth(d)} className={`w-7 h-5 rounded-md text-[9px] font-black transition-all ${blastDepth === d ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-white/5'}`}>{d}</button>
+                      <button key={d} onClick={() => setBlastDepth(d)} className={`w-7 h-5 rounded-lg text-[9px] font-black transition-all ${blastDepth === d ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-500 hover:bg-white/5'}`}>{d}</button>
                     ))}
                  </div>
               </div>
@@ -582,7 +582,7 @@ const HeaderStat = ({ label, value, color }: any) => (
 )
 
 const FilterBtn = ({ active, onClick, icon }: any) => (
-  <button onClick={onClick} className={`w-8 h-6 rounded flex items-center justify-center transition-all ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-600 hover:bg-white/5 hover:text-slate-400'}`}>
+  <button onClick={onClick} className={`w-8 h-6 rounded-lg flex items-center justify-center transition-all ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-600 hover:bg-white/5 hover:text-slate-400'}`}>
     {icon}
   </button>
 )

@@ -10,6 +10,15 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
+import { 
+  PageHeader, 
+  PageToolbar, 
+  ToolbarGroup, 
+  ToolbarSearch, 
+  ToolbarButton, 
+  ToolbarIconButton, 
+  ToolbarSegmented 
+} from './shared/LayoutPrimitives'
 import { StyledSelect } from "./shared/StyledSelect"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { ConfigRegistryModal } from "./ConfigRegistry"
@@ -212,8 +221,8 @@ const MetadataEditor = ({
             {error && <span className="text-[8px] font-bold text-rose-500 uppercase animate-pulse">!! {error}</span>}
          </div>
          <div className="flex bg-black/40 rounded-lg p-1">
-            <button onClick={() => setMode('table')} className={`px-2 py-1 rounded-md transition-all ${mode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><List size={12}/></button>
-            <button onClick={() => setMode('json')} className={`px-2 py-1 rounded-md transition-all ${mode === 'json' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><FileJson size={12}/></button>
+            <button onClick={() => setMode('table')} className={`px-2 py-1 rounded-lg transition-all ${mode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><List size={12}/></button>
+            <button onClick={() => setMode('json')} className={`px-2 py-1 rounded-lg transition-all ${mode === 'json' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><FileJson size={12}/></button>
          </div>
       </div>
       <div className="p-4 min-h-[120px]">
@@ -724,7 +733,7 @@ const ExternalDetailsView = ({ entity, links }: { entity: any, links: any[] }) =
                 { label: 'Contacts', value: insights.contacts.length, tone: 'text-amber-400' },
                 { label: 'Warnings', value: insights.warnings.length, tone: insights.warnings.length ? 'text-rose-400' : 'text-slate-400' },
               ].map(card => (
-                <div key={card.label} className="bg-white/5 border border-white/5 p-5 rounded-xl space-y-2">
+                <div key={card.label} className="bg-white/5 border border-white/5 p-5 rounded-lg space-y-2">
                   <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">{card.label}</p>
                   <p className={`text-3xl font-bold ${card.tone}`}>{card.value}</p>
                 </div>
@@ -1111,7 +1120,7 @@ export default function External() {
          headerClass: "text-center",
          cellRenderer: (p: any) => (
            <div className="flex items-center justify-center h-full">
-             <div style={{ fontSize: `${fontSize}px` }} className={`px-2 py-0.5 rounded font-bold uppercase inline-block border ${p.value === 'Upstream' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'}`}>
+             <div style={{ fontSize: `${fontSize}px` }} className={`px-2 py-0.5 rounded-lg font-bold uppercase inline-block border ${p.value === 'Upstream' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'}`}>
                {p.value}
              </div>
            </div>
@@ -1200,7 +1209,7 @@ export default function External() {
            }
            return (
              <div className="flex items-center justify-center h-full w-full">
-               <div className={`flex items-center justify-center w-28 h-5 rounded-md border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+               <div className={`flex items-center justify-center w-28 h-5 rounded-lg border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
                  <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">
                    {p.value || 'Planned'}
                  </span>
@@ -1273,66 +1282,79 @@ export default function External() {
   const autoSizeStrategy = OPERATIONAL_GRID_AUTO_SIZE_STRATEGY
 
   return (
-    <div className="h-full flex flex-col space-y-4">
-      <div className="flex items-center justify-between">
-       <div className="flex items-center space-x-6">
-           <div>
-              <h1 className="text-2xl font-bold uppercase tracking-tight ">Partner IQ</h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Global Entity Reference & Interconnect Intelligence</p>
-           </div>
-
-           <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 ml-2">
-                <button onClick={() => setActiveTab('active')} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'active' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                    Registry
-                </button>
-                <button onClick={() => setActiveTab('links')} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'links' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                    Connectivity
-                </button>
-                <button onClick={() => setActiveTab('deleted')} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                    Archive
-                </button>
-           </div>
-        </div>
-
-        <div className="flex items-center space-x-3">
-          <div className="relative group">
-             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-             <input 
-               value={searchTerm} 
-               onChange={e => setSearchTerm(e.target.value)} 
-               placeholder="SCAN REGISTRY..." 
-               className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-64 transition-all" 
-             />
-          </div>
-          <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">
-             <button 
-                onClick={() => setShowStyleLab(!showStyleLab)} 
-                className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`}
-                title="Toggle Style Lab"
-             >
-                <Activity size={16} />
-             </button>
-             <button onClick={() => setShowColumnPicker(!showColumnPicker)} className={`p-1.5 hover:bg-white/10 ${showColumnPicker ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Column Picker">
-                <Sliders size={16} />
-             </button>
-             <button onClick={handleExportCSV} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-emerald-400 rounded-lg transition-all" title="Export Manifest">
-                <FileText size={16} />
-             </button>
-             <button onClick={handleCopyToClipboard} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Secure Copy">
-                <Clipboard size={16} />
-             </button>
-             <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Registry Config">
-                <Settings size={16} />
-             </button>
-          </div>
-          <button 
-             onClick={() => activeTab === 'links' ? setShowLinkModal(true) : setActiveModal({})} 
-             className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+    <div className="h-full flex flex-col space-y-4 min-h-0 overflow-hidden">
+      <PageHeader
+        title="Partner IQ"
+        subtitle="Global Entity Reference & Interconnect Intelligence"
+        actions={
+          <ToolbarButton 
+            variant="primary"
+            onClick={() => activeTab === 'links' ? setShowLinkModal(true) : setActiveModal({})} 
           >
-            + {activeTab === 'links' ? 'Map Link' : 'Admission'}
-          </button>
-        </div>
-      </div>
+            <Plus size={14} className="mr-2 inline-block" /> {activeTab === 'links' ? 'Map Link' : 'Admission'}
+          </ToolbarButton>
+        }
+      />
+
+      <PageToolbar
+        left={
+          <ToolbarGroup>
+            <ToolbarSegmented
+              options={[
+                { label: 'Registry', value: 'active' },
+                { label: 'Connectivity', value: 'links' },
+                { label: 'Archive', value: 'deleted' }
+              ]}
+              value={activeTab}
+              onChange={(val) => setActiveTab(val as any)}
+            />
+          </ToolbarGroup>
+        }
+        right={
+          <ToolbarGroup>
+            <ToolbarSearch 
+              value={searchTerm} 
+              onChange={e => setSearchTerm(e.target.value)} 
+              placeholder="SCAN REGISTRY..." 
+            />
+            
+            <div className="w-px h-6 bg-white/10 mx-1" />
+
+            <ToolbarIconButton 
+              onClick={() => setShowStyleLab(!showStyleLab)} 
+              active={showStyleLab}
+              title="Toggle Style Lab"
+            >
+              <Activity size={14} />
+            </ToolbarIconButton>
+            <ToolbarIconButton 
+              onClick={() => setShowColumnPicker(!showColumnPicker)} 
+              active={showColumnPicker}
+              title="Column Picker"
+            >
+              <Sliders size={14} />
+            </ToolbarIconButton>
+            <ToolbarIconButton 
+              onClick={handleExportCSV} 
+              title="Export Manifest"
+            >
+              <FileText size={14} />
+            </ToolbarIconButton>
+            <ToolbarIconButton 
+              onClick={handleCopyToClipboard} 
+              title="Secure Copy"
+            >
+              <Clipboard size={14} />
+            </ToolbarIconButton>
+            <ToolbarIconButton 
+              onClick={() => setShowConfig(true)} 
+              title="Registry Config"
+            >
+              <Settings size={14} />
+            </ToolbarIconButton>
+          </ToolbarGroup>
+        }
+      />
 
       {activeTab !== 'links' && (
         <div className="grid grid-cols-4 gap-3">
@@ -1448,7 +1470,7 @@ export default function External() {
                         }}
                         className="sr-only"
                       />
-                      <div className={`w-4 h-4 rounded border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
+                      <div className={`w-4 h-4 rounded-lg border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
                          {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
                       </div>
                     </div>
