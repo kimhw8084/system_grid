@@ -230,6 +230,16 @@ export const SettingsStandards = () => {
              usage="Apply SameButtonConfirm to all delete/revoke actions."
            />
            <LexiconEntry 
+             term="Natural Case Display" 
+             definition="Mandatory use of standard case for raw data (names, departments). Avoids visual aggression of mandatory uppercase." 
+             usage="Remove 'uppercase' class from data-driven labels and table cells."
+           />
+           <LexiconEntry 
+             term="Vertical Flow" 
+             definition="Standardized vertical spacing (space-y-4) between control headers and primary data surfaces." 
+             usage="Reduce excessive gaps by standardizing on space-y-4 for top-level layout containers."
+           />
+           <LexiconEntry 
              term="Outer Join Analysis" 
              definition="The simultaneous comparison of raw variables from multiple environments (e.g., Backend vs Frontend .env)." 
              usage="Use Outer Join Analysis to debug configuration drift."

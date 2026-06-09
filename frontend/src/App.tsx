@@ -2,7 +2,7 @@ import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from "rea
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
 import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3, Clock, AlertTriangle, Upload, Workflow, Package, Globe, Target, BookOpen, FileText, Briefcase, Share2, Bug, Check, ShieldAlert } from "lucide-react"
+import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3, Clock, AlertTriangle, Upload, Workflow, Package, Globe, Target, BookOpen, FileText, Briefcase, Share2, Bug, Check, ShieldAlert, Bell } from "lucide-react"
 import { Toaster, toast } from "react-hot-toast"
 import { apiFetch, subscribeToLatency, getConfig } from "./api/apiClient"
 import { errorManager, useErrors } from "./stores/errorStore"
@@ -673,6 +673,14 @@ function MainLayout() {
                   {isOnline && <span className="text-[9px] font-bold tabular-nums text-slate-600">{latency}ms</span>}
                 </div>
               </div>
+
+              <button
+                className="relative rounded-lg border border-white/5 bg-white/5 p-2 text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+                title="Notifications"
+              >
+                <Bell size={18} />
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 rounded-full border-2 border-[var(--bg-header)]" />
+              </button>
 
               <button
                 onClick={() => setErrorConsoleOpen(true)}

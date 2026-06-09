@@ -870,7 +870,7 @@ result_df = get_user_pool()`)
   }
 
   return (
-    <div className="h-full flex flex-col space-y-6 w-full mx-auto px-4 overflow-hidden relative">
+    <div className="h-full flex flex-col space-y-4 w-full mx-auto px-4 overflow-hidden relative">
       <AnimatePresence>
         {isDisconnected && (
           <motion.div 
@@ -951,21 +951,17 @@ result_df = get_user_pool()`)
         }
       />
 
-      <PageToolbar 
-        left={
-          <ToolbarSegmented 
-            options={[
-              { label: 'Parameters', value: 'environments' },
-              { label: 'Permission', value: 'permissions' },
-              { label: 'Groups', value: 'groups' },
-              { label: 'Analysis', value: 'system' },
-              { label: 'Tenants', value: 'tenants' },
-              { label: 'Standards', value: 'standards' }
-            ]}
-            value={topTab}
-            onChange={(val: any) => setTopTab(val)}
-          />
-        }
+      <ToolbarSegmented 
+        options={[
+          { label: 'Parameters', value: 'environments' },
+          { label: 'Permission', value: 'permissions' },
+          { label: 'Groups', value: 'groups' },
+          { label: 'Analysis', value: 'system' },
+          { label: 'Tenants', value: 'tenants' },
+          { label: 'Standards', value: 'standards' }
+        ]}
+        value={topTab}
+        onChange={(val: any) => setTopTab(val)}
       />
 
       <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-20">
@@ -1394,7 +1390,7 @@ result_df = get_user_pool()`)
                                 <SameButtonConfirm 
                                   danger
                                   onConfirm={() => {
-                                    const backup = {...op};
+                                    const { id, ...backup } = op;
                                     deleteOperatorMutation.mutate(op.id);
                                     showWorkspaceToast(`Access revoked for ${op.full_name}`, { 
                                       onRevert: () => operatorMutation.mutate(backup) 

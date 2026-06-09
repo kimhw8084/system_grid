@@ -143,7 +143,7 @@ export const ToolbarButton = React.forwardRef<HTMLButtonElement, {
       disabled={disabled}
       title={title}
       className={join(
-        'rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40',
+        'rounded-lg px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40',
         variantClass,
         className
       )}
@@ -205,7 +205,7 @@ export const ToolbarSegmented = ({
         type="button"
         onClick={() => onChange(option.value)}
         className={join(
-          'rounded-lg px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all',
+          'rounded-lg px-4 py-2 text-[10px] font-bold tracking-widest transition-all',
           value === option.value
             ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
             : 'text-slate-500 hover:text-slate-300'
