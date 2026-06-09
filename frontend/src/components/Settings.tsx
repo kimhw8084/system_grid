@@ -198,18 +198,36 @@ function PoolHistoryModal({ versions, onClose }: { versions: any[], onClose: () 
     }
   }
 
-  const newer = versions?.[Math.min(...selectedIndices)]
-  const older = selectedIndices.length > 1 ? versions?.[Math.max(...selectedIndices)] : versions?.[selectedIndices[0] + 1]
+  // Map versions to include a sequence number for easier mapping
+  const indexedVersions = (versions || []).map((v, i) => ({
+    ...v,
+    v_num: versions.length - i,
+    label: formatAppDate(v.created_at)
+  }))
+
+  const newer = indexedVersions?.[Math.min(...selectedIndices)]
+  const older = selectedIndices.length > 1 
+    ? indexedVersions?.[Math.max(...selectedIndices)] 
+    : (selectedIndices[0] + 1 < indexedVersions.length ? indexedVersions[selectedIndices[0] + 1] : null)
 
   const getDiff = (curr: any, prev: any) => {
-    const diffs = []
+    const diffs: Array<{field: string, old: any, new: any}> = []
     if (!curr) return diffs
     
     const summary = curr.diff_summary || {}
     if (summary.added) diffs.push({ field: 'Added Operators', old: '0 operators', new: `${summary.added} new operators` })
     if (summary.removed) diffs.push({ field: 'Removed Operators', old: `${summary.removed} active operators`, new: '0 operators (removed)' })
     if (summary.changed) diffs.push({ field: 'Changed Operators', old: 'Previous metadata', new: `${summary.changed} operators modified` })
-    if (summary.team_updates?.length) diffs.push({ field: 'Team Updates', old: 'Previous group assignments', new: `${summary.team_updates.length} membership updates applied` })
+    
+    if (summary.team_updates?.length) {
+      summary.team_updates.forEach((update: any) => {
+        diffs.push({ 
+          field: `Membership: ${update.username}`, 
+          old: Array.isArray(update.old) ? update.old.join(', ') : (update.old || 'None'), 
+          new: Array.isArray(update.new) ? update.new.join(', ') : (update.new || 'None')
+        })
+      })
+    }
     
     return diffs
   }
@@ -232,20 +250,23 @@ function PoolHistoryModal({ versions, onClose }: { versions: any[], onClose: () 
     >
       <WorkspaceHistoryShell
           header={
-            <div className="flex items-center space-x-4">
-              <div className="px-4 py-2 bg-white/5 border border-white/5 rounded-lg">
-                 <p className="text-[8px] font-semibold text-slate-500 mb-1 text-center uppercase tracking-widest">Comparison mode</p>
-                 <div className="flex items-center space-x-3">
-                    <div className="flex items-center space-x-1.5">
-                       <div className="w-2 h-2 rounded-full bg-blue-500" />
-                       <span className="text-[10px] font-semibold text-white">{newer?.version_label || 'Current'}</span>
-                    </div>
-                    <ChevronRight size={10} className="text-slate-600" />
-                    <div className="flex items-center space-x-1.5">
-                       <div className="w-2 h-2 rounded-full bg-slate-600" />
-                       <span className="text-[10px] font-semibold text-slate-400">{older ? older.version_label : 'Genesis'}</span>
-                    </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                 <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                    <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                    <span className="text-[10px] font-black text-white">v{newer?.v_num}</span>
+                    <span className="text-[9px] font-bold text-slate-400">{newer?.label}</span>
                  </div>
+                 {older && (
+                   <>
+                     <ChevronRight size={12} className="text-slate-600" />
+                     <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 border border-white/5 rounded-lg">
+                        <div className="w-2 h-2 rounded-full bg-slate-600" />
+                        <span className="text-[10px] font-black text-slate-300">v{older.v_num}</span>
+                        <span className="text-[9px] font-bold text-slate-500">{older.label}</span>
+                     </div>
+                   </>
+                 )}
               </div>
             </div>
           }
@@ -253,10 +274,10 @@ function PoolHistoryModal({ versions, onClose }: { versions: any[], onClose: () 
            <div className="w-72 flex flex-col min-h-0">
               <div className="mb-4 flex items-center justify-between px-1">
                  <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Revision Timeline</h3>
-                 <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20">{versions?.length || 0} states</span>
+                 <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20">{indexedVersions.length} states</span>
               </div>
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
-                {versions?.map((h: any, idx: number) => {
+                {indexedVersions.map((h: any, idx: number) => {
                   const isSelected = selectedIndices.includes(idx);
                   const isNewest = idx === Math.min(...selectedIndices);
                   return (
@@ -275,7 +296,7 @@ function PoolHistoryModal({ versions, onClose }: { versions: any[], onClose: () 
                         </div>
                       )}
                       <div className="flex items-center justify-between mb-2">
-                         <span className={`text-[11px] font-black tracking-tighter ${isSelected ? 'text-white' : 'text-blue-400'}`}>{h.version_label}</span>
+                         <span className={`text-[11px] font-black tracking-tighter ${isSelected ? 'text-white' : 'text-blue-400'}`}>v{h.v_num}</span>
                          <span className={`text-[9px] font-bold ${isSelected ? 'text-white/60' : 'text-slate-500'}`}>
                             {h.is_active ? 'Active' : 'Archived'}
                          </span>
@@ -287,7 +308,7 @@ function PoolHistoryModal({ versions, onClose }: { versions: any[], onClose: () 
                          <div className="flex items-center space-x-2">
                            <Clock size={10} className={isSelected ? 'text-white/40' : 'text-slate-600'} />
                            <span className={`text-[8px] font-semibold ${isSelected ? 'text-white/40' : 'text-slate-600'}`}>
-                              {formatAppDate(h.created_at)}
+                              {h.label}
                            </span>
                          </div>
                          {!h.is_active && (
@@ -310,19 +331,16 @@ function PoolHistoryModal({ versions, onClose }: { versions: any[], onClose: () 
                   )
                 })}
               </div>
-              <div className="mt-4 p-4 bg-white/[0.03] border border-white/5 rounded-lg">
-                 <p className="text-[9px] text-slate-500 font-semibold leading-relaxed">Select two versions to perform a deep semantic comparison. Defaults to immediate predecessor.</p>
-              </div>
            </div>
           }
           content={
            <>
-              <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5 backdrop-blur-md">
+              <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5 backdrop-blur-md sticky top-0 z-10">
                  <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2">
-                       <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-[12px] font-black">{newer?.version_label?.slice(-4) || 'vØ'}</div>
+                       <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-[12px] font-black">v{newer?.v_num}</div>
                        <div className="w-4 h-px bg-slate-700" />
-                       <div className="w-8 h-8 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-500 text-[12px] font-black">{older ? older.version_label.slice(-4) : 'Ø'}</div>
+                       <div className="w-8 h-8 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-500 text-[12px] font-black">{older ? `v${older.v_num}` : 'Ø'}</div>
                     </div>
                     <div>
                        <h3 className="text-[11px] font-black text-slate-300 uppercase tracking-widest">Change Analysis</h3>
@@ -333,44 +351,44 @@ function PoolHistoryModal({ versions, onClose }: { versions: any[], onClose: () 
               
               <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
                  {diffs.length > 0 ? (
-                    <div className="space-y-10">
-                       {diffs.map((d: any, i: number) => (
-                          <div key={i} className="animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${i * 50}ms` }}>
-                             <div className="flex items-center justify-between mb-3 px-1">
-                                <div className="flex items-center space-x-3">
-                                   <div className="w-2 h-6 bg-blue-500 rounded-lg" />
-                                   <span className="text-[12px] font-black text-white tracking-[0.08em] uppercase">{d.field.replace(/_/g, ' ')}</span>
-                                </div>
-                             </div>
-                             
-                             <div className="grid grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                   <div className="flex items-center justify-between px-2">
-                                      <span className="text-[9px] font-black uppercase text-rose-500">Previous state</span>
-                                   </div>
-                                   <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-5 relative overflow-hidden min-h-[100px] group transition-all shadow-inner">
-                                      <pre className="text-[11px] text-slate-500 line-through whitespace-pre-wrap font-mono leading-relaxed">
-                                         {typeof d.old === 'object' ? JSON.stringify(d.old, null, 2) : String(d.old || '(empty_state)')}
-                                      </pre>
-                                   </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                   <div className="flex items-center justify-between px-2">
-                                      <span className="text-[9px] font-black uppercase text-emerald-400">Current state</span>
-                                   </div>
-                                   <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-5 relative overflow-hidden min-h-[100px] group transition-all shadow-inner">
-                                      <pre className="text-[12px] text-emerald-300 whitespace-pre-wrap font-mono font-bold leading-relaxed">
-                                         {typeof d.new === 'object' ? JSON.stringify(d.new, null, 2) : String(d.new || '(empty_state)')}
-                                      </pre>
-                                   </div>
-                                </div>
-                             </div>
-                          </div>
-                       ))}
+                    <div className="space-y-6">
+                       <div className="overflow-hidden rounded-lg border border-white/5 bg-black/20">
+                          <table className="w-full text-left border-collapse">
+                             <thead>
+                                <tr className="bg-white/5 text-[9px] font-black uppercase text-slate-500 tracking-widest">
+                                   <th className="p-4 w-1/4">Field / Property</th>
+                                   <th className="p-4 w-3/8 text-rose-500/70">Previous (v{older?.v_num || 'Ø'})</th>
+                                   <th className="p-4 w-3/8 text-emerald-500/70">Current (v{newer?.v_num})</th>
+                                </tr>
+                             </thead>
+                             <tbody className="divide-y divide-white/5">
+                                {diffs.map((d: any, i: number) => (
+                                   <tr key={i} className="hover:bg-white/[0.02] transition-colors">
+                                      <td className="p-4 align-top">
+                                         <span className="text-[11px] font-bold text-slate-400">{d.field}</span>
+                                      </td>
+                                      <td className="p-4 align-top">
+                                         <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-3">
+                                            <pre className="text-[10px] text-slate-500 line-through whitespace-pre-wrap font-mono leading-relaxed">
+                                               {typeof d.old === 'object' ? JSON.stringify(d.old, null, 2) : String(d.old || '(empty)')}
+                                            </pre>
+                                         </div>
+                                      </td>
+                                      <td className="p-4 align-top">
+                                         <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-3">
+                                            <pre className="text-[10px] text-emerald-400 whitespace-pre-wrap font-mono font-bold leading-relaxed">
+                                               {typeof d.new === 'object' ? JSON.stringify(d.new, null, 2) : String(d.new || '(empty)')}
+                                            </pre>
+                                         </div>
+                                      </td>
+                                   </tr>
+                                ))}
+                             </tbody>
+                          </table>
+                       </div>
                     </div>
                  ) : (
-                    <WorkspaceEmptyState icon={HistoryIcon} title="No Diff Data" description="Select two versions to compare." />
+                    <WorkspaceEmptyState icon={<HistoryIcon size={32} />} title="No Diff Data" description="Select two versions to compare or pick a version to see changes from its predecessor." />
                  )}
               </div>
            </>
@@ -457,8 +475,7 @@ export default function SettingsPage() {
       setAttachPath("");
       setPreflightResult(null);
       showWorkspaceToast("Existing database attached to registry")
-    },
-    onError: (e: any) => showWorkspaceToast(`Attach Failed: ${e.message}`, { type: 'error' })
+    }
   })
   
   const toggleEdit = (field: string, action?: 'save') => {
@@ -603,8 +620,7 @@ result_df = get_user_pool()`)
       queryClient.invalidateQueries({ queryKey: ['env-history'] })
       setEditableFields({})
       showWorkspaceToast("Global Configuration synchronized to Database")
-    },
-    onError: (e: any) => showWorkspaceToast(`Sync Failed: ${e.message}`, { type: 'error' })
+    }
   })
 
   const [syncPreviewData, setSyncPreviewData] = useState<any>(null)
@@ -631,8 +647,7 @@ result_df = get_user_pool()`)
         setSyncPreviewData(null);
         showWorkspaceToast("User Pool synchronized via Python logic")
       }
-    },
-    onError: (e: any) => showWorkspaceToast(`Sync Failed: ${e.message}`, { type: 'error' })
+    }
   })
 
   const { data: operators } = useQuery({
@@ -715,8 +730,7 @@ result_df = get_user_pool()`)
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-tenants'] })
       showWorkspaceToast("Database backup initiated and saved to storage")
-    },
-    onError: (e: any) => showWorkspaceToast(`Backup Failed: ${e.message}`, { type: 'error' })
+    }
   })
 
   const { data: allTenants } = useQuery({
@@ -742,8 +756,7 @@ result_df = get_user_pool()`)
       queryClient.invalidateQueries({ queryKey: ['my-tenants'] })
       setNewTenantName(""); // Clear input on success
       showWorkspaceToast("New tenant database created and initialized")
-    },
-    onError: (e: any) => showWorkspaceToast(`Creation Failed: ${e.message}`, { type: 'error' })
+    }
   })
 
   const updateMasterSettingMutation = useMutation({
@@ -758,8 +771,7 @@ result_df = get_user_pool()`)
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['master-settings'] })
       showWorkspaceToast("System setting updated")
-    },
-    onError: (e: any) => showWorkspaceToast(`Update Failed: ${e.message}`, { type: 'error' })
+    }
   })
 
   const envHelp: any = {
@@ -822,8 +834,7 @@ result_df = get_user_pool()`)
         queryClient.invalidateQueries({ queryKey: ['user-profile'] })
       }
       showWorkspaceToast("Security profile synchronized")
-    },
-    onError: (e: any) => showWorkspaceToast(`Update Failed: ${e.message}`, { type: 'error' })
+    }
   })
 
   const deleteOperatorMutation = useMutation({
@@ -833,8 +844,7 @@ result_df = get_user_pool()`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operators'] })
-    },
-    onError: (e: any) => showWorkspaceToast(`Revocation Failed: ${e.message}`, { type: 'error' })
+    }
   })
 
   const teamMutation = useMutation({
@@ -857,8 +867,7 @@ result_df = get_user_pool()`)
       setNewTeamName("")
       setNewTeamDescription("")
       showWorkspaceToast("Team registry synchronized")
-    },
-    onError: (e: any) => showWorkspaceToast(`Team Update Failed: ${e.message}`, { type: 'error' })
+    }
   })
 
   const deleteTeamMutation = useMutation({
@@ -871,16 +880,20 @@ result_df = get_user_pool()`)
       queryClient.invalidateQueries({ queryKey: ['operators'] })
       setSelectedTeamId(null)
       showWorkspaceToast("Team removed")
-    },
-    onError: (e: any) => showWorkspaceToast(`Team Deletion Failed: ${e.message}`, { type: 'error' })
+    }
   })
 
   const bulkTeamMutation = useMutation({
-    mutationFn: async ({ ids, teamId, teamName, teamSource }: { ids: number[], teamId?: number | null, teamName?: string | null, teamSource?: string }) => {
+    mutationFn: async ({ ids, teamId, teamName, teams, teamSource }: { ids: number[], teamId?: number | null, teamName?: string | null, teams?: string[], teamSource?: string }) => {
       const updates = ids.map(async (id) => {
         const res = await apiFetch(`/api/v1/settings/operators/${id}`, {
           method: "PATCH",
-          body: JSON.stringify({ team_id: teamId ?? null, team: teamName ?? null, team_source: teamSource || (teamId ? 'manual_override' : 'manual') })
+          body: JSON.stringify({ 
+            team_id: teamId ?? null, 
+            team: teamName ?? null, 
+            teams: teams || [],
+            team_source: teamSource || (teamId ? 'manual_override' : 'manual') 
+          })
         })
         if (!res.ok) throw new Error(await res.text())
         return res.json()
@@ -893,9 +906,7 @@ result_df = get_user_pool()`)
       if (selectedTeamId) queryClient.invalidateQueries({ queryKey: ['team-audit', selectedTeamId] })
       setSelectedOperatorIds([])
       setTeamMemberPick("")
-      showWorkspaceToast("Bulk team assignment completed")
-    },
-    onError: (e: any) => showWorkspaceToast(`Bulk Update Failed: ${e.message}`, { type: 'error' })
+    }
   })
 
   const [newOpId, setNewOpId] = useState("")
@@ -1557,7 +1568,7 @@ result_df = get_user_pool()`)
                               <span className="text-[10px] font-bold text-slate-300">{op.department || 'Unknown'}</span>
                             </td>
                             <td className="p-4">
-                               <div className="group relative">
+                               <div className="group/tooltip relative">
                                   <div className="flex items-center gap-1.5">
                                     <span className="text-[10px] font-bold text-slate-300">{firstName}</span>
                                     {remainingCount > 0 && (
@@ -1567,7 +1578,7 @@ result_df = get_user_pool()`)
                                     )}
                                   </div>
                                   {assignedGroups.length > 0 && (
-                                    <div className="absolute top-full mt-2 left-0 p-3 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-all z-[100] pointer-events-none min-w-[140px]">
+                                    <div className="absolute top-full mt-2 left-0 p-3 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl opacity-0 group-hover/tooltip:opacity-100 transition-all z-[100] pointer-events-none min-w-[140px]">
                                       <p className="text-[8px] font-black uppercase text-slate-500 mb-2 tracking-widest border-b border-white/5 pb-1">All Groups</p>
                                       <div className="space-y-1.5">
                                         {assignedGroups.map((g: any) => (
@@ -1982,12 +1993,12 @@ result_df = get_user_pool()`)
                          value={newTeamName}
                          onChange={e => setNewTeamName(e.target.value)}
                          placeholder="New Group ID..."
-                         className="bg-transparent px-3 py-2 text-[10px] font-bold uppercase outline-none w-48 placeholder:text-slate-600"
+                         className="bg-transparent px-3 py-2 text-[10px] font-bold outline-none w-48 placeholder:text-slate-600"
                          onKeyDown={e => e.key === 'Enter' && teamMutation.mutate({ name: newTeamName, source: 'manual' })}
                        />
                        <button 
                          onClick={() => teamMutation.mutate({ name: newTeamName, source: 'manual' })}
-                         className="h-full px-4 bg-blue-600/10 border-l border-white/10 text-blue-400 hover:bg-blue-600/20 transition-all font-bold text-[10px] uppercase tracking-widest"
+                         className="h-full px-4 bg-blue-600/10 border-l border-white/10 text-blue-400 hover:bg-blue-600/20 transition-all font-bold text-[10px] tracking-widest"
                        >
                          Initialize
                        </button>
@@ -2015,8 +2026,8 @@ result_df = get_user_pool()`)
                                  <Users size={16} />
                               </div>
                               <div>
-                                 <p className={`text-[11px] font-bold uppercase tracking-widest ${selectedTeamId === team.id ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>{team.name}</p>
-                                 <p className="text-[8px] font-bold text-slate-600 uppercase mt-1">ID: {team.id}</p>
+                                 <p className={`text-[11px] font-bold tracking-widest ${selectedTeamId === team.id ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>{team.name}</p>
+                                 <p className="text-[8px] font-bold text-slate-600 mt-1">ID: {team.id}</p>
                               </div>
                            </div>
                            <ChevronRight size={14} className={`transition-transform ${selectedTeamId === team.id ? 'text-blue-400 translate-x-1' : 'text-slate-700'}`} />
@@ -2042,7 +2053,7 @@ result_df = get_user_pool()`)
                                <div className="flex items-center gap-4 mb-6">
                                   <div className="p-4 bg-blue-600/10 rounded-lg text-blue-400 border border-blue-500/20"><Users size={32} /></div>
                                   <div>
-                                     <h3 className="text-2xl font-black uppercase tracking-tighter text-white italic">{teams?.find((t: any) => t.id === selectedTeamId)?.name}</h3>
+                                     <h3 className="text-2xl font-black tracking-tighter text-white italic">{teams?.find((t: any) => t.id === selectedTeamId)?.name}</h3>
                                      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 mt-1">Registry Identity: {selectedTeamId}</p>
                                   </div>
                                </div>
