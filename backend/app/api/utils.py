@@ -7,7 +7,7 @@ def get_current_user_id(request: Request = None):
     """
     Unified utility to identify the current user.
     Prioritizes the X-User-Id header (set by frontend) 
-    and falls back to the system's USER_ID environment variable.
+    and falls back to the system's user_name or USER_ID environment variable.
     """
     user_id = None
     
@@ -17,7 +17,7 @@ def get_current_user_id(request: Request = None):
     
     # 2. Fallback to Environment Variable (Default identity)
     if not user_id:
-        user_id = os.getenv("USER_ID", settings.DEFAULT_USER_ID)
+        user_id = os.getenv("user_name", os.getenv("USER_ID", settings.DEFAULT_USER_ID))
         
     return user_id
 
@@ -35,7 +35,7 @@ def build_default_operator_profile(user_id: str):
         "department": settings.DEFAULT_OPERATOR_DEPARTMENT,
         "registration_status": "Registered",
         "is_admin": is_auto_admin,
-        "custom_permissions": {"all": 3} if is_auto_admin else {}
+        "custom_permissions": {"all": 3} if is_auto_admin else {"home": 1}
     }
 
 def filter_valid_columns(model, data: dict, exclude: set | None = None):
