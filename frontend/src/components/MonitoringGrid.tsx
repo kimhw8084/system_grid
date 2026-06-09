@@ -4953,6 +4953,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
   const [isMaximized, setIsMaximized] = useState(false)
+  const queryClient = useQueryClient()
   const { data: history, isLoading } = useQuery({
     queryKey: ['monitoring-history', item.id],
     queryFn: async () => (await apiFetch(`/api/v1/monitoring/${item.id}/history`)).json()
@@ -4974,8 +4975,16 @@ function MonitoringHistoryModal({ item, onClose }: any) {
     }
   }
 
-  const newer = history?.[Math.min(...selectedIndices)]
-  const older = selectedIndices.length > 1 ? history?.[Math.max(...selectedIndices)] : history?.[selectedIndices[0] + 1]
+  const indexedVersions = (history || []).map((h: any, i: number) => ({
+    ...h,
+    v_num: h.version,
+    label: formatAppDate(h.created_at)
+  }))
+
+  const newer = indexedVersions?.[Math.min(...selectedIndices)]
+  const older = selectedIndices.length > 1 
+    ? indexedVersions?.[Math.max(...selectedIndices)] 
+    : (selectedIndices[0] + 1 < indexedVersions.length ? indexedVersions[selectedIndices[0] + 1] : null)
 
   const getDiff = (curr: any, prev: any) => {
     if (!curr) return []
@@ -4987,7 +4996,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
       if (['updated_at', 'created_at', 'id', 'version', 'is_deleted', 'monitored_service_names', 'recovery_doc_titles', 'device_name'].includes(k)) return false
       return JSON.stringify(s1[k]) !== JSON.stringify(s2[k])
     }).map(k => ({
-      field: k,
+      field: k.replace(/_/g, ' '),
       old: s2[k],
       new: s1[k]
     }))
@@ -5002,46 +5011,49 @@ function MonitoringHistoryModal({ item, onClose }: any) {
       size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
-      title="Revision history"
+      title="Revision History"
       subtitle={`Temporal lineage for ${item.title}`}
-      icon={<Clock size={20} />}
+      icon={<HistoryIcon size={20} />}
       footerRight={
         <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
       }
     >
       <WorkspaceHistoryShell
           header={
-            <div className="flex items-center space-x-4">
-              <div className="px-4 py-2 bg-white/5 border border-white/5 rounded-lg">
-                 <p className="text-[8px] font-semibold text-slate-500 mb-1 text-center uppercase tracking-widest">Comparison mode</p>
-                 <div className="flex items-center space-x-3">
-                    <div className="flex items-center space-x-1.5">
-                       <div className="w-2 h-2 rounded-full bg-blue-500" />
-                       <span className="text-[10px] font-semibold text-white">v{newer?.version}</span>
-                    </div>
-                    <ChevronRight size={10} className="text-slate-600" />
-                    <div className="flex items-center space-x-1.5">
-                       <div className="w-2 h-2 rounded-full bg-slate-600" />
-                       <span className="text-[10px] font-semibold text-slate-400">{older ? `v${older.version}` : 'Genesis'}</span>
-                    </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                 <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                    <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                    <span className="text-[10px] font-black text-white">v{newer?.v_num}</span>
+                    <span className="text-[9px] font-bold text-slate-400">{newer?.label}</span>
                  </div>
+                 {older && (
+                   <>
+                     <ChevronRight size={12} className="text-slate-600" />
+                     <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 border border-white/5 rounded-lg">
+                        <div className="w-2 h-2 rounded-full bg-slate-600" />
+                        <span className="text-[10px] font-black text-slate-300">v{older.v_num}</span>
+                        <span className="text-[9px] font-bold text-slate-500">{older.label}</span>
+                     </div>
+                   </>
+                 )}
               </div>
             </div>
           }
           sidebar={
-           <div className="w-72 flex flex-col min-h-0">
+           <div className="flex h-full flex-col min-h-0">
               <div className="mb-4 flex items-center justify-between px-1">
                  <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Revision Timeline</h3>
-                 <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20">{history?.length || 0} states</span>
+                 <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20">{indexedVersions.length} states</span>
               </div>
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
                 {isLoading ? (
-                   <div className="flex-1 flex flex-col items-center justify-center space-y-3 py-20">
+                   <div className="flex flex-col items-center justify-center py-20 space-y-4">
                       <RefreshCcw size={24} className="animate-spin text-blue-500" />
-                      <span className="text-[10px] font-semibold text-blue-500 animate-pulse uppercase tracking-widest">Syncing timeline...</span>
+                      <span className="text-[10px] font-black text-blue-500 animate-pulse uppercase tracking-widest">Syncing timeline...</span>
                    </div>
                 ) : (
-                  history?.map((h: any, idx: number) => {
+                  indexedVersions.map((h: any, idx: number) => {
                     const isSelected = selectedIndices.includes(idx);
                     const isNewest = idx === Math.min(...selectedIndices);
                     return (
@@ -5060,7 +5072,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                           </div>
                         )}
                         <div className="flex items-center justify-between mb-2">
-                           <span className={`text-[11px] font-black tracking-tighter ${isSelected ? 'text-white' : 'text-blue-400'}`}>v{h.version}</span>
+                           <span className={`text-[11px] font-black tracking-tighter ${isSelected ? 'text-white' : 'text-blue-400'}`}>v{h.v_num}</span>
                            <span className={`text-[9px] font-bold ${isSelected ? 'text-white/60' : 'text-slate-500'}`}>
                               {formatAppDay(h.created_at)}
                            </span>
@@ -5068,114 +5080,95 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                         <p className={`text-[10px] font-bold leading-tight line-clamp-2 ${isSelected ? 'text-white/90' : 'text-slate-300'}`}>
                            {h.change_summary || 'Configuration Modification'}
                         </p>
-                        <div className="mt-2 flex items-center space-x-2">
-                           <Clock size={10} className={isSelected ? 'text-white/40' : 'text-slate-600'} />
-                           <span className={`text-[8px] font-semibold ${isSelected ? 'text-white/40' : 'text-slate-600'}`}>
-                              {formatAppTime(h.created_at)}
-                           </span>
+                        <div className="mt-2 flex items-center space-x-2 justify-between">
+                           <div className="flex items-center space-x-2">
+                             <Clock size={10} className={isSelected ? 'text-white/40' : 'text-slate-600'} />
+                             <span className={`text-[8px] font-semibold ${isSelected ? 'text-white/40' : 'text-slate-600'}`}>
+                                {formatAppTime(h.created_at)}
+                             </span>
+                           </div>
+                           <button 
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               toast.promise(apiFetch(`/api/v1/monitoring/${item.id}/restore/${h.id}`, { method: 'POST' }), {
+                                   loading: 'Restoring state...',
+                                   success: () => { queryClient.invalidateQueries({ queryKey: ['monitoring-items'] }); queryClient.invalidateQueries({ queryKey: ['monitoring-history', item.id] }); return "Restored successfully"; },
+                                   error: "Restore failed"
+                               })
+                             }}
+                             className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${isSelected ? 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/40' : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'}`}
+                           >
+                             Restore
+                           </button>
                         </div>
                       </button>
                     )
                   })
                 )}
               </div>
-              <div className="mt-4 p-4 bg-white/[0.03] border border-white/5 rounded-lg">
-                 <p className="text-[9px] text-slate-500 font-semibold leading-relaxed">Select two versions to perform a deep semantic comparison. Defaults to immediate predecessor.</p>
-              </div>
            </div>
           }
           content={
            <>
-              <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5 backdrop-blur-md">
+              <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5 backdrop-blur-md sticky top-0 z-10">
                  <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2">
-                       <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-[12px] font-black">v{newer?.version}</div>
+                       <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-[12px] font-black">v{newer?.v_num}</div>
                        <div className="w-4 h-px bg-slate-700" />
-                       <div className="w-8 h-8 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-500 text-[12px] font-black">{older ? `v${older.version}` : 'Ø'}</div>
+                       <div className="w-8 h-8 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-500 text-[12px] font-black">{older ? `v${older.v_num}` : 'Ø'}</div>
                     </div>
                     <div>
-                       <h3 className="text-[11px] font-black text-slate-300 uppercase tracking-widest">Change Analysis</h3>
+                       <h3 className="text-[11px] font-black text-slate-300 uppercase tracking-widest">Semantic Delta</h3>
                        <p className="text-[9px] font-bold text-slate-600">{diffs.length} modification vectors detected</p>
                     </div>
-                 </div>
-                 <div className="flex items-center space-x-2">
-                    <span className="text-[9px] font-black uppercase text-slate-400 bg-white/5 px-3 py-1 rounded-lg border border-white/10">
-                       Diff Engine Ready
-                    </span>
                  </div>
               </div>
               
               <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
                  {diffs.length > 0 ? (
-                    <div className="space-y-10">
-                       {diffs.map((d: any, i: number) => (
-                          <div key={i} className="animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: `${i * 50}ms` }}>
-                             <div className="flex items-center justify-between mb-3 px-1">
-                                <div className="flex items-center space-x-3">
-                                   <div className="w-2 h-6 bg-blue-500 rounded-lg" />
-                                   <span className="text-[12px] font-black text-white tracking-[0.08em] uppercase">{d.field.replace(/_/g, ' ')}</span>
-                                </div>
-                                <span className="text-[9px] font-semibold text-slate-600">Vector: {d.field}</span>
-                             </div>
-                             
-                             <div className="grid grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                   <div className="flex items-center justify-between px-2">
-                                      <span className="text-[9px] font-black uppercase text-rose-500">Previous state</span>
-                                      <Trash2 size={12} className="text-rose-900" />
-                                   </div>
-                                   <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-5 relative overflow-hidden min-h-[100px] group transition-all hover:bg-rose-500/10 hover:border-rose-500/20 shadow-inner">
-                                      <pre className="text-[11px] text-slate-500 line-through whitespace-pre-wrap font-mono leading-relaxed">
-                                         {typeof d.old === 'object' ? JSON.stringify(d.old, null, 2) : String(d.old || '(empty_state)')}
-                                      </pre>
-                                   </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                   <div className="flex items-center justify-between px-2">
-                                      <span className="text-[9px] font-black uppercase text-emerald-400">Current state</span>
-                                      <Zap size={12} className="text-emerald-900" />
-                                   </div>
-                                   <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-5 relative overflow-hidden min-h-[100px] group transition-all hover:bg-emerald-500/10 hover:border-emerald-500/20 shadow-inner">
-                                      <pre className="text-[12px] text-emerald-300 whitespace-pre-wrap font-mono font-bold leading-relaxed">
-                                         {typeof d.new === 'object' ? JSON.stringify(d.new, null, 2) : String(d.new || '(empty_state)')}
-                                      </pre>
-                                   </div>
-                                </div>
-                             </div>
-                          </div>
-                       ))}
+                    <div className="space-y-6">
+                       <div className="overflow-hidden rounded-lg border border-white/5 bg-black/20">
+                          <table className="w-full text-left border-collapse">
+                             <thead>
+                                <tr className="bg-white/5 text-[9px] font-black uppercase text-slate-500 tracking-widest">
+                                   <th className="p-4 w-1/4">Property</th>
+                                   <th className="p-4 w-3/8 text-rose-500/70">Previous (v{older?.v_num || 'Ø'})</th>
+                                   <th className="p-4 w-3/8 text-emerald-500/70">Current (v{newer?.v_num})</th>
+                                </tr>
+                             </thead>
+                             <tbody className="divide-y divide-white/5">
+                                {diffs.map((d: any, i: number) => (
+                                   <tr key={i} className="hover:bg-white/[0.02] transition-colors">
+                                      <td className="p-4 align-top">
+                                         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{d.field}</span>
+                                      </td>
+                                      <td className="p-4 align-top">
+                                         <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-3 overflow-hidden">
+                                            <pre className="text-[10px] text-slate-500 line-through whitespace-pre-wrap font-mono leading-relaxed break-all">
+                                               {typeof d.old === 'object' ? JSON.stringify(d.old, null, 2) : String(d.old ?? '(empty)')}
+                                            </pre>
+                                         </div>
+                                      </td>
+                                      <td className="p-4 align-top">
+                                         <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-3 overflow-hidden">
+                                            <pre className="text-[10px] text-emerald-400 whitespace-pre-wrap font-mono font-bold leading-relaxed break-all">
+                                               {typeof d.new === 'object' ? JSON.stringify(d.new, null, 2) : String(d.new ?? '(empty)')}
+                                            </pre>
+                                         </div>
+                                      </td>
+                                   </tr>
+                                ))}
+                             </tbody>
+                          </table>
+                       </div>
                     </div>
                  ) : !isLoading ? (
-                    <WorkspaceEmptyState
-                      icon={<Check size={42} className="text-blue-400" strokeWidth={1} />}
-                      title="No configuration variance detected"
-                      description={
-                        selectedIndices.length > 1
-                          ? 'No semantic variance was detected between the selected temporal snapshots. Configuration states are identical.'
-                          : 'This state represents the system genesis. No previous configuration cycles were detected.'
-                      }
-                    />
+                    <WorkspaceEmptyState icon={<HistoryIcon size={32} />} title="No Diff Data" description="Select two versions to compare or pick a version to see changes from its predecessor." />
                  ) : null}
               </div>
-
-              {/* Snapshot Footer */}
-              <div className="p-4 bg-black/60 border-t border-white/5 flex items-center justify-between">
-                 <div className="flex items-center space-x-6">
-                    <div className="flex items-center space-x-2">
-                       <User size={12} className="text-slate-600" />
-                       <span className="text-[9px] font-bold text-slate-500">Authored by: Operational Kernel</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                       <Tag size={12} className="text-slate-600" />
-                       <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Trace: {newer?.id}</span>
-                    </div>
-                 </div>
-                 <div className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Temporal data repository · v4.2</div>
-              </div>
-            </>
+           </>
           }
-        />
+      />
     </WorkspaceModal>
   )
 }

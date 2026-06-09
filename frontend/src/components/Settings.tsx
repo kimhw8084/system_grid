@@ -179,7 +179,7 @@ const SameButtonConfirm = ({ onConfirm, icon: Icon, label, danger = false }: any
 
 import { SettingsStandards } from "./SettingsStandards"
 
-function PoolHistoryModal({ versions, onClose }: { versions: any[], onClose: () => void }) {
+function PermissionHistoryModal({ versions, onClose }: { versions: any[], onClose: () => void }) {
   const [isMaximized, setIsMaximized] = useState(false)
   const [selectedIndices, setSelectedIndices] = useState<number[]>([0])
   const queryClient = useQueryClient()
@@ -198,7 +198,6 @@ function PoolHistoryModal({ versions, onClose }: { versions: any[], onClose: () 
     }
   }
 
-  // Map versions to include a sequence number for easier mapping
   const indexedVersions = (versions || []).map((v, i) => ({
     ...v,
     v_num: versions.length - i,
@@ -222,11 +221,15 @@ function PoolHistoryModal({ versions, onClose }: { versions: any[], onClose: () 
     if (summary.team_updates?.length) {
       summary.team_updates.forEach((update: any) => {
         diffs.push({ 
-          field: `Membership: ${update.username}`, 
+          field: `Membership: ${update.username || update.external_id}`, 
           old: Array.isArray(update.old) ? update.old.join(', ') : (update.old || 'None'), 
           new: Array.isArray(update.new) ? update.new.join(', ') : (update.new || 'None')
         })
       })
+    }
+
+    if (summary.script) {
+        diffs.push({ field: 'Logic Script', old: 'Previous version', new: 'Updated Python logic' })
     }
     
     return diffs
@@ -241,8 +244,8 @@ function PoolHistoryModal({ versions, onClose }: { versions: any[], onClose: () 
       size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
-      title="Revision history"
-      subtitle="Temporal lineage for User Pool Synchronization"
+      title="Permission Registry History"
+      subtitle="Complete temporal lineage of operator access and identity synchronization"
       icon={<HistoryIcon size={20} />}
       footerRight={
         <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
@@ -271,7 +274,7 @@ function PoolHistoryModal({ versions, onClose }: { versions: any[], onClose: () 
             </div>
           }
           sidebar={
-           <div className="w-72 flex flex-col min-h-0">
+           <div className="flex h-full flex-col min-h-0">
               <div className="mb-4 flex items-center justify-between px-1">
                  <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Revision Timeline</h3>
                  <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20">{indexedVersions.length} states</span>
@@ -316,7 +319,7 @@ function PoolHistoryModal({ versions, onClose }: { versions: any[], onClose: () 
                              onClick={(e) => {
                                e.stopPropagation();
                                toast.promise(apiFetch(`/api/v1/settings/user-pool/restore/${h.id}`, { method: 'POST' }), {
-                                   loading: 'Restoring snapshot...',
+                                   loading: 'Restoring state...',
                                    success: () => { queryClient.invalidateQueries({ queryKey: ['operators'] }); queryClient.invalidateQueries({ queryKey: ['teams'] }); queryClient.invalidateQueries({ queryKey: ['user-pool-versions'] }); return "Restored successfully"; },
                                    error: "Restore failed"
                                })
@@ -343,7 +346,7 @@ function PoolHistoryModal({ versions, onClose }: { versions: any[], onClose: () 
                        <div className="w-8 h-8 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-500 text-[12px] font-black">{older ? `v${older.v_num}` : 'Ø'}</div>
                     </div>
                     <div>
-                       <h3 className="text-[11px] font-black text-slate-300 uppercase tracking-widest">Change Analysis</h3>
+                       <h3 className="text-[11px] font-black text-slate-300 uppercase tracking-widest">Semantic Delta</h3>
                        <p className="text-[9px] font-bold text-slate-600">{diffs.length} modification vectors detected</p>
                     </div>
                  </div>
@@ -356,7 +359,7 @@ function PoolHistoryModal({ versions, onClose }: { versions: any[], onClose: () 
                           <table className="w-full text-left border-collapse">
                              <thead>
                                 <tr className="bg-white/5 text-[9px] font-black uppercase text-slate-500 tracking-widest">
-                                   <th className="p-4 w-1/4">Field / Property</th>
+                                   <th className="p-4 w-1/4">Property</th>
                                    <th className="p-4 w-3/8 text-rose-500/70">Previous (v{older?.v_num || 'Ø'})</th>
                                    <th className="p-4 w-3/8 text-emerald-500/70">Current (v{newer?.v_num})</th>
                                 </tr>
@@ -368,15 +371,15 @@ function PoolHistoryModal({ versions, onClose }: { versions: any[], onClose: () 
                                          <span className="text-[11px] font-bold text-slate-400">{d.field}</span>
                                       </td>
                                       <td className="p-4 align-top">
-                                         <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-3">
-                                            <pre className="text-[10px] text-slate-500 line-through whitespace-pre-wrap font-mono leading-relaxed">
+                                         <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-3 overflow-hidden">
+                                            <pre className="text-[10px] text-slate-500 line-through whitespace-pre-wrap font-mono leading-relaxed break-all">
                                                {typeof d.old === 'object' ? JSON.stringify(d.old, null, 2) : String(d.old || '(empty)')}
                                             </pre>
                                          </div>
                                       </td>
                                       <td className="p-4 align-top">
-                                         <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-3">
-                                            <pre className="text-[10px] text-emerald-400 whitespace-pre-wrap font-mono font-bold leading-relaxed">
+                                         <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-3 overflow-hidden">
+                                            <pre className="text-[10px] text-emerald-400 whitespace-pre-wrap font-mono font-bold leading-relaxed break-all">
                                                {typeof d.new === 'object' ? JSON.stringify(d.new, null, 2) : String(d.new || '(empty)')}
                                             </pre>
                                          </div>
@@ -413,7 +416,7 @@ export default function SettingsPage() {
   const [showPoolLogic, setShowPoolLogic] = useState(false)
   const [isSyncEditable, setIsSyncEditable] = useState(false)
   const [historyField, setHistoryField] = useState<string | null>(null)
-  const [showPoolHistory, setShowPoolHistory] = useState(false)
+  const [showPermissionHistory, setShowPermissionHistory] = useState(false)
   const [viewVersionData, setViewVersionData] = useState<any>(null)
   const [viewVersionScript, setViewVersionScript] = useState<string | null>(null)
   const [editableFields, setEditableFields] = useState<Record<string, boolean>>({})
@@ -1181,112 +1184,102 @@ result_df = get_user_pool()`)
         <AnimatePresence mode="wait">
           {topTab === 'environments' && (
             <motion.div key="environments" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4 pt-2">
-               <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-6">
-                  <div className="p-6 rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] shadow-2xl space-y-6">
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.35em] text-blue-400">
-                        <Palette size={14} /> Operator Preferences
-                      </div>
-                      <h3 className="text-xl font-black uppercase tracking-tight text-[var(--text-primary)]">Core Infrastructure</h3>
-                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">
-                        User-level theme selection is persisted locally and through `/settings/user/settings`.
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {themeOptions.map((theme) => {
-                        const selected = currentTheme === theme.id
-                        return (
-                          <button
-                            key={theme.id}
-                            onClick={() => changeTheme(theme.id)}
-                            className={`group rounded-lg border p-4 text-left transition-all ${selected ? 'border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/10' : 'border-[var(--glass-border)] bg-black/20 hover:border-blue-500/30 hover:bg-blue-500/5'}`}
-                          >
-                            <div className={`h-20 rounded-lg bg-gradient-to-br ${theme.swatch} border border-white/10`} />
-                            <div className="mt-4 flex items-start justify-between gap-3">
-                              <div>
-                                <div className="text-sm font-black uppercase tracking-widest text-[var(--text-primary)]">{theme.label}</div>
-                                <div className="mt-1 text-[9px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">{theme.helper}</div>
-                              </div>
-                              {selected && (
-                                <div className="p-2 rounded-lg bg-blue-600 text-white">
-                                  <Check size={14} />
-                                </div>
-                              )}
-                            </div>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5 shadow-xl">
-                      <div className="text-[8px] font-black uppercase tracking-[0.35em] text-slate-500">Parameters</div>
-                      <div className="mt-3 text-3xl font-black text-[var(--text-primary)]">{totalEnvParams}</div>
-                      <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Loaded from merged config</div>
-                    </div>
-                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-5 shadow-xl">
-                      <div className="text-[8px] font-black uppercase tracking-[0.35em] text-amber-400">Modified</div>
-                      <div className="mt-3 text-3xl font-black text-amber-300">{dirtyEnvCount}</div>
-                      <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-amber-200/70">Pending unsaved changes</div>
-                    </div>
-                    <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-5 shadow-xl">
-                      <div className="text-[8px] font-black uppercase tracking-[0.35em] text-rose-400">Critical</div>
-                      <div className="mt-3 text-3xl font-black text-rose-300">{criticalEnvCount}</div>
-                      <div className="mt-2 text-[9px] font-black uppercase tracking-[0.18em] text-rose-200/70">High-sensitivity parameters</div>
-                    </div>
-                    <div className={`rounded-lg border p-5 shadow-xl ${isDisconnected ? 'border-rose-500/20 bg-rose-500/5' : 'border-emerald-500/20 bg-emerald-500/5'}`}>
-                      <div className={`text-[8px] font-black uppercase tracking-[0.35em] ${isDisconnected ? 'text-rose-400' : 'text-emerald-400'}`}>Backend</div>
-                      <div className={`mt-3 text-3xl font-black ${isDisconnected ? 'text-rose-300' : 'text-emerald-300'}`}>{isDisconnected ? 'Down' : 'Live'}</div>
-                      <div className={`mt-2 text-[9px] font-black uppercase tracking-[0.18em] ${isDisconnected ? 'text-rose-200/70' : 'text-emerald-200/70'}`}>{getApiBaseUrl() || 'Relative proxy in use'}</div>
-                    </div>
+               <div className="flex justify-between items-center mb-2">
+                  <h2 className="text-xl font-black uppercase tracking-tighter text-white italic">Parameter Configuration</h2>
+                  <div className="flex gap-2">
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-white/5 uppercase tracking-widest">
+                       {filteredEnvEntries.length} Active Vectors
+                    </span>
                   </div>
                </div>
 
-               <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5 shadow-xl">
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                    <div>
-                      <div className="text-[10px] font-black uppercase tracking-[0.35em] text-blue-400">Config Surface</div>
-                      <h3 className="mt-2 text-lg font-black uppercase tracking-tight text-[var(--text-primary)]">Searchable Parameter Catalog</h3>
-                    </div>
-                    <div className="flex flex-col md:flex-row gap-3">
-                      <div className="relative min-w-[260px]">
+               {/* Unified Parameter Toolbar */}
+               <div className="flex items-center justify-between bg-black/40 p-4 rounded-lg border border-white/5 backdrop-blur-md">
+                  <div className="flex gap-4 items-center flex-1 max-w-2xl">
+                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
                         <input
                           value={envSearch}
                           onChange={(e) => setEnvSearch(e.target.value)}
                           placeholder="Search parameter, path, category, impact..."
-                          className="w-full rounded-lg border border-white/10 bg-black/20 pl-9 pr-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-primary)] outline-none transition-all focus:border-blue-500/50"
+                          className="w-full h-9 rounded-lg border border-white/10 bg-black/20 pl-10 pr-4 py-2 text-[11px] font-bold text-white outline-none transition-all focus:border-blue-500/50 shadow-inner placeholder:text-slate-600"
                         />
-                      </div>
-                      <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2.5">
+                     </div>
+                     <div className="flex items-center gap-2 h-9 rounded-lg border border-white/10 bg-black/20 px-3">
                         <Filter size={14} className="text-slate-500" />
                         <select
                           value={envImpactFilter}
                           onChange={(e) => setEnvImpactFilter(e.target.value as any)}
-                          className="bg-transparent text-[10px] font-black uppercase tracking-[0.18em] text-[var(--text-primary)] outline-none"
+                          className="bg-transparent text-[10px] font-black uppercase tracking-widest text-slate-400 outline-none cursor-pointer focus:text-blue-400"
                         >
-                          <option value="ALL">All impact</option>
-                          <option value="CRITICAL">Critical</option>
-                          <option value="HIGH">High</option>
-                          <option value="MEDIUM">Medium</option>
-                          <option value="LOW">Low</option>
+                          <option value="ALL">All Impact</option>
+                          <option value="CRITICAL">Critical Only</option>
+                          <option value="HIGH">High Impact</option>
+                          <option value="MEDIUM">Medium Impact</option>
+                          <option value="LOW">Low Impact</option>
                         </select>
-                      </div>
-                    </div>
+                     </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                     <ToolbarButton 
+                       onClick={() => setHistoryField('GLOBAL_CONFIG')}
+                       icon={<HistoryIcon size={14} />}
+                       className="h-9"
+                     >
+                       Global History
+                     </ToolbarButton>
+                     <div className="w-px h-4 bg-white/10 mx-2" />
+                     <ToolbarButton
+                        onClick={() => envMutation.mutate(getPersistableEnvSettings())}
+                        variant={isDirty() ? "primary" : "secondary"}
+                        disabled={!isDirty() && !envMutation.isPending}
+                        icon={<Zap size={14} className={envMutation.isPending ? 'animate-pulse' : ''} />}
+                        className="h-9"
+                     >
+                        {isDirty() ? 'Apply Changes' : 'Force Hot Reload'}
+                     </ToolbarButton>
                   </div>
                </div>
 
-               <div className="space-y-12">
+               <div className="space-y-8">
+                  {/* Theme / Operator Preferences Integrated */}
+                  <div className="space-y-4">
+                     <div className="flex items-center gap-2 px-1">
+                        <Palette size={14} className="text-blue-500" />
+                        <h3 className="text-[10px] font-black text-white uppercase tracking-[0.3em]">Visual Interface Preferences</h3>
+                     </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {themeOptions.map((theme) => {
+                          const selected = currentTheme === theme.id
+                          return (
+                            <button
+                              key={theme.id}
+                              onClick={() => changeTheme(theme.id)}
+                              className={`group rounded-lg border p-4 text-left transition-all ${selected ? 'border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/10' : 'border-white/5 bg-black/20 hover:border-blue-500/30 hover:bg-blue-500/5'}`}
+                            >
+                              <div className={`h-12 rounded-lg bg-gradient-to-br ${theme.swatch} border border-white/10`} />
+                              <div className="mt-3 flex items-start justify-between gap-3">
+                                <div>
+                                  <div className={`text-[11px] font-black uppercase tracking-widest ${selected ? 'text-white' : 'text-slate-400'}`}>{theme.label}</div>
+                                  <div className="mt-1 text-[8px] font-bold text-slate-500 leading-tight">{theme.helper}</div>
+                                </div>
+                                {selected && <Check size={12} className="text-blue-500 mt-0.5" />}
+                              </div>
+                            </button>
+                          )
+                        })}
+                     </div>
+                  </div>
+
                   {visibleCategories.map((cat: any) => (
                       <div key={cat} className="space-y-4">
-                          <div className="flex items-center justify-between gap-4">
-                            <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.4em] flex items-center gap-2">
+                          <div className="flex items-center justify-between gap-4 px-1">
+                            <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] flex items-center gap-2">
                                {cat === 'Infrastructure' ? <Cpu size={12} /> : cat === 'UI' ? <Layout size={12} /> : <Box size={12} />} 
-                               {cat}
+                               {cat} Domain
                             </h3>
-                            <div className="text-[8px] font-black uppercase tracking-[0.25em] text-slate-500">
-                              {filteredEnvEntries.filter(([key]) => localEnv._metadata?.[key]?.category === cat).length} visible
+                            <div className="text-[8px] font-black uppercase tracking-widest text-slate-600 bg-white/5 px-2 py-0.5 rounded-lg border border-white/5">
+                              {filteredEnvEntries.filter(([key]) => localEnv._metadata?.[key]?.category === cat).length} parameters
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
@@ -1295,7 +1288,7 @@ result_df = get_user_pool()`)
                                       key={key}
                                       icon={envHelp[key]?.details?.includes('URL') ? Link : envHelp[key]?.details?.includes('Path') ? FolderTree : Activity} 
                                       label={key.replace(/_/g, ' ')} 
-                                      description={envHelp[key]?.details || "System parameter"} 
+                                      description={envHelp[key]?.details || "System level variable"} 
                                       onHistory={() => setHistoryField(key)}
                                       onEdit={(a: any) => toggleEdit(key, a)} isEditable={editableFields[key]}
                                       isModified={isDirty(key)} 
@@ -1303,7 +1296,7 @@ result_df = get_user_pool()`)
                                       paramName={localEnv._metadata?.[key]?.param}
                                   >
                                       <div className="space-y-3">
-                                        <div className={`inline-flex items-center rounded-lg border px-2 py-1 text-[8px] font-black uppercase tracking-[0.18em] ${getImpactTone(envHelp[key]?.impact)}`}>
+                                        <div className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-[7px] font-black uppercase tracking-widest ${getImpactTone(envHelp[key]?.impact)}`}>
                                           {envHelp[key]?.impact || 'LOW'} Impact
                                         </div>
                                         {typeof value === 'boolean' ? (
@@ -1313,13 +1306,13 @@ result_df = get_user_pool()`)
                                                     onChange={(e: any) => setLocalEnv({...localEnv, [key]: e.target.checked})}
                                                     activeColor="bg-emerald-600"
                                                 />
-                                                <span className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">{value ? 'Active' : 'Disabled'}</span>
+                                                <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{value ? 'Enabled' : 'Disabled'}</span>
                                             </div>
                                         ) : (
                                             <input 
                                                 disabled={!editableFields[key]} value={value || ''} 
                                                 onChange={e => setLocalEnv({...localEnv, [key]: e.target.value})} 
-                                                className="w-full bg-[var(--bg-primary)] border border-[var(--glass-border)] rounded-lg px-4 py-3 text-xs font-mono text-blue-400 outline-none focus:border-blue-500 transition-all disabled:opacity-50" 
+                                                className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-[11px] font-bold font-mono text-emerald-400 outline-none focus:border-blue-500/50 transition-all disabled:opacity-50 h-9" 
                                             />
                                         )}
                                       </div>
@@ -1344,114 +1337,159 @@ result_df = get_user_pool()`)
           {topTab === 'permissions' && (
             <motion.div key="permissions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4 pt-2">
                <div className="flex justify-between items-center mb-2">
-                  <h2 className="text-xl font-black uppercase tracking-tighter text-white italic">User Permission</h2>
+                  <h2 className="text-xl font-black uppercase tracking-tighter text-white italic">Permission Registry</h2>
                   <div className="flex gap-2">
-                    <button
-                        onClick={() => setShowPoolLogic(!showPoolLogic)}
-                        className="h-[38px] px-4 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 hover:bg-indigo-500/20 transition-all text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
-                        title="Configure Sync"
-                    >
-                        <RefreshCcw size={14} /> Identity Sync
-                    </button>
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-white/5 uppercase tracking-widest">
+                       {filteredOperators?.length || 0} Registered Identities
+                    </span>
                   </div>
                </div>
-               <div className="flex justify-between items-center">
-                  <div className="flex gap-4 items-center">
-                     <div className="relative">
+
+               {/* Identity Sync Pipeline - Collapsed by default */}
+               <div className="rounded-lg border border-white/5 bg-black/20 overflow-hidden">
+                  <button 
+                    onClick={() => setShowPoolLogic(!showPoolLogic)}
+                    className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors group"
+                  >
+                    <div className="flex items-center space-x-3">
+                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${showPoolLogic ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.1)]' : 'bg-slate-800 text-slate-500 border border-white/5'}`}>
+                          <SettingsIcon size={18} className={showPoolLogic ? 'animate-pulse' : ''} />
+                       </div>
+                       <div className="text-left">
+                          <h3 className="text-[11px] font-black text-slate-300 uppercase tracking-widest flex items-center gap-2">
+                             Identity Sync Pipeline
+                             <div className="px-1.5 py-0.5 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20 text-[7px] font-black tracking-normal">PYTHON-DRIVEN</div>
+                          </h3>
+                          <p className="text-[9px] font-bold text-slate-500 mt-0.5">Automated synchronization of operators, departments, and teams from LDAP/AD providers</p>
+                       </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                       <div className="h-4 w-px bg-white/5" />
+                       {showPoolLogic ? <ChevronUp size={16} className="text-slate-600" /> : <ChevronDown size={16} className="text-slate-600" />}
+                    </div>
+                  </button>
+
+                  <AnimatePresence>
+                    {showPoolLogic && (
+                       <motion.div 
+                         initial={{ height: 0, opacity: 0 }} 
+                         animate={{ height: "auto", opacity: 1 }} 
+                         exit={{ height: 0, opacity: 0 }}
+                         className="overflow-hidden border-t border-white/5"
+                       >
+                          <div className="p-6 bg-slate-900/40 space-y-6">
+                             <div className="flex items-start justify-between gap-6">
+                                <div className="flex-1 space-y-4">
+                                   <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-3">
+                                         <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                                            <Terminal size={14} />
+                                         </div>
+                                         <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Synchronization Logic</h4>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                         <ToolbarButton 
+                                            onClick={() => setIsSyncEditable(!isSyncEditable)}
+                                            variant={isSyncEditable ? "danger" : "secondary"}
+                                            icon={isSyncEditable ? <Lock size={12} /> : <EditIcon size={12} />}
+                                            className="h-8"
+                                         >
+                                            {isSyncEditable ? "Lock Logic" : "Modify Logic"}
+                                         </ToolbarButton>
+                                         <ToolbarButton 
+                                            onClick={() => poolMutation.mutate({ script: userPoolScript, preview: true })}
+                                            variant="primary"
+                                            icon={<RefreshCcw size={12} className={poolMutation.isPending ? 'animate-spin' : ''} />}
+                                            className="h-8"
+                                         >
+                                            Dry Run Preview
+                                         </ToolbarButton>
+                                      </div>
+                                   </div>
+                                   <div className="relative group">
+                                      <textarea 
+                                        readOnly={!isSyncEditable}
+                                        value={userPoolScript} 
+                                        onChange={e => setUserPoolScript(e.target.value)}
+                                        className={`w-full h-48 bg-black/60 border ${isSyncEditable ? 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.05)]' : 'border-white/5'} rounded-lg p-6 font-mono text-[11px] text-emerald-400 outline-none transition-all custom-scrollbar leading-relaxed`}
+                                      />
+                                      {!isSyncEditable && (
+                                         <div className="absolute inset-0 bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                            <div className="bg-slate-900/90 border border-white/10 rounded-lg px-4 py-2 flex items-center gap-2 shadow-2xl">
+                                               <Lock size={12} className="text-slate-500" />
+                                               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Logic Encrypted/Locked</span>
+                                            </div>
+                                         </div>
+                                      )}
+                                   </div>
+                                </div>
+
+                                <div className="w-80 space-y-4">
+                                   <div className="bg-white/5 border border-white/5 rounded-lg p-4">
+                                      <div className="flex items-center gap-2 mb-3 border-b border-white/5 pb-2">
+                                         <Activity size={12} className="text-blue-400" />
+                                         <p className="text-[10px] font-black uppercase text-white tracking-widest">Schema Requirements</p>
+                                      </div>
+                                      <p className="text-[9px] text-slate-400 font-bold leading-relaxed mb-4">
+                                         Pipeline output must be a sequence of dictionaries containing exactly these mapped keys:
+                                      </p>
+                                      <div className="grid grid-cols-1 gap-2">
+                                         {[
+                                            { key: 'id', desc: 'Unique LDAP/External Key' },
+                                            { key: 'username', desc: 'System Identity ID' },
+                                            { key: 'full_name', desc: 'Natural Case Display Name' },
+                                            { key: 'email', desc: 'Verified Contact Address' },
+                                            { key: 'department', desc: 'LDAP Department Mapping' },
+                                            { key: 'team', desc: 'LDAP Team Mapping' }
+                                         ].map(f => (
+                                            <div key={f.key} className="flex items-center justify-between p-2 bg-black/20 rounded-lg border border-white/5">
+                                               <code className="text-[9px] font-black text-blue-400">.{f.key}</code>
+                                               <span className="text-[8px] font-bold text-slate-500 uppercase">{f.desc}</span>
+                                            </div>
+                                         ))}
+                                      </div>
+                                   </div>
+                                </div>
+                             </div>
+                          </div>
+                       </motion.div>
+                    )}
+                  </AnimatePresence>
+               </div>
+
+               {/* Registry Toolbar */}
+               <div className="flex items-center justify-between bg-black/40 p-4 rounded-lg border border-white/5 backdrop-blur-md">
+                  <div className="flex gap-4 items-center flex-1 max-w-xl">
+                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
                         <input
                           value={operatorFilter}
                           onChange={e => setOperatorFilter(e.target.value)}
-                          placeholder="Search users, teams, or departments..."
-                          className="w-80 h-[38px] rounded-lg border border-white/10 bg-black/20 pl-10 pr-4 py-2 text-[10px] font-bold tracking-widest text-[var(--text-primary)] outline-none transition-all focus:border-blue-500/50 shadow-inner"
+                          placeholder="Search identity, department, or team..."
+                          className="w-full h-9 rounded-lg border border-white/10 bg-black/20 pl-10 pr-4 py-2 text-[11px] font-bold text-white outline-none transition-all focus:border-blue-500/50 shadow-inner placeholder:text-slate-600"
                         />
                      </div>
                   </div>
+                  <div className="flex items-center gap-2">
+                     <ToolbarButton 
+                       onClick={() => setShowPermissionHistory(true)}
+                       icon={<HistoryIcon size={14} />}
+                       className="h-9"
+                     >
+                       Revision History
+                     </ToolbarButton>
+                     <div className="w-px h-4 bg-white/10 mx-2" />
+                     <ToolbarButton 
+                       onClick={() => bulkTeamMutation.mutate()}
+                       disabled={selectedOperatorIds.length === 0}
+                       variant="primary"
+                       icon={<Users size={14} />}
+                       className="h-9"
+                     >
+                       Assign Groups ({selectedOperatorIds.length})
+                     </ToolbarButton>
+                  </div>
                </div>
-               <AnimatePresence>
-                 {showPoolLogic && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-visible">
-                       <div className="p-6 bg-indigo-600/5 border border-indigo-500/20 rounded-lg space-y-4 mb-4">
-                          <div className="flex justify-between items-center">
-                             <div>
-                                <div className="flex items-center gap-3">
-                                   <h3 className="text-[12px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-2"><Terminal size={16} /> Identity Sync Pipeline</h3>
-                                   <div className="group relative z-[300]">
-                                      <div className="p-1.5 bg-indigo-500/10 text-indigo-400 rounded-lg cursor-help border border-indigo-500/20 hover:bg-indigo-500/20 transition-all">
-                                         <AlertTriangle size={12} />
-                                      </div>
-                                      <div className="absolute top-full mt-2 left-0 w-80 p-5 bg-[#0f172a] border border-slate-700 rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-all z-[400] pointer-events-none scale-95 group-hover:scale-100 origin-top-left backdrop-blur-xl">
-                                         <div className="flex items-center gap-2 mb-3 border-b border-white/5 pb-2">
-                                            <div className="p-1.5 bg-amber-500/10 text-amber-500 rounded-lg"><Activity size={12} /></div>
-                                            <p className="text-[11px] font-black uppercase text-amber-500 tracking-widest">Pipeline Data Structure</p>
-                                         </div>
-                                         <p className="text-[10px] text-slate-400 uppercase leading-relaxed font-bold">
-                                            The script must return a <span className="text-white">DataFrame</span> or <span className="text-white">List of Dicts</span> containing these mandatory keys:
-                                         </p>
-                                         <div className="mt-4 grid grid-cols-2 gap-3">
-                                            <div className="space-y-1">
-                                               <p className="text-[8px] font-black text-blue-400 uppercase tracking-tighter">• id (Key)</p>
-                                               <p className="text-[7px] text-slate-500 uppercase">Unique external ID</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                               <p className="text-[8px] font-black text-blue-400 uppercase tracking-tighter">• username</p>
-                                               <p className="text-[7px] text-slate-500 uppercase">LDAP/System ID</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                               <p className="text-[8px] font-black text-blue-400 uppercase tracking-tighter">• full_name</p>
-                                               <p className="text-[7px] text-slate-500 uppercase">Display label</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                               <p className="text-[8px] font-black text-blue-400 uppercase tracking-tighter">• email</p>
-                                               <p className="text-[7px] text-slate-500 uppercase">Contact address</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                               <p className="text-[8px] font-black text-blue-400 uppercase tracking-tighter">• department</p>
-                                               <p className="text-[7px] text-slate-500 uppercase">Entity category</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                               <p className="text-[8px] font-black text-indigo-400 uppercase tracking-tighter">• team</p>
-                                               <p className="text-[7px] text-slate-500 uppercase">Group (Optional)</p>
-                                            </div>
-                                         </div>
-                                      </div>
-                                   </div>
-                                </div>
-                                <p className="text-[9px] font-bold tracking-widest text-slate-400 uppercase mt-1">Python Script to sync users from external LDAP/AD.</p>
-                             </div>
-                             <div className="flex items-center gap-2">
-                                <button 
-                                  onClick={() => setIsSyncEditable(!isSyncEditable)}
-                                  className={`h-[32px] px-4 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${isSyncEditable ? 'bg-rose-600 text-white' : 'bg-slate-700 text-slate-300 hover:text-white'}`}
-                                >
-                                  {isSyncEditable ? "Lock Editing" : "Edit Script"}
-                                </button>
-                                <button 
-                                  onClick={() => setShowPoolHistory(true)}
-                                  className="h-[32px] px-4 bg-slate-800 text-slate-300 rounded-lg border border-white/5 hover:bg-slate-700 transition-all text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
-                                  title="View Sync History"
-                                >
-                                  <HistoryIcon size={14} /> View Sync History
-                                </button>
-                                <button 
-                                  onClick={() => poolMutation.mutate({ script: userPoolScript, preview: true })}
-                                  className="h-[32px] px-4 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20"
-                                >
-                                  <RefreshCcw size={12} className={poolMutation.isPending ? 'animate-spin' : ''} /> Generate Preview
-                                </button>
-                             </div>
-                          </div>
-                          <div className="relative group">
-                            <textarea 
-                              readOnly={!isSyncEditable}
-                              value={userPoolScript} onChange={e => setUserPoolScript(e.target.value)}
-                              className={`w-full h-48 bg-black/60 border ${isSyncEditable ? 'border-indigo-500/50' : 'border-white/5'} rounded-lg p-6 font-mono text-[11px] text-emerald-400 outline-none transition-all custom-scrollbar leading-relaxed`}
-                            />
-                          </div>
-                       </div>
-                    </motion.div>
-                 )}
-               </AnimatePresence>
 
                <AnimatePresence>
                  {isSyncPreviewOpen && syncPreviewData && (
@@ -1469,18 +1507,19 @@ result_df = get_user_pool()`)
                                     </div>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button 
+                                    <ToolbarButton 
                                         onClick={() => setIsSyncPreviewOpen(false)}
-                                        className="px-3 py-1.5 bg-slate-800 text-slate-400 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all"
+                                        className="h-8"
                                     >
                                         Abort
-                                    </button>
-                                    <button 
+                                    </ToolbarButton>
+                                    <ToolbarButton 
                                         onClick={() => poolMutation.mutate({ script: userPoolScript, preview: false })}
-                                        className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-500 transition-all shadow-lg shadow-indigo-500/20"
+                                        variant="primary"
+                                        className="h-8 shadow-lg shadow-indigo-500/20"
                                     >
-                                        Confirm & Execute
-                                    </button>
+                                        Confirm & Execute Sync
+                                    </ToolbarButton>
                                 </div>
                             </div>
                             <div className="max-h-[400px] overflow-auto custom-scrollbar">
@@ -1501,7 +1540,7 @@ result_df = get_user_pool()`)
                                                             {item.username?.slice(0,2).toUpperCase()}
                                                         </div>
                                                         <div className="flex flex-col">
-                                                            <span className="font-bold text-white uppercase">{item.full_name}</span>
+                                                            <span className="font-bold text-white">{item.full_name}</span>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -1525,64 +1564,74 @@ result_df = get_user_pool()`)
                  )}
                </AnimatePresence>
 
-               <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] shadow-2xl overflow-hidden">
+               <div className="rounded-lg border border-[var(--glass-border)] bg-black/20 shadow-2xl overflow-hidden backdrop-blur-sm">
                   <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="bg-black/20">
-                          <th className="p-4 text-[10px] font-bold text-slate-400 border-b border-[var(--glass-border)] sticky left-0 bg-[#0f172a] z-10 min-w-[280px]">Identity</th>
-                          <th className="p-4 text-[10px] font-bold text-slate-400 border-b border-[var(--glass-border)] min-w-[140px]">LDAP Team</th>
-                          <th className="p-4 text-[10px] font-bold text-slate-400 border-b border-[var(--glass-border)] min-w-[200px]">Assigned Groups</th>
-                          <th className="p-4 text-[10px] font-bold text-slate-400 border-b border-[var(--glass-border)] text-center">Admin Status</th>
+                        <tr className="bg-white/5">
+                          <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 sticky left-0 bg-[#0c121e] z-10 min-w-[280px] uppercase tracking-widest">Identity</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 min-w-[140px] uppercase tracking-widest">LDAP Department</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 min-w-[140px] uppercase tracking-widest">LDAP Team</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 min-w-[200px] uppercase tracking-widest">Assigned Groups</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 text-center uppercase tracking-widest">Admin Status</th>
                           {allViews.map(view => (
-                            <th key={view} className="p-2 text-[8px] font-bold text-slate-500 border-b border-[var(--glass-border)] text-center min-w-[60px] hover:text-blue-400 transition-colors uppercase tracking-tighter">
+                            <th key={view} className="p-2 text-[8px] font-bold text-slate-600 border-b border-white/5 text-center min-w-[60px] hover:text-blue-400 transition-colors uppercase tracking-tighter">
                               {view}
                             </th>
                           ))}
-                          <th className="p-4 text-[10px] font-bold text-slate-400 border-b border-[var(--glass-border)] text-center">Action</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 text-center uppercase tracking-widest">Action</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredOperators?.map((op: any) => {
                           const assignedGroups = teams?.filter((t: any) => op.team_id === t.id || (op.teams || []).includes(t.name)) || []
-                          const firstName = assignedGroups[0]?.name || 'No Group'
+                          const firstName = assignedGroups[0]?.name || 'No Groups'
                           const remainingCount = assignedGroups.length > 1 ? assignedGroups.length - 1 : 0
 
                           return (
-                          <tr key={op.id} className={`hover:bg-white/5 transition-colors border-b border-[var(--glass-border)] last:border-0 group ${op.username === userProfile?.username ? 'bg-blue-600/[0.03]' : ''}`}>
-                            <td className="p-4 sticky left-0 bg-[#0f172a]/95 backdrop-blur-sm z-10 border-r border-white/5">
+                          <tr key={op.id} className={`hover:bg-white/5 transition-colors border-b border-white/5 last:border-0 group ${op.username === userProfile?.username ? 'bg-blue-600/[0.03]' : ''}`}>
+                            <td className="p-4 sticky left-0 bg-[#0c121e]/95 backdrop-blur-sm z-10 border-r border-white/5">
                               <div className="flex items-center gap-3">
-                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-[11px] shadow-lg ${op.is_admin ? 'bg-blue-600 text-white shadow-blue-500/20' : 'bg-slate-800 text-slate-400'}`}>
+                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-[11px] shadow-lg transition-all ${op.is_admin ? 'bg-blue-600 text-white shadow-blue-500/20' : 'bg-slate-800 text-slate-400 border border-white/5'}`}>
                                   {op.username?.slice(0,2).toUpperCase()}
                                 </div>
                                 <div className="flex flex-col min-w-0">
-                                  <p className="text-[11px] font-bold text-[var(--text-primary)] leading-none truncate flex items-center gap-1.5">
+                                  <p className="text-[11px] font-bold text-white leading-none truncate flex items-center gap-1.5">
                                     {op.full_name}
-                                    {op.username === userProfile?.username && <span className="text-[7px] bg-blue-500 text-white px-1.5 py-0.5 rounded-lg font-black uppercase">You</span>}
+                                    {op.username === userProfile?.username && <span className="text-[7px] bg-blue-500 text-white px-1.5 py-0.5 rounded-lg font-black uppercase tracking-normal">You</span>}
                                   </p>
-                                  <p className="text-[8px] font-bold text-slate-500 mt-1 tracking-tighter truncate">ID: {op.external_id}</p>
+                                  <p className="text-[8px] font-bold text-slate-500 mt-1 tracking-tighter truncate opacity-60">ID: {op.external_id} • {op.username}</p>
                                 </div>
                               </div>
                             </td>
                             <td className="p-4">
-                              <span className="text-[10px] font-bold text-slate-300">{op.department || 'Unknown'}</span>
+                              <span className="text-[10px] font-bold text-slate-300">{op.department || '—'}</span>
                             </td>
                             <td className="p-4">
-                               <div className="group/tooltip relative">
-                                  <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-bold text-slate-300">{op.team || '—'}</span>
+                            </td>
+                            <td className="p-4">
+                               <div className="group/tooltip relative inline-block">
+                                  <div className="flex items-center gap-1.5 px-2 py-1 bg-white/5 border border-white/5 rounded-lg hover:border-white/10 transition-colors">
                                     <span className="text-[10px] font-bold text-slate-300">{firstName}</span>
                                     {remainingCount > 0 && (
-                                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-[8px] font-black text-blue-400 cursor-help">
+                                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-[8px] font-black text-blue-400">
                                         <Plus size={8} /> {remainingCount}
                                       </div>
                                     )}
                                   </div>
                                   {assignedGroups.length > 0 && (
-                                    <div className="absolute top-full mt-2 left-0 p-3 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl opacity-0 group-hover/tooltip:opacity-100 transition-all z-[100] pointer-events-none min-w-[140px]">
-                                      <p className="text-[8px] font-black uppercase text-slate-500 mb-2 tracking-widest border-b border-white/5 pb-1">All Groups</p>
+                                    <div className="absolute top-full mt-2 left-0 p-3 bg-[#0f172a] border border-slate-700 rounded-lg shadow-2xl opacity-0 group-hover/tooltip:opacity-100 transition-all z-[100] pointer-events-none min-w-[140px] scale-95 group-hover/tooltip:scale-100 origin-top-left backdrop-blur-xl">
+                                      <div className="flex items-center gap-2 mb-2 border-b border-white/5 pb-1.5">
+                                         <Users size={10} className="text-blue-400" />
+                                         <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest">Active Membership</p>
+                                      </div>
                                       <div className="space-y-1.5">
                                         {assignedGroups.map((g: any) => (
-                                          <p key={g.id} className="text-[9px] font-bold text-slate-300 truncate">• {g.name}</p>
+                                          <div key={g.id} className="flex items-center gap-2">
+                                             <div className="w-1 h-1 rounded-full bg-blue-500" />
+                                             <p className="text-[9px] font-bold text-slate-300 truncate">{g.name}</p>
+                                          </div>
                                         ))}
                                       </div>
                                     </div>
@@ -1982,23 +2031,23 @@ result_df = get_user_pool()`)
 
           {topTab === 'groups' && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 pt-2">
-              <div className="flex justify-between items-end">
+              <div className="flex justify-between items-center mb-2">
                 <div>
-                   <h2 className="text-xl font-black uppercase tracking-tighter text-white italic">Group <span className="text-blue-500">Architecture</span></h2>
+                   <h2 className="text-xl font-black uppercase tracking-tighter text-white italic">Group <span className="text-blue-500">Registry</span></h2>
                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 mt-1">Entity relationship mapping & access containment</p>
                 </div>
                 <div className="flex gap-2">
-                   <div className="flex items-center bg-black/20 border border-white/10 rounded-lg overflow-hidden h-[38px]">
+                   <div className="flex items-center bg-black/20 border border-white/10 rounded-lg overflow-hidden h-10">
                        <input 
                          value={newTeamName}
                          onChange={e => setNewTeamName(e.target.value)}
-                         placeholder="New Group ID..."
-                         className="bg-transparent px-3 py-2 text-[10px] font-bold outline-none w-48 placeholder:text-slate-600"
+                         placeholder="New Group Name..."
+                         className="bg-transparent px-4 py-2 text-[11px] font-bold outline-none w-56 placeholder:text-slate-600 text-white h-full"
                          onKeyDown={e => e.key === 'Enter' && teamMutation.mutate({ name: newTeamName, source: 'manual' })}
                        />
                        <button 
                          onClick={() => teamMutation.mutate({ name: newTeamName, source: 'manual' })}
-                         className="h-full px-4 bg-blue-600/10 border-l border-white/10 text-blue-400 hover:bg-blue-600/20 transition-all font-bold text-[10px] tracking-widest"
+                         className="h-full px-5 bg-blue-600/10 border-l border-white/10 text-blue-400 hover:bg-blue-600/20 transition-all font-black text-[10px] tracking-widest uppercase"
                        >
                          Initialize
                        </button>
@@ -2006,10 +2055,13 @@ result_df = get_user_pool()`)
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                 {/* Group List */}
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                 {/* Group Navigation Sidebar */}
                  <div className="space-y-4">
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Active Groups</p>
+                    <div className="px-1 flex items-center justify-between">
+                       <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Available Vectors</p>
+                       <span className="text-[8px] font-bold text-slate-600">{teams?.length || 0} Total</span>
+                    </div>
                     <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                        {teams?.map((team: any) => (
                          <button
@@ -2022,27 +2074,28 @@ result_df = get_user_pool()`)
                            }`}
                          >
                            <div className="flex items-center gap-3">
-                              <div className={`p-2 rounded-lg ${selectedTeamId === team.id ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-800 text-slate-500'}`}>
+                              <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${selectedTeamId === team.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-800 text-slate-500 border border-white/5'}`}>
                                  <Users size={16} />
                               </div>
                               <div>
-                                 <p className={`text-[11px] font-bold tracking-widest ${selectedTeamId === team.id ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>{team.name}</p>
-                                 <p className="text-[8px] font-bold text-slate-600 mt-1">ID: {team.id}</p>
+                                 <p className={`text-[11px] font-bold tracking-tight ${selectedTeamId === team.id ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>{team.name}</p>
+                                 <p className="text-[8px] font-bold text-slate-600 mt-1 tracking-widest">v{team.id}</p>
                               </div>
                            </div>
-                           <ChevronRight size={14} className={`transition-transform ${selectedTeamId === team.id ? 'text-blue-400 translate-x-1' : 'text-slate-700'}`} />
+                           <ChevronRight size={14} className={`transition-transform ${selectedTeamId === team.id ? 'text-blue-400 translate-x-1' : 'text-slate-800'}`} />
                          </button>
                        ))}
                     </div>
                  </div>
 
                  {/* Group Detail & User Management */}
-                 <div className="lg:col-span-2">
+                 <div className="lg:col-span-3">
                     <AnimatePresence mode="wait">
                        {selectedTeamId ? (
                          <motion.div key={selectedTeamId} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-                            <div className={`p-8 rounded-lg border border-white/5 bg-black/40 backdrop-blur-xl relative overflow-hidden shadow-2xl`}>
-                               <div className="absolute top-0 right-0 p-4">
+                            <div className="p-8 rounded-lg border border-white/5 bg-black/40 backdrop-blur-xl relative overflow-hidden shadow-2xl">
+                               {/* Destructive Action */}
+                               <div className="absolute top-4 right-4">
                                   <SameButtonConfirm 
                                     danger
                                     onConfirm={() => deleteTeamMutation.mutate(selectedTeamId)}
@@ -2050,21 +2103,34 @@ result_df = get_user_pool()`)
                                     label="Destroy Group"
                                   />
                                </div>
-                               <div className="flex items-center gap-4 mb-6">
-                                  <div className="p-4 bg-blue-600/10 rounded-lg text-blue-400 border border-blue-500/20"><Users size={32} /></div>
+
+                               {/* Header Section */}
+                               <div className="flex items-center gap-6 mb-8">
+                                  <div className="p-5 bg-blue-600/10 rounded-xl text-blue-400 border border-blue-500/20 shadow-[0_0_30px_rgba(59,130,246,0.1)]"><Users size={32} /></div>
                                   <div>
-                                     <h3 className="text-2xl font-black tracking-tighter text-white italic">{teams?.find((t: any) => t.id === selectedTeamId)?.name}</h3>
-                                     <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 mt-1">Registry Identity: {selectedTeamId}</p>
+                                     <h3 className="text-2xl font-black tracking-tighter text-white italic leading-none">{teams?.find((t: any) => t.id === selectedTeamId)?.name}</h3>
+                                     <div className="flex items-center gap-3 mt-3">
+                                        <div className="px-2 py-0.5 bg-white/5 border border-white/5 rounded-lg text-[9px] font-black text-slate-500 uppercase tracking-widest">UID: {selectedTeamId}</div>
+                                        <div className="w-1 h-1 rounded-full bg-slate-700" />
+                                        <div className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-[9px] font-black text-blue-400 uppercase tracking-widest">
+                                           {operators?.filter((op: any) => op.team_id === selectedTeamId || (op.teams || []).includes(teams?.find((t: any) => t.id === selectedTeamId)?.name)).length} Active Members
+                                        </div>
+                                     </div>
                                   </div>
                                </div>
 
-                               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-white/5">
+                               {/* Main Content Grid */}
+                               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-white/5">
+                                  {/* Membership Column */}
                                   <div className="space-y-4">
-                                     <div className="flex justify-between items-center">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><UserPlus size={14} className="text-emerald-500" /> Membership Registry</p>
-                                        <span className="text-[8px] font-bold text-slate-600">TOGGLE ACCESS</span>
+                                     <div className="flex justify-between items-center px-1">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                           <UserPlus size={14} className="text-blue-400" /> 
+                                           Membership Registry
+                                        </p>
+                                        <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Toggle Access</span>
                                      </div>
-                                     <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                     <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar p-1">
                                         {operators?.map((op: any) => {
                                           const isMember = op.team_id === selectedTeamId || (op.teams || []).includes(teams?.find((t: any) => t.id === selectedTeamId)?.name)
                                           return (
@@ -2091,14 +2157,14 @@ result_df = get_user_pool()`)
                                                   teamSource: 'manual_override'
                                                 })
                                               }}
-                                              className={`w-full p-3 rounded-lg border transition-all flex items-center justify-between group ${
+                                              className={`w-full p-3 rounded-lg border transition-all flex items-center justify-between group h-12 ${
                                                 isMember 
-                                                  ? 'bg-emerald-600/5 border-emerald-500/30' 
-                                                  : 'bg-black/20 border-white/5 hover:border-white/10'
+                                                  ? 'bg-blue-600/10 border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.05)]' 
+                                                  : 'bg-black/20 border-white/5 hover:border-white/10 hover:bg-white/5'
                                               }`}
                                             >
                                               <div className="flex items-center gap-3">
-                                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] ${isMember ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] transition-all ${isMember ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-600 border border-white/5'}`}>
                                                     {op.username?.slice(0,2).toUpperCase()}
                                                  </div>
                                                  <div className="text-left">
@@ -2251,54 +2317,23 @@ result_df = get_user_pool()`)
         </AnimatePresence>
       </div>
 
-      {/* History Slide-over */}
-      <AnimatePresence>
-        {historyField && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setHistoryField(null)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]" />
-            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="fixed top-0 right-0 bottom-0 w-[450px] bg-[var(--bg-primary)] border-l border-[var(--glass-border)] shadow-2xl z-[101] flex flex-col p-8">
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg"><HistoryIcon size={20} /></div>
-                  <div>
-                    <h3 className="text-sm font-black uppercase text-[var(--text-primary)] tracking-widest leading-none">Parameter History</h3>
-                    <p className="text-[9px] font-bold text-slate-500 uppercase mt-1 tracking-tighter">{historyField}</p>
-                  </div>
-                </div>
-                <button onClick={() => setHistoryField(null)} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-all"><X size={20} /></button>
-              </div>
-              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
-                {envHistory?.map((entry: any, i: number) => (
-                  <div key={i} className="p-5 bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-lg relative group hover:border-blue-500/30 transition-all">
-                    <div className="flex justify-between items-start mb-3">
-                       <span className="text-[9px] font-black uppercase text-blue-400 tracking-[0.2em]">{entry.timestamp}</span>
-                       <button onClick={() => { setLocalEnv({...localEnv, [historyField]: entry.old_value}); setHistoryField(null); showWorkspaceToast("Staged for revert. Save to apply."); }} className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] font-black uppercase text-amber-500 hover:underline">Stage Revert</button>
-                    </div>
-                    <div className="space-y-3">
-                       <div className="flex flex-col">
-                            <span className="text-[7px] font-black uppercase text-rose-500/60 mb-1 ml-1">Previous</span>
-                            <div className="p-3 bg-rose-500/5 rounded-lg border border-rose-500/10 text-[10px] font-mono text-rose-400/70 line-through truncate">{entry.old_value}</div>
-                       </div>
-                       <div className="flex flex-col">
-                            <span className="text-[7px] font-black uppercase text-emerald-500/60 mb-1 ml-1">Changed To</span>
-                            <div className="p-3 bg-emerald-500/5 rounded-lg border border-emerald-500/10 text-[10px] font-mono text-emerald-400 truncate">{entry.new_value}</div>
-                       </div>
-                    </div>
-                    <div className="mt-4 pt-3 border-t border-white/5 flex items-center gap-2">
-                       <div className="w-5 h-5 rounded-lg bg-blue-600/20 flex items-center justify-center text-[9px] text-blue-400 font-black uppercase">{entry.user?.[0] || 'O'}</div>
-                       <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Action by: {entry.user || 'SYSTEM_OP'}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {/* History Modal for Parameters */}
+      {historyField && (
+        <ConfigHistoryModal 
+          field={historyField} 
+          versions={envHistory || []} 
+          onClose={() => setHistoryField(null)} 
+          onRevert={(val: string) => {
+            setLocalEnv({...localEnv, [historyField]: val});
+            setHistoryField(null);
+            showWorkspaceToast("Parameter staged for revert. Apply changes to persist.");
+          }}
+        />
+      )}
 
-      {/* Sync Snapshot Slide-over */}
-      {showPoolHistory && (
-         <PoolHistoryModal versions={poolVersions || []} onClose={() => setShowPoolHistory(false)} />
+      {/* Permission Registry History */}
+      {showPermissionHistory && (
+         <PermissionHistoryModal versions={poolVersions || []} onClose={() => setShowPermissionHistory(false)} />
       )}
 
       {/* Snapshot Data Modal */}
@@ -2306,18 +2341,18 @@ result_df = get_user_pool()`)
         {viewVersionData && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setViewVersionData(null)} className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200]" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[80vh] bg-[var(--panel-bg)] border border-[var(--glass-border)] rounded-lg shadow-2xl z-[201] flex flex-col overflow-hidden">
-                <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[80vh] bg-[#0c121e] border border-white/10 rounded-lg shadow-2xl z-[201] flex flex-col overflow-hidden">
+                <div className="p-6 border-b border-white/5 flex items-center justify-between">
                     <div>
-                        <h3 className="text-xl font-black uppercase text-[var(--text-primary)] tracking-widest">Snapshot Raw Data</h3>
-                        <p className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mt-1">Direct view of pulled user pool entities</p>
+                        <h3 className="text-xl font-black uppercase text-white tracking-widest italic">Snapshot Trace</h3>
+                        <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1">Inspection of synchronized identity records</p>
                     </div>
-                    <button onClick={() => setViewVersionData(null)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-all"><X size={24} /></button>
+                    <button onClick={() => setViewVersionData(null)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-all"><X size={20} /></button>
                 </div>
-                <div className="flex-1 overflow-auto custom-scrollbar p-6">
+                <div className="flex-1 overflow-auto custom-scrollbar p-6 bg-black/20">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-black/40">
+                            <tr className="bg-white/5">
                                 {viewVersionData[0] && Object.keys(viewVersionData[0]).map(key => (
                                     <th key={key} className="p-4 text-[9px] font-black uppercase text-blue-400 tracking-widest border-b border-white/5">{key}</th>
                                 ))}
@@ -2325,9 +2360,9 @@ result_df = get_user_pool()`)
                         </thead>
                         <tbody>
                             {viewVersionData.map((row: any, i: number) => (
-                                <tr key={i} className="hover:bg-white/5 border-b border-white/5">
+                                <tr key={i} className="hover:bg-white/5 border-b border-white/5 transition-colors">
                                     {Object.values(row).map((val: any, j: number) => (
-                                        <td key={j} className="p-4 text-[10px] font-mono text-slate-300">
+                                        <td key={j} className="p-4 text-[10px] font-bold text-slate-300">
                                             {typeof val === 'object' ? JSON.stringify(val) : String(val)}
                                         </td>
                                     ))}
@@ -2346,27 +2381,28 @@ result_df = get_user_pool()`)
         {viewVersionScript && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setViewVersionScript(null)} className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200]" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] bg-[var(--panel-bg)] border border-[var(--glass-border)] rounded-lg shadow-2xl z-[201] flex flex-col overflow-hidden">
-                <div className="p-6 border-b border-[var(--glass-border)] flex items-center justify-between">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] bg-[#0c121e] border border-white/10 rounded-lg shadow-2xl z-[201] flex flex-col overflow-hidden">
+                <div className="p-6 border-b border-white/5 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <FileCode className="text-amber-500" size={24} />
                         <div>
-                            <h3 className="text-xl font-black uppercase text-[var(--text-primary)] tracking-widest">Historical Sync Logic</h3>
-                            <p className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mt-1">The script used for this specific version</p>
+                            <h3 className="text-xl font-black uppercase text-white tracking-widest italic">Historical Logic</h3>
+                            <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1">Verification of previous pipeline instructions</p>
                         </div>
                     </div>
                     <div className="flex gap-2">
-                        <button 
+                        <ToolbarButton 
                             onClick={() => { setUserPoolScript(viewVersionScript); setViewVersionScript(null); setShowPoolLogic(true); showWorkspaceToast("Script restored to editor"); }}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all"
+                            variant="primary"
+                            className="h-9"
                         >
                             Restore to Editor
-                        </button>
-                        <button onClick={() => setViewVersionScript(null)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-all"><X size={24} /></button>
+                        </ToolbarButton>
+                        <button onClick={() => setViewVersionScript(null)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-all"><X size={20} /></button>
                     </div>
                 </div>
-                <div className="flex-1 p-6 bg-black/40">
-                    <pre className="text-[11px] font-mono text-emerald-400 whitespace-pre-wrap overflow-auto h-full custom-scrollbar">{viewVersionScript}</pre>
+                <div className="flex-1 p-6 bg-black/40 font-mono text-[11px] text-emerald-400 overflow-auto custom-scrollbar leading-relaxed">
+                    {viewVersionScript}
                 </div>
             </motion.div>
           </>
@@ -2374,5 +2410,169 @@ result_df = get_user_pool()`)
       </AnimatePresence>
 
     </div>
+  )
+}
+
+function ConfigHistoryModal({ field, versions, onClose, onRevert }: { field: string, versions: any[], onClose: () => void, onRevert: (val: string) => void }) {
+  const [isMaximized, setIsMaximized] = useState(false)
+  const [selectedIndices, setSelectedIndices] = useState<number[]>([0])
+
+  const toggleSelection = (idx: number) => {
+    if (selectedIndices.includes(idx)) {
+       if (selectedIndices.length > 1) {
+          setSelectedIndices(selectedIndices.filter(i => i !== idx))
+       }
+    } else {
+       if (selectedIndices.length === 2) {
+          setSelectedIndices([selectedIndices[1], idx])
+       } else {
+          setSelectedIndices([...selectedIndices, idx].sort((a, b) => a - b))
+       }
+    }
+  }
+
+  const indexedVersions = (versions || []).map((v, i) => ({
+    ...v,
+    v_num: versions.length - i,
+    label: v.timestamp
+  }))
+
+  const newer = indexedVersions?.[Math.min(...selectedIndices)]
+  const older = selectedIndices.length > 1 
+    ? indexedVersions?.[Math.max(...selectedIndices)] 
+    : (selectedIndices[0] + 1 < indexedVersions.length ? indexedVersions[selectedIndices[0] + 1] : null)
+
+  return (
+    <WorkspaceModal
+      isOpen={true}
+      onClose={onClose}
+      size="workspace"
+      isMaximized={isMaximized}
+      onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+      title="Parameter Revision History"
+      subtitle={`Auditing state vectors for ${field}`}
+      icon={<HistoryIcon size={20} />}
+      footerRight={
+        <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
+      }
+    >
+      <WorkspaceHistoryShell
+          header={
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                 <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                    <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                    <span className="text-[10px] font-black text-white">v{newer?.v_num}</span>
+                    <span className="text-[9px] font-bold text-slate-400">{newer?.label}</span>
+                 </div>
+                 {older && (
+                   <>
+                     <ChevronRight size={12} className="text-slate-600" />
+                     <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 border border-white/5 rounded-lg">
+                        <div className="w-2 h-2 rounded-full bg-slate-600" />
+                        <span className="text-[10px] font-black text-slate-300">v{older.v_num}</span>
+                        <span className="text-[9px] font-bold text-slate-500">{older.label}</span>
+                     </div>
+                   </>
+                 )}
+              </div>
+            </div>
+          }
+          sidebar={
+           <div className="flex h-full flex-col min-h-0">
+              <div className="mb-4 flex items-center justify-between px-1">
+                 <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Revision Timeline</h3>
+                 <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20">{indexedVersions.length} states</span>
+              </div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
+                {indexedVersions.map((h: any, idx: number) => {
+                  const isSelected = selectedIndices.includes(idx);
+                  return (
+                    <button 
+                      key={idx}
+                      onClick={() => toggleSelection(idx)}
+                      className={`w-full p-4 rounded-lg border text-left transition-all relative group overflow-hidden ${
+                        isSelected 
+                          ? 'bg-blue-600/20 border-blue-500/40 shadow-lg shadow-blue-500/5' 
+                          : 'bg-white/5 border-white/5 hover:border-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                         <span className={`text-[11px] font-black tracking-tighter ${isSelected ? 'text-white' : 'text-blue-400'}`}>v{h.v_num}</span>
+                         <span className={`text-[8px] font-black uppercase ${isSelected ? 'text-blue-400' : 'text-slate-500'}`}>
+                            {h.timestamp?.split(' ')[1]}
+                         </span>
+                      </div>
+                      <p className={`text-[10px] font-bold leading-tight line-clamp-2 ${isSelected ? 'text-white/90' : 'text-slate-300'}`}>
+                         By: {h.user || 'System'}
+                      </p>
+                      <div className="mt-3 flex items-center justify-between">
+                         <div className="flex items-center gap-1.5">
+                            <Clock size={10} className="text-slate-600" />
+                            <span className="text-[8px] font-bold text-slate-600">{h.timestamp?.split(' ')[0]}</span>
+                         </div>
+                         <button 
+                            onClick={(e) => { e.stopPropagation(); onRevert(h.new_value); }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-[8px] font-black uppercase text-amber-500 hover:text-amber-400"
+                         >
+                            Revert to this
+                         </button>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+           </div>
+          }
+          content={
+           <>
+              <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5 backdrop-blur-md sticky top-0 z-10">
+                 <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                       <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-[12px] font-black">v{newer?.v_num}</div>
+                       <div className="w-4 h-px bg-slate-700" />
+                       <div className="w-8 h-8 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-500 text-[12px] font-black">{older ? `v${older.v_num}` : 'Ø'}</div>
+                    </div>
+                    <div>
+                       <h3 className="text-[11px] font-black text-slate-300 uppercase tracking-widest">Semantic Delta</h3>
+                       <p className="text-[9px] font-bold text-slate-600">Comparison of property states for {field}</p>
+                    </div>
+                 </div>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+                <div className="overflow-hidden rounded-lg border border-white/5 bg-black/20">
+                  <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-white/5 text-[9px] font-black uppercase text-slate-500 tracking-widest">
+                            <th className="p-4 w-1/2 text-rose-500/70">Previous (v{older?.v_num || 'Ø'})</th>
+                            <th className="p-4 w-1/2 text-emerald-500/70">Current (v{newer?.v_num})</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        <tr>
+                            <td className="p-4 align-top">
+                                <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-4">
+                                  <pre className="text-[11px] text-slate-500 line-through whitespace-pre-wrap font-mono leading-relaxed break-all">
+                                      {older ? String(older.new_value || '(empty)') : '(genesis)'}
+                                  </pre>
+                                </div>
+                            </td>
+                            <td className="p-4 align-top">
+                                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-4">
+                                  <pre className="text-[11px] text-emerald-400 whitespace-pre-wrap font-mono font-bold leading-relaxed break-all">
+                                      {newer ? String(newer.new_value || '(empty)') : '(empty)'}
+                                  </pre>
+                                </div>
+                            </td>
+                        </tr>
+                      </tbody>
+                  </table>
+                </div>
+              </div>
+           </>
+          }
+      />
+    </WorkspaceModal>
   )
 }
