@@ -149,6 +149,17 @@ class MonitoringLogicEntry(BaseModel):
     def strip_logic_text(cls, value: str) -> str:
         return value.strip()
 
+class MonitoringRecoveryDoc(BaseModel):
+    id: int
+    note: Optional[str] = None
+    added_at: Optional[datetime] = None
+
+class MonitoringRecoveryDocResponse(BaseModel):
+    id: int
+    title: str
+    note: Optional[str] = None
+    added_at: Optional[datetime] = None
+
 class MonitoringItemBase(BaseModel):
     device_id: Optional[int] = None
     category: str # Hardware, Log, Network, App, Synthetic
@@ -173,7 +184,7 @@ class MonitoringItemBase(BaseModel):
     severity: Optional[str] = "Warning"
     is_active: Optional[bool] = True
     is_deleted: Optional[bool] = False
-    recovery_docs: Optional[List[int]] = []
+    recovery_docs: List[MonitoringRecoveryDoc] = Field(default_factory=list)
     version: Optional[int] = 1
 
     @field_validator("category", "status", "title", "platform", "monitoring_url", "purpose", "impact", "notification_method", "logic", "owner_team", mode="before")
@@ -209,6 +220,7 @@ class MonitoringItemResponse(MonitoringItemBase, BaseSchema):
     device_name: Optional[str] = None
     monitored_service_names: List[str] = [] # Optional, for UI convenience
     recovery_doc_titles: List[str] = [] # For UI convenience
+    recovery_doc_details: List[MonitoringRecoveryDocResponse] = []
     owners: List[MonitoringOwnerResponse] = []
 
 class MonitoringHistoryResponse(BaseSchema):

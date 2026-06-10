@@ -949,184 +949,99 @@ async def restore_user_pool(version_id: int, db: AsyncSession = Depends(get_db))
 
 @router.get("/initialize")
 async def initialize_settings(db: AsyncSession = Depends(get_db)):
-    """Initialize system with default settings and metadata."""
+    """Initialize system with default settings and metadata. Fully idempotent."""
     from sqlalchemy.exc import IntegrityError
-    # Global Defaults list
+    
+    # 1. Global App Settings
     global_defaults = [
-        ("app_name", settings.DEFAULT_APP_NAME, "App Name", False),
-        ("org_name", settings.DEFAULT_ORG_NAME, "Organization", False),
-        ("site_id", settings.DEFAULT_SITE_ID, "Primary Site ID", False),
-        ("retention_days", "30", "Data Retention Days", False),
-        ("maintenance_mode", "false", "Maintenance Mode Status", False),
-        ("default_timezone", "UTC", "Default System Timezone", False),
-        ("dashboard_refresh_interval", "60", "Refresh Rate (s)", False),
-        ("security_level", "Standard", "Base Security Profile", False),
-        ("audit_log_level", "Full", "Audit Detail Level", False),
-        ("ui_primary_color", "#3b82f6", "Primary Branding Color", False),
-        ("ui_accent_color", "#10b981", "Accent Branding Color", False),
-        ("support_email", settings.DEFAULT_SUPPORT_EMAIL, "Admin Support Email", False),
-        ("VITE_APP_TITLE", settings.DEFAULT_UI_TITLE, "UI Title", True),
-        ("VITE_POLLING_INTERVAL", "5000", "Polling Interval (ms)", True),
-        ("VITE_ENABLE_WEBSOCKETS", "true", "Enable WebSockets", True),
-        ("VITE_THEME_DEFAULT", "nordic-frost-v1", "Default UI Theme", True),
-        ("VITE_UI_TIMEOUT", "30000", "UI Request Timeout", True),
-        ("VITE_MAX_GRID_ROWS", "100", "Max Rows in Grids", True),
-        ("PORT", "8000", "Backend Port", True),
-        ("API_ENDPOINT", "/api/v1", "API Prefix", True)
+        ("app_name", settings.DEFAULT_APP_NAME, "App Name", False, "AppGlobal"),
+        ("org_name", settings.DEFAULT_ORG_NAME, "Organization", False, "AppGlobal"),
+        ("site_id", settings.DEFAULT_SITE_ID, "Primary Site ID", False, "AppGlobal"),
+        ("retention_days", "30", "Data Retention Days", False, "Infrastructure"),
+        ("maintenance_mode", "false", "Maintenance Mode Status", False, "Infrastructure"),
+        ("default_timezone", "UTC", "Default System Timezone", False, "AppGlobal"),
+        ("dashboard_refresh_interval", "60", "Refresh Rate (s)", False, "UI"),
+        ("security_level", "Standard", "Base Security Profile", False, "Security"),
+        ("audit_log_level", "Full", "Audit Detail Level", False, "Security"),
+        ("ui_primary_color", "#3b82f6", "Primary Branding Color", False, "UI"),
+        ("ui_accent_color", "#10b981", "Accent Branding Color", False, "UI"),
+        ("support_email", settings.DEFAULT_SUPPORT_EMAIL, "Admin Support Email", False, "AppGlobal"),
+        ("VITE_APP_TITLE", settings.DEFAULT_UI_TITLE, "UI Title", True, "UI"),
+        ("VITE_POLLING_INTERVAL", "5000", "Polling Interval (ms)", True, "UI"),
+        ("VITE_ENABLE_WEBSOCKETS", "true", "Enable WebSockets", True, "UI"),
+        ("VITE_THEME_DEFAULT", "nordic-frost-v1", "Default UI Theme", True, "UI"),
+        ("VITE_UI_TIMEOUT", "30000", "UI Request Timeout", True, "UI"),
+        ("VITE_MAX_GRID_ROWS", "100", "Max Rows in Grids", True, "UI"),
+        ("PORT", str(settings.PORT), "Backend Port", True, "Infrastructure"),
+        ("API_ENDPOINT", "/api/v1", "API Prefix", True, "Infrastructure")
     ]
 
-    # 1. Idempotent check for GlobalSettings
-    for key, val, desc, public in global_defaults:
+    for key, val, desc, public, cat in global_defaults:
         res = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.key == key))
         if not res.scalar_one_or_none():
-            try:
-                db.add(models.GlobalSetting(key=key, value=val, category="AppGlobal", description=desc, is_public=public))
-                await db.flush() # Flush each one to catch conflicts early
-            except IntegrityError:
-                await db.rollback() # If already exists due to race, just skip
-                continue
+            db.add(models.GlobalSetting(key=key, value=val, category=cat, description=desc, is_public=public))
     
-    # 2. Idempotent check for SettingOptions (Metadata)
-    await db.execute(delete(models.SettingOption).where(models.SettingOption.category.in_(LOCKED_MONITORING_OPTION_CATEGORIES)))
-    res_opt = await db.execute(select(models.SettingOption))
-    if not res_opt.scalars().first():
-        # Main initialization for first run
-        defaults = [
-            # Logical Systems
-            ("LogicalSystem", "SAP ERP", "Enterprise Resource Planning"),
-            ("LogicalSystem", "HR-Core", "Human Resources Core System"),
-            ("LogicalSystem", "Sales-B2B", "B2B Sales Portal"),
-            ("LogicalSystem", "IT-Infra", "IT Infrastructure"),
-            ("LogicalSystem", "DevOps", "DevOps Platform"),
-            # Device Types
-            ("DeviceType", "Physical", "Bare metal hardware"),
-            ("DeviceType", "Virtual", "Virtual machine or instance"),
-            ("DeviceType", "Storage", "Storage array or appliance"),
-            ("DeviceType", "Switch", "Network switch or router"),
-            ("DeviceType", "Firewall", "Network firewall appliance"),
-            ("DeviceType", "Load Balancer", "Load balancer appliance"),
-            # Operational Status
-            ("Status", "Planned", "Scheduled for deployment"),
-            ("Status", "Active", "Operational and healthy"),
-            ("Status", "Maintenance", "Undergoing scheduled maintenance"),
-            ("Status", "Standby", "Powered on, not serving traffic"),
-            ("Status", "Offline", "Powered off or unreachable"),
-            ("Status", "Decommissioned", "Retired from service"),
-            # Environments
-            ("Environment", "Production", "Live user traffic"),
-            ("Environment", "Staging", "Pre-production staging"),
-            ("Environment", "QA", "Quality Assurance and Testing"),
-            ("Environment", "Dev", "Development and Staging"),
-            ("Environment", "DR", "Disaster Recovery Node"),
-            ("Environment", "Lab", "Lab or sandbox environment"),
-            # Business Units
-            ("BusinessUnit", "Engineering", "Engineering & R&D"),
-            ("BusinessUnit", "Operations", "IT Operations"),
-            ("BusinessUnit", "Finance", "Finance & Accounting"),
-            ("BusinessUnit", "HR", "Human Resources"),
-            ("BusinessUnit", "Sales", "Sales & Business Development"),
-            ("BusinessUnit", "Security", "Information Security"),
-            # Semiconductor Impact Categories
-            ("ImpactCategory", "Wafer Loss / Scrap", "Direct production material loss"),
-            ("ImpactCategory", "Yield Degradation", "Reduced output quality"),
-            ("ImpactCategory", "Tool Blockage (Down)", "Manufacturing equipment stop"),
-            ("ImpactCategory", "Throughput Slow-down", "Bottleneck in production flow"),
-            ("ImpactCategory", "MES Connectivity Gap", "Data loss between factory and server"),
-            ("ImpactCategory", "Recipe Desync", "Incorrect process parameters"),
-            ("ImpactCategory", "SPC Violation", "Statistical Process Control outlier"),
-            ("ImpactCategory", "Cleanroom Violation", "Environmental spec breach"),
-            ("ImpactCategory", "Robot / OHT Stalled", "Automated material handling failure"),
-            ("ImpactCategory", "Data Integrity Risk", "Traceability or history data at risk"),
-            ("MonitoringCategory", "Infrastructure", "Base host, VM, and platform health checks"),
-            ("MonitoringCategory", "Application", "App-tier, API, and business transaction checks"),
-            ("MonitoringCategory", "Database", "Database performance and integrity checks"),
-            ("MonitoringCategory", "Network", "Network reachability and traffic checks"),
-            ("MonitoringCategory", "Security", "Authentication and threat-detection checks"),
-            ("MonitoringPlatform", "Zabbix", "Managed monitor defined in Zabbix"),
-            ("MonitoringPlatform", "Prometheus", "Managed monitor defined in Prometheus"),
-            ("MonitoringPlatform", "Datadog", "Managed monitor defined in Datadog"),
-            ("MonitoringPlatform", "Grafana", "Managed monitor defined in Grafana"),
-            ("MonitoringPlatform", "PagerDuty", "Managed monitor defined in PagerDuty"),
-            ("MonitoringTeam", "Operations", "Primary operations ownership"),
-            ("MonitoringTeam", "SRE", "Site reliability ownership"),
-            ("MonitoringTeam", "Security", "Security response ownership"),
-        ]
-        for cat, val, desc in defaults:
-            db.add(models.SettingOption(category=cat, label=val, value=val, description=desc))
-            
-        # Add Vendor specific enums
-        vendor_defaults = [
-            ("VendorDeviceType", "PC", "Personal Computer"),
-            ("VendorDeviceType", "VDI", "Virtual Desktop Infrastructure"),
-            ("VendorDeviceType", "Laptop", "Portable Computer"),
-            ("VendorDeviceType", "Workstation", "High-performance Computer"),
-            ("VendorCountry", "South Korea", "Republic of Korea"),
-            ("VendorCountry", "USA", "United States of America"),
-            ("VendorCountry", "Taiwan", "Taiwan"),
-            ("VendorCountry", "Germany", "Germany"),
-            ("VendorCountry", "Japan", "Japan"),
-        ]
-        for cat, val, desc in vendor_defaults:
-            # Check if exists first to be safe
-            res = await db.execute(select(models.SettingOption).filter(models.SettingOption.category == cat, models.SettingOption.value == val))
-            if not res.scalar_one_or_none():
-                try:
-                    db.add(models.SettingOption(category=cat, label=val, value=val, description=desc))
-                    await db.flush()
-                except IntegrityError:
-                    await db.rollback()
-                    continue
-
-        service_types = [
-            ("Database", ["Engine", "Port", "DBName", "Collation", "StorageType", "ReplicaMode"]),
-            ("Web Server", ["ServerType", "Port", "RootPath", "SSLExpiry", "AppPool", "Bindings"]),
-            ("Container", ["Runtime", "Image", "Tag", "Namespace", "CPURequest", "MemRequest"]),
-            ("Middleware", ["Vendor", "Instance", "QueueDepth", "JVMHeap", "JMXPort"]),
-            ("Message Queue", ["Engine", "VHost", "Port", "ClusterMode", "Persistence"]),
-            ("Cache", ["Engine", "Port", "MemoryLimit", "EvictionPolicy", "Clustered"]),
-            ("OS", ["Distribution", "Kernel", "Architecture", "Patch Level", "EOL Date"]),
-            ("Vendor Software", ["Vendor", "Support Contact", "Support Level", "Install Path", "License Tier"]),
-            ("Internal App", ["Repository", "Framework", "Primary Dev", "CI/CD Pipeline", "Build Version"]),
-            ("External App", ["Vendor Support URL", "Account Manager", "Support Tier", "Installation Manual", "Update Frequency"])
-        ]
-        for val, keys in service_types:
-            db.add(models.SettingOption(category="ServiceType", label=val, value=val, metadata_keys=keys))
-
-        # Hardware Port Templates (Model-based)
-        # Format in metadata_keys: "PortName:PortType[:Category]"
-        hardware_profiles = [
-            ("Dell PowerEdge R740", ["eth0:RJ45", "eth1:RJ45", "eth2:RJ45", "eth3:RJ45", "idrac:RJ45:Management"]),
-            ("Cisco C9300-48T", [f"Gi1/0/{i}:RJ45" for i in range(1, 49)] + [f"Te1/1/{i}:SFP+" for i in range(1, 5)]),
-            ("Generic 1U Server", ["eth0:RJ45", "eth1:RJ45", "mgmt0:RJ45:Management"])
-        ]
-        for val, keys in hardware_profiles:
-            db.add(models.SettingOption(category="HardwareProfile", label=val, value=val, metadata_keys=keys))
-
-    monitoring_defaults = [
-        ("MonitoringCategory", "Infrastructure", "Base host, VM, and platform health checks", None),
-        ("MonitoringCategory", "Application", "App-tier, API, and business transaction checks", None),
-        ("MonitoringCategory", "Database", "Database performance and integrity checks", None),
-        ("MonitoringCategory", "Network", "Network reachability and traffic checks", None),
-        ("MonitoringCategory", "Security", "Authentication and threat-detection checks", None),
-        ("MonitoringPlatform", "Zabbix", "Managed monitor defined in Zabbix", None),
-        ("MonitoringPlatform", "Prometheus", "Managed monitor defined in Prometheus", None),
-        ("MonitoringPlatform", "Datadog", "Managed monitor defined in Datadog", None),
-        ("MonitoringPlatform", "Grafana", "Managed monitor defined in Grafana", None),
-        ("MonitoringPlatform", "PagerDuty", "Managed monitor defined in PagerDuty", None),
-        ("MonitoringTeam", "Operations", "Primary operations ownership", []),
-        ("MonitoringTeam", "SRE", "Site reliability ownership", []),
-        ("MonitoringTeam", "Security", "Security response ownership", []),
+    # 2. Enums (SettingOptions)
+    enum_defaults = [
+        # Monitoring
+        ("MonitoringCategory", "Infrastructure", "Base host, VM, and platform health checks"),
+        ("MonitoringCategory", "Application", "App-tier, API, and business transaction checks"),
+        ("MonitoringCategory", "Database", "Database performance and integrity checks"),
+        ("MonitoringCategory", "Network", "Network reachability and traffic checks"),
+        ("MonitoringCategory", "Security", "Authentication and threat-detection checks"),
+        ("MonitoringPlatform", "Zabbix", "Managed monitor defined in Zabbix"),
+        ("MonitoringPlatform", "Prometheus", "Managed monitor defined in Prometheus"),
+        ("MonitoringPlatform", "Datadog", "Managed monitor defined in Datadog"),
+        ("MonitoringPlatform", "Grafana", "Managed monitor defined in Grafana"),
+        ("MonitoringPlatform", "PagerDuty", "Managed monitor defined in PagerDuty"),
+        ("MonitoringTeam", "Operations", "Primary operations ownership"),
+        ("MonitoringTeam", "SRE", "Site reliability ownership"),
+        ("MonitoringTeam", "Security", "Security response ownership"),
+        # Core Assets
+        ("DeviceType", "Physical", "Bare metal hardware"),
+        ("DeviceType", "Virtual", "Virtual machine or instance"),
+        ("DeviceType", "Storage", "Storage array or appliance"),
+        ("DeviceType", "Switch", "Network switch or router"),
+        ("DeviceType", "Firewall", "Network firewall appliance"),
+        ("DeviceType", "Load Balancer", "Load balancer appliance"),
+        ("Status", "Planned", "Scheduled for deployment"),
+        ("Status", "Active", "Operational and healthy"),
+        ("Status", "Maintenance", "Undergoing scheduled maintenance"),
+        ("Status", "Decommissioned", "Retired from service"),
+        ("Environment", "Production", "Live user traffic"),
+        ("Environment", "Staging", "Pre-production staging"),
+        ("Environment", "QA", "Quality Assurance and Testing"),
+        ("Environment", "Dev", "Development and Staging"),
+        ("BusinessUnit", "Engineering", "Engineering & R&D"),
+        ("BusinessUnit", "Operations", "IT Operations"),
+        # Vendors
+        ("VendorDeviceType", "PC", "Personal Computer"),
+        ("VendorDeviceType", "Laptop", "Portable Computer"),
+        ("VendorCountry", "South Korea", "Republic of Korea"),
+        ("VendorCountry", "USA", "United States of America")
     ]
-    for cat, val, desc, metadata_keys in monitoring_defaults:
+
+    for cat, val, desc in enum_defaults:
         res = await db.execute(select(models.SettingOption).filter(models.SettingOption.category == cat, models.SettingOption.value == val))
         if not res.scalar_one_or_none():
-            db.add(models.SettingOption(category=cat, label=val, value=val, description=desc, metadata_keys=metadata_keys or []))
+            db.add(models.SettingOption(category=cat, label=val, value=val, description=desc))
+
+    # 3. Rich Templates (Metadata Keys)
+    service_types = [
+        ("Database", ["Engine", "Port", "DBName", "Collation", "StorageType", "ReplicaMode"]),
+        ("Web Server", ["ServerType", "Port", "RootPath", "SSLExpiry", "AppPool", "Bindings"]),
+        ("Container", ["Runtime", "Image", "Tag", "Namespace", "CPURequest", "MemRequest"]),
+        ("OS", ["Distribution", "Kernel", "Architecture", "Patch Level", "EOL Date"]),
+        ("Vendor Software", ["Vendor", "Support Contact", "Support Level", "Install Path", "License Tier"])
+    ]
+    for val, keys in service_types:
+        res = await db.execute(select(models.SettingOption).filter(models.SettingOption.category == "ServiceType", models.SettingOption.value == val))
+        if not res.scalar_one_or_none():
+            db.add(models.SettingOption(category="ServiceType", label=val, value=val, metadata_keys=keys))
 
     try:
         await db.commit()
     except IntegrityError:
         await db.rollback()
-        # If we hit a race during final commit, just return success as it's already initialized
-        pass
-        
-    return {"status": "initialized"}
+    
+    return {"status": "success", "message": "System state synchronized"}

@@ -271,6 +271,14 @@ export const SettingsStandards = () => {
                      <p className="text-[10px] font-black text-white uppercase tracking-widest">[04] Operational Surface</p>
                      <p className="text-[9px] font-bold text-slate-500 uppercase leading-relaxed">The main content area (Grid or Form) using PanelSurface tokens.</p>
                   </div>
+                  <div className="space-y-1">
+                     <p className="text-[10px] font-black text-white uppercase tracking-widest">[05] Golden Dossier</p>
+                     <p className="text-[9px] font-bold text-slate-500 uppercase leading-relaxed text-blue-400">Detailed inspection pattern. Header info moves to Modal Shell; Content uses SplitView (Sidebar for Meta/Jump, Main for Logic/Data).</p>
+                  </div>
+                  <div className="space-y-1">
+                     <p className="text-[10px] font-black text-white uppercase tracking-widest">[06] Guided BKM Intervention</p>
+                     <p className="text-[9px] font-bold text-slate-500 uppercase leading-relaxed text-amber-400">Procedure access pattern. Clicking a BKM triggers a briefing modal with operator-provided guidance notes before navigating to the Knowledge base.</p>
+                  </div>
                </div>
             </div>
             <div className="space-y-6">

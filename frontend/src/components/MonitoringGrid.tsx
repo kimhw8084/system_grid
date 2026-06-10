@@ -9,7 +9,7 @@ import {
   Activity, Plus, Search, Filter, ExternalLink, 
   Trash2, Edit2, Shield, Cpu, Database, Network, 
   Globe, Bell, Info, ChevronRight, X, Check, Save,
-  AlertCircle, Clock, Zap, Settings,
+  AlertCircle, Clock, Zap, Settings, ArrowRightLeft, Briefcase, UserCheck, Code,
   BookOpen, Eye, EyeOff, FileText, User, Users, Mail, MessageSquare, Monitor, MoreVertical,
   Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, Star, GitCompare, Undo2, List, LayoutGrid, Upload, Terminal, History as HistoryIcon, Edit2 as EditIcon
 } from 'lucide-react'
@@ -41,7 +41,6 @@ import {
   WorkspaceSectionCard,
   WorkspaceSelectField as MonitoringSelectField,
   WorkspaceSplitView,
-  WorkspaceStickyIdentityBar,
   WorkspaceValidationBanner,
   getWorkspaceModalFrameClass,
   getWorkspaceModalShellClass,
@@ -348,6 +347,12 @@ const readMonitoringUiState = () => {
   }
 }
 
+interface MonitoringRecoveryDoc {
+  id: number
+  note?: string
+  added_at?: string
+}
+
 const sanitizeMonitoringPayload = (item: any) => {
   if (!item) return item
   const next = { ...item }
@@ -357,7 +362,39 @@ const sanitizeMonitoringPayload = (item: any) => {
   delete next.is_deleted
   delete next.device_name
   delete next.recovery_doc_titles
+  delete next.recovery_doc_details
   delete next.monitored_service_names
+
+  // Deep sanitize logic_json
+  if (Array.isArray(next.logic_json)) {
+    next.logic_json = next.logic_json.map((entry: any) => ({
+      ...entry,
+      id: typeof entry.id === 'string' ? parseInt(entry.id.replace(/\D/g, '') || '0', 10) : Number(entry.id)
+    }))
+  }
+
+  // Deep sanitize owners
+  if (Array.isArray(next.owners)) {
+    next.owners = next.owners
+      .filter((o: any) => o.operator_id !== null && o.operator_id !== undefined)
+      .map((o: any) => ({
+        ...o,
+        operator_id: Number(o.operator_id)
+      }))
+  }
+
+  // Deep sanitize recovery_docs
+  if (Array.isArray(next.recovery_docs)) {
+    next.recovery_docs = next.recovery_docs.map((d: any) => {
+      if (typeof d === 'number') return { id: d }
+      return { 
+        id: Number(d.id), 
+        note: d.note || '',
+        added_at: d.added_at || null
+      }
+    })
+  }
+
   return next
 }
 
@@ -2413,7 +2450,9 @@ export default function MonitoringGrid() {
                     </button>
                     <button
                       onClick={() => {
-                        if (rowActionMenu.item.recovery_docs?.[0]) navigate(`/knowledge?id=${rowActionMenu.item.recovery_docs[0]}`)
+                        const firstDoc = rowActionMenu.item.recovery_docs?.[0]
+                        const docId = typeof firstDoc === 'object' ? firstDoc?.id : firstDoc
+                        if (docId) navigate(`/knowledge?id=${docId}`)
                         setRowActionMenu(null)
                       }}
                       disabled={!rowActionMenu.item.recovery_docs?.[0]}
@@ -2687,7 +2726,7 @@ export default function MonitoringGrid() {
             onClose={() => { setDetailItem(null); setDetailDeleteConfirm(false); }}
             onEdit={(monitor: any) => { setDetailItem(null); setEditingItem(monitor); setIsFormOpen(true); setDetailDeleteConfirm(false); }}
             onOpenHistory={(monitor: any) => { setDetailItem(null); setHistoryItem(monitor); setDetailDeleteConfirm(false); }}
-            onOpenBkm={(monitor: any) => { setDetailItem(null); setBkmPopup({ ids: monitor.recovery_docs || [], titles: monitor.recovery_doc_titles || [], monitorId: monitor.id }); setDetailDeleteConfirm(false); }}
+            onOpenBkm={(monitor: any) => { setDetailItem(null); setBkmPopup({ docs: monitor.recovery_docs || [], monitorId: monitor.id }); setDetailDeleteConfirm(false); }}
             onDelete={(monitor: any) => {
               if (!detailDeleteConfirm) {
                 setDetailDeleteConfirm(true)
@@ -2704,7 +2743,14 @@ export default function MonitoringGrid() {
         )}
         {historyItem && <MonitoringHistoryModal item={historyItem} onClose={() => setHistoryItem(null)} />}
         {recipientPopup && <RecipientsModal recipients={recipientPopup.recipients} method={recipientPopup.method} onClose={() => setRecipientPopup(null)} />}
-        {bkmPopup && <BkmListModal ids={bkmPopup.ids} titles={bkmPopup.titles} onOpenBkm={setActiveBkm} onClose={() => setBkmPopup(null)} />}
+        {bkmPopup && (
+          <BkmListModal 
+            docs={bkmPopup.docs} 
+            monitorId={bkmPopup.monitorId}
+            onOpenBkm={setActiveBkm} 
+            onClose={() => setBkmPopup(null)} 
+          />
+        )}
         {activeBkm && <BkmDetailModal bkmId={activeBkm} onClose={() => setActiveBkm(null)} />}
         {compareOpen && <CompareMonitorsModal items={compareItems} onClose={() => setCompareOpen(false)} />}
         {showBulkEditModal && (
@@ -2850,19 +2896,13 @@ function CompareMonitorsModal({ items, onClose }: any) {
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
       title="Compare Monitors"
-      subtitle="Side-by-side analysis of configuration vectors."
+      subtitle={`Temporal Variance Analysis · Comparing ${items.length} monitoring states for semantic drift`}
       icon={<GitCompare size={20} />}
       footerRight={
         <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
       }
     >
       <WorkspaceCompareShell
-        header={
-          <div>
-            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Temporal Variance Analysis</p>
-            <p className="mt-1 text-[11px] text-slate-400">Comparing {items.length} selected monitoring states for semantic drift.</p>
-          </div>
-        }
         body={
           <div className={`grid gap-4 ${gridCols}`}>
             {items.map((item: any) => (
@@ -3227,20 +3267,28 @@ function RecipientsModal({ recipients, method, onClose }: any) {
   )
 }
 
-function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
+function BkmListModal({ docs, monitorId, onOpenBkm, onClose }: { docs: any[]; monitorId: number; onOpenBkm: (id: number) => void; onClose: () => void }) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
   const [isMaximized, setIsMaximized] = useState(false)
   const queryClient = useQueryClient()
   const [recoverySearch, setRecoverySearch] = useState('')
   const [isAdding, setIsAdding] = useState(false)
-  const [linkedIds, setLinkedIds] = useState<number[]>(ids || [])
-  const [linkedTitles, setLinkedTitles] = useState<string[]>(titles || [])
+
+  // Normalize incoming docs to rich format immediately
+  const normalizedDocs = useMemo(() => {
+    return (docs || []).map(d => {
+      if (typeof d === 'number') return { id: d, note: '', added_at: new Date().toISOString() }
+      if (typeof d === 'object' && d !== null) return { id: Number(d.id), note: d.note || '', added_at: d.added_at }
+      return null
+    }).filter(Boolean) as MonitoringRecoveryDoc[]
+  }, [docs])
+
+  const [linkedDocs, setLinkedDocs] = useState<MonitoringRecoveryDoc[]>(normalizedDocs)
 
   useEffect(() => {
-    setLinkedIds(ids || [])
-    setLinkedTitles(titles || [])
-  }, [ids, titles])
+    setLinkedDocs(normalizedDocs)
+  }, [normalizedDocs])
 
   const { data: knowledgeEntries } = useQuery({
     queryKey: ['knowledge-entries'],
@@ -3249,18 +3297,19 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
 
   const filteredKnowledge = useMemo(() => {
     if (!knowledgeEntries) return []
+    const linkedIds = linkedDocs.map(d => d.id)
     return knowledgeEntries.filter((e: any) => 
       (e.title.toLowerCase().includes(recoverySearch.toLowerCase()) ||
       e.category.toLowerCase().includes(recoverySearch.toLowerCase())) &&
       !linkedIds.includes(e.id)
     )
-  }, [knowledgeEntries, recoverySearch, linkedIds])
+  }, [knowledgeEntries, recoverySearch, linkedDocs])
 
   const mutation = useMutation({
-    mutationFn: async (newIds: number[]) => {
+    mutationFn: async (nextDocs: MonitoringRecoveryDoc[]) => {
       const res = await apiFetch(`/api/v1/monitoring/${monitorId}`, {
         method: 'PUT',
-        body: JSON.stringify({ recovery_docs: newIds })
+        body: JSON.stringify({ recovery_docs: nextDocs })
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: res.statusText }))
@@ -3268,45 +3317,64 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
       }
       return res.json()
     },
-    onSuccess: (_data, newIds) => {
-      const titleMap = new Map((knowledgeEntries || []).map((entry: any) => [entry.id, entry.title]))
-      const prevIds = [...linkedIds]
-      setLinkedIds(newIds)
-      setLinkedTitles(newIds.map((id: number) => String(titleMap.get(id) || `KB-${id}`)))
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
       queryClient.invalidateQueries({ queryKey: ['monitoring-history', monitorId] })
-      showWorkspaceToast('Synchronized recovery procedures', {
-        onRevert: () => {
-          mutation.mutate(prevIds);
-          showWorkspaceToast('Reverted recovery links', { type: 'success' });
-        }
-      })
+      showWorkspaceToast('Synchronized recovery procedures', { type: 'success' })
     },
     onError: (e: any) => showWorkspaceToast(e.message || 'Failed to update recovery procedures', { type: 'error' })
   })
 
+  const isDirty = useMemo(() => {
+    return JSON.stringify(linkedDocs) !== JSON.stringify(normalizedDocs)
+  }, [linkedDocs, normalizedDocs])
+
   const toggleRecoveryDoc = (id: number) => {
-    const nextIds = linkedIds.includes(id) ? linkedIds.filter((i: number) => i !== id) : [...linkedIds, id]
-    mutation.mutate(nextIds)
+    const isLinked = linkedDocs.some(d => d.id === id)
+    const nextDocs = isLinked 
+      ? linkedDocs.filter(d => d.id !== id) 
+      : [...linkedDocs, { id, note: '', added_at: new Date().toISOString() }]
+    setLinkedDocs(nextDocs)
+  }
+
+  const updateNote = (id: number, note: string) => {
+    const nextDocs = linkedDocs.map(d => d.id === id ? { ...d, note } : d)
+    setLinkedDocs(nextDocs)
+  }
+
+  const getTitle = (id: number) => {
+    return (knowledgeEntries || []).find((e: any) => e.id === id)?.title || `KB-${id}`
   }
 
   return (
     <WorkspaceModal
       isOpen={true}
       onClose={onClose}
-      size="standard"
+      size="wide"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
       title="Recovery Procedures"
-      subtitle="Knowledge-base linkage for operational triage."
+      subtitle="Knowledge-base linkage and operational guidance."
       icon={<BookOpen size={20} />}
       footerRight={
-        <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
+        <div className="flex items-center gap-3">
+           <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
+           <ToolbarButton 
+             variant="primary" 
+             disabled={!isDirty || mutation.isPending}
+             onClick={() => mutation.mutate(linkedDocs)}
+           >
+              {mutation.isPending ? 'Synchronizing...' : 'Synchronize Procedures'}
+           </ToolbarButton>
+        </div>
       }
     >
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-           <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Linked Procedures (BKM)</p>
+      <div className="space-y-8 pt-4 pb-4">
+        <div className="flex items-center justify-between px-1">
+           <div className="flex flex-col">
+              <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-none">Linked Procedures (BKM)</p>
+              <p className="text-[8px] text-slate-600 font-bold uppercase mt-1">Guaranteed operational response protocol</p>
+           </div>
            <button 
              onClick={() => setIsAdding(!isAdding)}
              className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all flex items-center space-x-1.5 ${isAdding ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-amber-500/10 text-amber-500 border border-amber-500/30 hover:bg-amber-500/20'}`}
@@ -3316,69 +3384,103 @@ function BkmListModal({ ids, titles, monitorId, onOpenBkm, onClose }: any) {
            </button>
         </div>
 
-        <div className="flex-1 space-y-3">
+        <div className="flex-1 space-y-6">
           {isAdding && (
-            <div className="space-y-3 mb-6 p-4 bg-amber-500/5 border border-amber-500/10 rounded-lg animate-in fade-in slide-in-from-top-2">
+            <div className="space-y-4 mb-8 p-6 bg-amber-500/[0.03] border border-amber-500/10 rounded-lg animate-in fade-in slide-in-from-top-2 shadow-inner">
                <div className="relative">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                   <input 
                     value={recoverySearch}
                     onChange={e => setRecoverySearch(e.target.value)}
-                    placeholder="Search Knowledge Base..."
-                    className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold text-white outline-none focus:border-amber-500/50"
+                    placeholder="Search Knowledge Base by title or category..."
+                    className="w-full bg-black/60 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-[11px] font-bold text-white outline-none focus:border-amber-500/50 shadow-inner"
                   />
                </div>
-               <div className="space-y-1 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-60 overflow-y-auto custom-scrollbar pr-2">
                   {filteredKnowledge.map((entry: any) => (
                     <button 
                       key={entry.id}
                       onClick={() => toggleRecoveryDoc(entry.id)}
-                      className="w-full text-left p-2.5 hover:bg-white/5 rounded-lg flex items-center justify-between group transition-all"
+                      className="text-left p-3 hover:bg-white/5 rounded-lg border border-white/5 flex items-center justify-between group transition-all"
                     >
-                       <span className="text-[10px] font-bold text-slate-300 group-hover:text-amber-400">{entry.title}</span>
-                       <Plus size={12} className="text-slate-600 group-hover:text-amber-500" />
+                       <div className="min-w-0">
+                          <span className="text-[10px] font-bold text-slate-300 group-hover:text-amber-400 block truncate">{entry.title}</span>
+                          <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{entry.category}</span>
+                       </div>
+                       <Plus size={12} className="text-slate-600 group-hover:text-amber-500 shrink-0 ml-4" />
                     </button>
                   ))}
                   {filteredKnowledge.length === 0 && (
-                    <p className="text-center py-6 text-[9px] text-slate-700 font-black uppercase tracking-widest">No available procedures found</p>
+                    <div className="col-span-2 py-8 text-center">
+                       <p className="text-[9px] text-slate-700 font-black uppercase tracking-widest">No available procedures found in registry</p>
+                    </div>
                   )}
                </div>
             </div>
           )}
 
-          <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-1">
-            {linkedIds.map((id: number, i: number) => (
+          <div className="space-y-4 max-h-[600px] overflow-y-auto custom-scrollbar pr-2">
+            {linkedDocs.map((doc: MonitoringRecoveryDoc, idx: number) => (
               <div 
-                key={id} 
-                className="w-full bg-black/40 border border-white/5 p-4 rounded-lg flex items-center justify-between group hover:border-amber-500/50 hover:bg-amber-500/5 transition-all shadow-lg"
+                key={doc.id} 
+                className="w-full bg-black/40 border border-white/5 p-5 rounded-lg space-y-4 group hover:border-amber-500/20 transition-all shadow-xl relative overflow-hidden"
               >
-                <button onClick={() => onOpenBkm(id)} className="flex items-center space-x-4 flex-1 text-left">
-                   <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all">
-                      <FileText size={16} />
+                <div className="absolute top-0 left-0 w-1 h-full bg-amber-500/20" />
+                <div className="flex items-start justify-between relative z-10">
+                   <div className="flex items-center space-x-4 flex-1 text-left min-w-0">
+                      <div className="flex flex-col items-center">
+                         <div className="w-8 h-8 rounded-lg bg-slate-900 border border-white/5 flex items-center justify-center text-[12px] font-black text-slate-600 mb-1">
+                            {idx + 1}
+                         </div>
+                         <div className="w-px h-4 bg-white/5" />
+                      </div>
+                      <button onClick={() => onOpenBkm(doc.id)} className="min-w-0 group/link">
+                         <span className="text-[12px] font-black text-slate-200 block truncate leading-tight group-hover/link:text-amber-400 transition-colors">{getTitle(doc.id)}</span>
+                         <div className="flex items-center gap-3 mt-1.5">
+                            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">DOC ID: KB-{doc.id}</span>
+                            <div className="h-2.5 w-px bg-white/10" />
+                            <div className="flex items-center gap-1.5">
+                               <Clock size={10} className="text-slate-600" />
+                               <span className="text-[8px] text-slate-600 font-black uppercase tracking-widest">
+                                  Linked: {doc.added_at ? formatAppDate(doc.added_at) : 'Genesis'}
+                               </span>
+                            </div>
+                         </div>
+                      </button>
                    </div>
-                   <div className="min-w-0">
-                      <span className="text-[11px] font-black text-slate-200 block truncate leading-tight">{linkedTitles[i]}</span>
-                      <span className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">DOC ID: KB-{id}</span>
+                   <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => toggleRecoveryDoc(doc.id)}
+                        className="p-2 text-slate-700 hover:text-rose-500 transition-colors bg-white/[0.02] border border-white/5 rounded-lg"
+                        title="Unlink Procedure"
+                      >
+                         <Trash2 size={14} />
+                      </button>
                    </div>
-                </button>
-                <div className="flex items-center space-x-2">
-                   <button 
-                     onClick={() => toggleRecoveryDoc(id)}
-                     className="p-2 text-slate-600 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
-                     title="Unlink Procedure"
-                   >
-                      <Trash2 size={14} />
-                   </button>
-                   <ChevronRight size={14} className="text-slate-700 group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
+                </div>
+                
+                <div className="relative pl-12">
+                   <textarea
+                     value={doc.note || ''}
+                     onChange={e => updateNote(doc.id, e.target.value)}
+                     placeholder="Specify operational context for this procedure (e.g. check version first)..."
+                     className="w-full bg-white/[0.03] border border-white/5 rounded-lg p-3 text-[11px] font-bold text-slate-300 outline-none focus:border-blue-500/30 transition-all min-h-[80px] resize-none leading-relaxed shadow-inner"
+                   />
+                   <div className="absolute top-2 right-2 flex items-center gap-1.5 opacity-30 group-focus-within:opacity-100 transition-opacity pointer-events-none">
+                      <MessageSquare size={10} className="text-slate-500" />
+                      <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Operator Guidance</span>
+                   </div>
                 </div>
               </div>
             ))}
-            {linkedIds.length === 0 && !isAdding && (
-               <WorkspaceEmptyState 
-                 icon={<BookOpen size={24} className="text-slate-800" />} 
-                 title="No procedures linked" 
-                 description="Link a recovery BKM from the knowledge base to guide operational response." 
-               />
+            {linkedDocs.length === 0 && !isAdding && (
+               <div className="py-20">
+                  <WorkspaceEmptyState 
+                    icon={<BookOpen size={32} className="text-slate-800" />} 
+                    title="Recovery Protocol Missing" 
+                    description="No knowledge-base procedures have been linked to this monitor yet." 
+                  />
+               </div>
             )}
           </div>
         </div>
@@ -3474,6 +3576,8 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
   const [isMaximized, setIsMaximized] = useState(false)
   const [expandedLogic, setExpandedLogic] = useState<number | null>(item.logic_json?.[0]?.id || null)
   const [showLineNumbers, setShowLineNumbers] = useState(true)
+  const [interventionDoc, setInterventionDoc] = useState<any>(null)
+
   const { data: suggestedKnowledge } = useQuery({
     queryKey: ['monitoring-knowledge-suggestions', item.id, item.device_id],
     queryFn: async () => {
@@ -3490,6 +3594,7 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
   })
 
   return (
+    <>
     <WorkspaceModal
       isOpen={true}
       onClose={onClose}
@@ -3499,6 +3604,17 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
       title={item.title}
       subtitle={`Monitor ID: ${item.id} · ${item.device_name || 'No Target Asset'}`}
       icon={<Monitor size={20} />}
+      forensicLineage={{ createdAt: item.created_at, updatedAt: item.updated_at }}
+      status={
+        <div className="flex items-center gap-2">
+          <StatusPill value={item.status} />
+          <StatusPill value={item.severity} />
+          <div className="h-3 w-px bg-white/10 mx-1" />
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">
+            {item.platform || 'No platform'} · {item.check_interval ? `${item.check_interval}s checks` : 'No frequency'}
+          </span>
+        </div>
+      }
       footerRight={
         <div className="flex items-center gap-3">
             <ToolbarButton onClick={() => onEdit?.(item)}>Edit Monitor</ToolbarButton>
@@ -3527,102 +3643,90 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
       }
     >
       <WorkspaceDossierShell
-          header={
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusPill value={item.status} />
-              <StatusPill value={item.severity} />
-              <span className="text-[10px] font-black text-slate-500 ml-2 uppercase tracking-widest">
-                {item.platform || 'No platform'} · {item.check_interval ? `${item.check_interval}s checks` : 'No frequency'}
-              </span>
-            </div>
-          }
           body={
            <WorkspaceSplitView
              className="gap-8"
              sidebar={<div className="space-y-8">
                  <section className="space-y-3">
-                    <h3 className="px-1 text-[11px] font-black text-slate-500 uppercase tracking-widest">Jump path</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3">
+                    <h3 className="px-1 text-[11px] font-black text-slate-500 uppercase tracking-widest">Target scope</h3>
+                    <div className="space-y-3">
                        <button
                          disabled={!item.device_id}
                          onClick={() => item.device_id && onOpenAsset?.(item.device_id)}
-                         className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 text-left transition-all hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-30 shadow-inner"
+                         className="w-full rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 text-left transition-all hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-30 shadow-inner group"
                        >
-                         <p className="text-[9px] font-black text-blue-400 uppercase">Open asset</p>
-                         <p className="mt-2 text-[10px] font-bold text-slate-200">{item.device_name || 'No linked asset'}</p>
+                         <div className="flex items-center justify-between mb-2">
+                            <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Registry asset</p>
+                            <ArrowRightLeft size={10} className="text-blue-500/50 group-hover:translate-x-1 transition-transform" />
+                         </div>
+                         <p className="text-[11px] font-black text-slate-100">{item.device_name || 'No linked asset'}</p>
                        </button>
-                       <button
-                         disabled={!item.recovery_docs?.length}
-                         onClick={() => item.recovery_docs?.[0] && onOpenKnowledge?.(item.recovery_docs[0])}
-                         className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4 text-left transition-all hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-30 shadow-inner"
-                       >
-                         <p className="text-[9px] font-black text-amber-400 uppercase">Open recovery BKM</p>
-                         <p className="mt-2 text-[10px] font-bold text-slate-200">
-                           {item.recovery_doc_titles?.[0] || 'No recovery document linked'}
-                         </p>
-                       </button>
+                       
+                       <div className="bg-black/20 border border-white/5 rounded-lg p-4 shadow-inner space-y-3">
+                          <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Monitored services</p>
+                          <div className="flex flex-wrap gap-1.5">
+                             {item.monitored_service_names?.map((name: string, i: number) => (
+                               <span key={i} className="bg-blue-600/10 border border-blue-500/20 text-blue-300 px-2 py-0.5 rounded-lg text-[9px] font-bold">
+                                  {name}
+                               </span>
+                             ))}
+                             {(!item.monitored_service_names || item.monitored_service_names.length === 0) && (
+                               <span className="text-[9px] font-bold text-slate-700 italic">No services mapped</span>
+                             )}
+                          </div>
+                       </div>
                     </div>
                  </section>
 
                  <section className="space-y-3">
-                    <h3 className="px-1 text-[11px] font-black text-slate-500 uppercase tracking-widest">Reliability matrix</h3>
-                    <div className="grid grid-cols-2 gap-3">
+                    <h3 className="px-1 text-[11px] font-black text-slate-500 uppercase tracking-widest">Recovery protocol</h3>
+                    <div className="space-y-2">
+                       {item.recovery_doc_details?.map((doc: any, i: number) => (
+                         <button
+                           key={i}
+                           type="button"
+                           onClick={() => doc.note ? setInterventionDoc(doc) : onOpenKnowledge?.(doc.id)}
+                           className="w-full bg-slate-900/60 border border-white/5 rounded-lg p-3 flex items-center space-x-3 hover:border-amber-500/30 transition-all cursor-pointer group text-left shadow-inner"
+                         >
+                            <div className="p-1.5 bg-black/40 rounded-lg text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all"><FileText size={14}/></div>
+                            <div className="min-w-0 flex-1">
+                               <p className="text-[11px] font-bold text-slate-300 tracking-tight leading-tight group-hover:text-white truncate">{doc.title}</p>
+                               <div className="flex items-center justify-between mt-0.5">
+                                  <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Procedure {i+1}</p>
+                                  {doc.note && (
+                                     <div className="flex items-center gap-1 text-blue-500/60">
+                                        <MessageSquare size={8} />
+                                        <span className="text-[8px] font-black uppercase tracking-widest">Note attached</span>
+                                     </div>
+                                  )}
+                               </div>
+                            </div>
+                         </button>
+                       ))}
+                       {(!item.recovery_doc_details || item.recovery_doc_details.length === 0) && (
+                         <WorkspaceEmptyState compact icon={<AlertCircle size={18} />} title="No procedures linked" description="Guaranteed operational response protocol missing." />
+                       )}
+                    </div>
+                 </section>
+
+                 <section className="space-y-3">
+                    <h3 className="px-1 text-[11px] font-black text-slate-500 uppercase tracking-widest">Operational meta</h3>
+                    <div className="bg-white/5 border border-white/5 rounded-lg overflow-hidden divide-y divide-white/5 shadow-inner">
                        {[
-                          { label: 'Severity', value: item.severity, color: 'text-slate-200', icon: Shield },
                           { label: 'Platform', value: item.platform, color: 'text-blue-400', icon: Globe },
                           { label: 'Frequency', value: `${item.check_interval}s`, color: 'text-slate-300', icon: Clock },
                           { label: 'Throttle', value: `${item.notification_throttle}s`, color: 'text-amber-400', icon: Zap }
                        ].map((stat, i) => (
-                          <div key={i} className="bg-white/5 border border-white/5 rounded-lg p-4 flex flex-col justify-between hover:bg-white/10 transition-all shadow-inner">
-                            <div className="flex items-center justify-between mb-2">
-                               <stat.icon size={12} className="text-slate-600" />
-                               <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{stat.label}</span>
-                            </div>
-                               {stat.label === 'Severity' ? <StatusPill value={String(stat.value)} /> : <span className={`text-[12px] font-black ${stat.color} tracking-tighter`}>{stat.value}</span>}
-                         </div>
+                          <div key={i} className="p-3 flex items-center justify-between hover:bg-white/5 transition-all">
+                             <div className="flex items-center gap-3">
+                                <div className="p-1.5 bg-black/40 rounded-lg text-slate-600">
+                                   <stat.icon size={12} />
+                                </div>
+                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{stat.label}</span>
+                             </div>
+                             <span className={`text-[10px] font-black ${stat.color}`}>{stat.value}</span>
+                          </div>
                        ))}
-                    </div>
-                 </section>
-
-                 <section className="space-y-3">
-                    <h3 className="px-1 text-[11px] font-black text-slate-500 uppercase tracking-widest">Recovery procedures</h3>
-                    <div className="space-y-2">
-                       {item.recovery_doc_titles?.map((title: string, i: number) => (
-                         <button
-                           key={i}
-                           type="button"
-                           onClick={() => item.recovery_docs?.[i] && onOpenKnowledge?.(item.recovery_docs[i])}
-                           className="w-full bg-amber-500/5 border border-amber-500/10 rounded-lg p-3 flex items-center space-x-3 hover:border-amber-500/30 transition-all cursor-pointer group text-left shadow-inner"
-                         >
-                            <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all"><FileText size={14}/></div>
-                            <span className="text-[11px] font-bold text-slate-300 tracking-tight leading-tight">{title}</span>
-                         </button>
-                       ))}
-                       {(!item.recovery_doc_titles || item.recovery_doc_titles.length === 0) && (
-                         <WorkspaceEmptyState compact icon={<AlertCircle size={18} />} title="No recovery procedures linked" description="Guaranteed operational response protocol missing." />
-                       )}
-                    </div>
-                 </section>
-
-                 <section className="space-y-3">
-                    <h3 className="px-1 text-[11px] font-black text-slate-500 uppercase tracking-widest">Suggested runbooks</h3>
-                    <div className="space-y-2">
-                       {suggestedKnowledge?.slice(0, 3).map((entry: any) => (
-                         <button
-                           key={entry.id}
-                           type="button"
-                           onClick={() => onOpenKnowledge?.(entry.id)}
-                           className="w-full rounded-lg border border-sky-500/15 bg-sky-500/5 p-3 text-left transition-all hover:bg-sky-500/10 shadow-inner"
-                         >
-                           <p className="text-[11px] font-bold text-slate-200 tracking-tight">{entry.title}</p>
-                           <p className="mt-1 text-[8px] font-black text-slate-500 uppercase tracking-widest">
-                             {entry.metadata_json?.entry_type || entry.category} · {entry.metadata_json?.verification?.state || entry.status}
-                           </p>
-                         </button>
-                       ))}
-                       {!suggestedKnowledge?.length && (
-                         <WorkspaceEmptyState compact title="No runbook suggestions" />
-                       )}
                     </div>
                  </section>
 
@@ -3639,33 +3743,36 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
              main={<div className="space-y-8">
                  <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-white/[0.03] border border-white/5 rounded-lg p-5 group hover:border-white/10 transition-all shadow-inner">
-                       <h4 className="text-[10px] font-black text-slate-500 mb-2 flex items-center space-x-2 uppercase tracking-[0.2em]">
-                          <Info size={12}/> <span>Purpose</span>
-                       </h4>
-                       <p className="text-[12px] font-bold text-slate-300 leading-relaxed">
+                       <div className="flex items-center gap-3 mb-3">
+                          <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg"><Info size={14}/></div>
+                          <h4 className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">Operational Purpose</h4>
+                       </div>
+                       <p className="text-[12px] font-bold text-slate-400 leading-relaxed pl-1">
                           {item.purpose || 'No purpose defined.'}
                        </p>
                     </div>
                     <div className="bg-white/[0.03] border border-white/5 rounded-lg p-5 group hover:border-white/10 transition-all shadow-inner">
-                       <h4 className="text-[10px] font-black text-slate-500 mb-2 flex items-center space-x-2 uppercase tracking-[0.2em]">
-                          <Zap size={12}/> <span>Impact</span>
-                       </h4>
-                       <p className="text-[12px] font-bold text-slate-300 leading-relaxed">
+                       <div className="flex items-center gap-3 mb-3">
+                          <div className="p-2 bg-rose-500/10 text-rose-400 rounded-lg"><Zap size={14}/></div>
+                          <h4 className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">Failure Impact</h4>
+                       </div>
+                       <p className="text-[12px] font-bold text-slate-400 leading-relaxed pl-1">
                           {item.impact || 'No impact analysis defined.'}
                        </p>
                     </div>
                  </section>
 
-                 <section className="space-y-3">
+                 <section className="space-y-4">
                     <div className="flex items-center justify-between px-1">
-                      <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center">
-                         <Settings size={14} className="mr-3" /> Logic Specification
-                      </h3>
+                      <div className="flex items-center gap-3">
+                         <div className="p-2 bg-slate-800 text-slate-400 rounded-lg"><Code size={16} /></div>
+                         <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Logic Specification</h3>
+                      </div>
                       <button 
                          onClick={() => setShowLineNumbers(!showLineNumbers)}
-                         className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg border transition-all ${showLineNumbers ? 'bg-blue-600/20 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-white/5 text-slate-500'}`}
+                         className={`text-[8px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border transition-all ${showLineNumbers ? 'bg-blue-600/20 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-white/5 text-slate-500'}`}
                       >
-                         {showLineNumbers ? 'Hide line numbers' : 'Show line numbers'}
+                         {showLineNumbers ? 'Line Numbers: ON' : 'Line Numbers: OFF'}
                       </button>
                     </div>
                     <div className="space-y-3">
@@ -3673,29 +3780,29 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
                          <div key={log.id} className="bg-[#0f172a] border border-white/5 rounded-lg overflow-hidden transition-all hover:border-white/10 shadow-lg">
                             <button 
                                onClick={() => setExpandedLogic(expandedLogic === log.id ? null : log.id)}
-                               className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-all"
+                               className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-all group"
                             >
                                <div className="flex items-center space-x-4">
-                                  <span className="text-[9px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20 uppercase tracking-widest">{log.type}</span>
-                                  <span className="text-slate-300 font-bold text-[11px] tracking-tight">{log.description}</span>
+                                  <span className="text-[8px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20 uppercase tracking-widest">{log.type}</span>
+                                  <span className="text-slate-300 font-bold text-[11px] tracking-tight group-hover:text-white transition-colors">{log.description}</span>
                                </div>
-                               {expandedLogic === log.id ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
+                               {expandedLogic === log.id ? <ChevronUp size={16} className="text-slate-600" /> : <ChevronDown size={16} className="text-slate-600" />}
                             </button>
                             <AnimatePresence>
                                {expandedLogic === log.id && (
                                  <motion.div 
-                                    initial={{ height: 0 }} 
-                                    animate={{ height: 'auto' }} 
-                                    exit={{ height: 0 }} 
+                                    initial={{ height: 0, opacity: 0 }} 
+                                    animate={{ height: 'auto', opacity: 1 }} 
+                                    exit={{ height: 0, opacity: 0 }} 
                                     className="overflow-hidden bg-black/40 border-t border-white/5"
                                  >
-                                    <div className="flex font-mono text-[12px] leading-relaxed overflow-x-auto custom-scrollbar">
+                                    <div className="flex font-mono text-[11px] leading-relaxed overflow-x-auto custom-scrollbar">
                                        {showLineNumbers && (
-                                          <div className="bg-white/5 border-r border-white/10 px-3 py-5 text-slate-600 text-right select-none whitespace-pre min-w-[40px]">
+                                          <div className="bg-white/5 border-r border-white/10 px-3 py-5 text-slate-700 text-right select-none whitespace-pre min-w-[40px]">
                                              {log.logic_info.split('\n').map((_: any, i: number) => i + 1).join('\n')}
                                           </div>
                                        )}
-                                       <pre className="p-5 text-blue-300 flex-1">
+                                       <pre className="p-5 text-emerald-400 flex-1 selection:bg-emerald-500/20">
                                           {log.logic_info}
                                        </pre>
                                     </div>
@@ -3710,22 +3817,36 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
                     </div>
                  </section>
 
-                 <section className="space-y-3">
-                    <h3 className="px-1 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Ownership Context</h3>
+                 <section className="space-y-4">
+                    <div className="flex items-center gap-3 px-1">
+                       <div className="p-2 bg-blue-600/10 text-blue-400 rounded-lg"><Users size={16} /></div>
+                       <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Ownership Matrix</h3>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                        <div className="bg-white/[0.03] border border-white/5 rounded-lg p-5 shadow-inner">
-                          <h4 className="text-[10px] font-semibold text-slate-500 mb-2 uppercase tracking-widest">Primary Team</h4>
-                          <p className="text-[12px] font-bold text-slate-100">{item.owner_team || 'Unassigned'}</p>
+                          <h4 className="text-[10px] font-black text-slate-500 mb-3 uppercase tracking-widest">Primary Team Mapping</h4>
+                          <div className="flex items-center gap-3">
+                             <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                                <Briefcase size={14} />
+                             </div>
+                             <p className="text-[12px] font-black text-slate-200">{item.owner_team || 'Unassigned'}</p>
+                          </div>
                        </div>
                        <div className="bg-white/[0.03] border border-white/5 rounded-lg p-5 shadow-inner">
-                          <h4 className="text-[10px] font-semibold text-slate-500 mb-2 uppercase tracking-widest">Active Personnel</h4>
+                          <h4 className="text-[10px] font-black text-slate-500 mb-3 uppercase tracking-widest">Assigned Personnel</h4>
                           <div className="flex flex-wrap gap-2">
                              {item.owners?.map((o: any, i: number) => (
-                               <span key={i} className="bg-blue-600/10 border border-blue-500/20 text-blue-300 px-2 py-1 rounded-lg text-[10px] font-bold">
-                                  {o.name} <span className="text-slate-500 font-normal ml-1">({o.role})</span>
-                               </span>
+                               <div key={i} className="bg-blue-600/10 border border-blue-500/20 text-blue-300 px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-2">
+                                  <UserCheck size={10} className="text-blue-500" />
+                                  <span>{o.name} <span className="text-slate-500 font-normal ml-1">[{o.role}]</span></span>
+                               </div>
                              ))}
-                             {(!item.owners || item.owners.length === 0) && <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">No individual owners</span>}
+                             {(!item.owners || item.owners.length === 0) && (
+                               <div className="flex items-center gap-2 text-slate-600 py-1">
+                                  <AlertCircle size={12} />
+                                  <span className="text-[10px] font-black uppercase tracking-widest">No individual owners assigned</span>
+                               </div>
+                             )}
                           </div>
                        </div>
                     </div>
@@ -3735,6 +3856,56 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
         }
       />
     </WorkspaceModal>
+
+    <AnimatePresence>
+       {interventionDoc && (
+          <WorkspaceModal
+            isOpen={true}
+            onClose={() => setInterventionDoc(null)}
+            size="compact"
+            title="Operational Guidance"
+            subtitle={`Pre-recovery briefing for: ${interventionDoc.title}`}
+            icon={<Shield size={20} className="text-amber-500" />}
+            footerRight={
+               <div className="flex items-center gap-3">
+                  <ToolbarButton onClick={() => setInterventionDoc(null)}>Cancel</ToolbarButton>
+                  <ToolbarButton 
+                    variant="primary" 
+                    onClick={() => {
+                       const id = interventionDoc.id;
+                       setInterventionDoc(null);
+                       onOpenKnowledge?.(id);
+                    }}
+                  >
+                     Confirm & Open Procedure
+                  </ToolbarButton>
+               </div>
+            }
+          >
+             <div className="space-y-6 pt-2">
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-5 shadow-inner">
+                   <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 bg-black/40 rounded-lg text-amber-500"><MessageSquare size={16} /></div>
+                      <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Operator Note</h4>
+                   </div>
+                   <p className="text-[12px] font-bold text-slate-200 leading-relaxed italic">
+                      "{interventionDoc.note}"
+                   </p>
+                </div>
+                
+                <div className="flex items-start gap-4 px-1">
+                   <div className="mt-1 p-1.5 bg-blue-500/10 rounded-full text-blue-400"><Info size={12} /></div>
+                   <div className="flex-1">
+                      <p className="text-[10px] font-bold text-slate-400 leading-relaxed">
+                         The following procedure contains verified restoration steps. Please ensure you have read the guidance note above carefully before initiating recovery.
+                      </p>
+                   </div>
+                </div>
+             </div>
+          </WorkspaceModal>
+       )}
+    </AnimatePresence>
+    </>
   )
 }
 
@@ -4181,11 +4352,11 @@ export function MonitoringForm({ item, devices, categories, severities, platform
 
   const toggleRecoveryDoc = (id: number) => {
     const current = [...(formData.recovery_docs || [])]
-    const idx = current.indexOf(id)
+    const idx = current.findIndex((d: any) => (typeof d === 'number' ? d === id : d.id === id))
     if (idx > -1) {
       current.splice(idx, 1)
     } else {
-      current.push(id)
+      current.push({ id, note: '' })
     }
     setFormData({ ...formData, recovery_docs: current })
   }
@@ -4284,9 +4455,20 @@ export function MonitoringForm({ item, devices, categories, severities, platform
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(prev => !prev)}
       title={item ? 'Update Monitoring' : 'Add Monitoring'}
-      subtitle="Configure monitoring targets, logic, and alert routing."
-      icon={<Plus size={20} />}
-      status={<StatusPill value={formData.status} />}
+      subtitle={item ? `Adjusting configuration for ${item.title}` : "Configure monitoring targets, logic, and alert routing."}
+      icon={item ? <Edit2 size={20} /> : <Plus size={20} />}
+      status={
+        <div className="flex items-center gap-2">
+          <StatusPill value={formData.status} />
+          <StatusPill value={formData.severity} />
+          {formData.platform && (
+            <>
+              <div className="h-3 w-px bg-white/10 mx-1" />
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">{formData.platform}</span>
+            </>
+          )}
+        </div>
+      }
       activeTab={activeTab}
       onTabChange={(id) => setActiveTab(id as 'context' | 'logic' | 'alerting')}
       tabs={[
@@ -4327,66 +4509,65 @@ export function MonitoringForm({ item, devices, categories, severities, platform
         </div>
       }
     >
-      <div className="space-y-6">
-          <WorkspaceStickyIdentityBar>
-            <div className="space-y-4">
-              <div className="grid grid-cols-12 gap-4">
-                <div id="monitoring-header-title" className="col-span-12 space-y-2">
-                  <FieldLabel label="Title" required />
-                  <input
-                    value={formData.title}
-                    onChange={e => setFormData({ ...formData, title: e.target.value })}
-                    placeholder="e.g. CORE-DB: High CPU Load Alert"
-                    className={monitoringInputClass(formErrors.title)}
-                  />
-                  <FieldError message={formErrors.title} />
-                </div>
+      <div className="space-y-8 pt-6">
+          <div className="space-y-4">
+            <div className="grid grid-cols-12 gap-6">
+              <div id="monitoring-header-title" className="col-span-12 lg:col-span-6 space-y-2">
+                <FieldLabel label="Monitoring Item Title" required />
+                <input
+                  value={formData.title}
+                  onChange={e => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="e.g. CORE-DB: High CPU Load Alert"
+                  className={monitoringInputClass(formErrors.title)}
+                />
+                <FieldError message={formErrors.title} />
               </div>
-              <div className="grid grid-cols-12 gap-4">
-                <div className="col-span-12 sm:col-span-6 lg:col-span-3">
-                  <MonitoringSelectField
-                    label="Status"
-                    required={isMonitoringFieldRequired('status')}
-                    value={formData.status}
-                    onChange={(value) => setFormData({ ...formData, status: value })}
-                    options={STATUSES.map(s => ({ value: s.value, label: s.value }))}
-                    error={formErrors.status}
-                  />
-                </div>
-                <div className="col-span-12 sm:col-span-6 lg:col-span-3">
-                  <MonitoringSelectField
-                    label="Severity"
-                    required={isMonitoringFieldRequired('severity')}
-                    value={formData.severity}
-                    onChange={(value) => setFormData({ ...formData, severity: value })}
-                    options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
-                    error={formErrors.severity}
-                  />
-                </div>
-                <div className="col-span-12 sm:col-span-6 lg:col-span-3">
-                  <MonitoringSelectField
-                    label="Category"
-                    required={isMonitoringFieldRequired('category')}
-                    value={formData.category}
-                    onChange={(value) => setFormData({ ...formData, category: value })}
-                    options={categories.map((c: any) => ({ value: c.value, label: c.label }))}
-                    error={formErrors.category}
-                  />
-                </div>
-                <div className="col-span-12 sm:col-span-6 lg:col-span-3">
-                  <MonitoringSelectField
-                    label="Platform"
-                    value={formData.platform}
-                    onChange={(value) => setFormData({ ...formData, platform: value })}
-                    options={(platforms || []).map((platform: any) => ({ value: platform.value, label: platform.label }))}
-                    placeholder="Select platform"
-                    error={formErrors.platform}
-                    searchable
-                  />
-                </div>
+              <div className="col-span-12 sm:col-span-6 lg:col-span-3 space-y-2">
+                <MonitoringSelectField
+                  label="Status"
+                  required={isMonitoringFieldRequired('status')}
+                  value={formData.status}
+                  onChange={(value) => setFormData({ ...formData, status: value })}
+                  options={STATUSES.map(s => ({ value: s.value, label: s.value }))}
+                  error={formErrors.status}
+                />
+              </div>
+              <div className="col-span-12 sm:col-span-6 lg:col-span-3 space-y-2">
+                <MonitoringSelectField
+                  label="Severity"
+                  required={isMonitoringFieldRequired('severity')}
+                  value={formData.severity}
+                  onChange={(value) => setFormData({ ...formData, severity: value })}
+                  options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
+                  error={formErrors.severity}
+                />
               </div>
             </div>
-          </WorkspaceStickyIdentityBar>
+            
+            <div className="grid grid-cols-12 gap-6">
+              <div className="col-span-12 sm:col-span-6 lg:col-span-3 space-y-2">
+                <MonitoringSelectField
+                  label="Logic Category"
+                  required={isMonitoringFieldRequired('category')}
+                  value={formData.category}
+                  onChange={(value) => setFormData({ ...formData, category: value })}
+                  options={categories.map((c: any) => ({ value: c.value, label: c.label }))}
+                  error={formErrors.category}
+                />
+              </div>
+              <div className="col-span-12 sm:col-span-6 lg:col-span-3 space-y-2">
+                <MonitoringSelectField
+                  label="Target Platform"
+                  value={formData.platform}
+                  onChange={(value) => setFormData({ ...formData, platform: value })}
+                  options={(platforms || []).map((platform: any) => ({ value: platform.value, label: platform.label }))}
+                  placeholder="Select platform"
+                  error={formErrors.platform}
+                  searchable
+                />
+              </div>
+            </div>
+          </div>
           <WorkspaceValidationBanner message={generalError} />
 
           <WorkspaceSplitView
@@ -4902,37 +5083,77 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                               />
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[320px] overflow-y-auto custom-scrollbar pr-2">
-                              {filteredKnowledge?.map((entry: any) => (
-                                <button
-                                  key={entry.id}
-                                  type="button"
-                                  onClick={() => toggleRecoveryDoc(entry.id)}
-                                  className={`p-4 rounded-lg border text-left transition-all relative overflow-hidden group ${
-                                    formData.recovery_docs?.includes(entry.id)
-                                      ? 'bg-blue-600/15 border-blue-500/50 shadow-lg shadow-blue-500/5'
-                                      : 'bg-black/40 border-white/5 hover:border-white/20'
-                                  }`}
-                                >
-                                  {formData.recovery_docs?.includes(entry.id) && (
-                                    <div className="absolute top-0 right-0 w-7 h-7 bg-blue-600 flex items-center justify-center rounded-lg shadow-lg">
-                                      <Check size={12} className="text-white" strokeWidth={4} />
+                              {filteredKnowledge?.map((entry: any) => {
+                                 const isLinked = formData.recovery_docs?.some((d: any) => (typeof d === 'number' ? d === entry.id : d.id === entry.id));
+                                 return (
+                                  <button
+                                    key={entry.id}
+                                    type="button"
+                                    onClick={() => toggleRecoveryDoc(entry.id)}
+                                    className={`p-4 rounded-lg border text-left transition-all relative overflow-hidden group ${
+                                      isLinked
+                                        ? 'bg-blue-600/15 border-blue-500/50 shadow-lg shadow-blue-500/5'
+                                        : 'bg-black/40 border-white/5 hover:border-white/20'
+                                    }`}
+                                  >
+                                    {isLinked && (
+                                      <div className="absolute top-0 right-0 w-7 h-7 bg-blue-600 flex items-center justify-center rounded-lg shadow-lg">
+                                        <Check size={12} className="text-white" strokeWidth={4} />
+                                      </div>
+                                    )}
+                                    <div className="flex items-center space-x-2 mb-2">
+                                      <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 bg-slate-800 text-slate-400 rounded-lg border border-white/5 truncate">{entry.category}</span>
+                                      <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest shrink-0">#{entry.id}</span>
                                     </div>
-                                  )}
-                                  <div className="flex items-center space-x-2 mb-2">
-                                    <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 bg-slate-800 text-slate-400 rounded-lg border border-white/5 truncate">{entry.category}</span>
-                                    <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest shrink-0">#{entry.id}</span>
-                                  </div>
-                                  <p className={`text-[11px] font-bold leading-tight ${formData.recovery_docs?.includes(entry.id) ? 'text-blue-100' : 'text-slate-300'} line-clamp-2`}>
-                                    {entry.title}
-                                  </p>
-                                </button>
-                              ))}
+                                    <p className={`text-[11px] font-bold leading-tight ${isLinked ? 'text-blue-100' : 'text-slate-300'} line-clamp-2`}>
+                                      {entry.title}
+                                    </p>
+                                  </button>
+                                 )
+                              })}
                               {filteredKnowledge?.length === 0 && (
                                 <div className="col-span-2 py-10 text-center flex flex-col items-center justify-center space-y-3 opacity-30">
                                    <Search size={32} className="text-slate-700" />
                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-700">No knowledge entries detected</p>
                                 </div>
                               )}
+                            </div>
+
+                            <div className="space-y-4 border-t border-white/5 pt-6">
+                               <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Configure guidance notes</p>
+                               <div className="grid grid-cols-1 gap-4">
+                                  {formData.recovery_docs?.map((doc: any, idx: number) => {
+                                     const did = typeof doc === 'number' ? doc : doc.id;
+                                     const note = typeof doc === 'number' ? '' : doc.note;
+                                     const entry = (knowledgeEntries || []).find((e: any) => e.id === did);
+                                     return (
+                                        <div key={idx} className="bg-black/40 border border-white/5 rounded-lg p-4 space-y-3 group hover:border-blue-500/20 transition-all shadow-inner">
+                                           <div className="flex items-center justify-between">
+                                              <div className="flex items-center gap-3">
+                                                 <div className="p-1.5 bg-blue-500/10 text-blue-400 rounded-lg"><FileText size={12}/></div>
+                                                 <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest truncate max-w-[240px]">{entry?.title || `KB-${did}`}</span>
+                                              </div>
+                                              <button type="button" onClick={() => toggleRecoveryDoc(did)} className="text-slate-600 hover:text-rose-500 transition-colors">
+                                                 <Trash2 size={14} />
+                                              </button>
+                                           </div>
+                                           <textarea
+                                              value={note || ''}
+                                              onChange={e => {
+                                                 const next = [...formData.recovery_docs];
+                                                 next[idx] = { id: did, note: e.target.value };
+                                                 setFormData({ ...formData, recovery_docs: next });
+                                              }}
+                                              placeholder="Operational guidance note shown to operator before BKM access..."
+                                              className="w-full bg-white/5 border border-white/5 rounded-lg p-3 text-[10px] font-bold text-slate-200 outline-none focus:border-blue-500/40 transition-all min-h-[60px] resize-none leading-relaxed"
+                                           />
+                                        </div>
+                                     )
+                                  })}
+                                  {formData.recovery_docs?.length === 0 && (
+                                     <p className="text-[9px] font-bold text-slate-700 italic px-1 py-4 text-center border border-dashed border-white/5 rounded-lg">No procedures linked for configuration.</p>
+                                  )}
+                               </div>
                             </div>
                             <FieldError message={formErrors.recovery_docs} />
                           </div>
@@ -5014,6 +5235,15 @@ function MonitoringHistoryModal({ item, onClose }: any) {
       title="Revision History"
       subtitle={`Temporal lineage for ${item.title}`}
       icon={<HistoryIcon size={20} />}
+      status={
+        <div className="flex items-center gap-4">
+          <StatusPill value={item?.status} />
+          <div className="h-4 w-px bg-white/10" />
+          <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest italic whitespace-nowrap">
+            {indexedVersions?.length || 0} Snapshot(s)
+          </p>
+        </div>
+      }
       footerRight={
         <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
       }

@@ -74,7 +74,13 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
     onError: (e: any) => toast.error(e.message)
   })
 
-  const isMetadataCategory = category === 'ServiceType' || category === 'ExternalType' || category === 'HardwareProfile'
+  // Determine if this category supports rich metadata templates (Service types, profiles, etc)
+  // We check if any existing options have metadata_keys, or if it's a known rich category
+  const hasMetadataSupport = useMemo(() => {
+    if (category === 'ServiceType' || category === 'HardwareProfile' || category === 'ExternalType') return true
+    return options?.some((o: any) => Array.isArray(o.metadata_keys) && o.metadata_keys.length > 0)
+  }, [category, options])
+  
   const isTeamCategory = category === 'MonitoringTeam'
 
   const deleteMutation = useMutation({
@@ -156,7 +162,7 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                                 </>
                             )}
                         </div>
-                        {(isMetadataCategory || isTeamCategory) && (
+                        {(hasMetadataSupport || isTeamCategory) && (
                             <div className="mt-2 pl-6 border-l border-white/5">
                                 {editingId === opt.id ? (
                                     <div className="space-y-1">
@@ -195,9 +201,24 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
                     </div>
                     ))}
                     {options?.length === 0 && (
-                        <div className="col-span-full py-12 text-center flex flex-col items-center justify-center space-y-3 opacity-30">
-                            <Settings size={32} className="text-slate-500" />
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em]">No entries configured for this domain</p>
+                        <div className="col-span-full py-12 text-center flex flex-col items-center justify-center space-y-4 opacity-80">
+                            <Settings size={32} className="text-slate-600 mb-2" />
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">No entries configured for this domain</p>
+                                <p className="text-[9px] font-medium text-slate-600 uppercase tracking-widest leading-relaxed max-w-xs mx-auto">Database is either fresh or has been purged of operational enums.</p>
+                            </div>
+                            <button 
+                                onClick={() => {
+                                    toast.promise(apiFetch("/api/v1/settings/initialize"), {
+                                        loading: "Synchronizing system defaults...",
+                                        success: () => { queryClient.invalidateQueries({ queryKey: ["settings-options"] }); return "Default enums synchronized" },
+                                        error: "Synchronization failed"
+                                    })
+                                }}
+                                className="mt-4 px-4 py-2 bg-blue-600/10 border border-blue-500/30 text-blue-400 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-lg shadow-blue-500/5"
+                            >
+                                Synchronize Defaults
+                            </button>
                         </div>
                     )}
                 </div>

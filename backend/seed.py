@@ -7,7 +7,7 @@ import sys
 import random
 import json
 from datetime import datetime, timedelta
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, Table, Column, Integer, ForeignKey, String, Text, Boolean, DateTime, JSON, Float, func
 from sqlalchemy.orm import Session
 from faker import Faker
 
@@ -327,7 +327,7 @@ def seed():
             all_workers = []
             for i in range(165):
                 rk = racks[random.randint(1, 9)]
-                sys = random.choice(cats["LogicalSystem"])
+                logical_sys = random.choice(cats["LogicalSystem"])
                 mfr_data = random.choice([
                     ("Dell", "PowerEdge R750", "Physical", 2, "Ubuntu 22.04"),
                     ("HPE", "ProLiant DL380 Gen10", "Physical", 2, "RHEL 8.8"),
@@ -340,8 +340,8 @@ def seed():
                 status = random.choices(cats["Status"], weights=[5, 65, 10, 5, 5, 5, 2, 3])[0]
                 p_max = random.uniform(400, 2000) if size > 0 else 0
                 d = Device(
-                    name=f"{sys.lower()}-node-{i:03d}",
-                    system=sys,
+                    name=f"{logical_sys.lower()}-node-{i:03d}",
+                    system=logical_sys,
                     type=d_type,
                     status=status,
                     environment=random.choice(cats["Environment"]),
@@ -458,13 +458,152 @@ def seed():
             for i in range(10):
                 db.add(ExternalEntity(name=f"External {i}", type="API", status="Active", environment="Production"))
 
-            # 16. Monitoring
-            for i in range(20):
-                app = random.choice(all_workers)
-                mon = MonitoringItem(device_id=app.id, category="Infrastructure", title=f"Monitor {i}", status="Existing", is_active=True)
-                db.add(mon)
+            # 16. RBAC & Operators (Move up for referential integrity)
+            admin_role = Role(name="Administrator", permissions={"all": "manage"})
+            db.add(admin_role)
+            db.flush()
+            db.add(Operator(external_id="haewon.kim", username="haewon.kim", full_name="Haewon Kim", email="haewon.kim@sysgrid.net", role_id=admin_role.id, is_admin=True, registration_status="Active"))
+            db.add(Operator(external_id="haewonkim", username="haewonkim", full_name="Haewon Kim", email="haewonkim@sysgrid.net", role_id=admin_role.id, is_admin=True, registration_status="Active"))
+            db.add(Operator(external_id="sarah.connor", username="sarah.connor", full_name="Sarah Connor", email="sarah.connor@sysgrid.net", role_id=admin_role.id, is_admin=False, registration_status="Active"))
+            db.flush()
 
-            # 17. Projects (Apple-Style High Fidelity)
+            # 17. Knowledge Base (for Recovery Docs)
+            bkm_data = [
+                {
+                    "title": "BKM: Database Connection Restoration",
+                    "category": "BKM",
+                    "content": "Step-by-step guide for restoring cluster connectivity.",
+                    "content_json": {
+                        "purpose": "Emergency restoration of SQL pools.",
+                        "steps": ["Check active connections", "Verify listener status", "Restart pool if idle > 300s"],
+                        "troubleshooting": ["Check firewall port 1433", "Verify service account status"]
+                    }
+                },
+                {
+                    "title": "BKM: API 5xx Mitigation Protocol",
+                    "category": "BKM",
+                    "content": "Standard response for high error rates on web services.",
+                    "content_json": {
+                        "purpose": "Minimize user impact during application instability.",
+                        "steps": ["Drain active node", "Check heap memory usage", "Rollback last deployment if error > 5%"],
+                        "tips": ["Always check sidecar logs first."]
+                    }
+                }
+            ]
+            seeded_bkms = []
+            for b_info in bkm_data:
+                bkm = KnowledgeEntry(**b_info, status="Published")
+                db.add(bkm)
+                db.flush()
+                seeded_bkms.append(bkm)
+
+            # 18. High-Fidelity Monitoring (Forensic Grade)
+            # Fetch operators for linking
+            seeded_ops = db.query(Operator).all()
+            op_map = {op.external_id: op.id for op in seeded_ops}
+
+            monitors = [
+                {
+                    "title": "CORE-DB: SQL Connection Pool Exhaustion",
+                    "category": "Infrastructure",
+                    "severity": "Critical",
+                    "status": "Existing",
+                    "platform": "Zabbix-Enterprise",
+                    "monitoring_url": "https://zabbix.corp/d/db-core-performance",
+                    "purpose": "Detects when active database connections reach 95% of allocated pool size, preventing subsequent transaction failures.",
+                    "impact": "Exhaustion leads to '500 Internal Server Error' for all client-facing applications relying on the Core-DB cluster. Transactional integrity is maintained but availability is zero.",
+                    "check_interval": 30,
+                    "notification_throttle": 300,
+                    "owner_team": "Database Operations",
+                    "logic_json": [
+                        {"id": 1, "type": "Threshold", "description": "Active Connection Count", "logic_info": "AVG(db.connections.active) > 950 FOR 2m\nLIMIT = 1000"},
+                        {"id": 2, "type": "Query", "description": "Idle Session Analysis", "logic_info": "SELECT count(*) FROM sys.dm_exec_sessions \nWHERE status = 'sleeping' \nAND last_request_end_time < DATEADD(minute, -10, GETDATE())"}
+                    ],
+                    "recovery_docs": [{"id": seeded_bkms[0].id, "note": "Verify pool size in SQL Management Studio before running the restoration script."}]
+                },
+                {
+                    "title": "AUTH-API: Elevated 5xx Response Rate",
+                    "category": "Application",
+                    "severity": "Critical",
+                    "status": "Existing",
+                    "platform": "Prometheus/Grafana",
+                    "monitoring_url": "https://grafana.corp/auth-latency",
+                    "purpose": "Monitors the ratio of HTTP 5xx responses across all Auth-API pod instances.",
+                    "impact": "Global authentication failure. Users will be unable to log in or refresh tokens, effectively locking out the entire platform.",
+                    "check_interval": 15,
+                    "notification_throttle": 600,
+                    "owner_team": "Identity Team",
+                    "logic_json": [
+                        {"id": 1, "type": "Query", "description": "Error Rate Calculation", "logic_info": "sum(rate(http_requests_total{status=~'5..'}[1m])) \n/ \nsum(rate(http_requests_total[1m])) > 0.05"}
+                    ],
+                    "recovery_docs": [{"id": seeded_bkms[1].id, "note": "Check recent deployment logs in Jenkins before attempting node drain."}]
+                },
+                {
+                    "title": "NET-CORE-SW: High Port Flap Frequency",
+                    "category": "Network",
+                    "severity": "Warning",
+                    "status": "Existing",
+                    "platform": "Datadog-Network",
+                    "monitoring_url": "https://datadog.corp/network/devices",
+                    "purpose": "Detects physical layer instability on core-facing trunk ports.",
+                    "impact": "Intermittent packet loss and spanning-tree re-calculations, causing 'micro-outages' across the entire rack segment.",
+                    "check_interval": 60,
+                    "notification_throttle": 3600,
+                    "owner_team": "Network Engineering",
+                    "logic_json": [
+                        {"id": 1, "type": "Log Pattern", "description": "Interface Status Changes", "logic_info": "DETECT 'LINK-3-UPDOWN' AND 'LINEPROTO-5-UPDOWN' \nOCCURRENCE > 5 WITHIN 10m"}
+                    ]
+                },
+                {
+                    "title": "SHOP-WEB: Checkout Flow Synthetic Failure",
+                    "category": "Synthetic",
+                    "severity": "Critical",
+                    "status": "Planned",
+                    "platform": "NewRelic-Synthetics",
+                    "monitoring_url": "https://newrelic.corp/synthetics/checkouts",
+                    "purpose": "Executes a headless browser script to verify the 'Add to Cart' and 'Complete Purchase' flow every 5 minutes.",
+                    "impact": "Direct revenue loss. The website may appear UP but users cannot actually complete transactions.",
+                    "check_interval": 300,
+                    "notification_throttle": 1800,
+                    "owner_team": "E-Commerce SRE",
+                    "logic_json": [
+                        {"id": 1, "type": "Synthetic", "description": "Browser Script Flow", "logic_info": "1. Navigate to /cart\n2. click('#checkout-btn')\n3. wait_for('.order-confirmation')\nTIMEOUT = 30s"}
+                    ]
+                },
+                {
+                    "title": "SEC-FIREWALL: Unauthorized Config Modification",
+                    "category": "Log",
+                    "severity": "Critical",
+                    "status": "Existing",
+                    "platform": "Splunk-Security",
+                    "monitoring_url": "https://splunk.corp/security/audit",
+                    "purpose": "Detects configuration changes on Palo Alto firewalls that did not originate from the official deployment service account.",
+                    "impact": "Potential security breach or backdoor insertion. Manual changes bypass the automated audit and peer-review process.",
+                    "check_interval": 10,
+                    "notification_throttle": 0,
+                    "owner_team": "Cyber Security",
+                    "logic_json": [
+                        {"id": 1, "type": "Regex", "description": "Manual Login Detection", "logic_info": "/User (?!svc_deployer)[\\w.]+ logged in via (Web|SSH)/i"}
+                    ]
+                }
+            ]
+
+            for m_info in monitors:
+                target_device = random.choice(core_net_devices if m_info["category"] == "Network" else all_workers)
+                mon = MonitoringItem(
+                    device_id=target_device.id,
+                    is_active=True,
+                    monitored_services=[random.choice([s.id for s in db.query(LogicalService).all()])],
+                    **m_info
+                )
+                db.add(mon)
+                db.flush()
+                
+                # Add Owners with actual operator IDs
+                db.add(MonitoringOwner(monitoring_item_id=mon.id, operator_id=op_map.get("haewon.kim"), name="Haewon Kim", external_id="haewon.kim", role="Primary Support"))
+                db.add(MonitoringOwner(monitoring_item_id=mon.id, operator_id=op_map.get("sarah.connor") or seeded_ops[0].id, name="Sarah Connor", external_id="sarah.connor", role="Notification Subscriber"))
+
+            # 19. Projects (Apple-Style High Fidelity)
             project_data = [
                 {
                     "name": "Project Catalyst: Autonomous Fabric v2",
@@ -535,14 +674,7 @@ def seed():
                         end_date=datetime.now() + timedelta(days=7)
                     ))
 
-            # 18. RBAC
-            admin_role = Role(name="Administrator", permissions={"all": "manage"})
-            db.add(admin_role)
-            db.flush()
-            db.add(Operator(external_id="haewon.kim", username="haewon.kim", full_name="Haewon Kim", email="haewon.kim@sysgrid.net", role_id=admin_role.id, is_admin=True, registration_status="Active"))
-            db.add(Operator(external_id="haewonkim", username="haewonkim", full_name="Haewon Kim", email="haewonkim@sysgrid.net", role_id=admin_role.id, is_admin=True, registration_status="Active"))
-
-            # 19. Preferences & Versioning
+            # 20. Preferences & Versioning
             db.add(UserPreference(user_id="haewon.kim", key="dashboard_layout", value="compact"))
             db.add(EnvHistory(field="ENVIRONMENT", old_value="development", new_value="production", user="haewon.kim"))
             db.add(UserPoolVersion(version_label="v1", created_by="system", is_active=True))
@@ -554,7 +686,8 @@ def seed():
         import traceback
         print(f"FAILURE: Seeding failed: {str(e)}")
         traceback.print_exc()
-        sys.exit(1)
+        # Use direct exit since sys module might have been flaky in previous runs
+        os._exit(1)
 
 if __name__ == "__main__":
     seed()

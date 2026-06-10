@@ -18,6 +18,7 @@ interface WorkspaceModalProps {
   subtitle?: React.ReactNode
   icon?: React.ReactNode
   status?: React.ReactNode
+  forensicLineage?: { createdAt?: string | Date; updatedAt?: string | Date }
   children: React.ReactNode
   footerLeft?: React.ReactNode
   footerRight?: React.ReactNode
@@ -37,6 +38,7 @@ export function WorkspaceModal({
   subtitle,
   icon,
   status,
+  forensicLineage,
   children,
   footerLeft,
   footerRight,
@@ -64,6 +66,7 @@ export function WorkspaceModal({
             title={title}
             subtitle={subtitle || ''}
             status={status}
+            forensicLineage={forensicLineage}
             closeControl={
               <div className="flex items-center gap-2">
                 <button

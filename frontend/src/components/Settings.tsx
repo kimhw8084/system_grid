@@ -381,17 +381,25 @@ function PermissionHistoryModal({ versions, onClose }: { versions: any[], onClos
   )
 }
 
+import { ConfigSection } from "./ConfigRegistry"
+
 export default function SettingsPage() {
-  const [topTab, setTopTab] = useState<'environments' | 'permissions' | 'groups' | 'system' | 'tenants' | 'standards'>('environments')
+  const [topTab, setTopTab] = useState<'environments' | 'permissions' | 'groups' | 'system' | 'tenants' | 'standards' | 'metadata'>('environments')
   
   // Use URL search params to set the initial tab if provided
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
-    if (tab && ['environments', 'permissions', 'groups', 'system', 'tenants', 'standards'].includes(tab)) {
+    if (tab && ['environments', 'permissions', 'groups', 'system', 'tenants', 'standards', 'metadata'].includes(tab)) {
       setTopTab(tab as any);
     }
   }, []);
+
+  const queryClient = useQueryClient()
+  const { data: options } = useQuery({ 
+      queryKey: ["settings-options"], 
+      queryFn: async () => (await (await apiFetch("/api/v1/settings/options")).json()) 
+  })
 
   const [showPoolLogic, setShowPoolLogic] = useState(false)
   const [isSyncEditable, setIsSyncEditable] = useState(false)
@@ -425,8 +433,6 @@ export default function SettingsPage() {
   const [envSearch, setEnvSearch] = useState("")
   const [envImpactFilter, setEnvImpactFilter] = useState<'ALL' | 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'>('ALL')
   
-  const queryClient = useQueryClient()
-
   const preflightMutation = useMutation({
     mutationFn: async (target: string) => {
       const res = await apiFetch("/api/v1/tenants/admin/preflight", {
@@ -1152,6 +1158,7 @@ result_df = get_user_pool()`)
           { label: 'Parameters', value: 'environments' },
           { label: 'Permissions', value: 'permissions' },
           { label: 'Groups', value: 'groups' },
+          { label: 'Metadata', value: 'metadata' },
           { label: 'Analysis', value: 'system' },
           { label: 'Tenants', value: 'tenants' },
           { label: 'Standards', value: 'standards' }
@@ -1162,6 +1169,95 @@ result_df = get_user_pool()`)
 
       <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-20">
         <AnimatePresence mode="wait">
+          {topTab === 'metadata' && (
+             <motion.div key="metadata" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6 pt-2">
+                <div className="flex justify-between items-end mb-4 px-1">
+                   <div>
+                      <h2 className="text-xl font-black uppercase tracking-tighter text-white italic">Metadata <span className="text-blue-500">Registry</span></h2>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 mt-1">Global enumeration management & template configuration</p>
+                   </div>
+                   <ToolbarButton 
+                     onClick={() => {
+                        toast.promise(apiFetch("/api/v1/settings/initialize"), {
+                           loading: "Synchronizing system defaults...",
+                           success: () => { queryClient.invalidateQueries({ queryKey: ["settings-options"] }); return "Default enums synchronized" },
+                           error: "Synchronization failed"
+                        })
+                     }}
+                     icon={<RefreshCcw size={14} />}
+                     className="bg-blue-600/10 border-blue-500/30 text-blue-400"
+                   >
+                      Synchronize Defaults
+                   </ToolbarButton>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                   <ConfigSection 
+                      title="Monitoring Platforms" 
+                      category="MonitoringPlatform" 
+                      icon={Globe} 
+                      options={(options || []).filter((o:any) => o.category === "MonitoringPlatform")} 
+                   />
+                   <ConfigSection 
+                      title="Monitoring Categories" 
+                      category="MonitoringCategory" 
+                      icon={Tag} 
+                      options={(options || []).filter((o:any) => o.category === "MonitoringCategory")} 
+                   />
+                   <ConfigSection 
+                      title="Monitoring Ownership" 
+                      category="MonitoringTeam" 
+                      icon={Users} 
+                      options={(options || []).filter((o:any) => o.category === "MonitoringTeam")} 
+                   />
+                   <div className="h-px bg-white/5 my-4" />
+                   <ConfigSection 
+                      title="Asset Statuses" 
+                      category="Status" 
+                      icon={Activity} 
+                      options={(options || []).filter((o:any) => o.category === "Status")} 
+                   />
+                   <ConfigSection 
+                      title="Deployment Environments" 
+                      category="Environment" 
+                      icon={Box} 
+                      options={(options || []).filter((o:any) => o.category === "Environment")} 
+                   />
+                   <ConfigSection 
+                      title="Device Roles" 
+                      category="DeviceType" 
+                      icon={Cpu} 
+                      options={(options || []).filter((o:any) => o.category === "DeviceType")} 
+                   />
+                   <div className="h-px bg-white/5 my-4" />
+                   <ConfigSection 
+                      title="Logical Systems" 
+                      category="LogicalSystem" 
+                      icon={Database} 
+                      options={(options || []).filter((o:any) => o.category === "LogicalSystem")} 
+                   />
+                   <ConfigSection 
+                      title="Service Templates" 
+                      category="ServiceType" 
+                      icon={Layout} 
+                      options={(options || []).filter((o:any) => o.category === "ServiceType")} 
+                   />
+                   <div className="h-px bg-white/5 my-4" />
+                   <ConfigSection 
+                      title="Vendor Regions" 
+                      category="VendorCountry" 
+                      icon={Globe} 
+                      options={(options || []).filter((o:any) => o.category === "VendorCountry")} 
+                   />
+                   <ConfigSection 
+                      title="Inventory Classes" 
+                      category="VendorDeviceType" 
+                      icon={Package} 
+                      options={(options || []).filter((o:any) => o.category === "VendorDeviceType")} 
+                   />
+                </div>
+             </motion.div>
+          )}
           {topTab === 'environments' && (
             <motion.div key="environments" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4 pt-2">
                <div className="flex justify-between items-center mb-2">
@@ -1329,8 +1425,8 @@ result_df = get_user_pool()`)
                          className="overflow-hidden border-t border-white/5"
                        >
                           <div className="p-6 bg-slate-900/40 space-y-6">
-                             <div className="flex items-start justify-between gap-6">
-                                <div className="flex-1 space-y-4">
+                             <div className="flex items-stretch justify-between gap-6">
+                                <div className="flex-1 flex flex-col space-y-4">
                                    <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-3">
                                          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
@@ -1357,12 +1453,12 @@ result_df = get_user_pool()`)
                                          </ToolbarButton>
                                       </div>
                                    </div>
-                                   <div className="relative group">
+                                   <div className="relative group flex-1">
                                       <textarea 
                                         readOnly={!isSyncEditable}
                                         value={userPoolScript} 
                                         onChange={e => setUserPoolScript(e.target.value)}
-                                        className={`w-full h-48 bg-black/60 border ${isSyncEditable ? 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.05)]' : 'border-white/5'} rounded-lg p-6 font-mono text-[11px] text-emerald-400 outline-none transition-all custom-scrollbar leading-relaxed`}
+                                        className={`w-full h-full min-h-[300px] bg-black/60 border ${isSyncEditable ? 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.05)]' : 'border-white/5'} rounded-lg p-6 font-mono text-[11px] text-emerald-400 outline-none transition-all custom-scrollbar leading-relaxed`}
                                       />
                                       {!isSyncEditable && (
                                          <div className="absolute inset-0 bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
@@ -1375,8 +1471,8 @@ result_df = get_user_pool()`)
                                    </div>
                                 </div>
 
-                                <div className="w-80 space-y-4">
-                                   <div className="bg-white/5 border border-white/5 rounded-lg p-4">
+                                <div className="w-80 flex flex-col space-y-4">
+                                   <div className="bg-white/5 border border-white/5 rounded-lg p-4 flex-1">
                                       <div className="flex items-center gap-2 mb-3 border-b border-white/5 pb-2">
                                          <Activity size={12} className="text-blue-400" />
                                          <p className="text-[10px] font-black uppercase text-white tracking-widest">Schema Requirements</p>

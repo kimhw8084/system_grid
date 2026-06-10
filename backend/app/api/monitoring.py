@@ -161,9 +161,25 @@ async def to_monitoring_response(db: AsyncSession, item: models.MonitoringItem):
     if item.monitored_services:
         svc_res = await db.execute(select(models.LogicalService.name).filter(models.LogicalService.id.in_(item.monitored_services)))
         resp.monitored_service_names = list(svc_res.scalars().all())
+    
     if item.recovery_docs:
-        doc_res = await db.execute(select(models.KnowledgeEntry.title).filter(models.KnowledgeEntry.id.in_(item.recovery_docs)))
-        resp.recovery_doc_titles = list(doc_res.scalars().all())
+        doc_ids = [d.get("id") if isinstance(d, dict) else d for d in item.recovery_docs]
+        doc_res = await db.execute(select(models.KnowledgeEntry).filter(models.KnowledgeEntry.id.in_(doc_ids)))
+        docs = doc_res.scalars().all()
+        doc_map = {d.id: d.title for d in docs}
+        
+        resp.recovery_doc_titles = [doc_map.get(did, f"KB-{did}") for did in doc_ids]
+        resp.recovery_doc_details = []
+        for d in item.recovery_docs:
+            did = d.get("id") if isinstance(d, dict) else d
+            note = d.get("note") if isinstance(d, dict) else None
+            added_at = d.get("added_at") if isinstance(d, dict) else None
+            resp.recovery_doc_details.append({
+                "id": did,
+                "title": doc_map.get(did, f"KB-{did}"),
+                "note": note,
+                "added_at": added_at
+            })
     return resp
 
 async def save_monitoring_history(item_id: int, version: int, db: AsyncSession, summary: str = None):
@@ -263,7 +279,9 @@ async def get_monitoring_items(device_id: Optional[int] = None, include_deleted:
     all_doc_ids = set()
     for item in items:
         if item.recovery_docs:
-            all_doc_ids.update(item.recovery_docs)
+            for d in item.recovery_docs:
+                did = d.get("id") if isinstance(d, dict) else d
+                all_doc_ids.add(did)
             
     doc_map = {}
     if all_doc_ids:
@@ -275,7 +293,22 @@ async def get_monitoring_items(device_id: Optional[int] = None, include_deleted:
         resp = schemas.MonitoringItemResponse.model_validate(item)
         resp.device_name = device_map.get(item.device_id)
         resp.monitored_service_names = [service_map.get(sid) for sid in (item.monitored_services or []) if service_map.get(sid)]
-        resp.recovery_doc_titles = [doc_map.get(did) for did in (item.recovery_docs or []) if doc_map.get(did)]
+        
+        resp.recovery_doc_titles = []
+        resp.recovery_doc_details = []
+        if item.recovery_docs:
+            for d in item.recovery_docs:
+                did = d.get("id") if isinstance(d, dict) else d
+                note = d.get("note") if isinstance(d, dict) else None
+                added_at = d.get("added_at") if isinstance(d, dict) else None
+                title = doc_map.get(did, f"KB-{did}")
+                resp.recovery_doc_titles.append(title)
+                resp.recovery_doc_details.append({
+                    "id": did,
+                    "title": title,
+                    "note": note,
+                    "added_at": added_at
+                })
         res.append(resp)
         
     return res
