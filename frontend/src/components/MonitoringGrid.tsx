@@ -1110,6 +1110,14 @@ export default function MonitoringGrid() {
     queryFn: async () => (await apiFetch('/api/v1/monitoring?include_deleted=true')).json()
   })
 
+  const lifecycleCounts = useMemo(() => {
+    if (!Array.isArray(allItems)) return { existing: 0, archived: 0 }
+    return {
+      existing: allItems.filter((item: any) => !item.is_deleted).length,
+      archived: allItems.filter((item: any) => item.is_deleted).length,
+    }
+  }, [allItems])
+
   useEffect(() => {
     if (allItems) {
        // @ts-ignore
@@ -1889,17 +1897,25 @@ export default function MonitoringGrid() {
        }
        subtitle="Centralized monitoring configuration and operational status"
        actions={
-         <ToolbarSegmented
-           value={activeTab}
-           onChange={(next) => {
-             setActiveTab(next as 'active' | 'deleted')
-             setSelectedIds([])
-           }}
-           options={[
-             { label: 'Existing', value: 'active' },
-             { label: 'Archived', value: 'deleted' }
-           ]}
-         />
+         <div className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/5 p-1.5">
+           <div className="px-2">
+             <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Registry Scope</p>
+             <p className="pt-0.5 text-[10px] font-semibold text-slate-300">
+               {lifecycleCounts.existing} existing · {lifecycleCounts.archived} archived
+             </p>
+           </div>
+           <ToolbarSegmented
+             value={activeTab}
+             onChange={(next) => {
+               setActiveTab(next as 'active' | 'deleted')
+               setSelectedIds([])
+             }}
+             options={[
+               { label: 'Existing', value: 'active' },
+               { label: 'Archived', value: 'deleted' }
+             ]}
+           />
+         </div>
          }
          />
 

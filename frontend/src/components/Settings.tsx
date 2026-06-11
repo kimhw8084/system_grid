@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { 
   Globe, Shield, Cpu, Sliders, Box, Network, Lock, Key, Activity, Package,
@@ -11,7 +12,7 @@ import { toast } from 'react-hot-toast'
 import { showWorkspaceToast } from './shared/WorkspaceToast'
 import { apiFetch, setApiOverride, getApiBaseUrl } from "../api/apiClient"
 import { formatAppDate, parseAppDate } from "../utils/dateUtils"
-import { 
+import {
   PageHeader, 
   PageToolbar, 
   ToolbarGroup, 
@@ -20,7 +21,8 @@ import {
   ToolbarButton,
   ToolbarIconButton
 } from "./shared/LayoutPrimitives"
-import { WorkspaceEmptyState, WorkspaceSelectField } from "./shared/OperationalWorkspacePrimitives"
+import { AppDropdown } from "./shared/AppDropdown"
+import { WorkspaceEmptyState, WorkspaceFloatingPanel, WorkspaceSelectField, useWorkspaceAnchoredLayer } from "./shared/OperationalWorkspacePrimitives"
 import { WorkspaceModal } from "./shared/WorkspaceModal"
 import { WorkspaceHistoryShell } from "./shared/WorkspaceModalShells"
 
@@ -232,7 +234,177 @@ const SettingsMetaBadge = ({
 
 import { SettingsStandards } from "./SettingsStandards"
 
-function PermissionHistoryModal({ versions, onClose }: { versions: any[], onClose: () => void }) {
+const PERMISSION_LEVEL_LABELS = ["None", "Read", "Write", "Full"] as const
+
+const normalizePermissionLevel = (level: any) => {
+  if (typeof level === 'number') return Math.min(3, Math.max(0, Math.floor(level)))
+  if (level === 'read') return 1
+  if (level === 'add' || level === 'write') return 2
+  if (level === 'edit' || level === 'manage' || level === 'full' || level === 'admin') return 3
+  return 0
+}
+
+const getPermissionLevelLabel = (level: any, isGlobalAdmin = false) => {
+  const normalized = normalizePermissionLevel(level)
+  if (isGlobalAdmin && normalized === 3) return 'Admin'
+  return PERMISSION_LEVEL_LABELS[normalized]
+}
+
+const getPermissionLevelTone = (level: any, isGlobalAdmin = false) => {
+  const normalized = normalizePermissionLevel(level)
+  if (isGlobalAdmin && normalized === 3) return 'border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-300'
+  if (normalized === 3) return 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+  if (normalized === 2) return 'border-amber-500/20 bg-amber-500/10 text-amber-300'
+  if (normalized === 1) return 'border-blue-500/20 bg-blue-500/10 text-blue-300'
+  return 'border-white/10 bg-black/20 text-slate-500'
+}
+
+const getOperatorPermissionLevel = (operator: any, view: string) => {
+  if (!operator) return 0
+  if (operator.is_admin) return 3
+  return normalizePermissionLevel(operator.custom_permissions?.[view] ?? 0)
+}
+
+const toSortedStringList = (value: any) =>
+  Array.isArray(value)
+    ? value.map((entry) => String(entry)).filter(Boolean).sort((a, b) => a.localeCompare(b))
+    : []
+
+const getOperatorSnapshotKey = (operator: any) =>
+  String(operator?.external_id ?? operator?.id ?? operator?.username ?? '')
+
+const buildPermissionHistoryRows = (newer: any, older: any, allViews: string[]) => {
+  const newerRows = Array.isArray(newer?.snapshot_data) ? newer.snapshot_data : []
+  const olderRows = Array.isArray(older?.snapshot_data) ? older.snapshot_data : []
+  const newerMap = new Map(newerRows.map((operator: any) => [getOperatorSnapshotKey(operator), operator]))
+  const olderMap = new Map(olderRows.map((operator: any) => [getOperatorSnapshotKey(operator), operator]))
+  const keys = Array.from(new Set([...newerMap.keys(), ...olderMap.keys()])).filter(Boolean)
+
+  const rows = keys.map((key) => {
+    const before = olderMap.get(key) || null
+    const after = newerMap.get(key) || null
+
+    if (!before && after) {
+      return {
+        key,
+        changeKind: 'added' as const,
+        before,
+        after,
+        permissionChanges: allViews
+          .map((view) => ({ view, old: 0, new: getOperatorPermissionLevel(after, view) }))
+          .filter((entry) => entry.new !== entry.old),
+      }
+    }
+
+    if (before && !after) {
+      return {
+        key,
+        changeKind: 'deleted' as const,
+        before,
+        after,
+        permissionChanges: allViews
+          .map((view) => ({ view, old: getOperatorPermissionLevel(before, view), new: 0 }))
+          .filter((entry) => entry.new !== entry.old),
+      }
+    }
+
+    const permissionChanges = allViews
+      .map((view) => ({
+        view,
+        old: getOperatorPermissionLevel(before, view),
+        new: getOperatorPermissionLevel(after, view),
+      }))
+      .filter((entry) => entry.old !== entry.new)
+
+    const changedFields = [
+      before?.full_name !== after?.full_name ? 'full_name' : null,
+      before?.username !== after?.username ? 'username' : null,
+      before?.department !== after?.department ? 'department' : null,
+      before?.team !== after?.team ? 'team' : null,
+      JSON.stringify(toSortedStringList(before?.teams)) !== JSON.stringify(toSortedStringList(after?.teams)) ? 'groups' : null,
+      Boolean(before?.is_admin) !== Boolean(after?.is_admin) ? 'is_admin' : null,
+      before?.registration_status !== after?.registration_status ? 'registration_status' : null,
+      before?.email !== after?.email ? 'email' : null,
+    ].filter(Boolean)
+
+    if (!changedFields.length && permissionChanges.length === 0) {
+      return null
+    }
+
+    return {
+      key,
+      changeKind: 'changed' as const,
+      before,
+      after,
+      permissionChanges,
+    }
+  }).filter(Boolean) as Array<any>
+
+  const order = { changed: 0, added: 1, deleted: 2 } as const
+  return rows.sort((a, b) => {
+    const rankDiff = order[a.changeKind] - order[b.changeKind]
+    if (rankDiff !== 0) return rankDiff
+    const nameA = (a.after?.full_name || a.before?.full_name || '').toLowerCase()
+    const nameB = (b.after?.full_name || b.before?.full_name || '').toLowerCase()
+    return nameA.localeCompare(nameB)
+  })
+}
+
+function SettingsBulkActionCard({ title, active, onClick }: { title: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
+        active ? 'border-blue-500/40 bg-blue-950/40' : 'border-slate-800 bg-slate-950 hover:border-slate-700 hover:bg-slate-900'
+      }`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[10px] font-semibold text-slate-100">{title}</p>
+        <ChevronRight size={14} className={active ? 'text-blue-300' : 'text-slate-500'} />
+      </div>
+    </button>
+  )
+}
+
+function SettingsBulkInlineEditor({
+  value,
+  onChange,
+  options,
+  placeholder,
+  actionLabel,
+  onApply,
+  disabled,
+}: {
+  value: string
+  onChange: (value: string) => void
+  options: Array<{ value: string | number; label: string }>
+  placeholder: string
+  actionLabel: string
+  onApply: () => void
+  disabled: boolean
+}) {
+  return (
+    <div className="rounded-lg border border-slate-800 bg-[#0b1220] p-3">
+      <div className="grid gap-3">
+        <AppDropdown
+          value={value}
+          onChange={(next) => onChange(String(next))}
+          options={options}
+          placeholder={placeholder}
+        />
+        <button
+          onClick={onApply}
+          disabled={disabled}
+          className="rounded-lg border border-blue-500/20 bg-blue-600/15 px-4 py-2.5 text-[10px] font-semibold text-blue-200 transition-all hover:bg-blue-600/25 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-950 disabled:text-slate-600"
+        >
+          {actionLabel}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function PermissionHistoryModal({ versions, allViews, onClose }: { versions: any[], allViews: string[], onClose: () => void }) {
   const [isMaximized, setIsMaximized] = useState(false)
   const [selectedIndices, setSelectedIndices] = useState<number[]>([0])
   const queryClient = useQueryClient()
@@ -262,33 +434,13 @@ function PermissionHistoryModal({ versions, onClose }: { versions: any[], onClos
     ? indexedVersions?.[Math.max(...selectedIndices)] 
     : (selectedIndices[0] + 1 < indexedVersions.length ? indexedVersions[selectedIndices[0] + 1] : null)
 
-  const getDiff = (curr: any, prev: any) => {
-    const diffs: Array<{field: string, old: any, new: any}> = []
-    if (!curr) return diffs
-    
-    const summary = curr.diff_summary || {}
-    if (summary.added) diffs.push({ field: 'Added Operators', old: '0 operators', new: `${summary.added} new operators` })
-    if (summary.removed) diffs.push({ field: 'Removed Operators', old: `${summary.removed} active operators`, new: '0 operators (removed)' })
-    if (summary.changed) diffs.push({ field: 'Changed Operators', old: 'Previous metadata', new: `${summary.changed} operators modified` })
-    
-    if (summary.team_updates?.length) {
-      summary.team_updates.forEach((update: any) => {
-        diffs.push({ 
-          field: `Membership: ${update.username || update.external_id}`, 
-          old: Array.isArray(update.old) ? update.old.join(', ') : (update.old || 'None'), 
-          new: Array.isArray(update.new) ? update.new.join(', ') : (update.new || 'None')
-        })
-      })
-    }
-
-    if (summary.script) {
-        diffs.push({ field: 'Logic Script', old: 'Previous version', new: 'Updated Python logic' })
-    }
-    
-    return diffs
-  }
-
-  const diffs = getDiff(newer, older)
+  const historyRows = React.useMemo(
+    () => buildPermissionHistoryRows(newer, older, allViews),
+    [allViews, newer, older]
+  )
+  const addedCount = historyRows.filter((row) => row.changeKind === 'added').length
+  const changedCount = historyRows.filter((row) => row.changeKind === 'changed').length
+  const deletedCount = historyRows.filter((row) => row.changeKind === 'deleted').length
 
   return (
     <WorkspaceModal
@@ -380,45 +532,138 @@ function PermissionHistoryModal({ versions, onClose }: { versions: any[], onClos
                     </div>
                     <div>
                        <h3 className="text-[11px] font-black text-slate-300 uppercase tracking-widest">Semantic Delta</h3>
-                       <p className="text-[9px] font-bold text-slate-600">{diffs.length} modification vectors detected</p>
+                       <p className="text-[9px] font-bold text-slate-600">{historyRows.length} identity rows changed between the selected revisions</p>
                     </div>
+                 </div>
+                 <div className="flex flex-wrap items-center gap-2">
+                   <span className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-emerald-300">{addedCount} added</span>
+                   <span className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-amber-300">{changedCount} changed</span>
+                   <span className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-rose-300">{deletedCount} deleted</span>
                  </div>
               </div>
               
               <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
-                 {diffs.length > 0 ? (
+                 {historyRows.length > 0 ? (
                     <div className="space-y-6">
                        <div className="overflow-hidden rounded-lg border border-white/5 bg-black/20">
                           <table className="w-full text-left border-collapse">
                              <thead>
                                 <tr className="bg-white/5 text-[9px] font-black uppercase text-slate-500 tracking-widest">
-                                   <th className="p-4 w-1/4">Property</th>
-                                   <th className="p-4 w-3/8 text-rose-500/70">Previous (v{older?.v_num || 'Ø'})</th>
-                                   <th className="p-4 w-3/8 text-emerald-500/70">Current (v{newer?.v_num})</th>
+                                   <th className="p-4 min-w-[120px]">Change</th>
+                                   <th className="p-4 min-w-[240px]">Identity</th>
+                                   <th className="p-4 min-w-[140px]">Department</th>
+                                   <th className="p-4 min-w-[140px]">Primary Team</th>
+                                   <th className="p-4 min-w-[180px]">Groups</th>
+                                   <th className="p-4 min-w-[140px] text-center">Admin State</th>
+                                   <th className="p-4 min-w-[260px]">Permission Delta</th>
                                 </tr>
                              </thead>
                              <tbody className="divide-y divide-white/5">
-                                {diffs.map((d: any, i: number) => (
-                                   <tr key={i} className="hover:bg-white/[0.02] transition-colors">
+                                {historyRows.map((row: any) => {
+                                   const current = row.after || row.before
+                                   const beforeGroups = toSortedStringList(row.before?.teams)
+                                   const afterGroups = toSortedStringList(row.after?.teams)
+                                   const rowTone =
+                                     row.changeKind === 'added'
+                                       ? 'bg-emerald-500/[0.04]'
+                                       : row.changeKind === 'deleted'
+                                         ? 'bg-rose-500/[0.04]'
+                                         : 'bg-amber-500/[0.03]'
+
+                                   return (
+                                   <tr key={row.key} className={`${rowTone} hover:bg-white/[0.02] transition-colors align-top`}>
                                       <td className="p-4 align-top">
-                                         <span className="text-[11px] font-bold text-slate-400">{d.field}</span>
+                                         <span className={`inline-flex rounded-lg border px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] ${
+                                           row.changeKind === 'added'
+                                             ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+                                             : row.changeKind === 'deleted'
+                                               ? 'border-rose-500/20 bg-rose-500/10 text-rose-300'
+                                               : 'border-amber-500/20 bg-amber-500/10 text-amber-300'
+                                         }`}>
+                                           {row.changeKind}
+                                         </span>
                                       </td>
                                       <td className="p-4 align-top">
-                                         <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-3 overflow-hidden">
-                                            <pre className="text-[10px] text-slate-500 line-through whitespace-pre-wrap font-mono leading-relaxed break-all">
-                                               {typeof d.old === 'object' ? JSON.stringify(d.old, null, 2) : String(d.old || '(empty)')}
-                                            </pre>
+                                         <div className="space-y-1.5">
+                                           <div className="text-[11px] font-bold text-white">{current?.full_name || current?.username || 'Unknown identity'}</div>
+                                           <div className="text-[9px] font-semibold text-slate-500">{current?.username || 'No username'}</div>
+                                             {row.changeKind === 'changed' && row.before?.full_name !== row.after?.full_name && (
+                                               <div className="text-[8px] font-semibold text-amber-300">
+                                                {row.before?.full_name || 'Empty'} {'->'} {row.after?.full_name || 'Empty'}
+                                               </div>
+                                             )}
                                          </div>
                                       </td>
                                       <td className="p-4 align-top">
-                                         <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-3 overflow-hidden">
-                                            <pre className="text-[10px] text-emerald-400 whitespace-pre-wrap font-mono font-bold leading-relaxed break-all">
-                                               {typeof d.new === 'object' ? JSON.stringify(d.new, null, 2) : String(d.new || '(empty)')}
-                                            </pre>
-                                         </div>
+                                         {row.changeKind === 'changed' && row.before?.department !== row.after?.department ? (
+                                           <div className="space-y-1">
+                                             <div className="text-[9px] font-semibold text-slate-500 line-through">{row.before?.department || '—'}</div>
+                                             <div className="text-[10px] font-bold text-amber-300">{row.after?.department || '—'}</div>
+                                           </div>
+                                         ) : (
+                                           <span className="text-[10px] font-bold text-slate-300">{current?.department || '—'}</span>
+                                         )}
+                                      </td>
+                                      <td className="p-4 align-top">
+                                         {row.changeKind === 'changed' && row.before?.team !== row.after?.team ? (
+                                           <div className="space-y-1">
+                                             <div className="text-[9px] font-semibold text-slate-500 line-through">{row.before?.team || 'Unassigned'}</div>
+                                             <div className="text-[10px] font-bold text-amber-300">{row.after?.team || 'Unassigned'}</div>
+                                           </div>
+                                         ) : (
+                                           <span className="text-[10px] font-bold text-slate-300">{current?.team || 'Unassigned'}</span>
+                                         )}
+                                      </td>
+                                      <td className="p-4 align-top">
+                                         {row.changeKind === 'changed' && JSON.stringify(beforeGroups) !== JSON.stringify(afterGroups) ? (
+                                           <div className="space-y-1">
+                                             <div className="text-[9px] font-semibold text-slate-500 line-through">{beforeGroups.join(', ') || 'No groups'}</div>
+                                             <div className="text-[10px] font-bold text-amber-300">{afterGroups.join(', ') || 'No groups'}</div>
+                                           </div>
+                                         ) : (
+                                           <span className="text-[10px] font-bold text-slate-300">{(row.after ? afterGroups : beforeGroups).join(', ') || 'No groups'}</span>
+                                         )}
+                                      </td>
+                                      <td className="p-4 align-top text-center">
+                                         {row.changeKind === 'changed' && Boolean(row.before?.is_admin) !== Boolean(row.after?.is_admin) ? (
+                                           <div className="flex flex-col items-center gap-1">
+                                             <span className={`inline-flex rounded-lg border px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em] ${getPermissionLevelTone(Boolean(row.before?.is_admin) ? 3 : 0, Boolean(row.before?.is_admin))}`}>
+                                               {Boolean(row.before?.is_admin) ? 'Admin' : 'Standard'}
+                                             </span>
+                                             <span className={`inline-flex rounded-lg border px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em] ${getPermissionLevelTone(Boolean(row.after?.is_admin) ? 3 : 0, Boolean(row.after?.is_admin))}`}>
+                                               {Boolean(row.after?.is_admin) ? 'Admin' : 'Standard'}
+                                             </span>
+                                           </div>
+                                         ) : (
+                                           <span className={`inline-flex rounded-lg border px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em] ${getPermissionLevelTone(Boolean(current?.is_admin) ? 3 : 0, Boolean(current?.is_admin))}`}>
+                                             {Boolean(current?.is_admin) ? 'Admin' : 'Standard'}
+                                           </span>
+                                         )}
+                                      </td>
+                                      <td className="p-4 align-top">
+                                         {row.permissionChanges.length > 0 ? (
+                                           <div className="flex flex-wrap gap-2">
+                                             {row.permissionChanges.map((change: any) => (
+                                               <div key={`${row.key}-${change.view}`} className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-2">
+                                                 <div className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-500">{change.view}</div>
+                                                 <div className="mt-1 flex items-center gap-1.5">
+                                                   <span className={`rounded-lg border px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] ${getPermissionLevelTone(change.old, Boolean(row.before?.is_admin))}`}>
+                                                     {getPermissionLevelLabel(change.old, Boolean(row.before?.is_admin))}
+                                                   </span>
+                                                   <ChevronRight size={12} className="text-slate-600" />
+                                                   <span className={`rounded-lg border px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] ${getPermissionLevelTone(change.new, Boolean(row.after?.is_admin))}`}>
+                                                     {getPermissionLevelLabel(change.new, Boolean(row.after?.is_admin))}
+                                                   </span>
+                                                 </div>
+                                               </div>
+                                             ))}
+                                           </div>
+                                         ) : (
+                                           <span className="text-[10px] font-semibold text-slate-500">No view-level permission delta</span>
+                                         )}
                                       </td>
                                    </tr>
-                                ))}
+                                )})}
                              </tbody>
                           </table>
                        </div>
@@ -474,6 +719,9 @@ export default function SettingsPage() {
   const [operatorSort, setOperatorSort] = useState<'name' | 'team' | 'admin'>('name')
   const [selectedOperatorIds, setSelectedOperatorIds] = useState<number[]>([])
   const [bulkGroupTargetId, setBulkGroupTargetId] = useState<string>("")
+  const [showPermissionBulkMenu, setShowPermissionBulkMenu] = useState(false)
+  const [expandedPermissionBulkSection, setExpandedPermissionBulkSection] = useState<'assign-group' | 'remove-group' | null>(null)
+  const [permissionBulkDeleteConfirm, setPermissionBulkDeleteConfirm] = useState(false)
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null)
   const [teamSearch, setTeamSearch] = useState("")
   const [newTeamName, setNewTeamName] = useState("")
@@ -484,6 +732,12 @@ export default function SettingsPage() {
   const [savedTeamFilters, setSavedTeamFilters] = useState<Array<{ id: string, label: string, teams: string[] }>>([])
   const [envSearch, setEnvSearch] = useState("")
   const [envImpactFilter, setEnvImpactFilter] = useState<'ALL' | 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'>('ALL')
+  const permissionSelectionAnchorRef = React.useRef<number | null>(null)
+  const {
+    triggerRef: permissionBulkTriggerRef,
+    panelRef: permissionBulkPanelRef,
+    panelStyle: permissionBulkPanelStyle,
+  } = useWorkspaceAnchoredLayer(showPermissionBulkMenu, { minWidth: 360 })
   
   const preflightMutation = useMutation({
     mutationFn: async (target: string) => {
@@ -992,6 +1246,30 @@ result_df = get_user_pool()`)
     }
   }, [selectedTeam?.id])
 
+  useEffect(() => {
+    if (!showPermissionBulkMenu) return
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node
+      if (
+        permissionBulkTriggerRef.current?.contains(target as HTMLElement) ||
+        permissionBulkPanelRef.current?.contains(target) ||
+        (target instanceof HTMLElement && target.closest('[data-workspace-panel]'))
+      ) return
+      setShowPermissionBulkMenu(false)
+      setExpandedPermissionBulkSection(null)
+      setPermissionBulkDeleteConfirm(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [permissionBulkPanelRef, permissionBulkTriggerRef, showPermissionBulkMenu])
+
+  useEffect(() => {
+    if (selectedOperatorIds.length > 0) return
+    setShowPermissionBulkMenu(false)
+    setExpandedPermissionBulkSection(null)
+    setPermissionBulkDeleteConfirm(false)
+  }, [selectedOperatorIds.length])
+
   const handleAddOperator = () => {
     if (!newOpId) return;
     operatorMutation.mutate({ 
@@ -1006,16 +1284,34 @@ result_df = get_user_pool()`)
     setNewOpId("");
   }
 
-  const toggleOperatorSelection = (id: number) => {
-    setSelectedOperatorIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])
-  }
+  const handleOperatorSelection = (id: number, event?: { shiftKey?: boolean; ctrlKey?: boolean; metaKey?: boolean }) => {
+    const visibleIds = filteredOperators.map((op: any) => op.id)
+    const anchorId = permissionSelectionAnchorRef.current ?? id
+    const isRangeSelection = Boolean(event?.shiftKey)
+    const isToggleSelection = Boolean(event?.metaKey || event?.ctrlKey)
 
-  const toggleAllVisibleOperators = () => {
-    if (allVisibleOperatorsSelected) {
-      setSelectedOperatorIds((current) => current.filter((id) => !filteredOperators.some((op: any) => op.id === id)))
+    if (isRangeSelection) {
+      const startIndex = visibleIds.indexOf(anchorId)
+      const endIndex = visibleIds.indexOf(id)
+      if (startIndex !== -1 && endIndex !== -1) {
+        const rangeIds = visibleIds.slice(Math.min(startIndex, endIndex), Math.max(startIndex, endIndex) + 1)
+        setSelectedOperatorIds((current) => isToggleSelection ? Array.from(new Set([...current, ...rangeIds])) : rangeIds)
+        return
+      }
+    }
+
+    permissionSelectionAnchorRef.current = id
+    if (isToggleSelection) {
+      setSelectedOperatorIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])
       return
     }
-    setSelectedOperatorIds((current) => Array.from(new Set([...current, ...filteredOperators.map((op: any) => op.id)])))
+    setSelectedOperatorIds([id])
+  }
+
+  const togglePermissionBulkMenu = () => {
+    if (selectedOperatorIds.length === 0) return
+    setShowPermissionBulkMenu((current) => !current)
+    setPermissionBulkDeleteConfirm(false)
   }
 
   const assignSelectedOperatorsToFocusedGroup = () => {
@@ -1112,7 +1408,6 @@ result_df = get_user_pool()`)
   const visibleCategories = Array.from(
     new Set(filteredEnvEntries.map(([key]) => localEnv._metadata?.[key]?.category).filter(Boolean))
   )
-  const allVisibleOperatorsSelected = filteredOperators.length > 0 && filteredOperators.every((op: any) => selectedOperatorIds.includes(op.id))
   const metadataViewBindings = {
     MonitoringPlatform: [{ label: 'Monitoring', path: '/monitoring' }],
     MonitoringCategory: [{ label: 'Monitoring', path: '/monitoring' }],
@@ -1669,9 +1964,6 @@ result_df = get_user_pool()`)
                  }
                  right={
                    <ToolbarGroup>
-                     <ToolbarButton onClick={toggleAllVisibleOperators}>
-                       <span>{allVisibleOperatorsSelected ? 'Clear Visible' : 'Select Visible'}</span>
-                     </ToolbarButton>
                      <ToolbarButton onClick={() => setShowPermissionHistory(true)}>
                        <span className="flex items-center gap-2">
                          <HistoryIcon size={14} />
@@ -1679,76 +1971,124 @@ result_df = get_user_pool()`)
                        </span>
                      </ToolbarButton>
                      <ToolbarButton
-                       onClick={assignSelectedOperatorsToFocusedGroup}
-                       disabled={selectedOperatorIds.length === 0 || !bulkGroupTarget}
-                       variant="primary"
+                       onClick={togglePermissionBulkMenu}
+                       disabled={selectedOperatorIds.length === 0}
+                       active={showPermissionBulkMenu}
+                       ref={permissionBulkTriggerRef as any}
                      >
                        <span className="flex items-center gap-2">
-                         <Users size={14} />
-                         {bulkGroupTarget ? `Assign to ${bulkGroupTarget.name} (${selectedOperatorIds.length})` : `Assign Groups (${selectedOperatorIds.length})`}
+                         <Zap size={14} />
+                         Bulk Actions
                        </span>
                      </ToolbarButton>
                    </ToolbarGroup>
                  }
                />
 
-               {selectedOperatorIds.length > 0 && (
-                 <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4 shadow-xl">
-                   <div className="grid gap-4 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)] xl:items-end">
-                     <WorkspaceSelectField
-                       label="Target Group"
-                       value={bulkGroupTargetId}
-                       onChange={(value) => setBulkGroupTargetId(String(value))}
-                       options={(teams || []).map((team: any) => ({
-                         value: team.id,
-                         label: team.name,
-                         description: team.description || team.source || 'Manual group'
-                       }))}
-                       placeholder="Choose a group for bulk assignment"
-                       searchable
-                     />
-                     <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-                       <span className="mr-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                         {selectedOperatorIds.length} selected
-                       </span>
-                       <ToolbarButton onClick={() => setSelectedOperatorIds([])}>
-                         Clear Selection
-                       </ToolbarButton>
-                       <ToolbarButton
-                         onClick={assignSelectedOperatorsToFocusedGroup}
-                         disabled={!bulkGroupTarget || bulkOperatorPatchMutation.isPending}
-                         variant="primary"
-                       >
-                         Assign Group
-                       </ToolbarButton>
-                       <ToolbarButton
-                         onClick={removeSelectedOperatorsFromFocusedGroup}
-                         disabled={!bulkGroupTarget || bulkOperatorPatchMutation.isPending}
-                       >
-                         Remove Group
-                       </ToolbarButton>
-                       <ToolbarButton
-                         onClick={() => bulkSetAdminState(true)}
-                         disabled={bulkOperatorPatchMutation.isPending}
-                       >
-                         Set Admin
-                       </ToolbarButton>
-                       <ToolbarButton
-                         onClick={() => bulkSetAdminState(false)}
-                         disabled={bulkOperatorPatchMutation.isPending}
-                       >
-                         Unset Admin
-                       </ToolbarButton>
-                       <ToolbarButton
-                         onClick={bulkDeleteSelectedOperators}
-                         disabled={bulkOperatorDeleteMutation.isPending}
-                         variant="danger"
-                       >
-                         Delete Selected
-                       </ToolbarButton>
-                     </div>
-                   </div>
-                 </div>
+               {typeof document !== 'undefined' && createPortal(
+                 <AnimatePresence>
+                   {showPermissionBulkMenu && !!permissionBulkPanelStyle.top && (
+                     <motion.div
+                       initial={{ opacity: 0, y: 10 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       exit={{ opacity: 0, y: 10 }}
+                       style={permissionBulkPanelStyle}
+                       data-workspace-panel="true"
+                     >
+                       <div ref={permissionBulkPanelRef}>
+                         <WorkspaceFloatingPanel kind="context" className="max-h-[560px] overflow-y-auto custom-scrollbar p-3">
+                           <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
+                             <p className="text-[10px] font-semibold text-slate-400">Bulk actions</p>
+                             <p className="pt-1 text-[12px] font-semibold text-slate-100">{selectedOperatorIds.length} identities selected</p>
+                           </div>
+
+                           <div className="space-y-2">
+                             <SettingsBulkActionCard
+                               title="Assign Group"
+                               active={expandedPermissionBulkSection === 'assign-group'}
+                               onClick={() => setExpandedPermissionBulkSection((current) => current === 'assign-group' ? null : 'assign-group')}
+                             />
+                             {expandedPermissionBulkSection === 'assign-group' && (
+                               <SettingsBulkInlineEditor
+                                 value={bulkGroupTargetId}
+                                 onChange={setBulkGroupTargetId}
+                                 options={(teams || []).map((team: any) => ({ value: team.id, label: team.name }))}
+                                 placeholder="Choose group"
+                                 actionLabel="Apply Group Assignment"
+                                 onApply={assignSelectedOperatorsToFocusedGroup}
+                                 disabled={!bulkGroupTarget || bulkOperatorPatchMutation.isPending}
+                               />
+                             )}
+
+                             <SettingsBulkActionCard
+                               title="Remove Group"
+                               active={expandedPermissionBulkSection === 'remove-group'}
+                               onClick={() => setExpandedPermissionBulkSection((current) => current === 'remove-group' ? null : 'remove-group')}
+                             />
+                             {expandedPermissionBulkSection === 'remove-group' && (
+                               <SettingsBulkInlineEditor
+                                 value={bulkGroupTargetId}
+                                 onChange={setBulkGroupTargetId}
+                                 options={(teams || []).map((team: any) => ({ value: team.id, label: team.name }))}
+                                 placeholder="Choose group"
+                                 actionLabel="Remove Group Membership"
+                                 onApply={removeSelectedOperatorsFromFocusedGroup}
+                                 disabled={!bulkGroupTarget || bulkOperatorPatchMutation.isPending}
+                               />
+                             )}
+                           </div>
+
+                           <div className="mx-1 my-3 h-px bg-slate-800" />
+                           <div className="grid gap-2">
+                             <button
+                               onClick={() => bulkSetAdminState(true)}
+                               disabled={bulkOperatorPatchMutation.isPending}
+                               className="w-full rounded-lg border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-left transition-all hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-950 disabled:text-slate-600"
+                             >
+                               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">Set Admin</p>
+                             </button>
+                             <button
+                               onClick={() => bulkSetAdminState(false)}
+                               disabled={bulkOperatorPatchMutation.isPending}
+                               className="w-full rounded-lg border border-white/10 bg-black/20 px-4 py-3 text-left transition-all hover:bg-white/5 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-950 disabled:text-slate-600"
+                             >
+                               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-300">Unset Admin</p>
+                             </button>
+                             <button
+                               onClick={() => setSelectedOperatorIds([])}
+                               className="w-full rounded-lg border border-white/10 bg-black/20 px-4 py-3 text-left transition-all hover:bg-white/5"
+                             >
+                               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-300">Clear Selection</p>
+                             </button>
+                           </div>
+
+                           <div className="mx-1 my-3 h-px bg-slate-800" />
+                           <button
+                             onClick={() => {
+                               if (!permissionBulkDeleteConfirm) {
+                                 setPermissionBulkDeleteConfirm(true)
+                                 return
+                               }
+                               bulkDeleteSelectedOperators()
+                             }}
+                             onMouseLeave={() => setPermissionBulkDeleteConfirm(false)}
+                             disabled={bulkOperatorDeleteMutation.isPending}
+                             className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
+                               permissionBulkDeleteConfirm
+                                 ? 'border-rose-500 bg-rose-600 animate-pulse'
+                                 : 'border-rose-900/70 bg-rose-950/70 hover:bg-rose-950'
+                             }`}
+                           >
+                             <p className={`text-[10px] font-semibold ${permissionBulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
+                               {permissionBulkDeleteConfirm ? 'Confirm Identity Deletion?' : 'Delete Selection'}
+                             </p>
+                           </button>
+                         </WorkspaceFloatingPanel>
+                       </div>
+                     </motion.div>
+                   )}
+                 </AnimatePresence>,
+                 document.body
                )}
 
                <AnimatePresence>
@@ -1856,8 +2196,12 @@ result_df = get_user_pool()`)
                               <div className="flex items-center justify-center min-h-[40px]">
                                 <input
                                   type="checkbox"
+                                  readOnly
                                   checked={isSelected}
-                                  onChange={() => toggleOperatorSelection(op.id)}
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    handleOperatorSelection(op.id, event)
+                                  }}
                                   className="h-4 w-4 rounded border-white/10 bg-black/20 accent-blue-500"
                                 />
                               </div>
@@ -1865,7 +2209,7 @@ result_df = get_user_pool()`)
                             <td className="p-4 sticky left-[84px] bg-[#0c121e]/95 backdrop-blur-sm z-10 border-r border-white/5 align-middle">
                               <button
                                 type="button"
-                                onClick={() => toggleOperatorSelection(op.id)}
+                                onClick={(event) => handleOperatorSelection(op.id, event)}
                                 className="flex w-full items-center gap-3 text-left"
                               >
                                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-[11px] shadow-lg transition-all ${op.is_admin ? 'bg-blue-600 text-white shadow-blue-500/20' : 'bg-slate-800 text-slate-400 border border-white/5'}`}>
@@ -2095,8 +2439,8 @@ result_df = get_user_pool()`)
                            <input
                              value={newTenantName}
                              onChange={e => setNewTenantName(e.target.value)}
-                             placeholder="TENANT_NAME"
-                             className="w-full rounded-lg border border-white/10 bg-black/40 px-4 py-3 text-[11px] font-black uppercase text-blue-300 outline-none focus:border-blue-500"
+                             placeholder="Tenant name"
+                             className="w-full rounded-lg border border-white/10 bg-black/40 px-4 py-3 text-[11px] font-semibold text-blue-300 outline-none placeholder:text-slate-500 focus:border-blue-500"
                            />
                            <ToolbarButton
                              onClick={() => { if (!newTenantName) return; createTenantMutation.mutate(newTenantName); }}
@@ -2127,8 +2471,8 @@ result_df = get_user_pool()`)
                            <input
                              value={attachName}
                              onChange={e => setAttachName(e.target.value)}
-                             placeholder="TENANT_LABEL"
-                             className="w-full rounded-lg border border-white/10 bg-black/40 px-4 py-3 text-[11px] font-black uppercase text-emerald-300 outline-none focus:border-emerald-500"
+                             placeholder="Tenant label"
+                             className="w-full rounded-lg border border-white/10 bg-black/40 px-4 py-3 text-[11px] font-semibold text-emerald-300 outline-none placeholder:text-slate-500 focus:border-emerald-500"
                            />
                            <div className="relative">
                               <input
@@ -2512,7 +2856,7 @@ result_df = get_user_pool()`)
 
       {/* Permission Registry History */}
       {showPermissionHistory && (
-         <PermissionHistoryModal versions={poolVersions || []} onClose={() => setShowPermissionHistory(false)} />
+         <PermissionHistoryModal versions={poolVersions || []} allViews={allViews} onClose={() => setShowPermissionHistory(false)} />
       )}
 
       {/* Snapshot Data Modal */}

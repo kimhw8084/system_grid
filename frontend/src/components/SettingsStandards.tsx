@@ -205,6 +205,8 @@ export const SettingsStandards = () => {
               <LexiconEntry term="First Render Fit" definition="Pinned utility columns must look correct before any user interaction, autosize pass, or layout mutation." usage="Initial render is part of the contract, not a best effort." />
               <LexiconEntry term="Cell Alignment" definition="Checkboxes, pills, toggles, and badges inside the same row height must share one vertical centerline." usage="Do not let utility cells drift off-axis relative to neighboring status cells." />
               <LexiconEntry term="Bulk Selection Flow" definition="Single-row and multi-row selection must surface one explicit bulk-action strip directly below the command bar whenever rows are selected." usage="Do not hide critical bulk actions behind unrelated side-panels or focused-detail state." />
+              <LexiconEntry term="Bulk Action Flyout" definition="Monitoring is the canonical bulk-action pattern: one `Bulk Actions` trigger in the command bar opens an anchored contextual flyout with expandable action cards and inline editors." usage="Reuse the Monitoring flyout pattern for Settings Permissions instead of adding one-off bulk strips or duplicate assignment buttons." />
+              <LexiconEntry term="Native Range Selection" definition="Table selection must support single-click replace, ctrl/cmd toggle, and shift range selection on the visible row order." usage="Bulk actions depend on native-feeling row selection instead of separate helper buttons like `Select Visible`." />
             </div>
           </div>
           <div className="space-y-4">
@@ -261,8 +263,10 @@ export const SettingsStandards = () => {
               <LexiconEntry term="Equal Heights" definition="Search fields, buttons, segmented controls, icon buttons, and select shells use the same `h-9` control height." usage="Fix the primitive, not each page individually." />
               <LexiconEntry term="Left Zone" definition="Search, filter selectors, and passive context labels belong on the left." usage="Use shared toolbar primitives before inventing custom bar layouts." />
               <LexiconEntry term="Right Zone" definition="History, apply, refresh, export, create, and bulk actions belong on the right." usage="Primary completion and mutating actions stay right-aligned." />
+              <LexiconEntry term="Bulk Trigger Rule" definition="If a view supports row selection, its bulk mutating actions collapse into one right-aligned `Bulk Actions` trigger using the Monitoring flyout contract." usage="Do not duplicate bulk actions as separate toolbar buttons and secondary strips." />
               <LexiconEntry term="Consistency Rule" definition="If two tabs expose horizontal controls, they must share the same shell, spacing, and control geometry." usage="Parameters, Permissions, Groups, Metadata, Tenants, Analysis, and Standards follow the same rule." />
               <LexiconEntry term="Collapsed Reference Sections" definition="Large standards sections default to collapsed and expand only when needed." usage="Keep the standards page readable as a reference, not an endless document wall." />
+              <LexiconEntry term="Lifecycle Scope Switch" definition="Monitoring-style `Existing` and `Archived` switching lives in the page-header action zone with contextual counts, not buried inside the toolbar body." usage="Use the page header for top-level dataset mode switching and the command bar for actions within that mode." />
             </div>
           </div>
         </div>
