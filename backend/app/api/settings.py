@@ -33,6 +33,48 @@ async def record_team_audit(db: AsyncSession, team_id: int | None, action: str, 
         details=details or {}
     ))
 
+async def build_user_pool_snapshot(db: AsyncSession):
+    result = await db.execute(select(models.Operator).order_by(models.Operator.full_name.asc(), models.Operator.username.asc(), models.Operator.id.asc()))
+    operators = result.scalars().all()
+    return [
+        {
+            "id": operator.id,
+            "external_id": operator.external_id,
+            "username": operator.username,
+            "full_name": operator.full_name,
+            "email": operator.email,
+            "department": operator.department,
+            "team": operator.team,
+            "team_id": operator.team_id,
+            "team_source": operator.team_source,
+            "teams": operator.teams or [],
+            "is_admin": bool(operator.is_admin),
+            "custom_permissions": operator.custom_permissions or {},
+            "registration_status": operator.registration_status,
+        }
+        for operator in operators
+    ]
+
+async def create_user_pool_version(
+    db: AsyncSession,
+    *,
+    created_by: str,
+    diff_summary: dict,
+):
+    import datetime
+
+    version_label = f"v{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    await db.flush()
+    snapshot = await build_user_pool_snapshot(db)
+    await db.execute(update(models.UserPoolVersion).values(is_active=False))
+    db.add(models.UserPoolVersion(
+        version_label=version_label,
+        snapshot_data=snapshot,
+        diff_summary=diff_summary,
+        created_by=created_by,
+        is_active=True,
+    ))
+
 async def resolve_team_assignment(
     db: AsyncSession,
     *,
@@ -611,7 +653,14 @@ async def create_team(data: dict, request: Request, db: AsyncSession = Depends(g
     )
     db.add(team)
     await db.flush()
-    await record_team_audit(db, team.id, "team_created", get_current_user_id(request), {"name": team.name})
+    user_id = get_current_user_id(request)
+    await record_team_audit(db, team.id, "team_created", user_id, {"name": team.name})
+    await create_user_pool_version(db, created_by=user_id, diff_summary={
+        "added": 0,
+        "removed": 0,
+        "changed": 1,
+        "team_updates": [{"team": team.name, "mode": "team_created"}],
+    })
     await db.commit()
     await db.refresh(team)
     return team
@@ -641,7 +690,14 @@ async def update_team(team_id: int, data: dict, request: Request, db: AsyncSessi
     if "metadata_json" in data:
         team.metadata_json = data.get("metadata_json") or {}
 
-    await record_team_audit(db, team.id, "team_updated", get_current_user_id(request), {"from": old_name, "to": team.name})
+    user_id = get_current_user_id(request)
+    await record_team_audit(db, team.id, "team_updated", user_id, {"from": old_name, "to": team.name})
+    await create_user_pool_version(db, created_by=user_id, diff_summary={
+        "added": 0,
+        "removed": 0,
+        "changed": 1,
+        "team_updates": [{"team": team.name, "mode": "team_updated", "old": old_name, "new": team.name}],
+    })
     await db.commit()
     await db.refresh(team)
     return team
@@ -656,8 +712,15 @@ async def delete_team(team_id: int, request: Request, db: AsyncSession = Depends
     members = members_res.scalars().all()
     if members:
         raise HTTPException(status_code=400, detail="Cannot delete team with assigned operators")
-    await record_team_audit(db, team.id, "team_deleted", get_current_user_id(request), {"name": team.name})
+    user_id = get_current_user_id(request)
+    await record_team_audit(db, None, "team_deleted", user_id, {"team_id": team.id, "name": team.name})
     await db.execute(delete(models.Team).where(models.Team.id == team_id))
+    await create_user_pool_version(db, created_by=user_id, diff_summary={
+        "added": 0,
+        "removed": 0,
+        "changed": 1,
+        "team_updates": [{"team": team.name, "mode": "team_deleted"}],
+    })
     await db.commit()
     return {"status": "success"}
 
@@ -668,6 +731,7 @@ async def create_operator(data: dict, request: Request, db: AsyncSession = Depen
     external_id = str(data.get("external_id"))
     res = await db.execute(select(models.Operator).filter(models.Operator.external_id == external_id))
     op = res.scalar_one_or_none()
+    existing_operator = op is not None
     
     # Allowed fields for direct update
     allowed_fields = ["full_name", "email", "department", "registration_status", "is_admin", "custom_permissions", "role_id", "teams"]
@@ -679,6 +743,7 @@ async def create_operator(data: dict, request: Request, db: AsyncSession = Depen
         create_missing=bool(data.get("team"))
     )
 
+    user_id = get_current_user_id(request)
     if op:
         for key, value in data.items():
             if key in allowed_fields:
@@ -699,7 +764,13 @@ async def create_operator(data: dict, request: Request, db: AsyncSession = Depen
     
     try:
         if team:
-            await record_team_audit(db, team.id, "member_added", get_current_user_id(request), {"external_id": external_id, "username": op.username})
+            await record_team_audit(db, team.id, "member_added", user_id, {"external_id": external_id, "username": op.username})
+        await create_user_pool_version(db, created_by=user_id, diff_summary={
+            "added": 0 if existing_operator else 1,
+            "removed": 0,
+            "changed": 1 if existing_operator else 0,
+            "team_updates": [{"external_id": external_id, "team": team.name, "mode": "member_added"}] if team else [],
+        })
         await db.commit()
         await db.refresh(op)
     except IntegrityError:
@@ -709,9 +780,16 @@ async def create_operator(data: dict, request: Request, db: AsyncSession = Depen
 
 @router.patch("/operators/{op_id}")
 async def update_operator(op_id: int, data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+    user_id = get_current_user_id(request)
     res = await db.execute(select(models.Operator).filter(models.Operator.id == op_id))
     op = res.scalar_one_or_none()
     if not op: raise HTTPException(404, "Operator not found")
+    old_full_name = op.full_name
+    old_email = op.email
+    old_department = op.department
+    old_is_admin = op.is_admin
+    old_permissions = op.custom_permissions or {}
+    old_groups = list(op.teams or [])
     old_team_id = op.team_id
     old_team_name = op.team
     
@@ -735,9 +813,29 @@ async def update_operator(op_id: int, data: dict, request: Request, db: AsyncSes
         op.team = team.name if team else None
         op.team_source = data.get("team_source") or ("manual_override" if team else "manual")
         if old_team_id and old_team_id != op.team_id:
-            await record_team_audit(db, old_team_id, "member_removed", get_current_user_id(request), {"external_id": op.external_id, "username": op.username, "from": old_team_name})
+            await record_team_audit(db, old_team_id, "member_removed", user_id, {"external_id": op.external_id, "username": op.username, "from": old_team_name})
         if op.team_id and old_team_id != op.team_id:
-            await record_team_audit(db, op.team_id, "member_added", get_current_user_id(request), {"external_id": op.external_id, "username": op.username, "to": op.team})
+            await record_team_audit(db, op.team_id, "member_added", user_id, {"external_id": op.external_id, "username": op.username, "to": op.team})
+
+    team_updates = []
+    if old_team_name != op.team:
+        team_updates.append({"external_id": op.external_id, "old": old_team_name, "new": op.team, "mode": "primary_team_changed"})
+    if old_groups != list(op.teams or []):
+        team_updates.append({"external_id": op.external_id, "old": old_groups, "new": list(op.teams or []), "mode": "group_membership_changed"})
+    summary_changed = int(any([
+        old_full_name != op.full_name,
+        old_email != op.email,
+        old_department != op.department,
+        old_is_admin != op.is_admin,
+        old_permissions != (op.custom_permissions or {}),
+        bool(team_updates),
+    ]))
+    await create_user_pool_version(db, created_by=user_id, diff_summary={
+        "added": 0,
+        "removed": 0,
+        "changed": summary_changed,
+        "team_updates": team_updates,
+    })
             
     await db.commit()
     await db.refresh(op)
@@ -754,8 +852,15 @@ async def delete_operator(op_id: int, request: Request, db: AsyncSession = Depen
     
     if op.username == user_id:
         raise HTTPException(status_code=400, detail="Identity Protection: You cannot terminate your own active session.")
-        
+    if op.team_id:
+        await record_team_audit(db, op.team_id, "member_removed", user_id, {"external_id": op.external_id, "username": op.username, "from": op.team})
     await db.execute(delete(models.Operator).where(models.Operator.id == op_id))
+    await create_user_pool_version(db, created_by=user_id, diff_summary={
+        "added": 0,
+        "removed": 1,
+        "changed": 0,
+        "team_updates": [{"external_id": op.external_id, "old": op.team, "new": None, "mode": "operator_deleted"}],
+    })
     await db.commit()
     return {"status": "success"}
 

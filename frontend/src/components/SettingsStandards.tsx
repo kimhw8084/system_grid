@@ -170,62 +170,37 @@ export const SettingsStandards = () => {
       initial={{ opacity: 0, y: 10 }} 
       animate={{ opacity: 1, y: 0 }} 
       exit={{ opacity: 0, y: -10 }} 
-      className="space-y-12 pb-20"
+      className="space-y-6 pb-20 pt-2"
     >
-      <PageHeader
-        eyebrow="Settings"
-        title={
-          <div className="flex items-center gap-3">
-            <Layout className="text-blue-500" size={18} />
-            <span>Standards</span>
-          </div>
-        }
-        subtitle="Monitoring-derived UI contract for page headers, command bars, operational tokens, and reusable workspace behavior."
-        meta={
-          <>
-            <WorkspaceSectionBadge tone="blue">Source of truth</WorkspaceSectionBadge>
-            <WorkspaceSectionBadge>Reference before new settings work</WorkspaceSectionBadge>
-          </>
-        }
-      />
-
-      <PageToolbar
-        left={
-          <ToolbarGroup>
-            <WorkspaceSectionBadge tone="blue">Subview title + subtitle must match Monitoring</WorkspaceSectionBadge>
-            <WorkspaceSectionBadge>Horizontal action containers use the Monitoring command-bar pattern</WorkspaceSectionBadge>
-          </ToolbarGroup>
-        }
-      />
-
       <Section
         id="settings-standard"
         title="Settings View Standard"
-        description="Immediate rules for the Settings page so future tabs stay visually identical"
+        description="Operational contract for the Settings page so future changes match Monitoring without reinterpretation"
       >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-4">
-            <WorkspacePanelTitle>Subview Header Contract</WorkspacePanelTitle>
+            <WorkspacePanelTitle>Page Header Contract</WorkspacePanelTitle>
             <WorkspacePanelSubtitle>
-              Every Settings tab must use the same Monitoring-derived subview title system.
+              Settings gets one top-level page header only. Tab bodies do not create their own second header or subtitle block.
             </WorkspacePanelSubtitle>
             <div className="space-y-3 rounded-lg border border-white/5 bg-black/20 p-4">
-              <LexiconEntry term="Eyebrow" definition="Use `Settings` as the small blue pre-title label for each tab surface." usage="Do not replace with ad hoc uppercase captions." />
-              <LexiconEntry term="Title Row" definition="Use `PageHeader` with a left icon, 20px-scale visual weight, and the same spacing rhythm as Monitoring." usage="No italic one-offs, no offset icon stacks, no custom heading sizes per tab." />
-              <LexiconEntry term="Subtitle" definition="Use one concise sentence describing the operational purpose of the tab." usage="Match Monitoring's compact uppercase subtitle treatment." />
-              <LexiconEntry term="Meta Badges" definition="Put counts, state summaries, and health markers in the header meta row." usage="Use badges for visible counts, staged edits, online/offline state, or selected records." />
+              <LexiconEntry term="Single Header Rule" definition="The main `Settings` page header is the only title/subtitle pair inside the view." usage="Tabs inherit context from the segmented navigation instead of repeating local headers." />
+              <LexiconEntry term="Monitoring Match" definition="The main page header uses the same icon placement, title weight, subtitle sizing, and action alignment as Monitoring." usage="If Monitoring changes, Settings should follow the same primitive-level pattern." />
+              <LexiconEntry term="No Tab Subtitle" definition="Do not add per-tab subtitles, badge rows, or decorative title stacks above tab content." usage="Go directly from segmented navigation to the tab command bar." />
+              <LexiconEntry term="Spacing Contract" definition="Top segmented navigation, command bar, and primary content use a consistent `space-y-4` rhythm." usage="Do not let individual tabs invent larger vertical gaps." />
             </div>
           </div>
           <div className="space-y-4">
             <WorkspacePanelTitle>Command Bar Contract</WorkspacePanelTitle>
             <WorkspacePanelSubtitle>
-              Any horizontal cluster of search, views, filters, actions, or create flows must inherit the Monitoring container pattern.
+              Any horizontal cluster of search, filters, actions, or creation controls must inherit the Monitoring command-bar shell.
             </WorkspacePanelSubtitle>
             <div className="space-y-3 rounded-lg border border-white/5 bg-black/20 p-4">
               <LexiconEntry term="Shell" definition="Use `PageToolbar` as the only standard shell for grouped horizontal actions." usage="Do not hand-roll one-off bordered rows when the content is a command bar." />
-              <LexiconEntry term="Left Zone" definition="Search, segmented controls, saved views, and filters belong on the left." usage="Use `ToolbarSearch` and `ToolbarGroup` before custom inputs." />
-              <LexiconEntry term="Right Zone" definition="History, apply, refresh, export, create, and confirm actions belong on the right." usage="Promote primary task completion to the right side." />
-              <LexiconEntry term="Consistency Rule" definition="If two tabs both expose horizontal controls, they must share the same shell, spacing, and button language." usage="Parameters, Permissions, Groups, Metadata, Tenants, and Analysis all follow this now." />
+              <LexiconEntry term="Equal Heights" definition="Search fields, buttons, segmented controls, icon buttons, and select shells use the same control height." usage="Fix the primitive, not each page individually." />
+              <LexiconEntry term="Left Zone" definition="Search, filter selectors, and passive context labels belong on the left." usage="Use shared toolbar primitives before inventing custom bar layouts." />
+              <LexiconEntry term="Right Zone" definition="History, apply, refresh, export, create, and bulk actions belong on the right." usage="Primary completion and mutating actions stay right-aligned." />
+              <LexiconEntry term="Consistency Rule" definition="If two tabs expose horizontal controls, they must share the same shell, spacing, and control geometry." usage="Parameters, Permissions, Groups, Metadata, Tenants, Analysis, and Standards follow the same rule." />
             </div>
           </div>
         </div>

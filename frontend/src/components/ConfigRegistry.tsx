@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react"
 import { createPortal } from "react-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Plus, Trash2, X, Check, Edit2, Layout, Database, RefreshCcw, Settings, ChevronDown, ChevronRight, PlusCircle } from "lucide-react"
+import { Plus, Trash2, X, Check, Edit2, Layout, Database, RefreshCcw, Settings, ChevronDown, ChevronRight, PlusCircle, ExternalLink } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import toast from "react-hot-toast"
 import { apiFetch } from "../api/apiClient"
@@ -10,7 +10,7 @@ import { ToolbarButton } from "./shared/LayoutPrimitives"
 import { useEscapeDismiss, useBodyModalFlag } from "./shared/OperationalWorkspacePrimitives"
 
 
-export const ConfigSection = ({ title, category, options, icon: Icon }: any) => {
+export const ConfigSection = ({ title, category, options, icon: Icon, usageTargets = [], description }: any) => {
   const queryClient = useQueryClient()
   const [isExpanded, setIsExpanded] = useState(false)
   const [newValue, setNewValue] = useState("")
@@ -107,9 +107,31 @@ export const ConfigSection = ({ title, category, options, icon: Icon }: any) => 
             <div className={`p-2 rounded-lg bg-white/5 ${isExpanded ? 'text-blue-400' : 'text-slate-500'}`}>
                 {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="space-y-2">
+              <div className="flex items-center space-x-3">
                 <Icon size={18} className={isExpanded ? 'text-blue-400' : 'text-slate-500'} />
                 <h3 className={`text-[11px] font-bold uppercase tracking-[0.2em] ${isExpanded ? 'text-white' : 'text-slate-400'}`}>{title}</h3>
+              </div>
+              {(description || usageTargets.length > 0) && (
+                <div className="flex flex-wrap items-center gap-2 pl-11">
+                  {description && <span className="text-[9px] font-semibold text-slate-500">{description}</span>}
+                  {usageTargets.map((target: any) => (
+                    <button
+                      key={`${category}-${target.path}`}
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        window.location.href = target.path
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-blue-300 transition-all hover:bg-blue-500/20"
+                      title={`Open ${target.label}`}
+                    >
+                      <ExternalLink size={10} />
+                      <span>{target.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
          </div>
          <div className="flex items-center space-x-6">

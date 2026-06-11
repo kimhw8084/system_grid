@@ -33,8 +33,8 @@ const normalizeTheme = (theme?: string | null) => {
 
 const SettingField = ({ label, description, children, icon: Icon, onHistory, isEditable, onEdit, isPending, absPath, isModified, paramName }: any) => {
   return (
-    <div className={`flex flex-col space-y-3 p-5 bg-[var(--panel-item-bg)] rounded-lg border transition-all group relative overflow-hidden ${isEditable ? 'border-blue-500/50 bg-blue-500/5' : 'border-[var(--glass-border)] hover:border-blue-500/30'}`}>
-      <div className="flex items-start justify-between">
+    <div className={`flex min-h-[244px] flex-col space-y-3 p-5 bg-[var(--panel-item-bg)] rounded-lg border transition-all group relative overflow-hidden ${isEditable ? 'border-blue-500/50 bg-blue-500/5' : 'border-[var(--glass-border)] hover:border-blue-500/30'}`}>
+      <div className="flex min-h-[72px] items-start justify-between">
         <div className="flex items-start gap-4">
           {Icon && <div className={`p-2.5 rounded-lg transition-transform group-hover:scale-110 ${isEditable ? 'bg-blue-600 text-white' : 'bg-blue-500/10 text-blue-400'}`}><Icon size={16} /></div>}
           <div className="flex flex-col">
@@ -75,7 +75,7 @@ const SettingField = ({ label, description, children, icon: Icon, onHistory, isE
         </div>
       </div>
       
-      <div className="flex flex-col gap-1.5 px-0.5">
+      <div className="flex min-h-[38px] flex-col gap-1.5 px-0.5">
           {paramName && (
               <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-blue-500/80 tracking-tighter">
                   <Terminal size={10} /> PARAM: {paramName}
@@ -88,7 +88,7 @@ const SettingField = ({ label, description, children, icon: Icon, onHistory, isE
           )}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="mt-auto flex items-center gap-3">
         <div className="flex-1 relative">
             {children}
         </div>
@@ -473,7 +473,7 @@ export default function SettingsPage() {
   const [operatorFilter, setOperatorFilter] = useState("")
   const [teamFilterOpen, setTeamFilterOpen] = useState(false)
   const [selectedTeamFilters, setSelectedTeamFilters] = useState<string[]>([])
-  const [operatorSort, setOperatorSort] = useState<'name' | 'team' | 'admin'>('team')
+  const [operatorSort, setOperatorSort] = useState<'name' | 'team' | 'admin'>('name')
   const [selectedOperatorIds, setSelectedOperatorIds] = useState<number[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null)
   const [teamSearch, setTeamSearch] = useState("")
@@ -1006,6 +1006,31 @@ result_df = get_user_pool()`)
     setSelectedOperatorIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])
   }
 
+  const toggleAllVisibleOperators = () => {
+    if (allVisibleOperatorsSelected) {
+      setSelectedOperatorIds((current) => current.filter((id) => !filteredOperators.some((op: any) => op.id === id)))
+      return
+    }
+    setSelectedOperatorIds((current) => Array.from(new Set([...current, ...filteredOperators.map((op: any) => op.id)])))
+  }
+
+  const assignSelectedOperatorsToFocusedGroup = () => {
+    if (!selectedTeam || selectedOperatorIds.length === 0) return
+    const selectedOperators = (operators || []).filter((op: any) => selectedOperatorIds.includes(op.id))
+    Promise.all(
+      selectedOperators.map((op: any) => {
+        const nextTeams = Array.from(new Set([...(op.teams || []), selectedTeam.name]))
+        return bulkTeamMutation.mutateAsync({
+          ids: [op.id],
+          teams: nextTeams,
+          teamSource: 'manual_override'
+        })
+      })
+    )
+      .then(() => showWorkspaceToast(`Assigned ${selectedOperatorIds.length} identities to ${selectedTeam.name}`))
+      .catch(() => {})
+  }
+
   const toggleTeamFilter = (teamName: string) => {
     setSelectedTeamFilters((current) => current.includes(teamName) ? current.filter((value) => value !== teamName) : [...current, teamName])
   }
@@ -1055,6 +1080,19 @@ result_df = get_user_pool()`)
   const onlineTenants = (allTenants || []).filter((tenant: any) => tenant.is_online).length
   const offlineTenants = Math.max((allTenants?.length || 0) - onlineTenants, 0)
   const hasTenantStorageRoot = !!masterSettings?.some((setting: any) => setting.key === 'tenant_storage_root')
+  const allVisibleOperatorsSelected = filteredOperators.length > 0 && filteredOperators.every((op: any) => selectedOperatorIds.includes(op.id))
+  const metadataViewBindings = {
+    MonitoringPlatform: [{ label: 'Monitoring', path: '/monitoring' }],
+    MonitoringCategory: [{ label: 'Monitoring', path: '/monitoring' }],
+    MonitoringTeam: [{ label: 'Monitoring', path: '/monitoring' }, { label: 'Groups', path: '/settings?tab=groups' }],
+    Status: [{ label: 'Assets', path: '/asset' }, { label: 'Services', path: '/services' }],
+    Environment: [{ label: 'Assets', path: '/asset' }, { label: 'Services', path: '/services' }],
+    DeviceType: [{ label: 'Assets', path: '/asset' }],
+    LogicalSystem: [{ label: 'Assets', path: '/asset' }, { label: 'Vendors', path: '/vendors' }],
+    ServiceType: [{ label: 'Services', path: '/services' }],
+    VendorCountry: [{ label: 'Vendors', path: '/vendors' }],
+    VendorDeviceType: [{ label: 'Vendors', path: '/vendors' }],
+  } as const
   const themeOptions = [
     {
       id: 'pure-clarity',
@@ -1178,7 +1216,12 @@ result_df = get_user_pool()`)
       </AnimatePresence>
 
       <PageHeader 
-        title="Settings" 
+        title={
+          <div className="flex items-center gap-3">
+            <SettingsIcon className="text-blue-500" size={18} />
+            <span>Settings</span>
+          </div>
+        } 
         subtitle="System Configuration & Golden Template"
         actions={
           <div className="flex items-center gap-2 pr-2">
@@ -1223,19 +1266,11 @@ result_df = get_user_pool()`)
       <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-20">
         <AnimatePresence mode="wait">
           {topTab === 'metadata' && (
-             <motion.div key="metadata" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6 pt-2">
-                <SettingsSubviewHeader
-                  icon={Tag}
-                  title="Metadata"
-                  subtitle="Global enumeration management, shared dropdown options, and template registry alignment."
-                  meta={<SettingsMetaBadge>{options?.length || 0} option records</SettingsMetaBadge>}
-                />
-
+             <motion.div key="metadata" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4 pt-2">
                 <PageToolbar
                   left={
                     <ToolbarGroup>
-                      <SettingsMetaBadge tone="blue">Monitoring-backed enumerations</SettingsMetaBadge>
-                      <SettingsMetaBadge>Shared CRUD option registry</SettingsMetaBadge>
+                      <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Metadata Registry</span>
                     </ToolbarGroup>
                   }
                   right={
@@ -1262,18 +1297,24 @@ result_df = get_user_pool()`)
                       title="Monitoring Platforms" 
                       category="MonitoringPlatform" 
                       icon={Globe} 
+                      description="Drives platform selectors and validation in Monitoring."
+                      usageTargets={metadataViewBindings.MonitoringPlatform}
                       options={(options || []).filter((o:any) => o.category === "MonitoringPlatform")} 
                    />
                    <ConfigSection 
                       title="Monitoring Categories" 
                       category="MonitoringCategory" 
                       icon={Tag} 
+                      description="Feeds monitor category selectors, imports, and grid metadata."
+                      usageTargets={metadataViewBindings.MonitoringCategory}
                       options={(options || []).filter((o:any) => o.category === "MonitoringCategory")} 
                    />
                    <ConfigSection 
                       title="Monitoring Ownership" 
                       category="MonitoringTeam" 
                       icon={Users} 
+                      description="Defines monitoring ownership groups exposed in Monitoring and Settings."
+                      usageTargets={metadataViewBindings.MonitoringTeam}
                       options={(options || []).filter((o:any) => o.category === "MonitoringTeam")} 
                    />
                    <div className="h-px bg-white/5 my-4" />
@@ -1281,18 +1322,24 @@ result_df = get_user_pool()`)
                       title="Asset Statuses" 
                       category="Status" 
                       icon={Activity} 
+                      description="Used in asset and service lifecycle selectors."
+                      usageTargets={metadataViewBindings.Status}
                       options={(options || []).filter((o:any) => o.category === "Status")} 
                    />
                    <ConfigSection 
                       title="Deployment Environments" 
                       category="Environment" 
                       icon={Box} 
+                      description="Shared environment taxonomy across assets and services."
+                      usageTargets={metadataViewBindings.Environment}
                       options={(options || []).filter((o:any) => o.category === "Environment")} 
                    />
                    <ConfigSection 
                       title="Device Roles" 
                       category="DeviceType" 
                       icon={Cpu} 
+                      description="Controls asset-type classification in the asset registry."
+                      usageTargets={metadataViewBindings.DeviceType}
                       options={(options || []).filter((o:any) => o.category === "DeviceType")} 
                    />
                    <div className="h-px bg-white/5 my-4" />
@@ -1300,12 +1347,16 @@ result_df = get_user_pool()`)
                       title="Logical Systems" 
                       category="LogicalSystem" 
                       icon={Database} 
+                      description="Logical system taxonomy used for assets and vendor coverage."
+                      usageTargets={metadataViewBindings.LogicalSystem}
                       options={(options || []).filter((o:any) => o.category === "LogicalSystem")} 
                    />
                    <ConfigSection 
                       title="Service Templates" 
                       category="ServiceType" 
                       icon={Layout} 
+                      description="Template schema for service records and service-specific metadata keys."
+                      usageTargets={metadataViewBindings.ServiceType}
                       options={(options || []).filter((o:any) => o.category === "ServiceType")} 
                    />
                    <div className="h-px bg-white/5 my-4" />
@@ -1313,12 +1364,16 @@ result_df = get_user_pool()`)
                       title="Vendor Regions" 
                       category="VendorCountry" 
                       icon={Globe} 
+                      description="Region and country enumerations used in vendor records."
+                      usageTargets={metadataViewBindings.VendorCountry}
                       options={(options || []).filter((o:any) => o.category === "VendorCountry")} 
                    />
                    <ConfigSection 
                       title="Inventory Classes" 
                       category="VendorDeviceType" 
                       icon={Package} 
+                      description="Inventory and hardware class labels used in vendor personnel records."
+                      usageTargets={metadataViewBindings.VendorDeviceType}
                       options={(options || []).filter((o:any) => o.category === "VendorDeviceType")} 
                    />
                 </div>
@@ -1326,24 +1381,9 @@ result_df = get_user_pool()`)
           )}
           {topTab === 'environments' && (
             <motion.div key="environments" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4 pt-2">
-               <SettingsSubviewHeader
-                 icon={Sliders}
-                 title="Parameters"
-                 subtitle="Resolved runtime parameters, filesystem source metadata, impact labeling, and controlled hot-reload changes."
-                 meta={
-                   <>
-                     <SettingsMetaBadge>{filteredEnvEntries.length} visible</SettingsMetaBadge>
-                     <SettingsMetaBadge tone={dirtyEnvCount > 0 ? 'amber' : 'emerald'}>
-                       {dirtyEnvCount} staged edits
-                     </SettingsMetaBadge>
-                     <SettingsMetaBadge tone="rose">{criticalEnvCount} critical</SettingsMetaBadge>
-                   </>
-                 }
-               />
-
                {/* Unified Parameter Toolbar */}
                <PageToolbar
-                 left={
+                  left={
                    <>
                      <ToolbarSearch
                        value={envSearch}
@@ -1457,18 +1497,6 @@ result_df = get_user_pool()`)
 
           {topTab === 'permissions' && (
             <motion.div key="permissions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4 pt-2">
-               <SettingsSubviewHeader
-                 icon={ShieldCheck}
-                 title="Permissions"
-                 subtitle="Operator access registry, Python-driven identity sync, and per-view authorization controls."
-                 meta={
-                   <>
-                     <SettingsMetaBadge>{filteredOperators?.length || 0} visible operators</SettingsMetaBadge>
-                     <SettingsMetaBadge tone="blue">{selectedOperatorIds.length} selected</SettingsMetaBadge>
-                   </>
-                 }
-               />
-
                {/* Identity Sync Pipeline - Collapsed by default */}
                <div className="rounded-lg border border-white/5 bg-black/20 overflow-hidden">
                   <button 
@@ -1584,15 +1612,34 @@ result_df = get_user_pool()`)
                {/* Registry Toolbar */}
                <PageToolbar
                  left={
-                   <ToolbarSearch
-                     value={operatorFilter}
-                     onChange={(e) => setOperatorFilter(e.target.value)}
-                     placeholder="Search identity, department, or team..."
-                     className="max-w-xl"
-                   />
+                   <>
+                     <ToolbarSearch
+                       value={operatorFilter}
+                       onChange={(e) => setOperatorFilter(e.target.value)}
+                       placeholder="Search identity, department, or team..."
+                       className="max-w-xl"
+                     />
+                     <ToolbarGroup>
+                       <div className="flex h-10 items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3">
+                         <span className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">Sort</span>
+                         <select
+                           value={operatorSort}
+                           onChange={(e) => setOperatorSort(e.target.value as any)}
+                           className="bg-transparent text-[10px] font-black uppercase tracking-widest text-slate-300 outline-none"
+                         >
+                           <option value="name">Identity</option>
+                           <option value="team">Primary Team</option>
+                           <option value="admin">Admin First</option>
+                         </select>
+                       </div>
+                     </ToolbarGroup>
+                   </>
                  }
                  right={
                    <ToolbarGroup>
+                     <ToolbarButton onClick={toggleAllVisibleOperators}>
+                       <span>{allVisibleOperatorsSelected ? 'Clear Visible' : 'Select Visible'}</span>
+                     </ToolbarButton>
                      <ToolbarButton onClick={() => setShowPermissionHistory(true)}>
                        <span className="flex items-center gap-2">
                          <HistoryIcon size={14} />
@@ -1600,13 +1647,13 @@ result_df = get_user_pool()`)
                        </span>
                      </ToolbarButton>
                      <ToolbarButton
-                       onClick={() => bulkTeamMutation.mutate()}
-                       disabled={selectedOperatorIds.length === 0}
+                       onClick={assignSelectedOperatorsToFocusedGroup}
+                       disabled={selectedOperatorIds.length === 0 || !selectedTeam}
                        variant="primary"
                      >
                        <span className="flex items-center gap-2">
                          <Users size={14} />
-                         Assign Groups ({selectedOperatorIds.length})
+                         {selectedTeam ? `Assign to ${selectedTeam.name} (${selectedOperatorIds.length})` : `Assign Groups (${selectedOperatorIds.length})`}
                        </span>
                      </ToolbarButton>
                    </ToolbarGroup>
@@ -1691,7 +1738,8 @@ result_df = get_user_pool()`)
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-white/5">
-                          <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 sticky left-0 bg-[#0c121e] z-10 min-w-[280px] uppercase tracking-widest">Identity</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 sticky left-0 bg-[#0c121e] z-20 min-w-[84px] uppercase tracking-widest">Select</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 sticky left-[84px] bg-[#0c121e] z-10 min-w-[280px] uppercase tracking-widest">Identity</th>
                           <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 min-w-[140px] uppercase tracking-widest">Department</th>
                           <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 min-w-[140px] uppercase tracking-widest">Team</th>
                           <th className="p-4 text-[10px] font-bold text-slate-500 border-b border-white/5 min-w-[200px] uppercase tracking-widest">Group(s)</th>
@@ -1709,11 +1757,26 @@ result_df = get_user_pool()`)
                           const assignedGroups = teams?.filter((t: any) => (op.teams || []).includes(t.name)) || []
                           const firstName = assignedGroups[0]?.name || 'No Groups'
                           const remainingCount = assignedGroups.length > 1 ? assignedGroups.length - 1 : 0
+                          const isSelected = selectedOperatorIds.includes(op.id)
 
                           return (
-                          <tr key={op.id} className={`hover:bg-white/5 transition-colors border-b border-white/5 last:border-0 group ${op.username === userProfile?.username ? 'bg-blue-600/[0.03]' : ''}`}>
-                            <td className="p-4 sticky left-0 bg-[#0c121e]/95 backdrop-blur-sm z-10 border-r border-white/5">
-                              <div className="flex items-center gap-3">
+                          <tr key={op.id} className={`transition-colors border-b border-white/5 last:border-0 group ${isSelected ? 'bg-blue-500/[0.08]' : op.username === userProfile?.username ? 'bg-blue-600/[0.03]' : 'hover:bg-white/5'}`}>
+                            <td className="p-4 sticky left-0 bg-[#0c121e]/95 backdrop-blur-sm z-20 border-r border-white/5 align-middle">
+                              <div className="flex items-center justify-center min-h-[40px]">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => toggleOperatorSelection(op.id)}
+                                  className="h-4 w-4 rounded border-white/10 bg-black/20 accent-blue-500"
+                                />
+                              </div>
+                            </td>
+                            <td className="p-4 sticky left-[84px] bg-[#0c121e]/95 backdrop-blur-sm z-10 border-r border-white/5 align-middle">
+                              <button
+                                type="button"
+                                onClick={() => toggleOperatorSelection(op.id)}
+                                className="flex w-full items-center gap-3 text-left"
+                              >
                                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-[11px] shadow-lg transition-all ${op.is_admin ? 'bg-blue-600 text-white shadow-blue-500/20' : 'bg-slate-800 text-slate-400 border border-white/5'}`}>
                                   {op.username?.slice(0,2).toUpperCase()}
                                 </div>
@@ -1724,15 +1787,15 @@ result_df = get_user_pool()`)
                                   </p>
                                   <p className="text-[8px] font-bold text-slate-500 mt-1 tracking-tighter truncate opacity-60">{op.username}</p>
                                 </div>
-                              </div>
+                              </button>
                             </td>
-                            <td className="p-4">
+                            <td className="p-4 align-middle">
                               <span className="text-[10px] font-bold text-slate-300">{op.department || '—'}</span>
                             </td>
-                            <td className="p-4">
+                            <td className="p-4 align-middle">
                               <span className="text-[10px] font-bold text-slate-300">{op.team || '—'}</span>
                             </td>
-                            <td className="p-4">
+                            <td className="p-4 align-middle">
                                <div className="group/tooltip relative inline-block">
                                   <div className="flex items-center gap-1.5 px-2 py-1 bg-white/5 border border-white/5 rounded-lg hover:border-white/10 transition-colors">
                                     <span className="text-[10px] font-bold text-slate-300">{firstName}</span>
@@ -1760,26 +1823,30 @@ result_df = get_user_pool()`)
                                   )}
                                </div>
                             </td>
-                            <td className="p-4 text-center">
-                              <ToggleSwitch 
-                                checked={op.is_admin} 
-                                onChange={(e: any) => {
-                                  if (op.username === userProfile?.username && !e.target.checked && !confirm("CRITICAL: Disabling your own Admin status will lock you out of this console. Proceed?")) return;
-                                  operatorMutation.mutate({ ...op, is_admin: e.target.checked });
-                                }} 
-                                activeColor="bg-emerald-600"
-                              />
+                            <td className="p-4 text-center align-middle">
+                              <div className="flex items-center justify-center min-h-[40px]" onClick={(e) => e.stopPropagation()}>
+                                <ToggleSwitch 
+                                  checked={op.is_admin} 
+                                  onChange={(e: any) => {
+                                    if (op.username === userProfile?.username && !e.target.checked && !confirm("CRITICAL: Disabling your own Admin status will lock you out of this console. Proceed?")) return;
+                                    operatorMutation.mutate({ ...op, is_admin: e.target.checked });
+                                  }} 
+                                  activeColor="bg-emerald-600"
+                                />
+                              </div>
                             </td>
                             {allViews.map(view => (
-                              <td key={view} className="p-1 text-center border-x border-white/[0.02]">
-                                <ViewPermissionIcon 
-                                  level={op.is_admin ? 3 : getPermLevel(op, view)}
-                                  onClick={() => !op.is_admin && togglePermission(op, view)}
-                                  isGlobalAdmin={op.is_admin}
-                                />
+                              <td key={view} className="p-1 text-center border-x border-white/[0.02] align-middle">
+                                <div className="flex items-center justify-center min-h-[40px]" onClick={(e) => e.stopPropagation()}>
+                                  <ViewPermissionIcon 
+                                    level={op.is_admin ? 3 : getPermLevel(op, view)}
+                                    onClick={() => !op.is_admin && togglePermission(op, view)}
+                                    isGlobalAdmin={op.is_admin}
+                                  />
+                                </div>
                               </td>
                             ))}
-                            <td className="p-4 text-center">
+                            <td className="p-4 text-center align-middle">
                               {op.username !== userProfile?.username ? (
                                 <SameButtonConfirm 
                                   danger
@@ -1803,7 +1870,7 @@ result_df = get_user_pool()`)
                         )})}
                         {filteredOperators.length === 0 && (
                           <tr>
-                            <td colSpan={allViews.length + 5} className="p-8 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                            <td colSpan={allViews.length + 6} className="p-8 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">
                               No operators match the current filter
                             </td>
                           </tr>
@@ -1817,28 +1884,12 @@ result_df = get_user_pool()`)
 
           {topTab === 'tenants' && (
             <motion.div key="tenants" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4 pt-2">
-               <SettingsSubviewHeader
-                 icon={Database}
-                 title="Tenants"
-                 subtitle="Multi-tenant database registry, external attachment workflows, backup controls, and storage-root operations."
-                 meta={
-                   <>
-                     <SettingsMetaBadge>{allTenants?.length || 0} registered</SettingsMetaBadge>
-                     <SettingsMetaBadge tone="emerald">{onlineTenants} online</SettingsMetaBadge>
-                     <SettingsMetaBadge tone="rose">{offlineTenants} offline</SettingsMetaBadge>
-                   </>
-                 }
-               />
-
                <PageToolbar
-                 left={
-                   <ToolbarGroup>
-                     <SettingsMetaBadge tone={hasTenantStorageRoot ? 'emerald' : 'amber'}>
-                       Storage root {hasTenantStorageRoot ? 'configured' : 'missing'}
-                     </SettingsMetaBadge>
-                     <SettingsMetaBadge>Registry-backed cluster catalog</SettingsMetaBadge>
-                   </ToolbarGroup>
-                 }
+                  left={
+                    <ToolbarGroup>
+                      <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Tenant Registry</span>
+                    </ToolbarGroup>
+                  }
                  right={
                    <ToolbarGroup>
                      <ToolbarButton
@@ -2189,18 +2240,6 @@ result_df = get_user_pool()`)
 
           {topTab === 'groups' && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 pt-2">
-              <SettingsSubviewHeader
-                icon={Users}
-                title="Groups"
-                subtitle="Team registry, membership management, and shared access containment for settings-bound operator cohorts."
-                meta={
-                  <>
-                    <SettingsMetaBadge>{filteredTeams.length} visible groups</SettingsMetaBadge>
-                    <SettingsMetaBadge tone="blue">{selectedTeamMembers.length} members in focus</SettingsMetaBadge>
-                  </>
-                }
-              />
-
               <PageToolbar
                 left={
                   <ToolbarSearch
@@ -2398,19 +2437,11 @@ result_df = get_user_pool()`)
           )}
 
           {topTab === 'system' && (
-             <motion.div key="system" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10 pt-2">
-                <SettingsSubviewHeader
-                  icon={Server}
-                  title="Analysis"
-                  subtitle="Resolved runtime inspection, backend versus frontend environment comparison, and bootstrap diagnostics."
-                  meta={<SettingsMetaBadge>{Object.keys(localEnv._deployment || {}).length} deployment facts</SettingsMetaBadge>}
-                />
-
+             <motion.div key="system" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4 pt-2">
                 <PageToolbar
                   left={
                     <ToolbarGroup>
-                      <SettingsMetaBadge tone="amber">Raw environment diff surface</SettingsMetaBadge>
-                      <SettingsMetaBadge>Read-only runtime inspection</SettingsMetaBadge>
+                      <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Runtime Analysis</span>
                     </ToolbarGroup>
                   }
                 />
