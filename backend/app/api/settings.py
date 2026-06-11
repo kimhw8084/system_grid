@@ -754,13 +754,29 @@ async def create_operator(data: dict, request: Request, db: AsyncSession = Depen
 
     user_id = get_current_user_id(request)
     if op:
+        old_vals = {
+            "full_name": op.full_name,
+            "department": op.department,
+            "is_admin": op.is_admin,
+            "team": op.team,
+            "teams": list(op.teams or [])
+        }
         for key, value in data.items():
             if key in allowed_fields:
                 setattr(op, key, value)
         op.team_id = team.id if team else None
         op.team = team.name if team else None
         op.team_source = data.get("team_source") or ("manual" if team else op.team_source)
+        
+        has_semantic_change = any([
+            old_vals["full_name"] != op.full_name,
+            old_vals["department"] != op.department,
+            old_vals["is_admin"] != op.is_admin,
+            old_vals["team"] != op.team,
+            old_vals["teams"] != list(op.teams or [])
+        ])
     else:
+        has_semantic_change = True # Always log for new member
         # For new operators, we take what we have
         # But we filter it just in case
         allowed_fields_new = ["username", "external_id", "full_name", "email", "department", "registration_status", "is_admin", "custom_permissions", "role_id", "teams"]
@@ -774,12 +790,14 @@ async def create_operator(data: dict, request: Request, db: AsyncSession = Depen
     try:
         if team:
             await record_team_audit(db, team.id, "member_added", user_id, {"external_id": external_id, "username": op.username})
-        await create_user_pool_version(db, created_by=user_id, diff_summary={
-            "added": 0 if existing_operator else 1,
-            "removed": 0,
-            "changed": 1 if existing_operator else 0,
-            "team_updates": [{"external_id": external_id, "team": team.name, "mode": "member_added"}] if team else [],
-        })
+        
+        if has_semantic_change:
+            await create_user_pool_version(db, created_by=user_id, diff_summary={
+                "added": 0 if existing_operator else 1,
+                "removed": 0,
+                "changed": 1 if existing_operator else 0,
+                "team_updates": [{"external_id": external_id, "team": team.name, "mode": "member_added"}] if team else [],
+            })
         await db.commit()
         await db.refresh(op)
     except IntegrityError:
@@ -833,10 +851,8 @@ async def update_operator(op_id: int, data: dict, request: Request, db: AsyncSes
         team_updates.append({"external_id": op.external_id, "old": old_groups, "new": list(op.teams or []), "mode": "group_membership_changed"})
     summary_changed = any([
         old_full_name != op.full_name,
-        old_email != op.email,
         old_department != op.department,
         old_is_admin != op.is_admin,
-        old_permissions != (op.custom_permissions or {}),
         bool(team_updates),
     ])
     if summary_changed:
@@ -907,8 +923,11 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
     preview_items = []
     
     # Sync logic
+    dummy_external_ids = set()
     for u in dummy_users:
-        res = await db.execute(select(models.Operator).filter(models.Operator.external_id == str(u["id"])))
+        ext_id = str(u["id"])
+        dummy_external_ids.add(ext_id)
+        res = await db.execute(select(models.Operator).filter(models.Operator.external_id == ext_id))
         op = res.scalar_one_or_none()
         
         item_status = "unchanged"
@@ -937,7 +956,7 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
                 ) if u.get("team") else None
                 
                 db.add(models.Operator(
-                    external_id=str(u["id"]),
+                    external_id=ext_id,
                     username=u["username"],
                     full_name=u["full_name"],
                     email=u["email"],
@@ -948,13 +967,14 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
                     team_source="synced" if team else "manual"
                 ))
                 if team:
-                    diff_summary["team_updates"].append({"external_id": str(u["id"]), "team": team.name, "mode": "created"})
-                    await record_team_audit(db, team.id, "member_added_via_sync", user_id, {"external_id": str(u["id"]), "username": u["username"]})
+                    diff_summary["team_updates"].append({"external_id": ext_id, "team": team.name, "mode": "created"})
+                    await record_team_audit(db, team.id, "member_added_via_sync", user_id, {"external_id": ext_id, "username": u["username"]})
         else:
-            # Check for changes
-            fields = ["username", "full_name", "email", "department", "team"]
+            # Check for changes in core identity fields
+            # We explicitly exclude ID-like fields (external_id, username) and per-view fields
+            core_fields = ["full_name", "department", "team"]
             has_changes = False
-            for f in fields:
+            for f in core_fields:
                 old_val = getattr(op, f)
                 new_val = u.get(f)
                 if str(old_val) != str(new_val):
@@ -977,6 +997,7 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
             })
             
             if not preview and has_changes:
+                # Update all synced fields regardless of tracking
                 op.username = u["username"]
                 op.full_name = u["full_name"]
                 op.email = u["email"]
@@ -1007,6 +1028,30 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
                         op.team_id = team.id
                         op.team_source = "synced"
 
+    # Detect removed members
+    res_all = await db.execute(select(models.Operator))
+    all_ops = res_all.scalars().all()
+    for op in all_ops:
+        if op.external_id and op.external_id not in dummy_external_ids:
+            # Skip auto-admin or non-synced users if necessary, but here we assume all except specific ones are synced
+            if op.username == user_id: continue # Don't delete self during sync
+            
+            diff_summary["removed"] += 1
+            preview_items.append({
+                "id": op.external_id,
+                "username": op.username,
+                "full_name": op.full_name,
+                "email": op.email,
+                "department": op.department,
+                "team": op.team,
+                "status": "removed",
+                "changes": {}
+            })
+            if not preview:
+                if op.team_id:
+                    await record_team_audit(db, op.team_id, "member_removed_via_sync", user_id, {"external_id": op.external_id, "username": op.username})
+                await db.delete(op)
+
     if preview:
         return {
             "status": "success", 
@@ -1015,23 +1060,28 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
             "version_label": version_label
         }
 
-    # Save the actual version
-    await db.flush()
-    snapshot = await build_user_pool_snapshot(db)
-    new_version = models.UserPoolVersion(
-        version_label=version_label,
-        snapshot_data=snapshot,
-        diff_summary=diff_summary,
-        created_by=user_id,
-        is_active=True
-    )
+    # Only save version if something actually changed
+    has_actual_changes = diff_summary["added"] > 0 or diff_summary["removed"] > 0 or diff_summary["changed"] > 0
     
-    # Deactivate others
-    await db.execute(update(models.UserPoolVersion).values(is_active=False))
-    db.add(new_version)
+    if has_actual_changes:
+        await db.flush()
+        snapshot = await build_user_pool_snapshot(db)
+        new_version = models.UserPoolVersion(
+            version_label=version_label,
+            snapshot_data=snapshot,
+            diff_summary=diff_summary,
+            created_by=user_id,
+            is_active=True
+        )
+        
+        # Deactivate others
+        await db.execute(update(models.UserPoolVersion).values(is_active=False))
+        db.add(new_version)
+        await db.commit()
+        return {"status": "success", "version": version_label, "changes": True}
     
     await db.commit()
-    return {"status": "success", "version": version_label}
+    return {"status": "success", "version": None, "changes": False}
 
 @router.post("/user-pool/restore/{version_id}")
 async def restore_user_pool(version_id: int, db: AsyncSession = Depends(get_db)):
@@ -1114,6 +1164,12 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
         ("MonitoringTeam", "Operations", "Primary operations ownership"),
         ("MonitoringTeam", "SRE", "Site reliability ownership"),
         ("MonitoringTeam", "Security", "Security response ownership"),
+        # Logical Systems
+        ("LogicalSystem", "SAP ERP", "Enterprise Resource Planning"),
+        ("LogicalSystem", "HR-Core", "Human Resources Core System"),
+        ("LogicalSystem", "Sales-B2B", "B2B Sales Portal"),
+        ("LogicalSystem", "IT-Infra", "IT Infrastructure"),
+        ("LogicalSystem", "DevOps", "DevOps Platform"),
         # Core Assets
         ("DeviceType", "Physical", "Bare metal hardware"),
         ("DeviceType", "Virtual", "Virtual machine or instance"),
@@ -1124,13 +1180,21 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
         ("Status", "Planned", "Scheduled for deployment"),
         ("Status", "Active", "Operational and healthy"),
         ("Status", "Maintenance", "Undergoing scheduled maintenance"),
+        ("Status", "Standby", "Powered on, not serving traffic"),
+        ("Status", "Offline", "Powered off or unreachable"),
         ("Status", "Decommissioned", "Retired from service"),
         ("Environment", "Production", "Live user traffic"),
         ("Environment", "Staging", "Pre-production staging"),
         ("Environment", "QA", "Quality Assurance and Testing"),
-        ("Environment", "Dev", "Development and Staging"),
+        ("Environment", "Dev", "Development environment"),
+        ("Environment", "DR", "Disaster Recovery Node"),
+        ("Environment", "Lab", "Lab or sandbox environment"),
         ("BusinessUnit", "Engineering", "Engineering & R&D"),
         ("BusinessUnit", "Operations", "IT Operations"),
+        ("BusinessUnit", "Finance", "Finance & Accounting"),
+        ("BusinessUnit", "HR", "Human Resources"),
+        ("BusinessUnit", "Sales", "Sales & Business Development"),
+        ("BusinessUnit", "Security", "Information Security"),
         # Vendors
         ("VendorDeviceType", "PC", "Personal Computer"),
         ("VendorDeviceType", "Laptop", "Portable Computer"),
@@ -1161,4 +1225,4 @@ async def initialize_settings(db: AsyncSession = Depends(get_db)):
     except IntegrityError:
         await db.rollback()
     
-    return {"status": "success", "message": "System state synchronized"}
+    return {"status": "initialized", "message": "System state synchronized"}
