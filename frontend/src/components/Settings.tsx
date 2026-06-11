@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { 
-  Globe, Shield, Cpu, Sliders, Box, Network, Lock, Key, Activity, 
+  Globe, Shield, Cpu, Sliders, Box, Network, Lock, Key, Activity, Package,
   Save, RefreshCcw, RefreshCw, Layout, Database, Palette, Bell, Server, Star,
   Sun, Moon, Check, Terminal, FolderTree, HardDrive, Link, Users, UserPlus, ShieldCheck, Fingerprint, X, ChevronRight, History as HistoryIcon, 
   Settings as SettingsIcon, Zap, AlertTriangle, Edit2, Edit2 as EditIcon, Clock, RotateCcw, ChevronDown, ChevronUp, FileCode, Search, Filter, ShieldAlert, MoreHorizontal, Eye, Plus, Trash2, Tag, Book, Microscope
@@ -175,6 +175,58 @@ const SameButtonConfirm = ({ onConfirm, icon: Icon, label, danger = false }: any
             <Icon size={16} className={isConfirming ? "animate-pulse" : ""} />
         </button>
     )
+}
+
+const SettingsSubviewHeader = ({
+  icon: Icon,
+  title,
+  subtitle,
+  meta,
+  actions
+}: {
+  icon: any
+  title: string
+  subtitle: string
+  meta?: React.ReactNode
+  actions?: React.ReactNode
+}) => (
+  <PageHeader
+    eyebrow="Settings"
+    title={
+      <div className="flex items-center gap-3">
+        <Icon size={18} className="text-blue-500" />
+        <span>{title}</span>
+      </div>
+    }
+    subtitle={subtitle}
+    meta={meta}
+    actions={actions}
+  />
+)
+
+const SettingsMetaBadge = ({
+  children,
+  tone = 'default'
+}: {
+  children: React.ReactNode
+  tone?: 'default' | 'blue' | 'emerald' | 'amber' | 'rose'
+}) => {
+  const toneClass =
+    tone === 'blue'
+      ? 'border-blue-500/20 bg-blue-500/10 text-blue-300'
+      : tone === 'emerald'
+        ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+        : tone === 'amber'
+          ? 'border-amber-500/20 bg-amber-500/10 text-amber-300'
+          : tone === 'rose'
+            ? 'border-rose-500/20 bg-rose-500/10 text-rose-300'
+            : 'border-white/5 bg-white/5 text-slate-300'
+
+  return (
+    <span className={`rounded-lg border px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] ${toneClass}`}>
+      {children}
+    </span>
+  )
 }
 
 import { SettingsStandards } from "./SettingsStandards"
@@ -1171,25 +1223,38 @@ result_df = get_user_pool()`)
         <AnimatePresence mode="wait">
           {topTab === 'metadata' && (
              <motion.div key="metadata" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6 pt-2">
-                <div className="flex justify-between items-end mb-4 px-1">
-                   <div>
-                      <h2 className="text-xl font-black uppercase tracking-tighter text-white italic">Metadata <span className="text-blue-500">Registry</span></h2>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 mt-1">Global enumeration management & template configuration</p>
-                   </div>
-                   <ToolbarButton 
-                     onClick={() => {
+                <SettingsSubviewHeader
+                  icon={Tag}
+                  title="Metadata"
+                  subtitle="Global enumeration management, shared dropdown options, and template registry alignment."
+                  meta={<SettingsMetaBadge>{options?.length || 0} option records</SettingsMetaBadge>}
+                />
+
+                <PageToolbar
+                  left={
+                    <ToolbarGroup>
+                      <SettingsMetaBadge tone="blue">Monitoring-backed enumerations</SettingsMetaBadge>
+                      <SettingsMetaBadge>Shared CRUD option registry</SettingsMetaBadge>
+                    </ToolbarGroup>
+                  }
+                  right={
+                    <ToolbarButton
+                      onClick={() => {
                         toast.promise(apiFetch("/api/v1/settings/initialize"), {
                            loading: "Synchronizing system defaults...",
                            success: () => { queryClient.invalidateQueries({ queryKey: ["settings-options"] }); return "Default enums synchronized" },
                            error: "Synchronization failed"
                         })
                      }}
-                     icon={<RefreshCcw size={14} />}
-                     className="bg-blue-600/10 border-blue-500/30 text-blue-400"
-                   >
-                      Synchronize Defaults
-                   </ToolbarButton>
-                </div>
+                      className="bg-blue-600/10 border-blue-500/30 text-blue-400"
+                    >
+                      <span className="flex items-center gap-2">
+                        <RefreshCcw size={14} />
+                        Synchronize Defaults
+                      </span>
+                    </ToolbarButton>
+                  }
+                />
 
                 <div className="grid grid-cols-1 gap-4">
                    <ConfigSection 
@@ -1260,62 +1325,70 @@ result_df = get_user_pool()`)
           )}
           {topTab === 'environments' && (
             <motion.div key="environments" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4 pt-2">
-               <div className="flex justify-between items-center mb-2">
-                  <h2 className="text-xl font-black uppercase tracking-tighter text-white italic">Parameter Configuration</h2>
-                  <div className="flex gap-2">
-                    <span className="text-[10px] font-bold text-slate-500 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-white/5 uppercase tracking-widest">
-                       {filteredEnvEntries.length} Active Vectors
-                    </span>
-                  </div>
-               </div>
+               <SettingsSubviewHeader
+                 icon={Sliders}
+                 title="Parameters"
+                 subtitle="Resolved runtime parameters, filesystem source metadata, impact labeling, and controlled hot-reload changes."
+                 meta={
+                   <>
+                     <SettingsMetaBadge>{filteredEnvEntries.length} visible</SettingsMetaBadge>
+                     <SettingsMetaBadge tone={dirtyEnvCount > 0 ? 'amber' : 'emerald'}>
+                       {dirtyEnvCount} staged edits
+                     </SettingsMetaBadge>
+                     <SettingsMetaBadge tone="rose">{criticalEnvCount} critical</SettingsMetaBadge>
+                   </>
+                 }
+               />
 
                {/* Unified Parameter Toolbar */}
-               <div className="flex items-center justify-between bg-black/40 p-4 rounded-lg border border-white/5 backdrop-blur-md">
-                  <div className="flex gap-4 items-center flex-1 max-w-2xl">
-                     <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
-                        <input
-                          value={envSearch}
-                          onChange={(e) => setEnvSearch(e.target.value)}
-                          placeholder="Search parameter, path, category, impact..."
-                          className="w-full h-9 rounded-lg border border-white/10 bg-black/20 pl-10 pr-4 py-2 text-[11px] font-bold text-white outline-none transition-all focus:border-blue-500/50 shadow-inner placeholder:text-slate-600"
-                        />
-                     </div>
-                     <div className="flex items-center gap-2 h-9 rounded-lg border border-white/10 bg-black/20 px-3">
-                        <Filter size={14} className="text-slate-500" />
-                        <select
-                          value={envImpactFilter}
-                          onChange={(e) => setEnvImpactFilter(e.target.value as any)}
-                          className="bg-transparent text-[10px] font-black uppercase tracking-widest text-slate-400 outline-none cursor-pointer focus:text-blue-400"
-                        >
-                          <option value="ALL">All Impact</option>
-                          <option value="CRITICAL">Critical Only</option>
-                          <option value="HIGH">High Impact</option>
-                          <option value="MEDIUM">Medium Impact</option>
-                          <option value="LOW">Low Impact</option>
-                        </select>
-                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                     <ToolbarButton 
-                       onClick={() => setHistoryField('GLOBAL_CONFIG')}
-                       icon={<HistoryIcon size={14} />}
-                       className="h-9"
-                     >
-                       Global History
+               <PageToolbar
+                 left={
+                   <>
+                     <ToolbarSearch
+                       value={envSearch}
+                       onChange={(e) => setEnvSearch(e.target.value)}
+                       placeholder="Search parameter, path, category, or impact..."
+                       className="max-w-2xl"
+                     />
+                     <ToolbarGroup>
+                       <div className="flex h-10 items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3">
+                          <Filter size={14} className="text-slate-500" />
+                          <select
+                            value={envImpactFilter}
+                            onChange={(e) => setEnvImpactFilter(e.target.value as any)}
+                            className="bg-transparent text-[10px] font-black uppercase tracking-widest text-slate-400 outline-none cursor-pointer focus:text-blue-400"
+                          >
+                            <option value="ALL">All Impact</option>
+                            <option value="CRITICAL">Critical Only</option>
+                            <option value="HIGH">High Impact</option>
+                            <option value="MEDIUM">Medium Impact</option>
+                            <option value="LOW">Low Impact</option>
+                          </select>
+                       </div>
+                     </ToolbarGroup>
+                   </>
+                 }
+                 right={
+                   <ToolbarGroup>
+                     <ToolbarButton onClick={() => setHistoryField('GLOBAL_CONFIG')}>
+                       <span className="flex items-center gap-2">
+                         <HistoryIcon size={14} />
+                         Global History
+                       </span>
                      </ToolbarButton>
-                     <div className="w-px h-4 bg-white/10 mx-2" />
                      <ToolbarButton
                         onClick={() => envMutation.mutate(getPersistableEnvSettings())}
                         variant={isDirty() ? "primary" : "secondary"}
                         disabled={!isDirty() && !envMutation.isPending}
-                        icon={<Zap size={14} className={envMutation.isPending ? 'animate-pulse' : ''} />}
-                        className="h-9"
                      >
-                        {isDirty() ? 'Apply Changes' : 'Force Hot Reload'}
+                        <span className="flex items-center gap-2">
+                          <Zap size={14} className={envMutation.isPending ? 'animate-pulse' : ''} />
+                          {isDirty() ? 'Apply Changes' : 'Force Hot Reload'}
+                        </span>
                      </ToolbarButton>
-                  </div>
-               </div>
+                   </ToolbarGroup>
+                 }
+               />
 
                <div className="space-y-8">
                   {visibleCategories.map((cat: any) => (
@@ -1383,14 +1456,17 @@ result_df = get_user_pool()`)
 
           {topTab === 'permissions' && (
             <motion.div key="permissions" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4 pt-2">
-               <div className="flex justify-between items-center mb-2">
-                  <h2 className="text-xl font-black uppercase tracking-tighter text-white italic">Permission Registry</h2>
-                  <div className="flex gap-2">
-                    <span className="text-[10px] font-bold text-slate-500 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-white/5 uppercase tracking-widest">
-                       {filteredOperators?.length || 0} Registered Identities
-                    </span>
-                  </div>
-               </div>
+               <SettingsSubviewHeader
+                 icon={ShieldCheck}
+                 title="Permissions"
+                 subtitle="Operator access registry, Python-driven identity sync, and per-view authorization controls."
+                 meta={
+                   <>
+                     <SettingsMetaBadge>{filteredOperators?.length || 0} visible operators</SettingsMetaBadge>
+                     <SettingsMetaBadge tone="blue">{selectedOperatorIds.length} selected</SettingsMetaBadge>
+                   </>
+                 }
+               />
 
                {/* Identity Sync Pipeline - Collapsed by default */}
                <div className="rounded-lg border border-white/5 bg-black/20 overflow-hidden">
@@ -1505,38 +1581,36 @@ result_df = get_user_pool()`)
                </div>
 
                {/* Registry Toolbar */}
-               <div className="flex items-center justify-between bg-black/40 p-4 rounded-lg border border-white/5 backdrop-blur-md">
-                  <div className="flex gap-4 items-center flex-1 max-w-xl">
-                     <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
-                        <input
-                          value={operatorFilter}
-                          onChange={e => setOperatorFilter(e.target.value)}
-                          placeholder="Search identity, department, or team..."
-                          className="w-full h-9 rounded-lg border border-white/10 bg-black/20 pl-10 pr-4 py-2 text-[11px] font-bold text-white outline-none transition-all focus:border-blue-500/50 shadow-inner placeholder:text-slate-600"
-                        />
-                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                     <ToolbarButton 
-                       onClick={() => setShowPermissionHistory(true)}
-                       icon={<HistoryIcon size={14} />}
-                       className="h-9"
-                     >
-                       Revision History
+               <PageToolbar
+                 left={
+                   <ToolbarSearch
+                     value={operatorFilter}
+                     onChange={(e) => setOperatorFilter(e.target.value)}
+                     placeholder="Search identity, department, or team..."
+                     className="max-w-xl"
+                   />
+                 }
+                 right={
+                   <ToolbarGroup>
+                     <ToolbarButton onClick={() => setShowPermissionHistory(true)}>
+                       <span className="flex items-center gap-2">
+                         <HistoryIcon size={14} />
+                         Revision History
+                       </span>
                      </ToolbarButton>
-                     <div className="w-px h-4 bg-white/10 mx-2" />
-                     <ToolbarButton 
+                     <ToolbarButton
                        onClick={() => bulkTeamMutation.mutate()}
                        disabled={selectedOperatorIds.length === 0}
                        variant="primary"
-                       icon={<Users size={14} />}
-                       className="h-9"
                      >
-                       Assign Groups ({selectedOperatorIds.length})
+                       <span className="flex items-center gap-2">
+                         <Users size={14} />
+                         Assign Groups ({selectedOperatorIds.length})
+                       </span>
                      </ToolbarButton>
-                  </div>
-               </div>
+                   </ToolbarGroup>
+                 }
+               />
 
                <AnimatePresence>
                  {isSyncPreviewOpen && syncPreviewData && (
@@ -1742,6 +1816,42 @@ result_df = get_user_pool()`)
 
           {topTab === 'tenants' && (
             <motion.div key="tenants" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4 pt-2">
+               <SettingsSubviewHeader
+                 icon={Database}
+                 title="Tenants"
+                 subtitle="Multi-tenant database registry, external attachment workflows, backup controls, and storage-root operations."
+                 meta={
+                   <>
+                     <SettingsMetaBadge>{allTenants?.length || 0} registered</SettingsMetaBadge>
+                     <SettingsMetaBadge tone="emerald">{onlineTenants} online</SettingsMetaBadge>
+                     <SettingsMetaBadge tone="rose">{offlineTenants} offline</SettingsMetaBadge>
+                   </>
+                 }
+               />
+
+               <PageToolbar
+                 left={
+                   <ToolbarGroup>
+                     <SettingsMetaBadge tone={hasTenantStorageRoot ? 'emerald' : 'amber'}>
+                       Storage root {hasTenantStorageRoot ? 'configured' : 'missing'}
+                     </SettingsMetaBadge>
+                     <SettingsMetaBadge>Registry-backed cluster catalog</SettingsMetaBadge>
+                   </ToolbarGroup>
+                 }
+                 right={
+                   <ToolbarGroup>
+                     <ToolbarButton
+                       onClick={() => queryClient.invalidateQueries({ queryKey: ['admin-tenants'] })}
+                     >
+                       <span className="flex items-center gap-2">
+                         <RefreshCw size={14} />
+                         Refresh Registry
+                       </span>
+                     </ToolbarButton>
+                   </ToolbarGroup>
+                 }
+               />
+
                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5 shadow-sm">
                     <div className="text-[8px] font-black uppercase tracking-[0.35em] text-emerald-400">Registered</div>
@@ -2078,39 +2188,55 @@ result_df = get_user_pool()`)
 
           {topTab === 'groups' && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 pt-2">
-              <div className="flex justify-between items-center mb-2">
-                <div>
-                   <h2 className="text-xl font-black uppercase tracking-tighter text-white italic">Group <span className="text-blue-500">Registry</span></h2>
-                   <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 mt-1">Entity relationship mapping & access containment</p>
-                </div>
-                <div className="flex gap-2">
-                   <div className="flex items-center bg-black/20 border border-white/10 rounded-lg overflow-hidden h-10">
-                       <input 
-                         value={newTeamName}
-                         onChange={e => setNewTeamName(e.target.value)}
-                         placeholder="New Group Name..."
-                         className="bg-transparent px-4 py-2 text-[11px] font-bold outline-none w-56 placeholder:text-slate-600 text-white h-full"
-                         onKeyDown={e => e.key === 'Enter' && teamMutation.mutate({ name: newTeamName, source: 'manual' })}
-                       />
-                       <button 
-                         onClick={() => teamMutation.mutate({ name: newTeamName, source: 'manual' })}
-                         className="h-full px-5 bg-blue-600/10 border-l border-white/10 text-blue-400 hover:bg-blue-600/20 transition-all font-black text-[10px] tracking-widest uppercase"
-                       >
-                         Initialize
-                       </button>
-                    </div>
-                </div>
-              </div>
+              <SettingsSubviewHeader
+                icon={Users}
+                title="Groups"
+                subtitle="Team registry, membership management, and shared access containment for settings-bound operator cohorts."
+                meta={
+                  <>
+                    <SettingsMetaBadge>{filteredTeams.length} visible groups</SettingsMetaBadge>
+                    <SettingsMetaBadge tone="blue">{selectedTeamMembers.length} members in focus</SettingsMetaBadge>
+                  </>
+                }
+              />
+
+              <PageToolbar
+                left={
+                  <ToolbarSearch
+                    value={teamSearch}
+                    onChange={(e) => setTeamSearch(e.target.value)}
+                    placeholder="Search group name, description, or source..."
+                    className="max-w-xl"
+                  />
+                }
+                right={
+                  <div className="flex items-center overflow-hidden rounded-lg border border-white/10 bg-black/20 h-10">
+                    <input
+                      value={newTeamName}
+                      onChange={e => setNewTeamName(e.target.value)}
+                      placeholder="New group name..."
+                      className="h-full w-56 bg-transparent px-4 text-[11px] font-bold text-white outline-none placeholder:text-slate-600"
+                      onKeyDown={e => e.key === 'Enter' && teamMutation.mutate({ name: newTeamName, source: 'manual' })}
+                    />
+                    <button
+                      onClick={() => teamMutation.mutate({ name: newTeamName, source: 'manual' })}
+                      className="h-full border-l border-white/10 px-5 text-[10px] font-black uppercase tracking-widest text-blue-400 transition-all hover:bg-blue-600/20"
+                    >
+                      Initialize
+                    </button>
+                  </div>
+                }
+              />
 
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                  {/* Group Navigation Sidebar */}
                  <div className="space-y-4">
                     <div className="px-1 flex items-center justify-between">
                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Available Vectors</p>
-                       <span className="text-[8px] font-bold text-slate-600">{teams?.length || 0} Total</span>
+                       <span className="text-[8px] font-bold text-slate-600">{filteredTeams.length} Visible</span>
                     </div>
                     <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                       {teams?.map((team: any) => (
+                       {filteredTeams.map((team: any) => (
                          <button
                            key={team.id}
                            onClick={() => setSelectedTeamId(team.id)}
@@ -2132,6 +2258,11 @@ result_df = get_user_pool()`)
                            <ChevronRight size={14} className={`transition-transform ${selectedTeamId === team.id ? 'text-blue-400 translate-x-1' : 'text-slate-800'}`} />
                          </button>
                        ))}
+                       {filteredTeams.length === 0 && (
+                         <div className="rounded-lg border border-dashed border-white/10 bg-black/10 px-4 py-6 text-center text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                           No groups match the current search
+                         </div>
+                       )}
                     </div>
                  </div>
 
@@ -2266,7 +2397,23 @@ result_df = get_user_pool()`)
           )}
 
           {topTab === 'system' && (
-             <motion.div key="system" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10 pt-4">
+             <motion.div key="system" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10 pt-2">
+                <SettingsSubviewHeader
+                  icon={Server}
+                  title="Analysis"
+                  subtitle="Resolved runtime inspection, backend versus frontend environment comparison, and bootstrap diagnostics."
+                  meta={<SettingsMetaBadge>{Object.keys(localEnv._deployment || {}).length} deployment facts</SettingsMetaBadge>}
+                />
+
+                <PageToolbar
+                  left={
+                    <ToolbarGroup>
+                      <SettingsMetaBadge tone="amber">Raw environment diff surface</SettingsMetaBadge>
+                      <SettingsMetaBadge>Read-only runtime inspection</SettingsMetaBadge>
+                    </ToolbarGroup>
+                  }
+                />
+
                 <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-6 shadow-2xl">
                   <div className="flex items-center gap-3 mb-5">
                     <div className="p-2 rounded-lg bg-blue-600/10 text-blue-400 border border-blue-500/20"><Server size={18} /></div>
