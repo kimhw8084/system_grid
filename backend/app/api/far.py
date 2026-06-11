@@ -219,7 +219,8 @@ async def create_resolution(data: dict, db: AsyncSession = Depends(get_db)):
     res = models.FarResolution(
         knowledge_id=data.get('knowledge_id'),
         preventive_follow_up=data.get('preventive_follow_up'),
-        responsible_team=data.get('responsible_team')
+        responsible_team=data.get('responsible_team'),
+        guidance_notes=data.get('guidance_notes')
     )
     db.add(res)
     await db.flush()

@@ -23,7 +23,7 @@ import { StatusPill } from './shared/StatusPill'
 import { ConfigRegistryModal } from './ConfigRegistry'
 import { MonitoringForm } from './MonitoringGrid'
 import { ProjectForm } from './Projects'
-import { RootCauseFormModal, MitigationFormModal, PreventionFormModal } from './shared/FARModals'
+import { RootCauseFormModal, MitigationFormModal, PreventionFormModal, ResolutionManagerModal } from './shared/FARModals'
 import { EnhancedRcaDetails } from './Research'
 
 import 'ag-grid-community/styles/ag-grid.css'
@@ -182,6 +182,7 @@ export default function FAR() {
 
   const [incidentListModal, setIncidentListModal] = useState<{show: boolean, rcas: any[]}>({ show: false, rcas: [] })
   const [selectedRcaDetail, setSelectedRcaDetail] = useState<any>(null)
+  const [resolutionManagerModal, setResolutionManagerModal] = useState<{show: boolean, cause: any}>({ show: false, cause: null })
 
   // Column Picker & Style Lab State (Mirrored from Assets)
   const [fontSize, setFontSize] = useState(11)
@@ -192,6 +193,8 @@ export default function FAR() {
   const [showConfig, setShowConfig] = useState(false)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   
+  const [bkmGuidanceModal, setBkmGuidanceModal] = useState<{show: boolean, cause: any}>({ show: false, cause: null })
+
   const [confirmModal, setConfirmModal] = useState<{show: boolean, title: string, message: string, onConfirm: () => void}>({
     show: false, title: '', message: '', onConfirm: () => {}
   })
@@ -899,6 +902,109 @@ export default function FAR() {
       </AnimatePresence>
 
       <ConfirmationModal isOpen={confirmModal.show} onClose={() => setConfirmModal({ ...confirmModal, show: false })} onConfirm={confirmModal.onConfirm} title={confirmModal.title} message={confirmModal.message} />
+      
+      <AnimatePresence>
+        {bkmGuidanceModal.show && bkmGuidanceModal.cause && (
+          <BkmGuidanceModal 
+            cause={bkmGuidanceModal.cause} 
+            onClose={() => setBkmGuidanceModal({ show: false, cause: null })} 
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {resolutionManagerModal.show && resolutionManagerModal.cause && (
+          <ResolutionManagerModal 
+            isOpen={resolutionManagerModal.show}
+            cause={resolutionManagerModal.cause}
+            onClose={() => setResolutionManagerModal({ show: false, cause: null })}
+            onSave={() => queryClient.invalidateQueries({ queryKey: ['far', 'modes'] })}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function BkmGuidanceModal({ cause, onClose }: { cause: any, onClose: () => void }) {
+  const navigate = useNavigate()
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-4xl p-8 rounded-lg border border-emerald-500/30 space-y-6 flex flex-col max-h-[85vh] shadow-[0_0_50px_rgba(16,185,129,0.1)]">
+        <div className="flex items-center justify-between border-b border-white/5 pb-6">
+          <div className="flex items-center gap-4">
+             <div className="p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20 text-emerald-400">
+                <ShieldCheck size={28}/>
+             </div>
+             <div>
+                <h2 className="text-2xl font-black uppercase tracking-tighter text-emerald-400 flex items-center space-x-3">
+                   <span>Operational Guidance Registry</span>
+                </h2>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">Forensic Lineage // {cause.cause_text}</p>
+             </div>
+          </div>
+          <button onClick={onClose} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={24}/></button>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+          <div className="space-y-4">
+            {(cause.resolutions || []).map((res: any, idx: number) => (
+              <div key={res.id} className="bg-white/5 border border-white/5 rounded-lg overflow-hidden group hover:border-emerald-500/30 transition-all shadow-xl">
+                 <div className="px-6 py-4 bg-white/[0.02] border-b border-white/5 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                       <span className="text-xl font-black text-slate-700">{idx + 1}</span>
+                       <div>
+                          <p className="text-[11px] font-black text-emerald-400 uppercase tracking-widest leading-none">
+                             {res.knowledge_bkm?.title || 'UNNAMED_BKM_ARTIFACT'}
+                          </p>
+                          <div className="flex items-center gap-3 mt-1.5">
+                             <div className="flex items-center gap-1.5">
+                                <Clock size={10} className="text-slate-500" />
+                                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight">
+                                   Logged {formatAppDate(res.created_at)}
+                                </span>
+                             </div>
+                             <div className="w-px h-2 bg-white/10" />
+                             <div className="flex items-center gap-1.5">
+                                <User size={10} className="text-slate-500" />
+                                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight">
+                                   {res.responsible_team || 'SYSTEM_OPS'}
+                                </span>
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+                    <button 
+                      onClick={() => navigate(`/knowledge?id=${res.knowledge_id}`)}
+                      className="flex items-center gap-2 px-4 py-2 bg-emerald-600/10 border border-emerald-500/20 rounded-lg text-[10px] font-black text-emerald-400 uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-lg group-hover:scale-105"
+                    >
+                       <Zap size={12} />
+                       Jump to BKM
+                    </button>
+                 </div>
+                 <div className="p-6 space-y-4">
+                    <div className="space-y-2">
+                       <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">Operational Context & Guidance</p>
+                       <div className="bg-black/40 border border-white/5 rounded-lg p-4 text-[13px] text-slate-300 font-bold uppercase leading-relaxed tracking-tight shadow-inner">
+                          {res.guidance_notes || res.preventive_follow_up || 'NO OPERATIONAL GUIDANCE PROVIDED FOR THIS RESOLUTION VECTOR.'}
+                       </div>
+                    </div>
+                 </div>
+              </div>
+            ))}
+            {(!cause.resolutions || cause.resolutions.length === 0) && (
+              <div className="py-20 flex flex-col items-center justify-center opacity-20 space-y-4">
+                 <Shield size={48} className="text-slate-500" />
+                 <p className="text-[12px] font-black uppercase tracking-[0.3em] text-center">No guidance protocols found</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="pt-4">
+           <button onClick={onClose} className="w-full py-4 bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] transition-all">Dismiss Guidance Registry</button>
+        </div>
+      </motion.div>
     </div>
   )
 }
@@ -1309,21 +1415,37 @@ function CausalTab({ mode, onUpdate }: any) {
                         </div>
                      </td>
                      <td className="px-8 py-5 text-center">
-                        <span className={`px-3 py-1 rounded-lg text-[9px] font-black ${c.resolutions?.length > 0 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20 opacity-50'}`}>
+                        <button 
+                          onClick={() => c.resolutions?.length > 0 && setBkmGuidanceModal({ show: true, cause: c })}
+                          className={`px-3 py-1 rounded-lg text-[9px] font-black transition-all ${
+                            c.resolutions?.length > 0 
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 hover:scale-105 active:scale-95 cursor-pointer' 
+                              : 'bg-rose-500/10 text-rose-500 border border-rose-500/20 opacity-50 cursor-not-allowed'
+                          }`}
+                        >
                            {c.resolutions?.length || 0} BKMS
-                        </span>
+                        </button>
                      </td>
                      <td className="px-8 py-5 text-right opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="flex items-center justify-end gap-2">
                            <button 
+                             onClick={() => setResolutionManagerModal({ show: true, cause: c })}
+                             className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"
+                             title="Manage BKM Guidance"
+                           >
+                              <Book size={14}/>
+                           </button>
+                           <button 
                              onClick={() => setActiveModal({ isOpen: true, modeId: mode.id, initialData: c })}
                              className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"
+                             title="Edit Attribution"
                            >
                               <Edit2 size={14}/>
                            </button>
                            <button
                              onClick={() => deleteCauseMutation.mutate(c.id)}
                              className="p-1.5 text-slate-600 hover:text-rose-500 transition-all rounded-lg"
+                             title="Purge Attribution"
                            >
                              <Trash2 size={14}/>
                            </button>

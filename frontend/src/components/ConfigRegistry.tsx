@@ -297,7 +297,13 @@ export const ConfigRegistryModal = ({ isOpen, onClose, sections, title }: any) =
                 <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
             }
         >
-            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pt-6">
+            <div className="flex items-center gap-4 px-6 pt-6">
+                <div className="h-px flex-1 bg-white/5" />
+                <p className="text-[8px] font-bold text-slate-600 uppercase tracking-[0.3em]">Forensic Registry Lineage</p>
+                <div className="h-px flex-1 bg-white/5" />
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 p-6">
                 {sections.map((s: any) => (
                     <ConfigSection 
                         key={s.category} 

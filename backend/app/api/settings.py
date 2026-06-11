@@ -1016,9 +1016,11 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
         }
 
     # Save the actual version
+    await db.flush()
+    snapshot = await build_user_pool_snapshot(db)
     new_version = models.UserPoolVersion(
         version_label=version_label,
-        snapshot_data=dummy_users,
+        snapshot_data=snapshot,
         diff_summary=diff_summary,
         created_by=user_id,
         is_active=True

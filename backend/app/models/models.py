@@ -690,7 +690,8 @@ class FarResolution(Base, BaseMixin):
     knowledge_id = Column(Integer, ForeignKey("knowledge_entries.id", ondelete="SET NULL"), nullable=True)
     preventive_follow_up = Column(Text)
     responsible_team = Column(String)
-    
+    guidance_notes = Column(Text)
+
     knowledge_bkm = relationship("KnowledgeEntry")
 
 class FarMitigation(Base, BaseMixin):

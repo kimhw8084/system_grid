@@ -634,7 +634,9 @@ class FarResolutionResponse(BaseSchema):
     knowledge_id: Optional[int] = None
     preventive_follow_up: Optional[str] = None
     responsible_team: Optional[str] = None
+    guidance_notes: Optional[str] = None
     knowledge_bkm: Optional[Any] = None
+    created_at: Optional[datetime] = None
 
 class FarMitigationResponse(BaseSchema):
     mitigation_type: str

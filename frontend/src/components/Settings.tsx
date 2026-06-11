@@ -498,18 +498,37 @@ function PermissionHistoryModal({ versions, allViews, onClose }: { versions: any
                  <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2">
                        <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-[12px] font-black">v{newer?.v_num}</div>
-                       <div className="w-4 h-px bg-slate-700" />
-                       <div className="w-8 h-8 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-500 text-[12px] font-black">{older ? `v${older.v_num}` : 'Ø'}</div>
+                       {older && (
+                         <>
+                           <div className="w-4 h-px bg-slate-700" />
+                           <div className="w-8 h-8 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-500 text-[12px] font-black">v{older.v_num}</div>
+                         </>
+                       )}
                     </div>
                     <div>
-                       <h3 className="text-[11px] font-black text-slate-300 uppercase tracking-widest">Semantic Delta</h3>
-                       <p className="text-[9px] font-bold text-slate-600">{historyRows.length} identity rows changed between the selected revisions</p>
+                       <h3 className="text-[11px] font-black text-slate-300 uppercase tracking-widest">
+                          {selectedIndices.length > 1 ? 'Comparison Mode' : 'Latest Revision Delta'}
+                       </h3>
+                       <p className="text-[9px] font-bold text-slate-600">
+                          {historyRows.length} identity rows changed {selectedIndices.length > 1 ? 'between the selected versions' : 'in this revision'}
+                       </p>
                     </div>
                  </div>
-                 <div className="flex flex-wrap items-center gap-2">
-                   <span className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-emerald-300">{addedCount} added</span>
-                   <span className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-amber-300">{changedCount} changed</span>
-                   <span className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-rose-300">{deletedCount} deleted</span>
+                 <div className="flex items-center gap-4">
+                   {selectedIndices.length > 1 && (
+                     <button 
+                       onClick={() => setSelectedIndices([0])}
+                       className="flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 border border-rose-500/20 rounded-lg text-[9px] font-black text-rose-400 uppercase tracking-widest hover:bg-rose-500/20 transition-all"
+                     >
+                       <X size={12} />
+                       Exit Comparison
+                     </button>
+                   )}
+                   <div className="flex flex-wrap items-center gap-2">
+                     <span className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-emerald-300">{addedCount} added</span>
+                     <span className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-amber-300">{changedCount} changed</span>
+                     <span className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-rose-300">{deletedCount} deleted</span>
+                   </div>
                  </div>
               </div>
               
@@ -1583,6 +1602,12 @@ result_df = get_user_pool()`)
                     </ToolbarGroup>
                   }
                 />
+
+                <div className="flex items-center gap-4 px-1">
+                   <div className="h-px flex-1 bg-white/5" />
+                   <p className="text-[8px] font-bold text-slate-600 uppercase tracking-[0.3em]">Forensic Lineage & Global Parameters</p>
+                   <div className="h-px flex-1 bg-white/5" />
+                </div>
 
                 <div className="grid grid-cols-1 gap-4">
                    <ConfigSection 

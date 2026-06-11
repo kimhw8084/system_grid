@@ -902,222 +902,178 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
       </div>
 
       {/* Right Report Content */}
-      <div className="flex-1 glass-panel rounded-lg overflow-y-auto custom-scrollbar border-white/5 bg-[#0a0c14]/40">
+      <div className="flex-1 glass-panel rounded-lg overflow-y-auto custom-scrollbar border-white/5 bg-[#0a0c14]/40 p-8">
         {selectedAsset ? (
-          <div className="p-6 space-y-6">
-            {/* Report Header */}
-            <div className="flex items-start justify-between">
-              <div className="space-y-4">
-                <div className="flex items-center space-x-6">
-                   <div className="bg-blue-600 p-2.5 rounded-lg text-white shadow-xl shadow-blue-500/20 ring-4 ring-blue-500/10">
-                      <Box size={40} />
+          <div className="flex gap-8 items-start">
+            {/* MAIN REPORT COLUMN */}
+            <div className="flex-1 space-y-8">
+                {/* Report Banner */}
+                <div className="rounded-lg border border-blue-500/20 bg-gradient-to-r from-blue-600/10 to-transparent p-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-6">
+                           <div className="bg-blue-600 p-3 rounded-lg text-white shadow-2xl shadow-blue-500/30 ring-4 ring-blue-500/10">
+                              <Box size={40} />
+                           </div>
+                           <div className="grid grid-cols-3 gap-8">
+                               <div className="flex flex-col">
+                                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Operational State</span>
+                                  <span className={`px-3 py-0.5 rounded-lg text-[10px] font-bold uppercase border w-fit ${
+                                    selectedAsset.status === 'Active' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' :
+                                    selectedAsset.status === 'Maintenance' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' :
+                                    'text-rose-400 border-rose-500/20 bg-rose-500/5'
+                                  }`}>{selectedAsset.status}</span>
+                               </div>
+                               <div className="flex flex-col">
+                                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Primary IP</span>
+                                  <span className="text-xl font-mono text-blue-400 font-bold tracking-tight">{selectedAsset.primary_ip || '---.---.---.---'}</span>
+                               </div>
+                               <div className="flex flex-col">
+                                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Management IP</span>
+                                  <span className="text-xl font-mono text-indigo-400 font-bold tracking-tight">{selectedAsset.management_ip || '---.---.---.---'}</span>
+                               </div>
+                           </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Hardware & System */}
+                <div className="space-y-4">
+                   <div className="flex items-center space-x-3 border-b border-white/5 pb-2">
+                      <CpuIcon size={16} className="text-amber-400" />
+                      <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Hardware & System Architecture</h3>
                    </div>
-                   <div>
-                      <h1 className="text-4xl font-black uppercase tracking-tighter text-white">{selectedAsset.name}</h1>
-                      <div className="flex items-center space-x-4 mt-1">
-                        <span className="text-blue-400 font-bold uppercase tracking-[0.3em] text-[12px]">{selectedAsset.system}</span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-white/10" />
-                        <span className="text-slate-500 font-bold uppercase tracking-[0.1em] text-[9px]">{selectedAsset.type} // {selectedAsset.environment} // {selectedAsset.owner || 'NO OWNER'}</span>
+                   <div className="bg-black/20 p-8 rounded-lg border border-white/5 grid grid-cols-2 gap-y-8 gap-x-12">
+                      <div>
+                         <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1">Platform Identity</p>
+                         <p className="text-sm font-black text-white uppercase tracking-tight">{selectedAsset.manufacturer} {selectedAsset.model}</p>
+                         <p className="text-[10px] font-mono text-slate-500 mt-1">SN: {selectedAsset.serial_number || 'UNKNOWN'}</p>
+                      </div>
+                      <div>
+                         <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1">Operating Environment</p>
+                         <p className="text-sm font-black text-blue-400 uppercase tracking-tight">{selectedAsset.os_name} {selectedAsset.os_version}</p>
+                         <p className="text-[9px] font-bold text-slate-500 mt-1 uppercase">Registry Depth: {selectedAsset.depth || 'Full'}</p>
+                      </div>
+                      <div className="col-span-2">
+                         <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-2">Resource Utilization Summary</p>
+                         <div className="bg-black/40 p-4 rounded-lg border border-white/5 shadow-inner">
+                            <p className="text-[11px] font-bold text-slate-300 uppercase leading-relaxed tracking-tight">{selectedAsset.hardware_summary || 'No hardware details registered for this unit.'}</p>
+                         </div>
                       </div>
                    </div>
                 </div>
 
-                <div className="flex items-center space-x-6 bg-black/40 p-4 rounded-lg border border-white/5">
-                   <div className="flex flex-col">
-                      <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Operational State</span>
-                      <span className={`px-3 py-0.5 rounded-lg text-[10px] font-bold uppercase border w-fit ${
-                        selectedAsset.status === 'Active' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' :
-                        selectedAsset.status === 'Maintenance' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' :
-                        'text-rose-400 border-rose-500/20 bg-rose-500/5'
-                      }`}>{selectedAsset.status}</span>
+                {/* Connection Maps Section */}
+                <div className="space-y-4">
+                   <div className="flex items-center space-x-3 border-b border-white/5 pb-2">
+                      <Share2 size={16} className="text-indigo-400" />
+                      <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Vector Topologies & Interconnects</h3>
                    </div>
-                   <div className="w-px h-8 bg-white/5" />
-                   <div className="flex flex-col">
-                      <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Primary Network IP</span>
-                      <span className="text-lg font-mono text-blue-400 font-bold">{selectedAsset.primary_ip || '---.---.---.---'}</span>
-                   </div>
-                   <div className="w-px h-8 bg-white/5" />
-                   <div className="flex flex-col">
-                      <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Management OOB IP</span>
-                      <span className="text-lg font-mono text-indigo-400 font-bold">{selectedAsset.management_ip || '---.---.---.---'}</span>
+                   <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Dependency Vector Map</p>
+                         <ConnectionMap deviceId={selectedAsset.id} type="dependency" devices={devices} onNodeClick={onViewAssetDetails} />
+                      </div>
+                      <div className="space-y-3">
+                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Network Interconnect Map</p>
+                         <ConnectionMap deviceId={selectedAsset.id} type="network" devices={devices} onNodeClick={onViewAssetDetails} />
+                      </div>
                    </div>
                 </div>
-              </div>
-              <div className="flex flex-col items-end space-y-2">
-                 <button onClick={() => onEdit(selectedAsset)} className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20">
-                    <Edit2 size={14}/> <span>Modify Config</span>
-                 </button>
-                 <div className="text-right">
-                    <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Last Synced</p>
-                    <p className="text-[9px] font-mono text-slate-400">{new Date().toLocaleString()}</p>
-                 </div>
-              </div>
+
+                {/* Logical Services & Telemetry */}
+                <div className="grid grid-cols-2 gap-8">
+                   <div className="space-y-4">
+                      <div className="flex items-center space-x-3 border-b border-white/5 pb-2">
+                         <Layers size={16} className="text-blue-400" />
+                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Hosted Logical Services</h3>
+                      </div>
+                      <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/20 min-h-[300px]">
+                         <AssetServicesTable 
+                           deviceId={selectedAsset.id} 
+                           onViewDetails={onViewServiceDetails} 
+                           onEdit={onEditService} 
+                         />
+                      </div>
+                   </div>
+
+                   <div className="space-y-4">
+                      <div className="flex items-center space-x-3 border-b border-white/5 pb-2">
+                         <Activity size={16} className="text-emerald-400" />
+                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Monitoring & Telemetry Nodes</h3>
+                      </div>
+                      <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/20 min-h-[300px]">
+                         <MiniMonitoringTable deviceId={selectedAsset.id} />
+                      </div>
+                   </div>
+                </div>
             </div>
 
-            {/* Quick Stats Banner */}
-            <div className="grid grid-cols-6 gap-3 bg-white/5 p-4 rounded-lg border border-white/5">
-               <div className="flex flex-col">
-                  <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Power Avg/Max</span>
-                  <span className="text-[10px] font-mono text-white font-bold">{selectedAsset.power_typical_w}W / {selectedAsset.power_max_w}W</span>
-               </div>
-               <div className="flex flex-col">
-                  <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Site Location</span>
-                  <span className="text-[10px] font-bold text-blue-400 uppercase">{selectedAsset.site_name || 'UNPLACED'}</span>
-               </div>
-               <div className="flex flex-col">
-                  <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Rack ID</span>
-                  <span className="text-[10px] font-bold text-white uppercase">{selectedAsset.rack_name || 'N/A'}</span>
-               </div>
-               <div className="flex flex-col">
-                  <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">U Position</span>
-                  <span className="text-[10px] font-bold text-indigo-400 uppercase">{selectedAsset.u_start || '--'}U</span>
-               </div>
-               <div className="flex flex-col">
-                  <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Form Factor</span>
-                  <span className="text-[10px] font-bold text-white uppercase">{selectedAsset.size_u || 1}U / {selectedAsset.depth || 'Full'}</span>
-               </div>
-               <div className="flex flex-col">
-                  <span className="text-[7px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Asset Tag</span>
-                  <span className="text-[10px] font-mono text-amber-500 font-bold uppercase">{selectedAsset.asset_tag || 'NO TAG'}</span>
-               </div>
-            </div>
+            {/* SIDEBAR JUMP & META COLUMN */}
+            <div className="w-80 shrink-0 space-y-6 sticky top-0">
+                <div className="flex flex-col items-end space-y-2 mb-4">
+                    <button onClick={() => onEdit(selectedAsset)} className="flex items-center space-x-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20">
+                        <Edit2 size={14}/> <span>Modify Config</span>
+                    </button>
+                    <div className="text-right">
+                        <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Forensic Sync</p>
+                        <p className="text-[9px] font-mono text-slate-400 font-bold">{new Date().toLocaleString()}</p>
+                    </div>
+                </div>
 
-            <div className="grid grid-cols-2 gap-6 items-stretch">
-               {/* Hardware & System */}
-               <div className="space-y-4 flex flex-col h-full">
-                  <div className="flex items-center space-x-3 border-b border-white/5 pb-1.5">
-                     <CpuIcon size={14} className="text-amber-400" />
-                     <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Hardware & System Architecture</h3>
-                  </div>
-                  <div className="bg-black/20 p-6 rounded-lg border border-white/5 grid grid-cols-2 gap-y-6 gap-x-8 flex-1">
-                     <div>
-                        <p className="text-[7px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-0.5">Platform Identity</p>
-                        <p className="text-xs font-bold text-white uppercase">{selectedAsset.manufacturer} {selectedAsset.model}</p>
-                        <p className="text-[9px] font-mono text-slate-500 mt-0.5">SN: {selectedAsset.serial_number || 'UNKNOWN'}</p>
-                     </div>
-                     <div>
-                        <p className="text-[7px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-0.5">Operating Environment</p>
-                        <p className="text-xs font-bold text-blue-400 uppercase">{selectedAsset.os_name} {selectedAsset.os_version}</p>
-                        <p className="text-[9px] font-bold text-slate-500 mt-0.5 uppercase">Registry Depth: {selectedAsset.depth || 'Full'}</p>
-                     </div>
-                     <div className="col-span-2">
-                        <p className="text-[7px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1.5">Resource Utilization Summary</p>
-                        <div className="bg-black/40 p-3 rounded-lg border border-white/5">
-                           <p className="text-[10px] font-bold text-slate-300 uppercase leading-relaxed">{selectedAsset.hardware_summary || 'No hardware details registered for this unit.'}</p>
-                        </div>
-                     </div>
-                  </div>
-               </div>
+                {/* QUICK JUMPS */}
+                <div className="glass-panel p-5 rounded-lg border-white/5 bg-white/5 space-y-3">
+                   <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500 mb-2">Jump Actions</p>
+                   <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => navigate(`/logs?target_table=devices&target_id=${selectedAsset.id}`)}
+                          className="flex flex-col items-center justify-center p-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] transition-all group"
+                        >
+                          <Activity size={16} className="text-slate-500 group-hover:text-blue-400 mb-2" />
+                          <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Audit</span>
+                        </button>
+                        <button
+                          onClick={() => navigate(`/far?id=${selectedAsset.id}`)}
+                          className="flex flex-col items-center justify-center p-3 rounded-lg border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 transition-all group"
+                        >
+                          <AlertTriangle size={16} className="text-rose-500 mb-2" />
+                          <span className="text-[8px] font-black uppercase tracking-widest text-rose-400">FAR Risks</span>
+                        </button>
+                   </div>
+                </div>
 
-               {/* Lifecycle & Logistics */}
-               <div className="space-y-4 flex flex-col h-full">
-                  <div className="flex items-center space-x-3 border-b border-white/5 pb-1.5">
-                     <Calendar size={14} className="text-rose-400" />
-                     <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Lifecycle & Logistics Registry</h3>
-                  </div>
-                  <div className="bg-black/20 p-6 rounded-lg border border-white/5 grid grid-cols-2 gap-6 flex-1">
-                     <div className="space-y-6">
-                        <div>
-                           <p className="text-[7px] font-bold text-slate-500 uppercase mb-0.5">Deployment Phase</p>
-                           <p className="text-xs font-bold text-white uppercase">{selectedAsset.install_date ? new Date(selectedAsset.install_date).toLocaleDateString() : 'N/A'}</p>
-                           <p className="text-[9px] font-bold text-blue-400 mt-0.5 uppercase">Total Uptime Age: {selectedAsset.hardware_age}</p>
-                        </div>
-                        <div>
-                           <p className="text-[7px] font-bold text-slate-500 uppercase mb-0.5">Warranty Coverage</p>
-                           <p className="text-xs font-bold text-white uppercase">{selectedAsset.warranty_end ? new Date(selectedAsset.warranty_end).toLocaleDateString() : 'EXPIRED / NO TERM'}</p>
-                        </div>
-                     </div>
-                     <div className="space-y-6 text-right">
-                        <div>
-                           <p className="text-[7px] font-bold text-slate-500 uppercase mb-0.5">Acquisition Date</p>
-                           <p className="text-xs font-bold text-white uppercase">{selectedAsset.purchase_date ? new Date(selectedAsset.purchase_date).toLocaleDateString() : 'N/A'}</p>
-                        </div>
-                        <div>
-                           <p className="text-[7px] font-bold text-slate-500 uppercase mb-0.5">Retirement EOL</p>
-                           <p className="text-xs font-bold text-rose-400 uppercase">{selectedAsset.eol_date ? new Date(selectedAsset.eol_date).toLocaleDateString() : 'ACTIVE REIGN'}</p>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-            </div>
+                {/* INCIDENT FLOW */}
+                <div className="rounded-lg border border-white/10 bg-black/40 p-5 space-y-4 shadow-xl">
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-emerald-400 flex items-center justify-between">
+                       <span>Incident Flow</span>
+                       <Activity size={12} />
+                    </p>
+                    <div className="space-y-2">
+                        {/* Assuming monitoringItems is available or queried here as well */}
+                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest italic text-center py-4">See Telemetry Tab for Active Nodes</p>
+                    </div>
+                </div>
 
-            {/* Connection Maps Section */}
-            <div className="space-y-4">
-               <div className="flex items-center space-x-3 border-b border-white/5 pb-1.5">
-                  <Share2 size={14} className="text-indigo-400" />
-                  <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Vector Topologies & Interconnects</h3>
-               </div>
-               <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                     <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest text-center">Dependency Vector Map</p>
-                     <ConnectionMap deviceId={selectedAsset.id} type="dependency" devices={devices} onNodeClick={onViewAssetDetails} />
-                  </div>
-                  <div className="space-y-2">
-                     <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest text-center">Network Interconnect Map</p>
-                     <ConnectionMap deviceId={selectedAsset.id} type="network" devices={devices} onNodeClick={onViewAssetDetails} />
-                  </div>
-               </div>
-            </div>
-
-            {/* Logical Services & Telemetry */}
-            <div className="grid grid-cols-2 gap-6">
-               <div className="space-y-4">
-                  <div className="flex items-center space-x-3 border-b border-white/5 pb-1.5">
-                     <Layers size={14} className="text-blue-400" />
-                     <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Hosted Logical Services</h3>
-                  </div>
-                  <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
-                     <AssetServicesTable 
-                       deviceId={selectedAsset.id} 
-                       onViewDetails={onViewServiceDetails} 
-                       onEdit={onEditService} 
-                     />
-                  </div>
-               </div>
-
-               <div className="space-y-4">
-                  <div className="flex items-center space-x-3 border-b border-white/5 pb-1.5">
-                     <Activity size={14} className="text-emerald-400" />
-                     <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Monitoring & Telemetry Nodes</h3>
-                  </div>
-                  <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
-                     <MiniMonitoringTable deviceId={selectedAsset.id} />
-                  </div>
-               </div>
-            </div>
-
-            {/* Security & Metadata */}
-            <div className="grid grid-cols-2 gap-6">
-               <div className="space-y-4">
-                  <div className="flex items-center space-x-3 border-b border-white/5 pb-1.5">
-                     <Shield size={14} className="text-amber-500" />
-                     <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Security Credentials & Secrets</h3>
-                  </div>
-                  <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
-                     <SecretsTable deviceId={selectedAsset.id} />
-                  </div>
-               </div>
-
-               <div className="space-y-4">
-                  <div className="flex items-center space-x-3 border-b border-white/5 pb-1.5">
-                     <FileJson size={14} className="text-slate-400" />
-                     <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Registry Metadata Payload</h3>
-                  </div>
-                  <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10 min-h-[120px]">
-                     <MetadataViewer data={selectedAsset.metadata_json} />
-                  </div>
-               </div>
-            </div>
-
-            {/* Resources Registry (Bottom Full Width) */}
-            <div className="space-y-4 pb-12">
-               <div className="flex items-center space-x-3 border-b border-white/5 pb-1.5">
-                  <HardDrive size={14} className="text-emerald-400" />
-                  <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Physical Component Inventory</h3>
-               </div>
-               <div className="glass-panel rounded-lg overflow-hidden border-white/5 bg-black/10">
-                  <HWTable deviceId={selectedAsset.id} />
-               </div>
+                {/* PLACEMENT REGISTRY */}
+                <div className="rounded-lg border border-white/10 bg-black/40 p-5 space-y-4 shadow-xl">
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-indigo-400 flex items-center justify-between">
+                       <span>Placement Registry</span>
+                       <Database size={12} />
+                    </p>
+                    <div className="space-y-3">
+                       <div className="flex justify-between items-center">
+                          <span className="text-[8px] font-bold text-slate-500 uppercase">Site</span>
+                          <span className="text-[10px] font-black text-white uppercase">{selectedAsset.site_name || 'UNPLACED'}</span>
+                       </div>
+                       <div className="flex justify-between items-center">
+                          <span className="text-[8px] font-bold text-slate-500 uppercase">Rack</span>
+                          <span className="text-[10px] font-black text-white uppercase">{selectedAsset.rack_name || 'N/A'}</span>
+                       </div>
+                       <div className="flex justify-between items-center">
+                          <span className="text-[8px] font-bold text-slate-500 uppercase">U-Pos</span>
+                          <span className="text-[10px] font-black text-indigo-400 font-bold">{selectedAsset.u_start || '--'}U</span>
+                       </div>
+                    </div>
+                </div>
             </div>
           </div>
         ) : (
@@ -3163,10 +3119,9 @@ const MonitoringTab = ({ deviceId }: { deviceId: number }) => {
 const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService, onEditLink, onViewLink }: { device: any, options: any, onViewServiceDetails: (s:any)=>void, onEditService: (s:any)=>void, onEditLink: (l:any)=>void, onViewLink: (l:any)=>void }) => {
     const navigate = useNavigate()
     const [tab, setTab] = useState('hardware')
-    const [showFarRisks, setShowFarRisks] = useState(false)
     const queryClient = useQueryClient()
 
-    // --- FAR RISK INTEGRATION ---
+    // --- FETCH RELATED CONTEXT ---
     const { data: farModes } = useQuery({
       queryKey: ['far-modes-system', device.system],
       queryFn: async () => (await (await apiFetch(`/api/v1/far/modes?system=${device.system}`)).json()),
@@ -3242,122 +3197,189 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
     })
 
     return (
-        <div className="space-y-6">
-            <div className="rounded-lg border border-blue-500/20 bg-gradient-to-r from-blue-600/10 to-transparent p-5">
-                <div className="flex items-start justify-between gap-6">
-                    <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.28em] text-blue-400">Asset Command Workspace</p>
-                        <h3 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">{device.name}</h3>
-                        <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                            {device.system} // {device.type} // {device.environment} // {device.owner || 'No owner'}
-                        </p>
-                    </div>
-                    <div className="grid grid-cols-6 gap-3">
-                        {[
-                          { label: 'Services', value: serviceCount, tone: 'text-blue-400' },
-                          { label: 'Monitors', value: monitoringCount, tone: 'text-emerald-400' },
-                          { label: 'FAR Risks', value: farCount, tone: 'text-rose-400' },
-                          { label: 'Links', value: connectionCount, tone: 'text-indigo-400' },
-                          { label: 'Runbooks', value: runbookCount, tone: 'text-amber-400' },
-                          { label: 'Maintenance', value: maintenanceCount, tone: 'text-fuchsia-400' }
-                        ].map((item) => (
-                          <div key={item.label} className="rounded-lg border border-white/10 bg-black/20 px-4 py-3 text-center">
-                              <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500">{item.label}</p>
-                              <p className={`mt-1 text-2xl font-black tabular-nums ${item.tone}`}>{item.value}</p>
-                          </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="mt-4 grid grid-cols-6 gap-2">
-                    <button
-                      disabled={!consoleUrl}
-                      onClick={() => consoleUrl && window.open(consoleUrl, '_blank')}
-                      className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-200 transition-all hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-30"
-                    >
-                      Open Console
-                    </button>
-                    <button onClick={() => setTab('services')} className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-blue-400 transition-all hover:bg-blue-500/20">
-                      Focus Services
-                    </button>
-                    <button onClick={() => setTab('monitoring')} className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-emerald-400 transition-all hover:bg-emerald-500/20">
-                      Focus Monitoring
-                    </button>
-                    <button onClick={() => setTab('network')} className="rounded-lg border border-indigo-500/20 bg-indigo-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-indigo-400 transition-all hover:bg-indigo-500/20">
-                      Focus Network
-                    </button>
-                    <button
-                      disabled={!farModes?.[0]?.id}
-                      onClick={() => farModes?.[0]?.id && navigate(`/far?id=${farModes[0].id}`)}
-                      className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-rose-400 transition-all hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-30"
-                    >
-                      Open FAR
-                    </button>
-                    <button
-                      onClick={() => navigate(`/logs?target_table=devices&target_id=${device.id}`)}
-                      className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-200 transition-all hover:bg-white/[0.08]"
-                    >
-                      Audit Trail
-                    </button>
-                </div>
-
-                <div className="mt-4 rounded-lg border border-amber-500/15 bg-amber-500/[0.05] p-4">
-                    <div className="flex items-center justify-between gap-4">
-                        <div>
-                            <p className="text-[9px] font-black uppercase tracking-[0.24em] text-amber-300">Suggested Runbooks Now</p>
-                            <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Best-fit procedures based on this asset and its linked monitoring context.</p>
+        <div className="flex gap-6 items-start">
+            {/* MAIN CONTENT AREA */}
+            <div className="flex-1 space-y-6">
+                <div className="rounded-lg border border-blue-500/20 bg-gradient-to-r from-blue-600/10 to-transparent p-5">
+                    <div className="flex items-start justify-between gap-6">
+                        <div className="flex items-center space-x-6">
+                           <div className="bg-blue-600 p-2.5 rounded-lg text-white shadow-xl shadow-blue-500/20 ring-4 ring-blue-500/10 shrink-0">
+                              <Box size={32} />
+                           </div>
+                           <div className="grid grid-cols-3 gap-6">
+                               <div className="flex flex-col">
+                                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Operational State</span>
+                                  <span className={`px-3 py-0.5 rounded-lg text-[10px] font-bold uppercase border w-fit ${
+                                    device.status === 'Active' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' :
+                                    device.status === 'Maintenance' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' :
+                                    'text-rose-400 border-rose-500/20 bg-rose-500/5'
+                                  }`}>{device.status}</span>
+                               </div>
+                               <div className="flex flex-col">
+                                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Network IP</span>
+                                  <span className="text-lg font-mono text-blue-400 font-bold">{device.primary_ip || '---.---.---.---'}</span>
+                               </div>
+                               <div className="flex flex-col">
+                                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Management IP</span>
+                                  <span className="text-lg font-mono text-indigo-400 font-bold">{device.management_ip || '---.---.---.---'}</span>
+                               </div>
+                           </div>
                         </div>
-                        <button
-                          onClick={() => navigate(`/knowledge?device_id=${device.id}${primaryMonitoringId ? `&monitoring_id=${primaryMonitoringId}` : ''}&mode=incident`)}
-                          className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-amber-300 transition-all hover:bg-amber-500/20"
-                        >
-                          Open Knowledge Context
-                        </button>
+                        <div className="grid grid-cols-3 gap-3">
+                            {[
+                              { label: 'Services', value: serviceCount, tone: 'text-blue-400' },
+                              { label: 'Monitors', value: monitoringCount, tone: 'text-emerald-400' },
+                              { label: 'FAR Risks', value: farCount, tone: 'text-rose-400' }
+                            ].map((item) => (
+                              <div key={item.label} className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-center min-w-[70px]">
+                                  <p className="text-[7px] font-black uppercase tracking-[0.2em] text-slate-500">{item.label}</p>
+                                  <p className={`mt-0.5 text-lg font-black tabular-nums ${item.tone}`}>{item.value}</p>
+                              </div>
+                            ))}
+                        </div>
                     </div>
-                    <div className="mt-3 grid grid-cols-3 gap-3">
-                        {Array.isArray(suggestedKnowledge) && suggestedKnowledge.slice(0, 3).map((entry: any) => (
-                          <button key={entry.id} onClick={() => navigate(`/knowledge?id=${entry.id}`)} className="rounded-lg border border-white/5 bg-black/20 px-3 py-3 text-left hover:bg-white/[0.06] transition-all">
-                            <p className="text-[10px] font-black uppercase tracking-tight text-white">{entry.title}</p>
-                            <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500">
-                              {entry.metadata_json?.entry_type || entry.category} // {entry.metadata_json?.verification?.state || entry.status}
-                            </p>
-                          </button>
-                        ))}
-                        {!suggestedKnowledge?.length && <p className="col-span-3 text-[10px] font-bold uppercase text-slate-600">No suggested runbooks yet</p>}
+
+                    <div className="mt-4 rounded-lg border border-amber-500/15 bg-amber-500/[0.05] p-4">
+                        <div className="flex items-center justify-between gap-4">
+                            <div>
+                                <p className="text-[9px] font-black uppercase tracking-[0.24em] text-amber-300">Suggested Runbooks Now</p>
+                                <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Procedures matched to this asset and active monitoring context.</p>
+                            </div>
+                            <button
+                              onClick={() => navigate(`/knowledge?device_id=${device.id}${primaryMonitoringId ? `&monitoring_id=${primaryMonitoringId}` : ''}&mode=incident`)}
+                              className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-amber-300 transition-all hover:bg-amber-500/20"
+                            >
+                              Open Knowledge
+                            </button>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-3">
+                            {Array.isArray(suggestedKnowledge) && suggestedKnowledge.slice(0, 2).map((entry: any) => (
+                              <button key={entry.id} onClick={() => navigate(`/knowledge?id=${entry.id}`)} className="rounded-lg border border-white/5 bg-black/20 px-3 py-3 text-left hover:bg-white/[0.06] transition-all">
+                                <p className="text-[10px] font-black uppercase tracking-tight text-white truncate">{entry.title}</p>
+                                <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500">
+                                  {entry.metadata_json?.entry_type || entry.category} // {entry.metadata_json?.verification?.state || entry.status}
+                                </p>
+                              </button>
+                            ))}
+                            {!suggestedKnowledge?.length && <p className="col-span-2 text-[10px] font-bold uppercase text-slate-600 italic">No suggested runbooks identified</p>}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex space-x-1 bg-black/40 p-1 rounded-lg w-fit">
+                            {['hardware', 'secrets', 'relations', 'services', 'network', 'security', 'monitoring', 'metadata'].map(t => (
+                                <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+                                    {t}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="glass-panel border-white/5 rounded-lg overflow-hidden min-h-[400px]">
+                        {tab === 'hardware' && <HWTab deviceId={device.id} />}
+                        {tab === 'secrets' && <SecretsTab deviceId={device.id} />}
+                        {tab === 'monitoring' && <MonitoringTab deviceId={device.id} />}
+                        {tab === 'services' && (
+                            <AssetServicesTable 
+                              deviceId={device.id} 
+                              onViewDetails={onViewServiceDetails} 
+                              onEdit={onEditService} 
+                            />
+                        )}
+                        {tab === 'network' && <NetworkingTab deviceId={device.id} onEditLink={onEditLink} onViewLink={onViewLink} />}
+                        {tab === 'relations' && <RelationshipsTab deviceId={device.id} />}
+                        {tab === 'security' && <SecurityTab device={device} />}
+                        {tab === 'metadata' && (
+                           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 p-2 h-full flex flex-col">
+                               <MetadataViewer data={device.metadata_json} />
+                           </div>
+                        )}
                     </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-                <div className="rounded-lg border border-white/10 bg-black/20 p-4">
-                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-emerald-400">Incident Flow</p>
-                    <div className="mt-3 space-y-2">
+            {/* SIDEBAR JUMP & META COLUMN */}
+            <div className="w-80 shrink-0 space-y-6 sticky top-0">
+                {/* PRIMARY JUMP ACTIONS */}
+                <div className="glass-panel p-5 rounded-lg border-white/5 bg-white/5 space-y-3">
+                   <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500 mb-2">Jump Actions</p>
+                   <div className="grid grid-cols-2 gap-2">
+                        <button
+                          disabled={!consoleUrl}
+                          onClick={() => consoleUrl && window.open(consoleUrl, '_blank')}
+                          className="flex flex-col items-center justify-center p-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] transition-all disabled:opacity-30 group"
+                        >
+                          <Terminal size={16} className="text-slate-500 group-hover:text-white mb-2" />
+                          <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Console</span>
+                        </button>
+                        <button
+                          onClick={() => navigate(`/logs?target_table=devices&target_id=${device.id}`)}
+                          className="flex flex-col items-center justify-center p-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] transition-all group"
+                        >
+                          <Activity size={16} className="text-slate-500 group-hover:text-blue-400 mb-2" />
+                          <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Audit</span>
+                        </button>
+                        <button
+                          disabled={!farModes?.[0]?.id}
+                          onClick={() => farModes?.[0]?.id && navigate(`/far?id=${farModes[0].id}`)}
+                          className="flex flex-col items-center justify-center p-3 rounded-lg border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 transition-all group disabled:opacity-30"
+                        >
+                          <AlertTriangle size={16} className="text-rose-500 mb-2" />
+                          <span className="text-[8px] font-black uppercase tracking-widest text-rose-400">FAR Risks</span>
+                        </button>
+                        <button 
+                          onClick={() => mutation.mutate(device)}
+                          className="flex flex-col items-center justify-center p-3 rounded-lg border border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20 transition-all group"
+                        >
+                          <RefreshCw size={16} className="text-blue-400 mb-2" />
+                          <span className="text-[8px] font-black uppercase tracking-widest text-blue-400">Sync</span>
+                        </button>
+                   </div>
+                </div>
+
+                {/* INCIDENT FLOW */}
+                <div className="rounded-lg border border-white/10 bg-black/40 p-5 space-y-4 shadow-xl">
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-emerald-400 flex items-center justify-between">
+                       <span>Incident Flow</span>
+                       <Activity size={12} />
+                    </p>
+                    <div className="space-y-2">
                         {Array.isArray(monitoringItems) && monitoringItems.slice(0, 3).map((item: any) => (
-                          <button key={item.id} onClick={() => navigate(`/monitoring?id=${item.id}`)} className="w-full rounded-lg border border-white/5 bg-white/[0.03] px-3 py-3 text-left hover:bg-white/[0.06] transition-all">
-                            <p className="text-[10px] font-bold uppercase text-slate-200">{item.title}</p>
+                          <button key={item.id} onClick={() => navigate(`/monitoring?id=${item.id}`)} className="w-full rounded-lg border border-white/5 bg-white/[0.03] px-3 py-3 text-left hover:bg-white/[0.06] transition-all group">
+                            <p className="text-[10px] font-bold uppercase text-slate-200 group-hover:text-emerald-400">{item.title}</p>
                             <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500">{item.severity} // {item.status}</p>
                           </button>
                         ))}
-                        {!monitoringCount && <p className="text-[10px] font-bold uppercase text-slate-600">No linked monitoring items</p>}
+                        {!monitoringCount && <p className="text-[10px] font-bold uppercase text-slate-600 italic">No linked monitors</p>}
                     </div>
                 </div>
 
-                <div className="rounded-lg border border-white/10 bg-black/20 p-4">
-                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-amber-400">Runbooks & Knowledge</p>
-                    <div className="mt-3 space-y-2">
+                {/* RUNBOOKS */}
+                <div className="rounded-lg border border-white/10 bg-black/40 p-5 space-y-4 shadow-xl">
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-amber-400 flex items-center justify-between">
+                       <span>Runbooks & Knowledge</span>
+                       <Book size={12} />
+                    </p>
+                    <div className="space-y-2">
                         {Array.isArray(relatedKnowledge) && relatedKnowledge.slice(0, 3).map((entry: any) => (
-                          <button key={entry.id} onClick={() => navigate(`/knowledge?id=${entry.id}`)} className="w-full rounded-lg border border-white/5 bg-white/[0.03] px-3 py-3 text-left hover:bg-white/[0.06] transition-all">
-                            <p className="text-[10px] font-bold uppercase text-slate-200">{entry.title}</p>
+                          <button key={entry.id} onClick={() => navigate(`/knowledge?id=${entry.id}`)} className="w-full rounded-lg border border-white/5 bg-white/[0.03] px-3 py-3 text-left hover:bg-white/[0.06] transition-all group">
+                            <p className="text-[10px] font-bold uppercase text-slate-200 group-hover:text-amber-400">{entry.title}</p>
                             <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500">{entry.category} // {entry.status}</p>
                           </button>
                         ))}
-                        {!runbookCount && <p className="text-[10px] font-bold uppercase text-slate-600">No linked knowledge entries</p>}
+                        {!runbookCount && <p className="text-[10px] font-bold uppercase text-slate-600 italic">No linked knowledge</p>}
                     </div>
                 </div>
 
-                <div className="rounded-lg border border-white/10 bg-black/20 p-4">
-                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-fuchsia-400">Recent Change & Care</p>
-                    <div className="mt-3 space-y-2">
+                {/* CHANGE & CARE */}
+                <div className="rounded-lg border border-white/10 bg-black/40 p-5 space-y-4 shadow-xl">
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-fuchsia-400 flex items-center justify-between">
+                       <span>Change & Maintenance</span>
+                       <Settings size={12} />
+                    </p>
+                    <div className="space-y-2">
                         {Array.isArray(maintenanceWindows) && maintenanceWindows.slice(0, 2).map((window: any) => (
                           <div key={window.id} className="rounded-lg border border-white/5 bg-white/[0.03] px-3 py-3">
                             <p className="text-[10px] font-bold uppercase text-slate-200">{window.title}</p>
@@ -3369,102 +3391,18 @@ const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService
                         {Array.isArray(recentAuditLogs) && recentAuditLogs.slice(0, 2).map((log: any) => (
                           <div key={log.id} className="rounded-lg border border-white/5 bg-white/[0.03] px-3 py-3">
                             <p className="text-[10px] font-bold uppercase text-slate-200">{log.action} // {log.user_id || 'system'}</p>
-                            <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500">{log.description || 'No description'}</p>
+                            <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500 truncate">{log.description || 'No description'}</p>
                           </div>
                         ))}
-                        {!maintenanceCount && !(recentAuditLogs?.length > 0) && <p className="text-[10px] font-bold uppercase text-slate-600">No maintenance or recent changes</p>}
+                        {!maintenanceCount && !(recentAuditLogs?.length > 0) && <p className="text-[10px] font-bold uppercase text-slate-600 italic">No recent care events</p>}
                     </div>
-                </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-                <div className="flex space-x-1 bg-black/40 p-1 rounded-lg w-fit">
-                    {['hardware', 'secrets', 'relations', 'services', 'network', 'security', 'monitoring', 'metadata'].map(t => (
-                        <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
-                            {t}
-                        </button>
-                    ))}
-                </div>
-
-                {/* FAR RISK BADGE */}
-                {farModes && farModes.length > 0 && (
-                  <div className="relative">
                     <button 
-                      onClick={() => setShowFarRisks(!showFarRisks)}
-                      className="group flex items-center space-x-3 px-4 py-2 bg-rose-500/10 border border-rose-500/20 rounded-lg hover:bg-rose-500/20 transition-all animate-pulse hover:animate-none"
+                      onClick={() => navigate(`/logs?target_table=devices&target_id=${device.id}`)}
+                      className="w-full py-2 bg-white/5 border border-white/10 text-[8px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-all rounded-lg"
                     >
-                       <div className="p-1 bg-rose-500 rounded-lg text-white">
-                          <AlertTriangle size={14} />
-                       </div>
-                       <div className="text-left">
-                          <p className="text-[10px] font-black text-rose-400 uppercase tracking-tighter leading-none">{farModes.length} Failure Modes Analyzed</p>
-                          <p className="text-[8px] font-bold text-rose-500/70 uppercase tracking-widest mt-1">System Risk Profile: HIGH</p>
-                       </div>
+                       View Full Audit Trail
                     </button>
-
-                    <AnimatePresence>
-                      {showFarRisks && (
-                        <motion.div 
-                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="absolute top-full right-0 mt-3 w-80 bg-slate-950 border border-rose-500/30 rounded-lg shadow-2xl p-4 z-50 backdrop-blur-xl"
-                        >
-                           <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
-                              <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-[0.2em]">FAR Risk Registry</h4>
-                              <button onClick={() => setShowFarRisks(false)} className="text-slate-500 hover:text-white"><X size={14}/></button>
-                           </div>
-                           <div className="space-y-3 max-h-60 overflow-y-auto custom-scrollbar">
-                              {farModes.map((m: any) => (
-                                <div key={m.id} className="p-3 bg-white/5 rounded-lg border border-white/5 hover:border-rose-500/20 transition-all group">
-                                   <div className="flex items-start justify-between">
-                                      <p className="text-[10px] font-bold text-white uppercase leading-tight group-hover:text-rose-300 transition-colors">{m.title}</p>
-                                      <span className={`px-1.5 py-0.5 rounded-lg text-[8px] font-black ${m.rpn > 100 ? 'bg-rose-500 text-white' : 'bg-amber-500 text-black'}`}>
-                                         RPN {m.rpn}
-                                      </span>
-                                   </div>
-                                   <p className="text-[9px] text-slate-500 mt-2 italic">"{m.effect}"</p>
-                                   <div className="flex items-center gap-2 mt-2">
-                                      <span className="text-[7px] font-black text-slate-600 uppercase">S: {m.severity}</span>
-                                      <span className="text-[7px] font-black text-slate-600 uppercase">O: {m.occurrence}</span>
-                                      <span className="text-[7px] font-black text-slate-600 uppercase">D: {m.detection}</span>
-                                   </div>
-                                </div>
-                              ))}
-                           </div>
-                           <div className="mt-4 pt-3 border-t border-white/5">
-                              <button
-                                onClick={() => farModes?.[0]?.id && navigate(`/far?id=${farModes[0].id}`)}
-                                className="w-full py-2 bg-white/5 hover:bg-white/10 text-[9px] font-bold uppercase text-slate-400 hover:text-white rounded-lg transition-all"
-                              >
-                                 View Full FAR Matrix
-                              </button>
-                           </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
-            </div>
-            <div className="glass-panel rounded-lg border-white/5 overflow-hidden p-6">
-                {tab === 'metadata' && (
-                  <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <MetadataTab device={device} onSave={(d:any) => mutation.mutate(d)} />
-                  </div>
-                )}
-                {tab === 'hardware' && <HWTab deviceId={device.id} />}
-                {tab === 'secrets' && <SecretsTab deviceId={device.id} />}
-                {tab === 'relations' && <RelationshipsTab deviceId={device.id} />}
-                {tab === 'services' && (
-                  <AssetServicesTable 
-                    deviceId={device.id} 
-                    onViewDetails={onViewServiceDetails}
-                    onEdit={onEditService}
-                  />
-                )}
-                {tab === 'network' && <NetworkingTab deviceId={device.id} onEditLink={onEditLink} onViewLink={onViewLink} />}
-                {tab === 'security' && <SecurityTab device={device} />}
-                {tab === 'monitoring' && <MonitoringTab deviceId={device.id} />}
+                </div>
             </div>
         </div>
     )

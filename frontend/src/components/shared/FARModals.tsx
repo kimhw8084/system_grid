@@ -320,3 +320,181 @@ export function PreventionFormModal({ isOpen, onClose, onSave, modeId, causeId }
     </WorkspaceModal>
   )
 }
+
+export function ResolutionManagerModal({ isOpen, onClose, cause, onSave }: any) {
+  const [search, setSearch] = useState('')
+  const [selectedBkm, setSelectedBkm] = useState<any>(null)
+  const [guidanceNotes, setGuidanceNotes] = useState('')
+  const queryClient = useQueryClient()
+
+  const { data: bkms } = useQuery({ 
+    queryKey: ['knowledge', 'bkms'], 
+    queryFn: async () => (await apiFetch('/api/v1/knowledge/?category=BKM')).json() 
+  })
+
+  const filteredBkms = bkms?.filter((b: any) => 
+    !search || b.title.toLowerCase().includes(search.toLowerCase())
+  ).filter((b: any) => !cause?.resolutions?.some((r: any) => r.knowledge_id === b.id))
+
+  const addMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiFetch('/api/v1/far/resolutions', {
+        method: 'POST',
+        body: JSON.stringify({ ...data, cause_ids: [cause.id] })
+      })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      toast.success('BKM Artifact Linked');
+      setSelectedBkm(null);
+      setGuidanceNotes('');
+      queryClient.invalidateQueries({ queryKey: ['far', 'modes'] })
+      if (onSave) onSave()
+    },
+    onError: (err: any) => toast.error(`Linking Failed: ${err.message}`)
+  })
+
+  const deleteResolutionMutation = useMutation({
+    mutationFn: async (resId: number) => {
+      const res = await apiFetch(`/api/v1/far/resolutions/${resId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: () => {
+      toast.success('BKM Linkage Purged')
+      queryClient.invalidateQueries({ queryKey: ['far', 'modes'] })
+      if (onSave) onSave()
+    }
+  })
+
+  return (
+    <WorkspaceModal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="wide"
+      title="Resolution Management Registry"
+      subtitle={`Cause: ${cause?.cause_text}`}
+      icon={<ShieldCheck size={24} className="text-emerald-400" />}
+      footerRight={(
+        <button 
+          type="button"
+          onClick={onClose} 
+          className="rounded-lg border border-white/10 bg-black/20 px-4 py-2 text-[10px] font-black uppercase text-slate-300 transition-colors hover:text-white"
+        >
+          Dismiss
+        </button>
+      )}
+    >
+      <div className="grid grid-cols-12 gap-8 min-h-[500px]">
+        {/* Active Resolutions */}
+        <div className="col-span-7 flex flex-col space-y-4">
+           <div className="flex items-center justify-between">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Active Guidance Protocols</h3>
+              <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">{(cause?.resolutions || []).length} Linked Artifacts</span>
+           </div>
+           
+           <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
+              {(cause?.resolutions || []).map((res: any) => (
+                <div key={res.id} className="bg-white/5 border border-white/5 rounded-lg p-5 group hover:border-emerald-500/30 transition-all shadow-xl">
+                   <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                         <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400 border border-emerald-500/20">
+                            <Zap size={16}/>
+                         </div>
+                         <p className="text-[11px] font-black text-white uppercase tracking-tight">{res.knowledge_bkm?.title || 'UNNAMED_BKM'}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                         <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight">{formatAppDate(res.created_at)}</span>
+                         <button onClick={() => deleteResolutionMutation.mutate(res.id)} className="p-1.5 text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><X size={14}/></button>
+                      </div>
+                   </div>
+                   <div className="bg-black/40 border border-white/5 rounded-lg p-3 text-[10px] font-bold text-slate-400 uppercase leading-relaxed tracking-tight shadow-inner">
+                      {res.guidance_notes || res.preventive_follow_up || 'NO GUIDANCE NOTES PROVIDED.'}
+                   </div>
+                </div>
+              ))}
+              {(!cause?.resolutions || cause.resolutions.length === 0) && (
+                <div className="h-full flex flex-col items-center justify-center opacity-20 space-y-4">
+                   <ShieldCheck size={48} className="text-slate-500" />
+                   <p className="text-[11px] font-black uppercase tracking-[0.2em]">No resolutions established</p>
+                </div>
+              )}
+           </div>
+        </div>
+
+        {/* BKM Search & Link */}
+        <div className="col-span-5 flex flex-col space-y-4 border-l border-white/5 pl-8">
+           <div className="flex items-center justify-between">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Add Guidance Artifact</h3>
+              {selectedBkm && (
+                <button onClick={() => setSelectedBkm(null)} className="text-[9px] font-black text-rose-500 uppercase tracking-widest hover:underline">Clear Selection</button>
+              )}
+           </div>
+
+           {!selectedBkm ? (
+             <div className="flex flex-col flex-1 space-y-4">
+                <div className="relative">
+                   <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
+                   <input 
+                     value={search} 
+                     onChange={e => setSearch(e.target.value)} 
+                     placeholder="SCAN BKM REGISTRY..." 
+                     className="w-full bg-black/40 border border-white/10 rounded-lg pl-11 pr-4 py-3 text-[10px] font-black text-white outline-none focus:border-emerald-500" 
+                   />
+                </div>
+                <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2">
+                   {filteredBkms?.map((b: any) => (
+                     <button 
+                       key={b.id} 
+                       onClick={() => setSelectedBkm(b)}
+                       className="w-full text-left p-4 rounded-lg bg-white/5 border border-white/5 hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all group"
+                     >
+                        <p className="text-[11px] font-black text-white uppercase tracking-tight">{b.title}</p>
+                        <p className="text-[9px] text-slate-500 font-bold uppercase mt-1">Category: {b.category}</p>
+                     </button>
+                   ))}
+                </div>
+             </div>
+           ) : (
+             <div className="flex flex-col flex-1 space-y-6">
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-5 space-y-3 shadow-lg">
+                   <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest leading-none">Selected Artifact</p>
+                   <p className="text-[13px] font-black text-white uppercase tracking-tighter leading-tight">{selectedBkm.title}</p>
+                </div>
+
+                <div className="space-y-2">
+                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Operational Guidance Notes</label>
+                   <textarea 
+                     value={guidanceNotes} 
+                     onChange={e => setGuidanceNotes(e.target.value)} 
+                     placeholder="Provide specific instructions for this failure context..." 
+                     className="w-full bg-black/40 border border-white/10 rounded-lg p-4 text-[11px] font-black text-white outline-none focus:border-emerald-500 min-h-[150px] uppercase custom-scrollbar shadow-inner" 
+                   />
+                </div>
+
+                <button 
+                  onClick={() => addMutation.mutate({ knowledge_id: selectedBkm.id, guidance_notes: guidanceNotes })}
+                  disabled={addMutation.isPending}
+                  className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-emerald-600/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+                >
+                   {addMutation.isPending ? <Activity size={12} className="animate-spin" /> : <Save size={12} />}
+                   Commit BKM Linkage
+                </button>
+             </div>
+           )}
+        </div>
+      </div>
+    </WorkspaceModal>
+  )
+}
+
+function formatAppDate(dateStr: string) {
+  if (!dateStr) return 'N/A'
+  try {
+    const d = new Date(dateStr)
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()
+  } catch (e) {
+    return 'INVALID DATE'
+  }
+}
