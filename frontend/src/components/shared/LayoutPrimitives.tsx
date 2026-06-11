@@ -217,3 +217,25 @@ export const ToolbarSegmented = ({
     ))}
   </div>
 )
+
+export const HeaderScopeSwitch = ({
+  label,
+  summary,
+  options,
+  value,
+  onChange,
+}: {
+  label: ReactNode
+  summary?: ReactNode
+  options: Array<{ label: string; value: string }>
+  value: string
+  onChange: (value: string) => void
+}) => (
+  <div className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/5 p-1.5">
+    <div className="px-2">
+      <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      {summary ? <p className="pt-0.5 text-[10px] font-semibold text-slate-300">{summary}</p> : null}
+    </div>
+    <ToolbarSegmented options={options} value={value} onChange={onChange} />
+  </div>
+)

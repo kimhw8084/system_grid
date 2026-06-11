@@ -227,20 +227,8 @@ export const ConfigSection = ({ title, category, options, icon: Icon, usageTarge
                             <Settings size={32} className="text-slate-600 mb-2" />
                             <div className="space-y-1">
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">No entries configured for this domain</p>
-                                <p className="text-[9px] font-medium text-slate-600 uppercase tracking-widest leading-relaxed max-w-xs mx-auto">Database is either fresh or has been purged of operational enums.</p>
+                                <p className="text-[9px] font-medium text-slate-600 uppercase tracking-widest leading-relaxed max-w-xs mx-auto">Define entries here to populate the shared enum registry consumed by the dependent views.</p>
                             </div>
-                            <button 
-                                onClick={() => {
-                                    toast.promise(apiFetch("/api/v1/settings/initialize"), {
-                                        loading: "Synchronizing system defaults...",
-                                        success: () => { queryClient.invalidateQueries({ queryKey: ["settings-options"] }); return "Default enums synchronized" },
-                                        error: "Synchronization failed"
-                                    })
-                                }}
-                                className="mt-4 px-4 py-2 bg-blue-600/10 border border-blue-500/30 text-blue-400 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-lg shadow-blue-500/5"
-                            >
-                                Synchronize Defaults
-                            </button>
                         </div>
                     )}
                 </div>

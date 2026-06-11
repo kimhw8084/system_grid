@@ -12,7 +12,7 @@ import { toast } from 'react-hot-toast'
 import { showWorkspaceToast } from './shared/WorkspaceToast'
 import { apiFetch, setApiOverride, getApiBaseUrl } from "../api/apiClient"
 import { formatAppDate, parseAppDate } from "../utils/dateUtils"
-import {
+import { 
   PageHeader, 
   PageToolbar, 
   ToolbarGroup, 
@@ -21,8 +21,8 @@ import {
   ToolbarButton,
   ToolbarIconButton
 } from "./shared/LayoutPrimitives"
-import { AppDropdown } from "./shared/AppDropdown"
 import { WorkspaceEmptyState, WorkspaceFloatingPanel, WorkspaceSelectField, useWorkspaceAnchoredLayer } from "./shared/OperationalWorkspacePrimitives"
+import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from "./shared/WorkspaceFlyout"
 import { WorkspaceModal } from "./shared/WorkspaceModal"
 import { WorkspaceHistoryShell } from "./shared/WorkspaceModalShells"
 
@@ -348,60 +348,6 @@ const buildPermissionHistoryRows = (newer: any, older: any, allViews: string[]) 
     const nameB = (b.after?.full_name || b.before?.full_name || '').toLowerCase()
     return nameA.localeCompare(nameB)
   })
-}
-
-function SettingsBulkActionCard({ title, active, onClick }: { title: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
-        active ? 'border-blue-500/40 bg-blue-950/40' : 'border-slate-800 bg-slate-950 hover:border-slate-700 hover:bg-slate-900'
-      }`}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[10px] font-semibold text-slate-100">{title}</p>
-        <ChevronRight size={14} className={active ? 'text-blue-300' : 'text-slate-500'} />
-      </div>
-    </button>
-  )
-}
-
-function SettingsBulkInlineEditor({
-  value,
-  onChange,
-  options,
-  placeholder,
-  actionLabel,
-  onApply,
-  disabled,
-}: {
-  value: string
-  onChange: (value: string) => void
-  options: Array<{ value: string | number; label: string }>
-  placeholder: string
-  actionLabel: string
-  onApply: () => void
-  disabled: boolean
-}) {
-  return (
-    <div className="rounded-lg border border-slate-800 bg-[#0b1220] p-3">
-      <div className="grid gap-3">
-        <AppDropdown
-          value={value}
-          onChange={(next) => onChange(String(next))}
-          options={options}
-          placeholder={placeholder}
-        />
-        <button
-          onClick={onApply}
-          disabled={disabled}
-          className="rounded-lg border border-blue-500/20 bg-blue-600/15 px-4 py-2.5 text-[10px] font-semibold text-blue-200 transition-all hover:bg-blue-600/25 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-950 disabled:text-slate-600"
-        >
-          {actionLabel}
-        </button>
-      </div>
-    </div>
-  )
 }
 
 function PermissionHistoryModal({ versions, allViews, onClose }: { versions: any[], allViews: string[], onClose: () => void }) {
@@ -1412,11 +1358,12 @@ result_df = get_user_pool()`)
     MonitoringPlatform: [{ label: 'Monitoring', path: '/monitoring' }],
     MonitoringCategory: [{ label: 'Monitoring', path: '/monitoring' }],
     MonitoringTeam: [{ label: 'Monitoring', path: '/monitoring' }, { label: 'Groups', path: '/settings?tab=groups' }],
-    Status: [{ label: 'Assets', path: '/asset' }, { label: 'Services', path: '/services' }],
-    Environment: [{ label: 'Assets', path: '/asset' }, { label: 'Services', path: '/services' }],
+    Status: [{ label: 'Assets', path: '/asset' }, { label: 'Services', path: '/services' }, { label: 'External', path: '/external' }],
+    Environment: [{ label: 'Assets', path: '/asset' }, { label: 'Services', path: '/services' }, { label: 'External', path: '/external' }],
     DeviceType: [{ label: 'Assets', path: '/asset' }],
     LogicalSystem: [{ label: 'Assets', path: '/asset' }, { label: 'Vendors', path: '/vendors' }],
     ServiceType: [{ label: 'Services', path: '/services' }],
+    ExternalType: [{ label: 'External', path: '/external' }],
     VendorCountry: [{ label: 'Vendors', path: '/vendors' }],
     VendorDeviceType: [{ label: 'Vendors', path: '/vendors' }],
   } as const
@@ -1600,23 +1547,6 @@ result_df = get_user_pool()`)
                       <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Metadata Registry</span>
                     </ToolbarGroup>
                   }
-                  right={
-                    <ToolbarButton
-                      onClick={() => {
-                        toast.promise(apiFetch("/api/v1/settings/initialize"), {
-                           loading: "Synchronizing system defaults...",
-                           success: () => { queryClient.invalidateQueries({ queryKey: ["settings-options"] }); return "Default enums synchronized" },
-                           error: "Synchronization failed"
-                        })
-                     }}
-                      className="bg-blue-600/10 border-blue-500/30 text-blue-400"
-                    >
-                      <span className="flex items-center gap-2">
-                        <RefreshCcw size={14} />
-                        Synchronize Defaults
-                      </span>
-                    </ToolbarButton>
-                  }
                 />
 
                 <div className="grid grid-cols-1 gap-4">
@@ -1685,6 +1615,14 @@ result_df = get_user_pool()`)
                       description="Template schema for service records and service-specific metadata keys."
                       usageTargets={metadataViewBindings.ServiceType}
                       options={(options || []).filter((o:any) => o.category === "ServiceType")} 
+                   />
+                   <ConfigSection 
+                      title="External Link Types" 
+                      category="ExternalType" 
+                      icon={Link} 
+                      description="Shared external integration and dependency type taxonomy."
+                      usageTargets={metadataViewBindings.ExternalType}
+                      options={(options || []).filter((o:any) => o.category === "ExternalType")} 
                    />
                    <div className="h-px bg-white/5 my-4" />
                    <ConfigSection 
@@ -2003,13 +1941,13 @@ result_df = get_user_pool()`)
                            </div>
 
                            <div className="space-y-2">
-                             <SettingsBulkActionCard
+                             <WorkspaceFlyoutActionCard
                                title="Assign Group"
                                active={expandedPermissionBulkSection === 'assign-group'}
                                onClick={() => setExpandedPermissionBulkSection((current) => current === 'assign-group' ? null : 'assign-group')}
                              />
                              {expandedPermissionBulkSection === 'assign-group' && (
-                               <SettingsBulkInlineEditor
+                               <WorkspaceFlyoutDropdownEditor
                                  value={bulkGroupTargetId}
                                  onChange={setBulkGroupTargetId}
                                  options={(teams || []).map((team: any) => ({ value: team.id, label: team.name }))}
@@ -2020,13 +1958,13 @@ result_df = get_user_pool()`)
                                />
                              )}
 
-                             <SettingsBulkActionCard
+                             <WorkspaceFlyoutActionCard
                                title="Remove Group"
                                active={expandedPermissionBulkSection === 'remove-group'}
                                onClick={() => setExpandedPermissionBulkSection((current) => current === 'remove-group' ? null : 'remove-group')}
                              />
                              {expandedPermissionBulkSection === 'remove-group' && (
-                               <SettingsBulkInlineEditor
+                               <WorkspaceFlyoutDropdownEditor
                                  value={bulkGroupTargetId}
                                  onChange={setBulkGroupTargetId}
                                  options={(teams || []).map((team: any) => ({ value: team.id, label: team.name }))}

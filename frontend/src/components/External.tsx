@@ -540,26 +540,9 @@ const ExternalForm = ({ initialData, onSave, isSaving, options, teams, operators
   })
 
   const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
-  const types = getOptions('ExternalType').length > 0 ? getOptions('ExternalType') : Object.keys(extensionMetadataKeysByType).map((value) => ({ value, label: value }))
-  const statusOptions = getOptions('Status').length > 0 ? getOptions('Status') : [
-    { value: 'Planned', label: 'Planned' },
-    { value: 'Active', label: 'Active' },
-    { value: 'Maintenance', label: 'Maintenance' },
-    { value: 'Standby', label: 'Standby' },
-    { value: 'Failed', label: 'Failed' },
-    { value: 'Decommissioned', label: 'Decommissioned' },
-    { value: 'Provisioning', label: 'Provisioning' },
-    { value: 'Reserved', label: 'Reserved' }
-  ]
-  const envOptions = getOptions('Environment').length > 0 ? getOptions('Environment') : [
-    { value: 'Production', label: 'Production' },
-    { value: 'Staging', label: 'Staging' },
-    { value: 'QA', label: 'QA' },
-    { value: 'Dev', label: 'Dev' },
-    { value: 'DR', label: 'DR' },
-    { value: 'Sandbox', label: 'Sandbox' },
-    { value: 'Legacy', label: 'Legacy' }
-  ]
+  const types = getOptions('ExternalType')
+  const statusOptions = getOptions('Status')
+  const envOptions = getOptions('Environment')
   const selectedTypeOption = types.find((type: any) => type.value === formData.type)
   const allowedMetadataKeys = selectedTypeOption?.metadata_keys || extensionMetadataKeysByType[formData.type] || []
 

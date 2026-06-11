@@ -107,6 +107,8 @@ export const MONITORING_WORKSPACE_STANDARD: WorkspaceDefinition = {
 
 export const OPERATIONAL_WORKSPACE_MINIMUM_STANDARD = [
   'Shared page header and toolbar shell',
+  'Shared header scope switch primitive for top-level dataset modes like Existing/Archived',
+  'Shared contextual bulk-action flyout primitives for anchored row-selection actions',
   'Shared table/workspace state model for search, filters, views, selection, and column layout persistence',
   'Shared operational grid sizing helpers for dynamic default widths and explicit saved/manual widths',
   'Shared add/edit modal shell with sticky identity, tabs, validation, and footer actions',
