@@ -2576,7 +2576,7 @@ export default function MonitoringGrid() {
 	            rowData={displayedItemsInOrder || []} 
 	            columnDefs={columnDefs} 
             autoSizeStrategy={autoSizeStrategy}
-            colResizeDefault="normal"
+            colResizeDefault="shift"
             fontSize={fontSize}
             rowDensity={rowDensity}
             context={gridContext}
@@ -2664,7 +2664,7 @@ export default function MonitoringGrid() {
                       rowData={section.items} 
                       columnDefs={columnDefs} 
                       autoSizeStrategy={autoSizeStrategy}
-                      colResizeDefault="normal"
+                      colResizeDefault="shift"
                       fontSize={fontSize}
                       rowDensity={rowDensity}
                       context={gridContext}
