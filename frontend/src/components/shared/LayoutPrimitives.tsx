@@ -2,7 +2,7 @@ import React, { ReactNode } from 'react'
 import { Search } from 'lucide-react'
 
 const join = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ')
-const TOOLBAR_CONTROL_HEIGHT = 'h-10'
+const TOOLBAR_CONTROL_HEIGHT = 'h-9'
 
 export const ShellHeader = ({
   left,
@@ -144,7 +144,7 @@ export const ToolbarButton = React.forwardRef<HTMLButtonElement, {
       disabled={disabled}
       title={title}
       className={join(
-        `${TOOLBAR_CONTROL_HEIGHT} rounded-lg px-3 text-[10px] font-bold uppercase tracking-widest transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40`,
+        `${TOOLBAR_CONTROL_HEIGHT} rounded-lg px-3 py-0 text-[10px] font-bold uppercase tracking-widest transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40`,
         variantClass,
         className
       )}
@@ -177,7 +177,7 @@ export const ToolbarIconButton = React.forwardRef<HTMLButtonElement, {
     disabled={disabled}
     title={title}
     className={join(
-      `${TOOLBAR_CONTROL_HEIGHT} rounded-lg px-2.5 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40`,
+      `${TOOLBAR_CONTROL_HEIGHT} rounded-lg px-2.5 py-0 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40`,
       tone === 'danger'
         ? 'border border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'
         : active
@@ -206,7 +206,7 @@ export const ToolbarSegmented = ({
         type="button"
         onClick={() => onChange(option.value)}
         className={join(
-          `${TOOLBAR_CONTROL_HEIGHT} rounded-lg px-4 text-[10px] font-bold tracking-widest transition-all`,
+          `${TOOLBAR_CONTROL_HEIGHT} rounded-lg px-4 py-0 text-[10px] font-bold tracking-widest transition-all`,
           value === option.value
             ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
             : 'text-slate-500 hover:text-slate-300'
