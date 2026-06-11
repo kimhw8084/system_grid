@@ -1481,13 +1481,18 @@ export default function MonitoringGrid() {
 
   const columnDefs = useMemo(() => {
     const layoutById = new Map(columnLayoutState.map((column: any) => [column.colId, column]))
-    const lockFixedUtilityWidth = (column: any) => {
+    const lockFixedUtilityWidth = (column: any, layout?: any) => {
       const colId = column.colId || column.field
-      if (!MONITORING_FIXED_WIDTH_COLUMN_IDS.has(colId) || column.width == null) return column
+      const lockedWidth = layout?.width ?? column.width ?? column.initialWidth
+      if (!MONITORING_FIXED_WIDTH_COLUMN_IDS.has(colId) || lockedWidth == null) return column
       return {
         ...column,
-        minWidth: column.width,
-        maxWidth: column.width,
+        width: lockedWidth,
+        initialWidth: lockedWidth,
+        minWidth: lockedWidth,
+        maxWidth: lockedWidth,
+        flex: undefined,
+        initialFlex: undefined,
       }
     }
     
@@ -1844,13 +1849,13 @@ export default function MonitoringGrid() {
         children: col.children.map((child: any) => {
           const colId = child.colId || child.field
           const layout = layoutById.get(colId)
-          return lockFixedUtilityWidth(applyOperationalColumnSizing(child, layout, preserveExplicitColumnWidths))
+          return lockFixedUtilityWidth(applyOperationalColumnSizing(child, layout, preserveExplicitColumnWidths), layout)
         })
       }
     }
     const colId = col.colId || col.field
     const layout = layoutById.get(colId)
-    return lockFixedUtilityWidth(applyOperationalColumnSizing(col, layout, preserveExplicitColumnWidths))
+    return lockFixedUtilityWidth(applyOperationalColumnSizing(col, layout, preserveExplicitColumnWidths), layout)
   })
 
   // Ensure column order is maintained from state to prevent "jumping" during re-renders
@@ -1873,7 +1878,7 @@ export default function MonitoringGrid() {
   )
 
   return (
-   <div className="h-full min-h-0 flex flex-col space-y-6">
+   <div className="h-full min-h-0 flex flex-col space-y-4">
      <PageHeader
        eyebrow="Observability"
        title={

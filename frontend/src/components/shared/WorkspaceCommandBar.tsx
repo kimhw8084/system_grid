@@ -14,7 +14,7 @@ export function WorkspaceCommandBar({
   filterChips?: Array<{ id: string; label: string; onRemove: () => void }>
 }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <PageToolbar left={left} right={right} />
       {secondary ? <PageToolbar left={secondary} className="px-4 py-3" /> : null}
       <AnimatePresence>

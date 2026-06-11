@@ -1392,7 +1392,7 @@ result_df = get_user_pool()`)
                        className="max-w-2xl"
                      />
                      <ToolbarGroup>
-                       <div className="flex h-10 items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3">
+                       <div className="flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3">
                           <Filter size={14} className="text-slate-500" />
                           <select
                             value={envImpactFilter}
@@ -1620,7 +1620,7 @@ result_df = get_user_pool()`)
                        className="max-w-xl"
                      />
                      <ToolbarGroup>
-                       <div className="flex h-10 items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3">
+                       <div className="flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3">
                          <span className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">Sort</span>
                          <select
                            value={operatorSort}
@@ -2250,7 +2250,7 @@ result_df = get_user_pool()`)
                   />
                 }
                 right={
-                  <div className="flex items-center overflow-hidden rounded-lg border border-white/10 bg-black/20 h-10">
+                  <div className="flex h-9 items-center overflow-hidden rounded-lg border border-white/10 bg-black/20">
                     <input
                       value={newTeamName}
                       onChange={e => setNewTeamName(e.target.value)}

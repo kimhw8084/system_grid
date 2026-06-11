@@ -173,6 +173,49 @@ export const SettingsStandards = () => {
       className="space-y-6 pb-20 pt-2"
     >
       <Section
+        id="table-standard"
+        title="Table Standard"
+        description="Canonical rules for utility columns, row geometry, and Monitoring-style data surfaces"
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="space-y-4">
+            <WorkspacePanelTitle>Utility Column Contract</WorkspacePanelTitle>
+            <WorkspacePanelSubtitle>
+              Selection, identifier, state, and action columns are fixed utility chrome. They are not flexible content columns.
+            </WorkspacePanelSubtitle>
+            <div className="space-y-3 rounded-lg border border-white/5 bg-black/20 p-4">
+              <LexiconEntry term="Hard Lock Width" definition="Utility columns must define explicit width, minWidth, maxWidth, and no flex so they render at the correct size on first paint." usage="If a select column only fits after another column is resized, the table violates the standard." />
+              <LexiconEntry term="Resize Isolation" definition="Resizing a neighboring content column must never stretch or compress the selection, ID, state, or row-action columns." usage="Column drag behavior belongs to the target content column only." />
+              <LexiconEntry term="First Render Fit" definition="Pinned utility columns must look correct before any user interaction, autosize pass, or layout mutation." usage="Initial render is part of the contract, not a best effort." />
+              <LexiconEntry term="Cell Alignment" definition="Checkboxes, pills, toggles, and badges inside the same row height must share one vertical centerline." usage="Do not let utility cells drift off-axis relative to neighboring status cells." />
+            </div>
+          </div>
+          <div className="space-y-4">
+            <WorkspacePanelTitle>Visual Reference</WorkspacePanelTitle>
+            <WorkspacePanelSubtitle>
+              The utility frame stays fixed while data columns consume the flexible middle area.
+            </WorkspacePanelSubtitle>
+            <div className="rounded-lg border border-white/5 bg-black/20 p-4 space-y-4">
+              <div className="grid grid-cols-[72px_minmax(0,1fr)_92px] gap-3">
+                <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-6 text-center text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">
+                  Select
+                </div>
+                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-6 text-center text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">
+                  Flexible Data Columns
+                </div>
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-6 text-center text-[10px] font-black uppercase tracking-[0.16em] text-amber-300">
+                  Actions
+                </div>
+              </div>
+              <div className="flex justify-center">
+                <span className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-[9px] font-semibold text-slate-400">utility columns stay fixed while content columns resize</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      <Section
         id="settings-standard"
         title="Settings View Standard"
         description="Operational contract for the Settings page so future changes match Monitoring without reinterpretation"
@@ -188,6 +231,7 @@ export const SettingsStandards = () => {
               <LexiconEntry term="Monitoring Match" definition="The main page header uses the same icon placement, title weight, subtitle sizing, and action alignment as Monitoring." usage="If Monitoring changes, Settings should follow the same primitive-level pattern." />
               <LexiconEntry term="No Tab Subtitle" definition="Do not add per-tab subtitles, badge rows, or decorative title stacks above tab content." usage="Go directly from segmented navigation to the tab command bar." />
               <LexiconEntry term="Spacing Contract" definition="Top segmented navigation, command bar, and primary content use a consistent `space-y-4` rhythm." usage="Do not let individual tabs invent larger vertical gaps." />
+              <LexiconEntry term="Control Height" definition="ToolbarSearch, ToolbarButton, ToolbarIconButton, ToolbarSegmented, and custom select or create shells all use the same `h-9` control height." usage="Never enlarge buttons to match a broken search field; fix the primitive and inherit it everywhere." />
             </div>
           </div>
           <div className="space-y-4">
@@ -197,10 +241,53 @@ export const SettingsStandards = () => {
             </WorkspacePanelSubtitle>
             <div className="space-y-3 rounded-lg border border-white/5 bg-black/20 p-4">
               <LexiconEntry term="Shell" definition="Use `PageToolbar` as the only standard shell for grouped horizontal actions." usage="Do not hand-roll one-off bordered rows when the content is a command bar." />
-              <LexiconEntry term="Equal Heights" definition="Search fields, buttons, segmented controls, icon buttons, and select shells use the same control height." usage="Fix the primitive, not each page individually." />
+              <LexiconEntry term="Equal Heights" definition="Search fields, buttons, segmented controls, icon buttons, and select shells use the same `h-9` control height." usage="Fix the primitive, not each page individually." />
               <LexiconEntry term="Left Zone" definition="Search, filter selectors, and passive context labels belong on the left." usage="Use shared toolbar primitives before inventing custom bar layouts." />
               <LexiconEntry term="Right Zone" definition="History, apply, refresh, export, create, and bulk actions belong on the right." usage="Primary completion and mutating actions stay right-aligned." />
               <LexiconEntry term="Consistency Rule" definition="If two tabs expose horizontal controls, they must share the same shell, spacing, and control geometry." usage="Parameters, Permissions, Groups, Metadata, Tenants, Analysis, and Standards follow the same rule." />
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      <Section
+        id="gap-standard"
+        title="Gap Standard"
+        description="Exact vertical spacing contract for Monitoring-style stacks"
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="space-y-4">
+            <WorkspacePanelTitle>Vertical Rhythm</WorkspacePanelTitle>
+            <WorkspacePanelSubtitle>
+              Command surfaces and their dependent content stacks use one shared gap only.
+            </WorkspacePanelSubtitle>
+            <div className="space-y-3 rounded-lg border border-white/5 bg-black/20 p-4">
+              <LexiconEntry term="Standard Gap" definition="Use `space-y-4` between top-level Settings and Monitoring sections." usage="Header -> segmented nav -> command bar -> content all follow the same rhythm." />
+              <LexiconEntry term="Command Bar Internal Gap" definition="Use the same `space-y-4` inside `WorkspaceCommandBar` between the main action bar and the secondary filter bar." usage="Action bar -> filter bar must equal filter bar -> table." />
+              <LexiconEntry term="Collapsed State" definition="When the filter bar is closed, only one standard gap remains between the main action bar and the primary table or content surface." usage="No doubled empty spacing from hidden secondary shells." />
+            </div>
+          </div>
+          <div className="space-y-4">
+            <WorkspacePanelTitle>Visual Reference</WorkspacePanelTitle>
+            <WorkspacePanelSubtitle>
+              The gap blocks below show the intended stack for both expanded and collapsed filter states.
+            </WorkspacePanelSubtitle>
+            <div className="rounded-lg border border-white/5 bg-black/20 p-4 space-y-4">
+              <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">
+                Main Action Bar
+              </div>
+              <div className="flex justify-center">
+                <span className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-[9px] font-semibold text-slate-400">standard gap: `space-y-4`</span>
+              </div>
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">
+                Secondary Filter Bar
+              </div>
+              <div className="flex justify-center">
+                <span className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-[9px] font-semibold text-slate-400">same standard gap: `space-y-4`</span>
+              </div>
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-6 text-[10px] font-black uppercase tracking-[0.16em] text-amber-300">
+                Primary Table / Content Surface
+              </div>
             </div>
           </div>
         </div>
