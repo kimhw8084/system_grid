@@ -15,6 +15,7 @@ import {
   PageHeader, 
   PageToolbar, 
   ToolbarGroup, 
+  ToolbarSearch,
   ToolbarSegmented,
   ToolbarButton,
   ToolbarIconButton
