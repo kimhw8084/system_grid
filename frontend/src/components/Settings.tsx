@@ -20,7 +20,7 @@ import {
   ToolbarButton,
   ToolbarIconButton
 } from "./shared/LayoutPrimitives"
-import { WorkspaceEmptyState } from "./shared/OperationalWorkspacePrimitives"
+import { WorkspaceEmptyState, WorkspaceSelectField } from "./shared/OperationalWorkspacePrimitives"
 import { WorkspaceModal } from "./shared/WorkspaceModal"
 import { WorkspaceHistoryShell } from "./shared/WorkspaceModalShells"
 
@@ -468,13 +468,12 @@ export default function SettingsPage() {
   const [attachPath, setAttachPath] = useState("")
   const [attachMode, setAttachMode] = useState<'path' | 'url'>('path')
   const [preflightResult, setPreflightResult] = useState<any>(null)
-  const [storageRootEdit, setStorageRootEdit] = useState<string | null>(null)
-  const [storageExplorerPath, setStorageExplorerPath] = useState<string | null>(null)
   const [operatorFilter, setOperatorFilter] = useState("")
   const [teamFilterOpen, setTeamFilterOpen] = useState(false)
   const [selectedTeamFilters, setSelectedTeamFilters] = useState<string[]>([])
   const [operatorSort, setOperatorSort] = useState<'name' | 'team' | 'admin'>('name')
   const [selectedOperatorIds, setSelectedOperatorIds] = useState<number[]>([])
+  const [bulkGroupTargetId, setBulkGroupTargetId] = useState<string>("")
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null)
   const [teamSearch, setTeamSearch] = useState("")
   const [newTeamName, setNewTeamName] = useState("")
@@ -735,34 +734,6 @@ result_df = get_user_pool()`)
     enabled: !!historyField
   })
 
-  const { data: masterSettings } = useQuery({
-    queryKey: ['master-settings'],
-    queryFn: async () => {
-      const res = await apiFetch("/api/v1/tenants/admin/settings")
-      return res.json()
-    },
-    enabled: topTab === 'tenants'
-  })
-
-  const activeStorageRoot = storageRootEdit ?? masterSettings?.find((setting: any) => setting.key === 'tenant_storage_root')?.value ?? null
-
-  useEffect(() => {
-    if (topTab !== 'tenants') return
-    if (!activeStorageRoot || storageExplorerPath) return
-    setStorageExplorerPath(activeStorageRoot)
-  }, [topTab, activeStorageRoot, storageExplorerPath])
-
-  const { data: storageExplorer, isLoading: isStorageExplorerLoading } = useQuery({
-    queryKey: ['tenant-storage-explorer', storageExplorerPath],
-    queryFn: async () => {
-      const query = storageExplorerPath ? `?path=${encodeURIComponent(storageExplorerPath)}` : ""
-      const res = await apiFetch(`/api/v1/tenants/admin/storage-explorer${query}`)
-      if (!res.ok) throw new Error(await res.text())
-      return res.json()
-    },
-    enabled: topTab === 'tenants' && !!storageExplorerPath
-  })
-
   const backupTenantMutation = useMutation({
     mutationFn: async (tenantId: number) => {
       const res = await apiFetch(`/api/v1/tenants/admin/backup/${tenantId}`, { method: "POST" })
@@ -798,21 +769,6 @@ result_df = get_user_pool()`)
       queryClient.invalidateQueries({ queryKey: ['my-tenants'] })
       setNewTenantName(""); // Clear input on success
       showWorkspaceToast("New tenant database created and initialized")
-    }
-  })
-
-  const updateMasterSettingMutation = useMutation({
-    mutationFn: async (setting: any) => {
-      const res = await apiFetch("/api/v1/tenants/admin/settings", {
-        method: "POST",
-        body: JSON.stringify(setting)
-      })
-      if (!res.ok) throw new Error(await res.text())
-      return res.json()
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['master-settings'] })
-      showWorkspaceToast("System setting updated")
     }
   })
 
@@ -886,6 +842,46 @@ result_df = get_user_pool()`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operators'] })
+    }
+  })
+
+  const bulkOperatorPatchMutation = useMutation({
+    mutationFn: async ({ updates }: { updates: Array<{ id: number, payload: any }> }) => {
+      const results = await Promise.all(
+        updates.map(async ({ id, payload }) => {
+          const res = await apiFetch(`/api/v1/settings/operators/${id}`, {
+            method: "PATCH",
+            body: JSON.stringify(payload)
+          })
+          if (!res.ok) throw new Error(await res.text())
+          return res.json()
+        })
+      )
+      return results
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['operators'] })
+      queryClient.invalidateQueries({ queryKey: ['teams'] })
+      if (selectedTeamId) queryClient.invalidateQueries({ queryKey: ['team-audit', selectedTeamId] })
+      setSelectedOperatorIds([])
+      showWorkspaceToast("Identity updates applied")
+    }
+  })
+
+  const bulkOperatorDeleteMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      await Promise.all(
+        ids.map(async (id) => {
+          const res = await apiFetch(`/api/v1/settings/operators/${id}`, { method: "DELETE" })
+          if (!res.ok) throw new Error(await res.text())
+        })
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['operators'] })
+      queryClient.invalidateQueries({ queryKey: ['teams'] })
+      setSelectedOperatorIds([])
+      showWorkspaceToast("Selected identities removed")
     }
   })
 
@@ -984,9 +980,17 @@ result_df = get_user_pool()`)
     })
 
   const selectedTeam = (teams || []).find((team: any) => team.id === selectedTeamId) || null
+  const bulkGroupTarget = (teams || []).find((team: any) => String(team.id) === String(bulkGroupTargetId)) || null
   const selectedTeamMembers = (operators || []).filter((op: any) => op.team_id === selectedTeamId)
   const availableTeamCandidates = (operators || []).filter((op: any) => op.team_id !== selectedTeamId)
   const allTeamNames = Array.from(new Set((teams || []).map((team: any) => team.name))).sort() as string[]
+  const selectedOperators = (operators || []).filter((op: any) => selectedOperatorIds.includes(op.id))
+
+  useEffect(() => {
+    if (selectedTeam) {
+      setBulkGroupTargetId(String(selectedTeam.id))
+    }
+  }, [selectedTeam?.id])
 
   const handleAddOperator = () => {
     if (!newOpId) return;
@@ -1015,20 +1019,51 @@ result_df = get_user_pool()`)
   }
 
   const assignSelectedOperatorsToFocusedGroup = () => {
-    if (!selectedTeam || selectedOperatorIds.length === 0) return
-    const selectedOperators = (operators || []).filter((op: any) => selectedOperatorIds.includes(op.id))
-    Promise.all(
-      selectedOperators.map((op: any) => {
-        const nextTeams = Array.from(new Set([...(op.teams || []), selectedTeam.name]))
-        return bulkTeamMutation.mutateAsync({
-          ids: [op.id],
-          teams: nextTeams,
-          teamSource: 'manual_override'
-        })
-      })
-    )
-      .then(() => showWorkspaceToast(`Assigned ${selectedOperatorIds.length} identities to ${selectedTeam.name}`))
-      .catch(() => {})
+    if (!bulkGroupTarget || selectedOperators.length === 0) return
+    bulkOperatorPatchMutation.mutate({
+      updates: selectedOperators.map((op: any) => ({
+        id: op.id,
+        payload: {
+          teams: Array.from(new Set([...(op.teams || []), bulkGroupTarget.name])),
+          team_source: 'manual_override'
+        }
+      }))
+    })
+  }
+
+  const removeSelectedOperatorsFromFocusedGroup = () => {
+    if (!bulkGroupTarget || selectedOperators.length === 0) return
+    bulkOperatorPatchMutation.mutate({
+      updates: selectedOperators.map((op: any) => ({
+        id: op.id,
+        payload: {
+          teams: (op.teams || []).filter((teamName: string) => teamName !== bulkGroupTarget.name),
+          team_source: 'manual_override'
+        }
+      }))
+    })
+  }
+
+  const bulkSetAdminState = (isAdmin: boolean) => {
+    if (selectedOperators.length === 0) return
+    bulkOperatorPatchMutation.mutate({
+      updates: selectedOperators.map((op: any) => ({
+        id: op.id,
+        payload: { is_admin: isAdmin }
+      }))
+    })
+  }
+
+  const bulkDeleteSelectedOperators = () => {
+    const deletableIds = selectedOperators
+      .filter((op: any) => op.username !== userProfile?.username)
+      .map((op: any) => op.id)
+    if (deletableIds.length === 0) {
+      showWorkspaceToast("Protected identities cannot be removed", { type: 'error' })
+      return
+    }
+    if (!window.confirm(`Delete ${deletableIds.length} selected identities?`)) return
+    bulkOperatorDeleteMutation.mutate(deletableIds)
   }
 
   const toggleTeamFilter = (teamName: string) => {
@@ -1077,9 +1112,6 @@ result_df = get_user_pool()`)
   const visibleCategories = Array.from(
     new Set(filteredEnvEntries.map(([key]) => localEnv._metadata?.[key]?.category).filter(Boolean))
   )
-  const onlineTenants = (allTenants || []).filter((tenant: any) => tenant.is_online).length
-  const offlineTenants = Math.max((allTenants?.length || 0) - onlineTenants, 0)
-  const hasTenantStorageRoot = !!masterSettings?.some((setting: any) => setting.key === 'tenant_storage_root')
   const allVisibleOperatorsSelected = filteredOperators.length > 0 && filteredOperators.every((op: any) => selectedOperatorIds.includes(op.id))
   const metadataViewBindings = {
     MonitoringPlatform: [{ label: 'Monitoring', path: '/monitoring' }],
@@ -1648,17 +1680,76 @@ result_df = get_user_pool()`)
                      </ToolbarButton>
                      <ToolbarButton
                        onClick={assignSelectedOperatorsToFocusedGroup}
-                       disabled={selectedOperatorIds.length === 0 || !selectedTeam}
+                       disabled={selectedOperatorIds.length === 0 || !bulkGroupTarget}
                        variant="primary"
                      >
                        <span className="flex items-center gap-2">
                          <Users size={14} />
-                         {selectedTeam ? `Assign to ${selectedTeam.name} (${selectedOperatorIds.length})` : `Assign Groups (${selectedOperatorIds.length})`}
+                         {bulkGroupTarget ? `Assign to ${bulkGroupTarget.name} (${selectedOperatorIds.length})` : `Assign Groups (${selectedOperatorIds.length})`}
                        </span>
                      </ToolbarButton>
                    </ToolbarGroup>
                  }
                />
+
+               {selectedOperatorIds.length > 0 && (
+                 <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4 shadow-xl">
+                   <div className="grid gap-4 xl:grid-cols-[minmax(0,320px)_minmax(0,1fr)] xl:items-end">
+                     <WorkspaceSelectField
+                       label="Target Group"
+                       value={bulkGroupTargetId}
+                       onChange={(value) => setBulkGroupTargetId(String(value))}
+                       options={(teams || []).map((team: any) => ({
+                         value: team.id,
+                         label: team.name,
+                         description: team.description || team.source || 'Manual group'
+                       }))}
+                       placeholder="Choose a group for bulk assignment"
+                       searchable
+                     />
+                     <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                       <span className="mr-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                         {selectedOperatorIds.length} selected
+                       </span>
+                       <ToolbarButton onClick={() => setSelectedOperatorIds([])}>
+                         Clear Selection
+                       </ToolbarButton>
+                       <ToolbarButton
+                         onClick={assignSelectedOperatorsToFocusedGroup}
+                         disabled={!bulkGroupTarget || bulkOperatorPatchMutation.isPending}
+                         variant="primary"
+                       >
+                         Assign Group
+                       </ToolbarButton>
+                       <ToolbarButton
+                         onClick={removeSelectedOperatorsFromFocusedGroup}
+                         disabled={!bulkGroupTarget || bulkOperatorPatchMutation.isPending}
+                       >
+                         Remove Group
+                       </ToolbarButton>
+                       <ToolbarButton
+                         onClick={() => bulkSetAdminState(true)}
+                         disabled={bulkOperatorPatchMutation.isPending}
+                       >
+                         Set Admin
+                       </ToolbarButton>
+                       <ToolbarButton
+                         onClick={() => bulkSetAdminState(false)}
+                         disabled={bulkOperatorPatchMutation.isPending}
+                       >
+                         Unset Admin
+                       </ToolbarButton>
+                       <ToolbarButton
+                         onClick={bulkDeleteSelectedOperators}
+                         disabled={bulkOperatorDeleteMutation.isPending}
+                         variant="danger"
+                       >
+                         Delete Selected
+                       </ToolbarButton>
+                     </div>
+                   </div>
+                 </div>
+               )}
 
                <AnimatePresence>
                  {isSyncPreviewOpen && syncPreviewData && (
@@ -1904,333 +1995,175 @@ result_df = get_user_pool()`)
                  }
                />
 
-               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5 shadow-sm">
-                    <div className="text-[8px] font-black uppercase tracking-[0.35em] text-emerald-400">Registered</div>
-                    <div className="mt-3 text-3xl font-black text-[var(--text-primary)]">{allTenants?.length || 0}</div>
-                    <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]">Database Tenants</div>
-                  </div>
-                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-5 shadow-sm">
-                    <div className="text-[8px] font-black uppercase tracking-[0.35em] text-emerald-400">Online</div>
-                    <div className="mt-3 text-3xl font-black text-emerald-300">{onlineTenants}</div>
-                    <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.18em] text-emerald-200/70">Healthy Clusters</div>
-                  </div>
-                  <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-5 shadow-sm">
-                    <div className="text-[8px] font-black uppercase tracking-[0.35em] text-rose-400">Offline</div>
-                    <div className="mt-3 text-3xl font-black text-rose-300">{offlineTenants}</div>
-                    <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.18em] text-rose-200/70">Critical Errors</div>
-                  </div>
-                  <div className={`rounded-lg border p-5 shadow-sm ${hasTenantStorageRoot ? 'border-blue-500/20 bg-blue-500/5' : 'border-amber-500/20 bg-amber-500/5'}`}>
-                    <div className={`text-[8px] font-black uppercase tracking-[0.35em] ${hasTenantStorageRoot ? 'text-blue-400' : 'text-amber-400'}`}>Storage Root</div>
-                    <div className={`mt-3 text-3xl font-black ${hasTenantStorageRoot ? 'text-blue-300' : 'text-amber-300'}`}>{hasTenantStorageRoot ? 'Defined' : 'Missing'}</div>
-                    <div className={`mt-1 text-[9px] font-bold uppercase tracking-[0.18em] ${hasTenantStorageRoot ? 'text-blue-200/70' : 'text-amber-200/70'}`}>Registry Path</div>
-                  </div>
-               </div>
-
-               <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  <div className="lg:col-span-2 xl:col-span-3 space-y-4">
-                     <div className="bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-lg overflow-hidden shadow-xl">
-                        <div className="p-4 border-b border-[var(--glass-border)] bg-white/2 flex items-center justify-between">
-                           <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                              <Database size={14} className="text-emerald-500" /> Infrastructure Registry
-                           </h3>
-                           <div className="flex items-center gap-2">
-                              <button onClick={() => queryClient.invalidateQueries({ queryKey: ['tenants'] })} className="p-1.5 hover:bg-white/5 rounded-lg text-slate-500 transition-all"><RefreshCw size={12} /></button>
-                              <span className="text-[8px] font-black uppercase text-slate-600">Total Units: {allTenants?.length || 0}</span>
-                           </div>
+               <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+                  <div className="overflow-hidden rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] shadow-xl">
+                     <div className="flex items-center justify-between border-b border-[var(--glass-border)] bg-white/[0.02] px-4 py-3">
+                        <div>
+                           <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-300">Infrastructure Registry</h3>
+                           <p className="mt-1 text-[10px] font-semibold text-slate-500">
+                              Connected tenant databases and recovery checkpoints.
+                           </p>
                         </div>
-                        <div className="overflow-x-auto">
-                           <table className="w-full text-left border-collapse">
-                              <thead>
-                                 <tr className="bg-black/20 text-[8px] font-black uppercase text-slate-500 tracking-widest">
-                                    <th className="p-4 border-b border-white/5">Identity</th>
-                                    <th className="p-4 border-b border-white/5">Resolved Target</th>
-                                    <th className="p-4 border-b border-white/5">Recovery State</th>
-                                    <th className="p-4 border-b border-white/5">Operational</th>
-                                    <th className="p-4 border-b border-white/5 text-right">Maintenance</th>
-                                 </tr>
-                              </thead>
-                              <tbody>
-                                 {allTenants?.map((t: any) => (
-                                    <tr key={t.id} className="hover:bg-white/[0.03] border-b border-white/5 last:border-0 transition-colors">
-                                       <td className="p-4">
-                                          <div className="flex items-center gap-3">
-                                             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
-                                                <Database size={14} />
-                                             </div>
-                                             <span className="text-[11px] font-bold text-white tracking-tight">{t.name}</span>
-                                          </div>
-                                       </td>
-                                       <td className="p-4">
-                                          <div className="overflow-x-auto custom-scrollbar-mini max-w-[260px]">
-                                             <code className="text-[9px] font-mono text-slate-500 bg-black/30 px-2 py-1 rounded-lg border border-white/5 whitespace-nowrap inline-block select-all">
-                                                {t.db_url}
-                                             </code>
-                                          </div>
-                                       </td>
-                                       <td className="p-4">
-                                          <div className="flex items-center gap-2">
-                                             <Clock size={12} className="text-slate-600" />
-                                             <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">
-                                                {t.last_backup ? formatAppDate(t.last_backup) : 'NO BACKUP'}
-                                             </span>
-                                          </div>
-                                       </td>
-                                       <td className="p-4">
-                                          <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-[0.1em] ${t.is_online ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
-                                             {t.is_online ? 'SYNCED' : 'OFFLINE'}
-                                          </span>
-                                       </td>
-                                       <td className="p-4 text-right">
-                                          <button 
-                                             onClick={() => backupTenantMutation.mutate(t.id)}
-                                             disabled={backupTenantMutation.isPending && backupTenantMutation.variables === t.id}
-                                             className="px-3 py-1.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all disabled:opacity-50"
-                                          >
-                                             {backupTenantMutation.isPending && backupTenantMutation.variables === t.id ? 'Snapshotting...' : 'Snapshot'}
-                                          </button>
-                                       </td>
-                                    </tr>
-                                 ))}
-                              </tbody>
-                           </table>
+                        <div className="flex items-center gap-2">
+                           <span className="rounded-lg border border-white/10 bg-black/20 px-3 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">
+                              {allTenants?.length || 0} tenants
+                           </span>
+                           <ToolbarIconButton
+                             onClick={() => queryClient.invalidateQueries({ queryKey: ['admin-tenants'] })}
+                             icon={<RefreshCw size={14} />}
+                             label="Refresh registry"
+                           />
                         </div>
+                     </div>
+                     <div className="overflow-x-auto">
+                        <table className="w-full border-collapse text-left">
+                           <thead>
+                              <tr className="bg-black/20 text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">
+                                 <th className="border-b border-white/5 p-4">Tenant</th>
+                                 <th className="border-b border-white/5 p-4">Database Target</th>
+                                 <th className="border-b border-white/5 p-4">Last Backup</th>
+                                 <th className="border-b border-white/5 p-4">Status</th>
+                                 <th className="border-b border-white/5 p-4 text-right">Actions</th>
+                              </tr>
+                           </thead>
+                           <tbody>
+                              {allTenants?.map((tenant: any) => (
+                                <tr key={tenant.id} className="border-b border-white/5 transition-colors hover:bg-white/[0.03] last:border-0">
+                                  <td className="p-4 align-middle">
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
+                                        <Database size={15} />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="truncate text-[11px] font-bold text-white">{tenant.name}</div>
+                                        <div className="mt-1 text-[9px] font-semibold text-slate-500">Tenant ID #{tenant.id}</div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="p-4 align-middle">
+                                    <div className="max-w-[340px] overflow-x-auto custom-scrollbar-mini">
+                                      <code className="inline-block whitespace-nowrap rounded-lg border border-white/5 bg-black/30 px-2 py-1 text-[9px] font-mono text-slate-400">
+                                        {tenant.db_url}
+                                      </code>
+                                    </div>
+                                  </td>
+                                  <td className="p-4 align-middle">
+                                    <div className="flex items-center gap-2 text-[10px] font-semibold text-slate-400">
+                                      <Clock size={12} className="text-slate-600" />
+                                      <span>{tenant.last_backup ? formatAppDate(tenant.last_backup) : 'No backup yet'}</span>
+                                    </div>
+                                  </td>
+                                  <td className="p-4 align-middle">
+                                    <span className={`inline-flex items-center rounded-lg border px-2 py-1 text-[8px] font-black uppercase tracking-[0.12em] ${tenant.is_online ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400' : 'border-rose-500/20 bg-rose-500/10 text-rose-400'}`}>
+                                      {tenant.is_online ? 'Online' : 'Offline'}
+                                    </span>
+                                  </td>
+                                  <td className="p-4 text-right align-middle">
+                                    <ToolbarButton
+                                      onClick={() => backupTenantMutation.mutate(tenant.id)}
+                                      disabled={backupTenantMutation.isPending && backupTenantMutation.variables === tenant.id}
+                                    >
+                                      {backupTenantMutation.isPending && backupTenantMutation.variables === tenant.id ? 'Snapshotting...' : 'Snapshot'}
+                                    </ToolbarButton>
+                                  </td>
+                                </tr>
+                              ))}
+                              {allTenants?.length === 0 && (
+                                <tr>
+                                  <td colSpan={5} className="p-8 text-center text-[10px] font-bold text-slate-500">
+                                    No tenants are registered yet.
+                                  </td>
+                                </tr>
+                              )}
+                           </tbody>
+                        </table>
                      </div>
                   </div>
 
                   <div className="space-y-4">
-                     <div className="p-5 bg-blue-600/5 border border-blue-500/20 rounded-lg shadow-xl">
-                        <div className="flex items-center gap-3 mb-5">
-                           <div className="p-2 bg-blue-600 rounded-lg text-white shadow-lg shadow-blue-500/20"><Plus size={16} /></div>
+                     <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-5 shadow-xl">
+                        <div className="mb-4 flex items-center gap-3">
+                           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white shadow-lg shadow-blue-500/20">
+                             <Plus size={15} />
+                           </div>
                            <div>
-                              <h3 className="text-[12px] font-black uppercase text-white tracking-widest leading-none">Spawn Identity</h3>
-                              <p className="text-[8px] font-bold text-slate-500 uppercase mt-1">Fresh Schema Generation</p>
+                              <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-white">Provision Tenant</h3>
+                              <p className="mt-1 text-[10px] font-semibold text-slate-500">Create a fresh tenant database and register it immediately.</p>
                            </div>
                         </div>
                         <div className="space-y-3">
-                           <input 
-                              value={newTenantName} onChange={e => setNewTenantName(e.target.value)}
-                              placeholder="CLUSTER_ID" 
-                              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[11px] font-black uppercase text-blue-400 outline-none focus:border-blue-500"
+                           <input
+                             value={newTenantName}
+                             onChange={e => setNewTenantName(e.target.value)}
+                             placeholder="TENANT_NAME"
+                             className="w-full rounded-lg border border-white/10 bg-black/40 px-4 py-3 text-[11px] font-black uppercase text-blue-300 outline-none focus:border-blue-500"
                            />
-                           <button 
-                              onClick={() => { if (!newTenantName) return; createTenantMutation.mutate(newTenantName); }}
-                              disabled={createTenantMutation.isPending || !newTenantName}
-                              className="w-full py-3 bg-blue-600 text-white rounded-lg font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-500/20 hover:bg-blue-500 transition-all disabled:opacity-50"
+                           <ToolbarButton
+                             onClick={() => { if (!newTenantName) return; createTenantMutation.mutate(newTenantName); }}
+                             disabled={createTenantMutation.isPending || !newTenantName}
+                             variant="primary"
+                             className="w-full"
                            >
-                              {createTenantMutation.isPending ? 'Provisioning...' : 'Provision Cluster'}
-                           </button>
+                             {createTenantMutation.isPending ? 'Provisioning...' : 'Create Tenant'}
+                           </ToolbarButton>
                         </div>
                      </div>
 
-                     <div className="p-5 bg-emerald-600/5 border border-emerald-500/20 rounded-lg shadow-xl">
-                        <div className="flex items-center gap-3 mb-5">
-                           <div className="p-2 bg-emerald-600 rounded-lg text-white shadow-lg shadow-emerald-500/20"><Link size={16} /></div>
+                     <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-5 shadow-xl">
+                        <div className="mb-4 flex items-center gap-3">
+                           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-lg shadow-emerald-500/20">
+                             <Link size={15} />
+                           </div>
                            <div>
-                              <h3 className="text-[12px] font-black uppercase text-white tracking-widest leading-none">Map External</h3>
-                              <p className="text-[8px] font-bold text-slate-500 uppercase mt-1">Resolve Remote Database</p>
+                              <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-white">Attach Existing Tenant</h3>
+                              <p className="mt-1 text-[10px] font-semibold text-slate-500">Preflight a database path or URI before adding it to the registry.</p>
                            </div>
                         </div>
                         <div className="space-y-3">
                            <div className="flex items-center gap-1.5 rounded-lg border border-white/5 bg-black/20 p-1">
-                              <button onClick={() => { setAttachMode('path'); setAttachPath(""); setPreflightResult(null) }} className={`flex-1 rounded-lg px-3 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all ${attachMode === 'path' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-white'}`}>FS PATH</button>
+                              <button onClick={() => { setAttachMode('path'); setAttachPath(""); setPreflightResult(null) }} className={`flex-1 rounded-lg px-3 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all ${attachMode === 'path' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-white'}`}>FS Path</button>
                               <button onClick={() => { setAttachMode('url'); setAttachPath(""); setPreflightResult(null) }} className={`flex-1 rounded-lg px-3 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all ${attachMode === 'url' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-white'}`}>URI</button>
                            </div>
-                           <input 
-                              value={attachName} onChange={e => setAttachName(e.target.value)}
-                              placeholder="ENTITY_LABEL" 
-                              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[11px] font-black uppercase text-emerald-400 outline-none focus:border-emerald-500"
+                           <input
+                             value={attachName}
+                             onChange={e => setAttachName(e.target.value)}
+                             placeholder="TENANT_LABEL"
+                             className="w-full rounded-lg border border-white/10 bg-black/40 px-4 py-3 text-[11px] font-black uppercase text-emerald-300 outline-none focus:border-emerald-500"
                            />
                            <div className="relative">
-                              <input 
-                                 value={attachPath} onChange={e => { setAttachPath(e.target.value); setPreflightResult(null); }}
-                                 placeholder={attachMode === 'url' ? 'postgresql+asyncpg://...' : '/registry/db.sqlite'} 
-                                 className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[9px] font-mono text-slate-400 outline-none focus:border-emerald-500"
+                              <input
+                                value={attachPath}
+                                onChange={e => { setAttachPath(e.target.value); setPreflightResult(null); }}
+                                placeholder={attachMode === 'url' ? 'postgresql+asyncpg://...' : '/registry/db.sqlite'}
+                                className="w-full rounded-lg border border-white/10 bg-black/40 px-4 py-3 pr-10 text-[9px] font-mono text-slate-400 outline-none focus:border-emerald-500"
                               />
-                              <button onClick={() => preflightMutation.mutate(attachPath)} disabled={preflightMutation.isPending || !attachPath} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-emerald-500 transition-all disabled:opacity-30"><Microscope size={12} /></button>
+                              <button onClick={() => preflightMutation.mutate(attachPath)} disabled={preflightMutation.isPending || !attachPath} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-white/5 p-1.5 text-emerald-500 transition-all hover:bg-white/10 disabled:opacity-30"><Microscope size={12} /></button>
                            </div>
-
                            <AnimatePresence>
                               {preflightResult && (
-                                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
-                                    <div className={`p-4 rounded-lg border ${preflightResult.is_valid ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'} space-y-2`}>
-                                       <div className="flex items-center justify-between">
-                                          <span className={`text-[8px] font-black ${preflightResult.is_valid ? 'text-emerald-400' : 'text-rose-400'}`}>STATUS: {preflightResult.status}</span>
-                                          <span className="text-[8px] font-black uppercase text-slate-600">SCHEMAS: {preflightResult.table_count}</span>
-                                       </div>
-                                       {preflightResult.is_valid && (
-                                          <button onClick={() => attachMutation.mutate(attachMode === 'url' ? { name: attachName, db_url: attachPath } : { name: attachName, db_path: attachPath })} className="w-full py-2 bg-emerald-600 text-white rounded-lg font-black uppercase text-[8px] tracking-widest hover:bg-emerald-500 transition-all mt-1">MAP REGISTRY</button>
-                                       )}
+                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}>
+                                  <div className={`space-y-3 rounded-lg border p-4 ${preflightResult.is_valid ? 'border-emerald-500/20 bg-emerald-500/10' : 'border-rose-500/20 bg-rose-500/10'}`}>
+                                    <div className="flex items-center justify-between gap-3">
+                                      <span className={`text-[9px] font-black uppercase tracking-[0.14em] ${preflightResult.is_valid ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                        {preflightResult.status}
+                                      </span>
+                                      <span className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-500">
+                                        {preflightResult.table_count} tables
+                                      </span>
                                     </div>
-                                 </motion.div>
+                                    {preflightResult.is_valid && (
+                                      <ToolbarButton
+                                        onClick={() => attachMutation.mutate(attachMode === 'url' ? { name: attachName, db_url: attachPath } : { name: attachName, db_path: attachPath })}
+                                        variant="primary"
+                                        className="w-full"
+                                      >
+                                        Attach Tenant
+                                      </ToolbarButton>
+                                    )}
+                                  </div>
+                                </motion.div>
                               )}
                            </AnimatePresence>
-                        </div>
-                     </div>
-
-                     <div className="p-6 bg-[var(--panel-item-bg)] border border-[var(--glass-border)] rounded-lg">
-                        <div className="flex items-center gap-3 mb-6">
-                           <div className="p-2 bg-emerald-600/10 text-emerald-500 rounded-lg border border-emerald-500/20"><HardDrive size={18} /></div>
-                           <div>
-                              <h3 className="text-sm font-black uppercase text-white tracking-widest leading-none">Storage Config</h3>
-                              <p className="text-[9px] font-black text-slate-500 uppercase mt-1">Persistent S3 Mount Root</p>
-                           </div>
-                        </div>
-                        <div className="space-y-4">
-                           {masterSettings?.filter((s: any) => s.key === 'tenant_storage_root').map((setting: any) => (
-                              <div key={setting.key} className="space-y-2">
-                                 <div className="flex justify-between">
-                                    <label className="text-[8px] font-black uppercase text-slate-400 ml-1">{setting.key.replace(/_/g, ' ')}</label>
-                                    <button 
-                                       onClick={() => {
-                                          if (storageRootEdit !== null) {
-                                             updateMasterSettingMutation.mutate({ key: setting.key, value: storageRootEdit });
-                                             setStorageRootEdit(null);
-                                          } else {
-                                             setStorageRootEdit(setting.value);
-                                          }
-                                       }}
-                                       className="text-[8px] font-black uppercase text-blue-500 hover:underline"
-                                    >
-                                       {storageRootEdit !== null ? 'Save Path' : 'Change'}
-                                    </button>
-                                 </div>
-                                 {storageRootEdit !== null ? (
-                                    <input 
-                                       value={storageRootEdit} onChange={e => setStorageRootEdit(e.target.value)}
-                                       className="w-full bg-black/40 border border-blue-500/30 rounded-lg px-4 py-3 text-[10px] font-mono text-emerald-400 outline-none"
-                                    />
-                                 ) : (
-                                    <div className="overflow-x-auto custom-scrollbar-mini">
-                                       <div className="p-3 bg-black/30 border border-white/5 rounded-lg text-[10px] font-mono text-slate-400 whitespace-nowrap select-all">
-                                          {setting.value}
-                                       </div>
-                                    </div>
-                                 )}
-                                 <p className="text-[8px] font-bold text-slate-600 uppercase leading-relaxed px-1">{setting.description}</p>
-                              </div>
-                           ))}
-                           <div className="rounded-lg border border-white/10 bg-black/20 p-4 space-y-4">
-                              <div className="flex items-start justify-between gap-4">
-                                 <div>
-                                    <h4 className="text-[11px] font-black text-white tracking-tight">Accessible storage explorer</h4>
-                                    <p className="mt-1 text-[10px] font-semibold text-slate-400 leading-relaxed">
-                                       Browse folders the app runtime can currently reach, inspect read/write status, and pick a tenant storage root without guessing absolute paths.
-                                    </p>
-                                 </div>
-                                 <button
-                                    onClick={() => {
-                                       if (activeStorageRoot) setStorageExplorerPath(activeStorageRoot)
-                                    }}
-                                    className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-widest text-slate-300 hover:bg-white/10 transition-all"
-                                 >
-                                    Reset View
-                                 </button>
-                              </div>
-
-                              <div className="space-y-2">
-                                 <div className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Accessible locations</div>
-                                 <div className="flex flex-wrap gap-2">
-                                    {storageExplorer?.roots?.map((root: any) => (
-                                       <button
-                                          key={root.path}
-                                          onClick={() => setStorageExplorerPath(root.path)}
-                                          className={`px-3 py-2 rounded-lg border text-[9px] font-black transition-all ${
-                                             storageExplorerPath === root.path
-                                               ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                                               : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
-                                          }`}
-                                       >
-                                          <div>{root.label}</div>
-                                          <div className="mt-1 text-[8px] font-bold text-slate-500">{root.readable ? 'Read' : 'No read'} · {root.writable ? 'Write' : 'No write'}</div>
-                                       </button>
-                                    ))}
-                                 </div>
-                              </div>
-
-                              <div className="rounded-lg border border-white/10 bg-slate-950/70 p-4 space-y-4">
-                                 <div className="flex items-center justify-between gap-3">
-                                    <div className="min-w-0">
-                                       <div className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Current location</div>
-                                       <div className="mt-1 text-[10px] font-mono text-slate-200 break-all">{storageExplorer?.current_path || storageExplorerPath}</div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                       {storageExplorer?.parent_path && (
-                                          <button
-                                             onClick={() => setStorageExplorerPath(storageExplorer.parent_path)}
-                                             className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-widest text-slate-300 hover:bg-white/10 transition-all"
-                                          >
-                                             Up
-                                          </button>
-                                       )}
-                                       <button
-                                          onClick={() => {
-                                             const selectedPath = storageExplorer?.current_path || storageExplorerPath
-                                             if (!selectedPath) return
-                                             setStorageRootEdit(selectedPath)
-                                          }}
-                                          className="px-3 py-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-[9px] font-black uppercase tracking-widest text-emerald-300 hover:bg-emerald-500/20 transition-all"
-                                       >
-                                          Use this folder
-                                       </button>
-                                    </div>
-                                 </div>
-
-                                 <div className="flex flex-wrap gap-2">
-                                    <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${storageExplorer?.current_access?.readable ? 'bg-blue-500/10 text-blue-300 border border-blue-500/20' : 'bg-rose-500/10 text-rose-300 border border-rose-500/20'}`}>
-                                       {storageExplorer?.current_access?.readable ? 'Readable' : 'Not readable'}
-                                    </span>
-                                    <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${storageExplorer?.current_access?.writable ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-300 border border-amber-500/20'}`}>
-                                       {storageExplorer?.current_access?.writable ? 'Writable' : 'Not writable'}
-                                    </span>
-                                 </div>
-
-                                 <div className="rounded-lg border border-white/5 bg-black/20 p-3">
-                                    <div className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Runtime visibility</div>
-                                    <div className="mt-2 space-y-1 text-[9px] font-mono text-slate-400">
-                                       <div>Workspace: {storageExplorer?.runtime_context?.workspace_root || 'Unknown'}</div>
-                                       <div>Configured root: {storageExplorer?.runtime_context?.tenant_storage_root || 'Unknown'}</div>
-                                    </div>
-                                 </div>
-
-                                 <div className="space-y-2">
-                                    <div className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Folders</div>
-                                    <div className="max-h-64 overflow-y-auto custom-scrollbar pr-1 space-y-2">
-                                       {isStorageExplorerLoading ? (
-                                          <div className="rounded-lg border border-white/5 bg-black/20 px-3 py-4 text-[9px] font-black text-slate-500">Loading folders...</div>
-                                       ) : storageExplorer?.entries?.length ? (
-                                          storageExplorer.entries.map((entry: any) => (
-                                             <button
-                                                key={entry.path}
-                                                onClick={() => setStorageExplorerPath(entry.path)}
-                                                className="w-full rounded-lg border border-white/5 bg-black/20 px-3 py-3 text-left hover:border-white/10 hover:bg-white/[0.03] transition-all"
-                                             >
-                                                <div className="flex items-center justify-between gap-3">
-                                                   <div className="flex items-center gap-3 min-w-0">
-                                                      <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                                         <FolderTree size={14} />
-                                                      </div>
-                                                      <div className="min-w-0">
-                                                         <div className="text-[10px] font-black text-slate-100 truncate">{entry.name}</div>
-                                                         <div className="mt-1 text-[8px] font-mono text-slate-500 truncate">{entry.path}</div>
-                                                      </div>
-                                                   </div>
-                                                   <div className="shrink-0 text-right">
-                                                      <div className="text-[8px] font-black text-slate-400">{entry.readable ? 'Read' : 'No read'}</div>
-                                                      <div className="mt-1 text-[8px] font-black text-slate-500">{entry.writable ? 'Write' : 'No write'}</div>
-                                                   </div>
-                                                </div>
-                                             </button>
-                                          ))
-                                       ) : (
-                                          <div className="rounded-lg border border-dashed border-white/10 px-3 py-5 text-center text-[9px] font-black text-slate-500">
-                                             No subfolders visible from this location.
-                                          </div>
-                                       )}
-                                    </div>
-                                 </div>
-                              </div>
-                           </div>
                         </div>
                      </div>
                   </div>
@@ -2268,36 +2201,43 @@ result_df = get_user_pool()`)
                 }
               />
 
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                 {/* Group Navigation Sidebar */}
+              <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
                  <div className="space-y-4">
-                    <div className="px-1 flex items-center justify-between">
-                       <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Available Vectors</p>
-                       <span className="text-[8px] font-bold text-slate-600">{filteredTeams.length} Visible</span>
+                    <div className="flex items-center justify-between px-1">
+                       <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Groups</p>
+                       <span className="text-[8px] font-bold text-slate-600">{filteredTeams.length} visible</span>
                     </div>
-                    <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                       {filteredTeams.map((team: any) => (
-                         <button
-                           key={team.id}
-                           onClick={() => setSelectedTeamId(team.id)}
-                           className={`w-full p-4 rounded-lg border transition-all text-left flex justify-between items-center group relative overflow-hidden ${
-                             selectedTeamId === team.id 
-                               ? 'bg-blue-600/10 border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.1)]' 
-                               : 'bg-black/20 border-white/5 hover:border-white/10 hover:bg-white/5'
-                           }`}
-                         >
-                           <div className="flex items-center gap-3">
-                              <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${selectedTeamId === team.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-800 text-slate-500 border border-white/5'}`}>
-                                 <Users size={16} />
-                              </div>
-                              <div>
-                                 <p className={`text-[11px] font-bold tracking-tight ${selectedTeamId === team.id ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>{team.name}</p>
-                                 <p className="text-[8px] font-bold text-slate-600 mt-1 tracking-widest uppercase">{team.source || 'Manual'}</p>
-                              </div>
-                           </div>
-                           <ChevronRight size={14} className={`transition-transform ${selectedTeamId === team.id ? 'text-blue-400 translate-x-1' : 'text-slate-800'}`} />
-                         </button>
-                       ))}
+                    <div className="max-h-[720px] space-y-2 overflow-y-auto pr-2 custom-scrollbar">
+                       {filteredTeams.map((team: any) => {
+                         const memberCount = (operators || []).filter((op: any) => (op.teams || []).includes(team.name)).length
+                         return (
+                           <button
+                             key={team.id}
+                             onClick={() => setSelectedTeamId(team.id)}
+                             className={`w-full rounded-lg border p-4 text-left transition-all ${
+                               selectedTeamId === team.id
+                                 ? 'border-blue-500/40 bg-blue-500/10 shadow-[0_0_18px_rgba(59,130,246,0.08)]'
+                                 : 'border-white/5 bg-black/20 hover:border-white/10 hover:bg-white/[0.03]'
+                             }`}
+                           >
+                             <div className="flex items-center justify-between gap-3">
+                               <div className="min-w-0">
+                                 <div className="truncate text-[11px] font-bold text-white">{team.name}</div>
+                                 <div className="mt-1 text-[9px] font-semibold text-slate-500">{team.description || team.source || 'Manual group'}</div>
+                               </div>
+                               <ChevronRight size={14} className={selectedTeamId === team.id ? 'text-blue-400' : 'text-slate-700'} />
+                             </div>
+                             <div className="mt-3 flex items-center gap-2">
+                               <span className="rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">
+                                 {memberCount} members
+                               </span>
+                               <span className="rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em] text-slate-500">
+                                 {team.source || 'Manual'}
+                               </span>
+                             </div>
+                           </button>
+                         )
+                       })}
                        {filteredTeams.length === 0 && (
                          <div className="rounded-lg border border-dashed border-white/10 bg-black/10 px-4 py-6 text-center text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
                            No groups match the current search
@@ -2306,128 +2246,123 @@ result_df = get_user_pool()`)
                     </div>
                  </div>
 
-                 {/* Group Detail & User Management */}
-                 <div className="lg:col-span-3">
+                 <div>
                     <AnimatePresence mode="wait">
-                       {selectedTeamId ? (
+                       {selectedTeamId && selectedTeam ? (
                          <motion.div key={selectedTeamId} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-                            <div className="p-8 rounded-lg border border-white/5 bg-black/40 backdrop-blur-xl relative overflow-hidden shadow-2xl">
-                               {/* Destructive Action */}
-                               <div className="absolute top-4 right-4">
-                                  <SameButtonConfirm 
-                                    danger
-                                    onConfirm={() => deleteTeamMutation.mutate(selectedTeamId)}
-                                    icon={Trash2}
-                                    label="Destroy Group"
-                                  />
+                           <div className="rounded-lg border border-white/5 bg-black/30 p-5 shadow-2xl">
+                             <div className="flex items-start justify-between gap-4">
+                               <div className="flex items-center gap-4">
+                                 <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-500/10 text-blue-400">
+                                   <Users size={20} />
+                                 </div>
+                                 <div>
+                                   <h3 className="text-[18px] font-black tracking-tight text-white">{selectedTeam.name}</h3>
+                                   <p className="mt-1 text-[10px] font-semibold text-slate-500">{selectedTeam.description || 'No description added yet.'}</p>
+                                 </div>
                                </div>
+                               <SameButtonConfirm
+                                 danger
+                                 onConfirm={() => deleteTeamMutation.mutate(selectedTeamId)}
+                                 icon={Trash2}
+                                 label="Delete group"
+                               />
+                             </div>
+                             <div className="mt-4 flex flex-wrap gap-2">
+                               <span className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-blue-400">
+                                 {(operators || []).filter((op: any) => (op.teams || []).includes(selectedTeam.name)).length} members
+                               </span>
+                               <span className="rounded-lg border border-white/10 bg-black/20 px-3 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">
+                                 source: {selectedTeam.source || 'manual'}
+                               </span>
+                             </div>
+                           </div>
 
-                               {/* Header Section */}
-                               <div className="flex items-center gap-6 mb-8">
-                                  <div className="p-5 bg-blue-600/10 rounded-xl text-blue-400 border border-blue-500/20 shadow-[0_0_30px_rgba(59,130,246,0.1)]"><Users size={32} /></div>
-                                  <div>
-                                     <h3 className="text-2xl font-black tracking-tighter text-white italic leading-none">{teams?.find((t: any) => t.id === selectedTeamId)?.name}</h3>
-                                     <div className="flex items-center gap-3 mt-3">
-                                        <div className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-[9px] font-black text-blue-400 uppercase tracking-widest">
-                                           {operators?.filter((op: any) => (op.teams || []).includes(teams?.find((t: any) => t.id === selectedTeamId)?.name)).length} Active Members
-                                        </div>
-                                     </div>
-                                  </div>
+                           <div className="grid gap-4 lg:grid-cols-2">
+                             <div className="rounded-lg border border-white/5 bg-black/30 p-5 shadow-xl">
+                               <div className="mb-4 flex items-center justify-between">
+                                 <div>
+                                   <h4 className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-300">Membership</h4>
+                                   <p className="mt-1 text-[10px] font-semibold text-slate-500">Toggle membership directly from the roster.</p>
+                                 </div>
+                                 <span className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">app native toggle</span>
                                </div>
-
-                               {/* Main Content Grid */}
-                               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-white/5">
-                                  {/* Membership Column */}
-                                  <div className="space-y-4">
-                                     <div className="flex justify-between items-center px-1">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                                           <UserPlus size={14} className="text-blue-400" /> 
-                                           Membership Registry
-                                        </p>
-                                        <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Toggle Access</span>
-                                     </div>
-                                     <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar p-1">
-                                        {operators?.map((op: any) => {
-                                          const teamName = teams?.find((t: any) => t.id === selectedTeamId)?.name
-                                          const isMember = (op.teams || []).includes(teamName)
-                                          return (
-                                            <button
-                                              key={op.id}
-                                              onClick={() => {
-                                                const currentTeams = op.teams || []
-                                                let updatedTeams = [...currentTeams]
-                                                if (isMember) {
-                                                  updatedTeams = updatedTeams.filter((t: string) => t !== teamName)
-                                                } else {
-                                                  if (teamName && !updatedTeams.includes(teamName)) {
-                                                    updatedTeams.push(teamName)
-                                                  }
-                                                }
-
-                                                bulkTeamMutation.mutate({ 
-                                                  ids: [op.id], 
-                                                  teams: updatedTeams,
-                                                  teamSource: 'manual_override'
-                                                })
-                                              }}
-                                              className={`w-full p-3 rounded-lg border transition-all flex items-center justify-between group h-12 ${
-                                                isMember 
-                                                  ? 'bg-blue-600/10 border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.05)]' 
-                                                  : 'bg-black/20 border-white/5 hover:border-white/10 hover:bg-white/5'
-                                              }`}
-                                            >
-                                              <div className="flex items-center gap-3">
-                                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] transition-all ${isMember ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-600 border border-white/5'}`}>
-                                                    {op.username?.slice(0,2).toUpperCase()}
-                                                 </div>
-                                                 <div className="text-left">
-                                                    <p className={`text-[10px] font-bold tracking-widest ${isMember ? 'text-emerald-400' : 'text-slate-400'}`}>{op.full_name}</p>
-                                                    <p className="text-[7px] font-bold text-slate-600 mt-0.5">{op.username}</p>
-                                                 </div>
-                                              </div>
-                                              {isMember ? <ShieldCheck size={14} className="text-emerald-500" /> : <Plus size={14} className="text-slate-700 group-hover:text-slate-500" />}
-                                            </button>
-                                          )
-                                        })}
-                                     </div>
-                                  </div>
-
-                                  <div className="space-y-4">
-                                     <div className="flex justify-between items-center">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><SettingsIcon size={14} className="text-blue-500" /> Group Configuration</p>
-                                     </div>
-                                     <div className="space-y-6">
-                                        <div className="space-y-2">
-                                           <label className="text-[9px] font-black uppercase tracking-widest text-slate-600">Display Name</label>
-                                           <input 
-                                             value={teamEditName}
-                                             onChange={e => setTeamEditName(e.target.value)}
-                                             className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-[11px] font-bold uppercase text-white outline-none focus:border-blue-500/50"
-                                           />
-                                        </div>
-                                        <div className="space-y-2">
-                                           <label className="text-[9px] font-black uppercase tracking-widest text-slate-600">Description / Metadata</label>
-                                           <textarea 
-                                             value={teamEditDescription}
-                                             onChange={e => setTeamEditDescription(e.target.value)}
-                                             className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-[11px] font-bold uppercase text-slate-400 outline-none focus:border-blue-500/50 h-24 custom-scrollbar"
-                                           />
-                                        </div>
-                                        <button 
-                                          onClick={() => teamMutation.mutate({ id: selectedTeamId, name: teamEditName, description: teamEditDescription })}
-                                          className="w-full h-[38px] bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-500 transition-all active:scale-[0.98]"
-                                        >
-                                          Commit Changes
-                                        </button>
-                                     </div>
-                                  </div>
+                               <div className="max-h-[460px] space-y-2 overflow-y-auto pr-2 custom-scrollbar">
+                                 {operators?.map((op: any) => {
+                                   const isMember = (op.teams || []).includes(selectedTeam.name)
+                                   return (
+                                     <button
+                                       key={op.id}
+                                       onClick={() => {
+                                         const currentTeams = op.teams || []
+                                         const updatedTeams = isMember
+                                           ? currentTeams.filter((teamName: string) => teamName !== selectedTeam.name)
+                                           : Array.from(new Set([...currentTeams, selectedTeam.name]))
+                                         bulkTeamMutation.mutate({
+                                           ids: [op.id],
+                                           teams: updatedTeams,
+                                           teamSource: 'manual_override'
+                                         })
+                                       }}
+                                       className={`flex h-14 w-full items-center justify-between rounded-lg border px-3 transition-all ${
+                                         isMember
+                                           ? 'border-blue-500/30 bg-blue-500/10'
+                                           : 'border-white/5 bg-black/20 hover:border-white/10 hover:bg-white/[0.03]'
+                                       }`}
+                                     >
+                                       <div className="flex min-w-0 items-center gap-3">
+                                         <div className={`flex h-9 w-9 items-center justify-center rounded-lg text-[10px] font-black ${isMember ? 'bg-blue-600 text-white' : 'border border-white/5 bg-slate-800 text-slate-500'}`}>
+                                           {op.username?.slice(0, 2).toUpperCase()}
+                                         </div>
+                                         <div className="min-w-0 text-left">
+                                           <div className={`truncate text-[10px] font-bold ${isMember ? 'text-white' : 'text-slate-300'}`}>{op.full_name}</div>
+                                           <div className="mt-1 truncate text-[8px] font-semibold text-slate-500">{op.username}</div>
+                                         </div>
+                                       </div>
+                                       {isMember ? <ShieldCheck size={14} className="text-emerald-400" /> : <Plus size={14} className="text-slate-600" />}
+                                     </button>
+                                   )
+                                 })}
                                </div>
-                            </div>
+                             </div>
+
+                             <div className="rounded-lg border border-white/5 bg-black/30 p-5 shadow-xl">
+                               <div className="mb-4">
+                                 <h4 className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-300">Configuration</h4>
+                                 <p className="mt-1 text-[10px] font-semibold text-slate-500">Rename or document the group without leaving the detail view.</p>
+                               </div>
+                               <div className="space-y-4">
+                                 <div className="space-y-2">
+                                   <label className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">Display Name</label>
+                                   <input
+                                     value={teamEditName}
+                                     onChange={e => setTeamEditName(e.target.value)}
+                                     className="w-full rounded-lg border border-white/10 bg-black/40 px-4 py-3 text-[11px] font-bold text-white outline-none focus:border-blue-500/40"
+                                   />
+                                 </div>
+                                 <div className="space-y-2">
+                                   <label className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">Description</label>
+                                   <textarea
+                                     value={teamEditDescription}
+                                     onChange={e => setTeamEditDescription(e.target.value)}
+                                     className="h-32 w-full rounded-lg border border-white/10 bg-black/40 px-4 py-3 text-[11px] font-semibold text-slate-300 outline-none focus:border-blue-500/40 custom-scrollbar"
+                                   />
+                                 </div>
+                                 <ToolbarButton
+                                   onClick={() => teamMutation.mutate({ id: selectedTeamId, name: teamEditName, description: teamEditDescription })}
+                                   variant="primary"
+                                   className="w-full"
+                                 >
+                                   Save Group
+                                 </ToolbarButton>
+                               </div>
+                             </div>
+                           </div>
                          </motion.div>
                        ) : (
-                         <div className="h-full min-h-[400px] flex flex-col items-center justify-center border border-dashed border-white/10 rounded-lg bg-black/10">
-                            <Users size={48} className="text-slate-800 mb-4" />
-                            <p className="text-[11px] font-bold uppercase tracking-[0.4em] text-slate-600">Select group to manage</p>
+                         <div className="flex min-h-[420px] flex-col items-center justify-center rounded-lg border border-dashed border-white/10 bg-black/10">
+                           <Users size={40} className="mb-4 text-slate-800" />
+                           <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-slate-600">Select a group to manage</p>
                          </div>
                        )}
                     </AnimatePresence>
@@ -2446,89 +2381,112 @@ result_df = get_user_pool()`)
                   }
                 />
 
-                <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-6 shadow-2xl">
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="p-2 rounded-lg bg-blue-600/10 text-blue-400 border border-blue-500/20"><Server size={18} /></div>
-                    <div>
-                      <h3 className="text-sm font-black uppercase tracking-widest text-[var(--text-primary)]">Deployment Runtime</h3>
-                      <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">Resolved backend paths, defaults, and admin bootstrap policy</p>
+                <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                  <div className="rounded-lg border border-[var(--glass-border)] bg-[var(--panel-item-bg)] p-5 shadow-2xl">
+                    <div className="mb-4 flex items-center gap-3">
+                      <div className="rounded-lg border border-blue-500/20 bg-blue-600/10 p-2 text-blue-400"><Server size={18} /></div>
+                      <div>
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-[var(--text-primary)]">Deployment Runtime</h3>
+                        <p className="mt-1 text-[10px] font-semibold text-[var(--text-muted)]">Resolved backend paths, defaults, and admin bootstrap policy.</p>
+                      </div>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {Object.entries(localEnv._deployment || {}).map(([key, value]: any) => (
+                        <div key={key} className="rounded-lg border border-white/5 bg-black/20 p-4">
+                          <div className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">{key.replace(/_/g, ' ')}</div>
+                          <div className="mt-2 break-all text-[10px] font-mono text-blue-300">
+                            {Array.isArray(value) ? value.join(", ") : String(value)}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {Object.entries(localEnv._deployment || {}).map(([key, value]: any) => (
-                      <div key={key} className="rounded-lg border border-white/5 bg-black/20 p-4">
-                        <div className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500">{key.replace(/_/g, ' ')}</div>
-                        <div className="mt-2 text-[10px] font-mono text-blue-300 break-all">
-                          {Array.isArray(value) ? value.join(", ") : String(value)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-               </div>
 
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div className="space-y-4">
-                      <h3 className="text-[10px] font-black uppercase text-amber-500 tracking-[0.4em] flex items-center gap-2"><Server size={12} /> Backend .env Raw</h3>
-                      <div className="bg-black/40 border border-white/5 rounded-lg overflow-hidden shadow-2xl">
-                          <table className="w-full text-left border-collapse">
-                              <thead>
-                                  <tr className="bg-white/5">
-                                      <th className="p-3 text-[8px] font-black uppercase text-slate-500 tracking-widest border-b border-white/5">Parameter Name</th>
-                                      <th className="p-3 text-[8px] font-black uppercase text-slate-500 tracking-widest border-b border-white/5">Current Value</th>
-                                  </tr>
-                              </thead>
-                              <tbody>
-                                  {localEnv._raw_env?.backend && Object.entries(localEnv._raw_env.backend).map(([key, data]: any) => (
-                                      <tr key={key} className="hover:bg-white/2 border-b border-white/5 last:border-0 group">
-                                          <td className="p-3">
-                                              <div className="flex flex-col gap-1">
-                                                <span className="text-[9px] font-mono text-blue-400 font-bold">{key}</span>
-                                                <span className="text-[6px] font-black text-slate-600 uppercase tracking-tighter truncate max-w-[150px]">{data.file}</span>
-                                              </div>
-                                          </td>
-                                          <td className="p-3">
-                                              <div className="p-2 bg-black/20 rounded-lg border border-white/5 text-[9px] font-mono text-slate-300 break-all max-h-20 overflow-y-auto custom-scrollbar">
-                                                {String(data.value)}
-                                              </div>
-                                          </td>
-                                      </tr>
-                                  ))}
-                              </tbody>
-                          </table>
+                  <div className="rounded-lg border border-white/5 bg-black/30 p-5 shadow-2xl">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-300">Runtime Surface</h3>
+                        <p className="mt-1 text-[10px] font-semibold text-slate-500">Quick comparison of resolved backend and frontend configuration inventories.</p>
                       </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-lg border border-white/5 bg-black/20 p-4">
+                        <div className="text-[8px] font-black uppercase tracking-[0.16em] text-amber-400">Backend Variables</div>
+                        <div className="mt-2 text-2xl font-black text-white">{Object.keys(localEnv._raw_env?.backend || {}).length}</div>
+                      </div>
+                      <div className="rounded-lg border border-white/5 bg-black/20 p-4">
+                        <div className="text-[8px] font-black uppercase tracking-[0.16em] text-indigo-400">Frontend Variables</div>
+                        <div className="mt-2 text-2xl font-black text-white">{Object.keys(localEnv._raw_env?.frontend || {}).length}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <div className="overflow-hidden rounded-lg border border-white/5 bg-black/30 shadow-2xl">
+                    <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
+                      <h3 className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-amber-400"><Server size={12} /> Backend .env Raw</h3>
+                      <span className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">{Object.keys(localEnv._raw_env?.backend || {}).length} entries</span>
+                    </div>
+                    <table className="w-full border-collapse text-left">
+                      <thead>
+                        <tr className="bg-white/5">
+                          <th className="border-b border-white/5 p-3 text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">Parameter</th>
+                          <th className="border-b border-white/5 p-3 text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {localEnv._raw_env?.backend && Object.entries(localEnv._raw_env.backend).map(([key, data]: any) => (
+                          <tr key={key} className="border-b border-white/5 hover:bg-white/[0.03] last:border-0">
+                            <td className="p-3 align-top">
+                              <div className="flex flex-col gap-1">
+                                <span className="text-[9px] font-mono font-bold text-blue-400">{key}</span>
+                                <span className="truncate text-[7px] font-black uppercase tracking-[0.14em] text-slate-600">{data.file}</span>
+                              </div>
+                            </td>
+                            <td className="p-3 align-top">
+                              <div className="max-h-20 overflow-y-auto rounded-lg border border-white/5 bg-black/20 p-2 text-[9px] font-mono text-slate-300 custom-scrollbar">
+                                {String(data.value)}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
 
-                  <div className="space-y-4">
-                      <h3 className="text-[10px] font-black uppercase text-indigo-500 tracking-[0.4em] flex items-center gap-2"><Layout size={12} /> Frontend .env Raw</h3>
-                      <div className="bg-black/40 border border-white/5 rounded-lg overflow-hidden shadow-2xl">
-                          <table className="w-full text-left border-collapse">
-                              <thead>
-                                  <tr className="bg-white/5">
-                                      <th className="p-3 text-[8px] font-black uppercase text-slate-500 tracking-widest border-b border-white/5">Parameter Name</th>
-                                      <th className="p-3 text-[8px] font-black uppercase text-slate-500 tracking-widest border-b border-white/5">Current Value</th>
-                                  </tr>
-                              </thead>
-                              <tbody>
-                                  {localEnv._raw_env?.frontend && Object.entries(localEnv._raw_env.frontend).map(([key, data]: any) => (
-                                      <tr key={key} className="hover:bg-white/2 border-b border-white/5 last:border-0 group">
-                                          <td className="p-3">
-                                              <div className="flex flex-col gap-1">
-                                                <span className="text-[9px] font-mono text-indigo-400 font-bold">{key}</span>
-                                                <span className="text-[6px] font-black text-slate-600 uppercase tracking-tighter truncate max-w-[150px]">{data.file}</span>
-                                              </div>
-                                          </td>
-                                          <td className="p-3">
-                                              <div className="p-2 bg-black/20 rounded-lg border border-white/5 text-[9px] font-mono text-slate-300 break-all max-h-20 overflow-y-auto custom-scrollbar">
-                                                {String(data.value)}
-                                              </div>
-                                          </td>
-                                      </tr>
-                                  ))}
-                              </tbody>
-                          </table>
-                      </div>
+                  <div className="overflow-hidden rounded-lg border border-white/5 bg-black/30 shadow-2xl">
+                    <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
+                      <h3 className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-indigo-400"><Layout size={12} /> Frontend .env Raw</h3>
+                      <span className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">{Object.keys(localEnv._raw_env?.frontend || {}).length} entries</span>
+                    </div>
+                    <table className="w-full border-collapse text-left">
+                      <thead>
+                        <tr className="bg-white/5">
+                          <th className="border-b border-white/5 p-3 text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">Parameter</th>
+                          <th className="border-b border-white/5 p-3 text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {localEnv._raw_env?.frontend && Object.entries(localEnv._raw_env.frontend).map(([key, data]: any) => (
+                          <tr key={key} className="border-b border-white/5 hover:bg-white/[0.03] last:border-0">
+                            <td className="p-3 align-top">
+                              <div className="flex flex-col gap-1">
+                                <span className="text-[9px] font-mono font-bold text-indigo-400">{key}</span>
+                                <span className="truncate text-[7px] font-black uppercase tracking-[0.14em] text-slate-600">{data.file}</span>
+                              </div>
+                            </td>
+                            <td className="p-3 align-top">
+                              <div className="max-h-20 overflow-y-auto rounded-lg border border-white/5 bg-black/20 p-2 text-[9px] font-mono text-slate-300 custom-scrollbar">
+                                {String(data.value)}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-               </div>
+                </div>
              </motion.div>
           )}
 

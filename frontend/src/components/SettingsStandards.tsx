@@ -32,7 +32,8 @@ import {
   WorkspaceEmptyState,
   WorkspaceSectionCard,
   WorkspaceTabStrip,
-  WorkspaceSelectField
+  WorkspaceSelectField,
+  WorkspaceCollapsibleHeader
 } from './shared/OperationalWorkspacePrimitives'
 import { 
   OPERATIONAL_WORKSPACE_VISUALS, 
@@ -40,24 +41,39 @@ import {
   OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX
 } from './shared/OperationalWorkspace'
 
-const Section = ({ title, description, count, children, id }: { title: string, description: string, count?: number | string, children: React.ReactNode, id?: string }) => (
-  <div id={id} className="space-y-6 pt-10 border-t border-white/5 first:border-t-0 first:pt-0 scroll-mt-24">
-    <div className="flex items-end justify-between">
-      <div>
-        <h3 className="text-xl font-black uppercase tracking-tighter text-white italic">{title}</h3>
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mt-2">{description}</p>
-      </div>
-      {count !== undefined && (
-        <div className={`px-3 py-1 bg-blue-600/10 border border-blue-500/20 ${OPERATIONAL_WORKSPACE_VISUALS.standardRadius}`}>
-          <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{count} {typeof count === 'number' ? 'Entries' : ''}</span>
-        </div>
-      )}
+const Section = ({ title, description, count, children, id }: { title: string, description: string, count?: number | string, children: React.ReactNode, id?: string }) => {
+  const [collapsed, setCollapsed] = useState(true)
+
+  return (
+    <div id={id} className="space-y-4 border-t border-white/5 pt-8 first:border-t-0 first:pt-0 scroll-mt-24">
+      <WorkspaceCollapsibleHeader
+        title={<span className="text-xl font-black uppercase tracking-tighter text-white italic">{title}</span>}
+        subtitle={<span className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">{description}</span>}
+        collapsed={collapsed}
+        onToggle={() => setCollapsed((current) => !current)}
+        badge={count !== undefined ? (
+          <div className={`px-3 py-1 bg-blue-600/10 border border-blue-500/20 ${OPERATIONAL_WORKSPACE_VISUALS.standardRadius}`}>
+            <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{count} {typeof count === 'number' ? 'Entries' : ''}</span>
+          </div>
+        ) : undefined}
+      />
+      <AnimatePresence initial={false}>
+        {!collapsed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className={`p-8 ${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} border border-white/5 bg-white/[0.02] shadow-2xl backdrop-blur-md`}>
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
-    <div className={`p-8 ${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} border border-white/5 bg-white/[0.02] shadow-2xl backdrop-blur-md`}>
-      {children}
-    </div>
-  </div>
-)
+  )
+}
 
 const TokenCard = ({ name, value, children }: { name: string, value: string, children?: React.ReactNode }) => (
   <div className={`p-4 ${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} border border-white/5 bg-black/40 space-y-3 relative group overflow-hidden`}>
@@ -188,6 +204,7 @@ export const SettingsStandards = () => {
               <LexiconEntry term="Resize Isolation" definition="Resizing a neighboring content column must never stretch or compress the selection, ID, state, or row-action columns." usage="Column drag behavior belongs to the target content column only." />
               <LexiconEntry term="First Render Fit" definition="Pinned utility columns must look correct before any user interaction, autosize pass, or layout mutation." usage="Initial render is part of the contract, not a best effort." />
               <LexiconEntry term="Cell Alignment" definition="Checkboxes, pills, toggles, and badges inside the same row height must share one vertical centerline." usage="Do not let utility cells drift off-axis relative to neighboring status cells." />
+              <LexiconEntry term="Bulk Selection Flow" definition="Single-row and multi-row selection must surface one explicit bulk-action strip directly below the command bar whenever rows are selected." usage="Do not hide critical bulk actions behind unrelated side-panels or focused-detail state." />
             </div>
           </div>
           <div className="space-y-4">
@@ -245,6 +262,7 @@ export const SettingsStandards = () => {
               <LexiconEntry term="Left Zone" definition="Search, filter selectors, and passive context labels belong on the left." usage="Use shared toolbar primitives before inventing custom bar layouts." />
               <LexiconEntry term="Right Zone" definition="History, apply, refresh, export, create, and bulk actions belong on the right." usage="Primary completion and mutating actions stay right-aligned." />
               <LexiconEntry term="Consistency Rule" definition="If two tabs expose horizontal controls, they must share the same shell, spacing, and control geometry." usage="Parameters, Permissions, Groups, Metadata, Tenants, Analysis, and Standards follow the same rule." />
+              <LexiconEntry term="Collapsed Reference Sections" definition="Large standards sections default to collapsed and expand only when needed." usage="Keep the standards page readable as a reference, not an endless document wall." />
             </div>
           </div>
         </div>
