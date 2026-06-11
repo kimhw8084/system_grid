@@ -843,25 +843,25 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
               value={filter.name} 
               onChange={e => setFilter({ ...filter, name: e.target.value })} 
               placeholder="Search Assets..." 
-              className="w-full bg-black/40 border border-white/5 rounded-lg pl-9 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 transition-all" 
+              className="w-full bg-black/40 border border-white/5 rounded-lg pl-9 pr-4 py-2 text-[10px] font-bold outline-none focus:border-blue-500/50 transition-all" 
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <select value={filter.system} onChange={e => setFilter({ ...filter, system: e.target.value })} className="bg-black/40 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] font-bold uppercase text-slate-400 outline-none">
+            <select value={filter.system} onChange={e => setFilter({ ...filter, system: e.target.value })} className="bg-black/40 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] font-bold text-slate-400 outline-none">
               <option value="">All Systems</option>
               {getOptions('LogicalSystem').map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
-            <select value={filter.type} onChange={e => setFilter({ ...filter, type: e.target.value })} className="bg-black/40 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] font-bold uppercase text-slate-400 outline-none">
+            <select value={filter.type} onChange={e => setFilter({ ...filter, type: e.target.value })} className="bg-black/40 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] font-bold text-slate-400 outline-none">
               <option value="">All Types</option>
               {ASSET_TYPES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <select value={filter.status} onChange={e => setFilter({ ...filter, status: e.target.value })} className="bg-black/40 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] font-bold uppercase text-slate-400 outline-none">
+            <select value={filter.status} onChange={e => setFilter({ ...filter, status: e.target.value })} className="bg-black/40 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] font-bold text-slate-400 outline-none">
               <option value="">All Statuses</option>
               {STATUS_ITEMS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
-            <select value={filter.env} onChange={e => setFilter({ ...filter, env: e.target.value })} className="bg-black/40 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] font-bold uppercase text-slate-400 outline-none">
+            <select value={filter.env} onChange={e => setFilter({ ...filter, env: e.target.value })} className="bg-black/40 border border-white/5 rounded-lg px-2 py-1.5 text-[9px] font-bold text-slate-400 outline-none">
               <option value="">All Envs</option>
               {ENVIRONMENT_ITEMS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
@@ -1532,7 +1532,7 @@ export default function Assets() {
 
   useEffect(() => {
     if (searchParam) {
-      setSearchTerm(searchParam.toUpperCase())
+      setSearchTerm(searchParam)
     }
   }, [searchParam])
 
@@ -2090,7 +2090,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
           <div className="flex items-center space-x-3">
             <div className="relative">
                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-               <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search assets..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+               <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search assets..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold outline-none focus:border-blue-500/50 w-64 transition-all" />
             </div>
 
             <div className="flex items-center gap-1 rounded-lg border border-white/5 bg-white/5 p-1">

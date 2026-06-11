@@ -3740,8 +3740,8 @@ export default function Racks() {
                         <label className="text-[8px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Temporary Asset/Project Name</label>
                         <input 
                           value={reserveInfo.temporary_name}
-                          onChange={e => setReserveInfo({ ...reserveInfo, temporary_name: e.target.value.toUpperCase() })}
-                          placeholder="e.g. AI-NODE-CLUSTER-01"
+                          onChange={e => setReserveInfo({ ...reserveInfo, temporary_name: e.target.value })}
+                          placeholder="e.g. AI Node Cluster 01"
                           className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-xs outline-none focus:border-violet-500/60 transition-colors text-white" 
                         />
                       </div>
@@ -3816,7 +3816,7 @@ export default function Racks() {
                 <div>
                   <label className="text-[9px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Site Name</label>
                   <input value={isEditingSite ? isEditingSite.name : newSite.name}
-                    onChange={e => isEditingSite ? setIsEditingSite({ ...isEditingSite, name: e.target.value.toUpperCase() }) : setNewSite({ ...newSite, name: e.target.value.toUpperCase() })}
+                    onChange={e => isEditingSite ? setIsEditingSite({ ...isEditingSite, name: e.target.value }) : setNewSite({ ...newSite, name: e.target.value })}
                     className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-emerald-500/60 transition-colors text-white font-bold"
                     placeholder="e.g. DATA-CENTER-01" />
                 </div>
@@ -3889,7 +3889,7 @@ export default function Racks() {
                     <label className="text-[9px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Identifier</label>
                     <input
                       value={isEditingRack ? isEditingRack.name : newRack.name}
-                      onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, name: e.target.value.toUpperCase() }) : setNewRack({ ...newRack, name: e.target.value.toUpperCase() })}
+                      onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, name: e.target.value }) : setNewRack({ ...newRack, name: e.target.value })}
                       className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-blue-500/60 transition-colors text-white font-bold"
                       placeholder="e.g. A01" />
                   </div>
@@ -3897,7 +3897,7 @@ export default function Racks() {
                     <label className="text-[9px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Aisle</label>
                     <input
                       value={isEditingRack ? (isEditingRack.aisle || '') : newRack.aisle}
-                      onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, aisle: e.target.value.toUpperCase() }) : setNewRack({ ...newRack, aisle: e.target.value.toUpperCase() })}
+                      onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, aisle: e.target.value }) : setNewRack({ ...newRack, aisle: e.target.value })}
                       className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-blue-500/60 transition-colors text-slate-300"
                       placeholder="A1" />
                   </div>
@@ -3905,7 +3905,7 @@ export default function Racks() {
                     <label className="text-[9px] font-black text-slate-500 uppercase block mb-1.5 ml-1">Row</label>
                     <input
                       value={isEditingRack ? (isEditingRack.row || '') : newRack.row}
-                      onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, row: e.target.value.toUpperCase() }) : setNewRack({ ...newRack, row: e.target.value.toUpperCase() })}
+                      onChange={e => isEditingRack ? setIsEditingRack({ ...isEditingRack, row: e.target.value }) : setNewRack({ ...newRack, row: e.target.value })}
                       className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-blue-500/60 transition-colors text-slate-300"
                       placeholder="10" />
                   </div>

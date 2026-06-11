@@ -128,7 +128,7 @@ const RecentListCard = ({ title, items = [], icon: Icon, color, path, delay = 0 
           className="flex items-center justify-between p-3.5 rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.05] transition-all group/item"
         >
           <div className="flex flex-col min-w-0">
-            <span className="text-[11px] font-bold text-slate-200 uppercase tracking-tight truncate group-hover/item:text-blue-400 transition-colors">{item.title}</span>
+            <span className="text-[11px] font-bold text-slate-200 tracking-tight truncate group-hover/item:text-blue-400 transition-colors">{item.title}</span>
             <span className="text-[9px] font-bold text-slate-500 uppercase mt-0.5">{formatAppDay(item.created_at || item.updated_at)}</span>
           </div>
           <ChevronRight size={14} className="text-slate-700 group-hover/item:translate-x-1 transition-transform" />
@@ -153,7 +153,7 @@ const ProjectSection = ({ title, projects = [], color, delay }: any) => (
       {projects && projects.length > 0 ? projects.map((p: any) => (
         <Link key={p.id} to={`/projects?id=${p.id}`} className="block p-3.5 rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/10 hover:bg-white/[0.05] transition-all group/item shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-200 uppercase truncate group-hover/item:text-blue-400">{p.title}</span>
+            <span className="text-[11px] font-bold text-slate-200 truncate group-hover/item:text-blue-400">{p.title}</span>
             <span className="text-[9px] font-bold text-slate-600 uppercase shrink-0">{formatAppDay(p.updated_at)}</span>
           </div>
         </Link>

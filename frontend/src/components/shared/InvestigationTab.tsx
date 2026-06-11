@@ -549,8 +549,8 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
                                            <textarea 
                                               value={newStep.text}
                                               onChange={e => setNewStep({...newStep, text: e.target.value})}
-                                              className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[12px] font-bold text-white outline-none min-h-[100px] uppercase placeholder:text-slate-700 leading-relaxed focus:border-blue-500/50"
-                                              placeholder="RECORD DISCOVERY STEP..."
+                                              className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[12px] font-bold text-white outline-none min-h-[100px] placeholder:text-slate-700 leading-relaxed focus:border-blue-500/50"
+                                              placeholder="Record discovery step..."
                                            />
                                         </div>
                                      </div>
@@ -609,8 +609,8 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
                                         <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-4">
                                            <textarea 
                                               value={newStep.text}
-                                              onChange={e => setNewStep({...newStep, text: e.target.value.toUpperCase()})}
-                                              className="w-full bg-slate-950 border border-white/10 rounded-lg p-3 text-[11px] font-bold text-white outline-none min-h-[80px] uppercase"
+                                              onChange={e => setNewStep({...newStep, text: e.target.value})}
+                                              className="w-full bg-slate-950 border border-white/10 rounded-lg p-3 text-[11px] font-bold text-white outline-none min-h-[80px]"
                                            />
                                            <div 
                                               onClick={() => setFocusedField(`investigation_${cause.id}`)}
@@ -633,7 +633,7 @@ function UnifiedCauseContainer({ cause, isExpanded, onToggle, isEditing, onDelet
                                         <>
                                            <div className="flex items-start justify-between">
                                               <div className="space-y-1">
-                                                 <p className="text-[12px] font-black text-slate-200 leading-relaxed uppercase tracking-tight">{step.text}</p>
+                                                 <p className="text-[12px] font-black text-slate-200 leading-relaxed tracking-tight">{step.text}</p>
                                                  <div className="flex items-center gap-3">
                                                     <span className="text-[7px] font-bold text-slate-600 uppercase tracking-widest">{new Date(step.created_at).toLocaleString()}</span>
                                                  </div>

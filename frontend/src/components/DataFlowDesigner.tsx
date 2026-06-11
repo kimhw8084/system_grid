@@ -983,22 +983,22 @@ const ConfigModal = ({ flow, isOpen, onClose, onSave, isNew }: any) => {
         <div className="mt-8 space-y-6">
           <div className="space-y-2">
             <label className="text-[9px] font-bold uppercase text-slate-500 tracking-[0.2em] ml-1">Workflow Name (Required)</label>
-            <input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-5 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50" placeholder="e.g. CORE-PAYMENT-INGRESS" />
+            <input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-5 py-3.5 text-xs font-bold text-white outline-none focus:border-blue-500/50" placeholder="e.g. Core Payment Ingress" />
           </div>
           <div className="space-y-2">
             <label className="text-[9px] font-bold uppercase text-slate-500 tracking-[0.2em] ml-1">Strategic Purpose (Required)</label>
-            <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-5 py-3.5 text-xs font-bold text-slate-300 uppercase outline-none focus:border-blue-500/50 h-28 resize-none" placeholder="Describe the business and technical purpose..." />
+            <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-5 py-3.5 text-xs font-bold text-slate-300 outline-none focus:border-blue-500/50 h-28 resize-none" placeholder="Describe the business and technical purpose..." />
           </div>
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-[9px] font-bold uppercase text-slate-500 tracking-[0.2em] ml-1">Category (Required)</label>
-              <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-5 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50 appearance-none">
+              <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-5 py-3.5 text-xs font-bold text-white outline-none focus:border-blue-500/50 appearance-none">
                 {ARCH_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div className="space-y-2">
               <label className="text-[9px] font-bold uppercase text-slate-500 tracking-[0.2em] ml-1">Status (Required)</label>
-              <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-5 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50 appearance-none">
+              <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg px-5 py-3.5 text-xs font-bold text-white outline-none focus:border-blue-500/50 appearance-none">
                 {ARCH_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
@@ -1147,7 +1147,7 @@ const ArchDashboard = ({ flows, onEdit, onAdd }: any) => {
           <div className="p-6 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="relative flex-1 max-w-xl">
               <Search size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-600"/>
-              <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search architectures..." className="w-full bg-black/40 border border-white/10 rounded-lg pl-14 pr-6 py-3.5 text-xs font-bold text-white uppercase outline-none focus:border-blue-500/50 shadow-inner"/>
+              <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search architectures..." className="w-full bg-black/40 border border-white/10 rounded-lg pl-14 pr-6 py-3.5 text-xs font-bold text-white outline-none focus:border-blue-500/50 shadow-inner"/>
             </div>
             <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
               {['All', ...ARCH_STATUSES].map(s => (
@@ -1323,9 +1323,9 @@ const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, pathAnalysi
            <div className="p-5 bg-blue-600/5 rounded-lg border border-blue-600/20 space-y-3 relative overflow-hidden group">
              <p className="text-[8px] font-bold text-blue-500 uppercase tracking-widest">Primary Node Details</p>
              {['condition', 'note'].includes(selectedNode.type) ? (
-               <div className="space-y-2 relative z-10"><input value={nodeForm.label || ''} onChange={e => handleNodeChange('label', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500"/></div>
+               <div className="space-y-2 relative z-10"><input value={nodeForm.label || ''} onChange={e => handleNodeChange('label', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-white outline-none focus:border-blue-500"/></div>
              ) : (
-               <><h3 className="text-lg font-bold text-white uppercase tracking-tight leading-none relative z-10">{selectedNode.data.name}</h3><div className="flex items-center space-x-2.5 relative z-10"><StatusPill value={selectedNode.data.status} /><span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{selectedNode.data.ip_address}</span></div></>
+               <><h3 className="text-lg font-bold text-white tracking-tight leading-none relative z-10">{selectedNode.data.name}</h3><div className="flex items-center space-x-2.5 relative z-10"><StatusPill value={selectedNode.data.status} /><span className="text-[9px] font-bold text-slate-500 tracking-widest">{selectedNode.data.ip_address}</span></div></>
              )}
            </div>
            {selectedNode.type === 'device' && (
@@ -1398,8 +1398,8 @@ const MissionControl = ({ selectedNode, selectedEdge, impactedNodes, pathAnalysi
            <div className="p-5 bg-blue-600/5 rounded-lg border border-blue-600/20 space-y-4">
              <p className="text-[8px] font-bold text-blue-500 uppercase tracking-widest">Flow Dynamics</p>
              <div className="space-y-3">
-               <div className="space-y-1.5"><label className="text-[7px] font-bold uppercase text-slate-600 tracking-widest ml-1">Flow Identifier</label><input value={edgeForm.label || ''} onChange={e => handleEdgeChange('label', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500"/></div>
-               <div className="space-y-1.5"><label className="text-[7px] font-bold uppercase text-slate-600 tracking-widest ml-1">Protocol</label><select value={edgeForm.protocol || 'HTTPS'} onChange={e => handleEdgeChange('protocol', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500 appearance-none">{PROTOCOLS.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
+               <div className="space-y-1.5"><label className="text-[7px] font-bold uppercase text-slate-600 tracking-widest ml-1">Flow Identifier</label><input value={edgeForm.label || ''} onChange={e => handleEdgeChange('label', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-white outline-none focus:border-blue-500"/></div>
+               <div className="space-y-1.5"><label className="text-[7px] font-bold uppercase text-slate-600 tracking-widest ml-1">Protocol</label><select value={edgeForm.protocol || 'HTTPS'} onChange={e => handleEdgeChange('protocol', e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold text-white outline-none focus:border-blue-500 appearance-none">{PROTOCOLS.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
                <div className="space-y-1.5"><label className="text-[7px] font-bold uppercase text-slate-600 tracking-widest ml-1">Classification</label><div className="grid grid-cols-2 gap-1.5">{FLOW_TYPES.map(t => <button key={t.id} onClick={() => handleEdgeChange('type', t.id)} className={`p-2 rounded-lg border text-[8px] font-bold uppercase transition-all ${edgeForm.type === t.id ? 'bg-blue-600 border-blue-400 text-white shadow-md' : 'bg-black/40 border-white/5 text-slate-500 hover:text-slate-300'}`}>{t.label}</button>)}</div></div>
              </div>
            </div>
@@ -1663,7 +1663,7 @@ function ArchDesignerInner() {
             <AnimatePresence>{!isPresentationMode && isSidebarOpen && (
               <motion.div initial={{ x: -400 }} animate={{ x: 0 }} exit={{ x: -400 }} className="w-[360px] border-r border-white/5 bg-[linear-gradient(180deg,rgba(15,23,42,0.97),rgba(2,6,23,0.95))] backdrop-blur-3xl flex flex-col z-50 shadow-[18px_0_70px_rgba(2,6,23,0.45)]">
                  <div className="p-6 border-b border-white/5 flex items-center justify-between"><h2 className="text-lg font-black uppercase text-white tracking-[0.12em] flex items-center gap-3"><Box size={20} className="text-sky-300"/> Inventory</h2><div className="flex items-center gap-1"><button onClick={() => { setInventorySearch(''); setSelectedSystem('All'); }} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><RefreshCw size={16}/></button><button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white"><X size={18}/></button></div></div>
-                 <div className="p-5 border-b border-white/5 space-y-4"><div className="flex bg-black/40 p-1 rounded-lg border border-white/5"><button onClick={() => setInventoryType('INTERNAL')} className={`flex-1 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${inventoryType === 'INTERNAL' ? 'bg-blue-600 text-white' : 'text-slate-500'}`}>Internal</button><button onClick={() => setInventoryType('EXTERNAL')} className={`flex-1 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${inventoryType === 'EXTERNAL' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}>External</button></div><div className="relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" /><input value={inventorySearch} onChange={e => setInventorySearch(e.target.value)} placeholder="Search..." className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500/50" /></div>{inventoryType === 'INTERNAL' && (<select value={selectedSystem} onChange={e => setSelectedSystem(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-[10px] font-bold text-white uppercase outline-none focus:border-blue-500">{<option value="all">All Systems</option>}{systems.map(s => <option key={s} value={s}>{s}</option>)}</select>)}</div>
+                 <div className="p-5 border-b border-white/5 space-y-4"><div className="flex bg-black/40 p-1 rounded-lg border border-white/5"><button onClick={() => setInventoryType('INTERNAL')} className={`flex-1 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${inventoryType === 'INTERNAL' ? 'bg-blue-600 text-white' : 'text-slate-500'}`}>Internal</button><button onClick={() => setInventoryType('EXTERNAL')} className={`flex-1 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all ${inventoryType === 'EXTERNAL' ? 'bg-indigo-600 text-white' : 'text-slate-500'}`}>External</button></div><div className="relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" /><input value={inventorySearch} onChange={e => setInventorySearch(e.target.value)} placeholder="Search..." className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-[10px] font-bold text-white outline-none focus:border-blue-500/50" /></div>{inventoryType === 'INTERNAL' && (<select value={selectedSystem} onChange={e => setSelectedSystem(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-[10px] font-bold text-white outline-none focus:border-blue-500">{<option value="all">All Systems</option>}{systems.map(s => <option key={s} value={s}>{s}</option>)}</select>)}</div>
                  <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
                    {inventoryType === 'INTERNAL' ? (
                      <section className="space-y-3">

@@ -51,7 +51,7 @@ export function TenantSelector() {
         </div>
         <div className="flex flex-col items-start min-w-[120px]">
            <span className="text-[8px] font-black uppercase text-blue-400 tracking-widest leading-none">Active Database</span>
-           <span className="text-[10px] font-black uppercase text-white truncate max-w-[150px]">
+           <span className="text-[10px] font-black text-white truncate max-w-[150px]">
              {isLoading ? 'Loading...' : (activeTenant?.name || 'Default Engine')}
            </span>
         </div>
@@ -89,7 +89,7 @@ export function TenantSelector() {
                           <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full border-2 border-[#0f172a] ${tenant.is_online ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                        </div>
                        <div className="flex flex-col items-start">
-                          <span className="text-[11px] font-black uppercase tracking-wider">{tenant.name}</span>
+                          <span className="text-[11px] font-black tracking-[0.04em]">{tenant.name}</span>
                           <div className="flex items-center gap-2">
                              <span className="text-[8px] font-bold uppercase opacity-60">{tenant.role}</span>
                              {!tenant.is_online && <span className="text-[7px] font-black text-rose-500 uppercase">Offline</span>}

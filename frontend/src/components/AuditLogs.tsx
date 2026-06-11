@@ -237,12 +237,12 @@ export default function AuditLogs() {
                 <Calendar size={14} className="ml-1 text-blue-500" />
                 <div className="flex flex-col">
                   <span className="text-[7px] font-black uppercase text-slate-600">Start</span>
-                  <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))} className="bg-transparent text-[10px] font-black uppercase text-white outline-none" />
+                  <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))} className="bg-transparent text-[10px] font-black text-white outline-none" />
                 </div>
                 <div className="mx-1 h-6 w-px bg-white/5" />
                 <div className="flex flex-col">
                   <span className="text-[7px] font-black uppercase text-slate-600">End</span>
-                  <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} className="bg-transparent text-[10px] font-black uppercase text-white outline-none" />
+                  <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} className="bg-transparent text-[10px] font-black text-white outline-none" />
                 </div>
               </div>
               <ToolbarButton onClick={handleExportCSV} variant="primary" className="px-5 py-3">

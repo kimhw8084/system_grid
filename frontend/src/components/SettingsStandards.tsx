@@ -365,8 +365,13 @@ export const SettingsStandards = () => {
            />
            <LexiconEntry 
              term="Natural Case Display" 
-             definition="Mandatory use of standard case for raw data (names, departments). Avoids visual aggression of mandatory uppercase." 
-             usage="Remove 'uppercase' class from data-driven labels and table cells."
+             definition="Mandatory use of natural case for any user-entered, imported, or raw system text. The UI must never visually force raw text into full uppercase." 
+             usage="Remove `uppercase` from inputs, textareas, selects, search fields, and data-bound labels unless the value itself is a true all-caps identifier."
+           />
+           <LexiconEntry 
+             term="Raw Input Fidelity" 
+             definition="What the operator types is what the operator should see. Do not mutate keystrokes with `.toUpperCase()` or present raw values in misleading transformed casing." 
+             usage="Preserve original casing in forms, table cells, search results, dropdown selections, and detail panes."
            />
            <LexiconEntry 
              term="Vertical Flow" 

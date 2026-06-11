@@ -97,7 +97,7 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
                 <input value={row.key} onChange={e => {
                   const n = [...tableRows]; n[i].key = e.target.value; 
                   setTableRows(n); validateAndNotify(n);
-                }} placeholder="Key" className={`flex-1 bg-black/40 border ${error === 'Duplicate keys detected' ? 'border-rose-500/50' : 'border-white/5'} rounded-lg px-2 py-1 text-[10px] outline-none focus:border-blue-500 font-bold uppercase `} />
+                }} placeholder="Key" className={`flex-1 bg-black/40 border ${error === 'Duplicate keys detected' ? 'border-rose-500/50' : 'border-white/5'} rounded-lg px-2 py-1 text-[10px] outline-none focus:border-blue-500 font-bold`} />
                 <input value={row.value} onChange={e => {
                   const n = [...tableRows]; n[i].value = e.target.value; 
                   setTableRows(n); validateAndNotify(n);
@@ -188,9 +188,9 @@ const ServiceSecretsTab = ({ serviceId }: { serviceId: number }) => {
       <div className="bg-black/40 border border-white/5 rounded-lg p-4 space-y-3">
         <h3 className="text-[9px] font-bold uppercase text-blue-400 tracking-widest ">Identity Registry</h3>
         <div className="grid grid-cols-3 gap-2">
-          <input value={newSecret.username} onChange={e => setNewSecret({...newSecret, username: e.target.value})} placeholder="Username / ID" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500 " />
+          <input value={newSecret.username} onChange={e => setNewSecret({...newSecret, username: e.target.value})} placeholder="Username / ID" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold outline-none focus:border-blue-500 " />
           <input type="password" value={newSecret.password} onChange={e => setNewSecret({...newSecret, password: e.target.value})} placeholder="Access Password" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold outline-none focus:border-blue-500" />
-          <input value={newSecret.note} onChange={e => setNewSecret({...newSecret, note: e.target.value})} placeholder="Purpose / Note" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500 " />
+          <input value={newSecret.note} onChange={e => setNewSecret({...newSecret, note: e.target.value})} placeholder="Purpose / Note" className="bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold outline-none focus:border-blue-500 " />
         </div>
         <button 
           disabled={!newSecret.username || !newSecret.password}
@@ -207,12 +207,12 @@ const ServiceSecretsTab = ({ serviceId }: { serviceId: number }) => {
             <div className="flex items-center space-x-4">
               <div className="bg-blue-600/10 p-1.5 rounded-lg text-blue-400"><Tag size={14}/></div>
               <div className="min-w-[100px]">
-                <p className="text-[10px] font-bold text-white uppercase ">{s.username}</p>
+                <p className="text-[10px] font-bold text-white">{s.username}</p>
                 <p className="text-[9px] font-mono text-slate-600">••••••••</p>
               </div>
               <div className="border-l border-white/10 pl-4 max-w-[300px] truncate">
                 <p className="text-[8px] font-bold text-slate-600 uppercase mb-0.5 ">Note</p>
-                <p className="text-[10px] text-slate-400 font-bold uppercase truncate  tracking-tighter">{s.note || '---'}</p>
+                <p className="text-[10px] text-slate-400 font-bold truncate tracking-tighter">{s.note || '---'}</p>
               </div>
             </div>
             <button onClick={() => deleteMutation.mutate(s.id)} className="p-1.5 text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={14}/></button>
@@ -316,7 +316,7 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
            <div className="grid grid-cols-2 gap-3">
              <div className="col-span-2">
                 <label className="text-[8px] font-bold text-slate-400 uppercase block mb-1 px-1 ">Service Identifier *</label>
-                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-lg px-3 py-2 text-xs font-bold uppercase  text-white outline-none focus:border-blue-500`} placeholder="E.G. ERP_DB_PROD_01" />
+                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500`} placeholder="e.g. ERP DB Prod 01" />
              </div>
              <StyledSelect label="Host Node" value={formData.device_id || ""} onChange={e => setFormData({...formData, device_id: e.target.value ? parseInt(e.target.value) : null})} options={devices?.map((d:any)=>({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []} placeholder="Unassigned (Floating)" />
              <StyledSelect label="Matrix Type" value={formData.service_type} onChange={e => setFormData(prev => ({...prev, service_type: e.target.value}))} options={getOptions('ServiceType').length > 0 ? getOptions('ServiceType') : ["Database", "Web Server", "Middleware", "Container", "OS", "Vendor Software", "Internal App", "External App", "ToolStack"].map(t => ({ value: t, label: t }))} />
@@ -325,7 +325,7 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
              <div><label className="text-[8px] font-bold text-slate-400 uppercase block mb-1 px-1 ">Deployment Date</label><input type="date" value={formData.installation_date ? formData.installation_date.split('T')[0] : ""} onChange={e => setFormData({...formData, installation_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold outline-none focus:border-blue-500" /></div>
              <div><label className="text-[8px] font-bold text-slate-400 uppercase block mb-1 px-1 ">Software Version</label><input value={formData.version || ""} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold outline-none focus:border-blue-500" placeholder="v1.0.0" /></div>
            </div>
-           <div><label className="text-[8px] font-bold text-slate-400 uppercase block mb-1 px-1 ">Mission Objective</label><textarea value={formData.purpose || ""} onChange={e => setFormData({...formData, purpose: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold uppercase  outline-none focus:border-blue-500 h-16 resize-none" placeholder="Primary transactional store..." /></div>
+           <div><label className="text-[8px] font-bold text-slate-400 uppercase block mb-1 px-1 ">Mission Objective</label><textarea value={formData.purpose || ""} onChange={e => setFormData({...formData, purpose: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold outline-none focus:border-blue-500 h-16 resize-none" placeholder="Primary transactional store..." /></div>
         </div>
 
         <div className="space-y-4">
@@ -340,8 +340,8 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
         <div className="col-span-2 space-y-4 bg-white/5 p-4 rounded-lg border border-white/5">
            <h3 className="text-[9px] font-bold uppercase text-slate-500 tracking-widest ">Licensing & Procurement Artifacts</h3>
            <div className="grid grid-cols-4 gap-3">
-              <div className="space-y-1"><label className="text-[7px] font-bold text-slate-500 uppercase px-1 ">Purchase Model</label><select value={formData.purchase_type || "One-time"} onChange={e => setFormData({...formData, purchase_type: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[9px] font-bold uppercase  outline-none focus:border-blue-500"><option value="One-time">Purchase</option><option value="Subscription">SaaS</option><option value="OEM">OEM</option><option value="Free">OpenSource</option></select></div>
-              <div className="space-y-1"><label className="text-[7px] font-bold text-slate-500 uppercase px-1 ">Developer</label><input value={formData.manufacturer || ""} onChange={e => setFormData({...formData, manufacturer: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[9px] font-bold uppercase  outline-none focus:border-blue-500" placeholder="Developer" /></div>
+              <div className="space-y-1"><label className="text-[7px] font-bold text-slate-500 uppercase px-1 ">Purchase Model</label><select value={formData.purchase_type || "One-time"} onChange={e => setFormData({...formData, purchase_type: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[9px] font-bold outline-none focus:border-blue-500"><option value="One-time">Purchase</option><option value="Subscription">SaaS</option><option value="OEM">OEM</option><option value="Free">OpenSource</option></select></div>
+              <div className="space-y-1"><label className="text-[7px] font-bold text-slate-500 uppercase px-1 ">Developer</label><input value={formData.manufacturer || ""} onChange={e => setFormData({...formData, manufacturer: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[9px] font-bold outline-none focus:border-blue-500" placeholder="Developer" /></div>
               <div className="space-y-1"><label className="text-[7px] font-bold text-slate-500 uppercase px-1 ">License Key</label><input value={formData.license_key || ""} onChange={e => setFormData({...formData, license_key: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[9px] font-mono outline-none focus:border-blue-500" placeholder="XXXX-XXXX" /></div>
               <div className="space-y-1"><label className="text-[7px] font-bold text-slate-500 uppercase px-1 ">Expiry Date</label><input type="date" value={formData.expiry_date ? formData.expiry_date.split('T')[0] : ""} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[9px] font-bold outline-none focus:border-blue-500" /></div>
            </div>
@@ -503,7 +503,7 @@ export default function ServiceRegistry() {
         </div>
         
         <div className="flex items-center space-x-3">
-          <div className="relative group"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" /><input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SCAN LOGIC..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-64 transition-all" /></div>
+          <div className="relative group"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" /><input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Scan logic..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold outline-none focus:border-blue-500/50 w-64 transition-all" /></div>
           <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">
              <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 rounded-lg transition-all ${showStyleLab ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-slate-500'}`} title="Style Lab"><Activity size={16} /></button>
              <button onClick={() => setShowColumnPicker(!showColumnPicker)} className={`p-1.5 rounded-lg transition-all ${showColumnPicker ? 'bg-blue-500/20 text-blue-400' : 'hover:bg-white/10 text-slate-500'}`} title="Column Configuration"><Sliders size={16} /></button>

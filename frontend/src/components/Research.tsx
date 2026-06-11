@@ -573,7 +573,7 @@ export default function Research() {
         <div className="flex items-center space-x-3">
           <div className="relative group">
              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="SCAN RESEARCH..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Scan research..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold outline-none focus:border-blue-500/50 w-64 transition-all" />
           </div>
 
           <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">
@@ -949,9 +949,9 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Intel Title</label>
                 <input 
                   value={formData.title} 
-                  onChange={e => setFormData({...formData, title: e.target.value.toUpperCase()})} 
-                  className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-3 text-[12px] outline-none focus:border-blue-500 text-white font-bold uppercase" 
-                  placeholder={formData.type === 'RCA' ? "E.G. FAB-2 LINE BLOCKAGE..." : "E.G. CLUSTER LATENCY OPTIMIZATION..."} 
+                  onChange={e => setFormData({...formData, title: e.target.value})} 
+                  className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-3 text-[12px] outline-none focus:border-blue-500 text-white font-bold" 
+                  placeholder={formData.type === 'RCA' ? "e.g. Fab-2 line blockage" : "e.g. Cluster latency optimization"} 
                 />
               </div>
 
@@ -979,7 +979,7 @@ function UnifiedResearchForm({ item, options, devices, onClose, onSave, isSaving
                 <StyledSelect 
                    label="Incident Type" 
                    value={safeUpper(formData.incident_type)} 
-                   onChange={(e: any) => setFormData({...formData, incident_type: e.target.value.toUpperCase()})} 
+                   onChange={(e: any) => setFormData({...formData, incident_type: e.target.value})} 
                    options={enumOptions('IncidentType')} 
                 />
                 <PriorityGauge 
@@ -1193,9 +1193,9 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
     const timeline = [...(formData.timeline || []), { 
       ...newTimeline, 
       id: Date.now(), 
-      description: newTimeline.description.toUpperCase(),
-      owner: newTimeline.owner.toUpperCase(),
-      owner_team: newTimeline.owner_team.toUpperCase(),
+      description: newTimeline.description,
+      owner: newTimeline.owner,
+      owner_team: newTimeline.owner_team,
       event_type: newTimeline.event_type.toUpperCase(),
       created_at: now, 
       updated_at: now 
@@ -1398,8 +1398,8 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                       <SearchableMultiSelect 
                          label="Owners" 
                          selected={formData.owners || []} 
-                         onChange={(next: string[]) => setFormData({...formData, owners: next.map(s => s.toUpperCase())})} 
-                         options={['Infrastructure Team', 'SRE', 'DevOps', 'App Support'].map(s => s.toUpperCase())} 
+                         onChange={(next: string[]) => setFormData({...formData, owners: next})} 
+                         options={['Infrastructure Team', 'SRE', 'DevOps', 'App Support']} 
                          placeholder="Add Owners..." 
                          allowCustom={true}
                       />
@@ -1409,7 +1409,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                       <StyledSelect 
                          label="Incident Type" 
                          value={safeUpper(formData.incident_type)} 
-                         onChange={(e: any) => setFormData({...formData, incident_type: e.target.value.toUpperCase()})} 
+                         onChange={(e: any) => setFormData({...formData, incident_type: e.target.value})} 
                          options={enumOptions('IncidentType')} 
                          disabled={!isEditing}
                       />
@@ -1429,7 +1429,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                       <StyledSelect 
                          label="Detection Type" 
                          value={safeUpper(formData.detection_type)} 
-                         onChange={(e: any) => setFormData({...formData, detection_type: e.target.value.toUpperCase()})} 
+                         onChange={(e: any) => setFormData({...formData, detection_type: e.target.value})} 
                          options={enumOptions('DetectionType')} 
                          disabled={!isEditing}
                       />
@@ -1455,7 +1455,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                       <StyledSelect 
                         label="Status"
                         value={safeUpper(formData.status)} 
-                        onChange={(e: any) => setFormData({...formData, status: e.target.value.toUpperCase()})} 
+                        onChange={(e: any) => setFormData({...formData, status: e.target.value})} 
                         options={['ANALYZING', 'OPEN', 'INVESTIGATION', 'RESOLVED', 'CLOSED', 'ESCALATED'].map(s => ({value: s, label: s}))} 
                         disabled={!isEditing}
                       />
@@ -1662,7 +1662,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                    <StyledSelect 
                       label="Impact Type" 
                       value={safeUpper(formData.impact_type)} 
-                      onChange={(e: any) => setFormData({...formData, impact_type: e.target.value.toUpperCase()})} 
+                      onChange={(e: any) => setFormData({...formData, impact_type: e.target.value})} 
                       options={enumOptions('ImpactType')} 
                       disabled={!isEditing}
                    />
@@ -1756,20 +1756,20 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                <div className="grid grid-cols-2 gap-4">
                                   <div className="space-y-1">
                                      <label className="text-[9px] font-bold text-slate-500 uppercase">Owner / Reporter</label>
-                                     <input value={newTimeline.owner} onChange={e => setNewTimeline({...newTimeline, owner: e.target.value.toUpperCase()})} placeholder="E.G. J. DOE..." className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-purple-500/50 uppercase" />
+                                     <input value={newTimeline.owner} onChange={e => setNewTimeline({...newTimeline, owner: e.target.value})} placeholder="e.g. J. Doe" className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-purple-500/50" />
                                   </div>
                                   <div className="space-y-1">
                                      <label className="text-[9px] font-bold text-slate-500 uppercase">Responsible Team</label>
-                                     <input value={newTimeline.owner_team} onChange={e => setNewTimeline({...newTimeline, owner_team: e.target.value.toUpperCase()})} placeholder="E.G. SRE..." className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-purple-500/50 uppercase" />
+                                     <input value={newTimeline.owner_team} onChange={e => setNewTimeline({...newTimeline, owner_team: e.target.value})} placeholder="e.g. SRE" className="w-full bg-slate-950 border border-white/10 rounded-lg px-3 py-2 text-[11px] font-bold text-white outline-none focus:border-purple-500/50" />
                                   </div>
                                </div>
                                <div className="space-y-1">
                                   <label className="text-[9px] font-bold text-slate-500 uppercase">description</label>
                                   <textarea 
                                     value={newTimeline.description} 
-                                    onChange={e => setNewTimeline({...newTimeline, description: e.target.value.toUpperCase()})} 
-                                    className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[12px] font-bold text-white outline-none focus:border-purple-500/50 min-h-[80px] uppercase" 
-                                    placeholder="EVENT DESCRIPTION..." 
+                                    onChange={e => setNewTimeline({...newTimeline, description: e.target.value})} 
+                                    className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[12px] font-bold text-white outline-none focus:border-purple-500/50 min-h-[80px]" 
+                                    placeholder="Event description..." 
                                   />
                                </div>
 
@@ -1827,7 +1827,7 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                          <input type="datetime-local" value={editTimelineData.event_time} onChange={e => setEditTimelineData({...editTimelineData, event_time: e.target.value})} className="bg-slate-950 border border-white/10 rounded-lg px-2 py-1 text-[10px] font-bold text-white outline-none" />
                                          <StyledSelect options={[{value:'DETECTION',label:'DETECTION'},{value:'MITIGATION',label:'MITIGATION'},{value:'OBSERVATION',label:'OBSERVATION'},{value:'RESOLUTION',label:'RESOLUTION'}]} value={editTimelineData.event_type} onChange={(e:any) => setEditTimelineData({...editTimelineData, event_type: e.target.value})} />
                                       </div>
-                                      <textarea value={editTimelineData.description} onChange={e => setEditTimelineData({...editTimelineData, description: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-lg p-2 text-[11px] font-bold text-white outline-none min-h-[60px] uppercase" />
+                                      <textarea value={editTimelineData.description} onChange={e => setEditTimelineData({...editTimelineData, description: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg p-2 text-[11px] font-bold text-white outline-none min-h-[60px]" />
                                       <div className="flex gap-2">
                                          <button onClick={saveTimelineUpdate} className="flex-1 py-2 bg-purple-600 text-white rounded-lg text-[9px] font-bold uppercase">Save</button>
                                          <button onClick={() => setEditingTimelineId(null)} className="flex-1 py-2 bg-white/5 text-slate-400 rounded-lg text-[9px] font-bold uppercase">Cancel</button>
@@ -1981,11 +1981,11 @@ export function EnhancedRcaDetails({ item, devices, options, failureModes, onClo
                                          </div>
                                          <div className="space-y-1">
                                          <label className="text-[9px] font-bold text-slate-500 ">Failure Mode Identity *</label>
-                                         <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value.toUpperCase() })} placeholder="E.G., DB_CONN_POOL_EXHAUSTED" className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-rose-500" />
+                                         <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="e.g. DB connection pool exhausted" className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-xs font-bold text-white outline-none focus:border-rose-500" />
                                          </div>
                                          <div className="space-y-1">
                                          <label className="text-[9px] font-bold text-slate-500 ">Effect Description</label>
-                                         <textarea value={formData.effect} onChange={e => setFormData({ ...formData, effect: e.target.value.toUpperCase() })} placeholder="Systemic consequences..." className="w-full bg-black/40 border border-white/10 rounded-lg p-4 text-xs font-bold text-white min-h-[60px] outline-none focus:border-rose-500" />
+                                         <textarea value={formData.effect} onChange={e => setFormData({ ...formData, effect: e.target.value })} placeholder="Systemic consequences..." className="w-full bg-black/40 border border-white/10 rounded-lg p-4 text-xs font-bold text-white min-h-[60px] outline-none focus:border-rose-500" />
                                          </div>
                                          </div>
 
@@ -2202,7 +2202,7 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
                           <StyledSelect 
                             label="Lifecycle Status"
                             value={safeUpper(formData.status)} 
-                            onChange={(e: any) => setFormData({...formData, status: e.target.value.toUpperCase()})} 
+                            onChange={(e: any) => setFormData({...formData, status: e.target.value})} 
                             options={['ANALYZING', 'OPEN', 'INVESTIGATION', 'RESOLVED', 'CLOSED', 'ESCALATED', 'MONITORING'].map(s => ({value: s, label: s}))} 
                             disabled={!isEditing}
                           />
@@ -2211,8 +2211,8 @@ function ResearchDetails({ item, onClose, onSave, setConfirmModal, fontSize, row
                              <input 
                                readOnly={!isEditing}
                                value={formData.assigned_team} 
-                               onChange={e => setFormData({...formData, assigned_team: e.target.value.toUpperCase()})} 
-                               className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-[11px] outline-none focus:border-blue-500 text-slate-300 font-bold uppercase" 
+                               onChange={e => setFormData({...formData, assigned_team: e.target.value})} 
+                               className="w-full bg-slate-950 border border-white/10 rounded-lg px-4 py-2 text-[11px] outline-none focus:border-blue-500 text-slate-300 font-bold" 
                              />
                           </div>
                        </div>
@@ -2278,11 +2278,11 @@ function IntelligenceInput({ newLog, setNewLog, logMutation, compact = false }: 
        <div className="flex items-center justify-between border-b border-white/5 pb-4">
           <h3 className="text-xs font-bold uppercase tracking-widest text-blue-400 flex items-center gap-2"><Plus size={14}/> Capture Intelligence Pulse</h3>
           <div className="flex gap-2">
-             <StyledSelect label="Log Type" value={newLog.entry_type} onChange={(e:any) => setNewLog({...newLog, entry_type: e.target.value.toUpperCase()})} options={['DIAGNOSIS', 'HYPOTHESIS', 'OBSERVATION', 'ACTION', 'RESULT'].map(t => ({value: t, label: t}))} />
-             <input value={newLog.poc} onChange={e => setNewLog({...newLog, poc: e.target.value.toUpperCase()})} placeholder="POC..." className="w-32 bg-slate-950 border border-white/10 rounded-lg px-3 text-[10px] font-bold text-white outline-none focus:border-blue-500 uppercase" />
+             <StyledSelect label="Log Type" value={newLog.entry_type} onChange={(e:any) => setNewLog({...newLog, entry_type: e.target.value})} options={['DIAGNOSIS', 'HYPOTHESIS', 'OBSERVATION', 'ACTION', 'RESULT'].map(t => ({value: t, label: t}))} />
+             <input value={newLog.poc} onChange={e => setNewLog({...newLog, poc: e.target.value})} placeholder="POC..." className="w-32 bg-slate-950 border border-white/10 rounded-lg px-3 text-[10px] font-bold text-white outline-none focus:border-blue-500" />
           </div>
        </div>
-       <textarea value={newLog.entry_text} onChange={e => setNewLog({...newLog, entry_text: e.target.value.toUpperCase()})} className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[11px] font-bold text-white outline-none focus:border-blue-500/50 min-h-[100px] uppercase placeholder:text-slate-700" placeholder="Capture logical system findings..." />
+       <textarea value={newLog.entry_text} onChange={e => setNewLog({...newLog, entry_text: e.target.value})} className="w-full bg-slate-950 border border-white/10 rounded-lg p-4 text-[11px] font-bold text-white outline-none focus:border-blue-500/50 min-h-[100px] placeholder:text-slate-700" placeholder="Capture logical system findings..." />
        <button onClick={() => logMutation.mutate(newLog)} className="h-12 w-full bg-blue-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"><Activity size={16}/> Record Intelligence</button>
     </div>
   )

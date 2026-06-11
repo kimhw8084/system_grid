@@ -309,7 +309,7 @@ export default function Vendor() {
         <div className="flex items-center space-x-3">
           <div className="relative">
              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Filter Registry..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-blue-500/50 w-64 transition-all" />
+             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Filter registry..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold outline-none focus:border-blue-500/50 w-64 transition-all" />
           </div>
 
           <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">

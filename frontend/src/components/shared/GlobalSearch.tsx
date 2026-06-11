@@ -140,7 +140,7 @@ export const GlobalSearch = ({ isOpen, onClose }: { isOpen: boolean; onClose: ()
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Search Assets, Projects, FAR, Services, Monitoring..."
-                className="flex-1 bg-transparent border-none outline-none text-[13px] font-bold uppercase tracking-[0.1em] text-white placeholder:text-slate-600"
+                className="flex-1 bg-transparent border-none outline-none text-[13px] font-bold tracking-[0.02em] text-white placeholder:text-slate-600"
               />
               {isLoading ? (
                 <Loader2 size={18} className="text-blue-500 animate-spin" />
@@ -176,8 +176,8 @@ export const GlobalSearch = ({ isOpen, onClose }: { isOpen: boolean; onClose: ()
                                 {getIcon(result.type)}
                               </div>
                               <div className="text-left">
-                                <p className="text-[11px] font-black uppercase tracking-tight leading-none mb-1">{result.title}</p>
-                                <p className={`text-[9px] font-bold uppercase tracking-tighter ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>
+                                <p className="text-[11px] font-black tracking-tight leading-none mb-1">{result.title}</p>
+                                <p className={`text-[9px] font-bold tracking-tight ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>
                                   {result.subtitle}
                                 </p>
                               </div>
@@ -201,7 +201,7 @@ export const GlobalSearch = ({ isOpen, onClose }: { isOpen: boolean; onClose: ()
                   <div className="w-12 h-12 bg-rose-500/10 rounded-lg flex items-center justify-center mx-auto mb-4 border border-rose-500/20">
                     <X size={20} className="text-rose-500" />
                   </div>
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Zero records found for "{query}"</p>
+                  <p className="text-[10px] font-black text-slate-500 tracking-[0.08em]">Zero records found for "{query}"</p>
                 </div>
               ) : (
                 <div className="p-12 flex flex-col items-center gap-4 opacity-40">

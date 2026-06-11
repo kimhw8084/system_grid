@@ -91,9 +91,9 @@ export function RootCauseFormModal({ isOpen, onClose, onSave, modeId, initialDat
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Responsible Team</label>
             <input 
               value={formData.responsible_team} 
-              onChange={e => setFormData({...formData, responsible_team: e.target.value.toUpperCase()})} 
-              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm font-bold text-white outline-none focus:border-amber-500 uppercase" 
-              placeholder="E.G. SRE"
+              onChange={e => setFormData({...formData, responsible_team: e.target.value})} 
+              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm font-bold text-white outline-none focus:border-amber-500" 
+              placeholder="e.g. SRE"
             />
           </div>
         </div>
@@ -177,8 +177,8 @@ export function MitigationFormModal({ isOpen, onClose, onSave, modeId, causeId, 
           <textarea 
             value={formData.mitigation_steps} 
             onChange={e => setFormData({...formData, mitigation_steps: e.target.value})} 
-            className="w-full bg-black/40 border border-white/10 rounded-lg p-4 text-sm font-bold text-white outline-none focus:border-blue-500 min-h-[120px] uppercase custom-scrollbar resize-y" 
-            placeholder="DESCRIBE THE DEPLOYMENT PROTOCOL..." 
+            className="w-full bg-black/40 border border-white/10 rounded-lg p-4 text-sm font-bold text-white outline-none focus:border-blue-500 min-h-[120px] custom-scrollbar resize-y" 
+            placeholder="Describe the deployment protocol..." 
           />
         </div>
 
@@ -187,9 +187,9 @@ export function MitigationFormModal({ isOpen, onClose, onSave, modeId, causeId, 
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Owner Team</label>
             <input 
               value={(formData as any).team || ''} 
-              onChange={e => setFormData({...formData, team: e.target.value.toUpperCase()} as any)} 
-              placeholder="E.G. SRE" 
-              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-white/20 uppercase" 
+              onChange={e => setFormData({...formData, team: e.target.value} as any)} 
+              placeholder="e.g. SRE" 
+              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-white/20" 
             />
           </div>
           <div className="space-y-2">
@@ -231,8 +231,8 @@ export function MitigationFormModal({ isOpen, onClose, onSave, modeId, causeId, 
               <input 
                 value={formData.bkm_content} 
                 onChange={e => setFormData({...formData, bkm_content: e.target.value})} 
-                placeholder="PASTE EXTERNAL BKM LINK..." 
-                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[11px] font-bold text-blue-400 outline-none focus:border-white/20 uppercase" 
+                placeholder="Paste external BKM link..." 
+                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[11px] font-bold text-blue-400 outline-none focus:border-white/20" 
               />
             ) : (
               <StyledSelect 
