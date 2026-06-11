@@ -60,10 +60,13 @@ async def create_user_pool_version(
     *,
     created_by: str,
     diff_summary: dict,
+    version_label: str | None = None,
 ):
     import datetime
 
-    version_label = f"v{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    if not version_label:
+        version_label = f"v{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    
     await db.flush()
     snapshot = await build_user_pool_snapshot(db)
     await db.execute(update(models.UserPoolVersion).values(is_active=False))
@@ -897,7 +900,7 @@ async def get_roles(db: AsyncSession = Depends(get_db)):
 
 @router.get("/user-pool/versions")
 async def get_user_pool_versions(db: AsyncSession = Depends(get_db)):
-    res = await db.execute(select(models.UserPoolVersion).order_by(models.UserPoolVersion.created_at.desc()))
+    res = await db.execute(select(models.UserPoolVersion).order_by(models.UserPoolVersion.created_at.desc(), models.UserPoolVersion.id.desc()))
     return res.scalars().all()
 
 @router.post("/user-pool/refresh")
@@ -1084,35 +1087,71 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
     return {"status": "success", "version": None, "changes": False}
 
 @router.post("/user-pool/restore/{version_id}")
-async def restore_user_pool(version_id: int, db: AsyncSession = Depends(get_db)):
+async def restore_user_pool(version_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    user_id = get_current_user_id(request)
     res = await db.execute(select(models.UserPoolVersion).filter(models.UserPoolVersion.id == version_id))
     version = res.scalar_one_or_none()
     if not version: raise HTTPException(404, "Version not found")
     
-    await db.execute(update(models.UserPoolVersion).values(is_active=False))
-    version.is_active = True
+    # Identify all current operators to handle deletions
+    res_current = await db.execute(select(models.Operator))
+    current_ops = {op.external_id: op for op in res_current.scalars().all() if op.external_id}
     
-    # Sync version data back to operators (Simplified)
+    snapshot_external_ids = set()
+    
+    # Sync version data back to operators
     for u in version.snapshot_data:
+        ext_id = str(u.get("external_id") or u.get("id"))
+        snapshot_external_ids.add(ext_id)
+        
         team = await resolve_team_assignment(
             db,
             team_name=u.get("team"),
             source="synced",
             create_missing=bool(u.get("team"))
         ) if u.get("team") else None
-        res = await db.execute(select(models.Operator).filter(models.Operator.external_id == str(u["id"])))
-        op = res.scalar_one_or_none()
-        if op:
-             op.username = u["username"]
-             op.full_name = u["full_name"]
-             op.email = u["email"]
-             op.department = u["department"]
-             op.team = team.name if team else None
-             op.team_id = team.id if team else None
-             op.team_source = "synced" if team else op.team_source
+        
+        op = current_ops.get(ext_id)
+        if not op:
+            # Re-create missing operator
+            op = models.Operator(external_id=ext_id)
+            db.add(op)
+        
+        op.username = u["username"]
+        op.full_name = u["full_name"]
+        op.email = u["email"]
+        op.department = u["department"]
+        op.team = team.name if team else None
+        op.team_id = team.id if team else None
+        op.team_source = u.get("team_source", "synced")
+        op.is_admin = bool(u.get("is_admin", False))
+        op.custom_permissions = u.get("custom_permissions", {})
+        op.registration_status = u.get("registration_status", "Verified")
+
+    # Delete operators NOT in the snapshot (excluding current user to avoid lockout if they aren't in old version)
+    for ext_id, op in current_ops.items():
+        if ext_id not in snapshot_external_ids:
+            if op.username != user_id:
+                await db.delete(op)
              
+    # Create a NEW version record with descriptive label
+    import datetime
+    new_label = f"v{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')} (Cloned from {version.version_label})"
+    
+    await create_user_pool_version(
+        db,
+        created_by=user_id,
+        diff_summary={
+            "revert": True,
+            "source_version_id": version.id,
+            "source_version_label": version.version_label,
+            "added": 0, "removed": 0, "changed": 0 # Placeholder for diff summary
+        },
+        version_label=new_label
+    )
+    
     await db.commit()
-    return {"status": "success"}
+    return {"status": "success", "new_version": new_label}
 
 @router.get("/initialize")
 async def initialize_settings(db: AsyncSession = Depends(get_db)):
