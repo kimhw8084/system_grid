@@ -280,6 +280,13 @@ const buildPermissionHistoryRows = (newer: any, older: any, allViews: string[]) 
   const olderMap = new Map(olderRows.map((operator: any) => [getOperatorSnapshotKey(operator), operator]))
   const keys = Array.from(new Set([...newerMap.keys(), ...olderMap.keys()])).filter(Boolean)
 
+  const isEquivalent = (a: any, b: any) => {
+    if (!a && !b) return true
+    const valA = String(a || '').trim()
+    const valB = String(b || '').trim()
+    return valA === valB
+  }
+
   const rows = keys.map((key) => {
     const before = olderMap.get(key) || null
     const after = newerMap.get(key) || null
@@ -290,6 +297,7 @@ const buildPermissionHistoryRows = (newer: any, older: any, allViews: string[]) 
         changeKind: 'added' as const,
         before,
         after,
+        fieldChanges: {},
         permissionChanges: allViews
           .map((view) => ({ view, old: 0, new: getOperatorPermissionLevel(after, view) }))
           .filter((entry) => entry.new !== entry.old),
@@ -302,6 +310,7 @@ const buildPermissionHistoryRows = (newer: any, older: any, allViews: string[]) 
         changeKind: 'deleted' as const,
         before,
         after,
+        fieldChanges: {},
         permissionChanges: allViews
           .map((view) => ({ view, old: getOperatorPermissionLevel(before, view), new: 0 }))
           .filter((entry) => entry.new !== entry.old),
@@ -316,18 +325,33 @@ const buildPermissionHistoryRows = (newer: any, older: any, allViews: string[]) 
       }))
       .filter((entry) => entry.old !== entry.new)
 
-    const changedFields = [
-      before?.full_name !== after?.full_name ? 'full_name' : null,
-      before?.username !== after?.username ? 'username' : null,
-      before?.department !== after?.department ? 'department' : null,
-      before?.team !== after?.team ? 'team' : null,
-      JSON.stringify(toSortedStringList(before?.teams)) !== JSON.stringify(toSortedStringList(after?.teams)) ? 'groups' : null,
-      Boolean(before?.is_admin) !== Boolean(after?.is_admin) ? 'is_admin' : null,
-      before?.registration_status !== after?.registration_status ? 'registration_status' : null,
-      before?.email !== after?.email ? 'email' : null,
-    ].filter(Boolean)
+    const fieldChanges: Record<string, { old: any, new: any }> = {}
+    const fieldsToTrack = [
+      { key: 'full_name', label: 'Full Name' },
+      { key: 'username', label: 'Username' },
+      { key: 'department', label: 'Department' },
+      { key: 'team', label: 'Primary Team' },
+      { key: 'email', label: 'Email' },
+      { key: 'registration_status', label: 'Registration Status' }
+    ]
 
-    if (!changedFields.length && permissionChanges.length === 0) {
+    fieldsToTrack.forEach(({ key }) => {
+      if (!isEquivalent(before?.[key], after?.[key])) {
+        fieldChanges[key] = { old: before?.[key], new: after?.[key] }
+      }
+    })
+
+    const beforeTeams = JSON.stringify(toSortedStringList(before?.teams))
+    const afterTeams = JSON.stringify(toSortedStringList(after?.teams))
+    if (beforeTeams !== afterTeams) {
+      fieldChanges['groups'] = { old: toSortedStringList(before?.teams), new: toSortedStringList(after?.teams) }
+    }
+
+    if (Boolean(before?.is_admin) !== Boolean(after?.is_admin)) {
+      fieldChanges['is_admin'] = { old: Boolean(before?.is_admin), new: Boolean(after?.is_admin) }
+    }
+
+    if (Object.keys(fieldChanges).length === 0 && permissionChanges.length === 0) {
       return null
     }
 
@@ -336,6 +360,7 @@ const buildPermissionHistoryRows = (newer: any, older: any, allViews: string[]) 
       changeKind: 'changed' as const,
       before,
       after,
+      fieldChanges,
       permissionChanges,
     }
   }).filter(Boolean) as Array<any>
@@ -507,8 +532,6 @@ function PermissionHistoryModal({ versions, allViews, onClose }: { versions: any
                              <tbody className="divide-y divide-white/5">
                                 {historyRows.map((row: any) => {
                                    const current = row.after || row.before
-                                   const beforeGroups = toSortedStringList(row.before?.teams)
-                                   const afterGroups = toSortedStringList(row.after?.teams)
                                    const rowTone =
                                      row.changeKind === 'added'
                                        ? 'bg-emerald-500/[0.04]'
@@ -533,51 +556,57 @@ function PermissionHistoryModal({ versions, allViews, onClose }: { versions: any
                                          <div className="space-y-1.5">
                                            <div className="text-[11px] font-bold text-white">{current?.full_name || current?.username || 'Unknown identity'}</div>
                                            <div className="text-[9px] font-semibold text-slate-500">{current?.username || 'No username'}</div>
-                                             {row.changeKind === 'changed' && row.before?.full_name !== row.after?.full_name && (
-                                               <div className="text-[8px] font-semibold text-amber-300">
-                                                {row.before?.full_name || 'Empty'} {'->'} {row.after?.full_name || 'Empty'}
+                                             {row.fieldChanges?.full_name && (
+                                               <div className="text-[8px] font-semibold text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 mt-1">
+                                                NAME: {row.fieldChanges.full_name.old || 'Empty'} {'->'} {row.fieldChanges.full_name.new || 'Empty'}
+                                               </div>
+                                             )}
+                                             {row.fieldChanges?.email && (
+                                               <div className="text-[8px] font-semibold text-amber-300 mt-1">
+                                                EMAIL: {row.fieldChanges.email.old || 'Empty'} {'->'} {row.fieldChanges.email.new || 'Empty'}
                                                </div>
                                              )}
                                          </div>
                                       </td>
                                       <td className="p-4 align-top">
-                                         {row.changeKind === 'changed' && row.before?.department !== row.after?.department ? (
+                                         {row.fieldChanges?.department ? (
                                            <div className="space-y-1">
-                                             <div className="text-[9px] font-semibold text-slate-500 line-through">{row.before?.department || '—'}</div>
-                                             <div className="text-[10px] font-bold text-amber-300">{row.after?.department || '—'}</div>
+                                             <div className="text-[9px] font-semibold text-slate-500 line-through">{row.fieldChanges.department.old || '—'}</div>
+                                             <div className="text-[10px] font-bold text-amber-300">{row.fieldChanges.department.new || '—'}</div>
                                            </div>
                                          ) : (
                                            <span className="text-[10px] font-bold text-slate-300">{current?.department || '—'}</span>
                                          )}
                                       </td>
                                       <td className="p-4 align-top">
-                                         {row.changeKind === 'changed' && row.before?.team !== row.after?.team ? (
+                                         {row.fieldChanges?.team ? (
                                            <div className="space-y-1">
-                                             <div className="text-[9px] font-semibold text-slate-500 line-through">{row.before?.team || 'Unassigned'}</div>
-                                             <div className="text-[10px] font-bold text-amber-300">{row.after?.team || 'Unassigned'}</div>
+                                             <div className="text-[9px] font-semibold text-slate-500 line-through">{row.fieldChanges.team.old || 'Unassigned'}</div>
+                                             <div className="text-[10px] font-bold text-amber-300">{row.fieldChanges.team.new || 'Unassigned'}</div>
                                            </div>
                                          ) : (
                                            <span className="text-[10px] font-bold text-slate-300">{current?.team || 'Unassigned'}</span>
                                          )}
                                       </td>
                                       <td className="p-4 align-top">
-                                         {row.changeKind === 'changed' && JSON.stringify(beforeGroups) !== JSON.stringify(afterGroups) ? (
+                                         {row.fieldChanges?.groups ? (
                                            <div className="space-y-1">
-                                             <div className="text-[9px] font-semibold text-slate-500 line-through">{beforeGroups.join(', ') || 'No groups'}</div>
-                                             <div className="text-[10px] font-bold text-amber-300">{afterGroups.join(', ') || 'No groups'}</div>
+                                             <div className="text-[9px] font-semibold text-slate-500 line-through">{(row.fieldChanges.groups.old || []).join(', ') || 'No groups'}</div>
+                                             <div className="text-[10px] font-bold text-amber-300">{(row.fieldChanges.groups.new || []).join(', ') || 'No groups'}</div>
                                            </div>
                                          ) : (
-                                           <span className="text-[10px] font-bold text-slate-300">{(row.after ? afterGroups : beforeGroups).join(', ') || 'No groups'}</span>
+                                           <span className="text-[10px] font-bold text-slate-300">{(toSortedStringList(current?.teams)).join(', ') || 'No groups'}</span>
                                          )}
                                       </td>
                                       <td className="p-4 align-top text-center">
-                                         {row.changeKind === 'changed' && Boolean(row.before?.is_admin) !== Boolean(row.after?.is_admin) ? (
+                                         {row.fieldChanges?.is_admin ? (
                                            <div className="flex flex-col items-center gap-1">
-                                             <span className={`inline-flex rounded-lg border px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em] ${getPermissionLevelTone(Boolean(row.before?.is_admin) ? 3 : 0, Boolean(row.before?.is_admin))}`}>
-                                               {Boolean(row.before?.is_admin) ? 'Admin' : 'Standard'}
+                                             <span className={`inline-flex rounded-lg border px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em] ${getPermissionLevelTone(row.fieldChanges.is_admin.old ? 3 : 0, row.fieldChanges.is_admin.old)}`}>
+                                               {row.fieldChanges.is_admin.old ? 'Admin' : 'Standard'}
                                              </span>
-                                             <span className={`inline-flex rounded-lg border px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em] ${getPermissionLevelTone(Boolean(row.after?.is_admin) ? 3 : 0, Boolean(row.after?.is_admin))}`}>
-                                               {Boolean(row.after?.is_admin) ? 'Admin' : 'Standard'}
+                                             <ChevronDown size={8} className="text-slate-700" />
+                                             <span className={`inline-flex rounded-lg border px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em] ${getPermissionLevelTone(row.fieldChanges.is_admin.new ? 3 : 0, row.fieldChanges.is_admin.new)}`}>
+                                               {row.fieldChanges.is_admin.new ? 'Admin' : 'Standard'}
                                              </span>
                                            </div>
                                          ) : (
@@ -605,7 +634,7 @@ function PermissionHistoryModal({ versions, allViews, onClose }: { versions: any
                                              ))}
                                            </div>
                                          ) : (
-                                           <span className="text-[10px] font-semibold text-slate-500">No view-level permission delta</span>
+                                           <span className="text-[9px] font-bold text-slate-600 italic">No permission delta</span>
                                          )}
                                       </td>
                                    </tr>
@@ -1027,6 +1056,7 @@ result_df = get_user_pool()`)
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['operators'] })
+      queryClient.invalidateQueries({ queryKey: ['user-pool-versions'] })
       // If updating current user, refresh their profile to reflect permission changes immediately
       if (variables.username === userProfile?.username) {
         queryClient.invalidateQueries({ queryKey: ['user-profile'] })
@@ -1042,6 +1072,7 @@ result_df = get_user_pool()`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operators'] })
+      queryClient.invalidateQueries({ queryKey: ['user-pool-versions'] })
     }
   })
 
@@ -1062,6 +1093,7 @@ result_df = get_user_pool()`)
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operators'] })
       queryClient.invalidateQueries({ queryKey: ['teams'] })
+      queryClient.invalidateQueries({ queryKey: ['user-pool-versions'] })
       if (selectedTeamId) queryClient.invalidateQueries({ queryKey: ['team-audit', selectedTeamId] })
       setSelectedOperatorIds([])
       showWorkspaceToast("Identity updates applied")
@@ -1080,6 +1112,7 @@ result_df = get_user_pool()`)
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operators'] })
       queryClient.invalidateQueries({ queryKey: ['teams'] })
+      queryClient.invalidateQueries({ queryKey: ['user-pool-versions'] })
       setSelectedOperatorIds([])
       showWorkspaceToast("Selected identities removed")
     }
@@ -1098,6 +1131,7 @@ result_df = get_user_pool()`)
     },
     onSuccess: (team) => {
       queryClient.invalidateQueries({ queryKey: ['teams'] })
+      queryClient.invalidateQueries({ queryKey: ['user-pool-versions'] })
       if (team?.id) {
         queryClient.invalidateQueries({ queryKey: ['team-audit', team.id] })
         setSelectedTeamId(team.id)
@@ -1116,6 +1150,7 @@ result_df = get_user_pool()`)
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams'] })
       queryClient.invalidateQueries({ queryKey: ['operators'] })
+      queryClient.invalidateQueries({ queryKey: ['user-pool-versions'] })
       setSelectedTeamId(null)
       showWorkspaceToast("Team removed")
     }

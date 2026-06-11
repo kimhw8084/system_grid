@@ -690,14 +690,23 @@ async def update_team(team_id: int, data: dict, request: Request, db: AsyncSessi
     if "metadata_json" in data:
         team.metadata_json = data.get("metadata_json") or {}
 
+    # Check for actual changes
+    has_changed = (
+        old_name != team.name or
+        "description" in data or
+        "is_archived" in data or
+        "metadata_json" in data
+    )
+
     user_id = get_current_user_id(request)
-    await record_team_audit(db, team.id, "team_updated", user_id, {"from": old_name, "to": team.name})
-    await create_user_pool_version(db, created_by=user_id, diff_summary={
-        "added": 0,
-        "removed": 0,
-        "changed": 1,
-        "team_updates": [{"team": team.name, "mode": "team_updated", "old": old_name, "new": team.name}],
-    })
+    if has_changed:
+        await record_team_audit(db, team.id, "team_updated", user_id, {"from": old_name, "to": team.name})
+        await create_user_pool_version(db, created_by=user_id, diff_summary={
+            "added": 0,
+            "removed": 0,
+            "changed": 1,
+            "team_updates": [{"team": team.name, "mode": "team_updated", "old": old_name, "new": team.name}],
+        })
     await db.commit()
     await db.refresh(team)
     return team
@@ -822,20 +831,21 @@ async def update_operator(op_id: int, data: dict, request: Request, db: AsyncSes
         team_updates.append({"external_id": op.external_id, "old": old_team_name, "new": op.team, "mode": "primary_team_changed"})
     if old_groups != list(op.teams or []):
         team_updates.append({"external_id": op.external_id, "old": old_groups, "new": list(op.teams or []), "mode": "group_membership_changed"})
-    summary_changed = int(any([
+    summary_changed = any([
         old_full_name != op.full_name,
         old_email != op.email,
         old_department != op.department,
         old_is_admin != op.is_admin,
         old_permissions != (op.custom_permissions or {}),
         bool(team_updates),
-    ]))
-    await create_user_pool_version(db, created_by=user_id, diff_summary={
-        "added": 0,
-        "removed": 0,
-        "changed": summary_changed,
-        "team_updates": team_updates,
-    })
+    ])
+    if summary_changed:
+        await create_user_pool_version(db, created_by=user_id, diff_summary={
+            "added": 0,
+            "removed": 0,
+            "changed": 1,
+            "team_updates": team_updates,
+        })
             
     await db.commit()
     await db.refresh(op)
