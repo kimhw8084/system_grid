@@ -185,20 +185,11 @@ seed_args=(
   --tenant-name "Local Demo"
   --tenant-db "$LOCAL_TENANT_DB_REL"
   --admin-user "$DEFAULT_USER_ID_VALUE"
-  --admin-full-name "$ADMIN_FULL_NAME"
-  --admin-email "$ADMIN_EMAIL"
-  --admin-department "$ADMIN_DEPARTMENT"
 )
-if [[ -n "$RUNTIME_EFFECTIVE_USER_ID" ]]; then
-  seed_args+=(--extra-admin-user "$RUNTIME_EFFECTIVE_USER_ID")
-fi
-(cd "$BACKEND_DIR" && "$BACKEND_DIR/venv/bin/python" seed.py "${seed_args[@]}")
-
 if [[ "$SEED_DOMAIN_DATA" == "true" ]]; then
-  echo "Seeding comprehensive domain data (Master Seed)..."
-  # Use the same DATABASE_URL we exported earlier to target the local tenant
-  (cd "$ROOT_DIR" && ./backend/venv/bin/python seed_master.py)
+  seed_args+=(--seed-data)
 fi
+(cd "$ROOT_DIR" && ./backend/venv/bin/python seed.py "${seed_args[@]}")
 
 echo "Running preflight..."
 "$ROOT_DIR/scripts/preflight.py"
