@@ -650,6 +650,7 @@ export default function MonitoringGrid() {
   const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>(MONITORING_FAVORITES_STORAGE_KEY, initialWorkspaceState?.favoriteIds ?? [])
   const [watchIds, setWatchIds] = usePersistentJsonState<number[]>(MONITORING_WATCH_STORAGE_KEY, initialWorkspaceState?.watchIds ?? [])
   const [quickFilters, setQuickFilters] = useState(persistedUiState?.quickFilters ?? { status: [] as string[], severity: [] as string[], platform: [] as string[], owner: [] as string[] })
+  const [searchTerm, setSearchTerm] = useState(persistedUiState?.searchTerm ?? '')
   const [groupBy, setGroupBy] = useState<string>(persistedUiState?.groupBy ?? 'raw')
   const [bulkDraft, setBulkDraft] = useState({ status: '', severity: '', notification_method: '' })
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'severity' | 'notification' | null>(null)
@@ -1334,8 +1335,6 @@ export default function MonitoringGrid() {
       }
     }
   }, [showBulkMenu, showDisplayMenu, showViewsMenu])
-
-  const [searchTerm, setSearchTerm] = useState(persistedUiState?.searchTerm ?? '')
 
   const { data: allItems, isLoading } = useQuery({
     queryKey: ['monitoring-items'],

@@ -12,6 +12,7 @@ import {
 } from './helpers/sysgrid'
 
 const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
+const monitoringWorkspacePreferenceKey = 'monitoring_workspace_state_v2'
 
 async function getColumnWidth(page: any, colId: string) {
   return page.evaluate((targetColId: string) => {
@@ -54,8 +55,7 @@ test.describe('Monitoring workflows', () => {
     expect(extraKnowledgeResponse.ok()).toBeTruthy()
     const extraKnowledge = await extraKnowledgeResponse.json()
 
-    await page.goto('/monitoring')
-    await expect(page.getByRole('heading', { name: 'Monitoring' })).toBeVisible()
+    await gotoView(page, '/monitoring', 'Monitoring')
     
     // Wait for allItems in the frontend
     await page.waitForFunction(() => {
@@ -80,7 +80,7 @@ test.describe('Monitoring workflows', () => {
     await expect(page.getByText(knowledge.title)).toBeVisible()
 
     await page.getByRole('button', { name: 'Link Procedure', exact: true }).click()
-    await page.getByPlaceholder('Search Knowledge Base...').fill(extraKnowledge.title)
+    await page.getByPlaceholder('Search Knowledge Base by title or category...').fill(extraKnowledge.title)
     await page.getByRole('button', { name: new RegExp(extraKnowledge.title, 'i') }).click()
     await expect(page.getByText(extraKnowledge.title)).toBeVisible()
     await page.getByRole('button', { name: /Close Search/i }).click()
@@ -140,8 +140,8 @@ test.describe('Monitoring workflows', () => {
     await expect(page.getByRole('button', { name: 'Bulk Actions' }).first()).toBeEnabled()
 
     await openToolbarButton(page, 'Compare')
-    const compareModal = page.locator('.glass-panel').filter({ has: page.getByRole('heading', { name: 'Compare monitors' }) })
-    await expect(compareModal.getByRole('heading', { name: 'Compare monitors' })).toBeVisible()
+    const compareModal = page.locator('.glass-panel').filter({ has: page.getByRole('heading', { name: 'Compare Monitors' }) })
+    await expect(compareModal.getByRole('heading', { name: 'Compare Monitors' })).toBeVisible()
     await expect(compareModal.getByRole('heading', { name: monitorA.title })).toBeVisible()
     await expect(compareModal.getByRole('heading', { name: monitorB.title })).toBeVisible()
     await compareModal.locator('button').first().click()
@@ -236,18 +236,16 @@ test.describe('Monitoring workflows', () => {
     const restoredDefaultAssetWidth = await getColumnWidth(page, 'device_name')
     expect(restoredDefaultAssetWidth).toBeLessThan(manualViewWidth - 60)
 
-    await page.evaluate(({ nextViewName, nextWidth }) => {
+    const workspacePreference = await page.evaluate(({ nextViewName, nextWidth }) => {
       // @ts-ignore
       const api = window.__DEBUG_MONITORING_GRID_API__
-      const storageKey = 'sysgrid_monitoring_views_v1'
-      const currentViews = JSON.parse(window.localStorage.getItem(storageKey) || '[]')
       const widthState = (api?.getColumnState?.() || []).map((column: any) => (
         column.colId === 'device_name'
           ? { ...column, width: nextWidth }
           : column
       ))
 
-      currentViews.push({
+      const savedView = {
         id: `pw-width-view-${Date.now()}`,
         name: nextViewName,
         config: {
@@ -262,9 +260,33 @@ test.describe('Monitoring workflows', () => {
           filterModel: {},
           sortModel: [],
         }
-      })
-      window.localStorage.setItem(storageKey, JSON.stringify(currentViews))
+      }
+
+      return {
+        version: 2,
+        savedViews: [savedView],
+        activeViewId: null,
+        favoriteIds: [],
+        watchIds: [],
+        uiState: {
+          activeTab: 'active',
+          fontSize: 11,
+          rowDensity: 8,
+          hiddenColumns: [],
+          quickFilters: { status: [], severity: [], platform: [], owner: [] },
+          groupBy: 'raw',
+          showFilterBar: true,
+          columnLayoutState: widthState,
+          lastVisitedAt: 0,
+          searchTerm: '',
+        }
+      }
     }, { nextViewName: viewName, nextWidth: manualViewWidth })
+
+    const settingsResponse = await request.patch(`${apiBase}/settings/user/settings`, {
+      data: { [monitoringWorkspacePreferenceKey]: workspacePreference }
+    })
+    expect(settingsResponse.ok()).toBeTruthy()
 
     await page.reload()
     await expect(page.getByRole('heading', { name: 'Monitoring' })).toBeVisible()
@@ -294,11 +316,11 @@ test.describe('Monitoring workflows', () => {
       `UNKNOWN-ASSET,Infrastructure,Existing,${invalidTitle},Zabbix,${monitoring.owner_team},Warning,`,
     ].join('\n'))
     await page.getByRole('button', { name: 'Load Into Builder' }).click()
-    await page.getByRole('button', { name: 'Validate Preview' }).click()
+    await page.getByRole('button', { name: 'Initiate Audit' }).click()
 
     await expect(page.getByText('VALID').first()).toBeVisible()
     await expect(page.getByText('INVALID').first()).toBeVisible()
-    await expect(page.getByText('Unknown device_name: UNKNOWN-ASSET').first()).toBeVisible()
+    await expect(page.getByText('Unknown Target Asset: UNKNOWN-ASSET').first()).toBeVisible()
 
     await page.getByRole('button', { name: 'Import 1' }).click()
     await expectToast(page, /Imported 1 row/i)

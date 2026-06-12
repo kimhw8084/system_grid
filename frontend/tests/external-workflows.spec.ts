@@ -56,7 +56,7 @@ test.describe('External workflows', () => {
     await page.locator('.ag-pinned-right-cols-container .ag-row').nth(await findEntityRowIndex()).getByTitle('View Details').click()
     const detailsPanel = page.locator('.glass-panel').filter({ has: page.getByRole('heading', { name: externalEntity.name }) })
     await expect(detailsPanel.getByText('Mission Summary')).toBeVisible()
-    await expect(detailsPanel.getByText('Customer event ingestion')).toBeVisible()
+    await expect(detailsPanel).toContainText('Customer event ingestion')
     await expect(page.getByRole('button', { name: /Dependencies/i })).toBeVisible()
 
     await page.getByRole('button', { name: /Credentials/i }).click()
@@ -89,7 +89,7 @@ test.describe('External workflows', () => {
         body: JSON.stringify({ detail: 'Simulated interconnect failure' })
       })
     })
-    await page.getByRole('button', { name: /\+ Map Link/i }).click()
+    await page.getByRole('button', { name: /Map Link/i }).click()
     const linkModal = page.locator('.glass-panel').filter({ has: page.getByText('ESTABLISH_LINK') })
     await expect(linkModal.locator('select').first().locator('option').nth(1)).toContainText('API')
     await expect(linkModal.locator('select').first().locator('option').nth(1)).not.toContainText('No IP')
@@ -103,7 +103,7 @@ test.describe('External workflows', () => {
 
     await page.unroute('**/api/v1/intelligence/links')
     await page.getByRole('button', { name: 'Connectivity', exact: true }).click()
-    await page.getByRole('button', { name: /\+ Map Link/i }).click()
+    await page.getByRole('button', { name: /Map Link/i }).click()
     const successLinkModal = page.locator('.glass-panel').filter({ has: page.getByText('ESTABLISH_LINK') })
     await successLinkModal.locator('select').first().selectOption(String(externalEntity.id))
     await successLinkModal.locator('select').nth(2).selectOption(String(internalAsset.id))

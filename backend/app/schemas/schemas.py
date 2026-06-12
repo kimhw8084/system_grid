@@ -206,6 +206,21 @@ class MonitoringItemBase(BaseModel):
             raise ValueError("notification_recipients must be a list")
         return [str(entry).strip() for entry in value if str(entry).strip()]
 
+    @field_validator("recovery_docs", mode="before")
+    @classmethod
+    def normalize_recovery_docs(cls, value: Any) -> List[Dict[str, Any]]:
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise ValueError("recovery_docs must be a list")
+        normalized: List[Dict[str, Any]] = []
+        for entry in value:
+            if isinstance(entry, dict):
+                normalized.append(entry)
+            else:
+                normalized.append({"id": int(entry)})
+        return normalized
+
     @model_validator(mode="after")
     def ensure_title_present(self):
         if not self.title:

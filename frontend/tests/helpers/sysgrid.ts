@@ -29,6 +29,20 @@ async function get(request: APIRequestContext, path: string) {
   return response.json()
 }
 
+async function ensureSettingOption(
+  request: APIRequestContext,
+  category: string,
+  value: string,
+  label = value,
+) {
+  const options = await get(request, `/settings/options?category=${encodeURIComponent(category)}`)
+  const existing = Array.isArray(options)
+    ? options.find((option: Record<string, any>) => option.value === value || option.label === label)
+    : null
+  if (existing) return existing
+  return post(request, '/settings/options', { category, value, label })
+}
+
 export async function resetBrowserState(page: Page) {
   const testResetToken = `pw-reset-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   await page.addInitScript(({ injectedApiOrigin, resetToken }) => {
@@ -118,6 +132,16 @@ export async function createService(request: APIRequestContext, payload: Record<
 
 export async function createMonitoring(request: APIRequestContext, payload: Record<string, any>) {
   let nextPayload = { ...payload }
+
+  if (typeof nextPayload.category === 'string' && nextPayload.category.trim()) {
+    await ensureSettingOption(request, 'MonitoringCategory', nextPayload.category.trim())
+  }
+  if (typeof nextPayload.platform === 'string' && nextPayload.platform.trim()) {
+    await ensureSettingOption(request, 'MonitoringPlatform', nextPayload.platform.trim())
+  }
+  if (typeof nextPayload.notification_method === 'string' && nextPayload.notification_method.trim()) {
+    await ensureSettingOption(request, 'NotificationMethod', nextPayload.notification_method.trim())
+  }
 
   const ensureOwnershipSeed = async () => {
     let teams = await get(request, '/settings/teams').catch(() => [])

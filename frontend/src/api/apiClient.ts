@@ -1,8 +1,18 @@
+function normalizeApiBaseUrl(url: string | null | undefined): string {
+  const trimmed = (url || '').trim()
+  if (!trimmed) return ''
+  return trimmed
+    .replace(/\/api\/v1\/?$/i, '')
+    .replace(/\/$/, '')
+}
+
 export function getApiBaseUrl() {
-  return localStorage.getItem('SYSGRID_OVERRIDE_API_URL') || 
-         localStorage.getItem('SYSGRID_CONFIG_VITE_API_BASE_URL') ||
-         import.meta.env.VITE_API_BASE_URL || 
-         '';
+  return normalizeApiBaseUrl(
+    localStorage.getItem('SYSGRID_OVERRIDE_API_URL') ||
+    localStorage.getItem('SYSGRID_CONFIG_VITE_API_BASE_URL') ||
+    import.meta.env.VITE_API_BASE_URL ||
+    ''
+  )
 }
 
 export function getConfig(key: string, defaultValue: string = ''): string {
@@ -13,8 +23,9 @@ export function getConfig(key: string, defaultValue: string = ''): string {
 }
 
 export function setApiOverride(url: string | null) {
-  if (url) {
-    localStorage.setItem('SYSGRID_OVERRIDE_API_URL', url);
+  const normalized = normalizeApiBaseUrl(url)
+  if (normalized) {
+    localStorage.setItem('SYSGRID_OVERRIDE_API_URL', normalized);
   } else {
     localStorage.removeItem('SYSGRID_OVERRIDE_API_URL');
   }

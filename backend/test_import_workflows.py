@@ -115,7 +115,7 @@ async def test_monitoring_import_preview_rows_and_execute(client):
     assert preview["invalid_rows"] == 1
     assert preview["results"][0]["normalized"]["notification_recipients"] == ["ops@example.com", "pager@example.com"]
     assert preview["results"][1]["status"] == "INVALID"
-    assert "Unknown device_name" in preview["results"][1]["errors"][0]
+    assert "Unknown Target Asset" in preview["results"][1]["errors"][0]
 
     execute_res = await client.post(
         "/api/v1/import/execute?table_name=monitoring_items",

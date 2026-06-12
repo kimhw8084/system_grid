@@ -496,12 +496,14 @@ async def to_monitoring_response(db: AsyncSession, item: models.MonitoringItem):
             did = d.get("id") if isinstance(d, dict) else d
             note = d.get("note") if isinstance(d, dict) else None
             added_at = d.get("added_at") if isinstance(d, dict) else None
-            resp.recovery_doc_details.append({
-                "id": did,
-                "title": doc_map.get(did, f"KB-{did}"),
-                "note": note,
-                "added_at": added_at
-            })
+            resp.recovery_doc_details.append(
+                schemas.MonitoringRecoveryDocResponse(
+                    id=did,
+                    title=doc_map.get(did, f"KB-{did}"),
+                    note=note,
+                    added_at=added_at,
+                )
+            )
     return resp
 
 async def save_monitoring_history(item_id: int, version: int, db: AsyncSession, summary: str = None):
@@ -611,12 +613,14 @@ async def get_monitoring_items(device_id: Optional[int] = None, include_deleted:
                 added_at = d.get("added_at") if isinstance(d, dict) else None
                 title = doc_map.get(did, f"KB-{did}")
                 resp.recovery_doc_titles.append(title)
-                resp.recovery_doc_details.append({
-                    "id": did,
-                    "title": title,
-                    "note": note,
-                    "added_at": added_at
-                })
+                resp.recovery_doc_details.append(
+                    schemas.MonitoringRecoveryDocResponse(
+                        id=did,
+                        title=title,
+                        note=note,
+                        added_at=added_at,
+                    )
+                )
         res.append(resp)
         
     return res

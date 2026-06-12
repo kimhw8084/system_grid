@@ -30,12 +30,15 @@ const Bootstrap = () => {
       try {
         console.log("BOOTSTRAP: Fetching system configuration...");
         let response;
+        let usedRelativeBootstrap = false;
         try {
           // Always try relative path first for bootstrap to ensure it bypasses any poisoned baseUrl
           response = await fetch('/api/v1/settings/bootstrap');
           if (!response.ok) {
              console.warn("BOOTSTRAP: Relative fetch returned " + response.status + ", falling back to apiFetch");
              response = await apiFetch('/api/v1/settings/bootstrap');
+          } else {
+             usedRelativeBootstrap = true;
           }
         } catch (initialErr) {
           console.warn("BOOTSTRAP: Initial fetch failed, clearing configuration cache and retrying...", initialErr);
@@ -44,14 +47,34 @@ const Bootstrap = () => {
               localStorage.removeItem(k);
             }
           });
-          // Note: We MUST NOT remove SYSGRID_OVERRIDE_API_URL here as it's often 
-          // set by automation/proxy layers to ensure correct routing.
-          response = await apiFetch('/api/v1/settings/bootstrap');
-          if (!response.ok) throw new Error(`API Error ${response.status}`);
+          try {
+            response = await apiFetch('/api/v1/settings/bootstrap');
+            if (!response.ok) throw new Error(`API Error ${response.status}`);
+          } catch (overrideErr) {
+            const currentOverride = localStorage.getItem('SYSGRID_OVERRIDE_API_URL') || ''
+            const envApiBase = (import.meta.env.VITE_API_BASE_URL || '').trim()
+            if (currentOverride && envApiBase && currentOverride !== envApiBase) {
+              console.warn("BOOTSTRAP: Retrying without stale API override...", currentOverride);
+              setApiOverride(null);
+              response = await apiFetch('/api/v1/settings/bootstrap');
+              if (!response.ok) throw new Error(`API Error ${response.status}`);
+            } else {
+              throw overrideErr;
+            }
+          }
         }
         
         const config = await response.json();
         console.log("BOOTSTRAP: Configuration received", config);
+        if (usedRelativeBootstrap) {
+          const currentOverride = localStorage.getItem('SYSGRID_OVERRIDE_API_URL') || ''
+          const currentOrigin = window.location.origin.replace(/\/$/, '')
+          const normalizedOverride = currentOverride.replace(/\/api\/v1\/?$/i, '').replace(/\/$/, '')
+          if (normalizedOverride && normalizedOverride !== currentOrigin) {
+            console.warn(`BOOTSTRAP: Clearing stale API override ${normalizedOverride} because same-origin API is healthy at ${currentOrigin}`)
+            setApiOverride(null)
+          }
+        }
         let changed = false;
         Object.entries(config).forEach(([key, value]) => {
           const lsKey = `SYSGRID_CONFIG_${key}`;

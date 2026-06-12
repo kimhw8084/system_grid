@@ -14,6 +14,30 @@ LOCKED_MONITORING_OPTION_CATEGORIES = {"MonitoringSeverity", "MonitoringOwnerRol
 RELATIONAL_OPTION_CATEGORIES = {"MonitoringTeam"}
 
 
+def parse_env_file_to_map(path: str | None) -> dict[str, str]:
+    if not path or not os.path.exists(path):
+        return {}
+    env_map: dict[str, str] = {}
+    with open(path, "r", encoding="utf-8") as handle:
+        for raw_line in handle:
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            env_map[key.strip()] = value.strip().strip('"').strip("'")
+    return env_map
+
+
+def normalize_api_origin(url: str | None) -> str:
+    cleaned = normalize_string(url)
+    if not cleaned:
+        return ""
+    cleaned = cleaned.rstrip("/")
+    if cleaned.lower().endswith("/api/v1"):
+        cleaned = cleaned[:-7]
+    return cleaned.rstrip("/")
+
+
 def serialize_user_preference_value(value):
     try:
         return json.dumps(value)
@@ -869,6 +893,65 @@ async def update_ui_settings(data: dict, request: Request, db: AsyncSession = De
             
     await db.commit()
     return {"status": "success"}
+
+
+@router.get("/startup-check")
+async def get_startup_check(request: Request, db: AsyncSession = Depends(get_db)):
+    user_id = get_current_user_id(request)
+    operator = await ensure_admin_operator(db, user_id)
+    if not operator or not operator.is_admin:
+        raise HTTPException(status_code=403, detail="Privileged Access Required: Startup diagnostics restricted to administrators.")
+
+    frontend_env = parse_env_file_to_map(settings.FRONTEND_ENV_FILE_PATH)
+    configured_api_origin = normalize_api_origin(frontend_env.get("VITE_API_BASE_URL"))
+    request_origin = request.headers.get("origin", "")
+    cors_origins = settings.BACKEND_CORS_ORIGINS
+    allows_request_origin = "*" in cors_origins or not request_origin or request_origin in cors_origins
+
+    warnings: list[str] = []
+    if frontend_env.get("VITE_API_BASE_URL", "").strip().lower().endswith("/api/v1"):
+      warnings.append("VITE_API_BASE_URL should be the backend origin only and must not include /api/v1.")
+    if request_origin and not allows_request_origin:
+      warnings.append(f"BACKEND_CORS_ORIGINS does not include the request origin: {request_origin}")
+    if not configured_api_origin:
+      warnings.append("VITE_API_BASE_URL is blank. This is fine only when the frontend can reach the backend on the same origin.")
+    if settings.DEFAULT_USER_ID == "admin_root":
+      warnings.append("DEFAULT_USER_ID is still using the default admin_root fallback.")
+
+    selected_tenant_name = None
+    if getattr(request.state, "tenant", None):
+      selected_tenant_name = getattr(request.state.tenant, "name", None)
+
+    return {
+      "status": "ok" if not warnings else "warning",
+      "api": {
+        "frontend_env_path": settings.FRONTEND_ENV_FILE_PATH,
+        "configured_origin": configured_api_origin,
+        "request_origin": request_origin,
+        "request_base_url": str(request.base_url).rstrip("/"),
+        "api_prefix": settings.API_V1_STR,
+      },
+      "cors": {
+        "configured_origins": cors_origins,
+        "allows_request_origin": allows_request_origin,
+      },
+      "runtime": {
+        "environment": settings.ENVIRONMENT,
+        "project_name": settings.PROJECT_NAME,
+        "default_user_id": settings.DEFAULT_USER_ID,
+        "auto_admin_user_ids": sorted(settings.auto_admin_user_ids),
+      },
+      "storage": {
+        "database_url": settings.DATABASE_URL,
+        "config_database_url": settings.CONFIG_DATABASE_URL,
+        "tenant_storage_root": settings.TENANT_STORAGE_ROOT,
+        "backend_env_file_path": settings.BACKEND_ENV_FILE_PATH,
+      },
+      "tenant": {
+        "selected_tenant": selected_tenant_name,
+      },
+      "warnings": warnings,
+    }
 
 @router.get("/global")
 async def get_global_settings(request: Request, db: AsyncSession = Depends(get_db)):

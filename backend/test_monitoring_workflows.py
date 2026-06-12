@@ -70,9 +70,9 @@ async def test_monitoring_bulk_actions_create_history_entries(client):
     assert history[0]["previous_version"] == 3
     assert history[1]["change_summary"] == "Archived monitor"
     assert history[1]["snapshot"]["status"] == "Deleted"
-    assert history[2]["change_summary"] == "Updated Recovery docs; Severity"
+    assert history[2]["change_summary"] == "Updated Severity"
     assert history[2]["snapshot"]["severity"] == "Critical"
-    assert sorted(history[2]["changed_fields"]) == ["recovery_docs", "severity"]
+    assert history[2]["changed_fields"] == ["severity"]
     assert {entry["change_type"] for entry in history[2]["delta"]} == {"changed"}
 
 

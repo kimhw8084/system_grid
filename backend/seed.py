@@ -151,6 +151,7 @@ def ensure_tenant_admin(*, tenant_db_url: str, admin_user: str, full_name: str |
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Bootstrap one SysGrid tenant explicitly.")
+    parser.add_argument("--interactive", action="store_true", help="Prompt for bootstrap values interactively")
     parser.add_argument("--tenant-name", default="Primary Tenant", help="Tenant display name to register in config.db")
     parser.add_argument(
         "--tenant-db",
@@ -165,8 +166,25 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def prompt_with_default(label: str, default: str) -> str:
+    entered = input(f"{label} [{default}]: ").strip()
+    return entered or default
+
+
+def apply_interactive_defaults(args: argparse.Namespace) -> argparse.Namespace:
+    if not args.interactive:
+        return args
+    args.tenant_name = prompt_with_default("Tenant name", args.tenant_name)
+    args.tenant_db = prompt_with_default("Tenant DB path", args.tenant_db)
+    args.admin_user = prompt_with_default("Admin username", args.admin_user)
+    args.admin_full_name = prompt_with_default("Admin full name", args.admin_full_name)
+    args.admin_email = prompt_with_default("Admin email", args.admin_email)
+    args.admin_department = prompt_with_default("Admin department", args.admin_department)
+    return args
+
+
 def main() -> int:
-    args = parse_args()
+    args = apply_interactive_defaults(parse_args())
     tenant_db_path = normalize_db_path(args.tenant_db)
     tenant_db_path.parent.mkdir(parents=True, exist_ok=True)
     tenant_db_url = sqlite_async_url_from_path(tenant_db_path)
