@@ -16,6 +16,7 @@ import subprocess
 import sys
 import asyncio
 import random
+from collections import defaultdict
 from pathlib import Path
 from datetime import datetime, timedelta
 
@@ -258,7 +259,7 @@ async def seed_domain_data(tenant_db_url: str):
         await session.commit()
 
         # 3. Assets (Golden Dossier + MASS)
-        print(" -> Assets (Mass Populating ~150 devices)")
+        print(" -> Assets (Mass Populating dense rack occupancy)")
         systems = ["ERP", "FINANCE", "K8S-CLUSTER", "MANUFACTURING", "SECURITY", "BI-ANALYTICS"]
         types = ["Physical", "Virtual", "Storage", "Switch"]
         manufacturers = {
@@ -267,12 +268,34 @@ async def seed_domain_data(tenant_db_url: str):
             "Storage": ["NetApp", "PureStorage"],
             "Switch": ["Arista", "Juniper"]
         }
+
+        rack_occupancy: dict[int, set[int]] = defaultdict(set)
+
+        def place_device_location(rack_id: int, size_u: int) -> tuple[int, int] | None:
+            total_u = 42
+            occupied = rack_occupancy[rack_id]
+            for start_unit in range(1, total_u - size_u + 2):
+                proposed = set(range(start_unit, start_unit + size_u))
+                if proposed.isdisjoint(occupied):
+                    occupied.update(proposed)
+                    return start_unit, size_u
+            return None
+
+        dense_racks = all_racks[:12]
+        general_racks = all_racks[12:]
+        device_target_count = 320
         
         all_devices = []
-        for i in range(150):
+        for i in range(device_target_count):
+            dense_band = i < 180
+            dev_type = random.choices(
+                types,
+                weights=[55, 20, 15, 10] if dense_band else [35, 35, 15, 15],
+                k=1,
+            )[0]
             sys_name = random.choice(systems)
-            dev_type = random.choice(types)
             mfr = random.choice(manufacturers[dev_type])
+            size_u = random.choices([1, 2, 3, 4], weights=[40, 35, 15, 10], k=1)[0] if dev_type == "Physical" else 1
             
             dev = models.Device(
                 name=f"{sys_name}-{dev_type[:1]}-{i:03}",
@@ -292,13 +315,31 @@ async def seed_domain_data(tenant_db_url: str):
             await session.flush()
             all_devices.append(dev)
             
-            # Place ~50% of devices in racks
-            if i % 2 == 0:
-                rack = random.choice(all_racks)
-                session.add(models.DeviceLocation(
-                    device_id=dev.id, rack_id=rack.id, 
-                    start_unit=random.randint(1, 35), size_u=random.randint(1, 4)
-                ))
+            if dev_type == "Physical":
+                rack_pool = dense_racks if dense_band else general_racks
+                random.shuffle(rack_pool)
+                mounted = None
+                for rack in rack_pool:
+                    mounted = place_device_location(rack.id, size_u)
+                    if mounted:
+                        session.add(models.DeviceLocation(
+                            device_id=dev.id,
+                            rack_id=rack.id,
+                            start_unit=mounted[0],
+                            size_u=mounted[1],
+                        ))
+                        break
+                if not mounted:
+                    for rack in all_racks:
+                        mounted = place_device_location(rack.id, size_u)
+                        if mounted:
+                            session.add(models.DeviceLocation(
+                                device_id=dev.id,
+                                rack_id=rack.id,
+                                start_unit=mounted[0],
+                                size_u=mounted[1],
+                            ))
+                            break
         
         await session.commit()
         

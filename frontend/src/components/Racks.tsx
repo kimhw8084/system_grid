@@ -545,17 +545,28 @@ const RackUnit = ({ uNumber, loc, isTop, isBottom, highlight, onSelect, onManage
       : 'hover:bg-white/[0.04]'
 
   const borderClass = device
-    ? `${isTop ? 'border-t border-white/10' : ''} ${isBottom ? 'border-b border-black/40' : 'border-b border-white/[0.03]'}`
+    ? [
+        isTop ? 'border-t border-white/10' : '',
+        isBottom ? 'border-b border-black/40' : 'border-b border-white/[0.03]',
+        !isTop ? 'border-t-0' : '',
+      ].join(' ')
     : 'border-b border-white/[0.06]'
 
   const roundedClass = device
-    ? `${isTop ? 'rounded-lg' : ''} ${isBottom ? 'rounded-lg' : ''}`
+    ? `${isTop ? 'rounded-t-lg' : ''} ${isBottom ? 'rounded-b-lg' : ''}`
+    : ''
+
+  const contiguousBlockClass = device
+    ? [
+        isTop ? 'shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]' : '',
+        !isTop && !isBottom ? 'shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]' : '',
+      ].join(' ')
     : ''
 
   return (
     <div
       style={{ height: '22px' }}
-      className={`relative flex items-center transition-all cursor-default ${bgBase} ${borderClass} ${roundedClass} ${device ? 'mx-[1px] bg-gradient-to-b from-white/[0.05] to-transparent' : ''} ${isReservation ? 'border-dashed' : ''}`}
+      className={`relative flex items-center transition-all cursor-default ${bgBase} ${borderClass} ${roundedClass} ${contiguousBlockClass} ${device ? 'mx-[1px] bg-gradient-to-b from-white/[0.05] to-transparent' : ''} ${isReservation ? 'border-dashed' : ''}`}
       data-device-id={device?.id}
       data-u={uNumber}
     >

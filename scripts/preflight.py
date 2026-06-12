@@ -9,7 +9,11 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FRONTEND_ENV_FILES = [REPO_ROOT / "frontend" / ".env.local", REPO_ROOT / "frontend" / ".env"]
-BACKEND_ENV_FILES = [REPO_ROOT / "backend" / ".env"]
+backend_runtime_env = os.environ.get("BACKEND_ENV_FILE_PATH", "").strip()
+BACKEND_ENV_FILES = [
+    Path(backend_runtime_env) if backend_runtime_env else REPO_ROOT / "backend" / ".env.local.runtime",
+    REPO_ROOT / "backend" / ".env",
+]
 
 
 def parse_env_file(path: Path) -> dict[str, str]:
@@ -35,7 +39,7 @@ def normalize_origin(value: str | None) -> str:
 def main() -> int:
     frontend_env: dict[str, str] = {}
     loaded_frontend_files: list[str] = []
-    for candidate in FRONTEND_ENV_FILES:
+    for candidate in reversed(FRONTEND_ENV_FILES):
         values = parse_env_file(candidate)
         if values:
             frontend_env.update(values)
