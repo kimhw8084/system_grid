@@ -736,7 +736,7 @@ async def seed_domain_data(tenant_db_url: str):
             mon = models.MonitoringItem(
                 device_id=dev.id,
                 category=category,
-                status=random.choice(["Existing", "Planned", "Active"]),
+                status=random.choice(["Existing", "Planned", "Cancelled"]),
                 title=f"{dev.name}: {title}",
                 severity=random.choice(["Critical", "Warning", "Informational"]),
                 platform=platform,
