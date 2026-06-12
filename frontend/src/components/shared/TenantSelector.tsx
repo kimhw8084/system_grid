@@ -1,13 +1,20 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
+import { createPortal } from "react-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Database, ChevronDown, Check, Plus, Server, Globe } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { apiFetch } from "../../api/apiClient"
 import toast from "react-hot-toast"
+import {
+  getWorkspaceFloatingPanelClass,
+  useWorkspaceAnchoredLayer,
+  WORKSPACE_LAYER_Z,
+} from "./OperationalWorkspacePrimitives"
 
 export function TenantSelector() {
   const [isOpen, setIsOpen] = useState(false)
   const queryClient = useQueryClient()
+  const { triggerRef, panelRef, panelStyle } = useWorkspaceAnchoredLayer(isOpen, { minWidth: 256 })
 
   const { data: tenants, isLoading } = useQuery({
     queryKey: ['my-tenants'],
@@ -40,9 +47,28 @@ export function TenantSelector() {
 
   const activeTenant = tenants?.find((t: any) => t.is_selected)
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node
+      if (
+        triggerRef.current?.contains(target) ||
+        panelRef.current?.contains(target) ||
+        (target instanceof HTMLElement && target.closest('[data-workspace-panel]'))
+      ) {
+        return
+      }
+      setIsOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [panelRef, triggerRef])
+
   return (
-    <div className="relative z-[60]">
+    <div className="relative">
       <button 
+        ref={(node) => {
+          triggerRef.current = node
+        }}
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-3 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg hover:bg-blue-500/20 transition-all group"
       >
@@ -59,14 +85,21 @@ export function TenantSelector() {
       </button>
 
       <AnimatePresence>
-        {isOpen && (
+        {isOpen && typeof document !== "undefined" && createPortal(
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+            <div
+              className="fixed inset-0"
+              style={{ zIndex: WORKSPACE_LAYER_Z.floatingBackdrop }}
+              onClick={() => setIsOpen(false)}
+            />
             <motion.div 
+              ref={panelRef}
+              style={panelStyle}
+              data-workspace-panel="true"
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="absolute top-full mt-2 right-0 w-64 bg-[#0f172a] border border-blue-500/20 rounded-lg shadow-2xl z-50 overflow-hidden backdrop-blur-xl"
+              className={`${getWorkspaceFloatingPanelClass('menu')} overflow-hidden backdrop-blur-xl`}
             >
               <div className="p-4 border-b border-white/5 bg-white/2">
                  <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em]">Switch Environment</h4>
@@ -120,7 +153,8 @@ export function TenantSelector() {
                  </button>
               </div>
             </motion.div>
-          </>
+          </>,
+          document.body
         )}
       </AnimatePresence>
     </div>

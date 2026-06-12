@@ -364,47 +364,50 @@ async def seed_domain_data(tenant_db_url: str):
                     return start_unit, size_u
             return None
 
-        dense_racks = all_racks[:12]
-        general_racks = all_racks[12:]
-        device_target_count = 420
-        
+        dense_racks = all_racks[:18]
+        general_racks = all_racks[18:]
+        device_target_count = 520
+        dense_fill_target_pct = 88
+
         all_devices = []
-        for i in range(device_target_count):
-            dense_band = i < 180
-            dev_type = random.choices(
-                types,
-                weights=[55, 20, 15, 10] if dense_band else [35, 35, 15, 15],
-                k=1,
-            )[0]
-            sys_name = random.choice(systems)
+        device_sequence = 0
+
+        async def create_seed_device(
+            *,
+            dev_type: str,
+            sys_name: str,
+            size_u: int,
+            rack_pool: list[models.Rack] | None = None,
+            allow_fallback: bool = True,
+        ):
+            nonlocal device_sequence
+            device_sequence += 1
             mfr = random.choice(manufacturers[dev_type])
-            size_u = random.choices([1, 2, 3, 4], weights=[40, 35, 15, 10], k=1)[0] if dev_type == "Physical" else 1
-            
             dev = models.Device(
-                name=f"{sys_name}-{dev_type[:1]}-{i:03}",
+                name=f"{sys_name}-{dev_type[:1]}-{device_sequence:03}",
                 system=sys_name,
                 type=dev_type,
                 status=random.choice(["Active", "Provisioning", "Maintenance"]),
                 environment=random.choice(environments),
                 primary_ip=f"10.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(1,254)}",
                 management_ip=f"172.20.{random.randint(0,32)}.{random.randint(1,254)}",
-                management_url=f"https://console-{i:03}.sysgrid.local",
+                management_url=f"https://console-{device_sequence:03}.sysgrid.local",
                 serial_number=f"SN-{random.getrandbits(32)}",
-                asset_tag=f"AT-{i:05}",
+                asset_tag=f"AT-{device_sequence:05}",
                 manufacturer=mfr,
                 model="Gen-X" if dev_type == "Physical" else "vNode-Pro",
-                os_name="Linux" if i % 2 == 0 else "Windows",
+                os_name="Linux" if device_sequence % 2 == 0 else "Windows",
                 os_version="Standard",
                 owner=random.choice(["haewon.kim", "sre.oncall", "fab.ops", "db.owner"]),
                 business_unit=random.choice(business_units),
                 vendor=mfr,
-                purchase_order=f"PO-{2025 + (i % 2)}-{i:05}",
+                purchase_order=f"PO-{2025 + (device_sequence % 2)}-{device_sequence:05}",
                 cost_center=f"CC-{random.randint(100, 999)}",
                 role=random.choice(device_roles[dev_type]),
                 size_u=size_u,
                 tool_group=random.choice(["Lithography", "Etch", "CMP", "General IT"]),
                 fab_area=random.choice(["North Bay", "South Bay", "Cleanroom A", "Utility"]),
-                recipe_critical=(i % 5 == 0),
+                recipe_critical=(device_sequence % 5 == 0),
                 power_max_w=random.choice([350, 600, 900, 1200]),
                 power_typical_w=random.choice([180, 320, 450, 700]),
                 btu_hr=random.choice([1200, 1800, 2400, 3200]),
@@ -413,12 +416,12 @@ async def seed_domain_data(tenant_db_url: str):
             session.add(dev)
             await session.flush()
             all_devices.append(dev)
-            
+
             if dev_type == "Physical":
-                rack_pool = dense_racks if dense_band else general_racks
-                random.shuffle(rack_pool)
+                candidate_racks = list(rack_pool or all_racks)
+                random.shuffle(candidate_racks)
                 mounted = None
-                for rack in rack_pool:
+                for rack in candidate_racks:
                     mounted = place_device_location(rack.id, size_u)
                     if mounted:
                         session.add(models.DeviceLocation(
@@ -428,7 +431,7 @@ async def seed_domain_data(tenant_db_url: str):
                             size_u=mounted[1],
                         ))
                         break
-                if not mounted:
+                if not mounted and allow_fallback:
                     for rack in all_racks:
                         mounted = place_device_location(rack.id, size_u)
                         if mounted:
@@ -439,6 +442,41 @@ async def seed_domain_data(tenant_db_url: str):
                                 size_u=mounted[1],
                             ))
                             break
+            return dev
+
+        def rack_fill_pct(rack_id: int) -> int:
+            return round((len(rack_occupancy[rack_id]) / 42) * 100)
+
+        # First make the leading racks intentionally look full enough for UI testing.
+        for rack in dense_racks:
+            attempts = 0
+            while rack_fill_pct(rack.id) < dense_fill_target_pct and attempts < 80:
+                attempts += 1
+                size_u = random.choices([1, 2, 3, 4], weights=[22, 42, 24, 12], k=1)[0]
+                await create_seed_device(
+                    dev_type="Physical",
+                    sys_name=random.choice(systems),
+                    size_u=size_u,
+                    rack_pool=[rack],
+                    allow_fallback=False,
+                )
+
+        remaining_device_count = device_target_count - len(all_devices)
+        for idx in range(remaining_device_count):
+            dense_band = idx < 180
+            dev_type = random.choices(
+                types,
+                weights=[60, 18, 14, 8] if dense_band else [38, 35, 15, 12],
+                k=1,
+            )[0]
+            size_u = random.choices([1, 2, 3, 4], weights=[40, 35, 15, 10], k=1)[0] if dev_type == "Physical" else 1
+            await create_seed_device(
+                dev_type=dev_type,
+                sys_name=random.choice(systems),
+                size_u=size_u,
+                rack_pool=dense_racks if dense_band else general_racks,
+                allow_fallback=True,
+            )
 
         await session.commit()
 

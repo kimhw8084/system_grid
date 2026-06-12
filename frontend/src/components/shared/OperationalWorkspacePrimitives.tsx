@@ -5,6 +5,13 @@ import { OPERATIONAL_WORKSPACE_VISUALS } from './OperationalWorkspace'
 
 export type WorkspaceModalSize = 'compact' | 'standard' | 'wide' | 'workspace' | 'fullscreen'
 
+export const WORKSPACE_LAYER_Z = {
+  modal: 3500,
+  floatingPanel: 3600,
+  floatingBackdrop: 3590,
+  fullscreen: 4000,
+} as const
+
 const join = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ')
 
 function clamp(value: number, min: number, max: number) {
@@ -110,7 +117,7 @@ export function useWorkspaceAnchoredLayer(isOpen: boolean, options?: { offset?: 
       top,
       left,
       width,
-      zIndex: 3600,
+      zIndex: WORKSPACE_LAYER_Z.floatingPanel,
       visibility: 'visible',
       pointerEvents: 'auto'
     })
