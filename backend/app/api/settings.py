@@ -4,8 +4,9 @@ from copy import deepcopy
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
-from ..database import get_db
+from ..database import get_db, get_config_db
 from ..models import models
+from ..models.config import Tenant, UserTenantAccess
 from ..core.config import settings
 from .utils import filter_valid_columns, get_current_user_id, normalize_json_list, normalize_json_object
 
@@ -896,12 +897,8 @@ async def update_ui_settings(data: dict, request: Request, db: AsyncSession = De
 
 
 @router.get("/startup-check")
-async def get_startup_check(request: Request, db: AsyncSession = Depends(get_db)):
+async def get_startup_check(request: Request, config_db: AsyncSession = Depends(get_config_db)):
     user_id = get_current_user_id(request)
-    operator = await ensure_admin_operator(db, user_id)
-    if not operator or not operator.is_admin:
-        raise HTTPException(status_code=403, detail="Privileged Access Required: Startup diagnostics restricted to administrators.")
-
     frontend_env = parse_env_file_to_map(settings.FRONTEND_ENV_FILE_PATH)
     configured_api_origin = normalize_api_origin(frontend_env.get("VITE_API_BASE_URL"))
     request_origin = request.headers.get("origin", "")
@@ -918,9 +915,22 @@ async def get_startup_check(request: Request, db: AsyncSession = Depends(get_db)
     if settings.DEFAULT_USER_ID == "admin_root":
       warnings.append("DEFAULT_USER_ID is still using the default admin_root fallback.")
 
+    access_rows = (
+      await config_db.execute(
+        select(UserTenantAccess, Tenant)
+        .join(Tenant, Tenant.id == UserTenantAccess.tenant_id)
+        .where(UserTenantAccess.user_id == user_id)
+      )
+    ).all()
     selected_tenant_name = None
-    if getattr(request.state, "tenant", None):
-      selected_tenant_name = getattr(request.state.tenant, "name", None)
+    selected_tenant_db_url = None
+    for access, tenant in access_rows:
+      if access.is_selected:
+        selected_tenant_name = tenant.name
+        selected_tenant_db_url = tenant.db_url
+        break
+    if not selected_tenant_name:
+      warnings.append(f"No selected tenant access found for current user '{user_id}'.")
 
     return {
       "status": "ok" if not warnings else "warning",
@@ -949,6 +959,15 @@ async def get_startup_check(request: Request, db: AsyncSession = Depends(get_db)
       },
       "tenant": {
         "selected_tenant": selected_tenant_name,
+        "selected_tenant_db_url": selected_tenant_db_url,
+        "accessible_tenants": [
+          {
+            "name": tenant.name,
+            "role": access.role,
+            "is_selected": bool(access.is_selected),
+          }
+          for access, tenant in access_rows
+        ],
       },
       "warnings": warnings,
     }

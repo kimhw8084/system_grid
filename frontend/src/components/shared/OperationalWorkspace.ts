@@ -56,6 +56,7 @@ export const MONITORING_WORKSPACE_STANDARD: WorkspaceDefinition = {
   ],
   requiredBaseline: [
     'Consistent page header and toolbar shell',
+    'Failure, empty, and diagnostic states use shared workspace card surfaces, page header primitives, and native toolbar controls instead of bespoke layouts',
     'Saved views and display controls where the view is table-centric',
     'Add/edit modal with sticky identity fields, focused full-width sections, and inline validation',
     'Hover previews for dense linked data where scan speed matters',
@@ -88,6 +89,7 @@ export const MONITORING_WORKSPACE_STANDARD: WorkspaceDefinition = {
     'History, compare, and archive/restore appear only when the backing entity supports them',
     'Version history APIs should return canonical structured deltas per version so timeline and compare surfaces do not reverse-engineer snapshot diffs on the client',
     'If a route carries a valid entity id query parameter, the view should restore or open the matching detail surface directly and fail cleanly when the record is missing or unauthorized',
+    'Bootstrap and connection-failure surfaces should merge frontend inference with backend-reported startup diagnostics whenever the backend can still answer a diagnostic endpoint',
   ],
   sharedCapabilities: [
     'savedViews',
@@ -116,6 +118,7 @@ export const MONITORING_WORKSPACE_STANDARD: WorkspaceDefinition = {
 
 export const OPERATIONAL_WORKSPACE_MINIMUM_STANDARD = [
   'Shared page header and toolbar shell',
+  'Shared failure, empty, and diagnostic-state surfaces using workspace cards, standard badges, and toolbar actions',
   'Shared header scope switch primitive for top-level dataset modes like Existing/Archived',
   'Shared contextual bulk-action flyout primitives for anchored row-selection actions',
   'Shared table/workspace state model for search, filters, views, selection, and column layout persistence',

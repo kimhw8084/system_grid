@@ -260,6 +260,12 @@ npm run dev -- --host 127.0.0.1 --port 5173
 If the browser still shows `Connection Failure`:
 
 1. click `Clear Overrides & Retry`
+2. read the `Backend Diagnostics` panel on the failure screen
+3. look for:
+   - `Request Origin Allowed: no` -> CORS/frontend-origin mismatch
+   - `Selected Tenant: <none>` -> user/tenant routing problem
+   - `Backend Default User: admin_root` -> default user env is still wrong for the seeded environment
+   - `Backend-configured API Origin` pointing at loopback while the UI origin is a forwarded/company URL
 2. or manually remove:
 
 ```js
@@ -267,7 +273,7 @@ localStorage.removeItem('SYSGRID_OVERRIDE_API_URL')
 localStorage.removeItem('SYSGRID_CONFIG_VITE_API_BASE_URL')
 ```
 
-3. reload the app
+4. reload the app
 
 ## Remote VS Code / Forwarded Port Setup
 
@@ -445,7 +451,7 @@ You simply stop using the disposable local config and tenant files.
 
 ## Startup Diagnostics
 
-Admin-only backend startup diagnostics:
+Backend startup diagnostics endpoint:
 
 ```text
 GET /api/v1/settings/startup-check
@@ -455,9 +461,13 @@ It reports:
 
 - resolved frontend env API origin
 - request origin
-- backend CORS configuration
+- backend CORS configuration and whether the current request origin is allowed
+- effective default user and auto-admin ids
+- selected tenant and accessible tenants for the current request user
 - selected runtime storage/config paths
 - warnings for common startup mistakes
+
+The bootstrap `Connection Failure` screen uses this endpoint automatically when possible and overlays the backend diagnostics on top of the frontend inference. That is the primary debugging surface for startup issues in local, forwarded-port, and company environments.
 
 The frontend does not point to a database directly.  
 It points to the backend API.  

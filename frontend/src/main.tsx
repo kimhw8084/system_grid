@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
 import { apiFetch, setApiOverride, getApiBaseUrl } from './api/apiClient'
+import { AlertTriangle, Database, Globe, ShieldAlert, UserCircle2, Wrench } from 'lucide-react'
+import { WorkspaceSectionCard, WorkspaceSectionBadge, WorkspaceEmptyState } from './components/shared/OperationalWorkspacePrimitives'
+import { PageHeader, PageToolbar, ToolbarButton, ToolbarGroup } from './components/shared/LayoutPrimitives'
 
 console.log("MAIN.TSX: Initializing React Root");
 
@@ -27,11 +30,22 @@ function isLikelyForwardedHost(hostname: string): boolean {
   return !/^(127\.0\.0\.1|localhost)$/i.test(hostname) && hostname.includes('.')
 }
 
+function getBootstrapUserId() {
+  return (
+    localStorage.getItem('SYSGRID_USER_ID') ||
+    localStorage.getItem('SYSGRID_CONFIG_DEFAULT_USER_ID') ||
+    'admin_root'
+  )
+}
+
 const Bootstrap = () => {
+  const BOOTSTRAP_MAX_ATTEMPTS = 4
+  const BOOTSTRAP_RETRY_DELAY_MS = 750
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [failedUrl, setFailedUrl] = useState<string>("");
   const [appKey, setAppKey] = useState(0);
+  const [backendDiagnostics, setBackendDiagnostics] = useState<any>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -114,7 +128,7 @@ const Bootstrap = () => {
     const init = async () => {
       try {
         let lastError: any = null
-        for (let attempt = 1; attempt <= 15; attempt += 1) {
+        for (let attempt = 1; attempt <= BOOTSTRAP_MAX_ATTEMPTS; attempt += 1) {
           try {
             await fetchConfig();
             lastError = null
@@ -122,8 +136,8 @@ const Bootstrap = () => {
           } catch (err: any) {
             lastError = err
             console.warn(`BOOTSTRAP: attempt ${attempt} failed`, err)
-            if (attempt < 15) {
-              await sleep(1000)
+            if (attempt < BOOTSTRAP_MAX_ATTEMPTS) {
+              await sleep(BOOTSTRAP_RETRY_DELAY_MS)
             }
           }
         }
@@ -175,12 +189,73 @@ const Bootstrap = () => {
     };
   }, []); // Only run once on mount
 
+  useEffect(() => {
+    if (!error) return
+    let cancelled = false
+
+    const fetchStartupDiagnostics = async () => {
+      const baseUrl = normalizeUiApiOrigin(getApiBaseUrl() || '')
+      const candidateUrls = [
+        baseUrl ? `${baseUrl}/api/v1/settings/startup-check` : null,
+        '/api/v1/settings/startup-check',
+      ].filter((value, index, collection): value is string => Boolean(value) && collection.indexOf(value) === index)
+
+      let fallbackResult: any = null
+
+      for (const diagnosticsUrl of candidateUrls) {
+        try {
+          const response = await fetch(diagnosticsUrl, {
+            cache: 'no-store',
+            headers: {
+              'X-User-Id': getBootstrapUserId(),
+            },
+          })
+          const text = await response.text()
+          let data: any = null
+          if (text) {
+            try {
+              data = JSON.parse(text)
+            } catch {
+              data = { detail: text }
+            }
+          }
+          const result = {
+            ok: response.ok,
+            status: response.status,
+            data,
+            url: diagnosticsUrl,
+          }
+          if (response.ok) {
+            if (!cancelled) {
+              setBackendDiagnostics(result)
+            }
+            return
+          }
+          fallbackResult = result
+        } catch (diagnosticError: any) {
+          fallbackResult = {
+            ok: false,
+            status: null,
+            data: { detail: diagnosticError?.message || 'Backend startup diagnostics request failed.' },
+            url: diagnosticsUrl,
+          }
+        }
+      }
+
+      if (!cancelled) {
+        setBackendDiagnostics(fallbackResult)
+      }
+    }
+
+    fetchStartupDiagnostics()
+    return () => {
+      cancelled = true
+    }
+  }, [error])
+
   const currentOrigin = window.location.origin
   const configuredApiBase = getApiBaseUrl()
-  const effectiveUserId =
-    localStorage.getItem('SYSGRID_USER_ID') ||
-    localStorage.getItem('SYSGRID_CONFIG_DEFAULT_USER_ID') ||
-    'admin_root'
+  const effectiveUserId = getBootstrapUserId()
 
   const failureDiagnosis = (() => {
     const normalizedFailedUrl = normalizeUiApiOrigin(failedUrl || configuredApiBase || '')
@@ -234,27 +309,83 @@ const Bootstrap = () => {
   })()
 
   if (error) {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center bg-[var(--bg-primary)] text-[var(--accent-primary)] p-8 font-mono">
-        <div className="max-w-3xl w-full border border-[var(--glass-border)] p-8 rounded-lg bg-[var(--sidebar-bg)]/50 backdrop-blur-xl shadow-2xl">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
-            <h1 className="text-xl font-bold uppercase tracking-tighter text-[var(--text-primary)]">Connection Failure</h1>
-          </div>
-          
-          <div className="bg-black/40 p-4 rounded-lg mb-4 border border-white/5">
-            <p className="text-xs opacity-80 leading-relaxed text-red-200 mb-2 font-bold">
-              Failed to complete bootstrap against the backend API. This panel shows the most likely cause based on the current browser origin, configured API base, and returned error.
-            </p>
-            <p className="text-[10px] text-[var(--text-muted)]">
-              Target URL: {failedUrl} <br/>
-              Error: {error}
-            </p>
-          </div>
+    const backendWarnings = Array.isArray(backendDiagnostics?.data?.warnings) ? backendDiagnostics.data.warnings : []
+    const accessibleTenants = Array.isArray(backendDiagnostics?.data?.tenant?.accessible_tenants)
+      ? backendDiagnostics.data.tenant.accessible_tenants
+      : []
 
-          <div className="grid gap-4 md:grid-cols-2 mb-5">
-            <div className="bg-black/30 rounded-lg border border-white/5 p-4">
-              <h2 className="text-[11px] font-black uppercase tracking-widest text-white mb-3">Likely Cause</h2>
+    return (
+      <div className="min-h-screen w-full bg-[var(--bg-primary)] text-[var(--accent-primary)] font-mono">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-8">
+          <WorkspaceSectionCard className="space-y-4 p-6">
+            <PageHeader
+              eyebrow="Bootstrap Failure"
+              title="Connection Failure"
+              subtitle="Startup could not establish a valid backend, user, and tenant contract."
+              meta={
+                <div className="flex flex-wrap items-center gap-2">
+                  <WorkspaceSectionBadge tone="rose">Bootstrap Blocked</WorkspaceSectionBadge>
+                  {backendDiagnostics?.ok ? <WorkspaceSectionBadge tone="emerald">Backend Diagnostics Live</WorkspaceSectionBadge> : null}
+                  {backendWarnings.length ? <WorkspaceSectionBadge tone="amber">{backendWarnings.length} Warning{backendWarnings.length > 1 ? 's' : ''}</WorkspaceSectionBadge> : null}
+                </div>
+              }
+              actions={
+                <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-2 text-rose-400">
+                  <AlertTriangle size={18} />
+                </div>
+              }
+            />
+            <p className="max-w-4xl text-[11px] font-semibold leading-relaxed text-slate-400">
+              SysGrid could not complete startup against the backend. This surface follows the shared workspace contract: it shows inferred frontend causes first, then overlays backend startup-check diagnostics when the backend can still respond.
+            </p>
+            <PageToolbar
+              left={
+                <ToolbarGroup>
+                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[10px] font-semibold text-slate-400">
+                    Active user: <span className="text-slate-200">{effectiveUserId}</span>
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[10px] font-semibold text-slate-400">
+                    Failed target: <span className="text-slate-200">{failureDiagnosis.diagnostics.failedUrl}</span>
+                  </div>
+                </ToolbarGroup>
+              }
+              right={
+                <ToolbarGroup>
+                  <ToolbarButton
+                    variant="primary"
+                    onClick={() => {
+                      setApiOverride(null)
+                      window.location.reload()
+                    }}
+                  >
+                    Clear Overrides & Retry
+                  </ToolbarButton>
+                  <ToolbarButton
+                    onClick={() => {
+                      const current = localStorage.getItem('SYSGRID_OVERRIDE_API_URL') || ''
+                      const newUrl = prompt('Enter Backend API URL manually (leave blank to clear):', current)
+                      if (newUrl !== null) {
+                        setApiOverride(newUrl)
+                        window.location.reload()
+                      }
+                    }}
+                  >
+                    Configure API URL
+                  </ToolbarButton>
+                  <ToolbarButton variant="quiet" onClick={() => setReady(true)}>
+                    Ignore Error & Launch
+                  </ToolbarButton>
+                </ToolbarGroup>
+              }
+            />
+          </WorkspaceSectionCard>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <WorkspaceSectionCard className="space-y-3">
+              <div className="flex items-center gap-2 text-slate-200">
+                <AlertTriangle size={14} className="text-rose-400" />
+                <h2 className="text-[11px] font-black uppercase tracking-widest">Likely Cause</h2>
+              </div>
               <div className="space-y-2">
                 {failureDiagnosis.reasons.map((reason, index) => (
                   <p key={index} className="text-[11px] leading-relaxed text-slate-300">
@@ -262,21 +393,31 @@ const Bootstrap = () => {
                   </p>
                 ))}
               </div>
-            </div>
-            <div className="bg-black/30 rounded-lg border border-white/5 p-4">
-              <h2 className="text-[11px] font-black uppercase tracking-widest text-white mb-3">Diagnostics</h2>
-              <div className="space-y-2 text-[10px] text-slate-400">
-                <p>UI Origin: <span className="text-slate-200">{failureDiagnosis.diagnostics.uiOrigin}</span></p>
-                <p>Configured API Base: <span className="text-slate-200">{failureDiagnosis.diagnostics.configuredApiBase}</span></p>
-                <p>Failed URL: <span className="text-slate-200">{failureDiagnosis.diagnostics.failedUrl}</span></p>
-                <p>Stored Override: <span className="text-slate-200">{failureDiagnosis.diagnostics.storedOverride}</span></p>
-                <p>Effective User: <span className="text-slate-200">{failureDiagnosis.diagnostics.effectiveUserId}</span></p>
+            </WorkspaceSectionCard>
+
+            <WorkspaceSectionCard className="space-y-3">
+              <div className="flex items-center gap-2 text-slate-200">
+                <Database size={14} className="text-blue-400" />
+                <h2 className="text-[11px] font-black uppercase tracking-widest">Frontend Diagnostics</h2>
               </div>
-            </div>
+              <div className="grid gap-2 text-[10px] text-slate-400">
+                <p><span className="text-slate-500">UI Origin</span><br /><span className="text-slate-200">{failureDiagnosis.diagnostics.uiOrigin}</span></p>
+                <p><span className="text-slate-500">Configured API Base</span><br /><span className="text-slate-200">{failureDiagnosis.diagnostics.configuredApiBase}</span></p>
+                <p><span className="text-slate-500">Failed URL</span><br /><span className="text-slate-200">{failureDiagnosis.diagnostics.failedUrl}</span></p>
+                <p><span className="text-slate-500">Stored Override</span><br /><span className="text-slate-200">{failureDiagnosis.diagnostics.storedOverride}</span></p>
+                <p><span className="text-slate-500">Effective User</span><br /><span className="text-slate-200">{failureDiagnosis.diagnostics.effectiveUserId}</span></p>
+                {failureDiagnosis.statusMatch ? (
+                  <p><span className="text-slate-500">Observed HTTP Status</span><br /><span className="text-slate-200">{failureDiagnosis.statusMatch[0]}</span></p>
+                ) : null}
+              </div>
+            </WorkspaceSectionCard>
           </div>
 
-          <div className="bg-black/30 rounded-lg border border-white/5 p-4 mb-5">
-            <h2 className="text-[11px] font-black uppercase tracking-widest text-white mb-3">Recommended Actions</h2>
+          <WorkspaceSectionCard className="space-y-4">
+            <div className="flex items-center gap-2 text-slate-200">
+              <Wrench size={14} className="text-amber-400" />
+              <h2 className="text-[11px] font-black uppercase tracking-widest">Recommended Actions</h2>
+            </div>
             <div className="space-y-2">
               {failureDiagnosis.actions.map((action, index) => (
                 <p key={index} className="text-[11px] leading-relaxed text-slate-300">
@@ -284,46 +425,96 @@ const Bootstrap = () => {
                 </p>
               ))}
             </div>
-            <div className="mt-4 rounded-lg border border-white/5 bg-black/30 p-3 text-[10px] text-slate-400">
-              <p className="font-bold text-slate-200 mb-2">Useful checks</p>
-              <p>1. Open <span className="text-slate-200">{'<backend-origin>/api/v1/health'}</span> directly in the browser.</p>
-              <p>2. If using a forwarded/company URL, do not use `127.0.0.1:8000` as the frontend API base.</p>
-              <p>3. If this is a seeded local environment, the expected disposable admin user is `haewon.kim`.</p>
+          </WorkspaceSectionCard>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <WorkspaceSectionCard className="space-y-3">
+              <div className="flex items-center gap-2 text-slate-200">
+                <Globe size={14} className="text-blue-400" />
+                <h2 className="text-[11px] font-black uppercase tracking-widest">Useful Checks</h2>
+              </div>
+              <div className="space-y-2 text-[10px] text-slate-400">
+                <p>1. Open <span className="text-slate-200">{'<backend-origin>/api/v1/health'}</span> directly in the browser.</p>
+                <p>2. If using a forwarded or company URL, do not use <span className="text-slate-200">http://127.0.0.1:8000</span> as the frontend API base.</p>
+                <p>3. For the disposable local seed flow, the expected bootstrap user is <span className="text-slate-200">haewon.kim</span>.</p>
+              </div>
+            </WorkspaceSectionCard>
+
+            <WorkspaceSectionCard className="space-y-3">
+              <div className="flex items-center gap-2 text-slate-200">
+                <ShieldAlert size={14} className="text-emerald-400" />
+                <h2 className="text-[11px] font-black uppercase tracking-widest">Backend Diagnostics</h2>
+              </div>
+              {backendDiagnostics ? (
+                <div className="space-y-3 text-[10px] text-slate-400">
+                  <p>
+                    <span className="text-slate-500">Endpoint</span><br />
+                    <span className="text-slate-200">{backendDiagnostics.url}</span>
+                  </p>
+                  <p>
+                    <span className="text-slate-500">Status</span><br />
+                    <span className="text-slate-200">{backendDiagnostics.status ?? 'unreachable'}</span>
+                  </p>
+                  {backendDiagnostics.data?.api && (
+                    <>
+                      <p><span className="text-slate-500">Backend-configured API Origin</span><br /><span className="text-slate-200">{backendDiagnostics.data.api.configured_origin || '<blank>'}</span></p>
+                      <p><span className="text-slate-500">Request Origin</span><br /><span className="text-slate-200">{backendDiagnostics.data.api.request_origin || '<none>'}</span></p>
+                    </>
+                  )}
+                  {backendDiagnostics.data?.cors && (
+                    <p><span className="text-slate-500">Request Origin Allowed</span><br /><span className="text-slate-200">{backendDiagnostics.data.cors.allows_request_origin ? 'yes' : 'no'}</span></p>
+                  )}
+                  {backendDiagnostics.data?.runtime && (
+                    <>
+                      <p><span className="text-slate-500">Backend Default User</span><br /><span className="text-slate-200">{backendDiagnostics.data.runtime.default_user_id || '<blank>'}</span></p>
+                      <p><span className="text-slate-500">Auto Admin IDs</span><br /><span className="text-slate-200">{Array.isArray(backendDiagnostics.data.runtime.auto_admin_user_ids) ? backendDiagnostics.data.runtime.auto_admin_user_ids.join(', ') || '<none>' : '<unavailable>'}</span></p>
+                    </>
+                  )}
+                  {backendDiagnostics.data?.tenant && (
+                    <>
+                      <p><span className="text-slate-500">Selected Tenant</span><br /><span className="text-slate-200">{backendDiagnostics.data.tenant.selected_tenant || '<none>'}</span></p>
+                      <p><span className="text-slate-500">Selected Tenant DB</span><br /><span className="text-slate-200">{backendDiagnostics.data.tenant.selected_tenant_db_url || '<none>'}</span></p>
+                      <p><span className="text-slate-500">Accessible Tenants</span><br /><span className="text-slate-200">{accessibleTenants.map((entry: any) => `${entry.name}${entry.is_selected ? ' (selected)' : ''}`).join(', ') || '<none>'}</span></p>
+                    </>
+                  )}
+                  {backendDiagnostics.data?.storage && (
+                    <>
+                      <p><span className="text-slate-500">Config DB</span><br /><span className="text-slate-200">{backendDiagnostics.data.storage.config_database_url || '<blank>'}</span></p>
+                      <p><span className="text-slate-500">Tenant Storage Root</span><br /><span className="text-slate-200">{backendDiagnostics.data.storage.tenant_storage_root || '<blank>'}</span></p>
+                    </>
+                  )}
+                  {Array.isArray(backendDiagnostics.data?.warnings) && backendDiagnostics.data.warnings.length > 0 ? (
+                    <div className="space-y-1">
+                      <p className="text-slate-300">Warnings</p>
+                      {backendDiagnostics.data.warnings.map((warning: string, index: number) => (
+                        <p key={index} className="text-[10px] leading-relaxed text-amber-300">{index + 1}. {warning}</p>
+                      ))}
+                    </div>
+                  ) : null}
+                  {!backendDiagnostics.ok && backendDiagnostics.data?.detail ? (
+                    <p className="text-[10px] leading-relaxed text-rose-300">{backendDiagnostics.data.detail}</p>
+                  ) : null}
+                </div>
+              ) : (
+                <WorkspaceEmptyState
+                  compact
+                  icon={<Database size={18} />}
+                  title="Loading Backend Diagnostics"
+                  description="The app is attempting to fetch startup-check data from the backend."
+                />
+              )}
+            </WorkspaceSectionCard>
+          </div>
+
+          <WorkspaceSectionCard className="space-y-3">
+            <div className="flex items-center gap-2 text-slate-200">
+              <UserCircle2 size={14} className="text-blue-400" />
+              <h2 className="text-[11px] font-black uppercase tracking-widest">Recovery Intent</h2>
             </div>
-          </div>
-
-          <div className="flex flex-col gap-3">
-             <button 
-               onClick={() => {
-                 setApiOverride(null); 
-                 window.location.reload();
-               }}
-               className="w-full px-4 py-3 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-500 transition-all active:scale-95"
-             >
-               Clear Overrides & Retry (Self-Heal)
-             </button>
-
-             <button 
-               onClick={() => setReady(true)}
-               className="w-full px-4 py-3 bg-[var(--accent-primary)] text-white text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all active:scale-95"
-             >
-               Ignore Error & Launch App Anyway
-             </button>
-
-             <button 
-               onClick={() => {
-                 const current = localStorage.getItem('SYSGRID_OVERRIDE_API_URL') || '';
-                 const newUrl = prompt("Enter Backend API URL manually (leave blank to clear):", current);
-                 if (newUrl !== null) {
-                   setApiOverride(newUrl);
-                   window.location.reload();
-                 }
-               }}
-               className="w-full px-4 py-2 border border-[var(--glass-border)] text-[var(--text-muted)] text-[10px] font-black uppercase tracking-widest hover:text-[var(--text-primary)] hover:border-[var(--text-muted)] transition-all"
-             >
-               Manually Configure API URL
-             </button>
-          </div>
+            <p className="text-[11px] leading-relaxed text-slate-300">
+              `Clear Overrides & Retry` is the standard first action because most startup failures come from stale browser overrides, a wrong forwarded backend origin, or a mismatched seeded user. `Ignore Error & Launch` is a last-resort operator bypass for debugging only.
+            </p>
+          </WorkspaceSectionCard>
         </div>
       </div>
     );
