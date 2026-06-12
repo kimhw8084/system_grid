@@ -61,7 +61,13 @@ class Settings(BaseSettings):
         if not self.BACKEND_ENV_FILE_PATH:
             object.__setattr__(self, "BACKEND_ENV_FILE_PATH", os.path.join(base_dir, ".env"))
         if not self.FRONTEND_ENV_FILE_PATH:
-            object.__setattr__(self, "FRONTEND_ENV_FILE_PATH", os.path.join(frontend_dir, ".env"))
+            frontend_env_local = os.path.join(frontend_dir, ".env.local")
+            frontend_env_default = os.path.join(frontend_dir, ".env")
+            object.__setattr__(
+                self,
+                "FRONTEND_ENV_FILE_PATH",
+                frontend_env_local if os.path.exists(frontend_env_local) else frontend_env_default,
+            )
         if not self.PUBLIC_READONLY_TENANT_NAME:
             object.__setattr__(self, "PUBLIC_READONLY_TENANT_NAME", self.DEFAULT_TENANT_NAME)
 
