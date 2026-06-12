@@ -48,6 +48,14 @@ function notifyLatency(latency: number) {
   latencyListeners.forEach(listener => listener(latency));
 }
 
+function getCurrentUserId(): string {
+  return (
+    localStorage.getItem('SYSGRID_USER_ID') ||
+    localStorage.getItem('SYSGRID_CONFIG_DEFAULT_USER_ID') ||
+    'admin_root'
+  )
+}
+
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const baseUrl = getApiBaseUrl();
   
@@ -71,7 +79,7 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   // Add User identity for multi-tenant routing
   // In production, this would come from a secure token, 
   // but following 'simple LDAP/ENV' directive:
-  headers['X-User-Id'] = localStorage.getItem('SYSGRID_USER_ID') || 'admin_root';
+  headers['X-User-Id'] = getCurrentUserId();
 
   if (!(options.body instanceof FormData) && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
