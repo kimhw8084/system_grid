@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import sqlite3
 
 import pytest
 
@@ -37,6 +38,34 @@ async def test_create_tenant_grants_selected_admin_access_and_returns_serializab
     assert tenants[0]["name"] == "Factory Test Tenant"
     assert tenants[0]["role"] == "ADMIN"
     assert tenants[0]["is_selected"] is True
+
+
+@pytest.mark.anyio
+async def test_create_tenant_accepts_custom_parent_folder_and_db_name(client, monkeypatch, tmp_path):
+    storage_root = tmp_path / "tenant-root"
+    storage_root.mkdir(parents=True, exist_ok=True)
+    custom_parent = storage_root / "custom-parent"
+
+    monkeypatch.setenv("DEFAULT_USER_ID", "haewon.kim")
+    monkeypatch.setenv("USER_ID_ENV_VAR", "AccessKey")
+    monkeypatch.setenv("AccessKey", "haewon.kim")
+
+    settings_res = await client.post("/api/v1/tenants/admin/settings", json={
+        "key": "tenant_storage_root",
+        "value": str(storage_root),
+        "description": "custom storage root",
+    })
+    assert settings_res.status_code == 200, settings_res.text
+
+    create_res = await client.post("/api/v1/tenants/admin/create", json={
+        "name": "Custom Folder Tenant",
+        "db_name": "fab_cluster_primary",
+        "parent_folder": str(custom_parent),
+    })
+    assert create_res.status_code == 200, create_res.text
+    payload = create_res.json()
+    assert payload["db_url"].endswith("/custom-parent/fab_cluster_primary.db")
+    assert custom_parent.exists() is True
 
 
 @pytest.mark.anyio
@@ -109,3 +138,42 @@ async def test_select_tenant_switches_selection_without_validation_errors(client
     assert tenants[1]["is_selected"] is False
     assert {tenant["name"] for tenant in tenants} == {"Tenant One", "Tenant Two"}
 
+
+@pytest.mark.anyio
+async def test_create_tenant_provisions_far_and_rca_runtime_schema(client, monkeypatch, tmp_path):
+    storage_root = tmp_path / "runtime-schema-storage"
+    storage_root.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setenv("DEFAULT_USER_ID", "haewon.kim")
+    monkeypatch.setenv("USER_ID_ENV_VAR", "AccessKey")
+    monkeypatch.setenv("AccessKey", "haewon.kim")
+
+    settings_res = await client.post("/api/v1/tenants/admin/settings", json={
+        "key": "tenant_storage_root",
+        "value": str(storage_root),
+        "description": "runtime schema root",
+    })
+    assert settings_res.status_code == 200, settings_res.text
+
+    create_res = await client.post("/api/v1/tenants/admin/create", json={"name": "Runtime Ready Tenant"})
+    assert create_res.status_code == 200, create_res.text
+    payload = create_res.json()
+    db_path = payload["db_url"].replace("sqlite+aiosqlite:///", "/")
+
+    conn = sqlite3.connect(db_path)
+    try:
+        far_columns = {row[1] for row in conn.execute("PRAGMA table_info(far_failure_modes)").fetchall()}
+        far_resolution_columns = {row[1] for row in conn.execute("PRAGMA table_info(far_resolutions)").fetchall()}
+        rca_columns = {row[1] for row in conn.execute("PRAGMA table_info(rca_records)").fetchall()}
+        table_names = {
+            row[0]
+            for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        }
+    finally:
+        conn.close()
+
+    assert "version" in far_columns
+    assert "guidance_notes" in far_resolution_columns
+    assert "version" in rca_columns
+    assert "far_history" in table_names
+    assert "rca_history" in table_names

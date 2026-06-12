@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from sqlalchemy import select, update, insert, func, text
+from sqlalchemy import select, update, insert, func, text, create_engine
 from typing import List, Optional
 import os
 import sys
@@ -46,6 +46,27 @@ def resolve_db_target(db_path: str | None = None, db_url: str | None = None) -> 
             normalized_path = os.path.abspath(os.path.join(settings.TENANT_STORAGE_ROOT, normalized_path))
         return f"sqlite+aiosqlite:///{normalized_path}", "Database Path"
     raise HTTPException(status_code=400, detail="Either db_path or db_url must be provided")
+
+
+def sanitize_db_filename(raw_name: str) -> str:
+    cleaned = (raw_name or "").strip()
+    if not cleaned:
+        raise HTTPException(status_code=400, detail="Database file name cannot be empty")
+    stem, ext = os.path.splitext(cleaned)
+    base_name = stem if ext.lower() == ".db" else cleaned
+    safe_base = "".join(ch for ch in base_name if ch.isalnum() or ch in {"_", "-"}).strip("._-").lower()
+    if not safe_base:
+        raise HTTPException(status_code=400, detail="Database file name contains no valid characters")
+    return f"{safe_base}.db"
+
+
+def resolve_parent_folder(storage_root: str, parent_folder: str | None) -> str:
+    base_root = normalize_fs_path(storage_root)
+    if not parent_folder or not parent_folder.strip():
+        return base_root
+    requested = parent_folder.strip()
+    resolved = normalize_fs_path(requested if os.path.isabs(requested) else os.path.join(base_root, requested))
+    return resolved
 
 async def tenant_online_status(db_url: str) -> bool:
     if is_sqlite_url(db_url):
@@ -336,6 +357,68 @@ async def run_alembic_upgrade(db_url: str):
         return False, error_msg
     return True, stdout.decode()
 
+
+def ensure_tenant_runtime_schema(db_url: str) -> None:
+    """Repair and verify tenant schema pieces that the live app requires immediately."""
+    engine = create_engine(db_url.replace("sqlite+aiosqlite", "sqlite"), future=True)
+    compatibility_columns = {
+        "far_failure_modes": {
+            "version": "INTEGER DEFAULT 1",
+        },
+        "far_resolutions": {
+            "guidance_notes": "TEXT",
+        },
+        "rca_records": {
+            "version": "INTEGER DEFAULT 1",
+        },
+    }
+    required_tables = {
+        "far_history": """
+            CREATE TABLE IF NOT EXISTS far_history (
+                far_mode_id INTEGER,
+                version INTEGER,
+                snapshot JSON,
+                change_summary TEXT,
+                id INTEGER NOT NULL PRIMARY KEY,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                created_by_user_id VARCHAR,
+                UNIQUE (far_mode_id, version),
+                FOREIGN KEY(far_mode_id) REFERENCES far_failure_modes (id) ON DELETE CASCADE
+            )
+        """,
+        "rca_history": """
+            CREATE TABLE IF NOT EXISTS rca_history (
+                rca_id INTEGER,
+                version INTEGER,
+                snapshot JSON,
+                change_summary TEXT,
+                id INTEGER NOT NULL PRIMARY KEY,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                created_by_user_id VARCHAR,
+                UNIQUE (rca_id, version),
+                FOREIGN KEY(rca_id) REFERENCES rca_records (id) ON DELETE CASCADE
+            )
+        """,
+    }
+    with engine.begin() as conn:
+        for table_name, ddl in required_tables.items():
+            conn.execute(text(ddl))
+            conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{table_name}_id ON {table_name} (id)"))
+
+        for table_name, columns in compatibility_columns.items():
+            existing = {
+                row[1]
+                for row in conn.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
+            }
+            for column_name, column_ddl in columns.items():
+                if column_name not in existing:
+                    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_ddl}"))
+
+        conn.execute(text("UPDATE far_failure_modes SET version = 1 WHERE version IS NULL"))
+        conn.execute(text("UPDATE rca_records SET version = 1 WHERE version IS NULL"))
+
 @router.post("/admin/create", response_model=TenantResponse)
 async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_config_db), request: Request = None):
     # 1. Get storage root
@@ -343,12 +426,15 @@ async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_
     storage_root_setting = res.scalar_one_or_none()
     storage_root = storage_root_setting.value if storage_root_setting else settings.TENANT_STORAGE_ROOT
     
+    storage_root = normalize_fs_path(storage_root)
+    parent_folder = resolve_parent_folder(storage_root, tenant_in.parent_folder)
+
     # Ensure root exists
-    if not os.path.exists(storage_root):
+    if not os.path.exists(parent_folder):
         try:
-            os.makedirs(storage_root, exist_ok=True)
+            os.makedirs(parent_folder, exist_ok=True)
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to create storage root: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to create tenant parent folder: {str(e)}")
     
     # Case-insensitive check and filename normalization
     import re
@@ -361,8 +447,9 @@ async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_
     if not safe_name:
         raise HTTPException(status_code=400, detail="Tenant name contains no valid characters for database identification")
         
-    db_filename = f"{safe_name}.db"
-    db_path = os.path.join(storage_root, db_filename)
+    requested_db_name = tenant_in.db_name or safe_name
+    db_filename = sanitize_db_filename(requested_db_name)
+    db_path = os.path.join(parent_folder, db_filename)
     db_url = f"sqlite+aiosqlite:///{db_path}"
 
     # 2. Check if already exists (Case Insensitive)
@@ -377,6 +464,7 @@ async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_
     success, error = await run_alembic_upgrade(db_url)
     if not success:
         raise HTTPException(status_code=500, detail=f"Failed to initialize database: {error}")
+    ensure_tenant_runtime_schema(db_url)
 
     # 4. Register in config.db
     new_tenant = Tenant(name=tenant_name_clean, db_url=db_url)
@@ -461,6 +549,10 @@ async def attach_tenant(tenant_in: TenantAttach, db: AsyncSession = Depends(get_
     """
     Links an existing database file on disk to the registry.
     """
+    tenant_name_clean = (tenant_in.name or "").strip()
+    if not tenant_name_clean:
+        raise HTTPException(status_code=400, detail="Tenant name cannot be empty")
+
     db_url, _ = resolve_db_target(tenant_in.db_path, tenant_in.db_url)
     if is_sqlite_url(db_url):
         db_path = sqlite_path_from_url(db_url)
@@ -468,7 +560,7 @@ async def attach_tenant(tenant_in: TenantAttach, db: AsyncSession = Depends(get_
             raise HTTPException(status_code=400, detail=f"Database file not found: {db_path}")
     
     # 1. Check if already exists in registry
-    res = await db.execute(select(Tenant).filter(func.lower(Tenant.name) == tenant_in.name.lower()))
+    res = await db.execute(select(Tenant).filter(func.lower(Tenant.name) == tenant_name_clean.lower()))
     if res.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Tenant name already exists in registry")
         
@@ -480,9 +572,10 @@ async def attach_tenant(tenant_in: TenantAttach, db: AsyncSession = Depends(get_
     success, error = await run_alembic_upgrade(db_url)
     if not success:
         raise HTTPException(status_code=500, detail=f"Failed to synchronize schema: {error}")
+    ensure_tenant_runtime_schema(db_url)
 
     # 3. Register
-    new_tenant = Tenant(name=tenant_in.name, db_url=db_url)
+    new_tenant = Tenant(name=tenant_name_clean, db_url=db_url)
     db.add(new_tenant)
     await db.flush()
 
@@ -513,7 +606,8 @@ async def get_my_tenants(db: AsyncSession = Depends(get_config_db), request: Req
             "name": r[1], 
             "role": r[2], 
             "is_selected": r[3],
-            "is_online": is_online
+            "is_online": is_online,
+            "db_url": r[4],
         })
     return my_tenants
 

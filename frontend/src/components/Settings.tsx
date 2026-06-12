@@ -711,6 +711,10 @@ export default function SettingsPage() {
   const [emergencyUrl, setEmergencyUrl] = useState(getApiBaseUrl())
   const [showEmergencyPanel, setShowEmergencyPanel] = useState(false)
   const [newTenantName, setNewTenantName] = useState("")
+  const [newTenantDbName, setNewTenantDbName] = useState("")
+  const [newTenantParentFolder, setNewTenantParentFolder] = useState("")
+  const [hasCustomTenantDbName, setHasCustomTenantDbName] = useState(false)
+  const [tenantFolderCheck, setTenantFolderCheck] = useState<any>(null)
   const [attachName, setAttachName] = useState("")
   const [attachPath, setAttachPath] = useState("")
   const [attachMode, setAttachMode] = useState<'path' | 'url'>('path')
@@ -734,6 +738,24 @@ export default function SettingsPage() {
   const [savedTeamFilters, setSavedTeamFilters] = useState<Array<{ id: string, label: string, teams: string[] }>>([])
   const [envSearch, setEnvSearch] = useState("")
   const [envImpactFilter, setEnvImpactFilter] = useState<'ALL' | 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'>('ALL')
+
+  const toTenantDbFilename = React.useCallback((value: string) => {
+    const normalized = (value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "_")
+      .replace(/[^a-z0-9_-]/g, "")
+      .replace(/^[_-]+|[_-]+$/g, "")
+    return normalized ? `${normalized}.db` : ""
+  }, [])
+
+  const getTenantDbDisplayName = React.useCallback((dbUrl?: string | null) => {
+    if (!dbUrl) return "Unresolved target"
+    const normalized = dbUrl.replace(/^sqlite\+aiosqlite:\/\//, "")
+    const trimmed = normalized.endsWith("/") ? normalized.slice(0, -1) : normalized
+    const parts = trimmed.split("/").filter(Boolean)
+    return parts[parts.length - 1] || dbUrl
+  }, [])
   const permissionSelectionAnchorRef = React.useRef<number | null>(null)
   const permissionCommitBufferRef = React.useRef<Record<number, { timeoutId: ReturnType<typeof setTimeout>, payload: any }>>({})
   const {
@@ -780,6 +802,28 @@ export default function SettingsPage() {
       setAttachPath("");
       setPreflightResult(null);
       showWorkspaceToast("Existing database attached to registry")
+    }
+  })
+
+  const tenantFolderCheckMutation = useMutation({
+    mutationFn: async (path: string) => {
+      const res = await apiFetch(`/api/v1/tenants/admin/storage-explorer?path=${encodeURIComponent(path)}`)
+      const payload = await res.json()
+      if (!res.ok) throw new Error(payload?.detail || "Folder access test failed")
+      return payload
+    },
+    onSuccess: (payload) => {
+      setTenantFolderCheck({
+        ok: Boolean(payload?.current_access?.readable && payload?.current_access?.writable),
+        path: payload?.current_path,
+        readable: payload?.current_access?.readable,
+        writable: payload?.current_access?.writable,
+      })
+      showWorkspaceToast("Folder access verified")
+    },
+    onError: (error: any) => {
+      setTenantFolderCheck({ ok: false, message: error.message })
+      showWorkspaceToast(error.message || "Folder access test failed", { type: 'error' })
     }
   })
   
@@ -893,6 +937,19 @@ export default function SettingsPage() {
     }
   }, [envSettings])
 
+  useEffect(() => {
+    const storageRoot = tenantAdminSettings?.find((item: any) => item.key === 'tenant_storage_root')?.value || ""
+    if (storageRoot && !newTenantParentFolder) {
+      setNewTenantParentFolder(storageRoot)
+    }
+  }, [tenantAdminSettings, newTenantParentFolder])
+
+  useEffect(() => {
+    if (!hasCustomTenantDbName) {
+      setNewTenantDbName(toTenantDbFilename(newTenantName))
+    }
+  }, [hasCustomTenantDbName, newTenantName, toTenantDbFilename])
+
   const envMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await apiFetch("/api/v1/settings/global", {
@@ -1005,21 +1062,40 @@ export default function SettingsPage() {
     enabled: topTab === 'tenants'
   })
 
+  const { data: tenantAdminSettings } = useQuery({
+    queryKey: ['tenant-admin-settings'],
+    queryFn: async () => {
+      const res = await apiFetch("/api/v1/tenants/admin/settings")
+      return res.json()
+    },
+    enabled: topTab === 'tenants'
+  })
+
   const createTenantMutation = useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async (data: { name: string, db_name?: string, parent_folder?: string }) => {
       const res = await apiFetch("/api/v1/tenants/admin/create", {
         method: "POST",
-        body: JSON.stringify({ name })
+        body: JSON.stringify(data)
       })
-      if (!res.ok) throw new Error(await res.text())
+      if (!res.ok) {
+        const payload = await res.json().catch(async () => ({ detail: await res.text() }))
+        throw new Error(payload?.detail || "Failed to create tenant")
+      }
       return res.json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-tenants'] })
       queryClient.invalidateQueries({ queryKey: ['my-tenants'] })
-      setNewTenantName(""); // Clear input on success
+      setNewTenantName("")
+      setNewTenantDbName("")
+      setNewTenantParentFolder("")
+      setHasCustomTenantDbName(false)
+      setTenantFolderCheck(null)
       showWorkspaceToast("New tenant database created and initialized")
-    }
+    },
+    onError: (error: any) => {
+      showWorkspaceToast(error.message || "Failed to create tenant", { type: 'error' })
+    },
   })
 
   const envHelp: any = {
@@ -2436,7 +2512,9 @@ export default function SettingsPage() {
                                       </div>
                                       <div className="min-w-0">
                                         <div className="truncate text-[11px] font-bold text-white">{tenant.name}</div>
-                                        <div className="mt-1 text-[9px] font-semibold text-slate-500">Tenant ID #{tenant.id}</div>
+                                        <div className="mt-1 text-[9px] font-semibold text-slate-500">
+                                          {getTenantDbDisplayName(tenant.db_url)}
+                                        </div>
                                       </div>
                                     </div>
                                   </td>
@@ -2494,13 +2572,82 @@ export default function SettingsPage() {
                         <div className="space-y-3">
                            <input
                              value={newTenantName}
-                             onChange={e => setNewTenantName(e.target.value)}
+                             onChange={e => {
+                               setNewTenantName(e.target.value)
+                               setTenantFolderCheck(null)
+                             }}
                              placeholder="Tenant name"
                              className="w-full rounded-lg border border-white/10 bg-black/40 px-4 py-3 text-[11px] font-semibold text-blue-300 outline-none placeholder:text-slate-500 focus:border-blue-500"
                            />
+                           <input
+                             value={newTenantDbName}
+                             onChange={e => {
+                               setHasCustomTenantDbName(true)
+                               setNewTenantDbName(e.target.value)
+                               setTenantFolderCheck(null)
+                             }}
+                             placeholder="Database file name"
+                             className="w-full rounded-lg border border-white/10 bg-black/40 px-4 py-3 text-[11px] font-mono text-slate-200 outline-none placeholder:text-slate-500 focus:border-blue-500"
+                           />
+                           <div className="space-y-2 rounded-lg border border-white/10 bg-black/20 p-3">
+                             <div className="flex items-center justify-between gap-3">
+                               <div>
+                                 <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-300">Parent Folder</p>
+                                 <p className="mt-1 text-[10px] font-semibold text-slate-500">
+                                   Choose where the tenant database file will be created.
+                                 </p>
+                               </div>
+                               <ToolbarButton
+                                 onClick={() => tenantFolderCheckMutation.mutate(newTenantParentFolder)}
+                                 disabled={tenantFolderCheckMutation.isPending || !newTenantParentFolder.trim()}
+                               >
+                                 {tenantFolderCheckMutation.isPending ? "Testing..." : "Test Folder"}
+                               </ToolbarButton>
+                             </div>
+                             <input
+                               value={newTenantParentFolder}
+                               onChange={e => {
+                                 setNewTenantParentFolder(e.target.value)
+                                 setTenantFolderCheck(null)
+                               }}
+                               placeholder="Parent folder path"
+                               className="w-full rounded-lg border border-white/10 bg-black/40 px-4 py-3 text-[10px] font-mono text-slate-200 outline-none placeholder:text-slate-500 focus:border-blue-500"
+                             />
+                             {tenantFolderCheck && (
+                               <div className={`rounded-lg border px-3 py-2 text-[10px] font-semibold ${tenantFolderCheck.ok ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300' : 'border-rose-500/20 bg-rose-500/10 text-rose-300'}`}>
+                                 {tenantFolderCheck.ok ? (
+                                   <div className="flex items-center justify-between gap-3">
+                                     <span>
+                                       Folder ready: {tenantFolderCheck.path}
+                                     </span>
+                                     <span className="text-[8px] font-black uppercase tracking-[0.14em] text-emerald-400">
+                                       Read/Write OK
+                                     </span>
+                                   </div>
+                                 ) : (
+                                   <span>{tenantFolderCheck.message || "Folder access failed"}</span>
+                                 )}
+                               </div>
+                             )}
+                           </div>
+                           <div className="rounded-lg border border-white/5 bg-black/20 px-3 py-2 text-[10px] font-semibold text-slate-400">
+                             Target file:{" "}
+                             <span className="font-mono text-slate-200">
+                               {newTenantParentFolder || "…"}
+                               {newTenantParentFolder ? "/" : ""}
+                               {newTenantDbName || "tenant.db"}
+                             </span>
+                           </div>
                            <ToolbarButton
-                             onClick={() => { if (!newTenantName) return; createTenantMutation.mutate(newTenantName); }}
-                             disabled={createTenantMutation.isPending || !newTenantName}
+                             onClick={() => {
+                               if (!newTenantName.trim() || !newTenantDbName.trim()) return
+                               createTenantMutation.mutate({
+                                 name: newTenantName,
+                                 db_name: newTenantDbName,
+                                 parent_folder: newTenantParentFolder,
+                               })
+                             }}
+                             disabled={createTenantMutation.isPending || !newTenantName.trim() || !newTenantDbName.trim()}
                              variant="primary"
                              className="w-full"
                            >

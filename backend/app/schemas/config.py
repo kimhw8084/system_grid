@@ -6,7 +6,8 @@ class TenantBase(BaseModel):
     name: str
 
 class TenantCreate(TenantBase):
-    pass
+    db_name: Optional[str] = None
+    parent_folder: Optional[str] = None
 
 class TenantAttach(TenantBase):
     db_path: Optional[str] = None
@@ -40,6 +41,7 @@ class UserTenantResponse(BaseModel):
     role: str
     is_selected: bool
     is_online: Optional[bool] = True
+    db_url: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)
 

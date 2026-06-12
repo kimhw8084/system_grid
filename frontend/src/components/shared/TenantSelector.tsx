@@ -15,6 +15,13 @@ export function TenantSelector() {
   const [isOpen, setIsOpen] = useState(false)
   const queryClient = useQueryClient()
   const { triggerRef, panelRef, panelStyle } = useWorkspaceAnchoredLayer(isOpen, { minWidth: 256 })
+  const getTenantLabel = (tenant: any) => {
+    if (tenant?.name?.trim()) return tenant.name
+    const dbUrl = tenant?.db_url || ""
+    const normalized = dbUrl.replace(/^sqlite\+aiosqlite:\/\//, "")
+    const parts = normalized.split("/").filter(Boolean)
+    return parts[parts.length - 1] || `Tenant #${tenant?.id ?? "unknown"}`
+  }
 
   const { data: tenants, isLoading } = useQuery({
     queryKey: ['my-tenants'],
@@ -78,7 +85,7 @@ export function TenantSelector() {
         <div className="flex flex-col items-start min-w-[120px]">
            <span className="text-[8px] font-black uppercase text-blue-400 tracking-widest leading-none">Active Database</span>
            <span className="text-[10px] font-black text-white truncate max-w-[150px]">
-             {isLoading ? 'Loading...' : (activeTenant?.name || 'Default Engine')}
+             {isLoading ? 'Loading...' : (activeTenant ? getTenantLabel(activeTenant) : 'Default Engine')}
            </span>
         </div>
         <ChevronDown size={14} className={`text-blue-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -110,7 +117,13 @@ export function TenantSelector() {
                   <button
                     key={tenant.id}
                     onClick={() => {
-                      if (!tenant.is_selected && tenant.is_online) selectMutation.mutate(tenant.id)
+                      if (tenant.is_selected) {
+                        toast("This database is already active", { icon: "ℹ️" })
+                      } else if (!tenant.is_online) {
+                        toast.error("This database is offline and cannot be activated")
+                      } else {
+                        selectMutation.mutate(tenant.id)
+                      }
                       setIsOpen(false)
                     }}
                     disabled={!tenant.is_online}
@@ -122,7 +135,7 @@ export function TenantSelector() {
                           <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full border-2 border-[#0f172a] ${tenant.is_online ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                        </div>
                        <div className="flex flex-col items-start">
-                          <span className="text-[11px] font-black tracking-[0.04em]">{tenant.name}</span>
+                          <span className="text-[11px] font-black tracking-[0.04em]">{getTenantLabel(tenant)}</span>
                           <div className="flex items-center gap-2">
                              <span className="text-[8px] font-bold uppercase opacity-60">{tenant.role}</span>
                              {!tenant.is_online && <span className="text-[7px] font-black text-rose-500 uppercase">Offline</span>}
