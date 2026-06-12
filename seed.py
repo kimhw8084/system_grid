@@ -313,28 +313,27 @@ async def seed_domain_data(tenant_db_url: str):
         session.add_all(sites)
         await session.commit()
 
-        # 2. Racks & Rooms (MASS)
-        print(" -> Racks & Rooms (Mass Populating)")
+        # 2. Racks & Rooms (REDUCED)
+        print(" -> Racks & Rooms (Reduced to 6 total)")
         all_racks = []
         for site in sites:
-            for r_idx in range(2):
-                room = models.Room(site_id=site.id, name=f"Hall-{site.name}-{r_idx+1}", floor_level=f"{r_idx+1}F")
-                session.add(room)
-                await session.flush()
-                for rack_idx in range(10):
-                    rack = models.Rack(
-                        room_id=room.id, 
-                        name=f"{site.name}-R{rack_idx:02}", 
-                        aisle=chr(65 + r_idx), 
-                        row=f"{rack_idx:02}",
-                        total_u_height=42
-                    )
-                    session.add(rack)
-                    all_racks.append(rack)
+            room = models.Room(site_id=site.id, name=f"Hall-{site.name}", floor_level="1F")
+            session.add(room)
+            await session.flush()
+            for rack_idx in range(2):  # 2 racks per site * 3 sites = 6 racks
+                rack = models.Rack(
+                    room_id=room.id, 
+                    name=f"{site.name}-R{rack_idx:02}", 
+                    aisle="A", 
+                    row=f"{rack_idx:02}",
+                    total_u_height=42
+                )
+                session.add(rack)
+                all_racks.append(rack)
         await session.commit()
 
         # 3. Assets (Golden Dossier + MASS)
-        print(" -> Assets (Mass Populating dense rack occupancy)")
+        print(" -> Assets (Reduced count, packed into 6 racks)")
         systems = ["ERP", "FINANCE", "K8S-CLUSTER", "MANUFACTURING", "SECURITY", "BI-ANALYTICS", "MES", "SCADA"]
         types = ["Physical", "Virtual", "Storage", "Switch"]
         rack_mountable_types = {"Physical", "Storage", "Switch"}
@@ -366,11 +365,8 @@ async def seed_domain_data(tenant_db_url: str):
                     return start_unit, size_u
             return None
 
-        dense_racks = all_racks[:24]
-        general_racks = all_racks[24:]
-        device_target_count = 640
-        dense_fill_target_pct = 88
-        general_fill_target_pct = 42
+        device_target_count = 200
+        dense_fill_target_pct = 95
 
         all_devices = []
         device_sequence = 0
@@ -450,12 +446,19 @@ async def seed_domain_data(tenant_db_url: str):
         def rack_fill_pct(rack_id: int) -> int:
             return round((len(rack_occupancy[rack_id]) / 42) * 100)
 
-        # First make the leading racks intentionally look full enough for UI testing.
-        for rack in dense_racks:
+        # First, prioritize Switches and high-connectivity Physical assets for racking.
+        # We'll create enough to fill the 6 racks significantly.
+        print(" -> Prioritizing switches and physical servers for racking")
+        for rack in all_racks:
+            # Each rack gets at least 2 switches
+            for _ in range(2):
+                await create_seed_device(dev_type="Switch", sys_name=random.choice(systems), size_u=1, rack_pool=[rack])
+            
+            # Fill the rest with physical servers until ~90%
             attempts = 0
-            while rack_fill_pct(rack.id) < dense_fill_target_pct and attempts < 80:
+            while rack_fill_pct(rack.id) < dense_fill_target_pct and attempts < 50:
                 attempts += 1
-                size_u = random.choices([1, 2, 3, 4], weights=[18, 40, 26, 16], k=1)[0]
+                size_u = random.choices([1, 2, 4], weights=[40, 40, 20], k=1)[0]
                 await create_seed_device(
                     dev_type="Physical",
                     sys_name=random.choice(systems),
@@ -464,48 +467,16 @@ async def seed_domain_data(tenant_db_url: str):
                     allow_fallback=False,
                 )
 
-        remaining_device_count = device_target_count - len(all_devices)
-        for idx in range(remaining_device_count):
-            dense_band = idx < 180
-            dev_type = random.choices(
-                types,
-                weights=[52, 12, 22, 14] if dense_band else [34, 28, 22, 16],
-                k=1,
-            )[0]
-            if dev_type == "Virtual":
-                size_u = 1
-            elif dev_type == "Switch":
-                size_u = random.choices([1, 2], weights=[80, 20], k=1)[0]
-            elif dev_type == "Storage":
-                size_u = random.choices([2, 3, 4], weights=[35, 35, 30], k=1)[0]
-            else:
-                size_u = random.choices([1, 2, 3, 4], weights=[30, 35, 20, 15], k=1)[0]
-            await create_seed_device(
-                dev_type=dev_type,
-                sys_name=random.choice(systems),
-                size_u=size_u,
-                rack_pool=dense_racks if dense_band else general_racks,
-                allow_fallback=True,
-            )
-
-        # Ensure the full rack estate is useful for testing instead of only the lead band.
-        for rack in general_racks:
-            attempts = 0
-            while rack_fill_pct(rack.id) < general_fill_target_pct and attempts < 60:
-                attempts += 1
-                dev_type = random.choices(["Physical", "Storage", "Switch"], weights=[58, 24, 18], k=1)[0]
-                if dev_type == "Switch":
-                    size_u = random.choices([1, 2], weights=[85, 15], k=1)[0]
-                elif dev_type == "Storage":
-                    size_u = random.choices([2, 3, 4], weights=[30, 40, 30], k=1)[0]
-                else:
-                    size_u = random.choices([1, 2, 3, 4], weights=[28, 38, 22, 12], k=1)[0]
+        # Fill remaining device target with other types (mostly Virtual which don't need racks)
+        remaining_count = device_target_count - len(all_devices)
+        if remaining_count > 0:
+            for _ in range(remaining_count):
+                dev_type = random.choices(types, weights=[10, 70, 10, 10], k=1)[0]
                 await create_seed_device(
                     dev_type=dev_type,
                     sys_name=random.choice(systems),
-                    size_u=size_u,
-                    rack_pool=[rack],
-                    allow_fallback=False,
+                    size_u=1,
+                    allow_fallback=True
                 )
 
         await session.commit()
@@ -1275,8 +1246,8 @@ def validate_seed_foundation(*, tenant_db_url: str, seeded_domain_data: bool) ->
     minimum_counts = {
         "teams": 5,
         "sites": 3,
-        "racks": 20,
-        "devices": 50,
+        "racks": 6,
+        "devices": 150,
         "device_locations": 25,
         "logical_services": 40,
         "monitoring_items": 10,
@@ -1328,8 +1299,8 @@ def validate_seed_foundation(*, tenant_db_url: str, seeded_domain_data: bool) ->
     ]
     if seeded_domain_data:
         populated_racks = sum(1 for mounted_count in occupancy_map.values() if mounted_count > 0)
-        if populated_racks < 20:
-            failures.append(f"expected at least 20 populated racks, found {populated_racks}")
+        if populated_racks < 6:
+            failures.append(f"expected at least 6 populated racks, found {populated_racks}")
 
     if failures:
         raise RuntimeError("Seed foundation validation failed: " + "; ".join(failures))
