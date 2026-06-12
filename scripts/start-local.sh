@@ -18,6 +18,7 @@ ADMIN_EMAIL="${ADMIN_EMAIL:-haewon.kim@sysgrid.local}"
 ADMIN_DEPARTMENT="${ADMIN_DEPARTMENT:-Infrastructure}"
 USER_ID_ENV_VAR_VALUE="${USER_ID_ENV_VAR_VALUE:-USER_ID}"
 RUNTIME_EFFECTIVE_USER_ID="${RUNTIME_EFFECTIVE_USER_ID:-}"
+SEED_DOMAIN_DATA="${SEED_DOMAIN_DATA:-false}"
 
 usage() {
   cat <<EOF
@@ -37,6 +38,7 @@ Options:
   --admin-department <department>
   --user-id-env-var <envVarName>
   --runtime-effective-user-id <userId>
+  --seed-data
   --help
 EOF
 }
@@ -56,6 +58,7 @@ while [[ $# -gt 0 ]]; do
     --admin-department) ADMIN_DEPARTMENT="$2"; shift 2 ;;
     --user-id-env-var) USER_ID_ENV_VAR_VALUE="$2"; shift 2 ;;
     --runtime-effective-user-id) RUNTIME_EFFECTIVE_USER_ID="$2"; shift 2 ;;
+    --seed-data) SEED_DOMAIN_DATA="true"; shift ;;
     --help|-h) usage; exit 0 ;;
     *)
       echo "Unknown option: $1"
@@ -190,6 +193,12 @@ if [[ -n "$RUNTIME_EFFECTIVE_USER_ID" ]]; then
   seed_args+=(--extra-admin-user "$RUNTIME_EFFECTIVE_USER_ID")
 fi
 (cd "$BACKEND_DIR" && "$BACKEND_DIR/venv/bin/python" seed.py "${seed_args[@]}")
+
+if [[ "$SEED_DOMAIN_DATA" == "true" ]]; then
+  echo "Seeding comprehensive domain data (Master Seed)..."
+  # Use the same DATABASE_URL we exported earlier to target the local tenant
+  (cd "$ROOT_DIR" && ./backend/venv/bin/python seed_master.py)
+fi
 
 echo "Running preflight..."
 "$ROOT_DIR/scripts/preflight.py"

@@ -13,8 +13,9 @@ from sqlalchemy.orm import sessionmaker
 from app.models.models import MonitoringItem, Device, KnowledgeEntry, LogicalService
 from sqlalchemy import select, delete
 
-# Use the correct database URL from your config
-DATABASE_URL = "sqlite+aiosqlite:///./backend/system_grid.db"
+# Use the correct database URL from your config, prioritizing env var
+from app.core.config import settings
+DATABASE_URL = os.getenv("DATABASE_URL", settings.DATABASE_URL)
 
 engine = create_async_engine(DATABASE_URL, echo=True)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
