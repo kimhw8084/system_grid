@@ -96,6 +96,23 @@ async def grant_tenant_access(
         await set_user_selected_tenant(db, user_id, tenant_id)
     return access
 
+
+def serialize_tenant_response(
+    tenant: Tenant,
+    *,
+    is_online: bool = True,
+    last_backup=None,
+) -> TenantResponse:
+    return TenantResponse.model_validate({
+        "id": tenant.id,
+        "name": tenant.name,
+        "db_url": tenant.db_url,
+        "is_active": bool(tenant.is_active),
+        "is_online": is_online,
+        "last_backup": last_backup,
+        "created_at": tenant.created_at,
+    })
+
 @router.get("/admin/settings", response_model=List[MasterSettingBase])
 async def get_master_settings(db: AsyncSession = Depends(get_config_db)):
     result = await db.execute(select(MasterSystemSetting))
@@ -120,8 +137,17 @@ async def update_master_setting(setting: MasterSettingBase, db: AsyncSession = D
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Storage path is not writable: {str(e)}")
 
-    stmt = update(MasterSystemSetting).where(MasterSystemSetting.key == setting.key).values(value=setting.value)
-    await db.execute(stmt)
+    existing_res = await db.execute(select(MasterSystemSetting).filter(MasterSystemSetting.key == setting.key))
+    existing = existing_res.scalar_one_or_none()
+    if existing:
+        existing.value = setting.value
+        existing.description = setting.description
+    else:
+        db.add(MasterSystemSetting(
+            key=setting.key,
+            value=setting.value,
+            description=setting.description,
+        ))
     await db.commit()
     
     result = await db.execute(select(MasterSystemSetting).filter(MasterSystemSetting.key == setting.key))
@@ -352,20 +378,18 @@ async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_
     if not success:
         raise HTTPException(status_code=500, detail=f"Failed to initialize database: {error}")
 
-    user_id = get_current_user_id(request)
-
     # 4. Register in config.db
     new_tenant = Tenant(name=tenant_name_clean, db_url=db_url)
     db.add(new_tenant)
-    await db.commit()
-    await db.refresh(new_tenant)
+    await db.flush()
 
     # 5. Auto-grant access to the creator
     user_id = get_current_user_id(request)
     await grant_tenant_access(db, user_id=user_id, tenant_id=new_tenant.id, role="ADMIN", make_selected=True)
     await db.commit()
 
-    return new_tenant
+    await db.refresh(new_tenant)
+    return serialize_tenant_response(new_tenant, is_online=await tenant_online_status(new_tenant.db_url))
 
 @router.post("/admin/preflight", response_model=PreflightResponse)
 async def preflight_check(req: PreflightRequest):
@@ -457,19 +481,18 @@ async def attach_tenant(tenant_in: TenantAttach, db: AsyncSession = Depends(get_
     if not success:
         raise HTTPException(status_code=500, detail=f"Failed to synchronize schema: {error}")
 
-    user_id = get_current_user_id(request)
-
     # 3. Register
     new_tenant = Tenant(name=tenant_in.name, db_url=db_url)
     db.add(new_tenant)
-    await db.commit()
-    await db.refresh(new_tenant)
+    await db.flush()
 
     # 4. Grant access
+    user_id = get_current_user_id(request)
     await grant_tenant_access(db, user_id=user_id, tenant_id=new_tenant.id, role="ADMIN", make_selected=True)
     await db.commit()
 
-    return new_tenant
+    await db.refresh(new_tenant)
+    return serialize_tenant_response(new_tenant, is_online=await tenant_online_status(new_tenant.db_url))
 
 @router.get("/me", response_model=List[UserTenantResponse])
 async def get_my_tenants(db: AsyncSession = Depends(get_config_db), request: Request = None):
