@@ -20,8 +20,11 @@ class Settings(BaseSettings):
     BACKEND_ENV_FILE_PATH: str = ""
     FRONTEND_ENV_FILE_PATH: str = ""
     DEFAULT_TENANT_NAME: str = "Default Engine"
+    PUBLIC_READONLY_TENANT_NAME: str = ""
+    PUBLIC_READONLY_ENABLED: bool = True
     DEFAULT_USER_ID: str = "admin_root"
     AUTO_ADMIN_USER_IDS: str = "admin_root"
+    USER_ID_ENV_VAR: str = "USER_ID"
     DEFAULT_OPERATOR_DEPARTMENT: str = "Infrastructure"
     DEFAULT_SUPPORT_EMAIL: str = "admin@infra.local"
     DEFAULT_EMAIL_DOMAIN: str = "sysgrid.local"
@@ -59,6 +62,8 @@ class Settings(BaseSettings):
             object.__setattr__(self, "BACKEND_ENV_FILE_PATH", os.path.join(base_dir, ".env"))
         if not self.FRONTEND_ENV_FILE_PATH:
             object.__setattr__(self, "FRONTEND_ENV_FILE_PATH", os.path.join(frontend_dir, ".env"))
+        if not self.PUBLIC_READONLY_TENANT_NAME:
+            object.__setattr__(self, "PUBLIC_READONLY_TENANT_NAME", self.DEFAULT_TENANT_NAME)
 
     @property
     def auto_admin_user_ids(self) -> set[str]:

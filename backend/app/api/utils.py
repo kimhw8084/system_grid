@@ -45,7 +45,13 @@ def get_current_user_id(request: Request = None):
     
     # 2. Fallback to Environment Variable (Default identity)
     if not user_id:
-        user_id = os.getenv("user_name", os.getenv("USER_ID", settings.DEFAULT_USER_ID))
+        configured_env_user = os.getenv(settings.USER_ID_ENV_VAR, "")
+        user_id = (
+            os.getenv("user_name")
+            or configured_env_user
+            or os.getenv("USER_ID")
+            or settings.DEFAULT_USER_ID
+        )
         
     return user_id
 

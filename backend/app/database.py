@@ -6,6 +6,8 @@ from .core.config import settings
 import os
 from .models.config import ConfigBase, Tenant, UserTenantAccess, MasterSystemSetting
 
+SAFE_READ_METHODS = {"GET", "HEAD", "OPTIONS"}
+
 # 1. Master Configuration Database (Always Local)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_DATABASE_URL = settings.CONFIG_DATABASE_URL
@@ -108,22 +110,61 @@ async def get_db(request: Request):
 
     # 1. Get User ID from unified utility
     user_id = get_current_user_id(request)
+    request_method = (request.method or "GET").upper()
+    is_safe_read = request_method in SAFE_READ_METHODS
 
     # 2. Lookup active tenant for this user in config.db
     async with ConfigSessionLocal() as config_db:
-        # Join UserTenantAccess with Tenant to get the URL
-        stmt = (
-            select(Tenant.db_url)
+        selected_stmt = (
+            select(Tenant.db_url, UserTenantAccess.role)
             .join(UserTenantAccess)
             .filter(UserTenantAccess.user_id == user_id)
             .filter(UserTenantAccess.is_selected == True)
         )
-        result = await config_db.execute(stmt)
-        tenant_url = result.scalar_one_or_none()
+        selected_result = await config_db.execute(selected_stmt)
+        selected_access = selected_result.first()
+
+        tenant_url = selected_access[0] if selected_access else None
+        access_role = (selected_access[1] if selected_access else None) or "VIEWER"
+
+        if not tenant_url and settings.PUBLIC_READONLY_ENABLED and is_safe_read:
+            public_tenant_stmt = (
+                select(Tenant.db_url)
+                .filter(Tenant.is_active == True)
+                .filter(Tenant.name == settings.PUBLIC_READONLY_TENANT_NAME)
+            )
+            public_tenant_result = await config_db.execute(public_tenant_stmt)
+            tenant_url = public_tenant_result.scalar_one_or_none()
+
+            if not tenant_url:
+                fallback_tenant_result = await config_db.execute(
+                    select(Tenant.db_url)
+                    .filter(Tenant.is_active == True)
+                    .order_by(Tenant.id.asc())
+                )
+                tenant_url = fallback_tenant_result.scalars().first()
+
+            access_role = "VIEWER"
+            if tenant_url and request is not None:
+                request.state.sysgrid_public_readonly = True
+
         if not tenant_url:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"No selected tenant access found for user '{user_id}'",
+                detail=(
+                    f"You are not authorized to access SysGrid with user '{user_id}'. "
+                    "Contact an administrator for tenant access."
+                ),
+            )
+
+        normalized_role = (access_role or "VIEWER").upper()
+        if not is_safe_read and normalized_role not in {"ADMIN", "EDITOR"}:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"User '{user_id}' has view-only access. "
+                    "Contact an administrator for edit permissions."
+                ),
             )
 
     # 3. Provide session for the target DB
@@ -138,6 +179,8 @@ async def get_db(request: Request):
     
     async with session_factory() as session:
         try:
+            if request is not None:
+                request.state.sysgrid_access_role = access_role
             yield session
         finally:
             await session.close()

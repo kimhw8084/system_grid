@@ -280,10 +280,20 @@ const Bootstrap = () => {
       actions.push('Change the API base to the origin only, for example `https://backend.example.com`, without `/api/v1`.')
     }
     if (is403) {
-      reasons.push('The backend is reachable, but it is rejecting the current user or tenant context with 403 Forbidden.')
+      const isViewOnly403 = /view-only access/i.test(error || '')
+      reasons.push(
+        isViewOnly403
+          ? 'The backend is reachable, but this user currently has view-only access and cannot perform the requested modifying action.'
+          : 'The backend is reachable, but it is rejecting the current user or tenant context with 403 Forbidden.'
+      )
       actions.push(`Ensure the browser user is the seeded or provisioned user. Current effective user is \`${effectiveUserId}\`.`)
-      actions.push('If this is a disposable local environment, set `localStorage.SYSGRID_USER_ID = "haewon.kim"` and reload, or clear `SYSGRID_USER_ID` to use the bootstrap default.')
-      actions.push('Make sure the selected tenant in the active config DB grants access to that user.')
+      if (isViewOnly403) {
+        actions.push('Viewing the app is allowed, but edits are blocked for this user. Contact an administrator if this account should have editor or admin permissions.')
+      } else {
+        actions.push('If this is a disposable local environment, set `localStorage.SYSGRID_USER_ID = "haewon.kim"` and reload, or clear `SYSGRID_USER_ID` to use the bootstrap default.')
+        actions.push('Make sure the selected tenant in the active config DB grants access to that user.')
+        actions.push('If this user should only browse the app, confirm that public read-only mode is enabled and a public tenant is available on the backend.')
+      }
     }
     if (overrideUrl) {
       reasons.push('A stored API override is present and may be routing requests to an old or incompatible backend.')
@@ -467,7 +477,9 @@ const Bootstrap = () => {
                   {backendDiagnostics.data?.runtime && (
                     <>
                       <p><span className="text-slate-500">Backend Default User</span><br /><span className="text-slate-200">{backendDiagnostics.data.runtime.default_user_id || '<blank>'}</span></p>
+                      <p><span className="text-slate-500">User ID Env Var</span><br /><span className="text-slate-200">{backendDiagnostics.data.runtime.user_id_env_var || '<blank>'}</span></p>
                       <p><span className="text-slate-500">Auto Admin IDs</span><br /><span className="text-slate-200">{Array.isArray(backendDiagnostics.data.runtime.auto_admin_user_ids) ? backendDiagnostics.data.runtime.auto_admin_user_ids.join(', ') || '<none>' : '<unavailable>'}</span></p>
+                      <p><span className="text-slate-500">Public Read-Only</span><br /><span className="text-slate-200">{backendDiagnostics.data.runtime.public_readonly_enabled ? `enabled (${backendDiagnostics.data.runtime.public_readonly_tenant_name || 'default tenant'})` : 'disabled'}</span></p>
                     </>
                   )}
                   {backendDiagnostics.data?.tenant && (

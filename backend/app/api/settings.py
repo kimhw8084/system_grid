@@ -660,7 +660,19 @@ async def get_user_profile(request: Request, db: AsyncSession = Depends(get_db))
     res = await db.execute(select(models.Operator).options(selectinload(models.Operator.role)).filter(models.Operator.username == user_id))
     operator = res.scalar_one_or_none()
     if not operator:
-        raise HTTPException(status_code=404, detail=f"Operator profile not found for user '{user_id}'")
+        is_public_readonly = bool(getattr(getattr(request, "state", None), "sysgrid_public_readonly", False))
+        return {
+            "id": None,
+            "username": user_id,
+            "full_name": user_id,
+            "email": None,
+            "department": "Read Only",
+            "team": settings.PUBLIC_READONLY_TENANT_NAME if is_public_readonly else None,
+            "role": "Viewer",
+            "is_admin": False,
+            "permissions": {},
+            "access_mode": "public_readonly" if is_public_readonly else "viewer",
+        }
     
     # Merge permissions: role permissions + custom overrides
     permissions = (operator.role.permissions if operator.role else {}).copy()
@@ -676,7 +688,8 @@ async def get_user_profile(request: Request, db: AsyncSession = Depends(get_db))
         "team": operator.team,
         "role": operator.role.name if operator.role else "No Role",
         "is_admin": operator.is_admin,
-        "permissions": permissions
+        "permissions": permissions,
+        "access_mode": "assigned",
     }
 
 @router.get("/user/env-vars")
@@ -724,11 +737,11 @@ async def update_user_settings(data: dict, request: Request, db: AsyncSession = 
     return {"status": "success"}
 
 @router.get("/bootstrap")
-async def get_bootstrap_config(db: AsyncSession = Depends(get_db)):
-    """Public endpoint for frontend to discover API URL and critical settings. No authentication required."""
+async def get_bootstrap_config(config_db: AsyncSession = Depends(get_config_db)):
+    """Public endpoint for frontend startup discovery. Must not require tenant selection."""
     try:
-        # 1. Fetch from Database
-        res = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.is_public == True))
+        # 1. Fetch public settings from the config DB so bootstrap works even when tenant routing is broken.
+        res = await config_db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.is_public == True))
         db_settings = {s.key: s.value for s in res.scalars().all()}
         
         # 2. Extract from Environment/Config (as fallback)
@@ -736,6 +749,7 @@ async def get_bootstrap_config(db: AsyncSession = Depends(get_db)):
             "API_ENDPOINT": settings.API_V1_STR,
             "PORT": str(settings.PORT),
             "VITE_API_BASE_URL": "", # Frontend usually handles this via proxy
+            "DEFAULT_USER_ID": settings.DEFAULT_USER_ID,
         }
         
         # Merge, DB takes priority
@@ -747,7 +761,8 @@ async def get_bootstrap_config(db: AsyncSession = Depends(get_db)):
         # Return at least basic settings so UI can try to render
         return {
             "PORT": str(settings.PORT),
-            "API_ENDPOINT": settings.API_V1_STR
+            "API_ENDPOINT": settings.API_V1_STR,
+            "DEFAULT_USER_ID": settings.DEFAULT_USER_ID,
         }
 
 @router.get("/options")
@@ -949,7 +964,10 @@ async def get_startup_check(request: Request, config_db: AsyncSession = Depends(
         "environment": settings.ENVIRONMENT,
         "project_name": settings.PROJECT_NAME,
         "default_user_id": settings.DEFAULT_USER_ID,
+        "user_id_env_var": settings.USER_ID_ENV_VAR,
         "auto_admin_user_ids": sorted(settings.auto_admin_user_ids),
+        "public_readonly_enabled": settings.PUBLIC_READONLY_ENABLED,
+        "public_readonly_tenant_name": settings.PUBLIC_READONLY_TENANT_NAME,
       },
       "storage": {
         "database_url": settings.DATABASE_URL,

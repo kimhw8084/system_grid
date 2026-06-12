@@ -42,6 +42,27 @@ Use the disposable local bootstrap script:
 ./scripts/start-local.sh
 ```
 
+You can also pass runtime values directly:
+
+```bash
+./scripts/start-local.sh \
+  --backend-host 127.0.0.1 \
+  --backend-port 8000 \
+  --frontend-host 127.0.0.1 \
+  --frontend-port 5173 \
+  --api-base-url http://127.0.0.1:8000 \
+  --frontend-origin http://127.0.0.1:5173 \
+  --default-user-id haewon.kim \
+  --user-id-env-var USER_ID
+```
+
+Useful flags:
+
+- `--api-base-url`: writes `VITE_API_BASE_URL` for the frontend startup target
+- `--frontend-origin`: sets the frontend origin allowed by backend CORS
+- `--default-user-id`: seeds the disposable admin/bootstrap user
+- `--user-id-env-var`: tells the backend which environment variable name carries the effective company user id
+
 What it does:
 
 - deletes the previous disposable local data set
@@ -275,6 +296,58 @@ localStorage.removeItem('SYSGRID_CONFIG_VITE_API_BASE_URL')
 
 4. reload the app
 
+If visiting `/api/v1/settings/bootstrap` returns:
+
+```text
+No selected tenant access found for user '1003934'
+```
+
+that means the backend is reachable, but startup is using a company or forwarded-environment user id that is not granted access in the active `config.db`. For local or disposable seeded work:
+
+1. set `backend/.env`:
+
+```env
+DEFAULT_USER_ID="haewon.kim"
+AUTO_ADMIN_USER_IDS="haewon.kim"
+```
+
+2. clear browser user overrides:
+
+```js
+localStorage.removeItem('SYSGRID_USER_ID')
+localStorage.removeItem('SYSGRID_OVERRIDE_API_URL')
+localStorage.removeItem('SYSGRID_CONFIG_VITE_API_BASE_URL')
+```
+
+3. reload the app
+
+For a real company-user flow, grant that actual user id tenant access in the config DB instead of falling back to the seeded admin user.
+
+## Authorization Behavior
+
+SysGrid now defaults to safe viewing:
+
+- everyone can browse the app on safe read requests when `PUBLIC_READONLY_ENABLED=true`
+- unassigned users are routed to the configured public tenant for read-only access
+- write actions are blocked unless the user has `EDITOR` or `ADMIN` tenant access
+
+If a user is blocked from modifying data, the app should show a 403-style diagnostic telling them they have view-only access and should contact an administrator for edit permissions.
+
+Backend configuration:
+
+```env
+PUBLIC_READONLY_ENABLED=true
+PUBLIC_READONLY_TENANT_NAME="Default Engine"
+```
+
+If your company injects the effective user id through a specific backend environment variable, configure:
+
+```env
+USER_ID_ENV_VAR="AccessKey"
+```
+
+That tells the backend which process environment variable to read when `X-User-Id` is not explicitly set by the client.
+
 ## Remote VS Code / Forwarded Port Setup
 
 This is the important distinction:
@@ -305,6 +378,8 @@ VITE_API_BASE_URL=https://<forwarded-backend-origin>
 BACKEND_CORS_ORIGINS=["https://<forwarded-frontend-origin>"]
 DEFAULT_USER_ID="haewon.kim"
 AUTO_ADMIN_USER_IDS="haewon.kim"
+USER_ID_ENV_VAR="AccessKey"
+PUBLIC_READONLY_ENABLED=true
 PORT=8000
 ```
 
@@ -463,6 +538,8 @@ It reports:
 - request origin
 - backend CORS configuration and whether the current request origin is allowed
 - effective default user and auto-admin ids
+- configured backend user-id env-var name
+- public read-only mode and its tenant target
 - selected tenant and accessible tenants for the current request user
 - selected runtime storage/config paths
 - warnings for common startup mistakes
