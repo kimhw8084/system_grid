@@ -4,7 +4,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy import event, MetaData, select
 from .core.config import settings
 import os
-from .models.config import ConfigBase, Tenant, UserTenantAccess, MasterSystemSetting
+from .models.config import ConfigBase, Tenant, UserTenantAccess, MasterSystemSetting, GlobalSetting
 
 SAFE_READ_METHODS = {"GET", "HEAD", "OPTIONS"}
 

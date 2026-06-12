@@ -18,7 +18,7 @@ ADMIN_EMAIL="${ADMIN_EMAIL:-haewon.kim@sysgrid.local}"
 ADMIN_DEPARTMENT="${ADMIN_DEPARTMENT:-Infrastructure}"
 USER_ID_ENV_VAR_VALUE="${USER_ID_ENV_VAR_VALUE:-USER_ID}"
 RUNTIME_EFFECTIVE_USER_ID="${RUNTIME_EFFECTIVE_USER_ID:-}"
-SEED_DOMAIN_DATA="${SEED_DOMAIN_DATA:-false}"
+SEED_DOMAIN_DATA="${SEED_DOMAIN_DATA:-true}"
 
 usage() {
   cat <<EOF
@@ -96,8 +96,9 @@ export PUBLIC_READONLY_TENANT_NAME="Local Demo"
 export DEFAULT_USER_ID="$DEFAULT_USER_ID_VALUE"
 export AUTO_ADMIN_USER_IDS="$AUTO_ADMIN_USER_IDS_VALUE"
 export USER_ID_ENV_VAR="$USER_ID_ENV_VAR_VALUE"
-# Ensure the backend identifies the seeded user by setting the expected env var
-export USER_ID="${USER_ID:-$DEFAULT_USER_ID_VALUE}"
+SOURCE_OF_TRUTH_USER_ID="${RUNTIME_EFFECTIVE_USER_ID:-$DEFAULT_USER_ID_VALUE}"
+export "$USER_ID_ENV_VAR_VALUE=$SOURCE_OF_TRUTH_USER_ID"
+export USER_ID="$SOURCE_OF_TRUTH_USER_ID"
 export DEFAULT_EMAIL_DOMAIN="sysgrid.local"
 export BACKEND_CORS_ORIGINS="[\"$FRONTEND_ORIGIN\",\"http://localhost:$FRONTEND_PORT\"]"
 export ENVIRONMENT="development"
@@ -169,6 +170,7 @@ PUBLIC_READONLY_TENANT_NAME=$PUBLIC_READONLY_TENANT_NAME
 DEFAULT_USER_ID=$DEFAULT_USER_ID
 AUTO_ADMIN_USER_IDS=$AUTO_ADMIN_USER_IDS
 USER_ID_ENV_VAR=$USER_ID_ENV_VAR
+SOURCE_OF_TRUTH_USER_ID=$SOURCE_OF_TRUTH_USER_ID
 DEFAULT_EMAIL_DOMAIN=$DEFAULT_EMAIL_DOMAIN
 PORT=$BACKEND_PORT
 EOF
@@ -188,6 +190,9 @@ seed_args=(
 )
 if [[ "$SEED_DOMAIN_DATA" == "true" ]]; then
   seed_args+=(--seed-data)
+fi
+if [[ -n "$RUNTIME_EFFECTIVE_USER_ID" ]]; then
+  seed_args+=(--extra-admin-user "$RUNTIME_EFFECTIVE_USER_ID")
 fi
 (cd "$ROOT_DIR" && ./backend/venv/bin/python seed.py "${seed_args[@]}")
 
@@ -219,7 +224,8 @@ echo "API Base: $API_BASE_URL"
 echo "Frontend Origin Allowed: $FRONTEND_ORIGIN"
 echo "Bootstrap User: $DEFAULT_USER_ID_VALUE"
 echo "User ID Env Var: $USER_ID_ENV_VAR_VALUE"
-echo "Forwarded Runtime User: ${RUNTIME_EFFECTIVE_USER_ID:-<unset>}"
+echo "Runtime Effective User: ${SOURCE_OF_TRUTH_USER_ID:-<unset>}"
+echo "Seed Domain Data: $SEED_DOMAIN_DATA"
 echo "Backend Runtime Env: $LOCAL_BACKEND_ENV_FILE"
 echo "Tenant DB: $LOCAL_TENANT_DB"
 echo "Config DB: $LOCAL_CONFIG_DB"

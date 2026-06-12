@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, UniqueConstraint, Index, text
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, UniqueConstraint, Index, text
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func
 import os
@@ -39,3 +39,11 @@ class MasterSystemSetting(ConfigBase, MasterBaseMixin):
     key = Column(String, unique=True, index=True)
     value = Column(String)
     description = Column(String)
+
+class GlobalSetting(ConfigBase, MasterBaseMixin):
+    __tablename__ = "global_settings"
+    key = Column(String, unique=True, index=True)
+    value = Column(Text)
+    category = Column(String, index=True, default="General") # UI, Network, Auth, etc.
+    description = Column(Text)
+    is_public = Column(Boolean, default=False) # If True, visible to unauthenticated users via /bootstrap

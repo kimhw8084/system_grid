@@ -8,8 +8,49 @@ from ..models import models
 from ..schemas import schemas
 from .utils import filter_valid_columns
 
+from sqlalchemy import delete, update
+from ..api.utils import filter_valid_columns, normalize_json_object, normalize_json_list
+
 router = APIRouter(prefix="/far", tags=["FAR"])
-IMMUTABLE_FAR_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id"}
+IMMUTABLE_FAR_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id", "version"}
+
+def build_far_snapshot(mode: models.FarFailureMode) -> dict:
+    """Creates a forensic snapshot of a Failure Mode."""
+    return {
+        "system_name": mode.system_name,
+        "failure_type": mode.failure_type,
+        "title": mode.title,
+        "effect": mode.effect,
+        "severity": mode.severity,
+        "occurrence": mode.occurrence,
+        "detection": mode.detection,
+        "rpn": mode.rpn,
+        "status": mode.status,
+        "affected_asset_ids": [a.id for a in mode.affected_assets],
+        "cause_ids": [c.id for c in mode.causes]
+    }
+
+async def save_far_history(mode_id: int, version: int, db: AsyncSession, summary: str = None):
+    stmt = select(models.FarFailureMode).options(
+        joinedload(models.FarFailureMode.affected_assets),
+        joinedload(models.FarFailureMode.causes)
+    ).filter(models.FarFailureMode.id == mode_id)
+    res = await db.execute(stmt)
+    mode = res.unique().scalar_one()
+    
+    # Ensure no duplicate version entries
+    await db.execute(
+        delete(models.FarHistory)
+        .where(models.FarHistory.far_mode_id == mode_id, models.FarHistory.version == version)
+    )
+    
+    history = models.FarHistory(
+        far_mode_id=mode_id,
+        version=version,
+        snapshot=build_far_snapshot(mode),
+        change_summary=summary
+    )
+    db.add(history)
 
 # --- FAILURE MODES ---
 
@@ -46,6 +87,7 @@ async def create_failure_mode(data: dict, db: AsyncSession = Depends(get_db)):
         detection=data.get('detection', 1),
         rpn=rpn,
         status="Analyzing",
+        version=1,
         # Initialize relationship collections eagerly so async assignment does not
         # trigger an implicit lazy load during creation.
         affected_assets=[],
@@ -68,6 +110,8 @@ async def create_failure_mode(data: dict, db: AsyncSession = Depends(get_db)):
         causes = result.scalars().all()
         mode.causes = list(causes)
 
+    await db.flush()
+    await save_far_history(mode.id, mode.version, db, "Initial creation")
     await db.commit()
     
     # Reload with all relationships to avoid MissingGreenlet during serialization
@@ -115,6 +159,9 @@ async def update_failure_mode(mode_id: int, data: dict, db: AsyncSession = Depen
     if needs_rpn:
         mode.rpn = mode.severity * mode.occurrence * mode.detection
             
+    mode.version = (mode.version or 1) + 1
+    await db.flush()
+    await save_far_history(mode.id, mode.version, db, data.get("_change_summary", "Update via API"))
     await db.commit()
     
     # Reload with full relations
@@ -129,6 +176,43 @@ async def update_failure_mode(mode_id: int, data: dict, db: AsyncSession = Depen
     ).filter(models.FarFailureMode.id == mode_id)
     result = await db.execute(stmt)
     return result.unique().scalar_one()
+
+@router.get("/modes/{mode_id}/history")
+async def get_far_history(mode_id: int, db: AsyncSession = Depends(get_db)):
+    stmt = select(models.FarHistory).filter(models.FarHistory.far_mode_id == mode_id).order_by(models.FarHistory.version.desc())
+    res = await db.execute(stmt)
+    return res.scalars().all()
+
+@router.post("/modes/{mode_id}/restore/{version}")
+async def restore_far_version(mode_id: int, version: int, db: AsyncSession = Depends(get_db)):
+    stmt = select(models.FarHistory).filter(models.FarHistory.far_mode_id == mode_id, models.FarHistory.version == version)
+    res = await db.execute(stmt)
+    history = res.scalar_one_or_none()
+    if not history: raise HTTPException(404, "History version not found")
+    
+    mode_stmt = select(models.FarFailureMode).filter(models.FarFailureMode.id == mode_id)
+    mode_res = await db.execute(mode_stmt)
+    mode = mode_res.scalar_one()
+    
+    snapshot = history.snapshot
+    # Apply snapshot (Cloned from standard)
+    for k, v in snapshot.items():
+        if k == 'affected_asset_ids' and isinstance(v, list):
+            asset_stmt = select(models.Device).filter(models.Device.id.in_(v))
+            asset_res = await db.execute(asset_stmt)
+            mode.affected_assets = list(asset_res.scalars().all())
+        elif k == 'cause_ids' and isinstance(v, list):
+            cause_stmt = select(models.FarFailureCause).filter(models.FarFailureCause.id.in_(v))
+            cause_res = await db.execute(cause_stmt)
+            mode.causes = list(cause_res.scalars().all())
+        elif hasattr(mode, k):
+            setattr(mode, k, v)
+            
+    mode.version = (mode.version or 1) + 1
+    await db.flush()
+    await save_far_history(mode.id, mode.version, db, f"Restored from v{version}")
+    await db.commit()
+    return {"status": "success", "new_version": mode.version}
 
 @router.delete("/modes/{mode_id}")
 async def delete_failure_mode(mode_id: int, db: AsyncSession = Depends(get_db)):

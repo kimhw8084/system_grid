@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
 from ..database import get_db, get_config_db
 from ..models import models
-from ..models.config import Tenant, UserTenantAccess
+from ..models.config import Tenant, UserTenantAccess, GlobalSetting
 from ..core.config import settings
 from .utils import filter_valid_columns, get_current_user_id, normalize_json_list, normalize_json_object
 
@@ -741,7 +741,7 @@ async def get_bootstrap_config(config_db: AsyncSession = Depends(get_config_db))
     """Public endpoint for frontend startup discovery. Must not require tenant selection."""
     try:
         # 1. Fetch public settings from the config DB so bootstrap works even when tenant routing is broken.
-        res = await config_db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.is_public == True))
+        res = await config_db.execute(select(GlobalSetting).filter(GlobalSetting.is_public == True))
         db_settings = {s.key: s.value for s in res.scalars().all()}
         
         # 2. Extract from Environment/Config (as fallback)
@@ -991,7 +991,7 @@ async def get_startup_check(request: Request, config_db: AsyncSession = Depends(
     }
 
 @router.get("/global")
-async def get_global_settings(request: Request, db: AsyncSession = Depends(get_db)):
+async def get_global_settings(request: Request, db: AsyncSession = Depends(get_db), config_db: AsyncSession = Depends(get_config_db)):
     """Fetch all settings from the unified GlobalSetting table."""
     user_id = get_current_user_id(request)
     # Security: Verify if user is admin before exposing raw env
@@ -999,7 +999,7 @@ async def get_global_settings(request: Request, db: AsyncSession = Depends(get_d
     if not operator or not operator.is_admin:
         raise HTTPException(status_code=403, detail="Privileged Access Required: Raw configuration analysis restricted to administrators.")
 
-    res = await db.execute(select(models.GlobalSetting))
+    res = await config_db.execute(select(GlobalSetting))
     settings_list = res.scalars().all()
     
     # Return as a simple key-value map for the UI, plus metadata if needed
@@ -1047,7 +1047,7 @@ async def get_global_settings(request: Request, db: AsyncSession = Depends(get_d
     return config
 
 @router.post("/global")
-async def update_global_settings(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+async def update_global_settings(data: dict, request: Request, db: AsyncSession = Depends(get_db), config_db: AsyncSession = Depends(get_config_db)):
     """Update unified settings and log to Audit Trail."""
     from sqlalchemy.exc import IntegrityError
     user_id = get_current_user_id(request)
@@ -1073,7 +1073,7 @@ async def update_global_settings(data: dict, request: Request, db: AsyncSession 
         if key.startswith("_"): continue # Skip metadata
         if key in protected_keys:
             raise HTTPException(status_code=400, detail=f"{key} is a deploy-time setting and must be changed through environment/bootstrap configuration, not runtime global settings.")
-        res = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.key == key))
+        res = await config_db.execute(select(GlobalSetting).filter(GlobalSetting.key == key))
         setting = res.scalar_one_or_none()
         old_value = setting.value if setting else "None"
         
@@ -1096,7 +1096,7 @@ async def update_global_settings(data: dict, request: Request, db: AsyncSession 
         else:
             # Auto-detect if it should be public (Frontend usually needs VITE_ prefixed vars)
             is_public = key.startswith("VITE_") or key in ["PORT", "API_ENDPOINT"]
-            db.add(models.GlobalSetting(
+            config_db.add(GlobalSetting(
                 key=key, 
                 value=str(value), 
                 is_public=is_public,
@@ -1122,13 +1122,15 @@ async def update_global_settings(data: dict, request: Request, db: AsyncSession 
         ))
 
     try:
+        await config_db.commit()
         await db.commit()
     except IntegrityError as e:
+        await config_db.rollback()
         await db.rollback()
-        # If we hit a race condition, try one more time or just report the conflict
         print(f"IntegrityError during global settings update: {e}")
         raise HTTPException(status_code=409, detail=f"Configuration conflict detected: {str(e.orig)}")
     except Exception as e:
+        await config_db.rollback()
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to save settings: {str(e)}")
     

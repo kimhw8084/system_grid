@@ -34,26 +34,23 @@ def normalize_json_value(value):
 def get_current_user_id(request: Request = None):
     """
     Unified utility to identify the current user.
-    Prioritizes the X-User-Id header (set by frontend) 
-    and falls back to the system's user_name or USER_ID environment variable.
+    Uses the configured backend environment variable as the source of truth first,
+    then falls back to request headers for same-origin/dev flows, then to legacy envs.
     """
-    user_id = None
-    
-    # 1. Check Request Headers (Inject by Cloud Proxy or Frontend)
+    configured_env_user = os.getenv(settings.USER_ID_ENV_VAR)
+    if configured_env_user:
+        return configured_env_user
+
     if request:
-        user_id = request.headers.get("X-User-Id")
-    
-    # 2. Fallback to Environment Variable (Default identity)
-    if not user_id:
-        configured_env_user = os.getenv(settings.USER_ID_ENV_VAR)
-        user_id = (
-            configured_env_user
-            or os.getenv("user_name")
-            or os.getenv("USER_ID")
-            or settings.DEFAULT_USER_ID
-        )
-        
-    return user_id
+        header_user = request.headers.get("X-User-Id")
+        if header_user:
+            return header_user
+
+    return (
+        os.getenv("user_name")
+        or os.getenv("USER_ID")
+        or settings.DEFAULT_USER_ID
+    )
 
 
 def get_audit_actor(request: Request = None, fallback: str | None = None):

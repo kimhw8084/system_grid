@@ -683,6 +683,7 @@ class FarFailureMode(Base, BaseMixin):
     status = Column(String, default="Analyzing")
     has_incident_history = Column(Boolean, default=False)
     
+    version = Column(Integer, default=1)
     is_deleted = Column(Boolean, default=False)
     metadata_json = Column(JSON, default=dict)
 
@@ -692,6 +693,17 @@ class FarFailureMode(Base, BaseMixin):
     mitigations = relationship("FarMitigation", secondary=far_mode_mitigations)
     prevention_actions = relationship("FarPrevention", back_populates="failure_mode", cascade="all, delete-orphan")
     linked_rcas = relationship("RcaRecord", secondary=rca_failure_mode_links, back_populates="linked_failure_modes")
+
+class FarHistory(Base, BaseMixin):
+    __tablename__ = "far_history"
+    far_mode_id = Column(Integer, ForeignKey("far_failure_modes.id", ondelete="CASCADE"))
+    version = Column(Integer)
+    snapshot = Column(JSON) # Snapshot of fields
+    change_summary = Column(Text, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("far_mode_id", "version", name="uq_far_history_mode_version"),
+    )
 
 class FarFailureCause(Base, BaseMixin):
     __tablename__ = "far_failure_causes"
@@ -949,6 +961,7 @@ class RcaRecord(Base, BaseMixin):
     monitoring_item_id = Column(Integer, ForeignKey("monitoring_items.id", ondelete="SET NULL"), nullable=True)
     
     status = Column(String, default="Open") # Open, Investigation, Resolved, Closed
+    version = Column(Integer, default=1)
     is_deleted = Column(Boolean, default=False)
     metadata_json = Column(JSON, default=dict)
 
@@ -980,6 +993,17 @@ class RcaMitigation(Base, BaseMixin):
     status = Column(String, default="Planned") # Planned, In Progress, Verified, Completed
     
     rca = relationship("RcaRecord", back_populates="mitigations")
+
+class RcaHistory(Base, BaseMixin):
+    __tablename__ = "rca_history"
+    rca_id = Column(Integer, ForeignKey("rca_records.id", ondelete="CASCADE"))
+    version = Column(Integer)
+    snapshot = Column(JSON) # Snapshot of fields
+    change_summary = Column(Text, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("rca_id", "version", name="uq_rca_history_rca_version"),
+    )
 
 class EnvHistory(Base, BaseMixin):
     __tablename__ = "env_history"
@@ -1041,14 +1065,6 @@ class Operator(Base, BaseMixin):
     
     role = relationship("Role", back_populates="operators")
     team_rel = relationship("Team", back_populates="operators")
-
-class GlobalSetting(Base, BaseMixin):
-    __tablename__ = "global_settings"
-    key = Column(String, unique=True, index=True)
-    value = Column(Text)
-    category = Column(String, index=True, default="General") # UI, Network, Auth, etc.
-    description = Column(Text)
-    is_public = Column(Boolean, default=False) # If True, visible to unauthenticated users via /bootstrap
 
 class UserPreference(Base, BaseMixin):
     __tablename__ = "user_preferences"

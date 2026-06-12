@@ -1,584 +1,102 @@
-# SYSGRID
+# SysGrid: Infrastructure Intelligence & Reliability Engine
 
-SysGrid is designed to run in different environments without code changes.  
-The frontend should never need a hardcoded database path. It only needs a reachable backend API origin.  
-The backend then resolves the selected tenant database from `config.db`.
+SysGrid is a high-fidelity, multi-tenant platform for tracking physical/virtual assets, managing network topology, and ensuring system reliability through forensic-grade RCA and Failure Analysis (FAR).
 
-## How It Connects
+---
 
-Frontend API resolution order:
+## 🚀 Fast Track (Local Development)
 
-1. `localStorage.SYSGRID_OVERRIDE_API_URL`
-2. `localStorage.SYSGRID_CONFIG_VITE_API_BASE_URL`
-3. `VITE_API_BASE_URL`
-4. relative same-origin requests
+The fastest way to get a fully populated environment (500+ items) is the **Disposable Local Bootstrap**.
 
-Important:
-
-- `VITE_API_BASE_URL` must be the backend origin only.
-- Use `http://host:8000` or `https://api.company.com`
-- Do not include `/api/v1`
-
-If your company environment serves frontend and backend from different origins, you must set:
-
-- frontend: `VITE_API_BASE_URL`
-- backend: `BACKEND_CORS_ORIGINS`
-
-If the app still points to an old backend, clear:
-
-- `localStorage.SYSGRID_OVERRIDE_API_URL`
-- `localStorage.SYSGRID_CONFIG_VITE_API_BASE_URL`
-
-The app already exposes a recovery path on the bootstrap failure screen:
-
-- `Clear Overrides & Retry`
-- `Manually Configure API URL`
-
-## Fastest Local Start
-
-Use the disposable local bootstrap script:
-
+### 1. Prerequisites (Once per machine)
 ```bash
-./scripts/start-local.sh
+# Setup Backend
+cd backend && python3 -m venv venv
+./venv/bin/pip install -r requirements.txt
+
+# Setup Frontend
+cd ../frontend && npm install
 ```
 
-You can also pass runtime values directly:
-
+### 2. Start & Seed
+Run this one command to clear old data, create fresh databases, and seed a production-scale dataset:
 ```bash
-./scripts/start-local.sh \
-  --backend-host 127.0.0.1 \
-  --backend-port 8000 \
-  --frontend-host 127.0.0.1 \
-  --frontend-port 5173 \
-  --api-base-url http://127.0.0.1:8000 \
-  --frontend-origin http://127.0.0.1:5173 \
-  --default-user-id haewon.kim \
-  --user-id-env-var USER_ID
+./scripts/start-local.sh --seed-data
+```
+*   **UI:** `http://localhost:5173`
+*   **Admin User:** `haewon.kim` (Auto-verified)
+*   **Data:** 150+ devices, 60 racks, 200+ project tasks, 30 active monitors.
+
+---
+
+## ☁️ Cloud Deployment & S3 Validation
+
+SysGrid is designed for cloud environments. It uses a **Master Config DB** to route users to their specific **Tenant Databases**.
+
+### 🛠️ Storage Stress Test
+Before deploying to a mounted S3/network folder, validate your storage driver's concurrency safety:
+```bash
+python3 stress_test_db.py /path/to/your/s3/mount --workers 10 --inserts 500
+```
+If this script passes with "Integrity Check: OK", your environment is safe for SysGrid's SQLite-based architecture.
+
+---
+
+## 🏗️ Architecture
+
+SysGrid uses a "Double-DB" strategy for maximum isolation and scalability:
+
+1.  **`config.db` (The Brain):** Stores tenant registry, user access grants, and public UI settings.
+2.  **`tenant_xxx.db` (The Muscle):** Stores all business data (Assets, FAR, RCA) for a specific team.
+
+### How Connection Works
+1.  Frontend calls `/api/v1/settings/bootstrap` (No auth required).
+2.  Backend identifies the user (via `X-User-Id` or env var) and checks `config.db`.
+3.  Backend dynamically mounts the correct Tenant DB and serves the data.
+
+---
+
+## 🛡️ Engineering Standards
+
+*   **Golden Pattern:** All UI cards use `rounded-lg` (8px) and a two-column SplitView.
+*   **Directive [06]:** All procedural access (BKMs) requires an "Operational Guidance" briefing modal.
+*   **Forensic Lineage:** Reverting a record creates a new version labeled "Cloned from [Version]"; we never overwrite history.
+*   **Deterministic Persistence:** No auto-save. Explicit "Synchronize" or "Commit" actions are required for logic/settings.
+
+---
+
+## 🧪 Testing & Quality Control
+
+### Backend (Pytest)
+```bash
+cd backend && ./venv/bin/python -m pytest
 ```
 
-Useful flags:
-
-- `--api-base-url`: writes `VITE_API_BASE_URL` for the frontend startup target
-- `--frontend-origin`: sets the frontend origin allowed by backend CORS
-- `--default-user-id`: seeds the disposable admin/bootstrap user
-- `--user-id-env-var`: tells the backend which environment variable name carries the effective company user id
-
-What it does:
-
-- deletes the previous disposable local data set
-- recreates a fresh local config DB and local tenant DB
-- reseeds only the dummy local tenant
-- points the frontend at the local backend
-- starts both backend and frontend
-
-What it does not do:
-
-- it does not create a venv
-- it does not run `npm install`
-- it assumes your dependencies are already installed
-
-Disposable local files:
-
-- `backend/config.local.db`
-- `backend/system_grid.local.db`
-- `backend/tenants/local-demo/local_demo.db`
-
-This is intentionally separate from:
-
-- `backend/config.db`
-- any real team tenant DB
-
-So the local bootstrap path is safe to reset repeatedly.
-
-Prerequisite once per machine:
-
+### Frontend (Production Build)
+Always run a build check before committing frontend changes:
 ```bash
-cd backend
-python3 -m venv venv
-venv/bin/pip install -r requirements.txt
-
-cd ../frontend
-npm install
+cd frontend && npm run build
 ```
 
-## Local Preflight
-
-Validate your current env contract:
-
+### Manual Preflight
+Validate your environment variables and CORS settings:
 ```bash
 ./scripts/preflight.py
 ```
 
-This checks:
+---
 
-- `VITE_API_BASE_URL`
-- `BACKEND_CORS_ORIGINS`
-- common malformed values like including `/api/v1`
-- whether your current local frontend origin is allowed by backend CORS
+## 🆘 Troubleshooting
 
-## Manual Backend Setup
+### "Connection Failure" on Startup
+1.  Check if `VITE_API_BASE_URL` in `frontend/.env` matches your backend origin.
+2.  Ensure your frontend origin is in `BACKEND_CORS_ORIGINS` (backend `.env`).
+3.  Click **"Clear Overrides & Retry"** on the error screen to wipe stale browser settings.
 
-Create `backend/.env`:
+### 403 Forbidden / No Tenant
+This means your `USER_ID` is recognized, but hasn't been granted access to a tenant in `config.db`.
+*   **Fix:** Use `./seed.py` to register your user to the local-demo tenant.
 
-```env
-PROJECT_NAME="SYSGRID Production API"
-API_V1_STR="/api/v1"
-ENVIRONMENT=development
-PORT=8000
+---
 
-BACKEND_CORS_ORIGINS=["http://127.0.0.1:5173","http://localhost:5173"]
-
-DATABASE_URL=sqlite+aiosqlite:///./system_grid.db
-CONFIG_DATABASE_URL=sqlite+aiosqlite:///./config.db
-TENANT_STORAGE_ROOT="/absolute/path/to/backend/tenants"
-
-DEFAULT_TENANT_NAME="Primary Tenant"
-DEFAULT_USER_ID="haewon.kim"
-AUTO_ADMIN_USER_IDS="haewon.kim"
-DEFAULT_EMAIL_DOMAIN="sysgrid.local"
-DEFAULT_UI_TITLE="SYSGRID Tactical"
-```
-
-Notes:
-
-- `BACKEND_CORS_ORIGINS` must be a JSON array string.
-- If frontend is hosted at `https://sysgrid.company.com`, add that exact origin.
-- If backend is behind a company gateway, use the public frontend origin there, not localhost.
-
-Install and run:
-
-```bash
-cd backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python seed.py --tenant-name "Primary Tenant" --tenant-db "tenants/primary_tenant.db" --admin-user "haewon.kim" --admin-full-name "Haewon Kim"
-venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-
-What `seed.py` does:
-
-- creates or updates `config.db`
-- creates the tenant database
-- runs tenant migrations
-- registers the tenant in `config.db`
-- grants tenant access to the admin user
-
-Interactive provisioning is also supported:
-
-```bash
-cd backend
-venv/bin/python seed.py --interactive
-```
-
-## Manual Frontend Setup
-
-Create `frontend/.env`:
-
-```env
-VITE_API_BASE_URL=http://127.0.0.1:8000
-VITE_PORT=5173
-VITE_BACKEND_PORT=8000
-VITE_BACKEND_HOST=127.0.0.1
-```
-
-For company deployment:
-
-```env
-VITE_API_BASE_URL=https://api.sysgrid.company.com
-```
-
-Install and run:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-## Standard Local Start
-
-Terminal 1:
-
-```bash
-cd backend
-source venv/bin/activate
-venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
-
-Terminal 2:
-
-```bash
-cd frontend
-npm run dev -- --host 127.0.0.1 --port 5173
-```
-
-Then open:
-
-```text
-http://127.0.0.1:5173
-```
-
-If you use the disposable local bootstrap script, it already handles this flow for you.
-
-## Company / Separate-Origin Start
-
-Example:
-
-- frontend: `https://sysgrid.company.com`
-- backend: `https://api.sysgrid.company.com`
-
-Frontend `frontend/.env`:
-
-```env
-VITE_API_BASE_URL=https://api.sysgrid.company.com
-```
-
-Backend `backend/.env`:
-
-```env
-BACKEND_CORS_ORIGINS=["https://sysgrid.company.com"]
-```
-
-## VS Code Dev Mode On Your Company Machine
-
-If you are running:
-
-- backend on `127.0.0.1:8000`
-- frontend on `127.0.0.1:5173`
-
-then use exactly:
-
-`frontend/.env.local`
-
-```env
-VITE_API_BASE_URL=http://127.0.0.1:8000
-VITE_PORT=5173
-VITE_BACKEND_PORT=8000
-VITE_BACKEND_HOST=127.0.0.1
-```
-
-`backend/.env`
-
-```env
-BACKEND_CORS_ORIGINS=["http://127.0.0.1:5173","http://localhost:5173"]
-PORT=8000
-```
-
-Then start:
-
-```bash
-cd backend
-source venv/bin/activate
-venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
-
-```bash
-cd frontend
-npm run dev -- --host 127.0.0.1 --port 5173
-```
-
-If the browser still shows `Connection Failure`:
-
-1. click `Clear Overrides & Retry`
-2. read the `Backend Diagnostics` panel on the failure screen
-3. look for:
-   - `Request Origin Allowed: no` -> CORS/frontend-origin mismatch
-   - `Selected Tenant: <none>` -> user/tenant routing problem
-   - `Backend Default User: admin_root` -> default user env is still wrong for the seeded environment
-   - `Backend-configured API Origin` pointing at loopback while the UI origin is a forwarded/company URL
-2. or manually remove:
-
-```js
-localStorage.removeItem('SYSGRID_OVERRIDE_API_URL')
-localStorage.removeItem('SYSGRID_CONFIG_VITE_API_BASE_URL')
-```
-
-4. reload the app
-
-If visiting `/api/v1/settings/bootstrap` returns:
-
-```text
-No selected tenant access found for user '1003934'
-```
-
-that means the backend is reachable, but startup is using a company or forwarded-environment user id that is not granted access in the active `config.db`. For local or disposable seeded work:
-
-1. set `backend/.env`:
-
-```env
-DEFAULT_USER_ID="haewon.kim"
-AUTO_ADMIN_USER_IDS="haewon.kim"
-```
-
-2. clear browser user overrides:
-
-```js
-localStorage.removeItem('SYSGRID_USER_ID')
-localStorage.removeItem('SYSGRID_OVERRIDE_API_URL')
-localStorage.removeItem('SYSGRID_CONFIG_VITE_API_BASE_URL')
-```
-
-3. reload the app
-
-For a real company-user flow, grant that actual user id tenant access in the config DB instead of falling back to the seeded admin user.
-
-## Authorization Behavior
-
-SysGrid now defaults to safe viewing:
-
-- everyone can browse the app on safe read requests when `PUBLIC_READONLY_ENABLED=true`
-- unassigned users are routed to the configured public tenant for read-only access
-- write actions are blocked unless the user has `EDITOR` or `ADMIN` tenant access
-
-If a user is blocked from modifying data, the app should show a 403-style diagnostic telling them they have view-only access and should contact an administrator for edit permissions.
-
-Backend configuration:
-
-```env
-PUBLIC_READONLY_ENABLED=true
-PUBLIC_READONLY_TENANT_NAME="Default Engine"
-```
-
-If your company injects the effective user id through a specific backend environment variable, configure:
-
-```env
-USER_ID_ENV_VAR="AccessKey"
-```
-
-That tells the backend which process environment variable to read when `X-User-Id` is not explicitly set by the client.
-
-## Remote VS Code / Forwarded Port Setup
-
-This is the important distinction:
-
-- if your browser is running on your own laptop against `127.0.0.1`, use local URLs
-- if your browser is opening a forwarded or hosted development URL, do not use `127.0.0.1:8000` as the frontend API base
-
-In a forwarded-port environment, the browser must call the forwarded backend origin, not the backend's machine-local loopback address.
-
-### What To Use
-
-Get these two values from your VS Code ports/forwarding UI:
-
-1. the frontend origin you open in the browser
-2. the backend forwarded origin for port `8000`
-
-Then configure:
-
-`frontend/.env.local`
-
-```env
-VITE_API_BASE_URL=https://<forwarded-backend-origin>
-```
-
-`backend/.env`
-
-```env
-BACKEND_CORS_ORIGINS=["https://<forwarded-frontend-origin>"]
-DEFAULT_USER_ID="haewon.kim"
-AUTO_ADMIN_USER_IDS="haewon.kim"
-USER_ID_ENV_VAR="AccessKey"
-PUBLIC_READONLY_ENABLED=true
-PORT=8000
-```
-
-Important:
-
-- `VITE_API_BASE_URL` must be the forwarded backend origin only
-- do not include `/api/v1`
-- `BACKEND_CORS_ORIGINS` must include the exact frontend origin you open in the browser
-- if you have both local and forwarded workflows, include both origins in `BACKEND_CORS_ORIGINS`
-
-Example pattern:
-
-```env
-BACKEND_CORS_ORIGINS=["http://127.0.0.1:5173","http://localhost:5173","https://<forwarded-frontend-origin>"]
-```
-
-### How To Start
-
-Backend:
-
-```bash
-cd backend
-source venv/bin/activate
-venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-
-Frontend:
-
-```bash
-cd frontend
-npm run dev -- --host 0.0.0.0 --port 5173
-```
-
-Then open the forwarded frontend URL from your ports UI, not `127.0.0.1:5173`.
-
-### One-Time Browser Cleanup
-
-Before retrying, clear old overrides:
-
-```js
-localStorage.removeItem('SYSGRID_OVERRIDE_API_URL')
-localStorage.removeItem('SYSGRID_CONFIG_VITE_API_BASE_URL')
-localStorage.removeItem('SYSGRID_USER_ID')
-```
-
-Then reload.
-
-### If It Still Shows 403
-
-That usually means one of these:
-
-1. `VITE_API_BASE_URL` still points at `127.0.0.1:8000` instead of the forwarded backend origin
-2. `BACKEND_CORS_ORIGINS` does not include the forwarded frontend origin
-3. the frontend is still sending the wrong user id from stale browser storage
-4. the selected tenant in the seeded config DB belongs to `haewon.kim`, but the browser is still sending another user
-
-To force the expected local seeded admin user:
-
-```js
-localStorage.setItem('SYSGRID_USER_ID', 'haewon.kim')
-```
-
-Then reload again.
-
-### Fast Sanity Check
-
-If you are unsure whether your forwarded backend URL is correct:
-
-1. paste `<forwarded-backend-origin>/api/v1/health` into the browser
-2. it should return:
-
-```json
-{"status":"online"}
-```
-
-If that does not work, the frontend will not work either.
-
-If you have multiple approved frontend origins:
-
-```env
-BACKEND_CORS_ORIGINS=["https://sysgrid.company.com","https://sysgrid-staging.company.com"]
-```
-
-## Why It Can Fail In Company Environments
-
-The most common causes are:
-
-1. `VITE_API_BASE_URL` is blank while frontend/backend are on different origins.
-2. `BACKEND_CORS_ORIGINS` does not include the real frontend origin.
-3. Browser local storage still contains an old `SYSGRID_OVERRIDE_API_URL`.
-4. Someone entered a backend URL including `/api/v1` instead of just the origin.
-5. The selected user has no tenant access in `config.db`.
-
-## Fast Recovery Checklist
-
-1. Confirm backend health:
-
-```bash
-curl -i http://127.0.0.1:8000/api/v1/health
-```
-
-2. Confirm frontend env:
-
-```env
-VITE_API_BASE_URL=http://127.0.0.1:8000
-```
-
-3. Confirm backend CORS:
-
-```env
-BACKEND_CORS_ORIGINS=["http://127.0.0.1:5173"]
-```
-
-4. Clear stale browser overrides:
-
-```js
-localStorage.removeItem('SYSGRID_OVERRIDE_API_URL')
-localStorage.removeItem('SYSGRID_CONFIG_VITE_API_BASE_URL')
-```
-
-5. Reload the app.
-
-## Databases
-
-Runtime model:
-
-- `config.db`: tenant registry and user-to-tenant access
-- tenant DB: business data for that tenant
-
-Disposable local builder model:
-
-- `config.local.db`: throwaway local registry
-- `local_demo.db`: throwaway seeded local tenant
-
-Recommended workflow:
-
-1. use `./scripts/start-local.sh` for disposable builder work
-2. when ready for a real team environment, provision a real tenant with `seed.py`
-3. point production frontend/backend env to the real config/tenant databases
-4. do not reuse the disposable local DBs for production
-
-That means you usually do not need to “unlink” the dummy DB at all.  
-You simply stop using the disposable local config and tenant files.
-
-## Startup Diagnostics
-
-Backend startup diagnostics endpoint:
-
-```text
-GET /api/v1/settings/startup-check
-```
-
-It reports:
-
-- resolved frontend env API origin
-- request origin
-- backend CORS configuration and whether the current request origin is allowed
-- effective default user and auto-admin ids
-- configured backend user-id env-var name
-- public read-only mode and its tenant target
-- selected tenant and accessible tenants for the current request user
-- selected runtime storage/config paths
-- warnings for common startup mistakes
-
-The bootstrap `Connection Failure` screen uses this endpoint automatically when possible and overlays the backend diagnostics on top of the frontend inference. That is the primary debugging surface for startup issues in local, forwarded-port, and company environments.
-
-The frontend does not point to a database directly.  
-It points to the backend API.  
-The backend selects the tenant DB from `config.db`.
-
-## Tests
-
-Backend:
-
-```bash
-cd backend
-source venv/bin/activate
-pytest -q
-```
-
-Frontend build:
-
-```bash
-cd frontend
-npm run build
-```
-
-Playwright:
-
-```bash
-cd frontend
-PW_API_BASE=http://127.0.0.1:8000/api/v1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:5173 npx playwright test
-```
-
-## One Exact Rule
-
-If SysGrid is being served from anywhere other than the same origin as the backend, set both:
-
-- `frontend/.env -> VITE_API_BASE_URL`
-- `backend/.env -> BACKEND_CORS_ORIGINS`
-
-That is the startup contract.
+**SysGrid** | Built for Infrastructure Engineers who value precision over guesswork.

@@ -2,9 +2,13 @@ import { expect, type APIRequestContext, type Locator, type Page } from '@playwr
 
 const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
 const apiOrigin = apiBase.replace(/\/api\/v1$/, '')
+const testUserId = process.env.USER_ID || 'haewon.kim'
 
 async function post(request: APIRequestContext, path: string, data: Record<string, any>) {
-  const response = await request.post(`${apiBase}${path}`, { data })
+  const response = await request.post(`${apiBase}${path}`, { 
+    data,
+    headers: { 'X-User-Id': testUserId }
+  })
   if (!response.ok()) {
      const text = await response.text()
      console.error(`POST ${path} FAILED: ${response.status()} ${text}`)
@@ -18,13 +22,18 @@ async function post(request: APIRequestContext, path: string, data: Record<strin
 }
 
 async function put(request: APIRequestContext, path: string, data: Record<string, any>) {
-  const response = await request.put(`${apiBase}${path}`, { data })
+  const response = await request.put(`${apiBase}${path}`, { 
+    data,
+    headers: { 'X-User-Id': testUserId }
+  })
   expect(response.ok()).toBeTruthy()
   return response.json()
 }
 
 async function get(request: APIRequestContext, path: string) {
-  const response = await request.get(`${apiBase}${path}`)
+  const response = await request.get(`${apiBase}${path}`, {
+    headers: { 'X-User-Id': testUserId }
+  })
   expect(response.ok()).toBeTruthy()
   return response.json()
 }
@@ -45,7 +54,8 @@ async function ensureSettingOption(
 
 export async function resetBrowserState(page: Page) {
   const testResetToken = `pw-reset-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-  await page.addInitScript(({ injectedApiOrigin, resetToken }) => {
+  const testUserId = process.env.USER_ID || 'haewon.kim'
+  await page.addInitScript(({ injectedApiOrigin, resetToken, userId }) => {
     const appliedToken = window.sessionStorage.getItem('__sysgrid_pw_bootstrap__')
     if (!appliedToken || appliedToken !== resetToken) {
       window.localStorage.clear()
@@ -53,7 +63,8 @@ export async function resetBrowserState(page: Page) {
       window.sessionStorage.setItem('__sysgrid_pw_bootstrap__', resetToken)
     }
     window.localStorage.setItem('SYSGRID_OVERRIDE_API_URL', injectedApiOrigin)
-  }, { injectedApiOrigin: apiOrigin, resetToken: testResetToken })
+    window.localStorage.setItem('SYSGRID_USER_ID', userId)
+  }, { injectedApiOrigin: apiOrigin, resetToken: testResetToken, userId: testUserId })
 }
 
 export async function createAsset(request: APIRequestContext, payload: Record<string, any>) {

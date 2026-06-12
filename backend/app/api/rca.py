@@ -6,9 +6,55 @@ from typing import List, Optional, Any
 from ..database import get_db
 from ..models import models
 from ..schemas import schemas
-from .utils import filter_valid_columns, parse_iso_date
+from .utils import filter_valid_columns, parse_iso_date, normalize_json_object, normalize_json_list
 
 router = APIRouter(prefix="/rca", tags=["Incident RCA Management"])
+
+def build_rca_snapshot(record: models.RcaRecord) -> dict:
+    """Creates a forensic snapshot of an RCA record including timeline/mitigations."""
+    return {
+        "title": record.title,
+        "problem_statement": record.problem_statement,
+        "trigger_source": record.trigger_source,
+        "severity": record.severity,
+        "priority": record.priority,
+        "status": record.status,
+        "cause_of_failure": record.cause_of_failure,
+        "narrative_summary": record.narrative_summary,
+        "target_systems": record.target_systems,
+        "owner": record.owner,
+        "owners": record.owners,
+        "timeline": [
+            {"event_time": t.event_time.isoformat() if t.event_time else None, "event_type": t.event_type, "description": t.description}
+            for t in record.timeline
+        ],
+        "mitigations": [
+            {"type": m.type, "action_description": m.action_description, "status": m.status}
+            for m in record.mitigations
+        ]
+    }
+
+async def save_rca_history(rca_id: int, version: int, db: AsyncSession, summary: str = None):
+    stmt = select(models.RcaRecord).options(
+        joinedload(models.RcaRecord.timeline),
+        joinedload(models.RcaRecord.mitigations)
+    ).filter(models.RcaRecord.id == rca_id)
+    res = await db.execute(stmt)
+    record = res.unique().scalar_one()
+    
+    # Ensure no duplicate version entries
+    await db.execute(
+        delete(models.RcaHistory)
+        .where(models.RcaHistory.rca_id == rca_id, models.RcaHistory.version == version)
+    )
+    
+    history = models.RcaHistory(
+        rca_id=rca_id,
+        version=version,
+        snapshot=build_rca_snapshot(record),
+        change_summary=summary
+    )
+    db.add(history)
 
 def get_rca_options():
     """Reusable options for deep loading RCA records to satisfy RcaRecordResponse schema."""
@@ -56,6 +102,7 @@ async def create_rca(data: dict, db: AsyncSession = Depends(get_db)):
             clean_data[date_field] = parse_iso_date(clean_data[date_field])
 
     record = models.RcaRecord(**clean_data)
+    record.version = 1
     
     if linked_modes_data:
         mode_ids = [m.get("id") for m in linked_modes_data if m.get("id")]
@@ -64,6 +111,8 @@ async def create_rca(data: dict, db: AsyncSession = Depends(get_db)):
             record.linked_failure_modes = list(modes_result.scalars().all())
 
     db.add(record)
+    await db.flush()
+    await save_rca_history(record.id, record.version, db, "Initial creation")
     await db.commit()
     
     # Re-fetch with all options to ensure fresh return
@@ -136,7 +185,9 @@ async def update_rca(rca_id: int, data: dict, db: AsyncSession = Depends(get_db)
         record.mitigations = new_mitigations
         
     db.add(record)
+    record.version = (record.version or 1) + 1
     await db.flush()
+    await save_rca_history(record.id, record.version, db, data.get("_change_summary", "Update via API"))
     await db.commit()
     
     # Re-fetch with all options to ensure fresh return
@@ -144,6 +195,49 @@ async def update_rca(rca_id: int, data: dict, db: AsyncSession = Depends(get_db)
     record = result.unique().scalar_one()
     
     return record
+
+@router.get("/{rca_id}/history")
+async def get_rca_history(rca_id: int, db: AsyncSession = Depends(get_db)):
+    stmt = select(models.RcaHistory).filter(models.RcaHistory.rca_id == rca_id).order_by(models.RcaHistory.version.desc())
+    res = await db.execute(stmt)
+    return res.scalars().all()
+
+@router.post("/{rca_id}/restore/{version}")
+async def restore_rca_version(rca_id: int, version: int, db: AsyncSession = Depends(get_db)):
+    stmt = select(models.RcaHistory).filter(models.RcaHistory.rca_id == rca_id, models.RcaHistory.version == version)
+    res = await db.execute(stmt)
+    history = res.scalar_one_or_none()
+    if not history: raise HTTPException(404, "History version not found")
+    
+    record_stmt = select(models.RcaRecord).filter(models.RcaRecord.id == rca_id)
+    record_res = await db.execute(record_stmt)
+    record = record_res.scalar_one()
+    
+    snapshot = history.snapshot
+    # Apply snapshot
+    for k, v in snapshot.items():
+        if k == 'timeline' and isinstance(v, list):
+            new_timeline = []
+            for t in v:
+                t_clean = filter_valid_columns(models.RcaTimelineEvent, t)
+                if 'event_time' in t_clean and t_clean['event_time']:
+                    t_clean['event_time'] = parse_iso_date(t_clean['event_time'])
+                new_timeline.append(models.RcaTimelineEvent(**t_clean))
+            record.timeline = new_timeline
+        elif k == 'mitigations' and isinstance(v, list):
+            new_mitigations = []
+            for m in v:
+                m_clean = filter_valid_columns(models.RcaMitigation, m)
+                new_mitigations.append(models.RcaMitigation(**m_clean))
+            record.mitigations = new_mitigations
+        elif hasattr(record, k) and k not in ['id', 'created_at', 'updated_at']:
+            setattr(record, k, v)
+            
+    record.version = (record.version or 1) + 1
+    await db.flush()
+    await save_rca_history(record.id, record.version, db, f"Restored from v{version}")
+    await db.commit()
+    return {"status": "success", "new_version": record.version}
 
 @router.delete("/{rca_id}")
 async def delete_rca(rca_id: int, db: AsyncSession = Depends(get_db)):

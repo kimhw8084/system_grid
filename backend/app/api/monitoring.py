@@ -515,6 +515,16 @@ async def save_monitoring_history(item_id: int, version: int, db: AsyncSession, 
     )
     item = result.unique().scalar_one()
     snapshot = build_monitoring_snapshot(item)
+    
+    # Clean up any existing history entry for this specific version to avoid UNIQUE constraints on retries
+    await db.execute(
+        delete(models.MonitoringHistory)
+        .where(
+            models.MonitoringHistory.monitoring_item_id == item_id,
+            models.MonitoringHistory.version == version
+        )
+    )
+    
     history_obj = models.MonitoringHistory(
         monitoring_item_id=item_id,
         version=version,
@@ -638,7 +648,7 @@ async def create_monitoring_item(data: schemas.MonitoringItemCreate, db: AsyncSe
         db_owner = models.MonitoringOwner(**owner, monitoring_item_id=db_obj.id)
         db.add(db_owner)
         
-    await db.commit()
+    await db.flush()
     await save_monitoring_history(
         db_obj.id,
         db_obj.version,
@@ -703,7 +713,7 @@ async def update_monitoring_item(item_id: int, data: dict, db: AsyncSession = De
             db_owner = models.MonitoringOwner(**owner, monitoring_item_id=item_id)
             db.add(db_owner)
             
-    await db.commit()
+    await db.flush()
     await save_monitoring_history(
         item_id,
         item.version,
@@ -880,7 +890,7 @@ async def delete_monitoring_item(item_id: int, db: AsyncSession = Depends(get_db
     item.is_deleted = True
     item.status = "Deleted"
     item.version = (item.version or 0) + 1
-    await db.commit()
+    await db.flush()
     await save_monitoring_history(
         item.id,
         item.version,
@@ -937,7 +947,7 @@ async def restore_monitoring_history_version(item_id: int, history_id: int, db: 
         ))
 
     item.version = (item.version or 0) + 1
-    await db.commit()
+    await db.flush()
     await save_monitoring_history(
         item.id,
         item.version,

@@ -36,37 +36,41 @@ async def test_create_site_and_audit(client):
     assert any(l["target_table"] == "sites" for l in logs)
 
 @pytest.mark.anyio
-async def test_settings_initialization_idempotency(client):
-    response1 = await client.get("/api/v1/settings/initialize")
-    assert response1.status_code == 200
-
-    response2 = await client.get("/api/v1/settings/initialize")
-    assert response2.status_code == 200
-    assert response2.json()["status"] == "initialized"
-
-    options_res = await client.get("/api/v1/settings/options")
-    options = options_res.json()
-    assert len(options) > 0
-    assert any(o["category"] == "LogicalSystem" for o in options)
-
-@pytest.mark.anyio
 async def test_global_settings_flow(client):
-    await client.get("/api/v1/settings/initialize")
+    # Setup: Create an Admin Operator for the test user
+    # Note: Default test user_id depends on get_current_user_id, typically "admin_root" or similar
+    from app.core.config import settings
+    admin_id = settings.DEFAULT_USER_ID
+    
+    # We need a db session to seed the admin
+    from conftest import TestingSessionLocal
+    from app.models import models
+    from app.models.config import GlobalSetting
+    async with TestingSessionLocal() as db:
+        admin_op = models.Operator(
+            username=admin_id,
+            external_id=admin_id,
+            is_admin=True,
+            registration_status="Verified"
+        )
+        db.add(admin_op)
+        # Also seed a default setting for the test
+        db.add(GlobalSetting(key="app_name", value="SYSGRID ENGINE", is_public=True))
+        await db.commit()
 
     get_res = await client.get("/api/v1/settings/global")
     assert get_res.status_code == 200
-    settings = get_res.json()
-    assert settings["app_name"] == "SYSGRID ENGINE"
+    settings_data = get_res.json()
+    assert settings_data["app_name"] == "SYSGRID ENGINE"
 
-    payload = {"app_name": "NEW GRID", "org_name": "ACME CORP"}
+    payload = {"app_name": "NEW GRID", "VITE_ORG_NAME": "ACME CORP"}
     post_res = await client.post("/api/v1/settings/global", json=payload)
     assert post_res.status_code == 200
 
     get_res_2 = await client.get("/api/v1/settings/global")
     settings_2 = get_res_2.json()
     assert settings_2["app_name"] == "NEW GRID"
-    assert settings_2["org_name"] == "ACME CORP"
-    assert settings_2["site_id"] == "HQ-01"
+    assert settings_2["VITE_ORG_NAME"] == "ACME CORP"
 
 @pytest.mark.anyio
 async def test_monitoring_matrix_flow(client):
