@@ -1,14 +1,12 @@
 import React, { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Database, ChevronDown, Check, Plus, Server, Globe } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
+import { Database, ChevronDown, Check, Plus, Server } from "lucide-react"
 import { apiFetch } from "../../api/apiClient"
 import toast from "react-hot-toast"
 import {
   getWorkspaceFloatingPanelClass,
   useWorkspaceAnchoredLayer,
-  WORKSPACE_LAYER_Z,
 } from "./OperationalWorkspacePrimitives"
 
 export function TenantSelector() {
@@ -91,21 +89,12 @@ export function TenantSelector() {
         <ChevronDown size={14} className={`text-blue-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
-      <AnimatePresence>
-        {isOpen && typeof document !== "undefined" && createPortal(
-          <>
-            <div
-              className="fixed inset-0"
-              style={{ zIndex: WORKSPACE_LAYER_Z.floatingBackdrop }}
-              onClick={() => setIsOpen(false)}
-            />
-            <motion.div 
+      {isOpen && typeof document !== "undefined" && createPortal(
+            <div 
               ref={panelRef}
               style={panelStyle}
               data-workspace-panel="true"
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              onMouseDown={(e) => e.stopPropagation()}
               className={`${getWorkspaceFloatingPanelClass('menu')} overflow-hidden backdrop-blur-xl`}
             >
               <div className="p-4 border-b border-white/5 bg-white/2">
@@ -165,11 +154,9 @@ export function TenantSelector() {
                     <Plus size={12} /> Manage Databases
                  </button>
               </div>
-            </motion.div>
-          </>,
+            </div>,
           document.body
         )}
-      </AnimatePresence>
     </div>
   )
 }

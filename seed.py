@@ -20,7 +20,7 @@ from collections import defaultdict
 from pathlib import Path
 from datetime import datetime, timedelta
 
-from sqlalchemy import create_engine, select, delete, text
+from sqlalchemy import create_engine, select, delete, text, func
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
@@ -33,6 +33,7 @@ from app.core.config import settings
 from app.models.config import ConfigBase, MasterSystemSetting, Tenant, UserTenantAccess, GlobalSetting
 from app.models import models
 from app.models.models import Base, Operator, Role
+from app.schemas import schemas
 
 # --- UTILITIES ---
 
@@ -336,6 +337,7 @@ async def seed_domain_data(tenant_db_url: str):
         print(" -> Assets (Mass Populating dense rack occupancy)")
         systems = ["ERP", "FINANCE", "K8S-CLUSTER", "MANUFACTURING", "SECURITY", "BI-ANALYTICS", "MES", "SCADA"]
         types = ["Physical", "Virtual", "Storage", "Switch"]
+        rack_mountable_types = {"Physical", "Storage", "Switch"}
         manufacturers = {
             "Physical": ["Dell", "HPE", "Cisco"],
             "Virtual": ["VMware", "AWS", "Nutanix"],
@@ -364,10 +366,11 @@ async def seed_domain_data(tenant_db_url: str):
                     return start_unit, size_u
             return None
 
-        dense_racks = all_racks[:18]
-        general_racks = all_racks[18:]
-        device_target_count = 520
+        dense_racks = all_racks[:24]
+        general_racks = all_racks[24:]
+        device_target_count = 640
         dense_fill_target_pct = 88
+        general_fill_target_pct = 42
 
         all_devices = []
         device_sequence = 0
@@ -417,7 +420,7 @@ async def seed_domain_data(tenant_db_url: str):
             await session.flush()
             all_devices.append(dev)
 
-            if dev_type == "Physical":
+            if dev_type in rack_mountable_types:
                 candidate_racks = list(rack_pool or all_racks)
                 random.shuffle(candidate_racks)
                 mounted = None
@@ -452,7 +455,7 @@ async def seed_domain_data(tenant_db_url: str):
             attempts = 0
             while rack_fill_pct(rack.id) < dense_fill_target_pct and attempts < 80:
                 attempts += 1
-                size_u = random.choices([1, 2, 3, 4], weights=[22, 42, 24, 12], k=1)[0]
+                size_u = random.choices([1, 2, 3, 4], weights=[18, 40, 26, 16], k=1)[0]
                 await create_seed_device(
                     dev_type="Physical",
                     sys_name=random.choice(systems),
@@ -466,10 +469,17 @@ async def seed_domain_data(tenant_db_url: str):
             dense_band = idx < 180
             dev_type = random.choices(
                 types,
-                weights=[60, 18, 14, 8] if dense_band else [38, 35, 15, 12],
+                weights=[52, 12, 22, 14] if dense_band else [34, 28, 22, 16],
                 k=1,
             )[0]
-            size_u = random.choices([1, 2, 3, 4], weights=[40, 35, 15, 10], k=1)[0] if dev_type == "Physical" else 1
+            if dev_type == "Virtual":
+                size_u = 1
+            elif dev_type == "Switch":
+                size_u = random.choices([1, 2], weights=[80, 20], k=1)[0]
+            elif dev_type == "Storage":
+                size_u = random.choices([2, 3, 4], weights=[35, 35, 30], k=1)[0]
+            else:
+                size_u = random.choices([1, 2, 3, 4], weights=[30, 35, 20, 15], k=1)[0]
             await create_seed_device(
                 dev_type=dev_type,
                 sys_name=random.choice(systems),
@@ -477,6 +487,26 @@ async def seed_domain_data(tenant_db_url: str):
                 rack_pool=dense_racks if dense_band else general_racks,
                 allow_fallback=True,
             )
+
+        # Ensure the full rack estate is useful for testing instead of only the lead band.
+        for rack in general_racks:
+            attempts = 0
+            while rack_fill_pct(rack.id) < general_fill_target_pct and attempts < 60:
+                attempts += 1
+                dev_type = random.choices(["Physical", "Storage", "Switch"], weights=[58, 24, 18], k=1)[0]
+                if dev_type == "Switch":
+                    size_u = random.choices([1, 2], weights=[85, 15], k=1)[0]
+                elif dev_type == "Storage":
+                    size_u = random.choices([2, 3, 4], weights=[30, 40, 30], k=1)[0]
+                else:
+                    size_u = random.choices([1, 2, 3, 4], weights=[28, 38, 22, 12], k=1)[0]
+                await create_seed_device(
+                    dev_type=dev_type,
+                    sys_name=random.choice(systems),
+                    size_u=size_u,
+                    rack_pool=[rack],
+                    allow_fallback=False,
+                )
 
         await session.commit()
 
@@ -1239,6 +1269,233 @@ def collect_bootstrap_report(*, tenant_name: str, tenant_db_url: str, users: lis
             "counts": counts,
         }
 
+
+def validate_seed_foundation(*, tenant_db_url: str, seeded_domain_data: bool) -> dict:
+    tenant_engine = create_engine(to_sync_sqlite_url(tenant_db_url), future=True)
+    minimum_counts = {
+        "teams": 5,
+        "sites": 3,
+        "racks": 20,
+        "devices": 50,
+        "device_locations": 25,
+        "logical_services": 40,
+        "monitoring_items": 10,
+        "external_entities": 5,
+        "vendors": 5,
+        "knowledge_entries": 10,
+        "far_failure_modes": 4,
+        "rca_records": 4,
+        "projects": 2,
+    } if seeded_domain_data else {
+        "teams": 0,
+        "sites": 0,
+        "racks": 0,
+        "devices": 0,
+        "logical_services": 0,
+    }
+
+    with Session(tenant_engine) as tenant_session:
+        counts = {
+            "teams": tenant_session.query(models.Team).count(),
+            "sites": tenant_session.query(models.Site).count(),
+            "racks": tenant_session.query(models.Rack).count(),
+            "devices": tenant_session.query(models.Device).count(),
+            "device_locations": tenant_session.query(models.DeviceLocation).count(),
+            "logical_services": tenant_session.query(models.LogicalService).count(),
+            "monitoring_items": tenant_session.query(models.MonitoringItem).count(),
+            "external_entities": tenant_session.query(models.ExternalEntity).count(),
+            "vendors": tenant_session.query(models.Vendor).count(),
+            "knowledge_entries": tenant_session.query(models.KnowledgeEntry).count(),
+            "far_failure_modes": tenant_session.query(models.FarFailureMode).count(),
+            "rca_records": tenant_session.query(models.RcaRecord).count(),
+            "projects": tenant_session.query(models.Project).count(),
+        }
+
+        occupancy_rows = tenant_session.execute(
+            select(models.DeviceLocation.rack_id, func.count(models.DeviceLocation.id))
+            .group_by(models.DeviceLocation.rack_id)
+        ).all()
+        occupancy_map = {row[0]: row[1] for row in occupancy_rows}
+        rack_fill_sample = {
+            rack.name: occupancy_map.get(rack.id, 0)
+            for rack in tenant_session.execute(select(models.Rack).order_by(models.Rack.id).limit(12)).scalars().all()
+        }
+
+    failures = [
+        f"{key} expected >= {minimum}, found {counts.get(key, 0)}"
+        for key, minimum in minimum_counts.items()
+        if counts.get(key, 0) < minimum
+    ]
+    if seeded_domain_data:
+        populated_racks = sum(1 for mounted_count in occupancy_map.values() if mounted_count > 0)
+        if populated_racks < 20:
+            failures.append(f"expected at least 20 populated racks, found {populated_racks}")
+
+    if failures:
+        raise RuntimeError("Seed foundation validation failed: " + "; ".join(failures))
+
+    return {
+        "counts": counts,
+        "rack_fill_sample": rack_fill_sample,
+    }
+
+
+async def validate_seed_api_contracts(*, tenant_db_url: str, seeded_domain_data: bool) -> dict:
+    if not seeded_domain_data:
+        return {"skipped": True, "reason": "domain data seeding disabled"}
+
+    engine = create_async_engine(tenant_db_url)
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    validation_summary: dict[str, int] = {}
+    failures: list[str] = []
+
+    async def validate_first(query, schema_cls, label: str, limit: int = 3):
+        async with session_factory() as session:
+            result = await session.execute(query.limit(limit))
+            records = result.unique().scalars().all()
+            if not records:
+                failures.append(f"{label}: no records returned for validation")
+                return
+            for index, record in enumerate(records, start=1):
+                try:
+                    schema_cls.model_validate(record)
+                except Exception as exc:  # pragma: no cover - explicit validation failure path
+                    failures.append(f"{label} record {index} failed {schema_cls.__name__}: {exc}")
+                    return
+            validation_summary[label] = len(records)
+
+    await validate_first(
+        select(models.KnowledgeEntry).options(
+            selectinload(models.KnowledgeEntry.qa_threads).selectinload(models.KnowledgeQA.replies)
+        ).filter(models.KnowledgeEntry.is_deleted == False).order_by(models.KnowledgeEntry.updated_at.desc()),
+        schemas.KnowledgeEntryResponse,
+        "knowledge",
+    )
+    await validate_first(
+        select(models.Project).options(
+            selectinload(models.Project.tasks).selectinload(models.ProjectTask.subtasks),
+            selectinload(models.Project.tasks).selectinload(models.ProjectTask.comments),
+            selectinload(models.Project.tasks).selectinload(models.ProjectTask.qa_items),
+            selectinload(models.Project.comments),
+            selectinload(models.Project.qa_items),
+        ).filter(models.Project.is_deleted == False).order_by(models.Project.order_index.asc(), models.Project.created_at.desc()),
+        schemas.ProjectResponse,
+        "projects",
+    )
+    await validate_first(
+        select(models.RcaRecord).options(
+            selectinload(models.RcaRecord.timeline),
+            selectinload(models.RcaRecord.mitigations),
+            selectinload(models.RcaRecord.knowledge_bkm),
+            selectinload(models.RcaRecord.monitoring_config),
+            selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.affected_assets),
+            selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.resolutions).selectinload(models.FarResolution.knowledge_bkm),
+            selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.mitigations),
+            selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.prevention_actions),
+            selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.mitigations),
+            selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.prevention_actions),
+            selectinload(models.RcaRecord.linked_failure_modes).selectinload(models.FarFailureMode.linked_rcas),
+        ).filter(models.RcaRecord.is_deleted == False).order_by(models.RcaRecord.id.desc()),
+        schemas.RcaRecordResponse,
+        "rca",
+    )
+    await validate_first(
+        select(models.FarFailureMode).options(
+            selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.resolutions).selectinload(models.FarResolution.knowledge_bkm),
+            selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.mitigations),
+            selectinload(models.FarFailureMode.causes).selectinload(models.FarFailureCause.prevention_actions),
+            selectinload(models.FarFailureMode.mitigations),
+            selectinload(models.FarFailureMode.affected_assets),
+            selectinload(models.FarFailureMode.prevention_actions),
+            selectinload(models.FarFailureMode.linked_rcas),
+        ).filter(models.FarFailureMode.is_deleted == False).order_by(models.FarFailureMode.id.desc()),
+        schemas.FarFailureModeResponse,
+        "far",
+    )
+    await validate_first(
+        select(models.ExternalEntity).options(
+            selectinload(models.ExternalEntity.secrets),
+            selectinload(models.ExternalEntity.internal_team),
+            selectinload(models.ExternalEntity.internal_operator),
+        ).filter(models.ExternalEntity.is_deleted == False).order_by(models.ExternalEntity.id.desc()),
+        schemas.ExternalEntityResponse,
+        "external_entities",
+    )
+    await validate_first(
+        select(models.ExternalLink).order_by(models.ExternalLink.id.desc()),
+        schemas.ExternalLinkResponse,
+        "external_links",
+    )
+    await validate_first(
+        select(models.MonitoringItem).options(
+            selectinload(models.MonitoringItem.owners),
+            selectinload(models.MonitoringItem.device),
+        ).filter(models.MonitoringItem.is_deleted == False).order_by(models.MonitoringItem.id.desc()),
+        schemas.MonitoringItemResponse,
+        "monitoring",
+    )
+    await validate_first(
+        select(models.Vendor).options(
+            selectinload(models.Vendor.personnel),
+            selectinload(models.Vendor.contracts),
+        ).filter(models.Vendor.is_deleted == False).order_by(models.Vendor.id.desc()),
+        schemas.VendorResponse,
+        "vendors",
+    )
+
+    from app.api.logical_services import serialize_service
+    from app.api.devices import get_devices
+
+    async with session_factory() as session:
+        service_result = await session.execute(
+            select(models.LogicalService)
+            .options(
+                selectinload(models.LogicalService.secrets),
+                selectinload(models.LogicalService.device),
+            )
+            .filter(models.LogicalService.is_deleted == False)
+            .order_by(models.LogicalService.id.desc())
+            .limit(3)
+        )
+        services = service_result.unique().scalars().all()
+        if not services:
+            failures.append("services: no records returned for validation")
+        else:
+            for index, service in enumerate(services, start=1):
+                try:
+                    payload = serialize_service(service, service.device.name if service.device else "Unassigned")
+                    schemas.LogicalServiceResponse.model_validate(payload)
+                except Exception as exc:  # pragma: no cover
+                    failures.append(f"services record {index} failed LogicalServiceResponse: {exc}")
+                    break
+            else:
+                validation_summary["services"] = len(services)
+
+    async with session_factory() as session:
+        try:
+            device_payloads = await get_devices(include_deleted=False, db=session)
+        except Exception as exc:  # pragma: no cover
+            failures.append(f"devices endpoint shape failed: {exc}")
+        else:
+            if not device_payloads:
+                failures.append("devices: no records returned for validation")
+            else:
+                for index, payload in enumerate(device_payloads[:3], start=1):
+                    try:
+                        schemas.DeviceResponse.model_validate(payload)
+                    except Exception as exc:  # pragma: no cover
+                        failures.append(f"devices record {index} failed DeviceResponse: {exc}")
+                        break
+                else:
+                    validation_summary["devices"] = min(3, len(device_payloads))
+
+    await engine.dispose()
+
+    if failures:
+        raise RuntimeError("Seed API contract validation failed: " + " | ".join(failures))
+
+    return validation_summary
+
 # --- MAIN LOOP ---
 
 async def main():
@@ -1285,6 +1542,15 @@ async def main():
     if should_seed_data:
         await seed_domain_data(tenant_db_url)
 
+    foundation_validation = validate_seed_foundation(
+        tenant_db_url=tenant_db_url,
+        seeded_domain_data=should_seed_data,
+    )
+    api_contract_validation = await validate_seed_api_contracts(
+        tenant_db_url=tenant_db_url,
+        seeded_domain_data=should_seed_data,
+    )
+
     report = collect_bootstrap_report(
         tenant_name=args.tenant_name,
         tenant_db_url=tenant_db_url,
@@ -1298,6 +1564,11 @@ async def main():
     if args.extra_admin_user:
         print(f"Extra Admins: {', '.join(args.extra_admin_user)}")
     print(f"Seeded Domain Data: {'yes' if should_seed_data else 'no'}")
+    print("Validation Summary:")
+    print({
+        "foundation": foundation_validation,
+        "api_contracts": api_contract_validation,
+    })
     print("Bootstrap Report:")
     print(report)
 

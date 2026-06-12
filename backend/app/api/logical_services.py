@@ -14,6 +14,7 @@ IMMUTABLE_SERVICE_FIELDS = {"id", "created_at", "updated_at", "created_by_user_i
 def serialize_service_secret(secret: models.ServiceSecret, *, include_secret_values: bool = False):
     return {
         "id": secret.id,
+        "service_id": secret.service_id,
         "username": secret.username,
         "password": secret.password if include_secret_values else None,
         "has_password": bool(secret.password),

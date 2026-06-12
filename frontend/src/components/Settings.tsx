@@ -938,13 +938,6 @@ export default function SettingsPage() {
   }, [envSettings])
 
   useEffect(() => {
-    const storageRoot = tenantAdminSettings?.find((item: any) => item.key === 'tenant_storage_root')?.value || ""
-    if (storageRoot && !newTenantParentFolder) {
-      setNewTenantParentFolder(storageRoot)
-    }
-  }, [tenantAdminSettings, newTenantParentFolder])
-
-  useEffect(() => {
     if (!hasCustomTenantDbName) {
       setNewTenantDbName(toTenantDbFilename(newTenantName))
     }
@@ -1070,6 +1063,13 @@ export default function SettingsPage() {
     },
     enabled: topTab === 'tenants'
   })
+
+  useEffect(() => {
+    const storageRoot = tenantAdminSettings?.find((item: any) => item.key === 'tenant_storage_root')?.value || ""
+    if (storageRoot && !newTenantParentFolder) {
+      setNewTenantParentFolder(storageRoot)
+    }
+  }, [tenantAdminSettings, newTenantParentFolder])
 
   const createTenantMutation = useMutation({
     mutationFn: async (data: { name: string, db_name?: string, parent_folder?: string }) => {
