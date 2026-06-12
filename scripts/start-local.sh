@@ -39,6 +39,7 @@ Options:
   --user-id-env-var <envVarName>
   --runtime-effective-user-id <userId>
   --seed-data
+  --no-seed-data
   --help
 EOF
 }
@@ -59,6 +60,7 @@ while [[ $# -gt 0 ]]; do
     --user-id-env-var) USER_ID_ENV_VAR_VALUE="$2"; shift 2 ;;
     --runtime-effective-user-id) RUNTIME_EFFECTIVE_USER_ID="$2"; shift 2 ;;
     --seed-data) SEED_DOMAIN_DATA="true"; shift ;;
+    --no-seed-data) SEED_DOMAIN_DATA="false"; shift ;;
     --help|-h) usage; exit 0 ;;
     *)
       echo "Unknown option: $1"
@@ -76,6 +78,10 @@ if [[ -z "$FRONTEND_ORIGIN" ]]; then
 fi
 if [[ -z "$RUNTIME_EFFECTIVE_USER_ID" ]]; then
   RUNTIME_EFFECTIVE_USER_ID="${!USER_ID_ENV_VAR_VALUE:-}"
+fi
+SOURCE_OF_TRUTH_USER_ID="${RUNTIME_EFFECTIVE_USER_ID:-$DEFAULT_USER_ID_VALUE}"
+if [[ -n "$RUNTIME_EFFECTIVE_USER_ID" && "$AUTO_ADMIN_USER_IDS_VALUE" != *"$RUNTIME_EFFECTIVE_USER_ID"* ]]; then
+  AUTO_ADMIN_USER_IDS_VALUE="${AUTO_ADMIN_USER_IDS_VALUE},$RUNTIME_EFFECTIVE_USER_ID"
 fi
 
 LOCAL_CONFIG_DB="$BACKEND_DIR/config.local.db"
@@ -96,7 +102,6 @@ export PUBLIC_READONLY_TENANT_NAME="Local Demo"
 export DEFAULT_USER_ID="$DEFAULT_USER_ID_VALUE"
 export AUTO_ADMIN_USER_IDS="$AUTO_ADMIN_USER_IDS_VALUE"
 export USER_ID_ENV_VAR="$USER_ID_ENV_VAR_VALUE"
-SOURCE_OF_TRUTH_USER_ID="${RUNTIME_EFFECTIVE_USER_ID:-$DEFAULT_USER_ID_VALUE}"
 export "$USER_ID_ENV_VAR_VALUE=$SOURCE_OF_TRUTH_USER_ID"
 export USER_ID="$SOURCE_OF_TRUTH_USER_ID"
 export DEFAULT_EMAIL_DOMAIN="sysgrid.local"
@@ -171,6 +176,7 @@ DEFAULT_USER_ID=$DEFAULT_USER_ID
 AUTO_ADMIN_USER_IDS=$AUTO_ADMIN_USER_IDS
 USER_ID_ENV_VAR=$USER_ID_ENV_VAR
 SOURCE_OF_TRUTH_USER_ID=$SOURCE_OF_TRUTH_USER_ID
+${USER_ID_ENV_VAR_VALUE}=$SOURCE_OF_TRUTH_USER_ID
 DEFAULT_EMAIL_DOMAIN=$DEFAULT_EMAIL_DOMAIN
 PORT=$BACKEND_PORT
 EOF
@@ -190,6 +196,8 @@ seed_args=(
 )
 if [[ "$SEED_DOMAIN_DATA" == "true" ]]; then
   seed_args+=(--seed-data)
+else
+  seed_args+=(--no-seed-data)
 fi
 if [[ -n "$RUNTIME_EFFECTIVE_USER_ID" ]]; then
   seed_args+=(--extra-admin-user "$RUNTIME_EFFECTIVE_USER_ID")

@@ -376,6 +376,54 @@ async def seed_domain_data(tenant_db_url: str):
     print("MASS DOMAIN SEEDING COMPLETE.")
     await engine.dispose()
 
+
+def collect_bootstrap_report(*, tenant_name: str, tenant_db_url: str, users: list[str]) -> dict:
+    config_engine = create_engine(to_sync_sqlite_url(settings.CONFIG_DATABASE_URL), future=True)
+    tenant_engine = create_engine(to_sync_sqlite_url(tenant_db_url), future=True)
+
+    with Session(config_engine) as config_session, Session(tenant_engine) as tenant_session:
+        tenant = config_session.execute(select(Tenant).where(Tenant.name == tenant_name)).scalar_one()
+        access_rows = config_session.execute(
+            select(UserTenantAccess).where(UserTenantAccess.tenant_id == tenant.id)
+        ).scalars().all()
+        operators = tenant_session.execute(
+            select(Operator).where(Operator.username.in_(users))
+        ).scalars().all()
+
+        counts = {
+            "teams": tenant_session.query(models.Team).count(),
+            "sites": tenant_session.query(models.Site).count(),
+            "racks": tenant_session.query(models.Rack).count(),
+            "devices": tenant_session.query(models.Device).count(),
+            "monitoring_items": tenant_session.query(models.MonitoringItem).count(),
+            "projects": tenant_session.query(models.Project).count(),
+            "tasks": tenant_session.query(models.ProjectTask).count(),
+            "data_flows": tenant_session.query(models.DataFlow).count(),
+        }
+
+        return {
+            "tenant_name": tenant.name,
+            "tenant_db_url": tenant.db_url,
+            "user_access": [
+                {
+                    "user_id": row.user_id,
+                    "role": row.role,
+                    "is_selected": bool(row.is_selected),
+                }
+                for row in access_rows
+            ],
+            "operators": [
+                {
+                    "username": op.username,
+                    "is_admin": bool(op.is_admin),
+                    "role_id": op.role_id,
+                    "registration_status": op.registration_status,
+                }
+                for op in operators
+            ],
+            "counts": counts,
+        }
+
 # --- MAIN LOOP ---
 
 async def main():
@@ -385,6 +433,7 @@ async def main():
     parser.add_argument("--admin-user", default="haewon.kim")
     parser.add_argument("--extra-admin-user", action="append", default=[], help="Additional user ids to grant admin access and select for this tenant")
     parser.add_argument("--seed-data", action="store_true", help="Seed full domain data")
+    parser.add_argument("--no-seed-data", action="store_true", help="Skip domain/demo data and create only the bootstrap shell")
     args = parser.parse_args()
 
     tenant_db_path = normalize_db_path(args.tenant_db)
@@ -416,8 +465,15 @@ async def main():
         department="Infrastructure",
     )
 
-    if args.seed_data:
+    should_seed_data = args.seed_data and not args.no_seed_data
+    if should_seed_data:
         await seed_domain_data(tenant_db_url)
+
+    report = collect_bootstrap_report(
+        tenant_name=args.tenant_name,
+        tenant_db_url=tenant_db_url,
+        users=[args.admin_user, *args.extra_admin_user],
+    )
 
     print("\nSUCCESS: Environment Ready.")
     print(f"Tenant: {args.tenant_name}")
@@ -425,6 +481,9 @@ async def main():
     print(f"Admin: {args.admin_user}")
     if args.extra_admin_user:
         print(f"Extra Admins: {', '.join(args.extra_admin_user)}")
+    print(f"Seeded Domain Data: {'yes' if should_seed_data else 'no'}")
+    print("Bootstrap Report:")
+    print(report)
 
 if __name__ == "__main__":
     asyncio.run(main())

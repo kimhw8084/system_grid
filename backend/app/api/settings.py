@@ -914,6 +914,7 @@ async def update_ui_settings(data: dict, request: Request, db: AsyncSession = De
 @router.get("/startup-check")
 async def get_startup_check(request: Request, config_db: AsyncSession = Depends(get_config_db)):
     user_id = get_current_user_id(request)
+    configured_identity_value = os.getenv(settings.USER_ID_ENV_VAR, "")
     frontend_env = parse_env_file_to_map(settings.FRONTEND_ENV_FILE_PATH)
     configured_api_origin = normalize_api_origin(frontend_env.get("VITE_API_BASE_URL"))
     request_origin = request.headers.get("origin", "")
@@ -965,6 +966,8 @@ async def get_startup_check(request: Request, config_db: AsyncSession = Depends(
         "project_name": settings.PROJECT_NAME,
         "default_user_id": settings.DEFAULT_USER_ID,
         "user_id_env_var": settings.USER_ID_ENV_VAR,
+        "user_id_env_value_present": bool(configured_identity_value),
+        "resolved_runtime_user_id": user_id,
         "auto_admin_user_ids": sorted(settings.auto_admin_user_ids),
         "public_readonly_enabled": settings.PUBLIC_READONLY_ENABLED,
         "public_readonly_tenant_name": settings.PUBLIC_READONLY_TENANT_NAME,
