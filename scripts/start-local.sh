@@ -94,6 +94,19 @@ cleanup() {
 }
 trap cleanup EXIT
 
+kill_listener_on_port() {
+  local port="$1"
+  local pids
+  pids="$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)"
+  if [[ -n "$pids" ]]; then
+    echo "Stopping existing listener(s) on port $port: $pids"
+    for pid in $pids; do
+      kill "$pid" >/dev/null 2>&1 || true
+    done
+    sleep 1
+  fi
+}
+
 require_file() {
   local path="$1"
   local message="$2"
@@ -120,6 +133,9 @@ echo "Preparing disposable local SysGrid environment..."
 
 require_file "$BACKEND_DIR/venv/bin/python" "Create the backend venv first, for example: cd backend && python3 -m venv venv && venv/bin/pip install -r requirements.txt"
 require_file "$FRONTEND_DIR/node_modules" "Install frontend dependencies first: cd frontend && npm install"
+
+kill_listener_on_port "$BACKEND_PORT"
+kill_listener_on_port "$FRONTEND_PORT"
 
 mkdir -p "$BACKEND_DIR/tenants"
 rm -f "$LOCAL_CONFIG_DB" "$LOCAL_DEFAULT_DB" "$LOCAL_TENANT_DB"
