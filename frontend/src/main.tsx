@@ -238,9 +238,6 @@ const Bootstrap = () => {
         try {
           const response = await fetch(diagnosticsUrl, {
             cache: 'no-store',
-            headers: {
-              'X-User-Id': getBootstrapUserId(),
-            },
           })
           const text = await response.text()
           let data: any = null

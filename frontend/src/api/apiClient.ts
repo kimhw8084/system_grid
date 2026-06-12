@@ -56,6 +56,15 @@ function getCurrentUserId(): string {
   )
 }
 
+function shouldAttachUserIdHeader(url: string): boolean {
+  try {
+    const targetUrl = new URL(url, window.location.origin)
+    return targetUrl.origin === window.location.origin
+  } catch {
+    return true
+  }
+}
+
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const baseUrl = getApiBaseUrl();
   
@@ -76,10 +85,12 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   
   const headers: Record<string, string> = { ...options.headers } as any;
   
-  // Add User identity for multi-tenant routing
-  // In production, this would come from a secure token, 
-  // but following 'simple LDAP/ENV' directive:
-  headers['X-User-Id'] = getCurrentUserId();
+  // Only attach explicit browser user identity on same-origin requests.
+  // In forwarded/company cross-origin deployments, rely on backend env/proxy identity
+  // to avoid gateway/preflight auth failures on custom headers.
+  if (shouldAttachUserIdHeader(url)) {
+    headers['X-User-Id'] = getCurrentUserId();
+  }
 
   if (!(options.body instanceof FormData) && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
