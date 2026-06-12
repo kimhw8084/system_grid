@@ -25,6 +25,11 @@ const Bootstrap = () => {
     let isMounted = true;
     let ws: WebSocket | null = null;
     let pollInterval: any = null;
+    let retryTimeout: any = null;
+
+    const sleep = (ms: number) => new Promise((resolve) => {
+      retryTimeout = window.setTimeout(resolve, ms)
+    })
 
     const fetchConfig = async () => {
       try {
@@ -96,7 +101,21 @@ const Bootstrap = () => {
 
     const init = async () => {
       try {
-        await fetchConfig();
+        let lastError: any = null
+        for (let attempt = 1; attempt <= 15; attempt += 1) {
+          try {
+            await fetchConfig();
+            lastError = null
+            break
+          } catch (err: any) {
+            lastError = err
+            console.warn(`BOOTSTRAP: attempt ${attempt} failed`, err)
+            if (attempt < 15) {
+              await sleep(1000)
+            }
+          }
+        }
+        if (lastError) throw lastError
         if (isMounted) {
           console.log("BOOTSTRAP: System ready, launching application layer");
           setReady(true);
@@ -140,6 +159,7 @@ const Bootstrap = () => {
       isMounted = false; 
       if (ws) ws.close();
       if (pollInterval) clearInterval(pollInterval);
+      if (retryTimeout) clearTimeout(retryTimeout);
     };
   }, []); // Only run once on mount
 

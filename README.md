@@ -44,12 +44,17 @@ Use the disposable local bootstrap script:
 
 What it does:
 
-- creates missing backend/frontend dependencies if needed
 - deletes the previous disposable local data set
 - recreates a fresh local config DB and local tenant DB
 - reseeds only the dummy local tenant
 - points the frontend at the local backend
 - starts both backend and frontend
+
+What it does not do:
+
+- it does not create a venv
+- it does not run `npm install`
+- it assumes your dependencies are already installed
 
 Disposable local files:
 
@@ -63,6 +68,17 @@ This is intentionally separate from:
 - any real team tenant DB
 
 So the local bootstrap path is safe to reset repeatedly.
+
+Prerequisite once per machine:
+
+```bash
+cd backend
+python3 -m venv venv
+venv/bin/pip install -r requirements.txt
+
+cd ../frontend
+npm install
+```
 
 ## Local Preflight
 
@@ -202,6 +218,56 @@ Backend `backend/.env`:
 ```env
 BACKEND_CORS_ORIGINS=["https://sysgrid.company.com"]
 ```
+
+## VS Code Dev Mode On Your Company Machine
+
+If you are running:
+
+- backend on `127.0.0.1:8000`
+- frontend on `127.0.0.1:5173`
+
+then use exactly:
+
+`frontend/.env.local`
+
+```env
+VITE_API_BASE_URL=http://127.0.0.1:8000
+VITE_PORT=5173
+VITE_BACKEND_PORT=8000
+VITE_BACKEND_HOST=127.0.0.1
+```
+
+`backend/.env`
+
+```env
+BACKEND_CORS_ORIGINS=["http://127.0.0.1:5173","http://localhost:5173"]
+PORT=8000
+```
+
+Then start:
+
+```bash
+cd backend
+source venv/bin/activate
+venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+```bash
+cd frontend
+npm run dev -- --host 127.0.0.1 --port 5173
+```
+
+If the browser still shows `Connection Failure`:
+
+1. click `Clear Overrides & Retry`
+2. or manually remove:
+
+```js
+localStorage.removeItem('SYSGRID_OVERRIDE_API_URL')
+localStorage.removeItem('SYSGRID_CONFIG_VITE_API_BASE_URL')
+```
+
+3. reload the app
 
 If you have multiple approved frontend origins:
 

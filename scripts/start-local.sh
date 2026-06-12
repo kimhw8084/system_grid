@@ -31,7 +31,32 @@ cleanup() {
 }
 trap cleanup EXIT
 
+require_file() {
+  local path="$1"
+  local message="$2"
+  if [[ ! -e "$path" ]]; then
+    echo "Missing required file: $path"
+    echo "$message"
+    exit 1
+  fi
+}
+
+wait_for_backend() {
+  local health_url="http://$BACKEND_HOST:$BACKEND_PORT/api/v1/health"
+  for _ in $(seq 1 60); do
+    if curl -fsS "$health_url" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Backend did not become healthy at $health_url"
+  exit 1
+}
+
 echo "Preparing disposable local SysGrid environment..."
+
+require_file "$BACKEND_DIR/venv/bin/python" "Create the backend venv first, for example: cd backend && python3 -m venv venv && venv/bin/pip install -r requirements.txt"
+require_file "$FRONTEND_DIR/node_modules" "Install frontend dependencies first: cd frontend && npm install"
 
 mkdir -p "$BACKEND_DIR/tenants"
 rm -f "$LOCAL_CONFIG_DB" "$LOCAL_DEFAULT_DB" "$LOCAL_TENANT_DB"
@@ -44,17 +69,6 @@ VITE_PORT=$FRONTEND_PORT
 VITE_BACKEND_PORT=$BACKEND_PORT
 VITE_BACKEND_HOST=$BACKEND_HOST
 EOF
-
-if [[ ! -x "$BACKEND_DIR/venv/bin/python" ]]; then
-  echo "Creating backend virtualenv..."
-  python3 -m venv "$BACKEND_DIR/venv"
-  "$BACKEND_DIR/venv/bin/pip" install -r "$BACKEND_DIR/requirements.txt"
-fi
-
-if [[ ! -d "$FRONTEND_DIR/node_modules" ]]; then
-  echo "Installing frontend dependencies..."
-  (cd "$FRONTEND_DIR" && npm install)
-fi
 
 echo "Seeding disposable local tenant..."
 (cd "$BACKEND_DIR" && "$BACKEND_DIR/venv/bin/python" seed.py \
@@ -74,6 +88,9 @@ echo "Starting backend on http://$BACKEND_HOST:$BACKEND_PORT"
   PYTHONPATH=. "$BACKEND_DIR/venv/bin/python" -m uvicorn app.main:app --host "$BACKEND_HOST" --port "$BACKEND_PORT"
 ) &
 BACKEND_PID=$!
+
+echo "Waiting for backend health..."
+wait_for_backend
 
 echo "Starting frontend on http://$FRONTEND_HOST:$FRONTEND_PORT"
 (
