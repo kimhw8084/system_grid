@@ -30,6 +30,17 @@ function isLikelyForwardedHost(hostname: string): boolean {
   return !/^(127\.0\.0\.1|localhost)$/i.test(hostname) && hostname.includes('.')
 }
 
+function shouldUseWebSocketSync(apiBaseUrl: string): boolean {
+  const normalizedBaseUrl = normalizeUiApiOrigin(apiBaseUrl || '')
+  if (!normalizedBaseUrl) return true
+  try {
+    const targetUrl = new URL(normalizedBaseUrl, window.location.origin)
+    return targetUrl.origin === window.location.origin
+  } catch {
+    return true
+  }
+}
+
 function resolveBootstrapCredentialsMode(url: string): RequestCredentials {
   try {
     const targetUrl = new URL(url, window.location.origin)
@@ -191,29 +202,37 @@ const Bootstrap = () => {
           setReady(true);
         }
 
-        // Try WebSocket, fallback to polling
+        // Use WebSocket only for same-origin/local routing. In forwarded/company cross-origin
+        // deployments, prefer polling to avoid noisy socket failures through port-forward layers.
         const baseUrl = getApiBaseUrl() || window.location.origin;
-        const wsProtocol = baseUrl.startsWith('https') ? 'wss' : 'ws';
-        const wsUrl = baseUrl.replace(/^https?/, wsProtocol) + '/api/v1/ws/sync';
-        
-        console.log("BOOTSTRAP: Initializing WebSocket sync at " + wsUrl);
-        try {
-          ws = new WebSocket(wsUrl);
-          ws.onmessage = (event) => {
-            if (event.data === 'CONFIG_UPDATED') {
-              console.log("WS: CONFIG_UPDATED signal received");
-              fetchConfig().catch(() => {});
-            }
-          };
-          ws.onerror = (err) => {
-            console.warn("WS: Connection failed. Gracefully degrading to HTTP polling.", err);
-            if (!pollInterval) {
-              pollInterval = setInterval(() => fetchConfig().catch(() => {}), 60000); // 1 min fallback
-            }
-          };
-        } catch (e) {
-          console.warn("WS: Setup failed. Gracefully degrading to HTTP polling.", e);
-          pollInterval = setInterval(() => fetchConfig().catch(() => {}), 60000);
+        if (shouldUseWebSocketSync(baseUrl)) {
+          const wsProtocol = baseUrl.startsWith('https') ? 'wss' : 'ws';
+          const wsUrl = baseUrl.replace(/^https?/, wsProtocol) + '/api/v1/ws/sync';
+          
+          console.log("BOOTSTRAP: Initializing WebSocket sync at " + wsUrl);
+          try {
+            ws = new WebSocket(wsUrl);
+            ws.onmessage = (event) => {
+              if (event.data === 'CONFIG_UPDATED') {
+                console.log("WS: CONFIG_UPDATED signal received");
+                fetchConfig().catch(() => {});
+              }
+            };
+            ws.onerror = (err) => {
+              console.warn("WS: Connection failed. Gracefully degrading to HTTP polling.", err);
+              if (!pollInterval) {
+                pollInterval = setInterval(() => fetchConfig().catch(() => {}), 60000); // 1 min fallback
+              }
+            };
+          } catch (e) {
+            console.warn("WS: Setup failed. Gracefully degrading to HTTP polling.", e);
+            pollInterval = setInterval(() => fetchConfig().catch(() => {}), 60000);
+          }
+        } else {
+          console.log("BOOTSTRAP: Cross-origin deployment detected, skipping WebSocket sync and using HTTP polling.");
+          if (!pollInterval) {
+            pollInterval = setInterval(() => fetchConfig().catch(() => {}), 60000);
+          }
         }
 
       } catch (err: any) {

@@ -149,6 +149,36 @@ def ensure_tenant_admin(*, tenant_db_url: str, admin_user: str, full_name: str |
         session.commit()
 
 
+def derive_display_name(user_id: str) -> str:
+    return user_id.replace(".", " ").replace("_", " ").title()
+
+
+def ensure_additional_admins(*, tenant_name: str, tenant_db_url: str, admin_users: list[str], department: str | None) -> None:
+    unique_admins: list[str] = []
+    seen: set[str] = set()
+    for user_id in admin_users:
+        cleaned = (user_id or "").strip()
+        if not cleaned or cleaned in seen:
+            continue
+        seen.add(cleaned)
+        unique_admins.append(cleaned)
+
+    for user_id in unique_admins:
+        ensure_tenant_admin(
+            tenant_db_url=tenant_db_url,
+            admin_user=user_id,
+            full_name=derive_display_name(user_id),
+            email=f"{user_id}@{settings.DEFAULT_EMAIL_DOMAIN}",
+            department=department,
+        )
+        register_tenant_and_access(
+            tenant_name=tenant_name,
+            tenant_db_url=tenant_db_url,
+            admin_user=user_id,
+            select_for_user=True,
+        )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Bootstrap one SysGrid tenant explicitly.")
     parser.add_argument("--interactive", action="store_true", help="Prompt for bootstrap values interactively")
@@ -162,6 +192,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--admin-full-name", default="Haewon Kim", help="Bootstrap admin full name")
     parser.add_argument("--admin-email", default="haewon.kim@sysgrid.local", help="Bootstrap admin email")
     parser.add_argument("--admin-department", default="Infrastructure", help="Bootstrap admin department")
+    parser.add_argument(
+        "--extra-admin-user",
+        action="append",
+        default=[],
+        help="Additional username/external_id to grant ADMIN access and mark selected for the same tenant. Repeat flag for multiple users.",
+    )
     parser.add_argument("--no-select", action="store_true", help="Do not mark the tenant selected for the admin user")
     return parser.parse_args()
 
@@ -204,11 +240,19 @@ def main() -> int:
         admin_user=args.admin_user,
         select_for_user=not args.no_select,
     )
+    ensure_additional_admins(
+        tenant_name=args.tenant_name,
+        tenant_db_url=tenant_db_url,
+        admin_users=args.extra_admin_user,
+        department=args.admin_department,
+    )
 
     print("BOOTSTRAP COMPLETE")
     print(f"tenant_name={args.tenant_name}")
     print(f"tenant_db={tenant_db_path}")
     print(f"admin_user={args.admin_user}")
+    if args.extra_admin_user:
+        print(f"extra_admin_users={','.join(args.extra_admin_user)}")
     return 0
 
 

@@ -17,6 +17,7 @@ ADMIN_FULL_NAME="${ADMIN_FULL_NAME:-Haewon Kim}"
 ADMIN_EMAIL="${ADMIN_EMAIL:-haewon.kim@sysgrid.local}"
 ADMIN_DEPARTMENT="${ADMIN_DEPARTMENT:-Infrastructure}"
 USER_ID_ENV_VAR_VALUE="${USER_ID_ENV_VAR_VALUE:-USER_ID}"
+RUNTIME_EFFECTIVE_USER_ID="${RUNTIME_EFFECTIVE_USER_ID:-}"
 
 usage() {
   cat <<EOF
@@ -35,6 +36,7 @@ Options:
   --admin-email <email>
   --admin-department <department>
   --user-id-env-var <envVarName>
+  --runtime-effective-user-id <userId>
   --help
 EOF
 }
@@ -53,6 +55,7 @@ while [[ $# -gt 0 ]]; do
     --admin-email) ADMIN_EMAIL="$2"; shift 2 ;;
     --admin-department) ADMIN_DEPARTMENT="$2"; shift 2 ;;
     --user-id-env-var) USER_ID_ENV_VAR_VALUE="$2"; shift 2 ;;
+    --runtime-effective-user-id) RUNTIME_EFFECTIVE_USER_ID="$2"; shift 2 ;;
     --help|-h) usage; exit 0 ;;
     *)
       echo "Unknown option: $1"
@@ -67,6 +70,9 @@ if [[ -z "$API_BASE_URL" ]]; then
 fi
 if [[ -z "$FRONTEND_ORIGIN" ]]; then
   FRONTEND_ORIGIN="http://$FRONTEND_HOST:$FRONTEND_PORT"
+fi
+if [[ -z "$RUNTIME_EFFECTIVE_USER_ID" ]]; then
+  RUNTIME_EFFECTIVE_USER_ID="${!USER_ID_ENV_VAR_VALUE:-}"
 fi
 
 LOCAL_CONFIG_DB="$BACKEND_DIR/config.local.db"
@@ -169,13 +175,18 @@ VITE_BACKEND_HOST=$BACKEND_HOST
 EOF
 
 echo "Seeding disposable local tenant..."
-(cd "$BACKEND_DIR" && "$BACKEND_DIR/venv/bin/python" seed.py \
-  --tenant-name "Local Demo" \
-  --tenant-db "$LOCAL_TENANT_DB_REL" \
-  --admin-user "$DEFAULT_USER_ID_VALUE" \
-  --admin-full-name "$ADMIN_FULL_NAME" \
-  --admin-email "$ADMIN_EMAIL" \
-  --admin-department "$ADMIN_DEPARTMENT")
+seed_args=(
+  --tenant-name "Local Demo"
+  --tenant-db "$LOCAL_TENANT_DB_REL"
+  --admin-user "$DEFAULT_USER_ID_VALUE"
+  --admin-full-name "$ADMIN_FULL_NAME"
+  --admin-email "$ADMIN_EMAIL"
+  --admin-department "$ADMIN_DEPARTMENT"
+)
+if [[ -n "$RUNTIME_EFFECTIVE_USER_ID" ]]; then
+  seed_args+=(--extra-admin-user "$RUNTIME_EFFECTIVE_USER_ID")
+fi
+(cd "$BACKEND_DIR" && "$BACKEND_DIR/venv/bin/python" seed.py "${seed_args[@]}")
 
 echo "Running preflight..."
 "$ROOT_DIR/scripts/preflight.py"
@@ -205,6 +216,7 @@ echo "API Base: $API_BASE_URL"
 echo "Frontend Origin Allowed: $FRONTEND_ORIGIN"
 echo "Bootstrap User: $DEFAULT_USER_ID_VALUE"
 echo "User ID Env Var: $USER_ID_ENV_VAR_VALUE"
+echo "Forwarded Runtime User: ${RUNTIME_EFFECTIVE_USER_ID:-<unset>}"
 echo "Backend Runtime Env: $LOCAL_BACKEND_ENV_FILE"
 echo "Tenant DB: $LOCAL_TENANT_DB"
 echo "Config DB: $LOCAL_CONFIG_DB"
