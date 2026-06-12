@@ -30,6 +30,15 @@ function isLikelyForwardedHost(hostname: string): boolean {
   return !/^(127\.0\.0\.1|localhost)$/i.test(hostname) && hostname.includes('.')
 }
 
+function resolveBootstrapCredentialsMode(url: string): RequestCredentials {
+  try {
+    const targetUrl = new URL(url, window.location.origin)
+    return targetUrl.origin === window.location.origin ? 'same-origin' : 'include'
+  } catch {
+    return 'same-origin'
+  }
+}
+
 function getBootstrapUserId() {
   return (
     localStorage.getItem('SYSGRID_USER_ID') ||
@@ -67,7 +76,10 @@ const Bootstrap = () => {
         const shouldPreferRelativeBootstrap = !configuredBaseUrl || configuredBaseUrl === currentOrigin
 
         const fetchRelativeBootstrap = async () => {
-          const relativeResponse = await fetch('/api/v1/settings/bootstrap', { cache: 'no-store' })
+          const relativeResponse = await fetch('/api/v1/settings/bootstrap', {
+            cache: 'no-store',
+            credentials: 'same-origin',
+          })
           const contentType = relativeResponse.headers.get('content-type') || ''
           if (!relativeResponse.ok || !contentType.toLowerCase().includes('application/json')) {
             throw new Error(`Relative bootstrap is unavailable from this origin (status ${relativeResponse.status})`)
@@ -238,6 +250,7 @@ const Bootstrap = () => {
         try {
           const response = await fetch(diagnosticsUrl, {
             cache: 'no-store',
+            credentials: resolveBootstrapCredentialsMode(diagnosticsUrl),
           })
           const text = await response.text()
           let data: any = null

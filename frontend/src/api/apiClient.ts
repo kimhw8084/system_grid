@@ -65,6 +65,15 @@ function shouldAttachUserIdHeader(url: string): boolean {
   }
 }
 
+function resolveCredentialsMode(url: string): RequestCredentials {
+  try {
+    const targetUrl = new URL(url, window.location.origin)
+    return targetUrl.origin === window.location.origin ? 'same-origin' : 'include'
+  } catch {
+    return 'same-origin'
+  }
+}
+
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const baseUrl = getApiBaseUrl();
   
@@ -99,6 +108,7 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const startTime = Date.now();
   const response = await fetch(url, {
     cache: 'no-store',
+    credentials: resolveCredentialsMode(url),
     ...options,
     headers,
   });
