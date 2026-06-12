@@ -15,6 +15,18 @@ window.addEventListener('unhandledrejection', (event) => {
   console.error("GLOBAL_REJECTION_BEFORE_MOUNT:", event.reason);
 });
 
+function normalizeUiApiOrigin(url: string): string {
+  return (url || '').trim().replace(/\/api\/v1\/?$/i, '').replace(/\/$/, '')
+}
+
+function isLoopbackOrigin(url: string): boolean {
+  return /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(normalizeUiApiOrigin(url))
+}
+
+function isLikelyForwardedHost(hostname: string): boolean {
+  return !/^(127\.0\.0\.1|localhost)$/i.test(hostname) && hostname.includes('.')
+}
+
 const Bootstrap = () => {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -163,10 +175,68 @@ const Bootstrap = () => {
     };
   }, []); // Only run once on mount
 
+  const currentOrigin = window.location.origin
+  const configuredApiBase = getApiBaseUrl()
+  const effectiveUserId =
+    localStorage.getItem('SYSGRID_USER_ID') ||
+    localStorage.getItem('SYSGRID_CONFIG_DEFAULT_USER_ID') ||
+    'admin_root'
+
+  const failureDiagnosis = (() => {
+    const normalizedFailedUrl = normalizeUiApiOrigin(failedUrl || configuredApiBase || '')
+    const normalizedConfiguredApiBase = normalizeUiApiOrigin(configuredApiBase || '')
+    const statusMatch = error?.match(/\b403\b|\b404\b|\b500\b/)
+    const is403 = error?.includes('403') || failedUrl.includes('403')
+    const usesLoopbackApi = isLoopbackOrigin(normalizedFailedUrl || normalizedConfiguredApiBase)
+    const forwardedUi = isLikelyForwardedHost(window.location.hostname)
+    const overrideUrl = localStorage.getItem('SYSGRID_OVERRIDE_API_URL') || ''
+    const includesApiV1 = /\/api\/v1\/?$/i.test(configuredApiBase || '') || /\/api\/v1\/?$/i.test(failedUrl || '')
+
+    const reasons: string[] = []
+    const actions: string[] = []
+
+    if (forwardedUi && usesLoopbackApi) {
+      reasons.push('The app is running on a forwarded or hosted UI origin, but the API target is still a loopback URL. The browser cannot use the backend machine-local 127.0.0.1 address in this mode.')
+      actions.push('Set `frontend/.env.local` so `VITE_API_BASE_URL` is the forwarded backend origin, not `http://127.0.0.1:8000`.')
+      actions.push('Set `backend/.env` so `BACKEND_CORS_ORIGINS` includes the exact forwarded frontend origin.')
+    }
+    if (includesApiV1) {
+      reasons.push('The configured API base appears to include `/api/v1`, but SysGrid expects the backend origin only.')
+      actions.push('Change the API base to the origin only, for example `https://backend.example.com`, without `/api/v1`.')
+    }
+    if (is403) {
+      reasons.push('The backend is reachable, but it is rejecting the current user or tenant context with 403 Forbidden.')
+      actions.push(`Ensure the browser user is the seeded or provisioned user. Current effective user is \`${effectiveUserId}\`.`)
+      actions.push('If this is a disposable local environment, set `localStorage.SYSGRID_USER_ID = "haewon.kim"` and reload, or clear `SYSGRID_USER_ID` to use the bootstrap default.')
+      actions.push('Make sure the selected tenant in the active config DB grants access to that user.')
+    }
+    if (overrideUrl) {
+      reasons.push('A stored API override is present and may be routing requests to an old or incompatible backend.')
+      actions.push('Use `Clear Overrides & Retry` first if the configured backend changed.')
+    }
+    if (!reasons.length) {
+      reasons.push('The frontend could not complete bootstrap against the configured backend target.')
+      actions.push('Verify `/api/v1/health` on the configured backend origin and confirm `VITE_API_BASE_URL` and `BACKEND_CORS_ORIGINS` are aligned.')
+    }
+
+    return {
+      statusMatch,
+      reasons,
+      actions,
+      diagnostics: {
+        uiOrigin: currentOrigin,
+        configuredApiBase: normalizedConfiguredApiBase || '<blank>',
+        failedUrl: normalizedFailedUrl || '<blank>',
+        storedOverride: overrideUrl || '<none>',
+        effectiveUserId,
+      },
+    }
+  })()
+
   if (error) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-[var(--bg-primary)] text-[var(--accent-primary)] p-8 font-mono">
-        <div className="max-w-md w-full border border-[var(--glass-border)] p-8 rounded-lg bg-[var(--sidebar-bg)]/50 backdrop-blur-xl shadow-2xl">
+        <div className="max-w-3xl w-full border border-[var(--glass-border)] p-8 rounded-lg bg-[var(--sidebar-bg)]/50 backdrop-blur-xl shadow-2xl">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
             <h1 className="text-xl font-bold uppercase tracking-tighter text-[var(--text-primary)]">Connection Failure</h1>
@@ -174,12 +244,52 @@ const Bootstrap = () => {
           
           <div className="bg-black/40 p-4 rounded-lg mb-4 border border-white/5">
             <p className="text-xs opacity-80 leading-relaxed text-red-200 mb-2 font-bold">
-              Failed to reach backend API. If you recently entered a custom API URL, it might be routing through a corporate proxy (APISIX) that rejects unauthenticated requests.
+              Failed to complete bootstrap against the backend API. This panel shows the most likely cause based on the current browser origin, configured API base, and returned error.
             </p>
             <p className="text-[10px] text-[var(--text-muted)]">
               Target URL: {failedUrl} <br/>
               Error: {error}
             </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 mb-5">
+            <div className="bg-black/30 rounded-lg border border-white/5 p-4">
+              <h2 className="text-[11px] font-black uppercase tracking-widest text-white mb-3">Likely Cause</h2>
+              <div className="space-y-2">
+                {failureDiagnosis.reasons.map((reason, index) => (
+                  <p key={index} className="text-[11px] leading-relaxed text-slate-300">
+                    {reason}
+                  </p>
+                ))}
+              </div>
+            </div>
+            <div className="bg-black/30 rounded-lg border border-white/5 p-4">
+              <h2 className="text-[11px] font-black uppercase tracking-widest text-white mb-3">Diagnostics</h2>
+              <div className="space-y-2 text-[10px] text-slate-400">
+                <p>UI Origin: <span className="text-slate-200">{failureDiagnosis.diagnostics.uiOrigin}</span></p>
+                <p>Configured API Base: <span className="text-slate-200">{failureDiagnosis.diagnostics.configuredApiBase}</span></p>
+                <p>Failed URL: <span className="text-slate-200">{failureDiagnosis.diagnostics.failedUrl}</span></p>
+                <p>Stored Override: <span className="text-slate-200">{failureDiagnosis.diagnostics.storedOverride}</span></p>
+                <p>Effective User: <span className="text-slate-200">{failureDiagnosis.diagnostics.effectiveUserId}</span></p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-black/30 rounded-lg border border-white/5 p-4 mb-5">
+            <h2 className="text-[11px] font-black uppercase tracking-widest text-white mb-3">Recommended Actions</h2>
+            <div className="space-y-2">
+              {failureDiagnosis.actions.map((action, index) => (
+                <p key={index} className="text-[11px] leading-relaxed text-slate-300">
+                  {index + 1}. {action}
+                </p>
+              ))}
+            </div>
+            <div className="mt-4 rounded-lg border border-white/5 bg-black/30 p-3 text-[10px] text-slate-400">
+              <p className="font-bold text-slate-200 mb-2">Useful checks</p>
+              <p>1. Open <span className="text-slate-200">{'<backend-origin>/api/v1/health'}</span> directly in the browser.</p>
+              <p>2. If using a forwarded/company URL, do not use `127.0.0.1:8000` as the frontend API base.</p>
+              <p>3. If this is a seeded local environment, the expected disposable admin user is `haewon.kim`.</p>
+            </div>
           </div>
 
           <div className="flex flex-col gap-3">

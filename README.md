@@ -269,6 +269,113 @@ localStorage.removeItem('SYSGRID_CONFIG_VITE_API_BASE_URL')
 
 3. reload the app
 
+## Remote VS Code / Forwarded Port Setup
+
+This is the important distinction:
+
+- if your browser is running on your own laptop against `127.0.0.1`, use local URLs
+- if your browser is opening a forwarded or hosted development URL, do not use `127.0.0.1:8000` as the frontend API base
+
+In a forwarded-port environment, the browser must call the forwarded backend origin, not the backend's machine-local loopback address.
+
+### What To Use
+
+Get these two values from your VS Code ports/forwarding UI:
+
+1. the frontend origin you open in the browser
+2. the backend forwarded origin for port `8000`
+
+Then configure:
+
+`frontend/.env.local`
+
+```env
+VITE_API_BASE_URL=https://<forwarded-backend-origin>
+```
+
+`backend/.env`
+
+```env
+BACKEND_CORS_ORIGINS=["https://<forwarded-frontend-origin>"]
+DEFAULT_USER_ID="haewon.kim"
+AUTO_ADMIN_USER_IDS="haewon.kim"
+PORT=8000
+```
+
+Important:
+
+- `VITE_API_BASE_URL` must be the forwarded backend origin only
+- do not include `/api/v1`
+- `BACKEND_CORS_ORIGINS` must include the exact frontend origin you open in the browser
+- if you have both local and forwarded workflows, include both origins in `BACKEND_CORS_ORIGINS`
+
+Example pattern:
+
+```env
+BACKEND_CORS_ORIGINS=["http://127.0.0.1:5173","http://localhost:5173","https://<forwarded-frontend-origin>"]
+```
+
+### How To Start
+
+Backend:
+
+```bash
+cd backend
+source venv/bin/activate
+venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm run dev -- --host 0.0.0.0 --port 5173
+```
+
+Then open the forwarded frontend URL from your ports UI, not `127.0.0.1:5173`.
+
+### One-Time Browser Cleanup
+
+Before retrying, clear old overrides:
+
+```js
+localStorage.removeItem('SYSGRID_OVERRIDE_API_URL')
+localStorage.removeItem('SYSGRID_CONFIG_VITE_API_BASE_URL')
+localStorage.removeItem('SYSGRID_USER_ID')
+```
+
+Then reload.
+
+### If It Still Shows 403
+
+That usually means one of these:
+
+1. `VITE_API_BASE_URL` still points at `127.0.0.1:8000` instead of the forwarded backend origin
+2. `BACKEND_CORS_ORIGINS` does not include the forwarded frontend origin
+3. the frontend is still sending the wrong user id from stale browser storage
+4. the selected tenant in the seeded config DB belongs to `haewon.kim`, but the browser is still sending another user
+
+To force the expected local seeded admin user:
+
+```js
+localStorage.setItem('SYSGRID_USER_ID', 'haewon.kim')
+```
+
+Then reload again.
+
+### Fast Sanity Check
+
+If you are unsure whether your forwarded backend URL is correct:
+
+1. paste `<forwarded-backend-origin>/api/v1/health` into the browser
+2. it should return:
+
+```json
+{"status":"online"}
+```
+
+If that does not work, the frontend will not work either.
+
 If you have multiple approved frontend origins:
 
 ```env
