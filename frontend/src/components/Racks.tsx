@@ -284,7 +284,10 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
 
   const updateLines = React.useCallback(() => {
     const gridEl = document.getElementById('racks-grid')
-    if (!gridEl) return
+    if (!gridEl) {
+      requestRef.current = requestAnimationFrame(updateLines)
+      return
+    }
     const gridRect = gridEl.getBoundingClientRect()
     
     if (gridEl.scrollWidth !== 0) {
@@ -312,7 +315,11 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
     }
 
     const sourcePoints = getPoints(sourceDeviceId)
-    if (sourcePoints.length === 0) return
+    if (sourcePoints.length === 0) {
+      if (lines.length > 0) setLines([])
+      requestRef.current = requestAnimationFrame(updateLines)
+      return
+    }
 
     const newLines: any[] = []
     const processedPairs = new Set<string>()
@@ -333,33 +340,33 @@ const ConnectionLines = ({ sourceDeviceId, targetDeviceIds, racks, connections, 
           )
 
           if (isSameRack) {          // Internal rack connection: keep it inside the rack width
-          // Reduce offset to keep lines within the rack body (px-6 padding gives us room)
-          const offset = ((index % 2 === 0 ? 1 : -1) * (10 + Math.floor(index / 2) * 4))
-          newLines.push({ 
-            x1: sourcePoint.x, y1: sourcePoint.y, 
-            x2: targetPoint.x, y2: targetPoint.y, 
-            isInternal: true, 
-            offset, 
-            id: pairKey, 
-            connection: conn, 
-            isScrolledOut: sourcePoint.isScrolledOut || targetPoint.isScrolledOut 
-          })
-        } else {
-          newLines.push({ 
-            x1: sourcePoint.x, y1: sourcePoint.y, 
-            x2: targetPoint.x, y2: targetPoint.y, 
-            isInternal: false, 
-            id: pairKey, 
-            connection: conn, 
-            isScrolledOut: sourcePoint.isScrolledOut || targetPoint.isScrolledOut 
-          })
-        }
+            // Reduce offset to keep lines within the rack body (px-6 padding gives us room)
+            const offset = ((index % 2 === 0 ? 1 : -1) * (10 + Math.floor(index / 2) * 4))
+            newLines.push({ 
+              x1: sourcePoint.x, y1: sourcePoint.y, 
+              x2: targetPoint.x, y2: targetPoint.y, 
+              isInternal: true, 
+              offset, 
+              id: pairKey, 
+              connection: conn, 
+              isScrolledOut: sourcePoint.isScrolledOut || targetPoint.isScrolledOut 
+            })
+          } else {
+            newLines.push({ 
+              x1: sourcePoint.x, y1: sourcePoint.y, 
+              x2: targetPoint.x, y2: targetPoint.y, 
+              isInternal: false, 
+              id: pairKey, 
+              connection: conn, 
+              isScrolledOut: sourcePoint.isScrolledOut || targetPoint.isScrolledOut 
+            })
+          }
+        })
       })
     })
-  })
-  setLines(newLines)
-  requestRef.current = requestAnimationFrame(updateLines)
-}, [sourceDeviceId, targetDeviceIds, connections, racks])
+    setLines(newLines)
+    requestRef.current = requestAnimationFrame(updateLines)
+  }, [sourceDeviceId, targetDeviceIds, connections, racks, devices, lines.length])
 
   React.useEffect(() => {
     requestRef.current = requestAnimationFrame(updateLines)
@@ -2479,9 +2486,9 @@ export default function Racks() {
     
     // 1. Connection-specific filtering: If focusing a connection, only show involved racks
     if (focusedConnection) {
-      const involvedIds = [focusedConnection.sourceId, ...focusedConnection.targetIds]
+      const involvedIds = new Set([focusedConnection.sourceId, ...focusedConnection.targetIds].map(String))
       filtered = filtered.filter((r: any) => 
-        r.device_locations?.some((l: any) => involvedIds.includes(l.device_id))
+        r.device_locations?.some((l: any) => involvedIds.has(String(l.device_id)))
       )
     }
 

@@ -57,9 +57,21 @@ function getCurrentUserId(): string {
 }
 
 function shouldAttachUserIdHeader(url: string): boolean {
+  const baseUrl = getApiBaseUrl()
+  // If it's a relative URL or starts with the baseUrl, attach it.
+  if (!url.startsWith('http')) return true
+  if (baseUrl && url.startsWith(baseUrl)) return true
+  
   try {
     const targetUrl = new URL(url, window.location.origin)
-    return targetUrl.origin === window.location.origin
+    // Same-origin is always safe
+    if (targetUrl.origin === window.location.origin) return true
+    
+    // Also allow for local development cross-origin (e.g., localhost:5173 -> localhost:8000)
+    const isLocal = targetUrl.hostname === 'localhost' || targetUrl.hostname === '127.0.0.1'
+    if (isLocal) return true
+    
+    return false
   } catch {
     return true
   }
