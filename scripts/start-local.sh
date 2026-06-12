@@ -76,14 +76,14 @@ if [[ -z "$RUNTIME_EFFECTIVE_USER_ID" ]]; then
 fi
 
 LOCAL_CONFIG_DB="$BACKEND_DIR/config.local.db"
-LOCAL_DEFAULT_DB="$BACKEND_DIR/system_grid.local.db"
 LOCAL_TENANT_ROOT="$BACKEND_DIR/tenants/local-demo"
 LOCAL_TENANT_DB_REL="tenants/local-demo/local_demo.db"
 LOCAL_TENANT_DB="$BACKEND_DIR/$LOCAL_TENANT_DB_REL"
 LOCAL_BACKEND_ENV_FILE="$BACKEND_DIR/.env.local.runtime"
 
+# Ensure the backend uses the same DB for default as the seeded tenant
 export CONFIG_DATABASE_URL="sqlite+aiosqlite:///$LOCAL_CONFIG_DB"
-export DATABASE_URL="sqlite+aiosqlite:///$LOCAL_DEFAULT_DB"
+export DATABASE_URL="sqlite+aiosqlite:///$LOCAL_TENANT_DB"
 export TENANT_STORAGE_ROOT="$LOCAL_TENANT_ROOT"
 export FRONTEND_ENV_FILE_PATH="$FRONTEND_DIR/.env.local"
 export BACKEND_ENV_FILE_PATH="$LOCAL_BACKEND_ENV_FILE"
@@ -93,8 +93,11 @@ export PUBLIC_READONLY_TENANT_NAME="Local Demo"
 export DEFAULT_USER_ID="$DEFAULT_USER_ID_VALUE"
 export AUTO_ADMIN_USER_IDS="$AUTO_ADMIN_USER_IDS_VALUE"
 export USER_ID_ENV_VAR="$USER_ID_ENV_VAR_VALUE"
+# Ensure the backend identifies the seeded user by setting the expected env var
+export USER_ID="${USER_ID:-$DEFAULT_USER_ID_VALUE}"
 export DEFAULT_EMAIL_DOMAIN="sysgrid.local"
 export BACKEND_CORS_ORIGINS="[\"$FRONTEND_ORIGIN\",\"http://localhost:$FRONTEND_PORT\"]"
+export ENVIRONMENT="development"
 
 cleanup() {
   if [[ -n "${BACKEND_PID:-}" ]]; then kill "$BACKEND_PID" >/dev/null 2>&1 || true; fi
@@ -146,7 +149,7 @@ kill_listener_on_port "$BACKEND_PORT"
 kill_listener_on_port "$FRONTEND_PORT"
 
 mkdir -p "$BACKEND_DIR/tenants"
-rm -f "$LOCAL_CONFIG_DB" "$LOCAL_DEFAULT_DB" "$LOCAL_TENANT_DB"
+rm -f "$LOCAL_CONFIG_DB" "$LOCAL_TENANT_DB"
 rm -rf "$LOCAL_TENANT_ROOT"
 mkdir -p "$LOCAL_TENANT_ROOT"
 
@@ -220,6 +223,10 @@ echo "Forwarded Runtime User: ${RUNTIME_EFFECTIVE_USER_ID:-<unset>}"
 echo "Backend Runtime Env: $LOCAL_BACKEND_ENV_FILE"
 echo "Tenant DB: $LOCAL_TENANT_DB"
 echo "Config DB: $LOCAL_CONFIG_DB"
+echo
+echo "HINT: If you still have trouble with admin permissions or the wrong database:"
+echo "1. Clear browser local storage (F12 -> Application -> Local Storage -> Clear)"
+echo "2. Or run: localStorage.clear(); location.reload(); in the browser console."
 echo
 echo "This local workflow always resets and reseeds the disposable Local Demo environment."
 echo "It does not touch your real production tenant or config database."
