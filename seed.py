@@ -103,7 +103,7 @@ def register_tenant_and_access(*, tenant_name: str, tenant_db_url: str, admin_us
         if select_for_user:
             # Deselect others for this user
             session.execute(
-                models.config.UserTenantAccess.__table__.update()
+                UserTenantAccess.__table__.update()
                 .where(UserTenantAccess.user_id == admin_user)
                 .values(is_selected=False)
             )
