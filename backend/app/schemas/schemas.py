@@ -171,10 +171,10 @@ class MonitoringItemBase(BaseModel):
     purpose: Optional[str] = None
     impact: Optional[str] = None
     notification_method: Optional[str] = None # Email, Slack, PagerDuty
-    notification_recipients: Optional[List[str]] = []
+    notification_recipients: Optional[List[str]] = Field(default_factory=list)
     logic: Optional[str] = None # For log-based: regex or query
     logic_json: List[MonitoringLogicEntry] = Field(default_factory=list)
-    monitored_services: List[int] = []
+    monitored_services: List[int] = Field(default_factory=list)
     owner_team: Optional[str] = None
     
     # New Fields
@@ -218,16 +218,20 @@ class MonitoringItemCreate(MonitoringItemBase):
 class MonitoringItemResponse(MonitoringItemBase, BaseSchema):
     is_deleted: bool = False
     device_name: Optional[str] = None
-    monitored_service_names: List[str] = [] # Optional, for UI convenience
-    recovery_doc_titles: List[str] = [] # For UI convenience
-    recovery_doc_details: List[MonitoringRecoveryDocResponse] = []
-    owners: List[MonitoringOwnerResponse] = []
+    monitored_service_names: List[str] = Field(default_factory=list) # Optional, for UI convenience
+    recovery_doc_titles: List[str] = Field(default_factory=list) # For UI convenience
+    recovery_doc_details: List[MonitoringRecoveryDocResponse] = Field(default_factory=list)
+    owners: List[MonitoringOwnerResponse] = Field(default_factory=list)
 
 class MonitoringHistoryResponse(BaseSchema):
     monitoring_item_id: int
     version: int
     snapshot: Dict[str, Any]
     change_summary: Optional[str] = None
+    delta: List[Dict[str, Any]] = Field(default_factory=list)
+    changed_fields: List[str] = Field(default_factory=list)
+    changed_labels: List[str] = Field(default_factory=list)
+    previous_version: Optional[int] = None
 
 class ServiceSecretBase(BaseModel):
     username: Optional[str] = None
@@ -950,7 +954,7 @@ class KnowledgeEntryResponse(KnowledgeEntryBase, BaseSchema):
 
 class RoleBase(BaseModel):
     name: str
-    permissions: Dict[str, Any] = {} # { "projects": "read", ... }
+    permissions: Dict[str, Any] = Field(default_factory=dict) # { "projects": "read", ... }
 
 class RoleCreate(RoleBase): pass
 class RoleResponse(RoleBase, BaseSchema): pass
@@ -963,7 +967,7 @@ class OperatorBase(BaseModel):
     department: Optional[str] = None
     team: Optional[str] = None
     role_id: Optional[int] = None
-    custom_permissions: Dict[str, Any] = {} 
+    custom_permissions: Dict[str, Any] = Field(default_factory=dict)
     registration_status: Optional[str] = "Pending"
     is_admin: bool = False
 

@@ -6,7 +6,6 @@ import pytest
 
 @pytest.mark.anyio
 async def test_monitoring_import_schema_and_template(client):
-    await client.get("/api/v1/settings/initialize")
     team_res = await client.post("/api/v1/settings/teams", json={"name": "Import Template Ops"})
     assert team_res.status_code == 200, team_res.text
     device_res = await client.post("/api/v1/devices", json={
@@ -48,6 +47,8 @@ async def test_monitoring_import_schema_and_template(client):
 
     template_res = await client.get(f"/api/v1/import/template/monitoring_items?columns=title,monitoring_url&mode=example&example_id={monitor['id']}")
     assert template_res.status_code == 200, template_res.text
+    assert template_res.headers["x-sysgrid-schema-version"] == "2026-06-monitoring-v1"
+    assert template_res.headers["x-sysgrid-import-profile"] == "monitoring_items"
     decoded = template_res.content.decode("utf-8")
     rows = list(csv.reader(io.StringIO(decoded)))
 
@@ -61,7 +62,6 @@ async def test_monitoring_import_schema_and_template(client):
 
 @pytest.mark.anyio
 async def test_monitoring_import_preview_rows_and_execute(client):
-    await client.get("/api/v1/settings/initialize")
     await client.post("/api/v1/settings/teams", json={"name": "Import Ops"})
 
     device_res = await client.post("/api/v1/devices", json={
@@ -150,8 +150,60 @@ async def test_monitoring_import_preview_rows_and_execute(client):
 
 
 @pytest.mark.anyio
+async def test_monitoring_snapshot_export_uses_round_trip_import_contract(client):
+    await client.post("/api/v1/settings/teams", json={"name": "Snapshot Ops"})
+    device_res = await client.post("/api/v1/devices", json={
+        "name": "MON-SNAPSHOT-01",
+        "system": "MON-SNAPSHOT",
+        "status": "Active",
+        "type": "Physical",
+        "serial_number": "MON-SNAPSHOT-SN",
+        "asset_tag": "MON-SNAPSHOT-AT",
+    })
+    device = device_res.json()
+    knowledge_res = await client.post("/api/v1/knowledge", json={
+        "title": "Snapshot Recovery",
+        "category": "Runbook",
+        "content": "Recover snapshot monitor",
+        "status": "Draft",
+    })
+    knowledge = knowledge_res.json()
+
+    create_res = await client.post("/api/v1/monitoring", json={
+        "device_id": device["id"],
+        "category": "Infrastructure",
+        "status": "Existing",
+        "title": "Snapshot Monitor",
+        "platform": "Zabbix",
+        "owner_team": "Snapshot Ops",
+        "notification_method": "Slack",
+        "notification_recipients": ["snap@example.com"],
+        "severity": "Critical",
+        "recovery_docs": [knowledge["id"]],
+        "spec": "Watch disk saturation",
+        "logic": "disk_used > 90",
+    })
+    assert create_res.status_code == 200, create_res.text
+
+    snapshot_res = await client.get("/api/v1/import/snapshot/monitoring_items")
+    assert snapshot_res.status_code == 200, snapshot_res.text
+    assert snapshot_res.headers["x-sysgrid-schema-version"] == "2026-06-monitoring-v1"
+    assert snapshot_res.headers["x-sysgrid-import-profile"] == "monitoring_items"
+
+    rows = list(csv.DictReader(io.StringIO(snapshot_res.content.decode("utf-8"))))
+    assert rows
+    row = rows[0]
+    assert row["device_name"] == "MON-SNAPSHOT-01"
+    assert row["title"] == "Snapshot Monitor"
+    assert row["owner_team"] == "Snapshot Ops"
+    assert row["notification_recipients"] == "snap@example.com"
+    assert row["recovery_doc_titles"] == "Snapshot Recovery"
+    assert row["spec"] == "Watch disk saturation"
+    assert row["logic"] == "disk_used > 90"
+
+
+@pytest.mark.anyio
 async def test_monitoring_import_preview_file_accepts_csv_upload(client):
-    await client.get("/api/v1/settings/initialize")
     await client.post("/api/v1/settings/teams", json={"name": "File Import Ops"})
     await client.post("/api/v1/devices", json={
         "name": "MON-FILE-01",
@@ -177,3 +229,45 @@ async def test_monitoring_import_preview_file_accepts_csv_upload(client):
     assert preview["total_rows"] == 1
     assert preview["valid_rows"] == 1
     assert preview["results"][0]["normalized"]["title"] == "CPU Saturation"
+
+
+@pytest.mark.anyio
+async def test_monitoring_import_rejects_duplicate_rows_in_same_batch(client):
+    await client.post("/api/v1/settings/teams", json={"name": "Dup Import Ops"})
+    await client.post("/api/v1/devices", json={
+        "name": "MON-DUP-IMPORT-01",
+        "system": "MON-DUP-IMPORT",
+        "status": "Active",
+        "type": "Physical",
+        "serial_number": "MON-DUP-IMPORT-SN",
+        "asset_tag": "MON-DUP-IMPORT-AT",
+    })
+
+    preview_res = await client.post(
+        "/api/v1/import/preview-rows?table_name=monitoring_items",
+        json={
+            "rows": [
+                {
+                    "device_name": "MON-DUP-IMPORT-01",
+                    "category": "Infrastructure",
+                    "status": "Existing",
+                    "title": "Duplicate Import Monitor",
+                    "platform": "Zabbix",
+                    "owner_team": "Dup Import Ops",
+                },
+                {
+                    "device_name": "MON-DUP-IMPORT-01",
+                    "category": "Infrastructure",
+                    "status": "Existing",
+                    "title": "Duplicate Import Monitor",
+                    "platform": "Zabbix",
+                    "owner_team": "Dup Import Ops",
+                },
+            ]
+        },
+    )
+    assert preview_res.status_code == 200, preview_res.text
+    preview = preview_res.json()
+    assert preview["valid_rows"] == 1
+    assert preview["invalid_rows"] == 1
+    assert "Duplicate monitoring row in the same import batch." in preview["results"][1]["errors"][0]

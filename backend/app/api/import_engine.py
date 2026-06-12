@@ -14,10 +14,17 @@ from sqlalchemy.orm import joinedload
 
 from ..database import get_db
 from ..models import models
-from .monitoring import build_monitoring_payload, save_monitoring_history
+from .monitoring import (
+    build_monitoring_payload,
+    build_monitoring_snapshot_from_values,
+    ensure_monitoring_item_uniqueness,
+    save_monitoring_history,
+    summarize_monitoring_snapshot_delta,
+)
 from .utils import filter_valid_columns, get_current_user_id
 
 router = APIRouter(prefix="/import", tags=["Intelligence Engine"])
+MONITORING_IMPORT_SCHEMA_VERSION = "2026-06-monitoring-v1"
 
 
 @dataclass
@@ -310,12 +317,6 @@ async def build_monitoring_schema_context(db: AsyncSession) -> dict[str, Any]:
         .order_by(models.Operator.username)
     )
     methods = await fetch_setting_options(db, "NotificationMethod")
-    if not methods:
-        methods = [
-            {"value": "Email", "label": "Email", "description": "Deliver alerts by email."},
-            {"value": "Slack", "label": "Slack", "description": "Deliver alerts to Slack."},
-            {"value": "PagerDuty", "label": "PagerDuty", "description": "Trigger PagerDuty escalation."},
-        ]
 
     example_items_res = await db.execute(
         select(models.MonitoringItem.id, models.MonitoringItem.title)
@@ -365,6 +366,21 @@ async def serialize_monitoring_example_row(db: AsyncSession, item: models.Monito
     if item.device_id:
         device_name = await db.scalar(select(models.Device.name).where(models.Device.id == item.device_id))
 
+    monitored_service_names: list[str] = []
+    if item.monitored_services:
+        service_result = await db.execute(
+            select(models.LogicalService.name).where(models.LogicalService.id.in_(item.monitored_services))
+        )
+        monitored_service_names = [name for name in service_result.scalars().all() if name]
+
+    recovery_doc_titles: list[str] = []
+    if item.recovery_docs:
+        recovery_doc_ids = [doc.get("id") if isinstance(doc, dict) else doc for doc in item.recovery_docs]
+        recovery_doc_result = await db.execute(
+            select(models.KnowledgeEntry.title).where(models.KnowledgeEntry.id.in_(recovery_doc_ids))
+        )
+        recovery_doc_titles = [title for title in recovery_doc_result.scalars().all() if title]
+
     return {
         "device_name": device_name or "",
         "category": item.category or "",
@@ -385,6 +401,10 @@ async def serialize_monitoring_example_row(db: AsyncSession, item: models.Monito
         "check_interval": item.check_interval,
         "alert_duration": item.alert_duration,
         "notification_throttle": item.notification_throttle,
+        "spec": item.spec or "",
+        "logic": item.logic or "",
+        "monitored_service_names": ", ".join(monitored_service_names),
+        "recovery_doc_titles": ", ".join(recovery_doc_titles),
     }
 
 
@@ -463,12 +483,23 @@ async def build_monitoring_import_row(db: AsyncSession, raw_row: dict[str, Any])
 
 async def preview_monitoring_rows(db: AsyncSession, rows: list[dict[str, Any]]) -> dict[str, Any]:
     results = []
+    seen_fingerprints: set[tuple[Any, ...]] = set()
     for index, raw_row in enumerate(rows):
         errors: list[str] = []
         normalized_row: dict[str, Any] = {}
         try:
             candidate = await build_monitoring_import_row(db, raw_row)
             clean_data, owners_data = await build_monitoring_payload(db, candidate, partial=False)
+            await ensure_monitoring_item_uniqueness(db, item_data=clean_data)
+            fingerprint = (
+                clean_data.get("device_id"),
+                (clean_data.get("title") or "").strip().lower(),
+                clean_data.get("category"),
+                clean_data.get("platform"),
+            )
+            if fingerprint in seen_fingerprints:
+                raise HTTPException(status_code=400, detail="Duplicate monitoring row in the same import batch.")
+            seen_fingerprints.add(fingerprint)
             normalized_row = {**clean_data, "owners": owners_data or []}
         except HTTPException as exc:
             detail = exc.detail
@@ -508,6 +539,7 @@ async def execute_monitoring_rows(db: AsyncSession, rows: list[dict[str, Any]], 
     for raw_row in rows:
         candidate = await build_monitoring_import_row(db, raw_row)
         item_data, owners_data = await build_monitoring_payload(db, candidate, partial=False)
+        await ensure_monitoring_item_uniqueness(db, item_data=item_data)
         if user_id:
             item_data["created_by_user_id"] = user_id
         db_obj = models.MonitoringItem(**item_data)
@@ -527,7 +559,50 @@ async def execute_monitoring_rows(db: AsyncSession, rows: list[dict[str, Any]], 
     )
     created_items = list(reversed(result.unique().scalars().all()))
     for item in created_items:
-        await save_monitoring_history(item.id, item.version, db, "Import create")
+        await save_monitoring_history(
+            item.id,
+            item.version,
+            db,
+            summarize_monitoring_snapshot_delta(
+                None,
+                build_monitoring_snapshot_from_values(
+                    {
+                        "device_id": item.device_id,
+                        "category": item.category,
+                        "status": item.status,
+                        "title": item.title,
+                        "spec": item.spec,
+                        "platform": item.platform,
+                        "monitoring_url": item.monitoring_url,
+                        "purpose": item.purpose,
+                        "impact": item.impact,
+                        "notification_method": item.notification_method,
+                        "notification_recipients": item.notification_recipients,
+                        "logic": item.logic,
+                        "logic_json": item.logic_json,
+                        "monitored_services": item.monitored_services,
+                        "owner_team": item.owner_team,
+                        "check_interval": item.check_interval,
+                        "alert_duration": item.alert_duration,
+                        "notification_throttle": item.notification_throttle,
+                        "severity": item.severity,
+                        "is_active": item.is_active,
+                        "is_deleted": item.is_deleted,
+                        "recovery_docs": item.recovery_docs,
+                    },
+                    [
+                        {
+                            "operator_id": owner.operator_id,
+                            "name": owner.name or (owner.operator.full_name if owner.operator else None),
+                            "external_id": owner.external_id or (owner.operator.external_id if owner.operator else None),
+                            "role": owner.role,
+                        }
+                        for owner in item.owners
+                    ],
+                ),
+                action_label="create",
+            ),
+        )
     await db.commit()
 
     if user_id:
@@ -678,10 +753,14 @@ async def download_template(
     stream = io.BytesIO()
     df.to_csv(stream, index=False)
     stream.seek(0)
+    headers = {"Content-Disposition": f"attachment; filename=SYSGRID_{table_name}_Template.csv"}
+    if profile.key == "monitoring_items":
+        headers["X-SysGrid-Schema-Version"] = MONITORING_IMPORT_SCHEMA_VERSION
+        headers["X-SysGrid-Import-Profile"] = profile.key
     return StreamingResponse(
         stream,
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=SYSGRID_{table_name}_Template.csv"}
+        headers=headers
     )
 
 
@@ -689,31 +768,51 @@ async def download_template(
 async def download_snapshot(table_name: str, db: AsyncSession = Depends(get_db)):
     profile = get_import_profile(table_name)
     model = profile.model
-    mapper = inspect(model)
-    exclude = {"id", "created_at", "updated_at", "created_by_user_id"}
-    cols = [column.name for column in mapper.columns if column.name not in exclude]
+    if profile.key == "monitoring_items":
+        fields = [field for field in profile.fields]
+        columns = [field.name for field in fields]
+        result = await db.execute(
+            select(models.MonitoringItem)
+            .options(joinedload(models.MonitoringItem.owners).joinedload(models.MonitoringOwner.operator))
+            .where(models.MonitoringItem.is_deleted == False)
+            .order_by(models.MonitoringItem.updated_at.desc(), models.MonitoringItem.id.desc())
+        )
+        records = result.unique().scalars().all()
+        data = []
+        for record in records:
+            serialized = await serialize_monitoring_example_row(db, record)
+            data.append({column: serialized.get(column, "") for column in columns})
+        df = pd.DataFrame(data, columns=columns)
+    else:
+        mapper = inspect(model)
+        exclude = {"id", "created_at", "updated_at", "created_by_user_id"}
+        cols = [column.name for column in mapper.columns if column.name not in exclude]
 
-    query = select(model)
-    if hasattr(model, "is_deleted"):
-        query = query.where(model.is_deleted == False)
+        query = select(model)
+        if hasattr(model, "is_deleted"):
+            query = query.where(model.is_deleted == False)
 
-    result = await db.execute(query)
-    records = result.scalars().all()
-    data = []
-    for record in records:
-        row = {}
-        for column in cols:
-            row[column] = stringify_json(getattr(record, column))
-        data.append(row)
+        result = await db.execute(query)
+        records = result.scalars().all()
+        data = []
+        for record in records:
+            row = {}
+            for column in cols:
+                row[column] = stringify_json(getattr(record, column))
+            data.append(row)
+        df = pd.DataFrame(data, columns=cols)
 
-    df = pd.DataFrame(data, columns=cols)
     stream = io.BytesIO()
     df.to_csv(stream, index=False)
     stream.seek(0)
+    headers = {"Content-Disposition": f"attachment; filename=SYSGRID_{table_name}_Snapshot.csv"}
+    if profile.key == "monitoring_items":
+        headers["X-SysGrid-Schema-Version"] = MONITORING_IMPORT_SCHEMA_VERSION
+        headers["X-SysGrid-Import-Profile"] = profile.key
     return StreamingResponse(
         stream,
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=SYSGRID_{table_name}_Snapshot.csv"}
+        headers=headers
     )
 
 

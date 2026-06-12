@@ -1,11 +1,10 @@
-from fastapi import Request
+from fastapi import HTTPException, Request, status
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import event, MetaData, select
 from .core.config import settings
 import os
 from .models.config import ConfigBase, Tenant, UserTenantAccess, MasterSystemSetting
-from .api.utils import get_current_user_id
 
 # 1. Master Configuration Database (Always Local)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -105,10 +104,10 @@ async def get_db(request: Request):
     """
     Dynamic DB dependency. Determines tenant DB based on USER_ID.
     """
+    from .api.utils import get_current_user_id
+
     # 1. Get User ID from unified utility
     user_id = get_current_user_id(request)
-
-    target_db_url = settings.DATABASE_URL # Default/Fallback
 
     # 2. Lookup active tenant for this user in config.db
     async with ConfigSessionLocal() as config_db:
@@ -121,12 +120,14 @@ async def get_db(request: Request):
         )
         result = await config_db.execute(stmt)
         tenant_url = result.scalar_one_or_none()
-        
-        if tenant_url:
-            target_db_url = tenant_url
+        if not tenant_url:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"No selected tenant access found for user '{user_id}'",
+            )
 
     # 3. Provide session for the target DB
-    engine = get_tenant_engine(target_db_url)
+    engine = get_tenant_engine(tenant_url)
     session_factory = async_sessionmaker(
         bind=engine,
         autoflush=False,
@@ -162,27 +163,11 @@ async def init_config_db():
             ))
             await db.commit()
 
-        # 2. Default Tenant (The existing system_grid.db)
+        # 2. Synchronize the registry entry only if a default tenant already exists.
         res = await db.execute(select(Tenant).filter(Tenant.name == settings.DEFAULT_TENANT_NAME))
         default_tenant = res.scalar_one_or_none()
-        if not default_tenant:
-            default_tenant = Tenant(name=settings.DEFAULT_TENANT_NAME, db_url=settings.DATABASE_URL)
-            db.add(default_tenant)
-            await db.commit()
-            await db.refresh(default_tenant)
-        elif default_tenant.db_url != settings.DATABASE_URL:
+        if default_tenant and default_tenant.db_url != settings.DATABASE_URL:
             # Synchronize static config with registry if it changed in .env
             default_tenant.db_url = settings.DATABASE_URL
             await db.commit()
             await db.refresh(default_tenant)
-
-        # 3. Grant 'admin_root' access to Default Engine
-        res = await db.execute(select(UserTenantAccess).filter(UserTenantAccess.user_id == settings.DEFAULT_USER_ID))
-        if not res.scalar_one_or_none():
-            db.add(UserTenantAccess(
-                user_id=settings.DEFAULT_USER_ID,
-                tenant_id=default_tenant.id,
-                role="ADMIN",
-                is_selected=True
-            ))
-            await db.commit()

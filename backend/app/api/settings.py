@@ -1,28 +1,300 @@
+import json
 import os
+from copy import deepcopy
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
 from ..database import get_db
 from ..models import models
 from ..core.config import settings
-from .utils import filter_valid_columns, get_current_user_id, build_default_operator_profile
+from .utils import filter_valid_columns, get_current_user_id, normalize_json_list, normalize_json_object
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
 LOCKED_MONITORING_OPTION_CATEGORIES = {"MonitoringSeverity", "MonitoringOwnerRole"}
+RELATIONAL_OPTION_CATEGORIES = {"MonitoringTeam"}
+
+
+def serialize_user_preference_value(value):
+    try:
+        return json.dumps(value)
+    except TypeError as exc:
+        raise HTTPException(status_code=400, detail=f"User preference value is not JSON serializable: {exc}") from exc
+
+
+def deserialize_user_preference_value(raw_value: str):
+    if raw_value is None:
+        return None
+    try:
+        return json.loads(raw_value)
+    except (TypeError, json.JSONDecodeError):
+        return raw_value
+
+
+def normalize_string(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = str(value).strip()
+    return cleaned or None
+
+
+def normalize_string_list(values: list[str] | None) -> list[str]:
+    cleaned = {
+        normalized
+        for normalized in (normalize_string(value) for value in (values or []))
+        if normalized
+    }
+    return sorted(cleaned, key=lambda value: value.lower())
+
+
+def normalize_permission_map(raw_permissions: dict | None) -> dict:
+    if not isinstance(raw_permissions, dict):
+        return {}
+
+    normalized: dict[str, int] = {}
+    for key, value in raw_permissions.items():
+        normalized_key = normalize_string(key)
+        if not normalized_key:
+            continue
+        if isinstance(value, bool):
+            normalized_value = 1 if value else 0
+        elif isinstance(value, (int, float)):
+            normalized_value = int(value)
+        elif isinstance(value, str):
+            lookup = value.strip().lower()
+            normalized_value = {
+                "none": 0,
+                "read": 1,
+                "add": 2,
+                "write": 2,
+                "edit": 3,
+                "manage": 3,
+                "full": 3,
+                "admin": 3,
+            }.get(lookup, 0)
+        else:
+            normalized_value = 0
+        normalized[normalized_key] = max(0, min(3, normalized_value))
+    return dict(sorted(normalized.items(), key=lambda item: item[0]))
+
+
+def normalize_setting_option_payload(data: dict, *, fallback_category: str | None = None) -> dict:
+    payload = dict(data or {})
+    category = normalize_string(payload.get("category") or fallback_category)
+    label = normalize_string(payload.get("label"))
+    value = normalize_string(payload.get("value"))
+    description = normalize_string(payload.get("description"))
+
+    if category is not None:
+        payload["category"] = category
+    if label is not None:
+        payload["label"] = label
+    if value is not None:
+        payload["value"] = value
+    if description is not None or "description" in payload:
+        payload["description"] = description
+    if "metadata_keys" in payload:
+        payload["metadata_keys"] = normalize_string_list(payload.get("metadata_keys"))
+
+    return payload
+
+
+def split_team_name_values(value: str | list[str] | None) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        raw_values = value
+    else:
+        raw_values = str(value).replace("\n", ",").split(",")
+    return [normalized for normalized in (normalize_string(entry) for entry in raw_values) if normalized]
+
+
+def canonical_operator_state(operator: models.Operator) -> dict:
+    return {
+        "external_id": normalize_string(operator.external_id),
+        "username": normalize_string(operator.username),
+        "full_name": normalize_string(operator.full_name),
+        "email": normalize_string(operator.email),
+        "department": normalize_string(operator.department),
+        "team": normalize_string(operator.team),
+        "team_id": operator.team_id,
+        "team_source": normalize_string(operator.team_source) or "manual",
+        "teams": normalize_string_list(operator.teams or []),
+        "is_admin": bool(operator.is_admin),
+        "custom_permissions": normalize_permission_map(operator.custom_permissions or {}),
+        "registration_status": normalize_string(operator.registration_status),
+        "role_id": operator.role_id,
+    }
+
+
+def apply_operator_canonicalization(
+    operator: models.Operator,
+    *,
+    team: models.Team | None,
+    payload: dict,
+    default_source: str,
+) -> None:
+    for field in ("external_id", "username", "full_name", "email", "department", "registration_status"):
+        if field in payload:
+            setattr(operator, field, normalize_string(payload.get(field)))
+
+    if "is_admin" in payload:
+        operator.is_admin = bool(payload.get("is_admin"))
+    if "role_id" in payload:
+        operator.role_id = payload.get("role_id")
+    if "custom_permissions" in payload:
+        operator.custom_permissions = normalize_permission_map(payload.get("custom_permissions"))
+
+    provided_groups = payload.get("teams") if "teams" in payload else operator.teams
+    normalized_groups = normalize_string_list(provided_groups or [])
+    if team and team.name not in normalized_groups:
+        normalized_groups.append(team.name)
+        normalized_groups = sorted(set(normalized_groups), key=lambda value: value.lower())
+    operator.teams = normalized_groups
+
+    operator.team_id = team.id if team else None
+    operator.team = team.name if team else None
+    operator.team_source = normalize_string(payload.get("team_source")) or (default_source if team else "manual")
+
+
+async def ensure_setting_option_uniqueness(
+    db: AsyncSession,
+    *,
+    category: str,
+    value: str,
+    label: str,
+    exclude_id: int | None = None,
+) -> None:
+    existing = (await db.execute(select(models.SettingOption).filter(
+        models.SettingOption.category == category,
+        models.SettingOption.value == value,
+    ))).scalar_one_or_none()
+    if existing and existing.id != exclude_id:
+        raise HTTPException(status_code=409, detail=f"Duplicate option value '{value}' already exists in category '{category}'")
+
+    existing_label = (await db.execute(select(models.SettingOption).filter(
+        models.SettingOption.category == category,
+        models.SettingOption.label == label,
+    ))).scalar_one_or_none()
+    if existing_label and existing_label.id != exclude_id:
+        raise HTTPException(status_code=409, detail=f"Duplicate option label '{label}' already exists in category '{category}'")
+
+
+async def rename_json_string_list_references(db: AsyncSession, model: type, field_name: str, old_value: str, new_value: str) -> None:
+    result = await db.execute(select(model).filter(getattr(model, field_name).contains([old_value])))
+    rows = result.scalars().all()
+    for row in rows:
+        current = list(getattr(row, field_name) or [])
+        updated = [new_value if entry == old_value else entry for entry in current]
+        setattr(row, field_name, updated)
+
+
+async def rename_vendor_personnel_pc_types(db: AsyncSession, old_value: str, new_value: str) -> None:
+    result = await db.execute(select(models.VendorPersonnel).filter(models.VendorPersonnel.pcs.contains([{"type": old_value}])))
+    personnel_rows = result.scalars().all()
+    for person in personnel_rows:
+        next_pcs = []
+        for pc in person.pcs or []:
+            current = deepcopy(pc)
+            if current.get("type") == old_value:
+                current["type"] = new_value
+            next_pcs.append(current)
+        person.pcs = next_pcs
+
+
+async def rename_setting_option_references(db: AsyncSession, category: str, old_value: str, new_value: str) -> None:
+    if old_value == new_value:
+        return
+
+    if category == "Status":
+        await db.execute(update(models.Device).where(models.Device.status == old_value).values(status=new_value))
+        await db.execute(update(models.LogicalService).where(models.LogicalService.status == old_value).values(status=new_value))
+        await db.execute(update(models.MaintenanceWindow).where(models.MaintenanceWindow.status == old_value).values(status=new_value))
+        await db.execute(update(models.ExternalEntity).where(models.ExternalEntity.status == old_value).values(status=new_value))
+    elif category == "Environment":
+        await db.execute(update(models.Device).where(models.Device.environment == old_value).values(environment=new_value))
+        await db.execute(update(models.LogicalService).where(models.LogicalService.environment == old_value).values(environment=new_value))
+        await db.execute(update(models.ExternalEntity).where(models.ExternalEntity.environment == old_value).values(environment=new_value))
+    elif category == "DeviceType":
+        await db.execute(update(models.Device).where(models.Device.type == old_value).values(type=new_value))
+    elif category == "LogicalSystem":
+        await db.execute(update(models.Device).where(models.Device.system == old_value).values(system=new_value))
+        await rename_json_string_list_references(db, models.VendorContract, "covered_systems", old_value, new_value)
+    elif category == "VendorCountry":
+        await db.execute(update(models.Vendor).where(models.Vendor.country == old_value).values(country=new_value))
+    elif category == "VendorDeviceType":
+        await rename_vendor_personnel_pc_types(db, old_value, new_value)
+    elif category == "LinkPurpose":
+        await db.execute(update(models.PortConnection).where(models.PortConnection.link_type == old_value).values(link_type=new_value))
+    elif category == "Manufacturer":
+        await db.execute(update(models.Device).where(models.Device.manufacturer == old_value).values(manufacturer=new_value))
+    elif category == "Model":
+        await db.execute(update(models.Device).where(models.Device.model == old_value).values(model=new_value))
+    elif category == "Owner":
+        await db.execute(update(models.Device).where(models.Device.owner == old_value).values(owner=new_value))
+    elif category == "BusinessUnit":
+        await db.execute(update(models.Device).where(models.Device.business_unit == old_value).values(business_unit=new_value))
+    elif category == "Vendor":
+        await db.execute(update(models.Device).where(models.Device.vendor == old_value).values(vendor=new_value))
+    elif category == "ServiceType":
+        await db.execute(update(models.LogicalService).where(models.LogicalService.service_type == old_value).values(service_type=new_value))
+    elif category == "MonitoringCategory":
+        await db.execute(update(models.MonitoringItem).where(models.MonitoringItem.category == old_value).values(category=new_value))
+    elif category == "MonitoringPlatform":
+        await db.execute(update(models.MonitoringItem).where(models.MonitoringItem.platform == old_value).values(platform=new_value))
+    elif category == "ExternalType":
+        await db.execute(update(models.ExternalEntity).where(models.ExternalEntity.type == old_value).values(type=new_value))
+
+
+async def setting_option_is_in_use(db: AsyncSession, category: str, value: str) -> bool:
+    if category == "Status":
+        return any([
+            (await db.execute(select(models.Device.id).filter(models.Device.status == value))).scalars().first(),
+            (await db.execute(select(models.LogicalService.id).filter(models.LogicalService.status == value))).scalars().first(),
+            (await db.execute(select(models.MaintenanceWindow.id).filter(models.MaintenanceWindow.status == value))).scalars().first(),
+            (await db.execute(select(models.ExternalEntity.id).filter(models.ExternalEntity.status == value))).scalars().first(),
+        ])
+    if category == "Environment":
+        return any([
+            (await db.execute(select(models.Device.id).filter(models.Device.environment == value))).scalars().first(),
+            (await db.execute(select(models.LogicalService.id).filter(models.LogicalService.environment == value))).scalars().first(),
+            (await db.execute(select(models.ExternalEntity.id).filter(models.ExternalEntity.environment == value))).scalars().first(),
+        ])
+    if category == "DeviceType":
+        return bool((await db.execute(select(models.Device.id).filter(models.Device.type == value))).scalars().first())
+    if category == "LogicalSystem":
+        return any([
+            (await db.execute(select(models.Device.id).filter(models.Device.system == value))).scalars().first(),
+            (await db.execute(select(models.VendorContract.id).filter(models.VendorContract.covered_systems.contains([value])))).scalars().first(),
+        ])
+    if category == "VendorCountry":
+        return bool((await db.execute(select(models.Vendor.id).filter(models.Vendor.country == value))).scalars().first())
+    if category == "VendorDeviceType":
+        return bool((await db.execute(select(models.VendorPersonnel.id).filter(models.VendorPersonnel.pcs.contains([{"type": value}])))).scalars().first())
+    if category == "LinkPurpose":
+        return bool((await db.execute(select(models.PortConnection.id).filter(models.PortConnection.link_type == value))).scalars().first())
+    if category == "Manufacturer":
+        return bool((await db.execute(select(models.Device.id).filter(models.Device.manufacturer == value))).scalars().first())
+    if category == "Model":
+        return bool((await db.execute(select(models.Device.id).filter(models.Device.model == value))).scalars().first())
+    if category == "Owner":
+        return bool((await db.execute(select(models.Device.id).filter(models.Device.owner == value))).scalars().first())
+    if category == "BusinessUnit":
+        return bool((await db.execute(select(models.Device.id).filter(models.Device.business_unit == value))).scalars().first())
+    if category == "Vendor":
+        return bool((await db.execute(select(models.Device.id).filter(models.Device.vendor == value))).scalars().first())
+    if category == "ServiceType":
+        return bool((await db.execute(select(models.LogicalService.id).filter(models.LogicalService.service_type == value))).scalars().first())
+    if category == "MonitoringCategory":
+        return bool((await db.execute(select(models.MonitoringItem.id).filter(models.MonitoringItem.category == value))).scalars().first())
+    if category == "MonitoringPlatform":
+        return bool((await db.execute(select(models.MonitoringItem.id).filter(models.MonitoringItem.platform == value))).scalars().first())
+    if category == "ExternalType":
+        return bool((await db.execute(select(models.ExternalEntity.id).filter(models.ExternalEntity.type == value))).scalars().first())
+    return False
 
 async def ensure_admin_operator(db: AsyncSession, user_id: str):
     res_op = await db.execute(select(models.Operator).filter(models.Operator.username == user_id))
     operator = res_op.scalar_one_or_none()
-    if not operator and settings.is_auto_admin_user(user_id):
-        operator = models.Operator(**build_default_operator_profile(user_id))
-        db.add(operator)
-        await db.commit()
-        await db.refresh(operator)
-    elif operator and settings.is_auto_admin_user(user_id) and not operator.is_admin:
-        operator.is_admin = True
-        operator.custom_permissions = {"all": 3}
-        await db.commit()
-        await db.refresh(operator)
     return operator
 
 async def record_team_audit(db: AsyncSession, team_id: int | None, action: str, actor: str, details: dict | None = None):
@@ -34,9 +306,14 @@ async def record_team_audit(db: AsyncSession, team_id: int | None, action: str, 
     ))
 
 async def build_user_pool_snapshot(db: AsyncSession):
-    result = await db.execute(select(models.Operator).order_by(models.Operator.full_name.asc(), models.Operator.username.asc(), models.Operator.id.asc()))
+    from sqlalchemy.orm import selectinload
+    result = await db.execute(
+        select(models.Operator)
+        .options(selectinload(models.Operator.role))
+        .order_by(models.Operator.full_name.asc(), models.Operator.username.asc(), models.Operator.id.asc())
+    )
     operators = result.scalars().all()
-    return [
+    return normalize_json_list([
         {
             "id": operator.id,
             "external_id": operator.external_id,
@@ -48,12 +325,14 @@ async def build_user_pool_snapshot(db: AsyncSession):
             "team_id": operator.team_id,
             "team_source": operator.team_source,
             "teams": operator.teams or [],
+            "role_id": operator.role_id,
+            "role_name": operator.role.name if operator.role else None,
             "is_admin": bool(operator.is_admin),
             "custom_permissions": operator.custom_permissions or {},
             "registration_status": operator.registration_status,
         }
         for operator in operators
-    ]
+    ])
 
 async def create_user_pool_version(
     db: AsyncSession,
@@ -73,10 +352,98 @@ async def create_user_pool_version(
     db.add(models.UserPoolVersion(
         version_label=version_label,
         snapshot_data=snapshot,
-        diff_summary=diff_summary,
+        diff_summary=normalize_json_object(diff_summary),
         created_by=created_by,
         is_active=True,
     ))
+
+
+def _snapshot_identity_key(operator: dict) -> str:
+    return str(operator.get("external_id") or operator.get("id") or operator.get("username") or "")
+
+
+def _snapshot_role_name(operator: dict) -> str | None:
+    return normalize_string(operator.get("role_name"))
+
+
+def summarize_user_pool_snapshot_delta(
+    before_snapshot: list[dict] | None,
+    after_snapshot: list[dict] | None,
+    *,
+    extra_summary: dict | None = None,
+) -> dict:
+    before_rows = before_snapshot or []
+    after_rows = after_snapshot or []
+    before_map = {_snapshot_identity_key(operator): operator for operator in before_rows if _snapshot_identity_key(operator)}
+    after_map = {_snapshot_identity_key(operator): operator for operator in after_rows if _snapshot_identity_key(operator)}
+    keys = sorted(set(before_map) | set(after_map))
+
+    added = 0
+    removed = 0
+    changed = 0
+    changed_identities: list[dict[str, str | None]] = []
+
+    for key in keys:
+        before = before_map.get(key)
+        after = after_map.get(key)
+        if before is None and after is not None:
+            added += 1
+            changed_identities.append({
+                "external_id": normalize_string(after.get("external_id")),
+                "username": normalize_string(after.get("username")),
+                "mode": "added",
+            })
+            continue
+        if before is not None and after is None:
+            removed += 1
+            changed_identities.append({
+                "external_id": normalize_string(before.get("external_id")),
+                "username": normalize_string(before.get("username")),
+                "mode": "removed",
+            })
+            continue
+        if before != after:
+            changed += 1
+            changed_identities.append({
+                "external_id": normalize_string((after or before).get("external_id")),
+                "username": normalize_string((after or before).get("username")),
+                "mode": "changed",
+            })
+
+    summary = {
+        "added": added,
+        "removed": removed,
+        "changed": changed,
+        "changed_identities": changed_identities,
+    }
+    if extra_summary:
+        summary.update(extra_summary)
+    return summary
+
+
+async def create_user_pool_version_from_snapshot_delta(
+    db: AsyncSession,
+    *,
+    created_by: str,
+    before_snapshot: list[dict] | None,
+    extra_summary: dict | None = None,
+    version_label: str | None = None,
+) -> dict:
+    await db.flush()
+    after_snapshot = await build_user_pool_snapshot(db)
+    summary = summarize_user_pool_snapshot_delta(before_snapshot, after_snapshot, extra_summary=extra_summary)
+    await db.execute(update(models.UserPoolVersion).values(is_active=False))
+    if not version_label:
+        import datetime
+        version_label = f"v{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    db.add(models.UserPoolVersion(
+        version_label=version_label,
+        snapshot_data=after_snapshot,
+        diff_summary=normalize_json_object(summary),
+        created_by=created_by,
+        is_active=True,
+    ))
+    return summary
 
 async def resolve_team_assignment(
     db: AsyncSession,
@@ -104,12 +471,161 @@ async def resolve_team_assignment(
 
     return team
 
+
+async def rename_operator_group_memberships(db: AsyncSession, old_name: str, new_name: str) -> None:
+    if old_name == new_name:
+        return
+    result = await db.execute(select(models.Operator).filter(models.Operator.teams.contains([old_name])))
+    operators = result.scalars().all()
+    for operator in operators:
+        memberships = [new_name if entry == old_name else entry for entry in (operator.teams or [])]
+        operator.teams = normalize_string_list(memberships)
+
+
+async def rename_monitoring_team_references(db: AsyncSession, old_name: str, new_name: str) -> None:
+    if old_name == new_name:
+        return
+    result = await db.execute(select(models.MonitoringItem).filter(models.MonitoringItem.owner_team.is_not(None)))
+    items = result.scalars().all()
+    for item in items:
+        current_names = split_team_name_values(item.owner_team)
+        if old_name not in current_names:
+            continue
+        renamed_names = [new_name if entry == old_name else entry for entry in current_names]
+        item.owner_team = ", ".join(normalize_string_list(renamed_names)) or None
+
+
+async def team_references_exist(db: AsyncSession, *, team_id: int | None, team_name: str) -> dict[str, bool]:
+    monitoring_team_values = (
+        await db.execute(select(models.MonitoringItem.owner_team).filter(models.MonitoringItem.owner_team.is_not(None)))
+    ).scalars().all()
+    return {
+        "operator_groups": bool((await db.execute(
+            select(models.Operator.id).filter(models.Operator.teams.contains([team_name]))
+        )).scalars().first()),
+        "monitoring_items": any(team_name in split_team_name_values(owner_team) for owner_team in monitoring_team_values),
+        "external_entities": bool((await db.execute(
+            select(models.ExternalEntity.id).filter(
+                (models.ExternalEntity.internal_team_id == team_id) |
+                (models.ExternalEntity.owner_team == team_name)
+            )
+        )).scalars().first()) if team_id or team_name else False,
+    }
+
+
+async def ensure_operator_identity_uniqueness(
+    db: AsyncSession,
+    *,
+    external_id: str | None = None,
+    username: str | None = None,
+    exclude_id: int | None = None,
+) -> None:
+    normalized_external_id = normalize_string(external_id)
+    normalized_username = normalize_string(username)
+
+    if normalized_external_id:
+        query = select(models.Operator).filter(models.Operator.external_id == normalized_external_id)
+        if exclude_id is not None:
+            query = query.filter(models.Operator.id != exclude_id)
+        if (await db.execute(query)).scalar_one_or_none():
+            raise HTTPException(status_code=409, detail=f"Operator external ID '{normalized_external_id}' already exists")
+
+    if normalized_username:
+        query = select(models.Operator).filter(models.Operator.username == normalized_username)
+        if exclude_id is not None:
+            query = query.filter(models.Operator.id != exclude_id)
+        if (await db.execute(query)).scalar_one_or_none():
+            raise HTTPException(status_code=409, detail=f"Operator username '{normalized_username}' already exists")
+
+
+async def resolve_role_assignment(db: AsyncSession, role_id: int | None) -> models.Role | None:
+    if role_id is None:
+        return None
+    res = await db.execute(select(models.Role).filter(models.Role.id == role_id))
+    role = res.scalar_one_or_none()
+    if not role:
+        raise HTTPException(status_code=400, detail="Role not found")
+    return role
+
+
+async def apply_operator_patch(
+    db: AsyncSession,
+    *,
+    op: models.Operator,
+    data: dict,
+    user_id: str,
+) -> dict:
+    previous_state = canonical_operator_state(op)
+    next_external_id = normalize_string(data.get("external_id")) if "external_id" in data else op.external_id
+    next_username = normalize_string(data.get("username")) if "username" in data else op.username
+    if "external_id" in data and not next_external_id:
+        raise HTTPException(status_code=400, detail="External ID cannot be empty")
+    if "username" in data and not next_username:
+        raise HTTPException(status_code=400, detail="Username cannot be empty")
+    await ensure_operator_identity_uniqueness(db, external_id=next_external_id, username=next_username, exclude_id=op.id)
+    if "role_id" in data:
+        await resolve_role_assignment(db, data.get("role_id"))
+
+    team = op.team_rel
+    if "team_id" in data or "team" in data:
+        team = await resolve_team_assignment(
+            db,
+            team_id=data.get("team_id"),
+            team_name=data.get("team"),
+            source=data.get("team_source") or "manual_override",
+            create_missing=bool(data.get("team"))
+        )
+
+    patch_payload = dict(data)
+    if "external_id" in data:
+        patch_payload["external_id"] = next_external_id
+    if "username" in data:
+        patch_payload["username"] = next_username
+    apply_operator_canonicalization(op, team=team, payload=patch_payload, default_source="manual_override")
+    if "external_id" in patch_payload:
+        op.external_id = next_external_id
+    if "username" in patch_payload:
+        op.username = next_username
+    current_state = canonical_operator_state(op)
+
+    if previous_state["team_id"] and previous_state["team_id"] != current_state["team_id"]:
+        await record_team_audit(db, previous_state["team_id"], "member_removed", user_id, {"external_id": op.external_id, "username": op.username, "from": previous_state["team"]})
+    if current_state["team_id"] and previous_state["team_id"] != current_state["team_id"]:
+        await record_team_audit(db, current_state["team_id"], "member_added", user_id, {"external_id": op.external_id, "username": op.username, "to": current_state["team"]})
+
+    team_updates = []
+    if previous_state["team"] != current_state["team"]:
+        team_updates.append({"external_id": op.external_id, "old": previous_state["team"], "new": current_state["team"], "mode": "primary_team_changed"})
+    if previous_state["teams"] != current_state["teams"]:
+        team_updates.append({"external_id": op.external_id, "old": previous_state["teams"], "new": current_state["teams"], "mode": "group_membership_changed"})
+
+    return {
+        "changed": previous_state != current_state,
+        "team_updates": team_updates,
+    }
+
+
+async def apply_operator_delete(
+    db: AsyncSession,
+    *,
+    op: models.Operator,
+    user_id: str,
+) -> dict:
+    if op.username == user_id:
+        raise HTTPException(status_code=400, detail="Identity Protection: You cannot terminate your own active session.")
+    if op.team_id:
+        await record_team_audit(db, op.team_id, "member_removed", user_id, {"external_id": op.external_id, "username": op.username, "from": op.team})
+    await db.execute(delete(models.Operator).where(models.Operator.id == op.id))
+    return {
+        "team_updates": [{"external_id": op.external_id, "old": op.team, "new": None, "mode": "operator_deleted"}],
+    }
+
 @router.get("/user/settings")
 async def get_user_settings(request: Request, db: AsyncSession = Depends(get_db)):
     user_id = get_current_user_id(request)
     res = await db.execute(select(models.UserPreference).filter(models.UserPreference.user_id == user_id))
     prefs = res.scalars().all()
-    return {p.key: p.value for p in prefs}
+    return {p.key: deserialize_user_preference_value(p.value) for p in prefs}
 
 @router.get("/user/profile")
 async def get_user_profile(request: Request, db: AsyncSession = Depends(get_db)):
@@ -118,17 +634,8 @@ async def get_user_profile(request: Request, db: AsyncSession = Depends(get_db))
     from sqlalchemy.orm import selectinload
     res = await db.execute(select(models.Operator).options(selectinload(models.Operator.role)).filter(models.Operator.username == user_id))
     operator = res.scalar_one_or_none()
-    
     if not operator:
-        operator = models.Operator(**build_default_operator_profile(user_id))
-        db.add(operator)
-        await db.commit()
-        await db.refresh(operator)
-    elif settings.is_auto_admin_user(user_id) and not operator.is_admin:
-        operator.is_admin = True
-        operator.custom_permissions = {"all": 3}
-        await db.commit()
-        await db.refresh(operator)
+        raise HTTPException(status_code=404, detail=f"Operator profile not found for user '{user_id}'")
     
     # Merge permissions: role permissions + custom overrides
     permissions = (operator.role.permissions if operator.role else {}).copy()
@@ -183,10 +690,11 @@ async def update_user_settings(data: dict, request: Request, db: AsyncSession = 
             models.UserPreference.key == key
         ))
         pref = res.scalar_one_or_none()
+        serialized_value = serialize_user_preference_value(value)
         if pref:
-            pref.value = str(value)
+            pref.value = serialized_value
         else:
-            db.add(models.UserPreference(user_id=user_id, key=key, value=str(value)))
+            db.add(models.UserPreference(user_id=user_id, key=key, value=serialized_value))
     await db.commit()
     return {"status": "success"}
 
@@ -221,15 +729,27 @@ async def get_bootstrap_config(db: AsyncSession = Depends(get_db)):
 async def get_options(category: str = None, db: AsyncSession = Depends(get_db)):
     query = select(models.SettingOption)
     if category:
+        if category in RELATIONAL_OPTION_CATEGORIES:
+            return []
         query = query.filter(models.SettingOption.category == category)
+    else:
+        query = query.filter(models.SettingOption.category.not_in(RELATIONAL_OPTION_CATEGORIES))
     result = await db.execute(query.order_by(models.SettingOption.label))
     return result.scalars().all()
 
 @router.post("/options")
 async def create_option(data: dict, db: AsyncSession = Depends(get_db)):
-    if data.get("category") in LOCKED_MONITORING_OPTION_CATEGORIES:
+    clean_data = normalize_setting_option_payload(filter_valid_columns(models.SettingOption, data))
+    category = clean_data.get("category")
+    label = clean_data.get("label")
+    value = clean_data.get("value")
+    if category in LOCKED_MONITORING_OPTION_CATEGORIES:
         raise HTTPException(status_code=400, detail="This monitoring category is code-managed and cannot be edited in settings")
-    clean_data = filter_valid_columns(models.SettingOption, data)
+    if category in RELATIONAL_OPTION_CATEGORIES:
+        raise HTTPException(status_code=400, detail="This category is managed by relational settings data and cannot be edited as an enum")
+    if not category or not label or not value:
+        raise HTTPException(status_code=400, detail="Category, label, and value are required")
+    await ensure_setting_option_uniqueness(db, category=category, value=value, label=label)
     if 'id' in clean_data and not clean_data['id']:
         del clean_data['id']
     opt = models.SettingOption(**clean_data)
@@ -240,62 +760,46 @@ async def create_option(data: dict, db: AsyncSession = Depends(get_db)):
 
 @router.put("/options/{opt_id}")
 async def update_option(opt_id: int, data: dict, db: AsyncSession = Depends(get_db)):
-    from sqlalchemy import func
     result = await db.execute(select(models.SettingOption).filter(models.SettingOption.id == opt_id))
     opt = result.scalar_one_or_none()
     if not opt: raise HTTPException(404, "Option not found")
     if opt.category in LOCKED_MONITORING_OPTION_CATEGORIES:
         raise HTTPException(status_code=400, detail="This monitoring category is code-managed and cannot be edited in settings")
-    
+    if opt.category in RELATIONAL_OPTION_CATEGORIES:
+        raise HTTPException(status_code=400, detail="This category is managed by relational settings data and cannot be edited as an enum")
+
+    clean_data = normalize_setting_option_payload(filter_valid_columns(models.SettingOption, data), fallback_category=opt.category)
+    if clean_data.get("category") != opt.category:
+        raise HTTPException(status_code=400, detail="Changing option category is not supported")
+
     old_value = opt.value
-    new_value = data.get('value', opt.value)
-    new_label = data.get('label', opt.label)
-    
-    # Update associated models if value changed
-    if old_value != new_value:
-        if opt.category == "Status":
-            await db.execute(update(models.Device).where(models.Device.status == old_value).values(status=new_value))
-            await db.execute(update(models.LogicalService).where(models.LogicalService.status == old_value).values(status=new_value))
-            await db.execute(update(models.MaintenanceWindow).where(models.MaintenanceWindow.status == old_value).values(status=new_value))
-        elif opt.category == "Environment":
-            await db.execute(update(models.Device).where(models.Device.environment == old_value).values(environment=new_value))
-            await db.execute(update(models.LogicalService).where(models.LogicalService.environment == old_value).values(environment=new_value))
-        elif opt.category == "DeviceType":
-            await db.execute(update(models.Device).where(models.Device.type == old_value).values(type=new_value))
-        elif opt.category == "LogicalSystem":
-            await db.execute(update(models.Device).where(models.Device.system == old_value).values(system=new_value))
-            # Note: updating covered_systems in VendorContract is complex because it's a JSON array. 
-            # We'll skip complex JSON path updates for now and let the user re-select if needed, 
-            # or handle it via a specialized script if critical.
-        elif opt.category == "VendorCountry":
-            await db.execute(update(models.Vendor).where(models.Vendor.country == old_value).values(country=new_value))
-    
-    opt.value = new_value
-    opt.label = new_label
-    opt.description = data.get('description', opt.description)
-    
-    # Template Protection: If category is ServiceType, check if removing keys that are in use
-    if opt.category == "ServiceType" and 'metadata_keys' in data:
-        new_keys = set(data.get('metadata_keys', []))
-        old_keys = set(opt.metadata_keys or [])
+    old_keys = set(opt.metadata_keys or [])
+    new_value = clean_data.get("value", opt.value)
+    new_label = clean_data.get("label", opt.label)
+    await ensure_setting_option_uniqueness(db, category=opt.category, value=new_value, label=new_label, exclude_id=opt.id)
+
+    if opt.category == "ServiceType" and "metadata_keys" in clean_data:
+        new_keys = set(clean_data.get("metadata_keys") or [])
         removed_keys = old_keys - new_keys
-        
         if removed_keys:
-            # Check if any LogicalService of this type uses these keys
-            from sqlalchemy import and_
             usage_query = select(models.LogicalService).filter(models.LogicalService.service_type == opt.value)
             usage_res = await db.execute(usage_query)
             in_use_services = usage_res.scalars().all()
-            
             for svc in in_use_services:
                 config = svc.config_json or {}
-                for rk in removed_keys:
-                    if rk in config and config[rk]: # If key exists and has a value
+                for rk in sorted(removed_keys):
+                    if rk in config and config[rk]:
                         raise HTTPException(status_code=400, detail=f"Cannot remove metadata key '{rk}' because it is in use by service '{svc.name}'")
-        
-        opt.metadata_keys = list(new_keys)
-    elif 'metadata_keys' in data:
-        opt.metadata_keys = data.get('metadata_keys')
+
+    if old_value != new_value:
+        await rename_setting_option_references(db, opt.category, old_value, new_value)
+
+    opt.value = new_value
+    opt.label = new_label
+    if "description" in clean_data:
+        opt.description = clean_data.get("description")
+    if "metadata_keys" in clean_data:
+        opt.metadata_keys = clean_data.get("metadata_keys") or []
     
     await db.commit()
     await db.refresh(opt)
@@ -308,76 +812,10 @@ async def delete_option(opt_id: int, db: AsyncSession = Depends(get_db)):
     if not opt: raise HTTPException(404, "Option not found")
     if opt.category in LOCKED_MONITORING_OPTION_CATEGORIES:
         raise HTTPException(status_code=400, detail="This monitoring category is code-managed and cannot be edited in settings")
-    
-    # Check usage
-    in_use = False
-    if opt.category == "Status":
-        res = await db.execute(select(models.Device).filter(models.Device.status == opt.value))
-        if res.scalars().first(): in_use = True
-        res = await db.execute(select(models.LogicalService).filter(models.LogicalService.status == opt.value))
-        if res.scalars().first(): in_use = True
-    elif opt.category == "Environment":
-        res = await db.execute(select(models.Device).filter(models.Device.environment == opt.value))
-        if res.scalars().first(): in_use = True
-        res = await db.execute(select(models.LogicalService).filter(models.LogicalService.environment == opt.value))
-        if res.scalars().first(): in_use = True
-    elif opt.category == "DeviceType":
-        res = await db.execute(select(models.Device).filter(models.Device.type == opt.value))
-        if res.scalars().first(): in_use = True
-    elif opt.category == "LogicalSystem":
-        res = await db.execute(select(models.Device).filter(models.Device.system == opt.value))
-        if res.scalars().first(): in_use = True
-        # Check Vendor Contracts (covered_systems is a JSON list)
-        if not in_use:
-            from sqlalchemy import func
-            # Check if opt.value exists in the covered_systems JSON array
-            # Using contains([val]) for SQLAlchemy JSON compatibility
-            res = await db.execute(select(models.VendorContract).filter(models.VendorContract.covered_systems.contains([opt.value])))
-            if res.scalars().first(): in_use = True
-    elif opt.category == "VendorCountry":
-        res = await db.execute(select(models.Vendor).filter(models.Vendor.country == opt.value))
-        if res.scalars().first(): in_use = True
-    elif opt.category == "VendorDeviceType":
-        # Check in VendorPersonnel pcs JSON
-        res = await db.execute(select(models.VendorPersonnel).filter(models.VendorPersonnel.pcs.contains([{"type": opt.value}])))
-        if res.scalars().first(): in_use = True
-    elif opt.category == "LinkPurpose":
-        res = await db.execute(select(models.PortConnection).filter(models.PortConnection.link_type == opt.value))
-        if res.scalars().first(): in_use = True
-    elif opt.category == "Manufacturer":
-        res = await db.execute(select(models.Device).filter(models.Device.manufacturer == opt.value))
-        if res.scalars().first(): in_use = True
-    elif opt.category == "Model":
-        res = await db.execute(select(models.Device).filter(models.Device.model == opt.value))
-        if res.scalars().first(): in_use = True
-    elif opt.category == "Owner":
-        res = await db.execute(select(models.Device).filter(models.Device.owner == opt.value))
-        if res.scalars().first(): in_use = True
-    elif opt.category == "BusinessUnit":
-        res = await db.execute(select(models.Device).filter(models.Device.business_unit == opt.value))
-        if res.scalars().first(): in_use = True
-    elif opt.category == "Vendor":
-        res = await db.execute(select(models.Device).filter(models.Device.vendor == opt.value))
-        if res.scalars().first(): in_use = True
-    elif opt.category == "ServiceType":
-        res = await db.execute(select(models.LogicalService).filter(models.LogicalService.service_type == opt.value))
-        if res.scalars().first(): in_use = True
-    elif opt.category == "MonitoringCategory":
-        res = await db.execute(select(models.MonitoringItem).filter(models.MonitoringItem.category == opt.value))
-        if res.scalars().first(): in_use = True
-    elif opt.category == "MonitoringPlatform":
-        res = await db.execute(select(models.MonitoringItem).filter(models.MonitoringItem.platform == opt.value))
-        if res.scalars().first(): in_use = True
-    elif opt.category == "MonitoringTeam":
-        res = await db.execute(select(models.MonitoringItem).filter(models.MonitoringItem.owner_team == opt.value))
-        if res.scalars().first(): in_use = True
-    elif opt.category == "VendorDeviceType":
-        # Check in VendorPersonnel pcs JSON
-        from sqlalchemy import func
-        res = await db.execute(select(models.VendorPersonnel).filter(models.VendorPersonnel.pcs.contains([{"type": opt.value}])))
-        if res.scalars().first(): in_use = True
-        
-    if in_use:
+    if opt.category in RELATIONAL_OPTION_CATEGORIES:
+        raise HTTPException(status_code=400, detail="This category is managed by relational settings data and cannot be edited as an enum")
+
+    if await setting_option_is_in_use(db, opt.category, opt.value):
         raise HTTPException(status_code=400, detail="Cannot delete option that is currently in use")
         
     await db.execute(delete(models.SettingOption).where(models.SettingOption.id == opt_id))
@@ -685,6 +1123,16 @@ async def update_team(team_id: int, data: dict, request: Request, db: AsyncSessi
             raise HTTPException(status_code=409, detail="Team already exists")
         team.name = next_name
         await db.execute(update(models.Operator).where(models.Operator.team_id == team_id).values(team=next_name))
+        await rename_operator_group_memberships(db, old_name, next_name)
+        await rename_monitoring_team_references(db, old_name, next_name)
+        await db.execute(
+            update(models.ExternalEntity)
+            .where(
+                (models.ExternalEntity.internal_team_id == team_id) |
+                (models.ExternalEntity.owner_team == old_name)
+            )
+            .values(owner_team=next_name)
+        )
 
     if "description" in data:
         team.description = (data.get("description") or "").strip() or None
@@ -722,8 +1170,10 @@ async def delete_team(team_id: int, request: Request, db: AsyncSession = Depends
         raise HTTPException(404, "Team not found")
     members_res = await db.execute(select(models.Operator).filter(models.Operator.team_id == team_id))
     members = members_res.scalars().all()
-    if members:
-        raise HTTPException(status_code=400, detail="Cannot delete team with assigned operators")
+    reference_map = await team_references_exist(db, team_id=team.id, team_name=team.name)
+    if members or any(reference_map.values()):
+        active_refs = ", ".join(label.replace("_", " ") for label, exists in reference_map.items() if exists)
+        raise HTTPException(status_code=400, detail=f"Cannot delete team while references still exist: {active_refs}")
     user_id = get_current_user_id(request)
     await record_team_audit(db, None, "team_deleted", user_id, {"team_id": team.id, "name": team.name})
     await db.execute(delete(models.Team).where(models.Team.id == team_id))
@@ -738,15 +1188,22 @@ async def delete_team(team_id: int, request: Request, db: AsyncSession = Depends
 
 @router.post("/operators")
 async def create_operator(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
-    # Simple create or update logic for manual addition
     from sqlalchemy.exc import IntegrityError
-    external_id = str(data.get("external_id"))
+    external_id = normalize_string(data.get("external_id"))
+    username = normalize_string(data.get("username"))
+    if not external_id:
+        raise HTTPException(status_code=400, detail="External ID is required")
+    if not username:
+        raise HTTPException(status_code=400, detail="Username is required")
     res = await db.execute(select(models.Operator).filter(models.Operator.external_id == external_id))
     op = res.scalar_one_or_none()
     existing_operator = op is not None
-    
-    # Allowed fields for direct update
-    allowed_fields = ["full_name", "email", "department", "registration_status", "is_admin", "custom_permissions", "role_id", "teams"]
+    if op:
+        await ensure_operator_identity_uniqueness(db, external_id=external_id, username=username, exclude_id=op.id)
+    else:
+        await ensure_operator_identity_uniqueness(db, external_id=external_id, username=username)
+    await resolve_role_assignment(db, data.get("role_id"))
+
     team = await resolve_team_assignment(
         db,
         team_id=data.get("team_id"),
@@ -757,37 +1214,29 @@ async def create_operator(data: dict, request: Request, db: AsyncSession = Depen
 
     user_id = get_current_user_id(request)
     if op:
-        old_vals = {
-            "full_name": op.full_name,
-            "department": op.department,
-            "is_admin": op.is_admin,
-            "team": op.team,
-            "teams": list(op.teams or [])
-        }
-        for key, value in data.items():
-            if key in allowed_fields:
-                setattr(op, key, value)
-        op.team_id = team.id if team else None
-        op.team = team.name if team else None
-        op.team_source = data.get("team_source") or ("manual" if team else op.team_source)
-        
-        has_semantic_change = any([
-            old_vals["full_name"] != op.full_name,
-            old_vals["department"] != op.department,
-            old_vals["is_admin"] != op.is_admin,
-            old_vals["team"] != op.team,
-            old_vals["teams"] != list(op.teams or [])
-        ])
+        previous_state = canonical_operator_state(op)
+        patch_payload = dict(data)
+        patch_payload["external_id"] = external_id
+        patch_payload["username"] = username
+        apply_operator_canonicalization(op, team=team, payload=patch_payload, default_source="manual")
+        current_state = canonical_operator_state(op)
+        has_semantic_change = previous_state != current_state
     else:
-        has_semantic_change = True # Always log for new member
-        # For new operators, we take what we have
-        # But we filter it just in case
-        allowed_fields_new = ["username", "external_id", "full_name", "email", "department", "registration_status", "is_admin", "custom_permissions", "role_id", "teams"]
-        clean_data = {k: v for k, v in data.items() if k in allowed_fields_new}
-        clean_data["team_id"] = team.id if team else None
-        clean_data["team"] = team.name if team else None
-        clean_data["team_source"] = data.get("team_source") or ("manual" if team else "manual")
+        has_semantic_change = True
+        clean_data = filter_valid_columns(models.Operator, {
+            "username": username,
+            "external_id": external_id,
+            "full_name": normalize_string(data.get("full_name")),
+            "email": normalize_string(data.get("email")),
+            "department": normalize_string(data.get("department")),
+            "registration_status": normalize_string(data.get("registration_status")),
+            "is_admin": bool(data.get("is_admin", False)),
+            "custom_permissions": normalize_permission_map(data.get("custom_permissions")),
+            "role_id": data.get("role_id"),
+            "teams": normalize_string_list(data.get("teams") or []),
+        })
         op = models.Operator(**clean_data)
+        apply_operator_canonicalization(op, team=team, payload=data, default_source="manual")
         db.add(op)
     
     try:
@@ -814,56 +1263,13 @@ async def update_operator(op_id: int, data: dict, request: Request, db: AsyncSes
     res = await db.execute(select(models.Operator).filter(models.Operator.id == op_id))
     op = res.scalar_one_or_none()
     if not op: raise HTTPException(404, "Operator not found")
-    old_full_name = op.full_name
-    old_email = op.email
-    old_department = op.department
-    old_is_admin = op.is_admin
-    old_permissions = op.custom_permissions or {}
-    old_groups = list(op.teams or [])
-    old_team_id = op.team_id
-    old_team_name = op.team
-    
-    # Allowed fields for direct update
-    allowed_fields = ["full_name", "email", "department", "registration_status", "is_admin", "custom_permissions", "role_id", "teams"]
-    team = None
-    if "team_id" in data or "team" in data:
-        team = await resolve_team_assignment(
-            db,
-            team_id=data.get("team_id"),
-            team_name=data.get("team"),
-            source=data.get("team_source") or "manual_override",
-            create_missing=bool(data.get("team"))
-        )
-    
-    for key, value in data.items():
-        if key in allowed_fields:
-            setattr(op, key, value)
-    if "team_id" in data or "team" in data:
-        op.team_id = team.id if team else None
-        op.team = team.name if team else None
-        op.team_source = data.get("team_source") or ("manual_override" if team else "manual")
-        if old_team_id and old_team_id != op.team_id:
-            await record_team_audit(db, old_team_id, "member_removed", user_id, {"external_id": op.external_id, "username": op.username, "from": old_team_name})
-        if op.team_id and old_team_id != op.team_id:
-            await record_team_audit(db, op.team_id, "member_added", user_id, {"external_id": op.external_id, "username": op.username, "to": op.team})
-
-    team_updates = []
-    if old_team_name != op.team:
-        team_updates.append({"external_id": op.external_id, "old": old_team_name, "new": op.team, "mode": "primary_team_changed"})
-    if old_groups != list(op.teams or []):
-        team_updates.append({"external_id": op.external_id, "old": old_groups, "new": list(op.teams or []), "mode": "group_membership_changed"})
-    summary_changed = any([
-        old_full_name != op.full_name,
-        old_department != op.department,
-        old_is_admin != op.is_admin,
-        bool(team_updates),
-    ])
-    if summary_changed:
+    update_result = await apply_operator_patch(db, op=op, data=data, user_id=user_id)
+    if update_result["changed"]:
         await create_user_pool_version(db, created_by=user_id, diff_summary={
             "added": 0,
             "removed": 0,
             "changed": 1,
-            "team_updates": team_updates,
+            "team_updates": update_result["team_updates"],
         })
             
     await db.commit()
@@ -873,25 +1279,93 @@ async def update_operator(op_id: int, data: dict, request: Request, db: AsyncSes
 @router.delete("/operators/{op_id}")
 async def delete_operator(op_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     user_id = get_current_user_id(request)
-    
-    # Check if user is trying to delete themselves
     res = await db.execute(select(models.Operator).filter(models.Operator.id == op_id))
     op = res.scalar_one_or_none()
     if not op: raise HTTPException(404, "Operator not found")
-    
-    if op.username == user_id:
-        raise HTTPException(status_code=400, detail="Identity Protection: You cannot terminate your own active session.")
-    if op.team_id:
-        await record_team_audit(db, op.team_id, "member_removed", user_id, {"external_id": op.external_id, "username": op.username, "from": op.team})
-    await db.execute(delete(models.Operator).where(models.Operator.id == op_id))
+    delete_result = await apply_operator_delete(db, op=op, user_id=user_id)
     await create_user_pool_version(db, created_by=user_id, diff_summary={
         "added": 0,
         "removed": 1,
         "changed": 0,
-        "team_updates": [{"external_id": op.external_id, "old": op.team, "new": None, "mode": "operator_deleted"}],
+        "team_updates": delete_result["team_updates"],
     })
     await db.commit()
     return {"status": "success"}
+
+
+@router.post("/operators/bulk-update")
+async def bulk_update_operators(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+    updates = data.get("updates")
+    if not isinstance(updates, list) or not updates:
+        raise HTTPException(status_code=400, detail="A non-empty updates list is required")
+
+    user_id = get_current_user_id(request)
+    before_snapshot = await build_user_pool_snapshot(db)
+    team_updates: list[dict] = []
+    changed_count = 0
+
+    for index, update_item in enumerate(updates):
+        if not isinstance(update_item, dict):
+            raise HTTPException(status_code=400, detail=f"updates[{index}] must be an object")
+        op_id = update_item.get("id")
+        payload = update_item.get("payload")
+        if not isinstance(op_id, int):
+            raise HTTPException(status_code=400, detail=f"updates[{index}].id must be an integer")
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=400, detail=f"updates[{index}].payload must be an object")
+        res = await db.execute(select(models.Operator).filter(models.Operator.id == op_id))
+        op = res.scalar_one_or_none()
+        if not op:
+            raise HTTPException(status_code=404, detail=f"Operator {op_id} not found")
+        update_result = await apply_operator_patch(db, op=op, data=payload, user_id=user_id)
+        if update_result["changed"]:
+            changed_count += 1
+        team_updates.extend(update_result["team_updates"])
+
+    if changed_count:
+        await create_user_pool_version_from_snapshot_delta(
+            db,
+            created_by=user_id,
+            before_snapshot=before_snapshot,
+            extra_summary={"team_updates": team_updates, "source": "bulk_operator_update"},
+        )
+
+    await db.commit()
+    return {"status": "success", "changed": changed_count > 0, "updated": changed_count}
+
+
+@router.post("/operators/bulk-delete")
+async def bulk_delete_operators(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+    ids = data.get("ids")
+    if not isinstance(ids, list) or not ids:
+        raise HTTPException(status_code=400, detail="A non-empty ids list is required")
+
+    user_id = get_current_user_id(request)
+    before_snapshot = await build_user_pool_snapshot(db)
+    team_updates: list[dict] = []
+    deleted_count = 0
+
+    for index, op_id in enumerate(ids):
+        if not isinstance(op_id, int):
+            raise HTTPException(status_code=400, detail=f"ids[{index}] must be an integer")
+        res = await db.execute(select(models.Operator).filter(models.Operator.id == op_id))
+        op = res.scalar_one_or_none()
+        if not op:
+            raise HTTPException(status_code=404, detail=f"Operator {op_id} not found")
+        delete_result = await apply_operator_delete(db, op=op, user_id=user_id)
+        deleted_count += 1
+        team_updates.extend(delete_result["team_updates"])
+
+    if deleted_count:
+        await create_user_pool_version_from_snapshot_delta(
+            db,
+            created_by=user_id,
+            before_snapshot=before_snapshot,
+            extra_summary={"team_updates": team_updates, "source": "bulk_operator_delete"},
+        )
+
+    await db.commit()
+    return {"status": "success", "changed": deleted_count > 0, "deleted": deleted_count}
 
 @router.get("/roles")
 async def get_roles(db: AsyncSession = Depends(get_db)):
@@ -907,40 +1381,84 @@ async def get_user_pool_versions(db: AsyncSession = Depends(get_db)):
 async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     preview = data.get("preview", False)
     user_id = get_current_user_id(request)
-    
-    # Create a dummy version label
+
     import datetime
     version_label = f"v{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    
-    # Dynamic dummy users for testing variety
-    dummy_users = [
-        {"id": 101, "username": "admin_alpha", "full_name": "Alpha Admin", "email": f"alpha@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "Infrastructure", "team": "Platform Ops"},
-        {"id": 102, "username": "dev_beta", "full_name": "Beta Developer (Updated)", "email": f"beta@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "R&D", "team": "App Engineering"},
-        {"id": 103, "username": "sec_gamma", "full_name": "Gamma Security", "email": f"gamma@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "Security", "team": "Security Response"},
-        {"id": 104, "username": "op_delta", "full_name": "Delta Operator", "email": f"delta@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "Operations", "team": "Platform Ops"},
-        {"id": 105, "username": "guest_epsilon", "full_name": "Epsilon Guest", "email": f"epsilon@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "External"},
-        {"id": 106, "username": "new_user_z", "full_name": "Z-New User", "email": f"new_z@{settings.DEFAULT_EMAIL_DOMAIN}", "department": "Infrastructure", "team": "Platform Ops"}
-    ]
-    
-    diff_summary = {"added": 0, "removed": 0, "changed": 0, "script": data.get("script"), "team_conflicts": [], "team_updates": []}
+
+    raw_records = data.get("records")
+    if not isinstance(raw_records, list) or not raw_records:
+        raise HTTPException(
+            status_code=400,
+            detail="User-pool refresh now requires a non-empty 'records' array from a real identity source",
+        )
+
+    source_records = []
+    seen_external_ids: set[str] = set()
+    seen_usernames: set[str] = set()
+    for index, raw_record in enumerate(raw_records):
+        if not isinstance(raw_record, dict):
+            raise HTTPException(status_code=400, detail=f"records[{index}] must be an object")
+        external_id = normalize_string(raw_record.get("external_id") or raw_record.get("id"))
+        username = normalize_string(raw_record.get("username"))
+        full_name = normalize_string(raw_record.get("full_name"))
+        if not external_id or not username or not full_name:
+            raise HTTPException(
+                status_code=400,
+                detail=f"records[{index}] requires external_id/id, username, and full_name",
+            )
+        if external_id in seen_external_ids:
+            raise HTTPException(status_code=400, detail=f"Duplicate external_id '{external_id}' found in source records")
+        if username in seen_usernames:
+            raise HTTPException(status_code=400, detail=f"Duplicate username '{username}' found in source records")
+        seen_external_ids.add(external_id)
+        seen_usernames.add(username)
+        source_records.append({
+            "external_id": external_id,
+            "username": username,
+            "full_name": full_name,
+            "email": normalize_string(raw_record.get("email")),
+            "department": normalize_string(raw_record.get("department")),
+            "team": normalize_string(raw_record.get("team")),
+            "registration_status": normalize_string(raw_record.get("registration_status")),
+        })
+
+    diff_summary = {
+        "added": 0,
+        "removed": 0,
+        "changed": 0,
+        "source": normalize_string(data.get("source")) or "identity_ingestion",
+        "team_conflicts": [],
+        "team_updates": [],
+    }
     preview_items = []
-    
-    # Sync logic
-    dummy_external_ids = set()
-    for u in dummy_users:
-        ext_id = str(u["id"])
-        dummy_external_ids.add(ext_id)
+    existing_username_map = {
+        operator.username: operator.external_id
+        for operator in (await db.execute(select(models.Operator))).scalars().all()
+        if operator.username and operator.external_id
+    }
+    for record in source_records:
+        existing_external_id_for_username = existing_username_map.get(record["username"])
+        if existing_external_id_for_username and existing_external_id_for_username != record["external_id"]:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Username '{record['username']}' is already assigned to a different operator",
+            )
+
+    source_external_ids = set()
+    for u in source_records:
+        ext_id = u["external_id"]
+        source_external_ids.add(ext_id)
         res = await db.execute(select(models.Operator).filter(models.Operator.external_id == ext_id))
         op = res.scalar_one_or_none()
-        
+
         item_status = "unchanged"
         item_changes = {}
-        
+
         if not op:
             item_status = "new"
             diff_summary["added"] += 1
             preview_items.append({
-                "id": u["id"],
+                "id": ext_id,
                 "username": u["username"],
                 "full_name": u["full_name"],
                 "email": u["email"],
@@ -964,7 +1482,7 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
                     full_name=u["full_name"],
                     email=u["email"],
                     department=u["department"],
-                    registration_status="Verified",
+                    registration_status=u["registration_status"],
                     team=team.name if team else None,
                     team_id=team.id if team else None,
                     team_source="synced" if team else "manual"
@@ -973,9 +1491,7 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
                     diff_summary["team_updates"].append({"external_id": ext_id, "team": team.name, "mode": "created"})
                     await record_team_audit(db, team.id, "member_added_via_sync", user_id, {"external_id": ext_id, "username": u["username"]})
         else:
-            # Check for changes in core identity fields
-            # We explicitly exclude ID-like fields (external_id, username) and per-view fields
-            core_fields = ["full_name", "department", "team"]
+            core_fields = ["username", "full_name", "email", "department", "registration_status", "team"]
             has_changes = False
             for f in core_fields:
                 old_val = getattr(op, f)
@@ -989,7 +1505,7 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
                 diff_summary["changed"] += 1
             
             preview_items.append({
-                "id": u["id"],
+                "id": ext_id,
                 "username": u["username"],
                 "full_name": u["full_name"],
                 "email": u["email"],
@@ -1000,12 +1516,11 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
             })
             
             if not preview and has_changes:
-                # Update all synced fields regardless of tracking
                 op.username = u["username"]
                 op.full_name = u["full_name"]
                 op.email = u["email"]
                 op.department = u["department"]
-                op.registration_status = "Verified"
+                op.registration_status = u["registration_status"]
                 
                 team = await resolve_team_assignment(
                     db,
@@ -1030,15 +1545,23 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
                         op.team = team.name
                         op.team_id = team.id
                         op.team_source = "synced"
+                elif op.team_source == "synced":
+                    if op.team_id:
+                        await record_team_audit(db, op.team_id, "member_removed_via_sync", user_id, {"external_id": op.external_id, "username": op.username})
+                    op.team = None
+                    op.team_id = None
+                    op.team_source = "manual"
 
-    # Detect removed members
     res_all = await db.execute(select(models.Operator))
     all_ops = res_all.scalars().all()
     for op in all_ops:
-        if op.external_id and op.external_id not in dummy_external_ids:
-            # Skip auto-admin or non-synced users if necessary, but here we assume all except specific ones are synced
-            if op.username == user_id: continue # Don't delete self during sync
-            
+        if (
+            op.external_id
+            and op.external_id not in source_external_ids
+            and op.team_source == "synced"
+            and op.username != user_id
+            and not settings.is_auto_admin_user(op.username)
+        ):
             diff_summary["removed"] += 1
             preview_items.append({
                 "id": op.external_id,
@@ -1067,19 +1590,12 @@ async def refresh_user_pool(data: dict, request: Request, db: AsyncSession = Dep
     has_actual_changes = diff_summary["added"] > 0 or diff_summary["removed"] > 0 or diff_summary["changed"] > 0
     
     if has_actual_changes:
-        await db.flush()
-        snapshot = await build_user_pool_snapshot(db)
-        new_version = models.UserPoolVersion(
-            version_label=version_label,
-            snapshot_data=snapshot,
-            diff_summary=diff_summary,
+        await create_user_pool_version(
+            db,
             created_by=user_id,
-            is_active=True
+            diff_summary=diff_summary,
+            version_label=version_label,
         )
-        
-        # Deactivate others
-        await db.execute(update(models.UserPoolVersion).values(is_active=False))
-        db.add(new_version)
         await db.commit()
         return {"status": "success", "version": version_label, "changes": True}
     
@@ -1098,11 +1614,18 @@ async def restore_user_pool(version_id: int, request: Request, db: AsyncSession 
     current_ops = {op.external_id: op for op in res_current.scalars().all() if op.external_id}
     
     snapshot_external_ids = set()
+    snapshot_usernames: set[str] = set()
     
     # Sync version data back to operators
     for u in version.snapshot_data:
         ext_id = str(u.get("external_id") or u.get("id"))
         snapshot_external_ids.add(ext_id)
+        username = normalize_string(u.get("username"))
+        if not username:
+            raise HTTPException(status_code=400, detail=f"Snapshot record for '{ext_id}' is missing username")
+        if username in snapshot_usernames:
+            raise HTTPException(status_code=409, detail=f"Snapshot contains duplicate username '{username}'")
+        snapshot_usernames.add(username)
         
         team = await resolve_team_assignment(
             db,
@@ -1110,6 +1633,7 @@ async def restore_user_pool(version_id: int, request: Request, db: AsyncSession 
             source="synced",
             create_missing=bool(u.get("team"))
         ) if u.get("team") else None
+        role = await resolve_role_assignment(db, u.get("role_id")) if u.get("role_id") is not None else None
         
         op = current_ops.get(ext_id)
         if not op:
@@ -1117,15 +1641,18 @@ async def restore_user_pool(version_id: int, request: Request, db: AsyncSession 
             op = models.Operator(external_id=ext_id)
             db.add(op)
         
-        op.username = u["username"]
+        await ensure_operator_identity_uniqueness(db, external_id=ext_id, username=username, exclude_id=op.id if op.id else None)
+        op.username = username
         op.full_name = u["full_name"]
         op.email = u["email"]
         op.department = u["department"]
         op.team = team.name if team else None
         op.team_id = team.id if team else None
         op.team_source = u.get("team_source", "synced")
+        op.teams = normalize_string_list(u.get("teams") or ([team.name] if team else []))
+        op.role_id = role.id if role else None
         op.is_admin = bool(u.get("is_admin", False))
-        op.custom_permissions = u.get("custom_permissions", {})
+        op.custom_permissions = normalize_permission_map(u.get("custom_permissions", {}))
         op.registration_status = u.get("registration_status", "Verified")
 
     # Delete operators NOT in the snapshot (excluding current user to avoid lockout if they aren't in old version)
@@ -1155,113 +1682,7 @@ async def restore_user_pool(version_id: int, request: Request, db: AsyncSession 
 
 @router.get("/initialize")
 async def initialize_settings(db: AsyncSession = Depends(get_db)):
-    """Initialize system with default settings and metadata. Fully idempotent."""
-    from sqlalchemy.exc import IntegrityError
-    
-    # 1. Global App Settings
-    global_defaults = [
-        ("app_name", settings.DEFAULT_APP_NAME, "App Name", False, "AppGlobal"),
-        ("org_name", settings.DEFAULT_ORG_NAME, "Organization", False, "AppGlobal"),
-        ("site_id", settings.DEFAULT_SITE_ID, "Primary Site ID", False, "AppGlobal"),
-        ("retention_days", "30", "Data Retention Days", False, "Infrastructure"),
-        ("maintenance_mode", "false", "Maintenance Mode Status", False, "Infrastructure"),
-        ("default_timezone", "UTC", "Default System Timezone", False, "AppGlobal"),
-        ("dashboard_refresh_interval", "60", "Refresh Rate (s)", False, "UI"),
-        ("security_level", "Standard", "Base Security Profile", False, "Security"),
-        ("audit_log_level", "Full", "Audit Detail Level", False, "Security"),
-        ("ui_primary_color", "#3b82f6", "Primary Branding Color", False, "UI"),
-        ("ui_accent_color", "#10b981", "Accent Branding Color", False, "UI"),
-        ("support_email", settings.DEFAULT_SUPPORT_EMAIL, "Admin Support Email", False, "AppGlobal"),
-        ("VITE_APP_TITLE", settings.DEFAULT_UI_TITLE, "UI Title", True, "UI"),
-        ("VITE_POLLING_INTERVAL", "5000", "Polling Interval (ms)", True, "UI"),
-        ("VITE_ENABLE_WEBSOCKETS", "true", "Enable WebSockets", True, "UI"),
-        ("VITE_THEME_DEFAULT", "nordic-frost-v1", "Default UI Theme", True, "UI"),
-        ("VITE_UI_TIMEOUT", "30000", "UI Request Timeout", True, "UI"),
-        ("VITE_MAX_GRID_ROWS", "100", "Max Rows in Grids", True, "UI"),
-        ("PORT", str(settings.PORT), "Backend Port", True, "Infrastructure"),
-        ("API_ENDPOINT", "/api/v1", "API Prefix", True, "Infrastructure")
-    ]
-
-    for key, val, desc, public, cat in global_defaults:
-        res = await db.execute(select(models.GlobalSetting).filter(models.GlobalSetting.key == key))
-        if not res.scalar_one_or_none():
-            db.add(models.GlobalSetting(key=key, value=val, category=cat, description=desc, is_public=public))
-    
-    # 2. Enums (SettingOptions)
-    enum_defaults = [
-        # Monitoring
-        ("MonitoringCategory", "Infrastructure", "Base host, VM, and platform health checks"),
-        ("MonitoringCategory", "Application", "App-tier, API, and business transaction checks"),
-        ("MonitoringCategory", "Database", "Database performance and integrity checks"),
-        ("MonitoringCategory", "Network", "Network reachability and traffic checks"),
-        ("MonitoringCategory", "Security", "Authentication and threat-detection checks"),
-        ("MonitoringPlatform", "Zabbix", "Managed monitor defined in Zabbix"),
-        ("MonitoringPlatform", "Prometheus", "Managed monitor defined in Prometheus"),
-        ("MonitoringPlatform", "Datadog", "Managed monitor defined in Datadog"),
-        ("MonitoringPlatform", "Grafana", "Managed monitor defined in Grafana"),
-        ("MonitoringPlatform", "PagerDuty", "Managed monitor defined in PagerDuty"),
-        ("MonitoringTeam", "Operations", "Primary operations ownership"),
-        ("MonitoringTeam", "SRE", "Site reliability ownership"),
-        ("MonitoringTeam", "Security", "Security response ownership"),
-        # Logical Systems
-        ("LogicalSystem", "SAP ERP", "Enterprise Resource Planning"),
-        ("LogicalSystem", "HR-Core", "Human Resources Core System"),
-        ("LogicalSystem", "Sales-B2B", "B2B Sales Portal"),
-        ("LogicalSystem", "IT-Infra", "IT Infrastructure"),
-        ("LogicalSystem", "DevOps", "DevOps Platform"),
-        # Core Assets
-        ("DeviceType", "Physical", "Bare metal hardware"),
-        ("DeviceType", "Virtual", "Virtual machine or instance"),
-        ("DeviceType", "Storage", "Storage array or appliance"),
-        ("DeviceType", "Switch", "Network switch or router"),
-        ("DeviceType", "Firewall", "Network firewall appliance"),
-        ("DeviceType", "Load Balancer", "Load balancer appliance"),
-        ("Status", "Planned", "Scheduled for deployment"),
-        ("Status", "Active", "Operational and healthy"),
-        ("Status", "Maintenance", "Undergoing scheduled maintenance"),
-        ("Status", "Standby", "Powered on, not serving traffic"),
-        ("Status", "Offline", "Powered off or unreachable"),
-        ("Status", "Decommissioned", "Retired from service"),
-        ("Environment", "Production", "Live user traffic"),
-        ("Environment", "Staging", "Pre-production staging"),
-        ("Environment", "QA", "Quality Assurance and Testing"),
-        ("Environment", "Dev", "Development environment"),
-        ("Environment", "DR", "Disaster Recovery Node"),
-        ("Environment", "Lab", "Lab or sandbox environment"),
-        ("BusinessUnit", "Engineering", "Engineering & R&D"),
-        ("BusinessUnit", "Operations", "IT Operations"),
-        ("BusinessUnit", "Finance", "Finance & Accounting"),
-        ("BusinessUnit", "HR", "Human Resources"),
-        ("BusinessUnit", "Sales", "Sales & Business Development"),
-        ("BusinessUnit", "Security", "Information Security"),
-        # Vendors
-        ("VendorDeviceType", "PC", "Personal Computer"),
-        ("VendorDeviceType", "Laptop", "Portable Computer"),
-        ("VendorCountry", "South Korea", "Republic of Korea"),
-        ("VendorCountry", "USA", "United States of America")
-    ]
-
-    for cat, val, desc in enum_defaults:
-        res = await db.execute(select(models.SettingOption).filter(models.SettingOption.category == cat, models.SettingOption.value == val))
-        if not res.scalar_one_or_none():
-            db.add(models.SettingOption(category=cat, label=val, value=val, description=desc))
-
-    # 3. Rich Templates (Metadata Keys)
-    service_types = [
-        ("Database", ["Engine", "Port", "DBName", "Collation", "StorageType", "ReplicaMode"]),
-        ("Web Server", ["ServerType", "Port", "RootPath", "SSLExpiry", "AppPool", "Bindings"]),
-        ("Container", ["Runtime", "Image", "Tag", "Namespace", "CPURequest", "MemRequest"]),
-        ("OS", ["Distribution", "Kernel", "Architecture", "Patch Level", "EOL Date"]),
-        ("Vendor Software", ["Vendor", "Support Contact", "Support Level", "Install Path", "License Tier"])
-    ]
-    for val, keys in service_types:
-        res = await db.execute(select(models.SettingOption).filter(models.SettingOption.category == "ServiceType", models.SettingOption.value == val))
-        if not res.scalar_one_or_none():
-            db.add(models.SettingOption(category="ServiceType", label=val, value=val, metadata_keys=keys))
-
-    try:
-        await db.commit()
-    except IntegrityError:
-        await db.rollback()
-    
-    return {"status": "initialized", "message": "System state synchronized"}
+    raise HTTPException(
+        status_code=410,
+        detail="Runtime settings initialization is disabled. Use explicit provisioning/bootstrap instead.",
+    )

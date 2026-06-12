@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete, update, func
 from sqlalchemy.orm import joinedload
 from typing import List, Optional, Any
 from urllib.parse import urlparse
@@ -20,6 +20,22 @@ ALERT_DURATION_MIN = 0
 ALERT_DURATION_MAX = 86400
 NOTIFICATION_THROTTLE_MIN = 60
 NOTIFICATION_THROTTLE_MAX = 604800
+
+
+def normalize_string(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    cleaned = str(value).strip()
+    return cleaned or None
+
+
+def normalize_string_list(values: list[Any] | None) -> list[str]:
+    cleaned = {
+        normalized
+        for normalized in (normalize_string(value) for value in (values or []))
+        if normalized
+    }
+    return sorted(cleaned, key=lambda value: value.lower())
 
 def normalize_monitoring_url(value: Optional[str]) -> Optional[str]:
     if value is None:
@@ -56,6 +72,268 @@ def split_owner_values(value: Any) -> list[str]:
         raw_values = str(value).replace("\n", ",").split(",")
     return [str(entry).strip() for entry in raw_values if str(entry).strip()]
 
+
+def normalize_recovery_docs(recovery_docs: Any) -> list[dict[str, Any]]:
+    normalized_docs = []
+    for raw_doc in recovery_docs or []:
+        if isinstance(raw_doc, dict):
+            normalized_docs.append({
+                "id": raw_doc.get("id"),
+                "note": normalize_string(raw_doc.get("note")),
+                "added_at": raw_doc.get("added_at"),
+            })
+        else:
+            normalized_docs.append({
+                "id": raw_doc,
+                "note": None,
+                "added_at": None,
+            })
+    return sorted(normalized_docs, key=lambda entry: (entry.get("id") or 0, entry.get("note") or "", str(entry.get("added_at") or "")))
+
+
+def build_monitoring_snapshot_from_values(
+    values: dict[str, Any],
+    owners: list[dict[str, Any]] | None,
+) -> dict[str, Any]:
+    return {
+        "device_id": values.get("device_id"),
+        "category": normalize_string(values.get("category")),
+        "status": normalize_string(values.get("status")),
+        "title": normalize_string(values.get("title")),
+        "spec": normalize_string(values.get("spec")),
+        "platform": normalize_string(values.get("platform")),
+        "monitoring_url": normalize_string(values.get("monitoring_url")),
+        "purpose": normalize_string(values.get("purpose")),
+        "impact": normalize_string(values.get("impact")),
+        "notification_method": normalize_string(values.get("notification_method")),
+        "notification_recipients": normalize_string_list(values.get("notification_recipients")),
+        "logic": normalize_string(values.get("logic")),
+        "logic_json": values.get("logic_json") or [],
+        "monitored_services": sorted(int(service_id) for service_id in (values.get("monitored_services") or [])),
+        "owner_team": ", ".join(normalize_string_list(split_owner_values(values.get("owner_team")))) or None,
+        "check_interval": values.get("check_interval"),
+        "alert_duration": values.get("alert_duration"),
+        "notification_throttle": values.get("notification_throttle"),
+        "severity": normalize_string(values.get("severity")),
+        "is_active": bool(values.get("is_active", True)),
+        "is_deleted": bool(values.get("is_deleted", False)),
+        "recovery_docs": normalize_recovery_docs(values.get("recovery_docs")),
+        "owners": sorted(
+            [
+                {
+                    "operator_id": owner.get("operator_id"),
+                    "name": normalize_string(owner.get("name")),
+                    "external_id": normalize_string(owner.get("external_id")),
+                    "role": normalize_string(owner.get("role")),
+                }
+                for owner in (owners or [])
+            ],
+            key=lambda owner: (
+                owner.get("operator_id") or 0,
+                owner.get("external_id") or "",
+                owner.get("role") or "",
+            ),
+        ),
+    }
+
+
+def build_monitoring_snapshot(item: models.MonitoringItem) -> dict[str, Any]:
+    return build_monitoring_snapshot_from_values(
+        {
+            "device_id": item.device_id,
+            "category": item.category,
+            "status": item.status,
+            "title": item.title,
+            "spec": item.spec,
+            "platform": item.platform,
+            "monitoring_url": item.monitoring_url,
+            "purpose": item.purpose,
+            "impact": item.impact,
+            "notification_method": item.notification_method,
+            "notification_recipients": item.notification_recipients,
+            "logic": item.logic,
+            "logic_json": item.logic_json,
+            "monitored_services": item.monitored_services,
+            "owner_team": item.owner_team,
+            "check_interval": item.check_interval,
+            "alert_duration": item.alert_duration,
+            "notification_throttle": item.notification_throttle,
+            "severity": item.severity,
+            "is_active": item.is_active,
+            "is_deleted": item.is_deleted,
+            "recovery_docs": item.recovery_docs,
+        },
+        [
+            {
+                "operator_id": owner.operator_id,
+                "name": owner.name or (owner.operator.full_name if owner.operator else None),
+                "external_id": owner.external_id or (owner.operator.external_id if owner.operator else None),
+                "role": owner.role,
+            }
+            for owner in item.owners
+        ],
+    )
+
+
+def summarize_monitoring_snapshot_delta(
+    before_snapshot: dict[str, Any] | None,
+    after_snapshot: dict[str, Any] | None,
+    *,
+    action_label: str,
+) -> str:
+    before = before_snapshot or {}
+    after = after_snapshot or {}
+
+    if action_label == "create":
+        return "Created monitor"
+    if action_label == "delete":
+        return "Archived monitor"
+    if action_label == "restore":
+        return "Restored monitor"
+
+    labels = {
+        "device_id": "Target asset",
+        "category": "Category",
+        "status": "Status",
+        "title": "Title",
+        "spec": "Spec",
+        "platform": "Platform",
+        "monitoring_url": "Monitoring URL",
+        "purpose": "Purpose",
+        "impact": "Impact",
+        "notification_method": "Notification method",
+        "notification_recipients": "Recipients",
+        "logic": "Logic",
+        "logic_json": "Logic rules",
+        "monitored_services": "Monitored services",
+        "owner_team": "Owner teams",
+        "check_interval": "Check interval",
+        "alert_duration": "Alert duration",
+        "notification_throttle": "Notification throttle",
+        "severity": "Severity",
+        "is_active": "Active state",
+        "is_deleted": "Deletion state",
+        "recovery_docs": "Recovery docs",
+        "owners": "Named owners",
+    }
+    changed_fields = [label for key, label in labels.items() if before.get(key) != after.get(key)]
+    if not changed_fields:
+        return "No semantic change"
+    if len(changed_fields) <= 3:
+        return f"Updated {'; '.join(changed_fields)}"
+    return f"Updated {', '.join(changed_fields[:3])} and {len(changed_fields) - 3} more"
+
+
+MONITORING_HISTORY_FIELD_LABELS = {
+    "device_id": "Target asset",
+    "category": "Category",
+    "status": "Status",
+    "title": "Title",
+    "spec": "Spec",
+    "platform": "Platform",
+    "monitoring_url": "Monitoring URL",
+    "purpose": "Purpose",
+    "impact": "Impact",
+    "notification_method": "Notification method",
+    "notification_recipients": "Recipients",
+    "logic": "Logic",
+    "logic_json": "Logic rules",
+    "monitored_services": "Monitored services",
+    "owner_team": "Owner teams",
+    "check_interval": "Check interval",
+    "alert_duration": "Alert duration",
+    "notification_throttle": "Notification throttle",
+    "severity": "Severity",
+    "is_active": "Active state",
+    "is_deleted": "Deletion state",
+    "recovery_docs": "Recovery docs",
+    "owners": "Named owners",
+}
+
+
+def build_monitoring_history_delta(
+    before_snapshot: dict[str, Any] | None,
+    after_snapshot: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    before = before_snapshot or {}
+    after = after_snapshot or {}
+    keys = list(dict.fromkeys([*MONITORING_HISTORY_FIELD_LABELS.keys(), *before.keys(), *after.keys()]))
+    delta: list[dict[str, Any]] = []
+    for key in keys:
+        previous_value = before.get(key)
+        next_value = after.get(key)
+        if previous_value == next_value:
+            continue
+        if previous_value is None and next_value is not None:
+            change_type = "added"
+        elif previous_value is not None and next_value is None:
+            change_type = "removed"
+        else:
+            change_type = "changed"
+        delta.append({
+            "field": key,
+            "label": MONITORING_HISTORY_FIELD_LABELS.get(key, key.replace("_", " ").title()),
+            "before": previous_value,
+            "after": next_value,
+            "change_type": change_type,
+        })
+    return delta
+
+
+async def ensure_monitoring_item_uniqueness(
+    db: AsyncSession,
+    *,
+    item_data: dict[str, Any],
+    exclude_item_id: int | None = None,
+) -> None:
+    normalized_title = normalize_string(item_data.get("title"))
+    if not normalized_title:
+        return
+
+    query = select(models.MonitoringItem).where(
+        func.lower(models.MonitoringItem.title) == normalized_title.lower(),
+        models.MonitoringItem.device_id == item_data.get("device_id"),
+        models.MonitoringItem.category == item_data.get("category"),
+        models.MonitoringItem.platform == item_data.get("platform"),
+        models.MonitoringItem.is_deleted == False,
+    )
+    if exclude_item_id is not None:
+        query = query.where(models.MonitoringItem.id != exclude_item_id)
+    duplicate = (await db.execute(query.limit(1))).scalar_one_or_none()
+    if duplicate:
+        raise HTTPException(
+            status_code=409,
+            detail="A monitoring item with the same target asset, title, category, and platform already exists.",
+        )
+
+
+def summarize_bulk_monitoring_action(
+    *,
+    action: str,
+    changed_count: int,
+    skipped_count: int,
+    changed_fields: set[str] | None = None,
+) -> str:
+    if changed_count == 0:
+        return "No semantic change"
+
+    base = {
+        "delete": "Archived monitors",
+        "restore": "Restored monitors",
+        "purge": "Purged monitors",
+        "update": "Updated monitors",
+    }.get(action, "Updated monitors")
+    parts = [f"{base}: {changed_count} changed"]
+    if skipped_count:
+        parts.append(f"{skipped_count} unchanged")
+    if action == "update" and changed_fields:
+        labels = sorted(changed_fields)
+        if len(labels) <= 3:
+            parts.append(f"fields: {', '.join(labels)}")
+        else:
+            parts.append(f"fields: {', '.join(labels[:3])} and {len(labels) - 3} more")
+    return " | ".join(parts)
+
 async def build_monitoring_payload(
     db: AsyncSession,
     payload: dict[str, Any],
@@ -88,6 +366,14 @@ async def build_monitoring_payload(
         platforms = await get_setting_values_by_category(db, "MonitoringPlatform")
         if platforms and clean_data["platform"] not in platforms:
             raise HTTPException(status_code=400, detail="Platform must be selected from Monitoring Platform settings")
+    if "category" in clean_data and clean_data["category"]:
+        categories = await get_setting_values_by_category(db, "MonitoringCategory")
+        if categories and clean_data["category"] not in categories:
+            raise HTTPException(status_code=400, detail="Category must be selected from Monitoring Category settings")
+    if "notification_method" in clean_data and clean_data["notification_method"]:
+        notification_methods = await get_setting_values_by_category(db, "NotificationMethod")
+        if notification_methods and clean_data["notification_method"] not in notification_methods:
+            raise HTTPException(status_code=400, detail="Notification method must be selected from Notification Method settings")
 
     registered_teams = await get_registered_team_names(db)
     if "owner_team" in clean_data:
@@ -97,11 +383,44 @@ async def build_monitoring_payload(
             raise HTTPException(status_code=400, detail=f"Unknown owner team(s): {', '.join(unknown_teams)}")
         clean_data["owner_team"] = ", ".join(owner_team_names) if owner_team_names else None
 
+    if "monitored_services" in clean_data and clean_data["monitored_services"]:
+        monitored_service_ids = sorted({int(service_id) for service_id in clean_data["monitored_services"]})
+        service_result = await db.execute(
+            select(models.LogicalService.id, models.LogicalService.device_id)
+            .where(models.LogicalService.id.in_(monitored_service_ids))
+        )
+        service_rows = service_result.all()
+        found_service_ids = {service_id for service_id, _ in service_rows}
+        missing_service_ids = [str(service_id) for service_id in monitored_service_ids if service_id not in found_service_ids]
+        if missing_service_ids:
+            raise HTTPException(status_code=400, detail=f"Unknown monitored service ID(s): {', '.join(missing_service_ids)}")
+        if clean_data.get("device_id") is not None:
+            mismatched_services = [
+                str(service_id)
+                for service_id, device_id in service_rows
+                if device_id is not None and device_id != clean_data["device_id"]
+            ]
+            if mismatched_services:
+                raise HTTPException(status_code=400, detail=f"Monitored services do not belong to the selected asset: {', '.join(mismatched_services)}")
+        clean_data["monitored_services"] = monitored_service_ids
+
+    if "recovery_docs" in clean_data and clean_data["recovery_docs"]:
+        recovery_doc_ids = sorted({int(doc["id"] if isinstance(doc, dict) else doc) for doc in clean_data["recovery_docs"]})
+        doc_result = await db.execute(
+            select(models.KnowledgeEntry.id)
+            .where(models.KnowledgeEntry.id.in_(recovery_doc_ids))
+        )
+        found_doc_ids = {doc_id for doc_id in doc_result.scalars().all()}
+        missing_doc_ids = [str(doc_id) for doc_id in recovery_doc_ids if doc_id not in found_doc_ids]
+        if missing_doc_ids:
+            raise HTTPException(status_code=400, detail=f"Unknown recovery document ID(s): {', '.join(missing_doc_ids)}")
+
     resolved_owners: list[dict[str, Any]] | None = None
     if owners_data is not None:
         if not isinstance(owners_data, list):
             raise HTTPException(status_code=400, detail="owners must be a list")
         resolved_owners = []
+        seen_owner_operator_ids: set[int] = set()
         for owner in owners_data:
             operator_id = owner.get("operator_id")
             owner_identifier = owner.get("external_id") or owner.get("username")
@@ -122,6 +441,9 @@ async def build_monitoring_payload(
             operator = operator_result.scalar_one_or_none()
             if not operator:
                 raise HTTPException(status_code=400, detail=f"Operator {owner_identifier or operator_id} was not found")
+            if operator.id in seen_owner_operator_ids:
+                raise HTTPException(status_code=400, detail=f"Operator {operator.external_id or operator.username or operator.id} is assigned more than once")
+            seen_owner_operator_ids.add(operator.id)
             resolved_owners.append({
                 "operator_id": operator.id,
                 "name": operator.full_name or operator.username or operator.external_id,
@@ -190,42 +512,7 @@ async def save_monitoring_history(item_id: int, version: int, db: AsyncSession, 
         .filter(models.MonitoringItem.id == item_id)
     )
     item = result.unique().scalar_one()
-    
-    # Create snapshot (convert to dict)
-    snapshot = {
-        "device_id": item.device_id,
-        "category": item.category,
-        "status": item.status,
-        "title": item.title,
-        "spec": item.spec,
-        "platform": item.platform,
-        "monitoring_url": item.monitoring_url,
-        "purpose": item.purpose,
-        "impact": item.impact,
-        "notification_method": item.notification_method,
-        "notification_recipients": item.notification_recipients,
-        "logic": item.logic,
-        "logic_json": item.logic_json,
-        "monitored_services": item.monitored_services,
-        "owner_team": item.owner_team,
-        "check_interval": item.check_interval,
-        "alert_duration": item.alert_duration,
-        "notification_throttle": item.notification_throttle,
-        "severity": item.severity,
-        "is_active": item.is_active,
-        "is_deleted": item.is_deleted,
-        "recovery_docs": item.recovery_docs,
-        "owners": [
-            {
-                "operator_id": o.operator_id,
-                "name": o.name or (o.operator.full_name if o.operator else None),
-                "external_id": o.external_id or (o.operator.external_id if o.operator else None),
-                "role": o.role,
-            }
-            for o in item.owners
-        ]
-    }
-    
+    snapshot = build_monitoring_snapshot(item)
     history_obj = models.MonitoringHistory(
         monitoring_item_id=item_id,
         version=version,
@@ -241,7 +528,28 @@ async def get_monitoring_history(item_id: int, db: AsyncSession = Depends(get_db
         .filter(models.MonitoringHistory.monitoring_item_id == item_id)
         .order_by(models.MonitoringHistory.version.desc())
     )
-    return result.scalars().all()
+    entries = result.scalars().all()
+    response: list[dict[str, Any]] = []
+    for index, entry in enumerate(entries):
+        previous_entry = entries[index + 1] if index + 1 < len(entries) else None
+        previous_snapshot = previous_entry.snapshot if previous_entry else None
+        current_snapshot = entry.snapshot or {}
+        delta = build_monitoring_history_delta(previous_snapshot, current_snapshot)
+        response.append({
+            "id": entry.id,
+            "created_at": entry.created_at,
+            "updated_at": entry.updated_at,
+            "created_by_user_id": entry.created_by_user_id,
+            "monitoring_item_id": entry.monitoring_item_id,
+            "version": entry.version,
+            "snapshot": current_snapshot,
+            "change_summary": entry.change_summary,
+            "delta": delta,
+            "changed_fields": [item["field"] for item in delta],
+            "changed_labels": [item["label"] for item in delta],
+            "previous_version": previous_entry.version if previous_entry else None,
+        })
+    return response
 
 @router.get("", response_model=List[schemas.MonitoringItemResponse])
 async def get_monitoring_items(device_id: Optional[int] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
@@ -316,6 +624,7 @@ async def get_monitoring_items(device_id: Optional[int] = None, include_deleted:
 @router.post("", response_model=schemas.MonitoringItemResponse)
 async def create_monitoring_item(data: schemas.MonitoringItemCreate, db: AsyncSession = Depends(get_db)):
     item_data, owners_data = await build_monitoring_payload(db, data.model_dump(), partial=False)
+    await ensure_monitoring_item_uniqueness(db, item_data=item_data)
     
     db_obj = models.MonitoringItem(**item_data)
     db.add(db_obj)
@@ -326,7 +635,12 @@ async def create_monitoring_item(data: schemas.MonitoringItemCreate, db: AsyncSe
         db.add(db_owner)
         
     await db.commit()
-    await save_monitoring_history(db_obj.id, db_obj.version, db)
+    await save_monitoring_history(
+        db_obj.id,
+        db_obj.version,
+        db,
+        summarize_monitoring_snapshot_delta(None, build_monitoring_snapshot_from_values(item_data, owners_data), action_label="create"),
+    )
     await db.commit()
     
     # Reload with owners
@@ -337,6 +651,7 @@ async def create_monitoring_item(data: schemas.MonitoringItemCreate, db: AsyncSe
 async def update_monitoring_item(item_id: int, data: dict, db: AsyncSession = Depends(get_db)):
     item = await load_monitoring_item(db, item_id)
     if not item: raise HTTPException(404, "Monitoring item not found")
+    previous_snapshot = build_monitoring_snapshot(item)
     
     merged_payload = {
         "device_id": item.device_id,
@@ -367,6 +682,10 @@ async def update_monitoring_item(item_id: int, data: dict, db: AsyncSession = De
     }
     merged_payload.update(data)
     clean_data, owners_data = await build_monitoring_payload(db, merged_payload, partial=False)
+    await ensure_monitoring_item_uniqueness(db, item_data=clean_data, exclude_item_id=item_id)
+    next_snapshot = build_monitoring_snapshot_from_values(clean_data, owners_data)
+    if next_snapshot == previous_snapshot:
+        return await to_monitoring_response(db, item)
 
     for k, v in clean_data.items():
         setattr(item, k, v)
@@ -381,7 +700,12 @@ async def update_monitoring_item(item_id: int, data: dict, db: AsyncSession = De
             db.add(db_owner)
             
     await db.commit()
-    await save_monitoring_history(item_id, item.version, db)
+    await save_monitoring_history(
+        item_id,
+        item.version,
+        db,
+        summarize_monitoring_snapshot_delta(previous_snapshot, next_snapshot, action_label="update"),
+    )
     await db.commit()
     
     # Reload with owners
@@ -394,6 +718,9 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
     action = data.get("action")
     payload = data.get("payload", {})
     if not ids: return {"status": "no_op"}
+    changed_count = 0
+    skipped_count = 0
+    changed_fields: set[str] = set()
 
     if action == "delete":
         result = await db.execute(
@@ -403,13 +730,25 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
         )
         items = result.unique().scalars().all()
         for item in items:
+            if item.is_deleted and item.status == "Deleted":
+                skipped_count += 1
+                continue
+            previous_snapshot = build_monitoring_snapshot(item)
             item.is_deleted = True
             item.status = "Deleted"
             item.version = (item.version or 0) + 1
             await db.flush()
-            await save_monitoring_history(item.id, item.version, db, "Bulk delete")
+            await save_monitoring_history(
+                item.id,
+                item.version,
+                db,
+                summarize_monitoring_snapshot_delta(previous_snapshot, build_monitoring_snapshot(item), action_label="delete"),
+            )
+            changed_count += 1
     elif action == "purge":
-        await db.execute(delete(models.MonitoringItem).where(models.MonitoringItem.id.in_(ids)))
+        delete_result = await db.execute(delete(models.MonitoringItem).where(models.MonitoringItem.id.in_(ids)))
+        changed_count = delete_result.rowcount or 0
+        skipped_count = max(0, len(ids) - changed_count)
     elif action == "restore":
         result = await db.execute(
             select(models.MonitoringItem)
@@ -418,11 +757,21 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
         )
         items = result.unique().scalars().all()
         for item in items:
+            if not item.is_deleted and item.status == "Existing":
+                skipped_count += 1
+                continue
+            previous_snapshot = build_monitoring_snapshot(item)
             item.is_deleted = False
             item.status = "Existing"
             item.version = (item.version or 0) + 1
             await db.flush()
-            await save_monitoring_history(item.id, item.version, db, "Bulk restore")
+            await save_monitoring_history(
+                item.id,
+                item.version,
+                db,
+                summarize_monitoring_snapshot_delta(previous_snapshot, build_monitoring_snapshot(item), action_label="restore"),
+            )
+            changed_count += 1
     elif action == "update":
         if payload:
             result = await db.execute(
@@ -432,6 +781,7 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
             )
             items = result.unique().scalars().all()
             for item in items:
+                previous_snapshot = build_monitoring_snapshot(item)
                 merged_payload = {
                     "device_id": item.device_id,
                     "category": item.category,
@@ -462,6 +812,11 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
                 }
                 merged_payload.update(payload)
                 validated_update, owners_data = await build_monitoring_payload(db, merged_payload, partial=False)
+                await ensure_monitoring_item_uniqueness(db, item_data=validated_update, exclude_item_id=item.id)
+                next_snapshot = build_monitoring_snapshot_from_values(validated_update, owners_data)
+                if next_snapshot == previous_snapshot:
+                    skipped_count += 1
+                    continue
                 for key, value in validated_update.items():
                     setattr(item, key, value)
                 if owners_data is not None:
@@ -470,19 +825,121 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
                         db.add(models.MonitoringOwner(**owner, monitoring_item_id=item.id))
                 item.version = (item.version or 0) + 1
                 await db.flush()
-                summary_fields = ", ".join(sorted(payload.keys()))
-                await save_monitoring_history(item.id, item.version, db, f"Bulk update: {summary_fields}")
+                await save_monitoring_history(
+                    item.id,
+                    item.version,
+                    db,
+                    summarize_monitoring_snapshot_delta(previous_snapshot, next_snapshot, action_label="update"),
+                )
+                changed_count += 1
+                changed_fields.update(
+                    label
+                    for key, label in {
+                        "device_id": "target asset",
+                        "category": "category",
+                        "status": "status",
+                        "title": "title",
+                        "platform": "platform",
+                        "notification_method": "notification method",
+                        "severity": "severity",
+                        "owner_team": "owner teams",
+                        "owners": "owners",
+                        "monitored_services": "monitored services",
+                        "recovery_docs": "recovery docs",
+                    }.items()
+                    if previous_snapshot.get(key) != next_snapshot.get(key)
+                )
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported bulk action")
 
     await db.commit()
-    return {"status": "success"}
+    return {
+        "status": "success",
+        "action": action,
+        "changed": changed_count,
+        "skipped": skipped_count,
+        "summary": summarize_bulk_monitoring_action(
+            action=action,
+            changed_count=changed_count,
+            skipped_count=skipped_count,
+            changed_fields=changed_fields,
+        ),
+    }
 
 @router.delete("/{item_id}")
 async def delete_monitoring_item(item_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(models.MonitoringItem).filter(models.MonitoringItem.id == item_id))
-    item = result.scalar_one_or_none()
+    item = await load_monitoring_item(db, item_id)
     if not item: raise HTTPException(404, "Monitoring item not found")
-    
+    if item.is_deleted and item.status == "Deleted":
+        return {"status": "success"}
+    previous_snapshot = build_monitoring_snapshot(item)
     item.is_deleted = True
     item.status = "Deleted"
+    item.version = (item.version or 0) + 1
+    await db.commit()
+    await save_monitoring_history(
+        item.id,
+        item.version,
+        db,
+        summarize_monitoring_snapshot_delta(previous_snapshot, build_monitoring_snapshot(item), action_label="delete"),
+    )
     await db.commit()
     return {"status": "success"}
+
+
+@router.post("/{item_id}/restore/{history_id}", response_model=schemas.MonitoringItemResponse)
+async def restore_monitoring_history_version(item_id: int, history_id: int, db: AsyncSession = Depends(get_db)):
+    item = await load_monitoring_item(db, item_id)
+    if not item:
+        raise HTTPException(404, "Monitoring item not found")
+    history_result = await db.execute(
+        select(models.MonitoringHistory)
+        .filter(
+            models.MonitoringHistory.id == history_id,
+            models.MonitoringHistory.monitoring_item_id == item_id,
+        )
+    )
+    history = history_result.scalar_one_or_none()
+    if not history:
+        raise HTTPException(404, "Monitoring history entry not found")
+
+    snapshot = history.snapshot or {}
+    current_snapshot = build_monitoring_snapshot(item)
+    target_snapshot = build_monitoring_snapshot_from_values(snapshot, snapshot.get("owners") or [])
+    if current_snapshot == target_snapshot:
+        return await to_monitoring_response(db, item)
+
+    for key, value in snapshot.items():
+        if key == "owners":
+            continue
+        if key == "owner_team":
+            setattr(item, key, ", ".join(normalize_string_list(split_owner_values(value))) or None)
+        else:
+            setattr(item, key, value)
+
+    await db.execute(delete(models.MonitoringOwner).where(models.MonitoringOwner.monitoring_item_id == item_id))
+    for owner in snapshot.get("owners") or []:
+        operator_id = owner.get("operator_id")
+        if operator_id is not None:
+            operator_exists = await db.scalar(select(models.Operator.id).where(models.Operator.id == operator_id))
+            if operator_exists is None:
+                operator_id = None
+        db.add(models.MonitoringOwner(
+            monitoring_item_id=item_id,
+            operator_id=operator_id,
+            name=normalize_string(owner.get("name")),
+            external_id=normalize_string(owner.get("external_id")),
+            role=normalize_string(owner.get("role")),
+        ))
+
+    item.version = (item.version or 0) + 1
+    await db.commit()
+    await save_monitoring_history(
+        item.id,
+        item.version,
+        db,
+        summarize_monitoring_snapshot_delta(current_snapshot, target_snapshot, action_label="restore"),
+    )
+    await db.commit()
+    item = await load_monitoring_item(db, item_id)
+    return await to_monitoring_response(db, item)

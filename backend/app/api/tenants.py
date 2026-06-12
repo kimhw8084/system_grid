@@ -60,6 +60,42 @@ async def tenant_online_status(db_url: str) -> bool:
     except Exception:
         return False
 
+
+async def set_user_selected_tenant(db: AsyncSession, user_id: str, tenant_id: int) -> None:
+    await db.execute(update(UserTenantAccess).where(UserTenantAccess.user_id == user_id).values(is_selected=False))
+    result = await db.execute(
+        select(UserTenantAccess)
+        .filter(UserTenantAccess.user_id == user_id, UserTenantAccess.tenant_id == tenant_id)
+    )
+    access = result.scalar_one_or_none()
+    if access:
+        access.is_selected = True
+
+
+async def grant_tenant_access(
+    db: AsyncSession,
+    *,
+    user_id: str,
+    tenant_id: int,
+    role: str,
+    make_selected: bool = False,
+) -> UserTenantAccess:
+    result = await db.execute(
+        select(UserTenantAccess)
+        .filter(UserTenantAccess.user_id == user_id, UserTenantAccess.tenant_id == tenant_id)
+    )
+    access = result.scalar_one_or_none()
+    if access:
+        access.role = role
+    else:
+        access = UserTenantAccess(user_id=user_id, tenant_id=tenant_id, role=role, is_selected=False)
+        db.add(access)
+        await db.flush()
+
+    if make_selected:
+        await set_user_selected_tenant(db, user_id, tenant_id)
+    return access
+
 @router.get("/admin/settings", response_model=List[MasterSettingBase])
 async def get_master_settings(db: AsyncSession = Depends(get_config_db)):
     result = await db.execute(select(MasterSystemSetting))
@@ -316,28 +352,17 @@ async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_
     if not success:
         raise HTTPException(status_code=500, detail=f"Failed to initialize database: {error}")
 
-    # 4. Seed the new database with default settings/roles
-    from ..main import _auto_seed
     user_id = get_current_user_id(request)
-    tenant_engine = get_tenant_engine(db_url)
-    session_factory = async_sessionmaker(bind=tenant_engine, class_=AsyncSession, expire_on_commit=False)
-    async with session_factory() as tenant_db:
-        await _auto_seed(tenant_db, creator_id=user_id)
 
-    # 5. Register in config.db
+    # 4. Register in config.db
     new_tenant = Tenant(name=tenant_name_clean, db_url=db_url)
     db.add(new_tenant)
     await db.commit()
     await db.refresh(new_tenant)
 
-    # 6. Auto-grant access to the creator
+    # 5. Auto-grant access to the creator
     user_id = get_current_user_id(request)
-    access = UserTenantAccess(user_id=user_id, tenant_id=new_tenant.id, role="ADMIN", is_selected=True)
-    
-    # Unselect others
-    await db.execute(update(UserTenantAccess).where(UserTenantAccess.user_id == user_id).values(is_selected=False))
-    
-    db.add(access)
+    await grant_tenant_access(db, user_id=user_id, tenant_id=new_tenant.id, role="ADMIN", make_selected=True)
     await db.commit()
 
     return new_tenant
@@ -432,24 +457,16 @@ async def attach_tenant(tenant_in: TenantAttach, db: AsyncSession = Depends(get_
     if not success:
         raise HTTPException(status_code=500, detail=f"Failed to synchronize schema: {error}")
 
-    # 3. Seed if necessary (ensure default roles/settings exist)
-    from ..main import _auto_seed
     user_id = get_current_user_id(request)
-    tenant_engine = get_tenant_engine(db_url)
-    session_factory = async_sessionmaker(bind=tenant_engine, class_=AsyncSession, expire_on_commit=False)
-    async with session_factory() as tenant_db:
-        await _auto_seed(tenant_db, creator_id=user_id)
 
-    # 4. Register
+    # 3. Register
     new_tenant = Tenant(name=tenant_in.name, db_url=db_url)
     db.add(new_tenant)
     await db.commit()
     await db.refresh(new_tenant)
 
-    # 5. Grant access
-    access = UserTenantAccess(user_id=user_id, tenant_id=new_tenant.id, role="ADMIN", is_selected=True)
-    await db.execute(update(UserTenantAccess).where(UserTenantAccess.user_id == user_id).values(is_selected=False))
-    db.add(access)
+    # 4. Grant access
+    await grant_tenant_access(db, user_id=user_id, tenant_id=new_tenant.id, role="ADMIN", make_selected=True)
     await db.commit()
 
     return new_tenant
@@ -457,16 +474,6 @@ async def attach_tenant(tenant_in: TenantAttach, db: AsyncSession = Depends(get_
 @router.get("/me", response_model=List[UserTenantResponse])
 async def get_my_tenants(db: AsyncSession = Depends(get_config_db), request: Request = None):
     user_id = get_current_user_id(request)
-    
-    # Check if user has ANY access. If not, auto-grant default engine access
-    res = await db.execute(select(UserTenantAccess).filter(UserTenantAccess.user_id == user_id))
-    if not res.scalars().first():
-        # Get default tenant ID
-        res_default = await db.execute(select(Tenant).filter(Tenant.name == settings.DEFAULT_TENANT_NAME))
-        default_tenant = res_default.scalar_one_or_none()
-        if default_tenant:
-            db.add(UserTenantAccess(user_id=user_id, tenant_id=default_tenant.id, role="ADMIN", is_selected=True))
-            await db.commit()
 
     stmt = (
         select(Tenant.id, Tenant.name, UserTenantAccess.role, UserTenantAccess.is_selected, Tenant.db_url)
@@ -501,13 +508,7 @@ async def select_tenant(selection: UserTenantSelection, db: AsyncSession = Depen
         raise HTTPException(status_code=403, detail="Access denied to this tenant")
 
     # Update selection
-    await db.execute(
-        update(UserTenantAccess)
-        .where(UserTenantAccess.user_id == user_id)
-        .values(is_selected=False)
-    )
-    
-    access.is_selected = True
+    await set_user_selected_tenant(db, user_id, selection.tenant_id)
     await db.commit()
     
     return {"status": "success", "tenant_id": selection.tenant_id}

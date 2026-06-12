@@ -12,6 +12,7 @@ export type WorkspaceCapability =
   | 'stickyIdentityHeader'
   | 'frontendValidation'
   | 'searchableSelectors'
+  | 'deepLinkedDetails'
 
 export interface WorkspaceDefinition {
   workspaceName: string
@@ -60,9 +61,12 @@ export const MONITORING_WORKSPACE_STANDARD: WorkspaceDefinition = {
     'Hover previews for dense linked data where scan speed matters',
     'Shared native floating panels for menus, context actions, and linked record browsing',
     'History and archive/restore behavior when the entity lifecycle supports it',
+    'Shareable internal deep-link access by entity id when the view has a primary detail surface',
   ],
   gridBehaviorContract: [
     'Saved views persist search, filters, grouping, sort, and column visibility together',
+    'Saved workspace state is user-scoped and tenant-scoped through backend preferences when the view is operationally important, with local storage treated only as fallback or migration compatibility',
+    'Saved views and workspace state must be sanitized against the current column/filter/sort contract before apply so stale column ids never corrupt newer grid definitions',
     'Display controls manage density and column presentation without mutating record data',
     'Default grid layouts auto-size visible content columns when longer data arrives, without overriding fixed utility columns or explicit saved/manual layouts',
     'All operational timestamps render in the app runtime local timezone consistently across grid cells, hover previews, detail surfaces, and history flows',
@@ -70,6 +74,8 @@ export const MONITORING_WORKSPACE_STANDARD: WorkspaceDefinition = {
     'Bulk actions operate on explicit selection state and never on hidden implicit scope',
     'Hover previews expose dense linked data without forcing modal navigation',
     'Context menus preserve anchor behavior while sharing the same native visual shell',
+    'A canonical internal URL contract should open the targeted record detail by unique id for authorized users without requiring manual table search first',
+    'Operational import/export must use a schema-versioned round-trip contract so exported snapshots can be re-imported without relying on raw database column names',
   ],
   modalBehaviorContract: [
     'Add/edit uses a sticky identity header for the primary record fields',
@@ -80,6 +86,8 @@ export const MONITORING_WORKSPACE_STANDARD: WorkspaceDefinition = {
     'Required fields are marked in the form, not only rejected by the backend',
     'The footer keeps cancel and save actions in a consistent location across views',
     'History, compare, and archive/restore appear only when the backing entity supports them',
+    'Version history APIs should return canonical structured deltas per version so timeline and compare surfaces do not reverse-engineer snapshot diffs on the client',
+    'If a route carries a valid entity id query parameter, the view should restore or open the matching detail surface directly and fail cleanly when the record is missing or unauthorized',
   ],
   sharedCapabilities: [
     'savedViews',
@@ -95,6 +103,7 @@ export const MONITORING_WORKSPACE_STANDARD: WorkspaceDefinition = {
     'stickyIdentityHeader',
     'frontendValidation',
     'searchableSelectors',
+    'deepLinkedDetails',
   ],
   monitoringSpecificFeatures: [
     'Logic editor with syntax-aware CodeMirror behavior',
@@ -110,6 +119,8 @@ export const OPERATIONAL_WORKSPACE_MINIMUM_STANDARD = [
   'Shared header scope switch primitive for top-level dataset modes like Existing/Archived',
   'Shared contextual bulk-action flyout primitives for anchored row-selection actions',
   'Shared table/workspace state model for search, filters, views, selection, and column layout persistence',
+  'Shared saved-state sanitization for column layout, hidden columns, filters, and sort definitions before restoring workspace state',
+  'Shared internal deep-link contract so entity detail views can be opened directly by unique id from a shareable app URL',
   'Shared operational grid sizing helpers for dynamic default widths and explicit saved/manual widths',
   'Shared add/edit modal shell with sticky identity, tabs, validation, and footer actions',
   'Per-view adapter contract for schema, actions, validation rules, and linked selectors',

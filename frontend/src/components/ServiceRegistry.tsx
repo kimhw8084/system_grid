@@ -294,6 +294,12 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
   })
 
   const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
+  const ensureCurrentOption = (entries: Array<{ value: string; label: string }>, currentValue: string) => {
+    if (!currentValue) return entries
+    return entries.some((entry) => entry.value === currentValue)
+      ? entries
+      : [{ value: currentValue, label: currentValue }, ...entries]
+  }
 
   useEffect(() => {
     if (!initialData.id) {
@@ -319,7 +325,7 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
                 <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500`} placeholder="e.g. ERP DB Prod 01" />
              </div>
              <StyledSelect label="Host Node" value={formData.device_id || ""} onChange={e => setFormData({...formData, device_id: e.target.value ? parseInt(e.target.value) : null})} options={devices?.map((d:any)=>({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []} placeholder="Unassigned (Floating)" />
-             <StyledSelect label="Matrix Type" value={formData.service_type} onChange={e => setFormData(prev => ({...prev, service_type: e.target.value}))} options={getOptions('ServiceType')} />
+             <StyledSelect label="Matrix Type" value={formData.service_type} onChange={e => setFormData(prev => ({...prev, service_type: e.target.value}))} options={ensureCurrentOption(getOptions('ServiceType'), formData.service_type)} />
            </div>
            <div className="grid grid-cols-2 gap-3">
              <div><label className="text-[8px] font-bold text-slate-400 uppercase block mb-1 px-1 ">Deployment Date</label><input type="date" value={formData.installation_date ? formData.installation_date.split('T')[0] : ""} onChange={e => setFormData({...formData, installation_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold outline-none focus:border-blue-500" /></div>
@@ -331,8 +337,8 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
         <div className="space-y-4">
            <h3 className="text-[9px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-emerald-600 pl-3 ">Runtime Configuration</h3>
            <div className="grid grid-cols-2 gap-3">
-             <StyledSelect label="Runtime State" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} options={getOptions('Status')} />
-             <StyledSelect label="Environment" value={formData.environment} onChange={e => setFormData({...formData, environment: e.target.value})} options={getOptions('Environment')} />
+             <StyledSelect label="Runtime State" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} options={ensureCurrentOption(getOptions('Status'), formData.status)} />
+             <StyledSelect label="Environment" value={formData.environment} onChange={e => setFormData({...formData, environment: e.target.value})} options={ensureCurrentOption(getOptions('Environment'), formData.environment)} />
            </div>
            <div className="col-span-2 mt-4"><MetadataEditor value={formData.config_json} onChange={v => setFormData({...formData, config_json: v})} onError={setMetadataError} /></div>
         </div>

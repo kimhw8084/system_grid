@@ -2,153 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sqlalchemy import select, text
-from .database import engine, Base, AsyncSessionLocal
+from .database import engine, Base
 from .models import models
 from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings as settings_api, monitoring, troubleshoot, data_flows, intelligence, rca, investigations, far, projects, vendors, knowledge, tenants
-from .api.utils import build_default_operator_profile
-
-async def _auto_seed(db_session=None, creator_id=None):
-    from sqlalchemy.exc import IntegrityError
-    
-    # If no session provided, use the default one (for lifespan boot)
-    if db_session is None:
-        async with AsyncSessionLocal() as db:
-            await _perform_seed(db, creator_id)
-    else:
-        await _perform_seed(db_session, creator_id)
-
-async def _perform_seed(db, creator_id=None):
-    from sqlalchemy.exc import IntegrityError
-    # 1. Verify Global Settings (App Brain)
-    res_global = await db.execute(select(models.GlobalSetting))
-    if not res_global.scalars().first():
-        print("AUTO-BOOT: Seeding missing Global Settings...")
-        global_defaults = [
-            ("app_name", settings.DEFAULT_APP_NAME, "General", False),
-            ("org_name", settings.DEFAULT_ORG_NAME, "General", False),
-            ("site_id", settings.DEFAULT_SITE_ID, "General", False),
-            ("retention_days", "30", "Infrastructure", False),
-            ("maintenance_mode", "false", "Infrastructure", False),
-            ("default_timezone", "UTC", "General", False),
-            ("dashboard_refresh_interval", "60", "UI", False),
-            ("security_level", "Standard", "Infrastructure", False),
-            ("audit_log_level", "Full", "Infrastructure", False),
-            ("ui_primary_color", "#3b82f6", "UI", False),
-            ("ui_accent_color", "#10b981", "UI", False),
-            ("support_email", settings.DEFAULT_SUPPORT_EMAIL, "General", False),
-            ("VITE_APP_TITLE", settings.DEFAULT_UI_TITLE, "General", True),
-            ("VITE_POLLING_INTERVAL", "5000", "Infrastructure", True),
-            ("VITE_ENABLE_WEBSOCKETS", "true", "Infrastructure", True),
-            ("VITE_THEME_DEFAULT", "nordic-frost-v1", "UI", True),
-            ("VITE_UI_TIMEOUT", "30000", "Infrastructure", True),
-            ("VITE_MAX_GRID_ROWS", "100", "UI", True),
-            ("PORT", "8000", "Infrastructure", True),
-            ("API_ENDPOINT", "/api/v1", "Infrastructure", True)
-        ]
-        for key, val, cat, public in global_defaults:
-            db.add(models.GlobalSetting(key=key, value=val, category=cat, is_public=public))
-        try:
-            await db.commit()
-        except IntegrityError:
-            await db.rollback()
-            print("AUTO-BOOT: Global Settings already seeded by another worker.")
-
-    # 2. Verify Setting Options (Metadata)
-    res = await db.execute(select(models.SettingOption))
-    if not res.scalars().first():
-        defaults = [
-            # Logical Systems
-            ("LogicalSystem", "SAP ERP", "Enterprise Resource Planning"),
-            ("LogicalSystem", "HR-Core", "Human Resources Core System"),
-            ("LogicalSystem", "Sales-B2B", "B2B Sales Portal"),
-            ("LogicalSystem", "IT-Infra", "IT Infrastructure"),
-            ("LogicalSystem", "DevOps", "DevOps Platform"),
-            # Device Types
-            ("DeviceType", "Physical", "Bare metal hardware"),
-            ("DeviceType", "Virtual", "Virtual machine or instance"),
-            ("DeviceType", "Storage", "Storage array or appliance"),
-            ("DeviceType", "Switch", "Network switch or router"),
-            ("DeviceType", "Firewall", "Network firewall appliance"),
-            ("DeviceType", "Load Balancer", "Load balancer appliance"),
-            # Operational Status
-            ("Status", "Planned", "Scheduled for deployment"),
-            ("Status", "Active", "Operational and healthy"),
-            ("Status", "Maintenance", "Undergoing scheduled maintenance"),
-            ("Status", "Standby", "Powered on, not serving traffic"),
-            ("Status", "Offline", "Powered off or unreachable"),
-            ("Status", "Decommissioned", "Retired from service"),
-            # Environments
-            ("Environment", "Production", "Live user traffic"),
-            ("Environment", "Staging", "Pre-production staging"),
-            ("Environment", "QA", "Quality Assurance and Testing"),
-            ("Environment", "Dev", "Development environment"),
-            ("Environment", "DR", "Disaster Recovery Node"),
-            ("Environment", "Lab", "Lab or sandbox environment"),
-            # Business Units
-            ("BusinessUnit", "Engineering", "Engineering & R&D"),
-            ("BusinessUnit", "Operations", "IT Operations"),
-            ("BusinessUnit", "Finance", "Finance & Accounting"),
-            ("BusinessUnit", "HR", "Human Resources"),
-            ("BusinessUnit", "Sales", "Sales & Business Development"),
-            ("BusinessUnit", "Security", "Information Security"),
-            # Vendor Countries
-            ("VendorCountry", "South Korea", "Republic of Korea"),
-            ("VendorCountry", "USA", "United States of America"),
-        ]
-        for cat, val, desc in defaults:
-            db.add(models.SettingOption(category=cat, label=val, value=val, description=desc))
-
-        service_types = [
-            ("Database", ["engine", "instance_name", "port", "sid", "collation", "always_on", "data_path", "backup_policy"]),
-            ("Web API", ["server_type", "url", "bindings", "app_pool", "ssl_expiry", "root_path"]),
-            ("Auth Service", ["protocol", "domain", "key_rotation", "mfa_enabled"]),
-            ("Middleware", ["platform", "queue_names", "max_consumers", "heartbeat_interval"]),
-            ("Storage Hub", ["volume_id", "protocol", "iops", "encryption_status", "tier"]),
-            ("Cache", ["engine", "port", "memory_limit", "eviction_policy", "clustered"])
-        ]
-        for val, keys in service_types:
-            db.add(models.SettingOption(category="ServiceType", label=val, value=val, metadata_keys=keys))
-
-    # 3. Ensure we have a default operator and role
-    res = await db.execute(select(models.Role).filter(models.Role.name == "SuperAdmin"))
-    admin_role = res.scalar_one_or_none()
-    if not admin_role:
-        admin_role = models.Role(name="SuperAdmin", permissions={"dashboard": 3, "settings": 3, "audit": 3})
-        db.add(admin_role)
-        await db.commit()
-        await db.refresh(admin_role)
-    
-    res = await db.execute(select(models.Operator).filter(models.Operator.username == settings.DEFAULT_USER_ID))
-    if not res.scalar_one_or_none():
-        default_operator = build_default_operator_profile(settings.DEFAULT_USER_ID)
-        db.add(models.Operator(
-            external_id=default_operator["external_id"],
-            username=default_operator["username"],
-            full_name=default_operator["full_name"],
-            email=default_operator["email"],
-            department=default_operator["department"],
-            role_id=admin_role.id,
-            registration_status="Verified",
-            is_admin=True,
-            custom_permissions={"all": 3}
-        ))
-    
-    if creator_id and creator_id != settings.DEFAULT_USER_ID:
-        res = await db.execute(select(models.Operator).filter(models.Operator.username == creator_id))
-        if not res.scalar_one_or_none():
-            db.add(models.Operator(
-                external_id=creator_id,
-                username=creator_id,
-                full_name=creator_id.replace(".", " ").replace("_", " ").title(),
-                email=f"{creator_id}@{settings.DEFAULT_EMAIL_DOMAIN}",
-                department=settings.DEFAULT_OPERATOR_DEPARTMENT,
-                role_id=admin_role.id,
-                registration_status="Verified",
-                is_admin=True,
-                custom_permissions={"all": 3}
-            ))
-        
-    await db.commit()
 
 from .core.config import settings
 
@@ -184,8 +40,6 @@ async def lifespan(app: FastAPI):
     # 2. Ensure migrations are applied to Default DB first
     await run_migrations()
     
-    # 3. Seed default data if necessary
-    await _auto_seed()
     yield
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect

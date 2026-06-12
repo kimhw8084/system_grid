@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update, func
 from ..database import get_db
 from ..models import models
+from .utils import build_audit_log
 
 router = APIRouter(prefix="/sites", tags=["Sites"])
 
@@ -26,7 +27,7 @@ async def reorder_sites(data: dict, db: AsyncSession = Depends(get_db)):
     return {"status": "success"}
 
 @router.post("")
-async def create_site(data: dict, db: AsyncSession = Depends(get_db)):
+async def create_site(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     name = data.get('name', 'New Site')
     # Check for duplicate name
     existing_result = await db.execute(select(models.Site).filter(models.Site.name == name))
@@ -44,13 +45,13 @@ async def create_site(data: dict, db: AsyncSession = Depends(get_db)):
         await db.refresh(site)
         
         # Audit log
-        log = models.AuditLog(
-            user_id="admin", 
-            action="CREATE", 
-            target_table="sites", 
-            target_id=str(site.id), 
+        log = build_audit_log(
+            request=request,
+            action="CREATE",
+            target_table="sites",
+            target_id=str(site.id),
             description=f"Established new site: {site.name}",
-            changes={"color": site.color}
+            changes={"color": site.color},
         )
         db.add(log)
         
@@ -64,7 +65,7 @@ async def create_site(data: dict, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 @router.put("/{site_id}")
-async def update_site(site_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+async def update_site(site_id: int, data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.Site).filter(models.Site.id == site_id))
     site = result.scalar_one_or_none()
     if not site: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
@@ -80,8 +81,8 @@ async def update_site(site_id: int, data: dict, db: AsyncSession = Depends(get_d
     if 'order_index' in data: site.order_index = data['order_index']
     if 'color' in data: site.color = data['color']
     
-    log = models.AuditLog(
-        user_id="admin", action="UPDATE", target_table="sites", 
+    log = build_audit_log(
+        request=request, action="UPDATE", target_table="sites",
         target_id=str(site.id), description=f"Updated site: {site.name}",
         changes={"color": site.color} if 'color' in data else {}
     )
@@ -90,7 +91,7 @@ async def update_site(site_id: int, data: dict, db: AsyncSession = Depends(get_d
     return {"id": site.id, "name": site.name, "order_index": site.order_index}
 
 @router.delete("/{site_id}")
-async def delete_site(site_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_site(site_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.Site).filter(models.Site.id == site_id))
     site = result.scalar_one_or_none()
     if not site: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Site not found")
@@ -108,8 +109,8 @@ async def delete_site(site_id: int, db: AsyncSession = Depends(get_db)):
         rack.last_site_name = site.name
 
     await db.delete(site)
-    log = models.AuditLog(
-        user_id="admin", action="DELETE", target_table="sites", 
+    log = build_audit_log(
+        request=request, action="DELETE", target_table="sites",
         target_id=str(site_id), description=f"Decommissioned site: {site.name}"
     )
     db.add(log)

@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update, or_, and_, func
 from typing import List
 from ..database import get_db
 from ..models import models
 from ..schemas import schemas
-from .utils import filter_valid_columns
+from .utils import build_audit_log, filter_valid_columns
 
 router = APIRouter(prefix="/networks", tags=["Network Fabric"])
 
@@ -132,7 +132,7 @@ async def get_connections(device_id: int = None, db: AsyncSession = Depends(get_
     return final_result
 
 @router.post("/connections")
-async def create_connection(data: dict, db: AsyncSession = Depends(get_db)):
+async def create_connection(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     source_device_id = data.get('device_a_id')
     source_port = data.get('source_port') or data.get('port_a')
     target_device_id = data.get('device_b_id')
@@ -180,14 +180,14 @@ async def create_connection(data: dict, db: AsyncSession = Depends(get_db)):
         request_link=data.get('request_link')
     )
     db.add(conn)
-    log = models.AuditLog(user_id="admin", action="CREATE", target_table="port_connections", description=f"Established link between dev {source_device_id} and {target_device_id}")
+    log = build_audit_log(request=request, action="CREATE", target_table="port_connections", description=f"Established link between dev {source_device_id} and {target_device_id}")
     db.add(log)
     await db.commit()
     await db.refresh(conn)
     return conn
 
 @router.put("/connections/{conn_id}")
-async def update_connection(conn_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+async def update_connection(conn_id: int, data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.PortConnection).filter(models.PortConnection.id == conn_id))
     conn = result.scalar_one_or_none()
     if not conn: raise HTTPException(404)
@@ -237,27 +237,25 @@ async def update_connection(conn_id: int, data: dict, db: AsyncSession = Depends
     if 'farm' in data: conn.farm = data['farm']
     if 'request_link' in data: conn.request_link = data['request_link']
 
-    log = models.AuditLog(
-        user_id="admin", action="UPDATE", target_table="port_connections", target_id=str(conn_id), description="Modified network link"
-    )
+    log = build_audit_log(request=request, action="UPDATE", target_table="port_connections", target_id=str(conn_id), description="Modified network link")
     db.add(log)
     await db.commit()
     return conn
 
 @router.delete("/connections/{conn_id}")
-async def delete_connection(conn_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_connection(conn_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.PortConnection).filter(models.PortConnection.id == conn_id))
     conn = result.scalar_one_or_none()
     if not conn: raise HTTPException(status_code=404, detail="Connection not found")
     
     await db.delete(conn)
-    log = models.AuditLog(user_id="admin", action="DELETE", target_table="port_connections", target_id=str(conn_id), description="Severed network link")
+    log = build_audit_log(request=request, action="DELETE", target_table="port_connections", target_id=str(conn_id), description="Severed network link")
     db.add(log)
     await db.commit()
     return {"status": "success"}
 
 @router.post("/connections/bulk-status")
-async def bulk_update_status(data: dict, db: AsyncSession = Depends(get_db)):
+async def bulk_update_status(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     ids = data.get("ids", [])
     new_status = data.get("status")
     if not ids or not new_status:
@@ -269,18 +267,13 @@ async def bulk_update_status(data: dict, db: AsyncSession = Depends(get_db)):
         .values(status=new_status)
     )
     
-    log = models.AuditLog(
-        user_id="admin", 
-        action="BULK_UPDATE", 
-        target_table="port_connections", 
-        description=f"Bulk updated {len(ids)} links to {new_status}"
-    )
+    log = build_audit_log(request=request, action="BULK_UPDATE", target_table="port_connections", description=f"Bulk updated {len(ids)} links to {new_status}")
     db.add(log)
     await db.commit()
     return {"status": "success", "count": len(ids)}
 
 @router.post("/connections/bulk-delete")
-async def bulk_delete_connections(data: dict, db: AsyncSession = Depends(get_db)):
+async def bulk_delete_connections(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     ids = data.get("ids", [])
     if not ids:
         raise HTTPException(400, "IDs required")
@@ -295,12 +288,7 @@ async def bulk_delete_connections(data: dict, db: AsyncSession = Depends(get_db)
         deleted_ids.append(conn.id)
         await db.delete(conn)
 
-    log = models.AuditLog(
-        user_id="admin",
-        action="BULK_DELETE",
-        target_table="port_connections",
-        description=f"Bulk severed {len(deleted_ids)} network links"
-    )
+    log = build_audit_log(request=request, action="BULK_DELETE", target_table="port_connections", description=f"Bulk severed {len(deleted_ids)} network links")
     db.add(log)
     await db.commit()
     return {"status": "success", "count": len(deleted_ids), "deleted_ids": deleted_ids}

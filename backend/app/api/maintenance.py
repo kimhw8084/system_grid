@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
 from ..database import get_db
 from ..models import models
 from datetime import datetime
+from .utils import build_audit_log
 
 router = APIRouter(prefix="/maintenance", tags=["Maintenance"])
 
@@ -33,7 +34,7 @@ async def get_maintenance_windows(device_id: int | None = None, db: AsyncSession
     return final
 
 @router.post("")
-async def create_maintenance_window(data: dict, db: AsyncSession = Depends(get_db)):
+async def create_maintenance_window(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     # Parse dates
     start = datetime.fromisoformat(data['start_time'].replace("Z", "+00:00")) if data.get('start_time') else None
     end = datetime.fromisoformat(data['end_time'].replace("Z", "+00:00")) if data.get('end_time') else None
@@ -51,18 +52,18 @@ async def create_maintenance_window(data: dict, db: AsyncSession = Depends(get_d
     await db.commit()
     await db.refresh(mw)
     
-    log = models.AuditLog(user_id="admin", action="CREATE", target_table="maintenance_windows", target_id=str(mw.id), description=f"Scheduled maintenance: {mw.title}")
+    log = build_audit_log(request=request, action="CREATE", target_table="maintenance_windows", target_id=str(mw.id), description=f"Scheduled maintenance: {mw.title}")
     db.add(log)
     await db.commit()
     return mw
 
 @router.delete("/{mw_id}")
-async def delete_maintenance_window(mw_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_maintenance_window(mw_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.MaintenanceWindow).filter(models.MaintenanceWindow.id == mw_id))
     mw = result.scalar_one_or_none()
     if mw:
         db.delete(mw)
-        log = models.AuditLog(user_id="admin", action="DELETE", target_table="maintenance_windows", target_id=str(mw_id), description=f"Cancelled maintenance: {mw.title}")
+        log = build_audit_log(request=request, action="DELETE", target_table="maintenance_windows", target_id=str(mw_id), description=f"Cancelled maintenance: {mw.title}")
         db.add(log)
         await db.commit()
     return {"status": "success"}

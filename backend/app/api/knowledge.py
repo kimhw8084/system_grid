@@ -1,7 +1,7 @@
 from copy import deepcopy
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update, or_
 from sqlalchemy.orm import selectinload
@@ -9,7 +9,7 @@ from typing import List, Optional
 from ..database import get_db
 from ..models import models
 from ..schemas import schemas
-from .utils import filter_valid_columns
+from .utils import filter_valid_columns, get_current_user_id
 
 router = APIRouter(prefix="/knowledge", tags=["Knowledge Base & Q&A"])
 
@@ -72,7 +72,7 @@ def build_version_snapshot(entry: models.KnowledgeEntry, metadata: dict, summary
     return {
         "version": len(history) + 1,
         "changed_at": datetime.now(timezone.utc).isoformat(),
-        "changed_by": metadata.get("ownership", {}).get("owner") or entry.created_by_user_id or "system_admin",
+        "changed_by": metadata.get("ownership", {}).get("owner") or entry.created_by_user_id or "",
         "summary": summary,
         "snapshot": {
             "category": entry.category,
@@ -208,10 +208,11 @@ async def get_entry(entry_id: int, db: AsyncSession = Depends(get_db)):
     return entry
 
 @router.post("", response_model=schemas.KnowledgeEntryResponse)
-async def create_entry(data: schemas.KnowledgeEntryCreate, db: AsyncSession = Depends(get_db)):
+async def create_entry(data: schemas.KnowledgeEntryCreate, request: Request, db: AsyncSession = Depends(get_db)):
     payload = data.model_dump()
     payload["metadata_json"] = normalize_metadata(payload)
     entry = models.KnowledgeEntry(**payload)
+    entry.created_by_user_id = get_current_user_id(request)
     entry.metadata_json["version_history"].append(build_version_snapshot(entry, entry.metadata_json, "Initial version"))
     db.add(entry)
     try:

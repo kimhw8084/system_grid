@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, JSON, Text, Table
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, JSON, Text, Table, UniqueConstraint
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 from ..database import Base
@@ -7,7 +7,7 @@ class BaseMixin:
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
-    created_by_user_id = Column(String, default="system_admin")
+    created_by_user_id = Column(String)
 
 class Site(Base, BaseMixin):
     __tablename__ = "sites"
@@ -66,8 +66,8 @@ class Device(Base, BaseMixin):
     __tablename__ = "devices"
     name = Column(String, index=True) # Hostname (Removed unique)
     system = Column(String, index=True) # Logical System name
-    environment = Column(String, default="Production")
-    status = Column(String, default="Active")
+    environment = Column(String)
+    status = Column(String)
     type = Column(String) # Physical, Virtual, Storage, Switch
     size_u = Column(Integer, default=1) # Default U-height for the device
     
@@ -125,9 +125,9 @@ class LogicalService(Base, BaseMixin):
     device_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), nullable=True) # Nullable if service is floating/clustered
     name = Column(String, index=True) # Service Name
     service_type = Column(String, index=True) # Database, Web, Middleware, Container, ToolStack, Other
-    status = Column(String, default="Active") # Active, Stopped, Critical, Maintenance
+    status = Column(String) # Active, Stopped, Critical, Maintenance
     version = Column(String)
-    environment = Column(String, default="Production")
+    environment = Column(String)
     purpose = Column(Text) # Purpose description
     documentation_link = Column(String) # Link to source, installation, app, etc.
     installation_date = Column(DateTime) # Date of installation or planned installation
@@ -143,7 +143,7 @@ class LogicalService(Base, BaseMixin):
     purchase_date = Column(DateTime)
     expiry_date = Column(DateTime)
     cost = Column(Float, default=0.0)
-    currency = Column(String, default="USD") # USD, KRW
+    currency = Column(String) # USD, KRW
     manufacturer = Column(String) # Developing company (e.g. Microsoft)
     supplier = Column(String) # Licensing company (e.g. AWS, Reseller)
     
@@ -233,7 +233,7 @@ class PortConnection(Base, BaseMixin):
     unit = Column(String)
     direction = Column(String)
     cable_type = Column(String)
-    status = Column(String, default="Active") # Active, Maintenance, Down, Planned
+    status = Column(String) # Active, Maintenance, Down, Planned
     farm = Column(String)
     request_link = Column(String)
 
@@ -248,6 +248,10 @@ class Subnet(Base, BaseMixin):
 
 class SettingOption(Base, BaseMixin):
     __tablename__ = "settings_options"
+    __table_args__ = (
+        UniqueConstraint("category", "value", name="uq_settings_options_category_value"),
+        UniqueConstraint("category", "label", name="uq_settings_options_category_label"),
+    )
     category = Column(String, index=True) # LogicalSystem, DeviceType, ServiceType, etc.
     label = Column(String)
     value = Column(String)
@@ -291,7 +295,7 @@ class MonitoringItem(Base, BaseMixin):
     logic = Column(Text) # For log-based: regex or query
     logic_json = Column(JSON, default=list) # Structured logic entries
     monitored_services = Column(JSON, default=list) # List of LogicalService IDs
-    owner_team = Column(String) # Managed via MonitoringTeam setting option
+    owner_team = Column(String) # Managed via Team registry names
     
     # Reliability & Frequency Controls
     check_interval = Column(Integer, default=60) # Seconds
@@ -308,6 +312,9 @@ class MonitoringItem(Base, BaseMixin):
 
 class MonitoringHistory(Base, BaseMixin):
     __tablename__ = "monitoring_history"
+    __table_args__ = (
+        UniqueConstraint("monitoring_item_id", "version", name="uq_monitoring_history_item_version"),
+    )
     monitoring_item_id = Column(Integer, ForeignKey("monitoring_items.id", ondelete="CASCADE"))
     version = Column(Integer)
     snapshot = Column(JSON) # Snapshot of fields + owners
@@ -390,8 +397,8 @@ class DataFlow(Base, BaseMixin):
     __tablename__ = "data_flows"
     name = Column(String, index=True)
     description = Column(Text)
-    category = Column(String, default="System") # System, Service, Application
-    status = Column(String, default="Up to date") # Up to date, Deprecated, Planned, etc.
+    category = Column(String) # System, Service, Application
+    status = Column(String) # Up to date, Deprecated, Planned, etc.
     metadata_json = Column(JSON, default=dict)
     nodes_json = Column(JSON, default=list)
     edges_json = Column(JSON, default=list)
@@ -419,17 +426,17 @@ class ExternalEntity(Base, BaseMixin):
     subtype = Column(String)
     owner_organization = Column(String)
     owner_team = Column(String) # Legacy external-side team label
-    ownership_mode = Column(String, default="team")
+    ownership_mode = Column(String)
     internal_team_id = Column(Integer, ForeignKey("teams.id", ondelete="SET NULL"), nullable=True)
     internal_operator_id = Column(Integer, ForeignKey("operators.id", ondelete="SET NULL"), nullable=True)
-    status = Column(String, default="Planned")
-    environment = Column(String, default="Production")
+    status = Column(String)
+    environment = Column(String)
     description = Column(Text)
     notes = Column(Text)
     contacts_json = Column(JSON, default=list)
     business_purpose = Column(Text)
-    criticality = Column(String, default="Low")
-    dependency_tier = Column(String, default="Tier 3")
+    criticality = Column(String)
+    dependency_tier = Column(String)
     data_classification = Column(String)
     integration_mode = Column(String)
     primary_endpoint_url = Column(String)
@@ -441,7 +448,7 @@ class ExternalEntity(Base, BaseMixin):
     supports_outbound = Column(Boolean, default=False)
     source_system = Column(String)
     source_record_id = Column(String)
-    risk_rating = Column(String, default="Low")
+    risk_rating = Column(String)
     contains_customer_data = Column(Boolean, default=False)
     contains_credentials = Column(Boolean, default=False)
     stores_pii = Column(Boolean, default=False)
@@ -459,19 +466,32 @@ class ExternalEntitySecret(Base, BaseMixin):
     __tablename__ = "external_entity_secrets"
     external_entity_id = Column(Integer, ForeignKey("external_entities.id", ondelete="CASCADE"))
     secret_label = Column(String)
-    secret_type = Column(String, default="SharedSecret")
+    secret_type = Column(String)
     username = Column(String)
     password = Column(String)
     vault_provider = Column(String)
     vault_path = Column(String)
     note = Column(Text)
-    credential_status = Column(String, default="Active")
+    credential_status = Column(String)
     rotation_frequency_days = Column(Integer)
     password_last_rotated_at = Column(String)
     external_entity = relationship("ExternalEntity", back_populates="secrets")
 
 class ExternalLink(Base, BaseMixin):
     __tablename__ = "external_links"
+    __table_args__ = (
+        UniqueConstraint(
+            "external_entity_id",
+            "device_id",
+            "service_id",
+            "protocol",
+            "port",
+            "host_or_fqdn",
+            "path_or_resource",
+            "link_status",
+            name="uq_external_link_shape_status",
+        ),
+    )
     external_entity_id = Column(Integer, ForeignKey("external_entities.id"))
     device_id = Column(Integer, ForeignKey("devices.id"))
     service_id = Column(Integer, ForeignKey("logical_services.id"), nullable=True)
@@ -483,7 +503,7 @@ class ExternalLink(Base, BaseMixin):
     path_or_resource = Column(String)
     network_zone = Column(String)
     transport_security = Column(String)
-    link_status = Column(String, default="Active")
+    link_status = Column(String)
     credential_reference = Column(String)
     credentials = Column(JSON) # Store as { "username": "...", "password": "...", "note": "..." }
     
@@ -507,7 +527,7 @@ class AuditLog(Base):
 class Vendor(Base, BaseMixin):
     __tablename__ = "vendors"
     name = Column(String, index=True)
-    country = Column(String, default="South Korea")
+    country = Column(String)
     primary_personnel_id = Column(Integer, ForeignKey("vendor_personnel.id", ondelete="SET NULL"), nullable=True)
     
     is_deleted = Column(Boolean, default=False)
@@ -542,7 +562,7 @@ class VendorContract(Base, BaseMixin):
     vendor_id = Column(Integer, ForeignKey("vendors.id", ondelete="CASCADE"))
     title = Column(String, index=True)
     contract_id = Column(String, index=True)
-    status = Column(String, default="Drafted") # Drafted, In Review, Completed, Cancelled, Expired
+    status = Column(String) # Drafted, In Review, Completed, Cancelled, Expired
     effective_date = Column(DateTime)
     expiry_date = Column(DateTime)
     
@@ -1032,6 +1052,9 @@ class GlobalSetting(Base, BaseMixin):
 
 class UserPreference(Base, BaseMixin):
     __tablename__ = "user_preferences"
+    __table_args__ = (
+        UniqueConstraint("user_id", "key", name="uq_user_preferences_user_key"),
+    )
     user_id = Column(String, index=True)
     key = Column(String, index=True)
     value = Column(Text)

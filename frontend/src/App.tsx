@@ -549,7 +549,6 @@ function MainLayout() {
     const isLight = currentTheme === 'pure-clarity';
     if (isLight) document.documentElement.classList.remove('dark');
     else document.documentElement.classList.add('dark');
-    apiFetch("/api/v1/settings/initialize").catch(() => {}) 
   }, [currentTheme])
 
   return (

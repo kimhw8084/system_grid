@@ -172,6 +172,41 @@ async def get_devices(system: Optional[str] = None, include_deleted: bool = Fals
         final_devices.append(device_dict)
     return final_devices
 
+
+@router.get("/summary")
+async def get_devices_summary(
+    system: Optional[str] = None,
+    include_deleted: bool = False,
+    limit: int = 200,
+    offset: int = 0,
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(models.Device)
+    if not include_deleted:
+        query = query.filter(models.Device.is_deleted == False)
+    if system:
+        query = query.filter(models.Device.system == system)
+    query = query.order_by(models.Device.updated_at.desc(), models.Device.id.desc()).offset(max(offset, 0)).limit(min(max(limit, 1), 500))
+
+    result = await db.execute(query)
+    devices = result.scalars().all()
+    return [
+        {
+            "id": device.id,
+            "name": device.name,
+            "system": device.system,
+            "environment": device.environment,
+            "status": device.status,
+            "type": device.type,
+            "owner": device.owner,
+            "vendor": device.vendor,
+            "primary_ip": device.primary_ip,
+            "management_ip": device.management_ip,
+            "updated_at": device.updated_at.isoformat() if device.updated_at else None,
+        }
+        for device in devices
+    ]
+
 @router.get("/{device_id}/interfaces")
 async def get_device_interfaces(device_id: int, db: AsyncSession = Depends(get_db)):
     # Fetch interfaces for the device

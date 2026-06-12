@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, and_, update, func
 from ..database import get_db
 from ..models import models
 from typing import List, Optional
+from .utils import build_audit_log
 
 router = APIRouter(prefix="/racks", tags=["Racks"])
 
@@ -144,7 +145,7 @@ async def get_rack_audit_logs(db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 
 @router.post("/bulk-patch")
-async def bulk_patch_cabling(data: dict, db: AsyncSession = Depends(get_db)):
+async def bulk_patch_cabling(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     # data: { connections: [{source_device_id, source_port, target_device_id, target_port, purpose, speed_gbps }] }
     conns = data.get("connections", [])
     for c in conns:
@@ -159,8 +160,8 @@ async def bulk_patch_cabling(data: dict, db: AsyncSession = Depends(get_db)):
         )
         db.add(conn)
     
-    log = models.AuditLog(
-        user_id="admin",
+    log = build_audit_log(
+        request=request,
         action="BULK_PATCH",
         target_table="port_connections",
         target_id="bulk",
@@ -172,7 +173,7 @@ async def bulk_patch_cabling(data: dict, db: AsyncSession = Depends(get_db)):
     return {"status": "success", "count": len(conns)}
 
 @router.post("/reorder")
-async def reorder_racks(data: dict, db: AsyncSession = Depends(get_db)):
+async def reorder_racks(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     # Expected format: {"ids": [3, 1, 2]}
     ids = data.get("ids", [])
     for index, rack_id in enumerate(ids):
@@ -182,8 +183,8 @@ async def reorder_racks(data: dict, db: AsyncSession = Depends(get_db)):
             .values(order_index=index)
         )
     
-    log = models.AuditLog(
-        user_id="admin",
+    log = build_audit_log(
+        request=request,
         action="REORDER",
         target_table="racks",
         target_id="bulk",
@@ -195,7 +196,7 @@ async def reorder_racks(data: dict, db: AsyncSession = Depends(get_db)):
     return {"status": "success"}
 
 @router.post("")
-async def create_rack(data: dict, db: AsyncSession = Depends(get_db)):
+async def create_rack(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     site_id = data.get('site_id')
     if not site_id:
         raise HTTPException(status_code=400, detail="Site selection mandatory")
@@ -233,11 +234,11 @@ async def create_rack(data: dict, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(rack)
     
-    log = models.AuditLog(
-        user_id="admin", 
-        action="CREATE", 
-        target_table="racks", 
-        target_id=str(rack.id), 
+    log = build_audit_log(
+        request=request,
+        action="CREATE",
+        target_table="racks",
+        target_id=str(rack.id),
         description=f"Provisioned rack {rack.name} at site ID {site_id}",
         changes={
             "name": rack.name,
@@ -254,7 +255,7 @@ async def create_rack(data: dict, db: AsyncSession = Depends(get_db)):
     return rack
 
 @router.put("/{rack_id}")
-async def update_rack(rack_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+async def update_rack(rack_id: int, data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.Rack).filter(models.Rack.id == rack_id))
     rack = result.scalar_one_or_none()
     if not rack:
@@ -332,11 +333,11 @@ async def update_rack(rack_id: int, data: dict, db: AsyncSession = Depends(get_d
             changes["room_id"] = {"old": rack.room_id, "new": new_room.id}
             rack.room_id = new_room.id
     
-    log = models.AuditLog(
-        user_id="admin", 
-        action="UPDATE", 
-        target_table="racks", 
-        target_id=str(rack.id), 
+    log = build_audit_log(
+        request=request,
+        action="UPDATE",
+        target_table="racks",
+        target_id=str(rack.id),
         description=f"Updated rack {rack.name} configuration",
         changes=changes
     )
@@ -345,7 +346,7 @@ async def update_rack(rack_id: int, data: dict, db: AsyncSession = Depends(get_d
     return rack
 
 @router.delete("/{rack_id}")
-async def delete_rack(rack_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_rack(rack_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.Rack).filter(models.Rack.id == rack_id))
     rack = result.scalar_one_or_none()
     if not rack:
@@ -353,11 +354,11 @@ async def delete_rack(rack_id: int, db: AsyncSession = Depends(get_db)):
     
     name = rack.name
     rack.is_deleted = True
-    log = models.AuditLog(
-        user_id="admin", 
-        action="SOFT_DELETE", 
-        target_table="racks", 
-        target_id=str(rack_id), 
+    log = build_audit_log(
+        request=request,
+        action="SOFT_DELETE",
+        target_table="racks",
+        target_id=str(rack_id),
         description=f"Soft-deleted rack {name}",
         changes={"is_deleted": True}
     )
@@ -366,7 +367,7 @@ async def delete_rack(rack_id: int, db: AsyncSession = Depends(get_db)):
     return {"status": "success"}
 
 @router.post("/{rack_id}/mount")
-async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+async def mount_device(rack_id: int, data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     device_id = int(data['device_id'])
 
     # Get rack info
@@ -435,8 +436,8 @@ async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_
     )
     db.add(loc)
 
-    log = models.AuditLog(
-        user_id="admin",
+    log = build_audit_log(
+        request=request,
         action="MOUNT",
         target_table="devices",
         target_id=str(device_id),
@@ -454,7 +455,7 @@ async def mount_device(rack_id: int, data: dict, db: AsyncSession = Depends(get_
     return {"status": "success"}
 
 @router.post("/bulk-action")
-async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
+async def bulk_action(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     ids = data.get("ids", [])
     action = data.get("action")
     payload = data.get("payload", {})
@@ -462,15 +463,15 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
 
     if action == "delete": # Soft delete
         await db.execute(update(models.Rack).where(models.Rack.id.in_(ids)).values(is_deleted=True))
-        log = models.AuditLog(
-            user_id="admin", action="BULK_DELETE", target_table="racks", target_id="bulk",
+        log = build_audit_log(
+            request=request, action="BULK_DELETE", target_table="racks", target_id="bulk",
             description=f"Soft-deleted {len(ids)} racks", changes={"ids": ids}
         )
         db.add(log)
     elif action == "purge": # Hard delete
         await db.execute(delete(models.Rack).where(models.Rack.id.in_(ids)))
-        log = models.AuditLog(
-            user_id="admin", action="BULK_PURGE", target_table="racks", target_id="bulk",
+        log = build_audit_log(
+            request=request, action="BULK_PURGE", target_table="racks", target_id="bulk",
             description=f"Permanently purged {len(ids)} racks", changes={"ids": ids}
         )
         db.add(log)
@@ -520,8 +521,8 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
                     r.name = renames[str(r.id)]
                 restored_ids.append(r.id)
         
-        log = models.AuditLog(
-            user_id="admin", action="BULK_RESTORE", target_table="racks", target_id="bulk",
+        log = build_audit_log(
+            request=request, action="BULK_RESTORE", target_table="racks", target_id="bulk",
             description=f"Restored {len(restored_ids)} racks", changes={"ids": restored_ids, "site_id": new_site_id}
         )
         db.add(log)
@@ -554,8 +555,8 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
                 r.room_id = new_room.id
                 relocated_ids.append(r.id)
         
-        log = models.AuditLog(
-            user_id="admin", action="BULK_RELOCATE", target_table="racks", target_id="bulk",
+        log = build_audit_log(
+            request=request, action="BULK_RELOCATE", target_table="racks", target_id="bulk",
             description=f"Relocated {len(relocated_ids)} racks to site {new_site_id}", changes={"ids": relocated_ids, "new_site_id": new_site_id}
         )
         db.add(log)
@@ -566,7 +567,7 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
     return {"status": "success"}
 
 @router.post("/move")
-async def move_device(data: dict, db: AsyncSession = Depends(get_db)):
+async def move_device(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     device_id = int(data.get("device_id"))
     target_rack_id = int(data.get("target_rack_id"))
     target_start_u = int(data.get("target_start_u"))
@@ -611,8 +612,8 @@ async def move_device(data: dict, db: AsyncSession = Depends(get_db)):
     )
     db.add(new_loc)
     
-    log = models.AuditLog(
-        user_id="admin",
+    log = build_audit_log(
+        request=request,
         action="MOVE",
         target_table="devices",
         target_id=str(device_id),
@@ -625,7 +626,7 @@ async def move_device(data: dict, db: AsyncSession = Depends(get_db)):
     return {"status": "success"}
 
 @router.delete("/mount/{device_id}")
-async def unmount_device(device_id: int, db: AsyncSession = Depends(get_db)):
+async def unmount_device(device_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     # Get device for logging
     dev_res = await db.execute(select(models.Device).filter(models.Device.id == device_id))
     device = dev_res.scalar_one_or_none()
@@ -633,8 +634,8 @@ async def unmount_device(device_id: int, db: AsyncSession = Depends(get_db)):
     # Delete ALL locations for this device (should only be 1, but cleanup stale duplicates)
     await db.execute(delete(models.DeviceLocation).where(models.DeviceLocation.device_id == device_id))
 
-    log = models.AuditLog(
-        user_id="admin",
+    log = build_audit_log(
+        request=request,
         action="UNMOUNT",
         target_table="devices",
         target_id=str(device_id),
@@ -644,4 +645,3 @@ async def unmount_device(device_id: int, db: AsyncSession = Depends(get_db)):
     db.add(log)
     await db.commit()
     return {"status": "success"}
-

@@ -2075,7 +2075,7 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, onQuickUpdate, con
                    <LinkIcon size={16} className="group-hover:rotate-45 transition-transform" /> <span>Copy SysLink</span>
                 </button>
                 <button onClick={() => {
-                  onQuickUpdate?.({ metadata_json: { verification: { state: 'Verified', verified_by: metadata.ownership.owner || 'system_admin', last_verified_at: new Date().toISOString().slice(0, 10) } } })
+                  onQuickUpdate?.({ metadata_json: { verification: { state: 'Verified', verified_by: metadata.ownership.owner || entry.created_by_user_id || '', last_verified_at: new Date().toISOString().slice(0, 10) } } })
                 }} className="flex items-center space-x-3 px-6 py-3 bg-emerald-600/10 border border-emerald-500/20 rounded-lg text-[10px] font-black text-emerald-400 uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-lg group">
                    <CheckCircle2 size={16} className="group-hover:-translate-y-0.5 transition-transform" /> <span>Mark Verified</span>
                 </button>
@@ -2715,8 +2715,8 @@ function QAViewer({ entry }: any) {
   const [replyText, setReplyText] = useState('')
   const [activeReplyTo, setActiveReplyTo] = useState<any>(null)
   const [replyMeta, setReplyMeta] = useState({
-    author: 'system_admin',
-    author_team: 'FAB_AUTO',
+    author: '',
+    author_team: '',
     target_audience: 'Internal',
     entry_type: 'Follow-up',
     is_answer: false,

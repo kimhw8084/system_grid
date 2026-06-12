@@ -540,9 +540,15 @@ const ExternalForm = ({ initialData, onSave, isSaving, options, teams, operators
   })
 
   const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
-  const types = getOptions('ExternalType')
-  const statusOptions = getOptions('Status')
-  const envOptions = getOptions('Environment')
+  const ensureCurrentOption = (entries: Array<{ value: string; label: string }>, currentValue: string) => {
+    if (!currentValue) return entries
+    return entries.some((entry) => entry.value === currentValue)
+      ? entries
+      : [{ value: currentValue, label: currentValue }, ...entries]
+  }
+  const types = ensureCurrentOption(getOptions('ExternalType'), formData.type)
+  const statusOptions = ensureCurrentOption(getOptions('Status'), formData.status)
+  const envOptions = ensureCurrentOption(getOptions('Environment'), formData.environment)
   const selectedTypeOption = types.find((type: any) => type.value === formData.type)
   const allowedMetadataKeys = selectedTypeOption?.metadata_keys || extensionMetadataKeysByType[formData.type] || []
 

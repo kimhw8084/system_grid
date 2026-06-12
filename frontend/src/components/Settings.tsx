@@ -26,6 +26,8 @@ import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from "./shar
 import { WorkspaceModal } from "./shared/WorkspaceModal"
 import { WorkspaceHistoryShell } from "./shared/WorkspaceModalShells"
 
+const PERMISSION_COMMIT_DEBOUNCE_MS = 900
+
 const normalizeTheme = (theme?: string | null) => {
   if (theme === 'dark') return 'nordic-frost-v1'
   if (theme === 'light') return 'pure-clarity'
@@ -329,6 +331,7 @@ const buildPermissionHistoryRows = (newer: any, older: any, allViews: string[]) 
     const fieldsToTrack = [
       { key: 'full_name', label: 'Full Name' },
       { key: 'username', label: 'Username' },
+      { key: 'role_name', label: 'Role' },
       { key: 'department', label: 'Department' },
       { key: 'team', label: 'Primary Team' },
       { key: 'email', label: 'Email' },
@@ -580,9 +583,14 @@ function PermissionHistoryModal({ versions, allViews, onClose }: { versions: any
                                                 NAME: {row.fieldChanges.full_name.old || 'Empty'} {'->'} {row.fieldChanges.full_name.new || 'Empty'}
                                                </div>
                                              )}
-                                             {row.fieldChanges?.email && (
+                                           {row.fieldChanges?.email && (
                                                <div className="text-[8px] font-semibold text-amber-300 mt-1">
                                                 EMAIL: {row.fieldChanges.email.old || 'Empty'} {'->'} {row.fieldChanges.email.new || 'Empty'}
+                                               </div>
+                                             )}
+                                             {row.fieldChanges?.role_name && (
+                                               <div className="text-[8px] font-semibold text-amber-300 mt-1">
+                                                ROLE: {row.fieldChanges.role_name.old || 'Unassigned'} {'->'} {row.fieldChanges.role_name.new || 'Unassigned'}
                                                </div>
                                              )}
                                          </div>
@@ -727,11 +735,19 @@ export default function SettingsPage() {
   const [envSearch, setEnvSearch] = useState("")
   const [envImpactFilter, setEnvImpactFilter] = useState<'ALL' | 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'>('ALL')
   const permissionSelectionAnchorRef = React.useRef<number | null>(null)
+  const permissionCommitBufferRef = React.useRef<Record<number, { timeoutId: ReturnType<typeof setTimeout>, payload: any }>>({})
   const {
     triggerRef: permissionBulkTriggerRef,
     panelRef: permissionBulkPanelRef,
     panelStyle: permissionBulkPanelStyle,
   } = useWorkspaceAnchoredLayer(showPermissionBulkMenu, { minWidth: 360 })
+
+  useEffect(() => {
+    return () => {
+      Object.values(permissionCommitBufferRef.current).forEach((entry) => clearTimeout(entry.timeoutId))
+      permissionCommitBufferRef.current = {}
+    }
+  }, [])
   
   const preflightMutation = useMutation({
     mutationFn: async (target: string) => {
@@ -867,23 +883,9 @@ export default function SettingsPage() {
       Object.entries(localEnv || {}).filter(([key]) => !key.startsWith('_'))
     )
 
-  const [userPoolScript, setUserPoolScript] = useState(`import pandas as pd
-import numpy as np
-
-def get_user_pool():
-    # Simulation of external HR/IAM user fetch
-    data = {
-        'id': range(1001, 1006),
-        'username': ['admin_alpha', 'dev_beta', 'sec_gamma', 'op_delta', 'guest_epsilon'],
-        'email': ['alpha@infra.local', 'beta@infra.local', 'gamma@infra.local', 'delta@infra.local', 'epsilon@infra.local'],
-        'department': ['Infrastructure', 'Development', 'Security', 'Operations', 'External'],
-        'team': ['Platform Ops', 'Application Engineering', 'Security Response', 'Platform Ops', None],
-        'registration_status': ['Verified', 'Verified', 'Verified', 'Verified', 'Pending']
-    }
-    df = pd.DataFrame(data)
-    return df
-
-result_df = get_user_pool()`)
+  const [userPoolScript, setUserPoolScript] = useState(`# Provide real identity-source records to the backend refresh endpoint.
+# Expected record fields:
+# external_id, username, full_name, email, department, team, registration_status`)
 
   useEffect(() => {
     if (envSettings) {
@@ -1084,6 +1086,59 @@ result_df = get_user_pool()`)
     }
   })
 
+  const applyOptimisticOperatorPatch = (operatorId: number, patch: any) => {
+    queryClient.setQueryData(['operators'], (current: any) => {
+      if (!Array.isArray(current)) return current
+      return current.map((operator: any) => (
+        operator.id === operatorId
+          ? {
+              ...operator,
+              ...patch,
+              custom_permissions: patch.custom_permissions ?? operator.custom_permissions,
+            }
+          : operator
+      ))
+    })
+
+    if (patch.username === userProfile?.username) {
+      queryClient.setQueryData(['user-profile'], (current: any) => (
+        current
+          ? {
+              ...current,
+              permissions: {
+                ...(current.permissions || {}),
+                ...(patch.custom_permissions || {}),
+              },
+            }
+          : current
+      ))
+    }
+  }
+
+  const queuePermissionCommit = (op: any, payload: any) => {
+    const existing = permissionCommitBufferRef.current[op.id]
+    if (existing) clearTimeout(existing.timeoutId)
+
+    applyOptimisticOperatorPatch(op.id, payload)
+
+    const timeoutId = setTimeout(() => {
+      const queued = permissionCommitBufferRef.current[op.id]
+      if (!queued) return
+      delete permissionCommitBufferRef.current[op.id]
+      operatorMutation.mutate(queued.payload, {
+        onError: () => {
+          queryClient.invalidateQueries({ queryKey: ['operators'] })
+          queryClient.invalidateQueries({ queryKey: ['user-pool-versions'] })
+          if (queued.payload.username === userProfile?.username) {
+            queryClient.invalidateQueries({ queryKey: ['user-profile'] })
+          }
+        }
+      })
+    }, PERMISSION_COMMIT_DEBOUNCE_MS)
+
+    permissionCommitBufferRef.current[op.id] = { timeoutId, payload }
+  }
+
   const deleteOperatorMutation = useMutation({
     mutationFn: async (id: number) => {
       const res = await apiFetch(`/api/v1/settings/operators/${id}`, { method: "DELETE" })
@@ -1097,17 +1152,12 @@ result_df = get_user_pool()`)
 
   const bulkOperatorPatchMutation = useMutation({
     mutationFn: async ({ updates }: { updates: Array<{ id: number, payload: any }> }) => {
-      const results = await Promise.all(
-        updates.map(async ({ id, payload }) => {
-          const res = await apiFetch(`/api/v1/settings/operators/${id}`, {
-            method: "PATCH",
-            body: JSON.stringify(payload)
-          })
-          if (!res.ok) throw new Error(await res.text())
-          return res.json()
-        })
-      )
-      return results
+      const res = await apiFetch(`/api/v1/settings/operators/bulk-update`, {
+        method: "POST",
+        body: JSON.stringify({ updates })
+      })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operators'] })
@@ -1121,12 +1171,11 @@ result_df = get_user_pool()`)
 
   const bulkOperatorDeleteMutation = useMutation({
     mutationFn: async (ids: number[]) => {
-      await Promise.all(
-        ids.map(async (id) => {
-          const res = await apiFetch(`/api/v1/settings/operators/${id}`, { method: "DELETE" })
-          if (!res.ok) throw new Error(await res.text())
-        })
-      )
+      const res = await apiFetch(`/api/v1/settings/operators/bulk-delete`, {
+        method: "POST",
+        body: JSON.stringify({ ids })
+      })
+      if (!res.ok) throw new Error(await res.text())
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['operators'] })
@@ -1474,20 +1523,29 @@ result_df = get_user_pool()`)
   }
 
   const togglePermission = (op: any, view: string) => {
+    const queuedPayload = permissionCommitBufferRef.current[op.id]?.payload
+    const workingOperator = queuedPayload
+      ? {
+          ...op,
+          ...queuedPayload,
+          custom_permissions: queuedPayload.custom_permissions ?? op.custom_permissions,
+        }
+      : op
+
     // Admin Lock-out Protection
-    if (op.username === userProfile?.username && view === 'settings') {
-        const current = getPermLevel(op, view);
+    if (workingOperator.username === userProfile?.username && view === 'settings') {
+        const current = getPermLevel(workingOperator, view);
         if (current === 3 && !confirm("WARNING: Reducing your own 'Settings' permission may lock you out of this console. Proceed?")) {
             return;
         }
     }
 
-    const current = getPermLevel(op, view);
+    const current = getPermLevel(workingOperator, view);
     const next = (current + 1) % 4;
     
     // Always persist as numeric for simplicity in this update
-    const newPerms = { ...(op.custom_permissions || {}), [view]: next };
-    operatorMutation.mutate({ ...op, custom_permissions: newPerms });
+    const newPerms = { ...(workingOperator.custom_permissions || {}), [view]: next };
+    queuePermissionCommit(workingOperator, { ...workingOperator, custom_permissions: newPerms });
   }
 
   return (
@@ -1632,7 +1690,7 @@ result_df = get_user_pool()`)
                       icon={Users} 
                       description="Defines monitoring ownership groups exposed in Monitoring and Settings."
                       usageTargets={metadataViewBindings.MonitoringTeam}
-                      options={(options || []).filter((o:any) => o.category === "MonitoringTeam")} 
+                      options={teams || []}
                    />
                    <div className="h-px bg-white/5 my-4" />
                    <ConfigSection 

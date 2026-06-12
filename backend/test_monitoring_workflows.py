@@ -3,7 +3,6 @@ import pytest
 
 @pytest.mark.anyio
 async def test_monitoring_bulk_actions_create_history_entries(client):
-    await client.get("/api/v1/settings/initialize")
     team_res = await client.post("/api/v1/settings/teams", json={"name": "History Ops"})
     assert team_res.status_code == 200, team_res.text
     device_res = await client.post("/api/v1/devices", json={
@@ -64,17 +63,21 @@ async def test_monitoring_bulk_actions_create_history_entries(client):
     history = history_res.json()
 
     assert [entry["version"] for entry in history[:4]] == [4, 3, 2, 1]
-    assert history[0]["change_summary"] == "Bulk restore"
+    assert history[0]["change_summary"] == "Restored monitor"
     assert history[0]["snapshot"]["status"] == "Existing"
-    assert history[1]["change_summary"] == "Bulk delete"
+    assert history[0]["delta"]
+    assert "status" in history[0]["changed_fields"]
+    assert history[0]["previous_version"] == 3
+    assert history[1]["change_summary"] == "Archived monitor"
     assert history[1]["snapshot"]["status"] == "Deleted"
-    assert history[2]["change_summary"] == "Bulk update: recovery_docs, severity"
+    assert history[2]["change_summary"] == "Updated Recovery docs; Severity"
     assert history[2]["snapshot"]["severity"] == "Critical"
+    assert sorted(history[2]["changed_fields"]) == ["recovery_docs", "severity"]
+    assert {entry["change_type"] for entry in history[2]["delta"]} == {"changed"}
 
 
 @pytest.mark.anyio
 async def test_monitoring_enforces_guardrails_and_security_rules(client):
-    await client.get("/api/v1/settings/initialize")
     team_res = await client.post("/api/v1/settings/teams", json={"name": "Validation Ops"})
     assert team_res.status_code == 200, team_res.text
     device_res = await client.post("/api/v1/devices", json={
@@ -126,7 +129,6 @@ async def test_monitoring_enforces_guardrails_and_security_rules(client):
 
 @pytest.mark.anyio
 async def test_monitoring_allows_optional_and_combined_ownership(client):
-    await client.get("/api/v1/settings/initialize")
     team_res = await client.post("/api/v1/settings/teams", json={"name": "Operations"})
     assert team_res.status_code == 200, team_res.text
 
@@ -216,3 +218,39 @@ async def test_monitoring_allows_optional_and_combined_ownership(client):
         "owners": [],
     })
     assert optional_owned_res.status_code == 200, optional_owned_res.text
+
+
+@pytest.mark.anyio
+async def test_monitoring_rejects_active_duplicates_and_allows_recreate_after_archive(client):
+    await client.post("/api/v1/settings/teams", json={"name": "Duplicate Ops"})
+    device_res = await client.post("/api/v1/devices", json={
+        "name": "MON-DUP-01",
+        "system": "MON-DUP",
+        "status": "Active",
+        "type": "Physical",
+        "serial_number": "MON-DUP-SN",
+        "asset_tag": "MON-DUP-AT",
+    })
+    device = device_res.json()
+
+    payload = {
+        "device_id": device["id"],
+        "category": "Infrastructure",
+        "status": "Existing",
+        "title": "DUPLICATE-MONITOR",
+        "platform": "Zabbix",
+        "owner_team": "Duplicate Ops",
+    }
+    first_res = await client.post("/api/v1/monitoring", json=payload)
+    assert first_res.status_code == 200, first_res.text
+    first = first_res.json()
+
+    dup_res = await client.post("/api/v1/monitoring", json=payload)
+    assert dup_res.status_code == 409
+    assert "already exists" in dup_res.json()["detail"]
+
+    archive_res = await client.delete(f"/api/v1/monitoring/{first['id']}")
+    assert archive_res.status_code == 200, archive_res.text
+
+    recreate_res = await client.post("/api/v1/monitoring", json=payload)
+    assert recreate_res.status_code == 200, recreate_res.text

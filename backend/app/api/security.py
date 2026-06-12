@@ -1,26 +1,58 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update, or_
 from typing import List, Optional
 from ..database import get_db
 from ..models import models
+from .utils import build_audit_log, filter_valid_columns, normalize_json_object
 
 router = APIRouter(prefix="/security", tags=["Security & Firewall"])
 
 # --- Secret Vault ---
 
+def serialize_secret_vault_entry(secret: models.SecretVault):
+    return {
+        "id": secret.id,
+        "device_id": secret.device_id,
+        "secret_type": secret.secret_type,
+        "username": secret.username,
+        "notes": secret.notes,
+        "has_payload": bool(secret.encrypted_payload),
+        "created_at": secret.created_at.isoformat() if secret.created_at else None,
+        "updated_at": secret.updated_at.isoformat() if secret.updated_at else None,
+    }
+
+
 @router.get("/vault")
 async def get_secrets(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.SecretVault))
-    return result.scalars().all()
+    return [serialize_secret_vault_entry(secret) for secret in result.scalars().all()]
 
 @router.post("/vault")
-async def add_secret(data: dict, db: AsyncSession = Depends(get_db)):
-    db_obj = models.SecretVault(**data)
+async def add_secret(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+    clean_data = filter_valid_columns(models.SecretVault, data)
+    encrypted_payload = clean_data.get("encrypted_payload")
+    if encrypted_payload is None and "payload" in data:
+        encrypted_payload = str(data.get("payload") or "")
+    clean_data["encrypted_payload"] = encrypted_payload
+    db_obj = models.SecretVault(**clean_data)
     db.add(db_obj)
+    db.add(build_audit_log(
+        request=request,
+        action="CREATE",
+        target_table="secret_vault",
+        target_id=None,
+        description=f"Created vault secret for device {db_obj.device_id}",
+        changes=normalize_json_object({
+            "device_id": db_obj.device_id,
+            "secret_type": db_obj.secret_type,
+            "username": db_obj.username,
+            "has_payload": bool(db_obj.encrypted_payload),
+        }),
+    ))
     await db.commit()
     await db.refresh(db_obj)
-    return db_obj
+    return serialize_secret_vault_entry(db_obj)
 
 # --- Firewall Rules ---
 

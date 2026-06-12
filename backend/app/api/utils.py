@@ -2,6 +2,34 @@ import os
 from fastapi import Request
 from datetime import datetime
 from ..core.config import settings
+from ..models import models
+
+
+def normalize_json_object(value):
+    if not isinstance(value, dict):
+        return {}
+    normalized = {}
+    for key in sorted(value.keys(), key=lambda item: str(item).lower()):
+        if not isinstance(key, str):
+            continue
+        normalized[key] = normalize_json_value(value[key])
+    return normalized
+
+
+def normalize_json_list(value):
+    if not isinstance(value, list):
+        return []
+    return [normalize_json_value(item) for item in value]
+
+
+def normalize_json_value(value):
+    if isinstance(value, dict):
+        return normalize_json_object(value)
+    if isinstance(value, list):
+        return normalize_json_list(value)
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return str(value)
 
 def get_current_user_id(request: Request = None):
     """
@@ -21,22 +49,29 @@ def get_current_user_id(request: Request = None):
         
     return user_id
 
-def build_default_operator_profile(user_id: str):
-    is_auto_admin = settings.is_auto_admin_user(user_id)
-    full_name = user_id.replace("_", " ").replace(".", " ").title() if user_id else "System User"
-    if user_id == settings.DEFAULT_USER_ID:
-        full_name = "System Administrator"
 
-    return {
-        "external_id": user_id,
-        "username": user_id,
-        "full_name": full_name,
-        "email": f"{user_id}@{settings.DEFAULT_EMAIL_DOMAIN}" if user_id else None,
-        "department": settings.DEFAULT_OPERATOR_DEPARTMENT,
-        "registration_status": "Registered",
-        "is_admin": is_auto_admin,
-        "custom_permissions": {"all": 3} if is_auto_admin else {"home": 1}
-    }
+def get_audit_actor(request: Request = None, fallback: str | None = None):
+    return get_current_user_id(request) or fallback or settings.DEFAULT_USER_ID
+
+
+def build_audit_log(
+    *,
+    request: Request = None,
+    action: str,
+    target_table: str,
+    target_id: str | None = None,
+    description: str | None = None,
+    changes: dict | None = None,
+    fallback_actor: str | None = None,
+):
+    return models.AuditLog(
+        user_id=get_audit_actor(request, fallback=fallback_actor),
+        action=action,
+        target_table=target_table,
+        target_id=target_id,
+        description=description,
+        changes=normalize_json_object(changes or {}),
+    )
 
 def filter_valid_columns(model, data: dict, exclude: set | None = None):
     """

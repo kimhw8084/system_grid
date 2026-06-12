@@ -208,6 +208,9 @@ export const SettingsStandards = () => {
               <LexiconEntry term="Bulk Action Flyout" definition="Monitoring is the canonical bulk-action pattern: one `Bulk Actions` trigger in the command bar opens an anchored contextual flyout with expandable action cards and inline editors." usage="Reuse the Monitoring flyout pattern for Settings Permissions instead of adding one-off bulk strips or duplicate assignment buttons." />
               <LexiconEntry term="Native Range Selection" definition="Table selection must support single-click replace, ctrl/cmd toggle, and shift range selection on the visible row order." usage="Bulk actions depend on native-feeling row selection instead of separate helper buttons like `Select Visible`." />
               <LexiconEntry term="Shared Flyout Primitive" definition="The bulk-action flyout contract must be implemented through shared primitives such as `WorkspaceFlyoutActionCard` and `WorkspaceFlyoutDropdownEditor`, not duplicated per view." usage="Changing the shared flyout primitive should update Monitoring, Settings Permissions, and the next standardized table views immediately." />
+              <LexiconEntry term="Saved View Integrity" definition="Saved layouts, hidden columns, sort definitions, and filter models must be sanitized against the current table schema before apply." usage="If a column was removed or renamed, stale saved state is dropped silently instead of corrupting the restored view." />
+              <LexiconEntry term="Backend Preference Canon" definition="Operationally important workspace state belongs in user-scoped backend preferences; browser local storage is compatibility fallback only." usage="Monitoring saved views, active view, and workspace state must follow the backend preference contract so they travel with the operator instead of one device." />
+              <LexiconEntry term="Canonical History Delta" definition="History APIs for versioned operational records must return backend-generated structured deltas per version, including changed field ids, labels, before/after values, and change type." usage="Timeline cards, compare panes, sharing links, and restore previews should prefer backend delta payloads over client-side snapshot guessing." />
             </div>
           </div>
           <div className="space-y-4">
@@ -269,6 +272,10 @@ export const SettingsStandards = () => {
               <LexiconEntry term="Collapsed Reference Sections" definition="Large standards sections default to collapsed and expand only when needed." usage="Keep the standards page readable as a reference, not an endless document wall." />
               <LexiconEntry term="Lifecycle Scope Switch" definition="Monitoring-style `Existing` and `Archived` switching lives in the page-header action zone with contextual counts, not buried inside the toolbar body." usage="Use the shared `HeaderScopeSwitch` primitive for top-level dataset mode switching and keep the command bar for actions within that mode." />
               <LexiconEntry term="Registry-backed Enums" definition="Any enum shown in Settings Metadata is the source of truth for dependent views and must be consumed from `settings-options` without local fallback lists for the same category." usage="If a view needs `Status`, `Environment`, `ServiceType`, `ExternalType`, or similar registry data, it must reference the shared registry and the Metadata tab must expose that category." />
+              <LexiconEntry term="Saved State Contract" definition="Views, display settings, filters, sorting, grouping, favorites, and similar workspace state must restore through one versioned payload shape, not scattered unrelated keys." usage="Standardized workspaces should be changed by editing the shared payload contract once so dependent views inherit the new rule immediately." />
+              <LexiconEntry term="History Navigation Contract" definition="Timeline navigation should be driven by backend-provided summary and delta metadata first, with raw snapshots retained only as the fallback and restore source." usage="This improves sharing, readability, and cross-view consistency because all history consumers speak the same change language." />
+              <LexiconEntry term="Internal Deep-Link Contract" definition="If a workspace has a primary record detail surface, it must support opening that detail directly from a shareable app URL carrying the unique entity id." usage="Monitoring’s `?id=<recordId>` behavior is the canonical pattern: authorized users should land directly in the targeted detail view without manually searching the table first." />
+              <LexiconEntry term="Round-Trip Import/Export Contract" definition="Operational snapshot export must emit the same schema-versioned field contract that import preview and execute accept, rather than raw database column dumps." usage="Monitoring export should round-trip through Monitoring import with profile headers and canonical field names like `device_name`, `owner_user_ids`, and `recovery_doc_titles`." />
             </div>
           </div>
         </div>
@@ -353,6 +360,11 @@ export const SettingsStandards = () => {
              term="Capability Matrix" 
              definition="A standardized set of features (Versioning, AdvancedEditor, LinkedKnowledge) supported across all modules." 
              usage="Check the Capability Matrix to see if a module supports forensic versioning."
+           />
+           <LexiconEntry 
+             term="Shareable Detail Link" 
+             definition="An internal app URL that opens a specific entity detail view by its unique id for an authorized operator." 
+             usage="Prefer canonical entity-id deep links over asking users to navigate and manually search for the record."
            />
            <LexiconEntry 
              term="Segmented Navigation" 

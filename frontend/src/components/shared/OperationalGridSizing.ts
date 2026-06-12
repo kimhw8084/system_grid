@@ -95,3 +95,39 @@ export const applyOperationalColumnSizing = (
 
   return nextColumn
 }
+
+export const sanitizeOperationalColumnLayout = (
+  layout: any[],
+  allowedColumnIds: Iterable<string>,
+  preserveWidths: boolean
+) => {
+  const allowed = new Set(Array.from(allowedColumnIds))
+  return normalizeOperationalColumnLayout(
+    (layout || []).filter((column: any) => typeof column?.colId === 'string' && allowed.has(column.colId)),
+    preserveWidths
+  )
+}
+
+export const sanitizeOperationalFilterModel = (
+  filterModel: Record<string, any> | null | undefined,
+  allowedColumnIds: Iterable<string>
+) => {
+  const allowed = new Set(Array.from(allowedColumnIds))
+  const entries = Object.entries(filterModel || {}).filter(([key]) => allowed.has(key))
+  return Object.fromEntries(entries)
+}
+
+export const sanitizeOperationalSortModel = (
+  sortModel: Array<{ colId?: string; sort?: string }> | null | undefined,
+  allowedColumnIds: Iterable<string>
+) => {
+  const allowed = new Set(Array.from(allowedColumnIds))
+  return (Array.isArray(sortModel) ? sortModel : []).filter((entry: any) => (
+    typeof entry?.colId === 'string' &&
+    allowed.has(entry.colId) &&
+    (entry.sort === 'asc' || entry.sort === 'desc')
+  )).map((entry: any) => ({
+    colId: entry.colId,
+    sort: entry.sort,
+  }))
+}

@@ -62,7 +62,10 @@ import {
   autoSizeOperationalColumns,
   getOperationalColumnLayoutSnapshot,
   normalizeOperationalColumnLayout,
-  OPERATIONAL_GRID_AUTO_SIZE_STRATEGY
+  OPERATIONAL_GRID_AUTO_SIZE_STRATEGY,
+  sanitizeOperationalColumnLayout,
+  sanitizeOperationalFilterModel,
+  sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
 
 const MONITORING_VIEW_STORAGE_KEY = 'sysgrid_monitoring_views_v1'
@@ -70,6 +73,8 @@ const MONITORING_ACTIVE_VIEW_KEY = 'sysgrid_monitoring_active_view_v1'
 const MONITORING_FAVORITES_STORAGE_KEY = 'sysgrid_monitoring_favorites_v1'
 const MONITORING_UI_STATE_KEY = 'sysgrid_monitoring_ui_state_v1'
 const MONITORING_WATCH_STORAGE_KEY = 'sysgrid_monitoring_watch_v1'
+const MONITORING_WORKSPACE_PREFERENCE_KEY = 'monitoring_workspace_state_v2'
+const MONITORING_WORKSPACE_PREFERENCE_VERSION = 2
 const BULK_MENU_MAX_HEIGHT = 560
 const MONITORING_FIXED_WIDTH_COLUMN_IDS = new Set([
   'select',
@@ -146,6 +151,133 @@ const MONITORING_REQUIRED_FIELD_NAMES = new Set(['title', 'category', 'status', 
 const DEFAULT_MONITORING_VIEWS = []
 const DEFAULT_MONITORING_VIEW_IDS = new Set(DEFAULT_MONITORING_VIEWS.map((view) => view.id))
 const MONITORING_SUPPORTS_COMPARE = MONITORING_WORKSPACE_STANDARD.sharedCapabilities.includes('compare')
+const MONITORING_VALID_GROUP_BY = new Set(['raw', 'category', 'platform', 'status', 'severity', 'notification_method'])
+const MONITORING_PERSISTED_COLUMN_IDS = new Set([
+  'select',
+  'id',
+  'recent_change',
+  'favorite',
+  'watch',
+  'device_name',
+  'title',
+  'status',
+  'owners',
+  'category',
+  'is_active',
+  'monitored_service_names',
+  'platform',
+  'severity',
+  'check_interval',
+  'notification_method',
+  'purpose',
+  'created_at',
+  'updated_at',
+  'row_actions',
+])
+
+const readJsonStorage = <T,>(storageKey: string, fallback: T): T => {
+  if (typeof window === 'undefined') return fallback
+  try {
+    const raw = window.localStorage.getItem(storageKey)
+    return raw == null ? fallback : JSON.parse(raw) as T
+  } catch {
+    return fallback
+  }
+}
+
+const normalizeMonitoringIdList = (value: any): number[] => {
+  if (!Array.isArray(value)) return []
+  return Array.from(new Set(
+    value
+      .map((entry) => Number(entry))
+      .filter((entry) => Number.isFinite(entry) && entry > 0)
+  ))
+}
+
+const normalizeMonitoringQuickFilters = (value: any) => ({
+  status: Array.isArray(value?.status) ? value.status.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [],
+  severity: Array.isArray(value?.severity) ? value.severity.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [],
+  platform: Array.isArray(value?.platform) ? value.platform.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [],
+  owner: Array.isArray(value?.owner) ? value.owner.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [],
+})
+
+const normalizeMonitoringSavedViews = (value: any) => {
+  const parsed = Array.isArray(value) ? value : []
+  const systemIds = new Set(DEFAULT_MONITORING_VIEWS.map((view) => view.id))
+  const legacyIds = new Set(['ops', 'incident', 'recovery'])
+  const customViews = parsed.filter((view: any) => (
+    view &&
+    typeof view === 'object' &&
+    typeof view.id === 'string' &&
+    typeof view.name === 'string' &&
+    !systemIds.has(view.id) &&
+    !legacyIds.has(view.id)
+  ))
+  return [
+    ...DEFAULT_MONITORING_VIEWS.map((view) => parsed.find((entry: any) => entry?.id === view.id) || view),
+    ...customViews.map((view: any) => ({
+      ...view,
+      config: sanitizeMonitoringViewConfig(view?.config),
+    })),
+  ]
+}
+
+const sanitizeMonitoringViewConfig = (config: any) => {
+  const safeConfig = config && typeof config === 'object' ? config : {}
+  return {
+    fontSize: Number.isFinite(safeConfig.fontSize) ? safeConfig.fontSize : 11,
+    rowDensity: Number.isFinite(safeConfig.rowDensity) ? safeConfig.rowDensity : 8,
+    hiddenColumns: Array.isArray(safeConfig.hiddenColumns)
+      ? safeConfig.hiddenColumns.filter((entry: any) => typeof entry === 'string' && MONITORING_PERSISTED_COLUMN_IDS.has(entry))
+      : [],
+    groupBy: typeof safeConfig.groupBy === 'string' && MONITORING_VALID_GROUP_BY.has(safeConfig.groupBy) ? safeConfig.groupBy : 'raw',
+    showFilterBar: safeConfig.showFilterBar !== false,
+    columnLayoutState: sanitizeOperationalColumnLayout(
+      Array.isArray(safeConfig.columnLayoutState) ? safeConfig.columnLayoutState : [],
+      MONITORING_PERSISTED_COLUMN_IDS,
+      true
+    ),
+    quickFilter: typeof safeConfig.quickFilter === 'string' ? safeConfig.quickFilter : '',
+    quickFilters: normalizeMonitoringQuickFilters(safeConfig.quickFilters),
+    filterModel: sanitizeOperationalFilterModel(safeConfig.filterModel, MONITORING_PERSISTED_COLUMN_IDS),
+    sortModel: sanitizeOperationalSortModel(safeConfig.sortModel, MONITORING_PERSISTED_COLUMN_IDS),
+  }
+}
+
+const normalizeMonitoringWorkspaceState = (value: any) => {
+  if (!value || typeof value !== 'object') return null
+  const uiState = value.uiState && typeof value.uiState === 'object' ? value.uiState : {}
+  const normalized = {
+    version: MONITORING_WORKSPACE_PREFERENCE_VERSION,
+    savedViews: normalizeMonitoringSavedViews(value.savedViews),
+    activeViewId: typeof value.activeViewId === 'string' && value.activeViewId.trim() ? value.activeViewId : null,
+    favoriteIds: normalizeMonitoringIdList(value.favoriteIds),
+    watchIds: normalizeMonitoringIdList(value.watchIds),
+    uiState: {
+      activeTab: uiState.activeTab === 'deleted' ? 'deleted' : 'active',
+      fontSize: Number.isFinite(uiState.fontSize) ? uiState.fontSize : 11,
+      rowDensity: Number.isFinite(uiState.rowDensity) ? uiState.rowDensity : 8,
+      hiddenColumns: Array.isArray(uiState.hiddenColumns)
+        ? uiState.hiddenColumns.filter((entry: any) => typeof entry === 'string' && MONITORING_PERSISTED_COLUMN_IDS.has(entry))
+        : ['created_at', 'updated_at'],
+      quickFilters: normalizeMonitoringQuickFilters(uiState.quickFilters),
+      groupBy: typeof uiState.groupBy === 'string' && MONITORING_VALID_GROUP_BY.has(uiState.groupBy) ? uiState.groupBy : 'raw',
+      showFilterBar: uiState.showFilterBar !== false,
+      columnLayoutState: sanitizeOperationalColumnLayout(Array.isArray(uiState.columnLayoutState) ? uiState.columnLayoutState : [], MONITORING_PERSISTED_COLUMN_IDS, false),
+      lastVisitedAt: Number.isFinite(uiState.lastVisitedAt) ? uiState.lastVisitedAt : 0,
+      searchTerm: typeof uiState.searchTerm === 'string' ? uiState.searchTerm : '',
+    }
+  }
+  return normalized
+}
+
+const readMonitoringWorkspaceStateFromLocalStorage = () => normalizeMonitoringWorkspaceState({
+  savedViews: readJsonStorage<any[]>(MONITORING_VIEW_STORAGE_KEY, []),
+  activeViewId: typeof window === 'undefined' ? null : window.localStorage.getItem(MONITORING_ACTIVE_VIEW_KEY),
+  favoriteIds: readJsonStorage<number[]>(MONITORING_FAVORITES_STORAGE_KEY, []),
+  watchIds: readJsonStorage<number[]>(MONITORING_WATCH_STORAGE_KEY, []),
+  uiState: readJsonStorage(MONITORING_UI_STATE_KEY, null),
+})
 
 const slugifyViewId = (value: string) =>
   value
@@ -338,14 +470,7 @@ const getMonitorGroupValue = (item: any, field: string) => {
 }
 
 const readMonitoringUiState = () => {
-  if (typeof window === 'undefined') return null
-  try {
-    const raw = window.localStorage.getItem(MONITORING_UI_STATE_KEY)
-    if (!raw) return null
-    return JSON.parse(raw)
-  } catch {
-    return null
-  }
+  return readMonitoringWorkspaceStateFromLocalStorage()?.uiState ?? null
 }
 
 interface MonitoringRecoveryDoc {
@@ -463,16 +588,25 @@ const ObservabilityHUD = ({ items }: any) => {
 }
 
 export default function MonitoringGrid() {
-  const persistedUiState = readMonitoringUiState()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const idParam = searchParams.get('id')
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
+  const { data: userSettings, isSuccess: hasUserSettings } = useQuery({
+    queryKey: ['user-settings'],
+    queryFn: async () => (await (await apiFetch('/api/v1/settings/user/settings')).json()),
+  })
+  const remoteWorkspaceState = useMemo(
+    () => normalizeMonitoringWorkspaceState(userSettings?.[MONITORING_WORKSPACE_PREFERENCE_KEY]),
+    [userSettings]
+  )
+  const initialWorkspaceState = remoteWorkspaceState ?? readMonitoringWorkspaceStateFromLocalStorage()
+  const persistedUiState = initialWorkspaceState?.uiState ?? null
   
   // --- STYLE LABORATORY STATE ---
-  const [fontSize, setFontSize] = useState(11)
-  const [rowDensity, setRowDensity] = useState(8)
+  const [fontSize, setFontSize] = useState(persistedUiState?.fontSize ?? 11)
+  const [rowDensity, setRowDensity] = useState(persistedUiState?.rowDensity ?? 8)
   const [showDisplayMenu, setShowDisplayMenu] = useState(false)
   const [showViewsMenu, setShowViewsMenu] = useState(false)
   const [showRegistry, setShowRegistry] = useState(false)
@@ -506,31 +640,17 @@ export default function MonitoringGrid() {
   const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
   const [gridSortModel, setGridSortModel] = useState<any[]>([{ colId: 'favorite', sort: 'desc' }])
   const [savedViews, setSavedViews] = usePersistentJsonState<any[]>(MONITORING_VIEW_STORAGE_KEY, () => {
-    const parsed = typeof window !== 'undefined' ? (() => {
-      try {
-        const raw = window.localStorage.getItem(MONITORING_VIEW_STORAGE_KEY)
-        return raw ? JSON.parse(raw) : []
-      } catch {
-        return []
-      }
-    })() : []
-    const systemIds = new Set(DEFAULT_MONITORING_VIEWS.map((view) => view.id))
-    const legacyIds = new Set(['ops', 'incident', 'recovery'])
-    const customViews = Array.isArray(parsed) ? parsed.filter((view: any) => !systemIds.has(view.id) && !legacyIds.has(view.id)) : []
-    return [
-      ...DEFAULT_MONITORING_VIEWS.map((view) => Array.isArray(parsed) ? parsed.find((entry: any) => entry.id === view.id) || view : view),
-      ...customViews,
-    ]
+    return initialWorkspaceState?.savedViews ?? normalizeMonitoringSavedViews([])
   })
   const [activeViewId, setActiveViewId] = useWorkspaceSessionValue<string | null>(
     'sysgrid_monitoring_session_init',
     null,
-    () => (typeof window === 'undefined' ? null : window.localStorage.getItem(MONITORING_ACTIVE_VIEW_KEY))
+    () => initialWorkspaceState?.activeViewId ?? (typeof window === 'undefined' ? null : window.localStorage.getItem(MONITORING_ACTIVE_VIEW_KEY))
   )
-  const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>(MONITORING_FAVORITES_STORAGE_KEY, [])
-  const [watchIds, setWatchIds] = usePersistentJsonState<number[]>(MONITORING_WATCH_STORAGE_KEY, [])
-  const [quickFilters, setQuickFilters] = useState({ status: [] as string[], severity: [] as string[], platform: [] as string[], owner: [] as string[] })
-  const [groupBy, setGroupBy] = useState<string>('raw')
+  const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>(MONITORING_FAVORITES_STORAGE_KEY, initialWorkspaceState?.favoriteIds ?? [])
+  const [watchIds, setWatchIds] = usePersistentJsonState<number[]>(MONITORING_WATCH_STORAGE_KEY, initialWorkspaceState?.watchIds ?? [])
+  const [quickFilters, setQuickFilters] = useState(persistedUiState?.quickFilters ?? { status: [] as string[], severity: [] as string[], platform: [] as string[], owner: [] as string[] })
+  const [groupBy, setGroupBy] = useState<string>(persistedUiState?.groupBy ?? 'raw')
   const [bulkDraft, setBulkDraft] = useState({ status: '', severity: '', notification_method: '' })
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'severity' | 'notification' | null>(null)
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
@@ -547,6 +667,10 @@ export default function MonitoringGrid() {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
   const autoSizeFrameRef = useRef<number | null>(null)
   const autoSizeTimeoutRef = useRef<number | null>(null)
+  const monitoringPreferenceHydratedRef = useRef(false)
+  const monitoringPreferenceMigratedRef = useRef(false)
+  const monitoringPreferenceSyncRef = useRef<string | null>(null)
+  const monitoringPreferenceSyncTimeoutRef = useRef<number | null>(null)
   const preserveExplicitColumnWidthsRef = useRef(false)
   const {
     columnLayoutState,
@@ -575,7 +699,113 @@ export default function MonitoringGrid() {
     }
   }, [])
 
+  const buildMonitoringWorkspacePreferencePayload = useCallback(() => normalizeMonitoringWorkspaceState({
+    version: MONITORING_WORKSPACE_PREFERENCE_VERSION,
+    savedViews,
+    activeViewId,
+    favoriteIds,
+    watchIds,
+    uiState: {
+      activeTab,
+      fontSize,
+      rowDensity,
+      hiddenColumns,
+      quickFilters,
+      groupBy,
+      showFilterBar,
+      columnLayoutState: normalizeOperationalColumnLayout(columnLayoutState, false),
+      lastVisitedAt,
+      searchTerm,
+    }
+  }), [
+    activeTab,
+    activeViewId,
+    columnLayoutState,
+    favoriteIds,
+    fontSize,
+    groupBy,
+    hiddenColumns,
+    lastVisitedAt,
+    quickFilters,
+    rowDensity,
+    savedViews,
+    searchTerm,
+    showFilterBar,
+    watchIds,
+  ])
+
   useEffect(() => clearPendingAutoSize, [clearPendingAutoSize])
+
+  useEffect(() => {
+    if (remoteWorkspaceState && !monitoringPreferenceHydratedRef.current) {
+      monitoringPreferenceHydratedRef.current = true
+      const payload = normalizeMonitoringWorkspaceState(remoteWorkspaceState)
+      const serialized = JSON.stringify(payload)
+      monitoringPreferenceSyncRef.current = serialized
+      setSavedViews(payload?.savedViews ?? normalizeMonitoringSavedViews([]))
+      setActiveViewId(payload?.activeViewId ?? null)
+      setFavoriteIds(payload?.favoriteIds ?? [])
+      setWatchIds(payload?.watchIds ?? [])
+      setFontSize(payload?.uiState.fontSize ?? 11)
+      setRowDensity(payload?.uiState.rowDensity ?? 8)
+      setHiddenColumns(payload?.uiState.hiddenColumns ?? ['created_at', 'updated_at'])
+      setActiveTab(payload?.uiState.activeTab === 'deleted' ? 'deleted' : 'active')
+      setShowFilterBar(payload?.uiState.showFilterBar !== false)
+      setQuickFilters(payload?.uiState.quickFilters ?? normalizeMonitoringQuickFilters(null))
+      setGroupBy(payload?.uiState.groupBy ?? 'raw')
+      setColumnLayoutState(payload?.uiState.columnLayoutState ?? [])
+      setSearchTerm(payload?.uiState.searchTerm ?? '')
+      return
+    }
+
+    if (hasUserSettings && !remoteWorkspaceState && !monitoringPreferenceMigratedRef.current) {
+      monitoringPreferenceMigratedRef.current = true
+      const localPayload = buildMonitoringWorkspacePreferencePayload()
+      if (!localPayload) return
+      const serialized = JSON.stringify(localPayload)
+      monitoringPreferenceSyncRef.current = serialized
+      apiFetch('/api/v1/settings/user/settings', {
+        method: 'PATCH',
+        body: JSON.stringify({ [MONITORING_WORKSPACE_PREFERENCE_KEY]: localPayload })
+      }).catch(() => {})
+    }
+  }, [
+    buildMonitoringWorkspacePreferencePayload,
+    hasUserSettings,
+    remoteWorkspaceState,
+    setActiveViewId,
+    setColumnLayoutState,
+    setFavoriteIds,
+    setSavedViews,
+    setWatchIds,
+  ])
+
+  useEffect(() => {
+    if (!hasUserSettings) return
+    const payload = buildMonitoringWorkspacePreferencePayload()
+    if (!payload) return
+    const serialized = JSON.stringify(payload)
+    if (monitoringPreferenceSyncRef.current === serialized) return
+    if (monitoringPreferenceSyncTimeoutRef.current !== null) {
+      window.clearTimeout(monitoringPreferenceSyncTimeoutRef.current)
+    }
+    monitoringPreferenceSyncTimeoutRef.current = window.setTimeout(() => {
+      apiFetch('/api/v1/settings/user/settings', {
+        method: 'PATCH',
+        body: JSON.stringify({ [MONITORING_WORKSPACE_PREFERENCE_KEY]: payload })
+      })
+        .then(() => {
+          monitoringPreferenceSyncRef.current = serialized
+        })
+        .catch(() => {})
+    }, 500)
+    return () => {
+      if (monitoringPreferenceSyncTimeoutRef.current !== null) {
+        window.clearTimeout(monitoringPreferenceSyncTimeoutRef.current)
+        monitoringPreferenceSyncTimeoutRef.current = null
+      }
+    }
+  }, [buildMonitoringWorkspacePreferencePayload, hasUserSettings])
 
   useEffect(() => {
     setSelectedIds([])
@@ -893,25 +1123,26 @@ export default function MonitoringGrid() {
     }
   }
 
-  const buildCurrentViewConfig = () => ({
-    fontSize,
-    rowDensity,
-    hiddenColumns,
-    groupBy,
-    showFilterBar,
-    columnLayoutState: getOperationalColumnLayoutSnapshot(gridRef.current?.api, true) || columnLayoutState,
-    quickFilter: searchTerm,
-    quickFilters,
-    filterModel: gridRef.current?.api?.getFilterModel?.() || gridFilterModel,
-    sortModel: gridRef.current?.api?.getColumnState?.()
-      ?.filter((col: any) => col.sort)
-      .map((col: any) => ({ colId: col.colId, sort: col.sort })) || gridSortModel
-  })
+  const buildCurrentViewConfig = () =>
+    sanitizeMonitoringViewConfig({
+      fontSize,
+      rowDensity,
+      hiddenColumns,
+      groupBy,
+      showFilterBar,
+      columnLayoutState: getOperationalColumnLayoutSnapshot(gridRef.current?.api, true) || columnLayoutState,
+      quickFilter: searchTerm,
+      quickFilters,
+      filterModel: gridRef.current?.api?.getFilterModel?.() || gridFilterModel,
+      sortModel: gridRef.current?.api?.getColumnState?.()
+        ?.filter((col: any) => col.sort)
+        .map((col: any) => ({ colId: col.colId, sort: col.sort })) || gridSortModel
+    })
 
   const applySavedView = (viewId: string) => {
     const nextView = savedViews.find((view) => view.id === viewId)
     if (!nextView) return
-    const config = nextView.config || {}
+    const config = sanitizeMonitoringViewConfig(nextView.config)
     setFontSize(config.fontSize ?? 11)
     setRowDensity(config.rowDensity ?? 8)
     setHiddenColumns(config.hiddenColumns ?? [])
@@ -922,7 +1153,7 @@ export default function MonitoringGrid() {
     setSearchTerm(config.quickFilter ?? '')
     setQuickFilters(config.quickFilters ?? { status: [] as string[], severity: [] as string[], platform: [] as string[], owner: [] as string[] })
     setGridFilterModel(config.filterModel ?? {})
-    setGridSortModel(config.sortModel ?? [{ colId: 'favorite', sort: 'desc' }])
+    setGridSortModel((config.sortModel && config.sortModel.length > 0) ? config.sortModel : [{ colId: 'favorite', sort: 'desc' }])
     setActiveViewId(viewId)
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, viewId)
@@ -1104,7 +1335,7 @@ export default function MonitoringGrid() {
     }
   }, [showBulkMenu, showDisplayMenu, showViewsMenu])
 
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm] = useState(persistedUiState?.searchTerm ?? '')
 
   const { data: allItems, isLoading } = useQuery({
     queryKey: ['monitoring-items'],
@@ -1289,12 +1520,18 @@ export default function MonitoringGrid() {
   }, [bulkDraft, expandedBulkSection, selectedItems])
 
   useEffect(() => {
-    if (!idParam || !allItems) return
+    if (!idParam || !Array.isArray(allItems)) return
     const target = allItems.find((item: any) => String(item.id) === idParam)
-    if (!target) return
+    if (!target) {
+      setDetailItem((current: any) => (current && String(current.id) === idParam ? null : current))
+      const nextParams = new URLSearchParams(searchParams)
+      nextParams.delete('id')
+      navigate({ search: nextParams.toString() ? `?${nextParams.toString()}` : '' }, { replace: true })
+      return
+    }
     setActiveTab(target.is_deleted ? 'deleted' : 'active')
     setDetailItem(target)
-  }, [idParam, allItems])
+  }, [allItems, idParam, navigate, searchParams])
 
   useEffect(() => {
     selectionAnchorRef.current = null
@@ -1453,7 +1690,7 @@ export default function MonitoringGrid() {
       const result = await res.json()
       return { result, action, payload, idsToUse, previousSnapshots }
     },
-    onSuccess: ({ action, payload, idsToUse, previousSnapshots }: any) => {
+    onSuccess: ({ result, action, payload, idsToUse, previousSnapshots }: any) => {
       queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
       idsToUse.forEach((id: number) => {
         queryClient.invalidateQueries({ queryKey: ['monitoring-history', id] })
@@ -1465,19 +1702,24 @@ export default function MonitoringGrid() {
       setIsBulkSeverityOpen(false)
       setIsBulkNotifyOpen(false)
       
+      const changedCount = Number(result?.changed ?? idsToUse.length)
+      if (changedCount <= 0) {
+        lastUndoRef.current = null
+        showWorkspaceToast(result?.summary || 'No semantic change', { type: 'info' })
+        return
+      }
+
       if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
       else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
       else if (action === 'update') lastUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
       else lastUndoRef.current = null
 
       if (lastUndoRef.current) {
-        const verb = action === 'delete' ? 'Archived' : action === 'restore' ? 'Restored' : 'Synchronized';
-        const subject = idsToUse.length > 1 ? `${idsToUse.length} monitors` : 'monitor';
-        showWorkspaceToast(`${verb} ${subject} in matrix`, {
+        showWorkspaceToast(result?.summary || 'Updated monitoring state', {
           onRevert: async () => {
             try {
               await runUndo()
-              showWorkspaceToast(`Reverted ${verb.toLowerCase()} operation`, { type: 'success' })
+              showWorkspaceToast('Reverted monitoring operation', { type: 'success' })
             } catch (error: any) {
               showWorkspaceToast(error.message || 'Undo failed', { type: 'error' })
             }
@@ -5196,17 +5438,29 @@ function MonitoringHistoryModal({ item, onClose }: any) {
 
   const getDiff = (curr: any, prev: any) => {
     if (!curr) return []
+    const isImmediatePrevious = !prev || curr.previous_version === prev.version
+    if (isImmediatePrevious && Array.isArray(curr.delta)) {
+      return curr.delta.map((entry: any) => ({
+        field: entry.field,
+        label: entry.label || String(entry.field || '').replace(/_/g, ' '),
+        old: entry.before,
+        new: entry.after,
+        changeType: entry.change_type || 'changed',
+      }))
+    }
+
     const s1 = curr.snapshot || {}
     const s2 = prev?.snapshot || {}
     const keys = Array.from(new Set([...Object.keys(s1), ...Object.keys(s2)]))
-    
     return keys.filter(k => {
       if (['updated_at', 'created_at', 'id', 'version', 'is_deleted', 'monitored_service_names', 'recovery_doc_titles', 'device_name'].includes(k)) return false
       return JSON.stringify(s1[k]) !== JSON.stringify(s2[k])
     }).map(k => ({
-      field: k.replace(/_/g, ' '),
+      field: k,
+      label: k.replace(/_/g, ' '),
       old: s2[k],
-      new: s1[k]
+      new: s1[k],
+      changeType: s2[k] == null ? 'added' : s1[k] == null ? 'removed' : 'changed',
     }))
   }
 
@@ -5277,6 +5531,20 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                         <p className={`text-[10px] font-bold leading-tight line-clamp-2 ${isSelected ? 'text-white/90' : 'text-slate-300'}`}>
                            {h.change_summary || 'Configuration Modification'}
                         </p>
+                        {Array.isArray(h.changed_labels) && h.changed_labels.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {h.changed_labels.slice(0, 3).map((label: string) => (
+                              <span key={label} className="rounded-lg border border-white/10 bg-white/5 px-1.5 py-0.5 text-[8px] font-bold text-slate-400">
+                                {label}
+                              </span>
+                            ))}
+                            {h.changed_labels.length > 3 && (
+                              <span className="rounded-lg border border-white/10 bg-white/5 px-1.5 py-0.5 text-[8px] font-bold text-slate-500">
+                                +{h.changed_labels.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        )}
                         <div className="mt-2 flex items-center space-x-2 justify-between">
                            <div className="flex items-center space-x-2">
                              <Clock size={10} className={isSelected ? 'text-white/40' : 'text-slate-600'} />
@@ -5337,18 +5605,18 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                                 {diffs.map((d: any, i: number) => (
                                    <tr key={i} className="hover:bg-white/[0.02] transition-colors">
                                       <td className="p-4 align-top">
-                                         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{d.field}</span>
+                                         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{d.label || d.field}</span>
                                       </td>
                                       <td className="p-4 align-top">
-                                         <div className="bg-rose-500/5 border border-rose-500/10 rounded-lg p-3 overflow-hidden">
-                                            <pre className="text-[10px] text-slate-500 line-through whitespace-pre-wrap font-mono leading-relaxed break-all">
+                                         <div className={`rounded-lg p-3 overflow-hidden ${d.changeType === 'added' ? 'bg-slate-500/5 border border-slate-500/10' : 'bg-rose-500/5 border border-rose-500/10'}`}>
+                                            <pre className={`text-[10px] whitespace-pre-wrap font-mono leading-relaxed break-all ${d.changeType === 'added' ? 'text-slate-600' : 'text-slate-500 line-through'}`}>
                                                {typeof d.old === 'object' ? JSON.stringify(d.old, null, 2) : String(d.old ?? '(empty)')}
                                             </pre>
                                          </div>
                                       </td>
                                       <td className="p-4 align-top">
-                                         <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-3 overflow-hidden">
-                                            <pre className="text-[10px] text-emerald-400 whitespace-pre-wrap font-mono font-bold leading-relaxed break-all">
+                                         <div className={`rounded-lg p-3 overflow-hidden ${d.changeType === 'removed' ? 'bg-slate-500/5 border border-slate-500/10' : 'bg-emerald-500/5 border border-emerald-500/10'}`}>
+                                            <pre className={`text-[10px] whitespace-pre-wrap font-mono font-bold leading-relaxed break-all ${d.changeType === 'removed' ? 'text-slate-500' : 'text-emerald-400'}`}>
                                                {typeof d.new === 'object' ? JSON.stringify(d.new, null, 2) : String(d.new ?? '(empty)')}
                                             </pre>
                                          </div>

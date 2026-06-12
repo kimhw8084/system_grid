@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
 from sqlalchemy.orm import joinedload
@@ -6,7 +6,7 @@ from typing import List, Optional
 from datetime import datetime, timezone
 from ..database import get_db
 from ..models import models
-from .utils import filter_valid_columns, parse_iso_date
+from .utils import filter_valid_columns, get_current_user_id, parse_iso_date
 
 router = APIRouter(prefix="/investigations", tags=["Investigation Management"])
 IMMUTABLE_INVESTIGATION_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id"}
@@ -69,7 +69,7 @@ async def delete_investigation(inv_id: int, db: AsyncSession = Depends(get_db)):
 # --- PROGRESS LOGS ---
 
 @router.post("/{inv_id}/logs")
-async def add_progress_log(inv_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+async def add_progress_log(inv_id: int, data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     inv_res = await db.execute(select(models.Investigation).filter(models.Investigation.id == inv_id))
     investigation = inv_res.scalar_one_or_none()
     if not investigation:
@@ -80,7 +80,7 @@ async def add_progress_log(inv_id: int, data: dict, db: AsyncSession = Depends(g
         raise HTTPException(400, "Intelligence pulse text is required")
     clean_data['investigation_id'] = inv_id
     if 'added_by' not in clean_data:
-        clean_data['added_by'] = "system_admin"
+        clean_data['added_by'] = get_current_user_id(request)
         
     log = models.InvestigationProgress(**clean_data)
     db.add(log)

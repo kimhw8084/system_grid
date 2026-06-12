@@ -1,17 +1,27 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from sqlalchemy.orm import joinedload
 from typing import List, Optional
 from ..database import get_db
 from ..models import models
-from .utils import filter_valid_columns
+from .utils import build_audit_log, filter_valid_columns, normalize_json_list, normalize_json_object, parse_iso_date
 
 router = APIRouter(prefix="/logical-services", tags=["Logical Services"])
 IMMUTABLE_SERVICE_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id"}
 
 
-def serialize_service(service: models.LogicalService, device_name: str):
+def serialize_service_secret(secret: models.ServiceSecret, *, include_secret_values: bool = False):
+    return {
+        "id": secret.id,
+        "username": secret.username,
+        "password": secret.password if include_secret_values else None,
+        "has_password": bool(secret.password),
+        "note": secret.note,
+    }
+
+
+def serialize_service(service: models.LogicalService, device_name: str, *, include_secret_values: bool = False):
     return {
         "id": service.id,
         "name": service.name,
@@ -21,8 +31,9 @@ def serialize_service(service: models.LogicalService, device_name: str):
         "environment": service.environment,
         "device_id": service.device_id,
         "device_name": device_name,
-        "config_json": service.config_json,
-        "custom_attributes": service.custom_attributes,
+        "config_json": normalize_json_object(service.config_json),
+        "custom_attributes": normalize_json_object(service.custom_attributes),
+        "logic_json": normalize_json_list(service.logic_json),
         "is_deleted": service.is_deleted,
         "purchase_type": service.purchase_type,
         "license_key": service.license_key,
@@ -35,8 +46,37 @@ def serialize_service(service: models.LogicalService, device_name: str):
         "supplier": service.supplier,
         "cost": service.cost,
         "currency": service.currency,
-        "secrets": [{"id": sc.id, "username": sc.username, "password": sc.password, "note": sc.note} for sc in service.secrets]
+        "secret_count": len(service.secrets or []),
+        "secrets": [serialize_service_secret(sc, include_secret_values=include_secret_values) for sc in service.secrets]
     }
+
+
+def summarize_service(service: models.LogicalService, device_name: str):
+    return {
+        "id": service.id,
+        "name": service.name,
+        "service_type": service.service_type,
+        "status": service.status,
+        "version": service.version,
+        "environment": service.environment,
+        "device_id": service.device_id,
+        "device_name": device_name,
+        "is_deleted": service.is_deleted,
+        "secret_count": len(service.secrets or []),
+        "config_key_count": len(normalize_json_object(service.config_json)),
+        "custom_attribute_count": len(normalize_json_object(service.custom_attributes)),
+    }
+
+
+def normalize_service_payload(data: dict) -> dict:
+    clean_data = filter_valid_columns(models.LogicalService, data, exclude=IMMUTABLE_SERVICE_FIELDS)
+    clean_data["config_json"] = normalize_json_object(clean_data.get("config_json"))
+    clean_data["custom_attributes"] = normalize_json_object(clean_data.get("custom_attributes"))
+    clean_data["logic_json"] = normalize_json_list(clean_data.get("logic_json"))
+    for date_field in ["purchase_date", "expiry_date", "installation_date"]:
+        if date_field in clean_data:
+            clean_data[date_field] = parse_iso_date(clean_data.get(date_field))
+    return clean_data
 
 
 async def sync_device_os_state(device_id: Optional[int], db: AsyncSession):
@@ -65,7 +105,13 @@ async def sync_device_os_state(device_id: Optional[int], db: AsyncSession):
         device.os_version = None
 
 @router.get("")
-async def get_services(device_id: Optional[int] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
+async def get_services(
+    device_id: Optional[int] = None,
+    include_deleted: bool = False,
+    projection: str = "full",
+    include_secret_values: bool = False,
+    db: AsyncSession = Depends(get_db),
+):
     from sqlalchemy.orm import selectinload
     query = select(models.LogicalService).options(selectinload(models.LogicalService.secrets))
     if device_id:
@@ -91,11 +137,23 @@ async def get_services(device_id: Optional[int] = None, include_deleted: bool = 
         if s.device_id:
             dev = devices.get(s.device_id)
             if dev: device_name = dev.name
-        final_result.append(serialize_service(s, device_name))
+        if projection == "summary":
+            final_result.append(summarize_service(s, device_name))
+        else:
+            final_result.append(serialize_service(s, device_name, include_secret_values=include_secret_values))
     return final_result
 
+
+@router.get("/summary")
+async def get_services_summary(
+    device_id: Optional[int] = None,
+    include_deleted: bool = False,
+    db: AsyncSession = Depends(get_db),
+):
+    return await get_services(device_id=device_id, include_deleted=include_deleted, projection="summary", db=db)
+
 @router.post("/{service_id}/secrets")
-async def add_service_secret(service_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+async def add_service_secret(service_id: int, data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     svc_res = await db.execute(select(models.LogicalService).filter(models.LogicalService.id == service_id))
     svc = svc_res.scalar_one_or_none()
     if not svc: raise HTTPException(404, "Service not found")
@@ -107,12 +165,20 @@ async def add_service_secret(service_id: int, data: dict, db: AsyncSession = Dep
         note=data.get("note")
     )
     db.add(secret)
+    db.add(build_audit_log(
+        request=request,
+        action="CREATE_SECRET",
+        target_table="service_secrets",
+        target_id=str(service_id),
+        description=f"Added service secret for service {svc.name}",
+        changes={"service_id": service_id, "username": data.get("username"), "has_password": bool(data.get("password"))},
+    ))
     await db.commit()
     await db.refresh(secret)
     return secret
 
 @router.delete("/{service_id}/secrets/{secret_id}")
-async def delete_service_secret(service_id: int, secret_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_service_secret(service_id: int, secret_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     res = await db.execute(select(models.ServiceSecret).filter(
         models.ServiceSecret.id == secret_id,
         models.ServiceSecret.service_id == service_id
@@ -121,6 +187,14 @@ async def delete_service_secret(service_id: int, secret_id: int, db: AsyncSessio
     if not secret: raise HTTPException(404, "Secret not found")
     
     await db.delete(secret)
+    db.add(build_audit_log(
+        request=request,
+        action="DELETE_SECRET",
+        target_table="service_secrets",
+        target_id=str(secret_id),
+        description=f"Deleted service secret from service {service_id}",
+        changes={"service_id": service_id},
+    ))
     await db.commit()
     return {"status": "success"}
 
@@ -129,25 +203,12 @@ async def sync_service_to_device(service, db: AsyncSession):
         await sync_device_os_state(service.device_id, db)
 
 @router.post("")
-async def create_service(data: dict, db: AsyncSession = Depends(get_db)):
+async def create_service(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     # data includes: name, service_type, status, version, environment, device_id, config_json, custom_attributes
     name = data.get('name')
     if not name: raise HTTPException(400, "Service name required")
 
-    clean_data = filter_valid_columns(models.LogicalService, data, exclude=IMMUTABLE_SERVICE_FIELDS)
-    
-    # Handle date fields for license and installation
-    for date_f in ["purchase_date", "expiry_date", "installation_date"]:
-        if date_f in clean_data:
-            val = clean_data[date_f]
-            if not val:
-                clean_data[date_f] = None
-            elif isinstance(val, str):
-                from datetime import datetime
-                try:
-                    clean_data[date_f] = datetime.fromisoformat(val.replace("Z", "+00:00"))
-                except:
-                    clean_data[date_f] = None
+    clean_data = normalize_service_payload(data)
 
     svc = models.LogicalService(**clean_data)
     db.add(svc)
@@ -157,9 +218,13 @@ async def create_service(data: dict, db: AsyncSession = Depends(get_db)):
         # Sync back to device if OS
         await sync_service_to_device(svc, db)
         
-        log = models.AuditLog(
-            user_id="admin", action="CREATE", target_table="logical_services", 
-            target_id=str(svc.id), description=f"Registered logical service: {svc.name} ({svc.service_type})"
+        log = build_audit_log(
+            request=request,
+            action="CREATE",
+            target_table="logical_services",
+            target_id=str(svc.id),
+            description=f"Registered logical service: {svc.name} ({svc.service_type})",
+            changes={"name": svc.name, "service_type": svc.service_type, "device_id": svc.device_id},
         )
         db.add(log)
         await db.commit()
@@ -170,37 +235,28 @@ async def create_service(data: dict, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.put("/{service_id}")
-async def update_service(service_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+async def update_service(service_id: int, data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.LogicalService).filter(models.LogicalService.id == service_id))
     svc = result.scalar_one_or_none()
     if not svc: raise HTTPException(404)
     previous_device_id = svc.device_id
     
-    clean_data = filter_valid_columns(models.LogicalService, data, exclude=IMMUTABLE_SERVICE_FIELDS)
+    clean_data = normalize_service_payload(data)
     for k, v in clean_data.items():
-        if k in ["purchase_date", "expiry_date", "installation_date"]:
-            if not v:
-                setattr(svc, k, None)
-            elif isinstance(v, str):
-                from datetime import datetime
-                try:
-                    dt_val = datetime.fromisoformat(v.replace("Z", "+00:00"))
-                    setattr(svc, k, dt_val)
-                except:
-                    setattr(svc, k, None)
-            else:
-                setattr(svc, k, v)
-        else:
-            setattr(svc, k, v)
+        setattr(svc, k, v)
     
     # Sync back to device if OS
     await sync_service_to_device(svc, db)
     if previous_device_id != svc.device_id:
         await sync_device_os_state(previous_device_id, db)
         
-    log = models.AuditLog(
-        user_id="admin", action="UPDATE", target_table="logical_services", 
-        target_id=str(service_id), description=f"Updated service configuration: {svc.name}"
+    log = build_audit_log(
+        request=request,
+        action="UPDATE",
+        target_table="logical_services",
+        target_id=str(service_id),
+        description=f"Updated service configuration: {svc.name}",
+        changes={"device_id": svc.device_id, "service_type": svc.service_type, "status": svc.status},
     )
     db.add(log)
     await db.commit()
@@ -217,7 +273,7 @@ async def update_service(service_id: int, data: dict, db: AsyncSession = Depends
     return serialize_service(refreshed, device_name)
 
 @router.delete("/{service_id}")
-async def delete_service(service_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_service(service_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.LogicalService).filter(models.LogicalService.id == service_id))
     svc = result.scalar_one_or_none()
     if not svc: raise HTTPException(404)
@@ -226,16 +282,20 @@ async def delete_service(service_id: int, db: AsyncSession = Depends(get_db)):
     affected_device_id = svc.device_id
     svc.is_deleted = True
     await sync_device_os_state(affected_device_id, db)
-    log = models.AuditLog(
-        user_id="admin", action="DELETE", target_table="logical_services", 
-        target_id=str(service_id), description=f"Soft-deleted service: {name}"
+    log = build_audit_log(
+        request=request,
+        action="DELETE",
+        target_table="logical_services",
+        target_id=str(service_id),
+        description=f"Soft-deleted service: {name}",
+        changes={"device_id": affected_device_id},
     )
     db.add(log)
     await db.commit()
     return {"status": "success"}
 
 @router.post("/bulk-action")
-async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
+async def bulk_action(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     ids = data.get("ids", [])
     action = data.get("action")
     payload = data.get("payload", {})
@@ -270,12 +330,21 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
         if any(service.service_type == "OS" for service in refreshed_services + affected_services):
             for device_id in affected_device_ids:
                 await sync_device_os_state(device_id, db)
+
+    db.add(build_audit_log(
+        request=request,
+        action=f"BULK_{action.upper()}",
+        target_table="logical_services",
+        target_id="bulk",
+        description=f"Applied bulk logical service action: {action}",
+        changes={"ids": ids, "payload": payload if action == "update" else {}},
+    ))
     
     await db.commit()
     return {"status": "success"}
 
 @router.post("/{service_id}/mount/{device_id}")
-async def mount_service(service_id: int, device_id: int, db: AsyncSession = Depends(get_db)):
+async def mount_service(service_id: int, device_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     svc_res = await db.execute(select(models.LogicalService).filter(models.LogicalService.id == service_id))
     svc = svc_res.scalar_one_or_none()
     dev_res = await db.execute(select(models.Device).filter(models.Device.id == device_id))
@@ -288,9 +357,13 @@ async def mount_service(service_id: int, device_id: int, db: AsyncSession = Depe
     await sync_service_to_device(svc, db)
     if previous_device_id != device_id:
         await sync_device_os_state(previous_device_id, db)
-    log = models.AuditLog(
-        user_id="admin", action="MOUNT", target_table="logical_services", 
-        target_id=str(service_id), description=f"Mounted service {svc.name} onto host {dev.name}"
+    log = build_audit_log(
+        request=request,
+        action="MOUNT",
+        target_table="logical_services",
+        target_id=str(service_id),
+        description=f"Mounted service {svc.name} onto host {dev.name}",
+        changes={"from_device_id": previous_device_id, "to_device_id": device_id},
     )
     db.add(log)
     await db.commit()
