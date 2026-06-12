@@ -61,15 +61,49 @@ const Bootstrap = () => {
       try {
         console.log("BOOTSTRAP: Fetching system configuration...");
         let response;
-        let usedRelativeBootstrap = false;
+        let usedRelativeBootstrap = false
+        const configuredBaseUrl = normalizeUiApiOrigin(getApiBaseUrl() || '')
+        const currentOrigin = normalizeUiApiOrigin(window.location.origin)
+        const shouldPreferRelativeBootstrap = !configuredBaseUrl || configuredBaseUrl === currentOrigin
+
+        const fetchRelativeBootstrap = async () => {
+          const relativeResponse = await fetch('/api/v1/settings/bootstrap', { cache: 'no-store' })
+          const contentType = relativeResponse.headers.get('content-type') || ''
+          if (!relativeResponse.ok || !contentType.toLowerCase().includes('application/json')) {
+            throw new Error(`Relative bootstrap is unavailable from this origin (status ${relativeResponse.status})`)
+          }
+          usedRelativeBootstrap = true
+          return relativeResponse
+        }
+
+        const fetchConfiguredBootstrap = async () => {
+          const configuredResponse = await apiFetch('/api/v1/settings/bootstrap')
+          if (!configuredResponse.ok) {
+            throw new Error(`API Error ${configuredResponse.status}`)
+          }
+          return configuredResponse
+        }
+
         try {
-          // Always try relative path first for bootstrap to ensure it bypasses any poisoned baseUrl
-          response = await fetch('/api/v1/settings/bootstrap');
-          if (!response.ok) {
-             console.warn("BOOTSTRAP: Relative fetch returned " + response.status + ", falling back to apiFetch");
-             response = await apiFetch('/api/v1/settings/bootstrap');
+          if (shouldPreferRelativeBootstrap) {
+            try {
+              response = await fetchRelativeBootstrap()
+            } catch (relativeErr) {
+              console.warn("BOOTSTRAP: Relative bootstrap unavailable, falling back to configured API target...", relativeErr)
+              response = await apiFetch('/api/v1/settings/bootstrap');
+            }
           } else {
-             usedRelativeBootstrap = true;
+            try {
+              response = await fetchConfiguredBootstrap()
+            } catch (configuredErr) {
+              console.warn("BOOTSTRAP: Configured bootstrap target failed, clearing configuration cache and retrying...", configuredErr)
+              Object.keys(localStorage).forEach(k => {
+                if (k.startsWith('SYSGRID_CONFIG_')) {
+                  localStorage.removeItem(k)
+                }
+              })
+              response = await fetchConfiguredBootstrap()
+            }
           }
         } catch (initialErr) {
           console.warn("BOOTSTRAP: Initial fetch failed, clearing configuration cache and retrying...", initialErr);
@@ -79,16 +113,14 @@ const Bootstrap = () => {
             }
           });
           try {
-            response = await apiFetch('/api/v1/settings/bootstrap');
-            if (!response.ok) throw new Error(`API Error ${response.status}`);
+            response = await fetchConfiguredBootstrap()
           } catch (overrideErr) {
             const currentOverride = localStorage.getItem('SYSGRID_OVERRIDE_API_URL') || ''
             const envApiBase = (import.meta.env.VITE_API_BASE_URL || '').trim()
             if (currentOverride && envApiBase && currentOverride !== envApiBase) {
               console.warn("BOOTSTRAP: Retrying without stale API override...", currentOverride);
               setApiOverride(null);
-              response = await apiFetch('/api/v1/settings/bootstrap');
-              if (!response.ok) throw new Error(`API Error ${response.status}`);
+              response = await fetchConfiguredBootstrap()
             } else {
               throw overrideErr;
             }
