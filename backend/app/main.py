@@ -89,8 +89,13 @@ async def websocket_endpoint(websocket: WebSocket):
 async def global_exception_handler(request: Request, exc: Exception):
     # Capture full traceback for server-side logging
     tb = traceback.format_exc()
-    # Implement structured logging (stdout) as requested by directive
-    print(f"--- INTERNAL SERVER ERROR ---\nPath: {request.url.path}\nError: {str(exc)}\n{tb}\n----------------------------")
+    error_msg = f"--- INTERNAL SERVER ERROR ---\nPath: {request.url.path}\nError: {str(exc)}\n{tb}\n----------------------------\n"
+    
+    # Write to file
+    with open("critical_failures.log", "a") as f:
+        f.write(error_msg)
+        
+    print(error_msg)
     
     # Do not expose raw stack traces to the client as per direction.md
     return JSONResponse(
@@ -104,7 +109,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # Determine adaptive CORS credentials based on origins
 # If '*' is in origins, credentials must be False per CORS spec.
-origins = settings.BACKEND_CORS_ORIGINS
+origins = settings.cors_origins
+print(f"CORS ORIGINS: {origins}")
 allow_creds = False if "*" in origins else True
 
 app.add_middleware(

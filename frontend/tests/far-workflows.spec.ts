@@ -1,4 +1,6 @@
-import { test, expect } from '@playwright/test'
+import { clickResilientButton } from './helpers/sysgrid';
+import { expect } from '@playwright/test';
+import { test } from './helpers/sysgrid-test';
 import {
   createFarCause,
   createFarMitigation,
@@ -10,7 +12,7 @@ import {
 } from './helpers/sysgrid'
 
 test.describe('FAR workflows', () => {
-  test('opens deep links and refreshes the wizard when the selected mode changes', async ({ page, request }) => {
+  test('opens deep links and refreshes the wizard when the selected mode changes', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
     const { systemName, far } = await seedOperationalScenario(request)
     const secondMode = await createFarMode(request, {
@@ -38,7 +40,7 @@ test.describe('FAR workflows', () => {
     await expect(page.getByText('Edit Failure Mode')).toBeVisible()
   })
 
-  test('removes causes and mitigations from the active FAR detail view', async ({ page, request }) => {
+  test('removes causes and mitigations from the active FAR detail view', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
     const { far } = await seedOperationalScenario(request)
     const cause = await createFarCause(request, {
@@ -57,20 +59,20 @@ test.describe('FAR workflows', () => {
     })
 
     await page.goto(`/far?id=${far.id}`)
-    await page.getByRole('button', { name: /Strategic Roadmap/i }).click()
+    await clickResilientButton(page, /Strategic Roadmap/i)
     const mitigationRow = page.locator('tr', { hasText: 'Watch the service and alert on regression' })
     await mitigationRow.hover()
     await mitigationRow.getByRole('button').click()
     await expect(page.getByText('No mitigation shields active for this cause')).toBeVisible()
 
-    await page.getByRole('button', { name: /Causal Forensics/i }).click()
+    await clickResilientButton(page, /Causal Forensics/i)
     const causeRow = page.locator('tr', { hasText: 'Transient dependency fault' })
     await causeRow.hover()
-    await causeRow.getByRole('button').nth(1).click()
+    await causeRow.getByTitle('Purge Attribution').click()
     await expect(page.getByText('No attribution traces linked to this vector')).toBeVisible()
   })
 
-  test('navigates to Research and can unlink linked research artifacts', async ({ page, request }) => {
+  test('navigates to Research and can unlink linked research artifacts', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
     const { far } = await seedOperationalScenario(request)
     const investigation = await createInvestigation(request, {
@@ -86,7 +88,7 @@ test.describe('FAR workflows', () => {
     })
 
     await page.goto(`/far?id=${far.id}`)
-    await page.getByRole('button', { name: /Research History/i }).click()
+    await clickResilientButton(page, /Research History/i)
     await expect(page.getByRole('heading', { name: investigation.title })).toBeVisible()
 
     const artifactCard = page.getByRole('heading', { name: investigation.title }).locator('xpath=ancestor::div[contains(@class,"group")][1]')
@@ -95,9 +97,9 @@ test.describe('FAR workflows', () => {
     await expect(page.getByRole('heading', { name: investigation.title })).not.toBeVisible()
     await expect(page.getByText('No historical research artifacts currently mapped to this failure vector')).toBeVisible()
 
-    await page.getByRole('button', { name: '+ Link Research Artifact' }).click()
+    await clickResilientButton(page, '+ Link Research Artifact')
     await page.getByPlaceholder('Search research artifacts...').fill(investigation.title)
-    await page.getByRole('button', { name: new RegExp(investigation.title) }).click()
+    await clickResilientButton(page, new RegExp(investigation.title))
     await expect(page.getByRole('heading', { name: investigation.title })).toBeVisible()
 
     const relinkedCard = page.getByRole('heading', { name: investigation.title }).locator('xpath=ancestor::div[contains(@class,"group")][1]')

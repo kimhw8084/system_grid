@@ -344,14 +344,17 @@ const buildPermissionHistoryRows = (newer: any, older: any, allViews: string[]) 
       }
     })
 
-    const beforeTeams = JSON.stringify(toSortedStringList(before?.teams))
-    const afterTeams = JSON.stringify(toSortedStringList(after?.teams))
+    const beforeAny = before as any
+    const afterAny = after as any
+
+    const beforeTeams = JSON.stringify(toSortedStringList(beforeAny?.teams))
+    const afterTeams = JSON.stringify(toSortedStringList(afterAny?.teams))
     if (beforeTeams !== afterTeams) {
-      fieldChanges['groups'] = { old: toSortedStringList(before?.teams), new: toSortedStringList(after?.teams) }
+      fieldChanges['groups'] = { old: toSortedStringList(beforeAny?.teams), new: toSortedStringList(afterAny?.teams) }
     }
 
-    if (Boolean(before?.is_admin) !== Boolean(after?.is_admin)) {
-      fieldChanges['is_admin'] = { old: Boolean(before?.is_admin), new: Boolean(after?.is_admin) }
+    if (Boolean(beforeAny?.is_admin) !== Boolean(afterAny?.is_admin)) {
+      fieldChanges['is_admin'] = { old: Boolean(beforeAny?.is_admin), new: Boolean(afterAny?.is_admin) }
     }
 
     if (Object.keys(fieldChanges).length === 0 && permissionChanges.length === 0) {
@@ -1946,7 +1949,7 @@ export default function SettingsPage() {
                       <WorkspaceEmptyState 
                         icon={<Search size={32} />}
                         title="No Parameters Match"
-                        message="Adjust the search or impact filter to expose additional configuration fields."
+                        description="Adjust the search or impact filter to expose additional configuration fields."
                       />
                     </div>
                   )}
@@ -2002,18 +2005,16 @@ export default function SettingsPage() {
                                          <ToolbarButton 
                                             onClick={() => setIsSyncEditable(!isSyncEditable)}
                                             variant={isSyncEditable ? "danger" : "secondary"}
-                                            icon={isSyncEditable ? <Lock size={12} /> : <EditIcon size={12} />}
                                             className="h-8"
                                          >
-                                            {isSyncEditable ? "Lock Logic" : "Modify Logic"}
+                                            <div className="flex items-center gap-2">{isSyncEditable ? <Lock size={12} /> : <EditIcon size={12} />} {isSyncEditable ? "Lock Logic" : "Modify Logic"}</div>
                                          </ToolbarButton>
                                          <ToolbarButton 
                                             onClick={() => poolMutation.mutate({ script: userPoolScript, preview: true })}
                                             variant="primary"
-                                            icon={<RefreshCcw size={12} className={poolMutation.isPending ? 'animate-spin' : ''} />}
                                             className="h-8"
                                          >
-                                            Dry Run Preview
+                                            <div className="flex items-center gap-2"><RefreshCcw size={12} className={poolMutation.isPending ? 'animate-spin' : ''} /> Dry Run Preview</div>
                                          </ToolbarButton>
                                       </div>
                                    </div>
@@ -2486,9 +2487,10 @@ export default function SettingsPage() {
                            </span>
                            <ToolbarIconButton
                              onClick={() => queryClient.invalidateQueries({ queryKey: ['admin-tenants'] })}
-                             icon={<RefreshCw size={14} />}
-                             label="Refresh registry"
-                           />
+                             title="Refresh registry"
+                           >
+                             <RefreshCw size={14} />
+                           </ToolbarIconButton>
                         </div>
                      </div>
                      <div className="overflow-x-auto">

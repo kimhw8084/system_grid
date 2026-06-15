@@ -2,9 +2,9 @@ import json
 import os
 from copy import deepcopy
 from fastapi import APIRouter, Depends, HTTPException, status, Request
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy import select, delete, update
-from ..database import get_db, get_config_db
+from ..database import get_db, get_config_db, Base
 from ..models import models
 from ..models.config import Tenant, UserTenantAccess, GlobalSetting
 from ..core.config import settings
@@ -645,6 +645,48 @@ async def apply_operator_delete(
         "team_updates": [{"external_id": op.external_id, "old": op.team, "new": None, "mode": "operator_deleted"}],
     }
 
+async def ensure_tenant_admin_async(*, tenant_db_url: str, admin_user: str, full_name: str | None, email: str | None, department: str | None) -> None:
+    engine = create_async_engine(tenant_db_url)
+    async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    async with async_session() as session:
+        res_role = await session.execute(select(models.Role).where(models.Role.name == "Admin"))
+        admin_role = res_role.scalar_one_or_none()
+        if not admin_role:
+            admin_role = models.Role(name="Admin", permissions={"all": 3})
+            session.add(admin_role)
+            await session.flush()
+
+        res_op = await session.execute(select(models.Operator).where(models.Operator.username == admin_user))
+        operator = res_op.scalar_one_or_none()
+        
+        derived_full_name = full_name or admin_user.replace(".", " ").replace("_", " ").title()
+        derived_email = email or f"{admin_user}@{settings.DEFAULT_EMAIL_DOMAIN}"
+        
+        if operator:
+            operator.full_name = derived_full_name
+            operator.email = derived_email
+            operator.department = department
+            operator.role_id = admin_role.id
+            operator.is_admin = True
+        else:
+            session.add(models.Operator(
+                external_id=admin_user,
+                username=admin_user,
+                full_name=derived_full_name,
+                email=derived_email,
+                department=department,
+                role_id=admin_role.id,
+                is_admin=True,
+                registration_status="Verified"
+            ))
+        await session.commit()
+    await engine.dispose()
+
+
 @router.get("/user/settings")
 async def get_user_settings(request: Request, db: AsyncSession = Depends(get_db)):
     user_id = get_current_user_id(request)
@@ -918,7 +960,7 @@ async def get_startup_check(request: Request, config_db: AsyncSession = Depends(
     frontend_env = parse_env_file_to_map(settings.FRONTEND_ENV_FILE_PATH)
     configured_api_origin = normalize_api_origin(frontend_env.get("VITE_API_BASE_URL"))
     request_origin = request.headers.get("origin", "")
-    cors_origins = settings.BACKEND_CORS_ORIGINS
+    cors_origins = settings.cors_origins
     allows_request_origin = "*" in cors_origins or not request_origin or request_origin in cors_origins
 
     warnings: list[str] = []

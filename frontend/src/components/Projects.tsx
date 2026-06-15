@@ -1,5 +1,7 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import { WorkspaceEmptyState } from "./shared/OperationalWorkspacePrimitives";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
   Plus, Search, Trash2, Edit2, Info, 
@@ -125,7 +127,10 @@ export const ProjectHUD = ({
                 <Workflow size={20} className="text-white" />
              </div>
              <div>
-                <h1 className="text-lg font-bold tracking-tighter text-white leading-none truncate max-w-[300px]">{project.name}</h1>
+                <div className="flex items-center gap-2">
+                   <h1 className="text-lg font-bold tracking-tighter text-white leading-none truncate max-w-[300px]">{project.name}</h1>
+                   <WorkspaceShareHeader id={String(project.id)} title={project.name} />
+                </div>
                 <div className="flex items-center gap-2 mt-1">
                    <span className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">{project.type}</span>
                    <span className="text-slate-700 font-bold">•</span>
@@ -2903,6 +2908,20 @@ export default function Projects() {
     queryFn: () => apiFetch('/api/v1/projects').then(r => r.json()),
     placeholderData: (prev) => prev
   })
+  
+  const [selectedProjectId, setSelectedProjectId] = useState<number | 'HUDDLE' | null>(idParam ? parseInt(idParam) : 'HUDDLE')
+
+  // Sync URL id param with selectedProjectId
+  useEffect(() => {
+    if (selectedProjectId && selectedProjectId !== 'HUDDLE') {
+        if (searchParams.get('id') !== String(selectedProjectId)) {
+            setSearchParams({ id: String(selectedProjectId) })
+        }
+    } else {
+        if (searchParams.has('id')) setSearchParams({})
+    }
+  }, [selectedProjectId, setSearchParams, searchParams])
+
 
   const reorderMutation = useMutation({
     mutationFn: (newOrder: any[]) => apiFetch('/api/v1/projects/reorder', {
@@ -2927,7 +2946,6 @@ export default function Projects() {
   const { data: services } = useQuery({ queryKey: ['logical-services'], queryFn: () => apiFetch('/api/v1/logical-services').then(r => r.json()) })
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: () => apiFetch('/api/v1/settings/options').then(r => r.json()) })
   const { data: users } = useQuery({ queryKey: ['users'], queryFn: () => apiFetch('/api/v1/settings/operators').then(r => r.json()) })
-  const [selectedProjectId, setSelectedProjectId] = useState<number | 'HUDDLE' | null>('HUDDLE')
   const [activeTab, setActiveTab] = useState<'WORKSPACE' | 'GANTT' | 'ACTIVITY' | 'ADOPTION'>('WORKSPACE')
   const [isGlobalEditing, setIsGlobalEditing] = useState(false)
   const [draftProject, setDraftProject] = useState<any>(null)

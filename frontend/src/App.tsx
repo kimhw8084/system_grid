@@ -745,13 +745,16 @@ function MainLayout() {
   )
 }
 
+import { ErrorSentinel } from './components/shared/ErrorSentinel'
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <MainLayout />
+        <ErrorSentinel>
+          <MainLayout />
+        </ErrorSentinel>
       </BrowserRouter>
     </QueryClientProvider>
-
   )
 }

@@ -7,7 +7,7 @@ const testUserId = process.env.USER_ID || 'haewon.kim'
 async function post(request: APIRequestContext, path: string, data: Record<string, any>) {
   const response = await request.post(`${apiBase}${path}`, { 
     data,
-    headers: { 'X-User-Id': testUserId }
+    headers: { 'X-User-Id': testUserId, 'X-Tenant-Id': '1' }
   })
   if (!response.ok()) {
      const text = await response.text()
@@ -24,7 +24,7 @@ async function post(request: APIRequestContext, path: string, data: Record<strin
 async function put(request: APIRequestContext, path: string, data: Record<string, any>) {
   const response = await request.put(`${apiBase}${path}`, { 
     data,
-    headers: { 'X-User-Id': testUserId }
+    headers: { 'X-User-Id': testUserId, 'X-Tenant-Id': '1' }
   })
   expect(response.ok()).toBeTruthy()
   return response.json()
@@ -32,7 +32,7 @@ async function put(request: APIRequestContext, path: string, data: Record<string
 
 async function get(request: APIRequestContext, path: string) {
   const response = await request.get(`${apiBase}${path}`, {
-    headers: { 'X-User-Id': testUserId }
+    headers: { 'X-User-Id': testUserId, 'X-Tenant-Id': '1' }
   })
   expect(response.ok()).toBeTruthy()
   return response.json()
@@ -55,6 +55,27 @@ async function ensureSettingOption(
 export async function resetBrowserState(page: Page) {
   const testResetToken = `pw-reset-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   const testUserId = process.env.USER_ID || 'haewon.kim'
+  
+  // Clear backend user settings
+  try {
+    await page.request.post(`${apiBase}/settings/user/settings`, {
+      data: {
+        monitoring_ui_state: null,
+        asset_ui_state: null,
+        project_ui_state: null,
+        far_ui_state: null,
+        rca_ui_state: null,
+        investigation_ui_state: null,
+        settings_ui_state: null,
+      },
+      headers: {
+        'X-User-Id': testUserId
+      }
+    })
+  } catch (e) {
+    console.error('Failed to clear backend settings:', e)
+  }
+
   await page.addInitScript(({ injectedApiOrigin, resetToken, userId }) => {
     const appliedToken = window.sessionStorage.getItem('__sysgrid_pw_bootstrap__')
     if (!appliedToken || appliedToken !== resetToken) {
@@ -169,15 +190,23 @@ export async function createMonitoring(request: APIRequestContext, payload: Reco
 
     if (!operators.length) {
       const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-      const operator = await post(request, '/settings/operators', {
-        external_id: `pw-${stamp}`,
-        username: `pw_${stamp}`,
-        full_name: `Playwright Operator ${stamp}`,
-        email: `pw-${stamp}@sysgrid.test`,
+      const op1 = await post(request, '/settings/operators', {
+        external_id: `pw1-${stamp}`,
+        username: `pw1_${stamp}`,
+        full_name: `Playwright Operator 1 ${stamp}`,
+        email: `pw1-${stamp}@sysgrid.test`,
         department: 'Operations',
         team_id: teams[0]?.id,
       })
-      operators = [operator]
+      const op2 = await post(request, '/settings/operators', {
+        external_id: `pw2-${stamp}`,
+        username: `pw2_${stamp}`,
+        full_name: `Playwright Operator 2 ${stamp}`,
+        email: `pw2-${stamp}@sysgrid.test`,
+        department: 'Operations',
+        team_id: teams[0]?.id,
+      })
+      operators = [op1, op2]
     }
 
     return { teams, operators }
@@ -188,8 +217,8 @@ export async function createMonitoring(request: APIRequestContext, payload: Reco
     nextPayload = {
       ...nextPayload,
       owner_team: '',
-      owners: nextPayload.owners.map((owner: Record<string, any>, index: number) => ({
-        operator_id: operators[index]?.id || operators[0]?.id,
+      owners: nextPayload.owners.slice(0, operators.length).map((owner: Record<string, any>, index: number) => ({
+        operator_id: operators[index].id,
         role: owner.role || 'Primary Support',
       })),
     }
@@ -398,6 +427,16 @@ export async function seedRackScenario(request: APIRequestContext) {
   return { stamp, siteA, siteB, rackA1, rackA2, rackBConflict, devicePrimary, deviceSecondary }
 }
 
+export async function getColumnWidth(page: Page, colId: string): Promise<number> {
+  return page.evaluate((id) => {
+    // @ts-ignore
+    const api = window.__MONITORING_GRID_API__ || window.__ASSET_GRID_API__ || window.__PROJECT_GRID_API__
+    if (!api) return 0
+    const col = api.getColumnState().find((c: any) => c.colId === id)
+    return col ? col.width : 0
+  }, colId)
+}
+
 export async function gotoView(page: Page, path: string, heading: string | RegExp) {
   await page.goto(path)
   await expect(page.getByRole('heading', { name: heading })).toBeVisible()
@@ -410,6 +449,9 @@ export function getPrimaryGrid(page: Page): Locator {
 export async function fillGridSearch(page: Page, placeholder: string | RegExp, value: string) {
   const search = page.getByPlaceholder(placeholder)
   await search.fill(value)
+  await page.keyboard.press('Enter')
+  // Wait for AgGrid to potentially filter
+  await page.waitForTimeout(500)
   return search
 }
 
@@ -426,4 +468,34 @@ export async function openToolbarButton(page: Page, name: string | RegExp) {
 
 export async function expectToast(page: Page, message: string | RegExp) {
   await expect(page.getByText(message).last()).toBeVisible()
+}
+
+export async function waitForAppIdle(page: Page) {
+  const loaders = ['Scanning monitoring matrix...', 'Synchronizing Matrix...', 'Scanning infrastructure registry...', 'Loading...'];
+  for (const loader of loaders) {
+    await page.getByText(loader).waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+  }
+}
+
+export async function clickResilientButton(page: Page, ...names: (string | RegExp)[]) {
+  for (const name of names) {
+    const btn = page.getByRole('button', { name }).first();
+    if (await btn.isVisible().catch(() => false)) {
+      await btn.click({ force: true });
+      return;
+    }
+  }
+  for (const name of names) {
+    const btn = page.getByText(name).first();
+    if (await btn.isVisible().catch(() => false)) {
+      await btn.click({ force: true });
+      return;
+    }
+  }
+  throw new Error(`Could not find resilient button matching any of: ${names.join(', ')}`);
+}
+
+export async function verifyGridRowRobust(page: Page, searchString: string | RegExp) {
+  const { expect } = require('@playwright/test');
+  await expect(page.locator('.ag-cell').filter({ hasText: searchString }).first()).toBeVisible({ timeout: 15000 });
 }

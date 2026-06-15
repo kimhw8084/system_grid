@@ -2,7 +2,9 @@ import pytest
 
 
 @pytest.mark.anyio
-async def test_project_update_records_project_level_activity_log(client):
+async def test_project_update_records_project_level_activity_log(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"] # Get client from seeded_admin_tenant
+    
     create_res = await client.post("/api/v1/projects", json={
         "name": "PROJECT-QA-01",
         "type": "Strategic",

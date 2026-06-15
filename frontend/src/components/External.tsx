@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom'
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -550,7 +551,7 @@ const ExternalForm = ({ initialData, onSave, isSaving, options, teams, operators
   const statusOptions = ensureCurrentOption(getOptions('Status'), formData.status)
   const envOptions = ensureCurrentOption(getOptions('Environment'), formData.environment)
   const selectedTypeOption = types.find((type: any) => type.value === formData.type)
-  const allowedMetadataKeys = selectedTypeOption?.metadata_keys || extensionMetadataKeysByType[formData.type] || []
+  const allowedMetadataKeys = (selectedTypeOption as any)?.metadata_keys || (extensionMetadataKeysByType as any)[formData.type] || []
 
   useEffect(() => {
     if (!allowedMetadataKeys.length) return
@@ -905,6 +906,8 @@ const ExternalDetailsView = ({ entity, links }: { entity: any, links: any[] }) =
 }
 
 export default function External() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const entityIdFromUrl = searchParams.get('id')
   const queryClient = useQueryClient()
   const gridRef = useRef<any>(null)
   
@@ -938,6 +941,26 @@ export default function External() {
     queryKey: ['external-entities', { include_deleted: true }],
     queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities?include_deleted=true')).json())
   })
+
+  // Deep linking: Open modal if ID is in URL
+  useEffect(() => {
+    if (allEntities && entityIdFromUrl && !activeDetails) {
+      const entity = allEntities.find((e: any) => String(e.id) === entityIdFromUrl)
+      if (entity) setActiveDetails(entity)
+    }
+  }, [allEntities, entityIdFromUrl, activeDetails])
+
+  // Update URL when activeDetails changes
+  useEffect(() => {
+    if (activeDetails) {
+      setSearchParams({ id: String(activeDetails.id) })
+    } else {
+      if (searchParams.has('id')) {
+          setSearchParams({})
+      }
+    }
+  }, [activeDetails, setSearchParams, searchParams])
+
 
   const { data: links, isLoading: linkLoading } = useQuery({ 
     queryKey: ['external-links'], 
@@ -1521,8 +1544,20 @@ export default function External() {
                        </p>
                     </div>
                   </div>
-                  <button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-colors p-2"><X size={28}/></button>
-               </div>
+                  <div className="flex items-center gap-2">
+                     <button 
+                       onClick={() => {
+                         navigator.clipboard.writeText(window.location.href);
+                         toast.success("Direct link copied to clipboard");
+                       }} 
+                       className="text-slate-500 hover:text-blue-400 transition-colors p-2"
+                       title="Share direct link"
+                     >
+                       <Share2 size={24}/>
+                     </button>
+                     <button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-colors p-2"><X size={28}/></button>
+                  </div>
+                  </div>
                <div className="flex-1 overflow-y-auto custom-scrollbar pt-6">
                   <ExternalDetailsView entity={activeDetails} links={links || []} />
                </div>

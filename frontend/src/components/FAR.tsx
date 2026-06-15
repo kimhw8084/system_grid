@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
+import { WorkspaceEmptyState } from "./shared/OperationalWorkspacePrimitives";
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -9,7 +10,7 @@ import {
   Activity, Server, FileText, Clipboard, ArrowRight, Shield, 
   CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye,
   Target, AlertCircle, Settings, Layers, Box, Link2, ExternalLink,
-  ChevronLeft, Book, Download, Copy, Terminal, Check, HelpCircle, EyeOff, MoreVertical, Monitor, Upload
+  ChevronLeft, Book, Download, Copy, Terminal, Check, HelpCircle, EyeOff, MoreVertical, Monitor, Upload, Clock
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
@@ -722,16 +723,18 @@ export default function FAR() {
 
       <AnimatePresence>
           {selectedModeId && selectedMode && (
-            <FailureDetailView 
-              mode={selectedMode} 
-              onClose={() => setSelectedModeId(null)} 
+            <FailureDetailView
+              mode={selectedMode}
+              onClose={() => setSelectedModeId(null)}
               onUpdate={(type: string) => {
                 if (type === 'edit') {
                   setShowWizard(true);
                 } else {
                   queryClient.invalidateQueries({ queryKey: ['far', 'modes'] });
                 }
-              }} 
+              }}
+              setBkmGuidanceModal={setBkmGuidanceModal}
+              setResolutionManagerModal={setResolutionManagerModal}
             />
           )}
       </AnimatePresence>
@@ -995,7 +998,7 @@ function BkmGuidanceModal({ cause, onClose }: { cause: any, onClose: () => void 
             {(!cause.resolutions || cause.resolutions.length === 0) && (
               <div className="py-20 flex flex-col items-center justify-center opacity-20 space-y-4">
                  <Shield size={48} className="text-slate-500" />
-                 <p className="text-[12px] font-black uppercase tracking-[0.3em] text-center">No guidance protocols found</p>
+                 <WorkspaceEmptyState title="No guidance protocols found" description="No standard operating procedures are linked." />
               </div>
             )}
           </div>
@@ -1026,7 +1029,7 @@ function StatCard({ id, label, value, suffix, color, onHelp }: any) {
   )
 }
 
-function FailureDetailView({ mode, onClose, onUpdate }: { mode: any, onClose: () => void, onUpdate: (type: string) => void }) {
+function FailureDetailView({ mode, onClose, onUpdate, setBkmGuidanceModal, setResolutionManagerModal }: { mode: any, onClose: () => void, onUpdate: (type: string) => void, setBkmGuidanceModal: any, setResolutionManagerModal: any }) {
   const [activeTab, setActiveTab] = useState('causal')
   const [showAllAssets, setShowAllAssets] = useState(false)
   const queryClient = useQueryClient()
@@ -1130,7 +1133,7 @@ function FailureDetailView({ mode, onClose, onUpdate }: { mode: any, onClose: ()
 
          <div className="flex-1 overflow-hidden flex flex-col p-6">
             <AnimatePresence mode="wait">
-               {activeTab === 'causal' && <CausalTab mode={mode} onUpdate={onUpdate} />}
+               {activeTab === 'causal' && <CausalTab mode={mode} onUpdate={onUpdate} setBkmGuidanceModal={setBkmGuidanceModal} setResolutionManagerModal={setResolutionManagerModal} />}
                {activeTab === 'roadmap' && <RoadmapTab mode={mode} onUpdate={onUpdate} />}
                {activeTab === 'history' && <HistoryTab mode={mode} onUpdate={onUpdate} />}
             </AnimatePresence>
@@ -1346,7 +1349,7 @@ function FARWizard({ initialData, onComplete }: any) {
   )
 }
 
-function CausalTab({ mode, onUpdate }: any) {
+function CausalTab({ mode, onUpdate, setBkmGuidanceModal, setResolutionManagerModal }: any) {
   const [activeModal, setActiveModal] = useState<any>(null)
   const queryClient = useQueryClient()
   const deleteCauseMutation = useMutation({

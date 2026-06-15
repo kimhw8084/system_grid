@@ -1,8 +1,10 @@
-import { expect, test } from '@playwright/test'
+import { clickResilientButton } from './helpers/sysgrid';
+import { expect } from '@playwright/test';
+import { test } from './helpers/sysgrid-test';
 import { createInvestigation, resetBrowserState } from './helpers/sysgrid'
 
 test.describe('Research workflows', () => {
-  test('filters by real years and rejects blank intelligence pulses', async ({ page, request }) => {
+  test('filters by real years and rejects blank intelligence pulses', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
     const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
@@ -26,13 +28,13 @@ test.describe('Research workflows', () => {
     await expect(page.getByRole('button', { name: '2037' })).toBeVisible()
     await expect(page.getByRole('button', { name: '2038' })).toBeVisible()
 
-    await page.getByRole('button', { name: '2037' }).click()
+    await clickResilientButton(page, '2037')
     await page.getByPlaceholder('SCAN RESEARCH...').fill(research2037.title)
     await expect(page.getByText(research2037.title)).toBeVisible()
 
     await page.getByTitle('Inspect Record').first().click()
-    await page.getByRole('button', { name: 'INTELLIGENCE STREAM' }).click()
-    await page.getByRole('button', { name: /Record Intelligence/i }).click()
-    await expect(page.getByText('Intelligence pulse text is required')).toBeVisible()
+    await clickResilientButton(page, 'INTELLIGENCE STREAM')
+    await clickResilientButton(page, /Record Intelligence/i)
+    await expect(page.getByRole('paragraph').filter({ hasText: 'Intelligence pulse text is required' })).toBeVisible()
   })
 })

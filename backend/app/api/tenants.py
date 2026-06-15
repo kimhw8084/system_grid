@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy import select, update, insert, func, text, create_engine
 from typing import List, Optional
 import os
 import sys
+import subprocess
 from ..database import get_config_db, get_db, ConfigSessionLocal, get_tenant_engine, is_sqlite_url, sqlite_path_from_url
 from ..models.config import Tenant, UserTenantAccess, MasterSystemSetting
 from ..schemas.config import TenantCreate, TenantResponse, MasterSettingBase, UserTenantSelection, UserTenantResponse, TenantAttach, PreflightRequest, PreflightResponse
@@ -21,8 +22,9 @@ def path_is_within(base: str, candidate: str) -> bool:
     except ValueError:
         return False
 
-def get_storage_explorer_roots() -> list[str]:
+def get_storage_explorer_roots(extra_root: Optional[str] = None) -> list[str]:
     candidates = [
+        extra_root,
         settings.TENANT_STORAGE_ROOT,
         os.getcwd(),
         os.path.expanduser("~"),
@@ -175,9 +177,14 @@ async def update_master_setting(setting: MasterSettingBase, db: AsyncSession = D
     return result.scalar_one()
 
 @router.get("/admin/storage-explorer")
-async def browse_storage_locations(path: Optional[str] = Query(default=None), request: Request = None):
-    roots = get_storage_explorer_roots()
-    requested_path = normalize_fs_path(path) if path else normalize_fs_path(settings.TENANT_STORAGE_ROOT or os.getcwd())
+async def browse_storage_locations(path: Optional[str] = Query(default=None), db: AsyncSession = Depends(get_config_db), request: Request = None):
+    # Fetch current storage root from DB to ensure it's always considered a root
+    res = await db.execute(select(MasterSystemSetting).filter(MasterSystemSetting.key == "tenant_storage_root"))
+    db_root_setting = res.scalar_one_or_none()
+    db_root = db_root_setting.value if db_root_setting else None
+
+    roots = [normalize_fs_path(r) for r in get_storage_explorer_roots(db_root)]
+    requested_path = normalize_fs_path(path) if path else (normalize_fs_path(db_root) if db_root else normalize_fs_path(settings.TENANT_STORAGE_ROOT or os.getcwd()))
 
     if not any(path_is_within(root, requested_path) or requested_path == root for root in roots):
         raise HTTPException(status_code=400, detail="Requested path is outside the accessible explorer roots")
@@ -328,7 +335,7 @@ async def list_all_tenants(db: AsyncSession = Depends(get_config_db)):
 
 import asyncio
 
-async def run_alembic_upgrade(db_url: str):
+def run_alembic_upgrade(db_url: str):
     """Runs alembic upgrade head on a specific database file non-blockingly."""
     # Convert async url to sync for alembic
     # sqlite+aiosqlite:///path -> sqlite:///path
@@ -341,26 +348,25 @@ async def run_alembic_upgrade(db_url: str):
     
     env = os.environ.copy()
     env["SQLALCHEMY_DATABASE_URL"] = sync_url
-    
-    process = await asyncio.create_subprocess_exec(
-        sys.executable, "-m", "alembic", "upgrade", "head",
+
+    process = subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
         cwd=backend_dir,
         env=env,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE
+        capture_output=True,
+        text=True
     )
-    stdout, stderr = await process.communicate()
-    
+
     if process.returncode != 0:
-        error_msg = stderr.decode()
+        error_msg = process.stderr
         print(f"ALEMBIC ERROR: {error_msg}")
         return False, error_msg
-    return True, stdout.decode()
+    return True, process.stdout
 
 
-def ensure_tenant_runtime_schema(db_url: str) -> None:
+async def ensure_tenant_runtime_schema(db_url: str) -> None:
     """Repair and verify tenant schema pieces that the live app requires immediately."""
-    engine = create_engine(db_url.replace("sqlite+aiosqlite", "sqlite"), future=True)
+    engine = create_async_engine(db_url, future=True)
     compatibility_columns = {
         "far_failure_modes": {
             "version": "INTEGER DEFAULT 1",
@@ -402,22 +408,22 @@ def ensure_tenant_runtime_schema(db_url: str) -> None:
             )
         """,
     }
-    with engine.begin() as conn:
+    async with engine.begin() as conn:
         for table_name, ddl in required_tables.items():
-            conn.execute(text(ddl))
-            conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{table_name}_id ON {table_name} (id)"))
+            await conn.execute(text(ddl))
+            await conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{table_name}_id ON {table_name} (id)"))
 
         for table_name, columns in compatibility_columns.items():
             existing = {
                 row[1]
-                for row in conn.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
+                for row in (await conn.execute(text(f"PRAGMA table_info({table_name})"))).fetchall()
             }
             for column_name, column_ddl in columns.items():
                 if column_name not in existing:
-                    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_ddl}"))
+                    await conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_ddl} DEFAULT 1"))
 
-        conn.execute(text("UPDATE far_failure_modes SET version = 1 WHERE version IS NULL"))
-        conn.execute(text("UPDATE rca_records SET version = 1 WHERE version IS NULL"))
+        await conn.execute(text("UPDATE far_failure_modes SET version = 1 WHERE version IS NULL"))
+        await conn.execute(text("UPDATE rca_records SET version = 1 WHERE version IS NULL"))
 
 @router.post("/admin/create", response_model=TenantResponse)
 async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_config_db), request: Request = None):
@@ -461,19 +467,30 @@ async def create_tenant(tenant_in: TenantCreate, db: AsyncSession = Depends(get_
         raise HTTPException(status_code=400, detail="Database file already exists on disk. Please use a unique name.")
 
     # 3. Create file and run migrations
-    success, error = await run_alembic_upgrade(db_url)
+    success, error = run_alembic_upgrade(db_url)
     if not success:
         raise HTTPException(status_code=500, detail=f"Failed to initialize database: {error}")
-    ensure_tenant_runtime_schema(db_url)
+    await ensure_tenant_runtime_schema(db_url)
 
     # 4. Register in config.db
     new_tenant = Tenant(name=tenant_name_clean, db_url=db_url)
     db.add(new_tenant)
     await db.flush()
 
-    # 5. Auto-grant access to the creator
+    # 5. Auto-grant access to the creator and ensure they are an admin in the tenant DB
     user_id = get_current_user_id(request)
     await grant_tenant_access(db, user_id=user_id, tenant_id=new_tenant.id, role="ADMIN", make_selected=True)
+    
+    # NEW: Ensure the operator exists in the tenant's own database as an admin
+    from ..api.settings import ensure_tenant_admin_async
+    await ensure_tenant_admin_async(
+        tenant_db_url=db_url,
+        admin_user=user_id,
+        full_name=None,
+        email=None,
+        department="Administrative"
+    )
+    
     await db.commit()
 
     await db.refresh(new_tenant)
@@ -569,10 +586,10 @@ async def attach_tenant(tenant_in: TenantAttach, db: AsyncSession = Depends(get_
         raise HTTPException(status_code=400, detail="This database path is already registered under a different name")
 
     # 2. Run migrations (idempotent) to ensure it's up to date
-    success, error = await run_alembic_upgrade(db_url)
+    success, error = run_alembic_upgrade(db_url)
     if not success:
         raise HTTPException(status_code=500, detail=f"Failed to synchronize schema: {error}")
-    ensure_tenant_runtime_schema(db_url)
+    await ensure_tenant_runtime_schema(db_url)
 
     # 3. Register
     new_tenant = Tenant(name=tenant_name_clean, db_url=db_url)
@@ -582,6 +599,17 @@ async def attach_tenant(tenant_in: TenantAttach, db: AsyncSession = Depends(get_
     # 4. Grant access
     user_id = get_current_user_id(request)
     await grant_tenant_access(db, user_id=user_id, tenant_id=new_tenant.id, role="ADMIN", make_selected=True)
+    
+    # NEW: Ensure the operator exists in the tenant's own database as an admin
+    from ..api.settings import ensure_tenant_admin_async
+    await ensure_tenant_admin_async(
+        tenant_db_url=db_url,
+        admin_user=user_id,
+        full_name=None,
+        email=None,
+        department="Administrative"
+    )
+    
     await db.commit()
 
     await db.refresh(new_tenant)

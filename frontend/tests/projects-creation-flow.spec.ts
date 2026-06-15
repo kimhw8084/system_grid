@@ -1,8 +1,10 @@
-import { expect, test } from '@playwright/test'
+import { clickResilientButton } from './helpers/sysgrid';
+import { expect } from '@playwright/test';
+import { test } from './helpers/sysgrid-test';
 import { resetBrowserState, seedOperationalScenario } from './helpers/sysgrid'
 
 test.describe('Projects Creation Workflow', () => {
-  test('should create a new project with cascading multi-selects and month/year dates', async ({ page, request }) => {
+  test('should create a new project with cascading multi-selects and month/year dates', async ({ page, sysApi: request }) => {
     // 1. Seed data
     const seed = await seedOperationalScenario(request)
     const nonce = seed.stamp
@@ -23,7 +25,7 @@ test.describe('Projects Creation Workflow', () => {
     await page.goto('/projects')
     
     // 2. Start project creation
-    await page.getByRole('button', { name: 'New Vector' }).click()
+    await clickResilientButton(page, 'New Vector')
     await expect(page.getByText('Strategic Matrix Configuration')).toBeVisible()
     
     const projectName = `PW-PROJECT-${nonce}`
@@ -64,7 +66,7 @@ test.describe('Projects Creation Workflow', () => {
     await serviceCheckbox.check({ force: true })
     
     // 5. Commit Project
-    await page.getByRole('button', { name: 'Commit Strategic Vector' }).click()
+    await clickResilientButton(page, 'Commit Strategic Vector')
     
     // 6. Verify success
     await expect(page.getByText('Strategic Matrix Synchronized')).toBeVisible()

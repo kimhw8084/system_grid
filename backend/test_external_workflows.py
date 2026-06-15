@@ -1,9 +1,25 @@
 import pytest
-
+from app.api.settings import ensure_tenant_admin_async
+from app.models.config import Tenant
+from sqlalchemy import select
+from app.database import ConfigSessionLocal
 
 @pytest.mark.anyio
-async def test_external_entity_creation_and_secret_management(client):
-    team_res = await client.post("/api/v1/settings/teams", json={"name": "External Governance"})
+async def test_external_entity_creation_and_secret_management(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    tenant_id = seeded_admin_tenant["tenant_id"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(tenant_id)}
+
+    # Ensure admin operator exists in the tenant database
+    async with ConfigSessionLocal() as config_db:
+        tenant_res = await config_db.execute(select(Tenant).filter(Tenant.id == tenant_id))
+        selected_tenant_obj = tenant_res.scalar_one_or_none()
+        if not selected_tenant_obj:
+            pytest.fail(f"Seeded tenant with ID {tenant_id} not found in config DB.")
+        tenant_db_url = selected_tenant_obj.db_url
+    await ensure_tenant_admin_async(tenant_db_url=tenant_db_url, admin_user="admin_root", full_name="Admin Root", email="admin_root@test.com", department="IT")
+
+    team_res = await client.post("/api/v1/settings/teams", json={"name": "External Governance"}, headers=headers)
     assert team_res.status_code == 200, team_res.text
     team = team_res.json()
     operator_res = await client.post("/api/v1/settings/operators", json={
@@ -13,7 +29,7 @@ async def test_external_entity_creation_and_secret_management(client):
         "email": "external.ops.001@example.com",
         "department": "Operations",
         "team_id": team["id"],
-    })
+    }, headers=headers)
     assert operator_res.status_code == 200, operator_res.text
     default_operator = operator_res.json()
 
@@ -45,7 +61,7 @@ async def test_external_entity_creation_and_secret_management(client):
         "auth_method": "Token",
         "risk_rating": "Medium",
         "metadata_json": {"custom_note": "retain-me"},
-    })
+    }, headers=headers)
     assert create_res.status_code == 200, create_res.text
     entity = create_res.json()
     assert entity["name"] == "EXT-QA-01"
@@ -58,7 +74,7 @@ async def test_external_entity_creation_and_secret_management(client):
         "vault_provider": "1Password",
         "vault_path": "vault://partner/feed/readonly",
         "note": "Readonly feed access",
-    })
+    }, headers=headers)
     assert secret_res.status_code == 200, secret_res.text
 
     update_res = await client.put(f"/api/v1/intelligence/entities/{entity['id']}", json={
@@ -90,10 +106,10 @@ async def test_external_entity_creation_and_secret_management(client):
         "auth_method": "Token",
         "risk_rating": "Medium",
         "metadata_json": {"hypervisor": "", "vcpu": "", "vram": "", "os": ""},
-    })
+    }, headers=headers)
     assert update_res.status_code == 200, update_res.text
 
-    list_res = await client.get("/api/v1/intelligence/entities?include_deleted=true")
+    list_res = await client.get("/api/v1/intelligence/entities?include_deleted=true", headers=headers)
     assert list_res.status_code == 200, list_res.text
     loaded = next(item for item in list_res.json() if item["id"] == entity["id"])
     assert loaded["metadata_json"]["hypervisor"] == ""
@@ -102,8 +118,22 @@ async def test_external_entity_creation_and_secret_management(client):
 
 
 @pytest.mark.anyio
-async def test_external_archived_entity_blocks_new_links_and_secrets(client):
-    team_res = await client.post("/api/v1/settings/teams", json={"name": "External Archive Ops"})
+async def test_external_archived_entity_blocks_new_links_and_secrets(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    tenant_id = seeded_admin_tenant["tenant_id"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(tenant_id)}
+
+    # Ensure admin operator exists in the tenant database
+    async with ConfigSessionLocal() as config_db:
+        tenant_res = await config_db.execute(select(Tenant).filter(Tenant.id == tenant_id))
+        selected_tenant_obj = tenant_res.scalar_one_or_none()
+        if not selected_tenant_obj:
+            pytest.fail(f"Seeded tenant with ID {tenant_id} not found in config DB.")
+        tenant_db_url = selected_tenant_obj.db_url
+    await ensure_tenant_admin_async(tenant_db_url=tenant_db_url, admin_user="admin_root", full_name="Admin Root", email="admin_root@test.com", department="IT")
+
+    team_res = await client.post("/api/v1/settings/teams", json={"name": "External Archive Ops"}, headers=headers)
+    assert team_res.status_code == 200, team_res.text
     team = team_res.json()
     operator_res = await client.post("/api/v1/settings/operators", json={
         "external_id": "external-ops-archive-001",
@@ -112,7 +142,8 @@ async def test_external_archived_entity_blocks_new_links_and_secrets(client):
         "email": "external.archive.001@example.com",
         "department": "Operations",
         "team_id": team["id"],
-    })
+    }, headers=headers)
+    assert operator_res.status_code == 200, operator_res.text
     operator = operator_res.json()
     device_res = await client.post("/api/v1/devices", json={
         "name": "EXT-LINK-DEVICE-01",
@@ -121,7 +152,8 @@ async def test_external_archived_entity_blocks_new_links_and_secrets(client):
         "type": "Physical",
         "serial_number": "EXT-LINK-SN",
         "asset_tag": "EXT-LINK-AT",
-    })
+    }, headers=headers)
+    assert device_res.status_code == 200, device_res.text
     device = device_res.json()
 
     entity_res = await client.post("/api/v1/intelligence/entities", json={
@@ -151,11 +183,11 @@ async def test_external_archived_entity_blocks_new_links_and_secrets(client):
         "auth_method": "Token",
         "risk_rating": "Medium",
         "metadata_json": {},
-    })
+    }, headers=headers)
     assert entity_res.status_code == 200, entity_res.text
     entity = entity_res.json()
 
-    delete_res = await client.delete(f"/api/v1/intelligence/entities/{entity['id']}")
+    delete_res = await client.delete(f"/api/v1/intelligence/entities/{entity['id']}", headers=headers)
     assert delete_res.status_code == 200, delete_res.text
 
     secret_res = await client.post(f"/api/v1/intelligence/entities/{entity['id']}/secrets", json={
@@ -165,7 +197,7 @@ async def test_external_archived_entity_blocks_new_links_and_secrets(client):
         "vault_provider": "1Password",
         "vault_path": "vault://archived/entity",
         "note": "Archived entity credential",
-    })
+    }, headers=headers)
     assert secret_res.status_code == 400
     assert "archived external entity" in secret_res.json()["detail"]
 
@@ -179,14 +211,28 @@ async def test_external_archived_entity_blocks_new_links_and_secrets(client):
         "host_or_fqdn": "archive.example.com",
         "path_or_resource": "/health",
         "link_status": "Active",
-    })
+    }, headers=headers)
     assert link_res.status_code == 400
     assert "archived external entity" in link_res.json()["detail"]
 
 
 @pytest.mark.anyio
-async def test_external_links_are_enriched_and_duplicate_shape_is_blocked(client):
-    team_res = await client.post("/api/v1/settings/teams", json={"name": "External Link Ops"})
+async def test_external_links_are_enriched_and_duplicate_shape_is_blocked(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    tenant_id = seeded_admin_tenant["tenant_id"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(tenant_id)}
+
+    # Ensure admin operator exists in the tenant database
+    async with ConfigSessionLocal() as config_db:
+        tenant_res = await config_db.execute(select(Tenant).filter(Tenant.id == tenant_id))
+        selected_tenant_obj = tenant_res.scalar_one_or_none()
+        if not selected_tenant_obj:
+            pytest.fail(f"Seeded tenant with ID {tenant_id} not found in config DB.")
+        tenant_db_url = selected_tenant_obj.db_url
+    await ensure_tenant_admin_async(tenant_db_url=tenant_db_url, admin_user="admin_root", full_name="Admin Root", email="admin_root@test.com", department="IT")
+
+    team_res = await client.post("/api/v1/settings/teams", json={"name": "External Link Ops"}, headers=headers)
+    assert team_res.status_code == 200, team_res.text
     team = team_res.json()
     operator_res = await client.post("/api/v1/settings/operators", json={
         "external_id": "external-link-001",
@@ -195,7 +241,8 @@ async def test_external_links_are_enriched_and_duplicate_shape_is_blocked(client
         "email": "external.link.001@example.com",
         "department": "Operations",
         "team_id": team["id"],
-    })
+    }, headers=headers)
+    assert operator_res.status_code == 200, operator_res.text
     operator = operator_res.json()
     device_res = await client.post("/api/v1/devices", json={
         "name": "EXT-ENRICH-DEVICE-01",
@@ -204,7 +251,8 @@ async def test_external_links_are_enriched_and_duplicate_shape_is_blocked(client
         "type": "Physical",
         "serial_number": "EXT-ENRICH-SN",
         "asset_tag": "EXT-ENRICH-AT",
-    })
+    }, headers=headers)
+    assert device_res.status_code == 200, device_res.text
     device = device_res.json()
 
     entity_res = await client.post("/api/v1/intelligence/entities", json={
@@ -234,7 +282,7 @@ async def test_external_links_are_enriched_and_duplicate_shape_is_blocked(client
         "auth_method": "Token",
         "risk_rating": "Medium",
         "metadata_json": {},
-    })
+    }, headers=headers)
     entity = entity_res.json()
 
     link_payload = {
@@ -248,14 +296,14 @@ async def test_external_links_are_enriched_and_duplicate_shape_is_blocked(client
         "path_or_resource": "/status",
         "link_status": "Active",
     }
-    create_link_res = await client.post("/api/v1/intelligence/links", json=link_payload)
+    create_link_res = await client.post("/api/v1/intelligence/links", json=link_payload, headers=headers)
     assert create_link_res.status_code == 200, create_link_res.text
 
-    dup_link_res = await client.post("/api/v1/intelligence/links", json=link_payload)
+    dup_link_res = await client.post("/api/v1/intelligence/links", json=link_payload, headers=headers)
     assert dup_link_res.status_code == 409
     assert "same shape already exists" in dup_link_res.json()["detail"]
 
-    links_res = await client.get("/api/v1/intelligence/links")
+    links_res = await client.get("/api/v1/intelligence/links", headers=headers)
     assert links_res.status_code == 200, links_res.text
     links = links_res.json()
     link = next(item for item in links if item["external_entity_id"] == entity["id"])
@@ -264,8 +312,22 @@ async def test_external_links_are_enriched_and_duplicate_shape_is_blocked(client
 
 
 @pytest.mark.anyio
-async def test_external_entity_blocks_active_identity_duplicates_and_restore_conflicts(client):
-    team_res = await client.post("/api/v1/settings/teams", json={"name": "External Identity Ops"})
+async def test_external_entity_blocks_active_identity_duplicates_and_restore_conflicts(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    tenant_id = seeded_admin_tenant["tenant_id"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(tenant_id)}
+
+    # Ensure admin operator exists in the tenant database
+    async with ConfigSessionLocal() as config_db:
+        tenant_res = await config_db.execute(select(Tenant).filter(Tenant.id == tenant_id))
+        selected_tenant_obj = tenant_res.scalar_one_or_none()
+        if not selected_tenant_obj:
+            pytest.fail(f"Seeded tenant with ID {tenant_id} not found in config DB.")
+        tenant_db_url = selected_tenant_obj.db_url
+    await ensure_tenant_admin_async(tenant_db_url=tenant_db_url, admin_user="admin_root", full_name="Admin Root", email="admin_root@test.com", department="IT")
+
+    team_res = await client.post("/api/v1/settings/teams", json={"name": "External Identity Ops"}, headers=headers)
+    assert team_res.status_code == 200, team_res.text
     team = team_res.json()
     operator_res = await client.post("/api/v1/settings/operators", json={
         "external_id": "external-identity-001",
@@ -274,7 +336,8 @@ async def test_external_entity_blocks_active_identity_duplicates_and_restore_con
         "email": "external.identity.001@example.com",
         "department": "Operations",
         "team_id": team["id"],
-    })
+    }, headers=headers)
+    assert operator_res.status_code == 200, operator_res.text
     operator = operator_res.json()
 
     base_payload = {
@@ -305,20 +368,20 @@ async def test_external_entity_blocks_active_identity_duplicates_and_restore_con
         "metadata_json": {},
     }
 
-    first_res = await client.post("/api/v1/intelligence/entities", json={**base_payload, "external_key": "identity-ext-01"})
+    first_res = await client.post("/api/v1/intelligence/entities", json={**base_payload, "external_key": "identity-ext-01"}, headers=headers)
     assert first_res.status_code == 200, first_res.text
     first = first_res.json()
 
-    duplicate_res = await client.post("/api/v1/intelligence/entities", json={**base_payload, "external_key": "identity-ext-02"})
+    duplicate_res = await client.post("/api/v1/intelligence/entities", json={**base_payload, "external_key": "identity-ext-02"}, headers=headers)
     assert duplicate_res.status_code == 409
     assert "same name, type, and owner organization" in duplicate_res.json()["detail"]
 
-    archive_res = await client.delete(f"/api/v1/intelligence/entities/{first['id']}")
+    archive_res = await client.delete(f"/api/v1/intelligence/entities/{first['id']}", headers=headers)
     assert archive_res.status_code == 200, archive_res.text
 
-    replacement_res = await client.post("/api/v1/intelligence/entities", json={**base_payload, "external_key": "identity-ext-02"})
+    replacement_res = await client.post("/api/v1/intelligence/entities", json={**base_payload, "external_key": "identity-ext-02"}, headers=headers)
     assert replacement_res.status_code == 200, replacement_res.text
 
-    restore_res = await client.post(f"/api/v1/intelligence/entities/{first['id']}/restore")
+    restore_res = await client.post(f"/api/v1/intelligence/entities/{first['id']}/restore", headers=headers)
     assert restore_res.status_code == 409
     assert "same name, type, and owner organization" in restore_res.json()["detail"]

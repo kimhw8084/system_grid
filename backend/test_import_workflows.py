@@ -1,12 +1,28 @@
 import csv
 import io
-
 import pytest
+from app.api.settings import ensure_tenant_admin_async
+from app.models.config import Tenant
+from sqlalchemy import select
+from app.database import ConfigSessionLocal
 
+async def _ensure_admin(seeded_admin_tenant):
+    tenant_id = seeded_admin_tenant["tenant_id"]
+    async with ConfigSessionLocal() as config_db:
+        tenant_res = await config_db.execute(select(Tenant).filter(Tenant.id == tenant_id))
+        selected_tenant_obj = tenant_res.scalar_one_or_none()
+        if not selected_tenant_obj:
+            pytest.fail(f"Seeded tenant with ID {tenant_id} not found in config DB.")
+        tenant_db_url = selected_tenant_obj.db_url
+    await ensure_tenant_admin_async(tenant_db_url=tenant_db_url, admin_user="admin_root", full_name="Admin Root", email="admin_root@test.com", department="IT")
 
 @pytest.mark.anyio
-async def test_monitoring_import_schema_and_template(client):
-    team_res = await client.post("/api/v1/settings/teams", json={"name": "Import Template Ops"})
+async def test_monitoring_import_schema_and_template(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(seeded_admin_tenant["tenant_id"])}
+    await _ensure_admin(seeded_admin_tenant)
+
+    team_res = await client.post("/api/v1/settings/teams", json={"name": "Import Template Ops"}, headers=headers)
     assert team_res.status_code == 200, team_res.text
     device_res = await client.post("/api/v1/devices", json={
         "name": "MON-TEMPLATE-01",
@@ -15,7 +31,7 @@ async def test_monitoring_import_schema_and_template(client):
         "type": "Physical",
         "serial_number": "MON-TEMPLATE-SN",
         "asset_tag": "MON-TEMPLATE-AT",
-    })
+    }, headers=headers)
     assert device_res.status_code == 200, device_res.text
     monitor_res = await client.post("/api/v1/monitoring", json={
         "device_id": device_res.json()["id"],
@@ -25,11 +41,11 @@ async def test_monitoring_import_schema_and_template(client):
         "platform": "Zabbix",
         "severity": "Warning",
         "owner_team": "Import Template Ops",
-    })
+    }, headers=headers)
     assert monitor_res.status_code == 200, monitor_res.text
     monitor = monitor_res.json()
 
-    schema_res = await client.get("/api/v1/import/schema/monitoring_items")
+    schema_res = await client.get("/api/v1/import/schema/monitoring_items", headers=headers)
     assert schema_res.status_code == 200, schema_res.text
     schema = schema_res.json()
 
@@ -45,7 +61,7 @@ async def test_monitoring_import_schema_and_template(client):
     assert any(field["name"] == "logic" and field["supported_in_builder"] is False for field in schema["fields"])
     assert any(record["id"] == monitor["id"] for record in schema["example_records"])
 
-    template_res = await client.get(f"/api/v1/import/template/monitoring_items?columns=title,monitoring_url&mode=example&example_id={monitor['id']}")
+    template_res = await client.get(f"/api/v1/import/template/monitoring_items?columns=title,monitoring_url&mode=example&example_id={monitor['id']}", headers=headers)
     assert template_res.status_code == 200, template_res.text
     assert template_res.headers["x-sysgrid-schema-version"] == "2026-06-monitoring-v1"
     assert template_res.headers["x-sysgrid-import-profile"] == "monitoring_items"
@@ -61,8 +77,12 @@ async def test_monitoring_import_schema_and_template(client):
 
 
 @pytest.mark.anyio
-async def test_monitoring_import_preview_rows_and_execute(client):
-    await client.post("/api/v1/settings/teams", json={"name": "Import Ops"})
+async def test_monitoring_import_preview_rows_and_execute(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(seeded_admin_tenant["tenant_id"])}
+    await _ensure_admin(seeded_admin_tenant)
+
+    await client.post("/api/v1/settings/teams", json={"name": "Import Ops"}, headers=headers)
 
     device_res = await client.post("/api/v1/devices", json={
         "name": "MON-IMPORT-01",
@@ -71,7 +91,7 @@ async def test_monitoring_import_preview_rows_and_execute(client):
         "type": "Physical",
         "serial_number": "MON-IMPORT-SN",
         "asset_tag": "MON-IMPORT-AT",
-    })
+    }, headers=headers)
     assert device_res.status_code == 200, device_res.text
 
     knowledge_res = await client.post("/api/v1/knowledge", json={
@@ -79,7 +99,7 @@ async def test_monitoring_import_preview_rows_and_execute(client):
         "category": "Runbook",
         "content": "Recover the monitor",
         "status": "Draft",
-    })
+    }, headers=headers)
     assert knowledge_res.status_code == 200, knowledge_res.text
 
     preview_res = await client.post(
@@ -107,6 +127,7 @@ async def test_monitoring_import_preview_rows_and_execute(client):
                 },
             ]
         },
+        headers=headers,
     )
     assert preview_res.status_code == 200, preview_res.text
     preview = preview_res.json()
@@ -119,7 +140,7 @@ async def test_monitoring_import_preview_rows_and_execute(client):
 
     execute_res = await client.post(
         "/api/v1/import/execute?table_name=monitoring_items",
-        headers={"X-User-Id": "import.tester"},
+        headers={**headers, "X-User-Id": "admin_root"},
         json={
             "rows": [
                 {
@@ -139,7 +160,7 @@ async def test_monitoring_import_preview_rows_and_execute(client):
     assert execute_res.status_code == 200, execute_res.text
     assert execute_res.json() == {"status": "success", "count": 1}
 
-    list_res = await client.get("/api/v1/monitoring")
+    list_res = await client.get("/api/v1/monitoring", headers=headers)
     assert list_res.status_code == 200, list_res.text
     monitors = list_res.json()
     assert len(monitors) == 1
@@ -150,8 +171,12 @@ async def test_monitoring_import_preview_rows_and_execute(client):
 
 
 @pytest.mark.anyio
-async def test_monitoring_snapshot_export_uses_round_trip_import_contract(client):
-    await client.post("/api/v1/settings/teams", json={"name": "Snapshot Ops"})
+async def test_monitoring_snapshot_export_uses_round_trip_import_contract(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(seeded_admin_tenant["tenant_id"])}
+    await _ensure_admin(seeded_admin_tenant)
+
+    await client.post("/api/v1/settings/teams", json={"name": "Snapshot Ops"}, headers=headers)
     device_res = await client.post("/api/v1/devices", json={
         "name": "MON-SNAPSHOT-01",
         "system": "MON-SNAPSHOT",
@@ -159,14 +184,14 @@ async def test_monitoring_snapshot_export_uses_round_trip_import_contract(client
         "type": "Physical",
         "serial_number": "MON-SNAPSHOT-SN",
         "asset_tag": "MON-SNAPSHOT-AT",
-    })
+    }, headers=headers)
     device = device_res.json()
     knowledge_res = await client.post("/api/v1/knowledge", json={
         "title": "Snapshot Recovery",
         "category": "Runbook",
         "content": "Recover snapshot monitor",
         "status": "Draft",
-    })
+    }, headers=headers)
     knowledge = knowledge_res.json()
 
     create_res = await client.post("/api/v1/monitoring", json={
@@ -182,10 +207,10 @@ async def test_monitoring_snapshot_export_uses_round_trip_import_contract(client
         "recovery_docs": [knowledge["id"]],
         "spec": "Watch disk saturation",
         "logic": "disk_used > 90",
-    })
+    }, headers=headers)
     assert create_res.status_code == 200, create_res.text
 
-    snapshot_res = await client.get("/api/v1/import/snapshot/monitoring_items")
+    snapshot_res = await client.get("/api/v1/import/snapshot/monitoring_items", headers=headers)
     assert snapshot_res.status_code == 200, snapshot_res.text
     assert snapshot_res.headers["x-sysgrid-schema-version"] == "2026-06-monitoring-v1"
     assert snapshot_res.headers["x-sysgrid-import-profile"] == "monitoring_items"
@@ -203,8 +228,12 @@ async def test_monitoring_snapshot_export_uses_round_trip_import_contract(client
 
 
 @pytest.mark.anyio
-async def test_monitoring_import_preview_file_accepts_csv_upload(client):
-    await client.post("/api/v1/settings/teams", json={"name": "File Import Ops"})
+async def test_monitoring_import_preview_file_accepts_csv_upload(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(seeded_admin_tenant["tenant_id"])}
+    await _ensure_admin(seeded_admin_tenant)
+
+    await client.post("/api/v1/settings/teams", json={"name": "File Import Ops"}, headers=headers)
     await client.post("/api/v1/devices", json={
         "name": "MON-FILE-01",
         "system": "MON-FILE",
@@ -212,7 +241,7 @@ async def test_monitoring_import_preview_file_accepts_csv_upload(client):
         "type": "Physical",
         "serial_number": "MON-FILE-SN",
         "asset_tag": "MON-FILE-AT",
-    })
+    }, headers=headers)
 
     csv_body = "\n".join([
         "device_name,category,status,title,platform,owner_team",
@@ -222,6 +251,7 @@ async def test_monitoring_import_preview_file_accepts_csv_upload(client):
         "/api/v1/import/preview-file",
         files={"file": ("monitoring.csv", csv_body.encode("utf-8"), "text/csv")},
         data={"table_name": "monitoring_items"},
+        headers=headers,
     )
 
     assert preview_res.status_code == 200, preview_res.text
@@ -232,8 +262,12 @@ async def test_monitoring_import_preview_file_accepts_csv_upload(client):
 
 
 @pytest.mark.anyio
-async def test_monitoring_import_rejects_duplicate_rows_in_same_batch(client):
-    await client.post("/api/v1/settings/teams", json={"name": "Dup Import Ops"})
+async def test_monitoring_import_rejects_duplicate_rows_in_same_batch(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(seeded_admin_tenant["tenant_id"])}
+    await _ensure_admin(seeded_admin_tenant)
+
+    await client.post("/api/v1/settings/teams", json={"name": "Dup Import Ops"}, headers=headers)
     await client.post("/api/v1/devices", json={
         "name": "MON-DUP-IMPORT-01",
         "system": "MON-DUP-IMPORT",
@@ -241,7 +275,7 @@ async def test_monitoring_import_rejects_duplicate_rows_in_same_batch(client):
         "type": "Physical",
         "serial_number": "MON-DUP-IMPORT-SN",
         "asset_tag": "MON-DUP-IMPORT-AT",
-    })
+    }, headers=headers)
 
     preview_res = await client.post(
         "/api/v1/import/preview-rows?table_name=monitoring_items",
@@ -265,6 +299,7 @@ async def test_monitoring_import_rejects_duplicate_rows_in_same_batch(client):
                 },
             ]
         },
+        headers=headers,
     )
     assert preview_res.status_code == 200, preview_res.text
     preview = preview_res.json()

@@ -1,10 +1,13 @@
 import React, { useMemo, useState, useEffect } from 'react'
+import { AssetDetailsView } from './assets/AssetDetailsView'
+import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
+import { WorkspaceEmptyState } from "./shared/OperationalWorkspacePrimitives";
 import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import ForceGraph2D from 'react-force-graph-2d'
-import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Clipboard, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Network, Server, ExternalLink, Share2, ZoomIn, ZoomOut, Maximize2, Minimize2, Shield, Zap, Save, Upload, RefreshCw, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Clipboard, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Network, Server, ExternalLink, Share2, ZoomIn, ZoomOut, Maximize2, Minimize2, Shield, Zap, Save, Upload, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, Book } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
@@ -809,6 +812,7 @@ const ConnectionMap = ({ deviceId, type, devices, onNodeClick }: { deviceId: num
 
 const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onViewServiceDetails, onEditService, devices, onViewAssetDetails }: any) => {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [filter, setFilter] = useState({ name: '', system: '', type: '', status: '', env: '' })
   
   const filteredAssets = useMemo(() => {
@@ -896,7 +900,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             </button>
           ))}
           {!filteredAssets.length && (
-            <div className="py-20 text-center text-slate-600 font-bold uppercase tracking-widest">No matching assets</div>
+            <WorkspaceEmptyState title="No matching assets" description="Adjust your filters or add new assets to the matrix." />
           )}
         </div>
       </div>
@@ -1419,12 +1423,31 @@ export default function Assets() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [showImportModal, setShowImportModal] = useState(false)
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const gridRef = React.useRef<any>(null)
   
   const idParam = searchParams.get('id')
   const searchParam = searchParams.get('search')
   const statusParam = searchParams.get('status')
+
+  // --- Synchronization Hooks ---
+  useEffect(() => {
+    if (allEntities && idParam && !activeDetails) {
+      const entity = allEntities.find((e: any) => String(e.id) === idParam)
+      if (entity) setActiveDetails(entity)
+    }
+  }, [allEntities, idParam, activeDetails])
+
+  useEffect(() => {
+    if (activeDetails) {
+      setSearchParams({ id: String(activeDetails.id) })
+    } else {
+      if (searchParams.has('id')) {
+          setSearchParams({})
+      }
+    }
+  }, [activeDetails, setSearchParams, searchParams])
+
   
   // --- STYLE LABORATORY STATE ---
   const [fontSize, setFontSize] = useState(11)
@@ -1448,8 +1471,12 @@ export default function Assets() {
   const [isBulkEnvOpen, setIsBulkEnvOpen] = useState(false)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
 
-  // Human Discovery State
   const [quickLookId, setQuickLookId] = useState<number | null>(null)
+
+  const { data: allEntities, isLoading: isEntitiesLoading } = useQuery({
+    queryKey: ['external-entities', { include_deleted: true }],
+    queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities?include_deleted=true')).json())
+  })
 
   // Shared Service Modal States (Moved from AssetDetailsView to top-level for screen-wide focus)
   const [activeServiceDetails, setActiveServiceDetails] = useState<any>(null)
@@ -2300,7 +2327,12 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
         size="workspace"
         isMaximized={isMaximized}
         onMaximizeToggle={() => setIsMaximized(!isMaximized)}
-        title={activeDetails?.name || 'Asset Details'}
+        title={
+          <div className="flex items-center gap-3">
+             {activeDetails?.name || 'Asset Details'}
+             <WorkspaceShareHeader id={String(activeDetails?.id)} title={activeDetails?.name || 'Asset'} />
+          </div>
+        }
         subtitle={`${activeDetails?.system} · ${activeDetails?.type} · ${activeDetails?.primary_ip || 'No IP'}`}
         icon={<Eye size={20}/>}
         footerRight={
@@ -2584,7 +2616,7 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
                 </tr>
               )
             })}
-            {!connections?.length && <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-600 font-bold uppercase ">No active network links found in fabric</td></tr>}
+            {!connections?.length && <tr><td colSpan={8}><WorkspaceEmptyState compact title="No active network links found in fabric" /></td></tr>}
           </tbody>
         </table>
       </div>
@@ -3116,297 +3148,6 @@ const MonitoringTab = ({ deviceId }: { deviceId: number }) => {
   )
 }
 
-const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService, onEditLink, onViewLink }: { device: any, options: any, onViewServiceDetails: (s:any)=>void, onEditService: (s:any)=>void, onEditLink: (l:any)=>void, onViewLink: (l:any)=>void }) => {
-    const navigate = useNavigate()
-    const [tab, setTab] = useState('hardware')
-    const queryClient = useQueryClient()
-
-    // --- FETCH RELATED CONTEXT ---
-    const { data: farModes } = useQuery({
-      queryKey: ['far-modes-system', device.system],
-      queryFn: async () => (await (await apiFetch(`/api/v1/far/modes?system=${device.system}`)).json()),
-      enabled: !!device.system
-    })
-
-    const { data: hostedServices } = useQuery({
-      queryKey: ['logical-services', 'asset-workspace', device.id],
-      queryFn: async () => (await (await apiFetch(`/api/v1/logical-services?device_id=${device.id}`)).json()),
-      enabled: !!device.id
-    })
-
-    const { data: monitoringItems } = useQuery({
-      queryKey: ['monitoring-items', 'asset-workspace', device.id],
-      queryFn: async () => (await apiFetch(`/api/v1/monitoring?device_id=${device.id}`)).json(),
-      enabled: !!device.id
-    })
-
-    const { data: deviceConnections } = useQuery({
-      queryKey: ['asset-connections', 'workspace', device.id],
-      queryFn: async () => (await (await apiFetch(`/api/v1/networks/connections?device_id=${device.id}`)).json()),
-      enabled: !!device.id
-    })
-
-    const { data: relatedKnowledge } = useQuery({
-      queryKey: ['asset-knowledge', device.id],
-      queryFn: async () => (await apiFetch(`/api/v1/knowledge?device_id=${device.id}`)).json(),
-      enabled: !!device.id
-    })
-
-    const primaryMonitoringId = Array.isArray(monitoringItems) && monitoringItems[0]?.id ? monitoringItems[0].id : null
-    const { data: suggestedKnowledge } = useQuery({
-      queryKey: ['asset-knowledge-suggestions', device.id, primaryMonitoringId],
-      queryFn: async () => {
-        const params = new URLSearchParams()
-        params.append('device_id', String(device.id))
-        if (primaryMonitoringId) params.append('monitoring_id', String(primaryMonitoringId))
-        return (await apiFetch(`/api/v1/knowledge?${params.toString()}`)).json()
-      },
-      enabled: !!device.id
-    })
-
-    const { data: maintenanceWindows } = useQuery({
-      queryKey: ['asset-maintenance', device.id],
-      queryFn: async () => (await apiFetch(`/api/v1/maintenance?device_id=${device.id}`)).json(),
-      enabled: !!device.id
-    })
-
-    const { data: recentAuditLogs } = useQuery({
-      queryKey: ['asset-audit', device.id],
-      queryFn: async () => (await apiFetch(`/api/v1/audit?target_table=devices&target_id=${device.id}`)).json(),
-      enabled: !!device.id
-    })
-
-    const consoleUrl = getAssetConsoleUrl(device)
-    const monitoringCount = Array.isArray(monitoringItems) ? monitoringItems.length : 0
-    const serviceCount = Array.isArray(hostedServices) ? hostedServices.length : 0
-    const farCount = Array.isArray(farModes) ? farModes.length : 0
-    const connectionCount = Array.isArray(deviceConnections) ? deviceConnections.length : 0
-    const runbookCount = Array.isArray(relatedKnowledge) ? relatedKnowledge.length : 0
-    const maintenanceCount = Array.isArray(maintenanceWindows) ? maintenanceWindows.length : 0
-
-    const mutation = useMutation({
-        mutationFn: async (data: any) => {
-            const res = await apiFetch(`/api/v1/devices/${device.id}`, {
-                method: 'PUT', body: JSON.stringify(data)
-            })
-            if (!res.ok) throw new Error(await res.text())
-            return res.json()
-        },
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['devices'] }); queryClient.invalidateQueries({ queryKey: ['racks-all'] }); toast.success('Asset synchronized') },
-        onError: (e: any) => toast.error(e.message || 'Failed to update asset')
-    })
-
-    return (
-        <div className="flex gap-6 items-start">
-            {/* MAIN CONTENT AREA */}
-            <div className="flex-1 space-y-6">
-                <div className="rounded-lg border border-blue-500/20 bg-gradient-to-r from-blue-600/10 to-transparent p-5">
-                    <div className="flex items-start justify-between gap-6">
-                        <div className="flex items-center space-x-6">
-                           <div className="bg-blue-600 p-2.5 rounded-lg text-white shadow-xl shadow-blue-500/20 ring-4 ring-blue-500/10 shrink-0">
-                              <Box size={32} />
-                           </div>
-                           <div className="grid grid-cols-3 gap-6">
-                               <div className="flex flex-col">
-                                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Operational State</span>
-                                  <span className={`px-3 py-0.5 rounded-lg text-[10px] font-bold uppercase border w-fit ${
-                                    device.status === 'Active' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' :
-                                    device.status === 'Maintenance' ? 'text-amber-400 border-amber-500/20 bg-amber-500/5' :
-                                    'text-rose-400 border-rose-500/20 bg-rose-500/5'
-                                  }`}>{device.status}</span>
-                               </div>
-                               <div className="flex flex-col">
-                                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Network IP</span>
-                                  <span className="text-lg font-mono text-blue-400 font-bold">{device.primary_ip || '---.---.---.---'}</span>
-                               </div>
-                               <div className="flex flex-col">
-                                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Management IP</span>
-                                  <span className="text-lg font-mono text-indigo-400 font-bold">{device.management_ip || '---.---.---.---'}</span>
-                               </div>
-                           </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-3">
-                            {[
-                              { label: 'Services', value: serviceCount, tone: 'text-blue-400' },
-                              { label: 'Monitors', value: monitoringCount, tone: 'text-emerald-400' },
-                              { label: 'FAR Risks', value: farCount, tone: 'text-rose-400' }
-                            ].map((item) => (
-                              <div key={item.label} className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-center min-w-[70px]">
-                                  <p className="text-[7px] font-black uppercase tracking-[0.2em] text-slate-500">{item.label}</p>
-                                  <p className={`mt-0.5 text-lg font-black tabular-nums ${item.tone}`}>{item.value}</p>
-                              </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="mt-4 rounded-lg border border-amber-500/15 bg-amber-500/[0.05] p-4">
-                        <div className="flex items-center justify-between gap-4">
-                            <div>
-                                <p className="text-[9px] font-black uppercase tracking-[0.24em] text-amber-300">Suggested Runbooks Now</p>
-                                <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Procedures matched to this asset and active monitoring context.</p>
-                            </div>
-                            <button
-                              onClick={() => navigate(`/knowledge?device_id=${device.id}${primaryMonitoringId ? `&monitoring_id=${primaryMonitoringId}` : ''}&mode=incident`)}
-                              className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-amber-300 transition-all hover:bg-amber-500/20"
-                            >
-                              Open Knowledge
-                            </button>
-                        </div>
-                        <div className="mt-3 grid grid-cols-2 gap-3">
-                            {Array.isArray(suggestedKnowledge) && suggestedKnowledge.slice(0, 2).map((entry: any) => (
-                              <button key={entry.id} onClick={() => navigate(`/knowledge?id=${entry.id}`)} className="rounded-lg border border-white/5 bg-black/20 px-3 py-3 text-left hover:bg-white/[0.06] transition-all">
-                                <p className="text-[10px] font-black uppercase tracking-tight text-white truncate">{entry.title}</p>
-                                <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500">
-                                  {entry.metadata_json?.entry_type || entry.category} // {entry.metadata_json?.verification?.state || entry.status}
-                                </p>
-                              </button>
-                            ))}
-                            {!suggestedKnowledge?.length && <p className="col-span-2 text-[10px] font-bold uppercase text-slate-600 italic">No suggested runbooks identified</p>}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex space-x-1 bg-black/40 p-1 rounded-lg w-fit">
-                            {['hardware', 'secrets', 'relations', 'services', 'network', 'security', 'monitoring', 'metadata'].map(t => (
-                                <button key={t} onClick={() => setTab(t)} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${tab === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
-                                    {t}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="glass-panel border-white/5 rounded-lg overflow-hidden min-h-[400px]">
-                        {tab === 'hardware' && <HWTab deviceId={device.id} />}
-                        {tab === 'secrets' && <SecretsTab deviceId={device.id} />}
-                        {tab === 'monitoring' && <MonitoringTab deviceId={device.id} />}
-                        {tab === 'services' && (
-                            <AssetServicesTable 
-                              deviceId={device.id} 
-                              onViewDetails={onViewServiceDetails} 
-                              onEdit={onEditService} 
-                            />
-                        )}
-                        {tab === 'network' && <NetworkingTab deviceId={device.id} onEditLink={onEditLink} onViewLink={onViewLink} />}
-                        {tab === 'relations' && <RelationshipsTab deviceId={device.id} />}
-                        {tab === 'security' && <SecurityTab device={device} />}
-                        {tab === 'metadata' && (
-                           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 p-2 h-full flex flex-col">
-                               <MetadataViewer data={device.metadata_json} />
-                           </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* SIDEBAR JUMP & META COLUMN */}
-            <div className="w-80 shrink-0 space-y-6 sticky top-0">
-                {/* PRIMARY JUMP ACTIONS */}
-                <div className="glass-panel p-5 rounded-lg border-white/5 bg-white/5 space-y-3">
-                   <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500 mb-2">Jump Actions</p>
-                   <div className="grid grid-cols-2 gap-2">
-                        <button
-                          disabled={!consoleUrl}
-                          onClick={() => consoleUrl && window.open(consoleUrl, '_blank')}
-                          className="flex flex-col items-center justify-center p-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] transition-all disabled:opacity-30 group"
-                        >
-                          <Terminal size={16} className="text-slate-500 group-hover:text-white mb-2" />
-                          <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Console</span>
-                        </button>
-                        <button
-                          onClick={() => navigate(`/logs?target_table=devices&target_id=${device.id}`)}
-                          className="flex flex-col items-center justify-center p-3 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] transition-all group"
-                        >
-                          <Activity size={16} className="text-slate-500 group-hover:text-blue-400 mb-2" />
-                          <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Audit</span>
-                        </button>
-                        <button
-                          disabled={!farModes?.[0]?.id}
-                          onClick={() => farModes?.[0]?.id && navigate(`/far?id=${farModes[0].id}`)}
-                          className="flex flex-col items-center justify-center p-3 rounded-lg border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 transition-all group disabled:opacity-30"
-                        >
-                          <AlertTriangle size={16} className="text-rose-500 mb-2" />
-                          <span className="text-[8px] font-black uppercase tracking-widest text-rose-400">FAR Risks</span>
-                        </button>
-                        <button 
-                          onClick={() => mutation.mutate(device)}
-                          className="flex flex-col items-center justify-center p-3 rounded-lg border border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20 transition-all group"
-                        >
-                          <RefreshCw size={16} className="text-blue-400 mb-2" />
-                          <span className="text-[8px] font-black uppercase tracking-widest text-blue-400">Sync</span>
-                        </button>
-                   </div>
-                </div>
-
-                {/* INCIDENT FLOW */}
-                <div className="rounded-lg border border-white/10 bg-black/40 p-5 space-y-4 shadow-xl">
-                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-emerald-400 flex items-center justify-between">
-                       <span>Incident Flow</span>
-                       <Activity size={12} />
-                    </p>
-                    <div className="space-y-2">
-                        {Array.isArray(monitoringItems) && monitoringItems.slice(0, 3).map((item: any) => (
-                          <button key={item.id} onClick={() => navigate(`/monitoring?id=${item.id}`)} className="w-full rounded-lg border border-white/5 bg-white/[0.03] px-3 py-3 text-left hover:bg-white/[0.06] transition-all group">
-                            <p className="text-[10px] font-bold uppercase text-slate-200 group-hover:text-emerald-400">{item.title}</p>
-                            <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500">{item.severity} // {item.status}</p>
-                          </button>
-                        ))}
-                        {!monitoringCount && <p className="text-[10px] font-bold uppercase text-slate-600 italic">No linked monitors</p>}
-                    </div>
-                </div>
-
-                {/* RUNBOOKS */}
-                <div className="rounded-lg border border-white/10 bg-black/40 p-5 space-y-4 shadow-xl">
-                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-amber-400 flex items-center justify-between">
-                       <span>Runbooks & Knowledge</span>
-                       <Book size={12} />
-                    </p>
-                    <div className="space-y-2">
-                        {Array.isArray(relatedKnowledge) && relatedKnowledge.slice(0, 3).map((entry: any) => (
-                          <button key={entry.id} onClick={() => navigate(`/knowledge?id=${entry.id}`)} className="w-full rounded-lg border border-white/5 bg-white/[0.03] px-3 py-3 text-left hover:bg-white/[0.06] transition-all group">
-                            <p className="text-[10px] font-bold uppercase text-slate-200 group-hover:text-amber-400">{entry.title}</p>
-                            <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500">{entry.category} // {entry.status}</p>
-                          </button>
-                        ))}
-                        {!runbookCount && <p className="text-[10px] font-bold uppercase text-slate-600 italic">No linked knowledge</p>}
-                    </div>
-                </div>
-
-                {/* CHANGE & CARE */}
-                <div className="rounded-lg border border-white/10 bg-black/40 p-5 space-y-4 shadow-xl">
-                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-fuchsia-400 flex items-center justify-between">
-                       <span>Change & Maintenance</span>
-                       <Settings size={12} />
-                    </p>
-                    <div className="space-y-2">
-                        {Array.isArray(maintenanceWindows) && maintenanceWindows.slice(0, 2).map((window: any) => (
-                          <div key={window.id} className="rounded-lg border border-white/5 bg-white/[0.03] px-3 py-3">
-                            <p className="text-[10px] font-bold uppercase text-slate-200">{window.title}</p>
-                            <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500">
-                              {window.status} // {window.start_time ? new Date(window.start_time).toLocaleDateString() : 'No date'}
-                            </p>
-                          </div>
-                        ))}
-                        {Array.isArray(recentAuditLogs) && recentAuditLogs.slice(0, 2).map((log: any) => (
-                          <div key={log.id} className="rounded-lg border border-white/5 bg-white/[0.03] px-3 py-3">
-                            <p className="text-[10px] font-bold uppercase text-slate-200">{log.action} // {log.user_id || 'system'}</p>
-                            <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500 truncate">{log.description || 'No description'}</p>
-                          </div>
-                        ))}
-                        {!maintenanceCount && !(recentAuditLogs?.length > 0) && <p className="text-[10px] font-bold uppercase text-slate-600 italic">No recent care events</p>}
-                    </div>
-                    <button 
-                      onClick={() => navigate(`/logs?target_table=devices&target_id=${device.id}`)}
-                      className="w-full py-2 bg-white/5 border border-white/10 text-[8px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-all rounded-lg"
-                    >
-                       View Full Audit Trail
-                    </button>
-                </div>
-            </div>
-        </div>
-    )
-}
 
 const HWTab = ({ deviceId }: { deviceId: number }) => {
   const queryClient = useQueryClient()
@@ -3530,7 +3271,7 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
               </td>
             </tr>
           ))}
-          {!hardware?.length && <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-600 font-bold uppercase ">No hardware mappings found</td></tr>}
+          {!hardware?.length && <tr><td colSpan={8}><WorkspaceEmptyState compact title="No hardware mappings found" /></td></tr>}
         </tbody>
       </table>
       <ConfirmationModal

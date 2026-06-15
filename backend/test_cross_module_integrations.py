@@ -1,9 +1,25 @@
 import pytest
 from httpx import AsyncClient
-
+from app.api.settings import ensure_tenant_admin_async
+from app.models.config import Tenant
+from sqlalchemy import select
+from app.database import ConfigSessionLocal
 
 @pytest.mark.anyio
-async def test_cross_module_asset_context_flows(client: AsyncClient):
+async def test_cross_module_asset_context_flows(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    tenant_id = seeded_admin_tenant["tenant_id"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(tenant_id)}
+
+    # Ensure admin operator exists in the tenant database
+    async with ConfigSessionLocal() as config_db:
+        tenant_res = await config_db.execute(select(Tenant).filter(Tenant.id == tenant_id))
+        selected_tenant_obj = tenant_res.scalar_one_or_none()
+        if not selected_tenant_obj:
+            pytest.fail(f"Seeded tenant with ID {tenant_id} not found in config DB.")
+        tenant_db_url = selected_tenant_obj.db_url
+    await ensure_tenant_admin_async(tenant_db_url=tenant_db_url, admin_user="admin_root", full_name="Admin Root", email="admin_root@test.com", department="IT")
+
     device_res = await client.post("/api/v1/devices", json={
         "name": "CTX-SRV-01",
         "system": "CTX-GRID",
@@ -16,7 +32,7 @@ async def test_cross_module_asset_context_flows(client: AsyncClient):
         "business_unit": "Operations",
         "primary_ip": "10.10.10.10",
         "management_ip": "10.10.10.11"
-    })
+    }, headers=headers)
     assert device_res.status_code == 200, device_res.text
     device = device_res.json()
 
@@ -28,7 +44,7 @@ async def test_cross_module_asset_context_flows(client: AsyncClient):
         "environment": "Production",
         "device_id": device["id"],
         "purpose": "Cross-module verification"
-    })
+    }, headers=headers)
     assert service_res.status_code == 200, service_res.text
     service = service_res.json()
 
@@ -37,12 +53,12 @@ async def test_cross_module_asset_context_flows(client: AsyncClient):
         "title": "CTX-RUNBOOK-01",
         "content": "Recovery sequence",
         "linked_device_ids": [device["id"]]
-    })
+    }, headers=headers)
     assert knowledge_res.status_code == 200, knowledge_res.text
     knowledge = knowledge_res.json()
 
     # Create a team to satisfy monitoring ownership requirement
-    await client.post("/api/v1/settings/teams", json={"name": "Infrastructure"})
+    await client.post("/api/v1/settings/teams", json={"name": "Infrastructure"}, headers=headers)
     
     monitoring_res = await client.post("/api/v1/monitoring", json={
         "device_id": device["id"],
@@ -56,7 +72,7 @@ async def test_cross_module_asset_context_flows(client: AsyncClient):
         "severity": "Critical",
         "recovery_docs": [knowledge["id"]],
         "owner_team": "Infrastructure"
-    })
+    }, headers=headers)
     assert monitoring_res.status_code == 200, monitoring_res.text
     monitoring = monitoring_res.json()
 
@@ -68,7 +84,7 @@ async def test_cross_module_asset_context_flows(client: AsyncClient):
         "ticket_number": "CTX-CHG-01",
         "coordinator": "QA",
         "status": "Scheduled"
-    })
+    }, headers=headers)
     assert maintenance_res.status_code == 200, maintenance_res.text
 
     far_res = await client.post("/api/v1/far/modes", json={
@@ -79,30 +95,42 @@ async def test_cross_module_asset_context_flows(client: AsyncClient):
         "occurrence": 4,
         "detection": 3,
         "affected_assets": [device["id"]]
-    })
+    }, headers=headers)
     assert far_res.status_code == 200, far_res.text
     far = far_res.json()
     assert far["affected_assets"][0]["id"] == device["id"]
 
-    knowledge_query = await client.get(f"/api/v1/knowledge?device_id={device['id']}")
+    knowledge_query = await client.get(f"/api/v1/knowledge?device_id={device['id']}", headers=headers)
     assert knowledge_query.status_code == 200
     assert any(entry["id"] == knowledge["id"] for entry in knowledge_query.json())
 
-    maintenance_query = await client.get(f"/api/v1/maintenance?device_id={device['id']}")
+    maintenance_query = await client.get(f"/api/v1/maintenance?device_id={device['id']}", headers=headers)
     assert maintenance_query.status_code == 200
     assert any(window["device_name"] == device["name"] for window in maintenance_query.json())
 
-    audit_query = await client.get(f"/api/v1/audit?target_table=logical_services&target_id={service['id']}")
+    audit_query = await client.get(f"/api/v1/audit?target_table=logical_services&target_id={service['id']}", headers=headers)
     assert audit_query.status_code == 200
     assert any(log["target_id"] == str(service["id"]) for log in audit_query.json())
 
-    monitoring_query = await client.get("/api/v1/monitoring")
+    monitoring_query = await client.get("/api/v1/monitoring", headers=headers)
     assert monitoring_query.status_code == 200
     assert any(item["id"] == monitoring["id"] and item["device_name"] == device["name"] for item in monitoring_query.json())
 
 
-@pytest.mark.anyio
-async def test_dashboard_search_returns_new_cross_module_entities(client: AsyncClient):
+async def test_dashboard_search_returns_new_cross_module_entities(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    tenant_id = seeded_admin_tenant["tenant_id"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(tenant_id)}
+
+    # Ensure admin operator exists in the tenant database
+    async with ConfigSessionLocal() as config_db:
+        tenant_res = await config_db.execute(select(Tenant).filter(Tenant.id == tenant_id))
+        selected_tenant_obj = tenant_res.scalar_one_or_none()
+        if not selected_tenant_obj:
+            pytest.fail(f"Seeded tenant with ID {tenant_id} not found in config DB.")
+        tenant_db_url = selected_tenant_obj.db_url
+    await ensure_tenant_admin_async(tenant_db_url=tenant_db_url, admin_user="admin_root", full_name="Admin Root", email="admin_root@test.com", department="IT")
+
     device_res = await client.post("/api/v1/devices", json={
         "name": "SEARCH-SRV-01",
         "system": "SEARCH-GRID",
@@ -110,7 +138,7 @@ async def test_dashboard_search_returns_new_cross_module_entities(client: AsyncC
         "type": "Physical",
         "serial_number": "SEARCH-SN-01",
         "asset_tag": "SEARCH-AT-01"
-    })
+    }, headers=headers)
     assert device_res.status_code == 200
     device = device_res.json()
 
@@ -121,18 +149,18 @@ async def test_dashboard_search_returns_new_cross_module_entities(client: AsyncC
         "environment": "Production",
         "device_id": device["id"],
         "purpose": "Search coverage"
-    })
+    }, headers=headers)
     assert service_res.status_code == 200
 
     knowledge_res = await client.post("/api/v1/knowledge", json={
         "category": "BKM",
         "title": "SEARCH-RUNBOOK-01",
         "content": "Searchable knowledge"
-    })
+    }, headers=headers)
     assert knowledge_res.status_code == 200
 
     # Create a team to satisfy monitoring ownership requirement
-    await client.post("/api/v1/settings/teams", json={"name": "Infrastructure"})
+    await client.post("/api/v1/settings/teams", json={"name": "Infrastructure"}, headers=headers)
 
     monitoring_res = await client.post("/api/v1/monitoring", json={
         "device_id": device["id"],
@@ -143,7 +171,7 @@ async def test_dashboard_search_returns_new_cross_module_entities(client: AsyncC
         "purpose": "Search coverage",
         "notification_method": "Email",
         "owner_team": "Infrastructure"
-    })
+    }, headers=headers)
     assert monitoring_res.status_code == 200
 
     far_res = await client.post("/api/v1/far/modes", json={
@@ -154,10 +182,10 @@ async def test_dashboard_search_returns_new_cross_module_entities(client: AsyncC
         "occurrence": 3,
         "detection": 2,
         "affected_assets": [device["id"]]
-    })
+    }, headers=headers)
     assert far_res.status_code == 200
 
-    search_res = await client.get("/api/v1/dashboard/search?q=SEARCH-")
+    search_res = await client.get("/api/v1/dashboard/search?q=SEARCH-", headers=headers)
     assert search_res.status_code == 200, search_res.text
     results = search_res.json()["results"]
 

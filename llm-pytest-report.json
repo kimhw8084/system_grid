@@ -1,0 +1,40 @@
+{
+  "failed_count": 5,
+  "failures": [
+    {
+      "test": "backend/test_tenant_isolation.py::test_tenant_cross_contamination_sweep",
+      "file": "backend/test_tenant_isolation.py",
+      "line": 3,
+      "status": "failed",
+      "error": "message = \"'{}' object has no attribute '{}'\" | >           raise AttributeError(message.format(self.__class__.__name__, key)) | E           AttributeError: 'State' object has no attribute 'tenant_id' |  | /opt/anaconda3/lib/python3.11/site-packages/"
+    },
+    {
+      "test": "backend/test_tenant_isolation.py::test_tenant_cross_contamination_sweep",
+      "file": "backend/test_tenant_isolation.py",
+      "line": 3,
+      "status": "failed",
+      "error": "message = \"'{}' object has no attribute '{}'\" | >           raise AttributeError(message.format(self.__class__.__name__, key)) | E           AttributeError: 'State' object has no attribute 'tenant_id' |  | /opt/anaconda3/lib/python3.11/site-packages/"
+    },
+    {
+      "test": "backend/test_tenant_isolation.py::test_tenant_cross_contamination_sweep",
+      "file": "backend/test_tenant_isolation.py",
+      "line": 3,
+      "status": "failed",
+      "error": "E       AssertionError: {\"detail\":\"You are not authorized to access SysGrid with user 'admin_root'. Contact an administrator for tenant access.\"} | E       assert 403 == 200 | E        +  where 403 = <Response [403 Forbidden]>.status_code |  | backen"
+    },
+    {
+      "test": "backend/test_tenant_isolation.py::test_tenant_cross_contamination_sweep",
+      "file": "backend/test_tenant_isolation.py",
+      "line": 3,
+      "status": "failed",
+      "error": "E       AssertionError: {\"detail\":\"You are not authorized to access SysGrid with user 'admin_root'. Contact an administrator for tenant access.\"} | E       assert 403 == 200 | E        +  where 403 = <Response [403 Forbidden]>.status_code |  | backen"
+    },
+    {
+      "test": "backend/test_tenant_isolation.py::test_tenant_cross_contamination_sweep",
+      "file": "backend/test_tenant_isolation.py",
+      "line": 3,
+      "status": "failed",
+      "error": "models.Device.is_deleted == False |         )) | E       AttributeError: type object 'Device' has no attribute 'tenant_id' |  | backend/app/api/devices.py:299: AttributeError"
+    }
+  ]
+}

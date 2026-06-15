@@ -16,6 +16,8 @@ import subprocess
 import sys
 import asyncio
 import random
+from starlette.requests import Request
+from starlette.datastructures import State
 from collections import defaultdict
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -393,6 +395,7 @@ async def seed_domain_data(tenant_db_url: str):
                 management_url=f"https://console-{device_sequence:03}.sysgrid.local",
                 serial_number=f"SN-{random.getrandbits(32)}",
                 asset_tag=f"AT-{device_sequence:05}",
+                tenant_id=1,
                 manufacturer=mfr,
                 model="Gen-X" if dev_type == "Physical" else "vNode-Pro",
                 os_name="Linux" if device_sequence % 2 == 0 else "Windows",
@@ -798,7 +801,7 @@ async def seed_domain_data(tenant_db_url: str):
                     operator_id=operator.id,
                     name=operator.full_name,
                     external_id=operator.external_id,
-                    role="Primary" if owner_idx == 0 else "Secondary",
+                    role="Primary Support" if owner_idx == 0 else "Escalation",
                 ))
             session.add(models.MonitoringHistory(
                 monitoring_item_id=mon.id,
@@ -1406,6 +1409,17 @@ async def validate_seed_api_contracts(*, tenant_db_url: str, seeded_domain_data:
         "monitoring",
     )
     await validate_first(
+        select(models.Project).options(
+            selectinload(models.Project.tasks).selectinload(models.ProjectTask.comments),
+            selectinload(models.Project.tasks).selectinload(models.ProjectTask.qa_items),
+            selectinload(models.Project.tasks).selectinload(models.ProjectTask.subtasks),
+            selectinload(models.Project.comments),
+            selectinload(models.Project.qa_items),
+        ).filter(models.Project.is_deleted == False).order_by(models.Project.id.desc()),
+        schemas.ProjectResponse,
+        "projects",
+    )
+    await validate_first(
         select(models.Vendor).options(
             selectinload(models.Vendor.personnel),
             selectinload(models.Vendor.contracts),
@@ -1444,30 +1458,35 @@ async def validate_seed_api_contracts(*, tenant_db_url: str, seeded_domain_data:
 
     async with session_factory() as session:
         try:
-            device_payloads = await get_devices(include_deleted=False, db=session)
+            scope = {"type": "http", "method": "GET", "state": {"tenant_id": 1}}
+            mock_request = Request(scope)
+            device_payloads = await get_devices(request=mock_request, include_deleted=False, db=session)
         except Exception as exc:  # pragma: no cover
             failures.append(f"devices endpoint shape failed: {exc}")
         else:
             if not device_payloads:
                 failures.append("devices: no records returned for validation")
             else:
-                for index, payload in enumerate(device_payloads[:3], start=1):
+                for index, payload in enumerate(device_payloads, start=1):
                     try:
                         schemas.DeviceResponse.model_validate(payload)
                     except Exception as exc:  # pragma: no cover
                         failures.append(f"devices record {index} failed DeviceResponse: {exc}")
                         break
                 else:
-                    validation_summary["devices"] = min(3, len(device_payloads))
+                    validation_summary["devices"] = len(device_payloads)
 
     await engine.dispose()
 
     if failures:
-        raise RuntimeError("Seed API contract validation failed: " + " | ".join(failures))
+        raise SeedDataValidationError(failures)
 
     return validation_summary
 
-# --- MAIN LOOP ---
+class SeedDataValidationError(Exception):
+    def __init__(self, failures: list[str]):
+        self.failures = failures
+        super().__init__("Seed Data Validation Errors:\n" + "\n".join(f"- {f}" for f in failures))
 
 async def main():
     parser = argparse.ArgumentParser(description="Ultimate SysGrid Seeder")
@@ -1510,17 +1529,31 @@ async def main():
     )
 
     should_seed_data = args.seed_data and not args.no_seed_data
-    if should_seed_data:
-        await seed_domain_data(tenant_db_url)
+    try:
+        if should_seed_data:
+            await seed_domain_data(tenant_db_url)
 
-    foundation_validation = validate_seed_foundation(
-        tenant_db_url=tenant_db_url,
-        seeded_domain_data=should_seed_data,
-    )
-    api_contract_validation = await validate_seed_api_contracts(
-        tenant_db_url=tenant_db_url,
-        seeded_domain_data=should_seed_data,
-    )
+        foundation_validation = validate_seed_foundation(
+            tenant_db_url=tenant_db_url,
+            seeded_domain_data=should_seed_data,
+        )
+        api_contract_validation = await validate_seed_api_contracts(
+            tenant_db_url=tenant_db_url,
+            seeded_domain_data=should_seed_data,
+        )
+    except SeedDataValidationError as e:
+        print("\n" + "="*80)
+        print("SEED DATA VALIDATION FAILED")
+        print("The seeded data does not conform to the required schema.")
+        print("Please fix the data generation logic in seed.py.")
+        print("="*80)
+        for failure in e.failures:
+            print(f"FAILED: {failure}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\nUNEXPECTED APPLICATION ERROR: {e}")
+        sys.exit(1)
+
 
     report = collect_bootstrap_report(
         tenant_name=args.tenant_name,

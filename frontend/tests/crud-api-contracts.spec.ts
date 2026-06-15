@@ -1,4 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { clickResilientButton } from './helpers/sysgrid';
+import { expect } from '@playwright/test';
+import { test } from './helpers/sysgrid-test';
 import {
   createAsset,
   createConnection,
@@ -13,7 +15,7 @@ import {
 const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
 
 test.describe('CRUD API contracts', () => {
-  test('keeps assets, services, and monitoring CRUD free of write-time ORM errors', async ({ request }) => {
+  test('keeps assets, services, and monitoring CRUD free of write-time ORM errors', async ({ sysApi: request }) => {
     const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
     const asset = await createAsset(request, {
@@ -31,7 +33,7 @@ test.describe('CRUD API contracts', () => {
     const assetUpdate = await request.put(`${apiBase}/devices/${asset.id}`, {
       data: { ...asset, owner: 'ops-secondary', role: 'Database Host' }
     })
-    expect(assetUpdate.ok()).toBeTruthy()
+    expect(assetUpdate.ok(), await assetUpdate.text()).toBeTruthy()
     expect((await assetUpdate.json()).owner).toBe('ops-secondary')
 
     const service = await createService(request, {
@@ -47,7 +49,7 @@ test.describe('CRUD API contracts', () => {
     const serviceUpdate = await request.put(`${apiBase}/logical-services/${service.id}`, {
       data: { ...service, version: '1.1.0', purpose: 'Updated CRUD contract validation' }
     })
-    expect(serviceUpdate.ok()).toBeTruthy()
+    expect(serviceUpdate.ok(), await serviceUpdate.text()).toBeTruthy()
     const updatedService = await serviceUpdate.json()
     expect(updatedService.version).toBe('1.1.0')
 
@@ -60,9 +62,9 @@ test.describe('CRUD API contracts', () => {
       purpose: 'Contract coverage',
       impact: 'Contract coverage impact',
       notification_method: 'Slack',
-      severity: 'Critical',
+      severity: 'Warning',
       owners: [
-        { name: 'Taylor Ops', external_id: 'taylor.ops@example.com', role: 'Primary Owner' }
+        { name: 'Taylor Ops', external_id: 'taylor.ops@example.com', role: 'Primary Support' }
       ]
     })
 
@@ -73,18 +75,18 @@ test.describe('CRUD API contracts', () => {
         purpose: 'Updated through full-payload regression coverage'
       }
     })
-    expect(monitoringUpdate.ok()).toBeTruthy()
+    expect(monitoringUpdate.ok(), await monitoringUpdate.text()).toBeTruthy()
     const updatedMonitoring = await monitoringUpdate.json()
     expect(updatedMonitoring.title).toContain('-EDITED')
 
     const monitoringDelete = await request.delete(`${apiBase}/monitoring/${monitoring.id}`)
-    expect(monitoringDelete.ok()).toBeTruthy()
+    expect(monitoringDelete.ok(), await monitoringDelete.text()).toBeTruthy()
 
     const serviceDelete = await request.delete(`${apiBase}/logical-services/${service.id}`)
-    expect(serviceDelete.ok()).toBeTruthy()
+    expect(serviceDelete.ok(), await serviceDelete.text()).toBeTruthy()
   })
 
-  test('keeps knowledge, research, and projects CRUD durable through read-update-delete cycles', async ({ request }) => {
+  test('keeps knowledge, research, and projects CRUD durable through read-update-delete cycles', async ({ sysApi: request }) => {
     const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
     const knowledgeCreate = await request.post(`${apiBase}/knowledge`, {
@@ -156,7 +158,7 @@ test.describe('CRUD API contracts', () => {
     expect(knowledgeDelete.ok()).toBeTruthy()
   })
 
-  test('keeps network, external, and FAR CRUD flows stable with realistic payloads', async ({ request }) => {
+  test('keeps network, external, and FAR CRUD flows stable with realistic payloads', async ({ sysApi: request }) => {
     const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
     const source = await createAsset(request, {

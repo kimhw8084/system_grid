@@ -1,4 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { clickResilientButton } from './helpers/sysgrid';
+import { expect } from '@playwright/test';
+import { test } from './helpers/sysgrid-test';
 import { resetBrowserState } from './helpers/sysgrid'
 
 test.describe('Vendor workflows', () => {
@@ -11,7 +13,7 @@ test.describe('Vendor workflows', () => {
     await page.goto('/vendors')
     await expect(page.getByRole('heading', { name: 'Vendors' })).toBeVisible()
 
-    await page.getByRole('button', { name: /\+ Add Vendor/i }).click()
+    await clickResilientButton(page, /\+ Add Vendor/i)
     const vendorModal = page.locator('.glass-panel').filter({ has: page.getByText('Vendor Entry') })
     await expect(vendorModal).toBeVisible()
     await vendorModal.locator('input').first().fill(vendorName)

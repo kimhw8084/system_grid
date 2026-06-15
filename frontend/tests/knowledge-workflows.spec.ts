@@ -1,10 +1,12 @@
-import { expect, test } from '@playwright/test'
+import { clickResilientButton } from './helpers/sysgrid';
+import { expect } from '@playwright/test';
+import { test } from './helpers/sysgrid-test';
 import { resetBrowserState, seedOperationalScenario, createInvestigation } from './helpers/sysgrid'
 
 const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
 
 test.describe('Knowledge workflows', () => {
-  test('supports command-center summaries, architecture linkage, export, and operational actions', async ({ page, request }) => {
+  test('supports command-center summaries, architecture linkage, export, and operational actions', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
     const { primary, service, monitoring } = await seedOperationalScenario(request)
 
@@ -90,26 +92,26 @@ test.describe('Knowledge workflows', () => {
     await expect(page.locator('h1').filter({ hasText: knowledge.title })).toBeVisible()
     await expect(page.getByText('Operational Readiness')).toBeVisible()
 
-    await page.getByRole('button', { name: 'Mark Verified' }).click()
+    await clickResilientButton(page, 'Mark Verified')
     await expect(page.getByText('Verified').first()).toBeVisible()
 
-    await page.getByRole('button', { name: 'Worked', exact: true }).click()
+    await clickResilientButton(page, 'Worked')
     await expect(page.getByText('Worked').first()).toBeVisible()
 
-    await page.getByRole('button', { name: 'Incident Mode' }).click()
+    await clickResilientButton(page, 'Incident Mode')
     await expect(page.getByText('First Five Minutes')).toBeVisible()
     await expect(page.getByRole('button', { name: flow.name })).toBeVisible()
 
-    await page.getByRole('button', { name: /Export Briefing/i }).click()
+    await clickResilientButton(page, /Export Briefing/i)
     await expect(page.getByRole('heading', { name: 'Knowledge Briefing' })).toBeVisible()
     await expect(page.locator('textarea').last()).toHaveValue(new RegExp(knowledge.title))
     await page.getByLabel('Close briefing').click()
 
-    await page.getByRole('button', { name: /PW-MON-/i }).click()
+    await clickResilientButton(page, /PW-MON-/i)
     await expect(page).toHaveURL(new RegExp(`/monitoring\\?id=${monitoring.id}`))
   })
 
-  test('supports richer Q&A collaboration and answer verification', async ({ page, request }) => {
+  test('supports richer Q&A collaboration and answer verification', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
     const questionResponse = await request.post(`${apiBase}/knowledge`, {
       data: {

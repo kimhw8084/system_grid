@@ -86,6 +86,13 @@ function resolveCredentialsMode(url: string): RequestCredentials {
   }
 }
 
+function getCurrentTenantId(): string {
+  return (
+    localStorage.getItem('SYSGRID_TENANT_ID') ||
+    '1'
+  )
+}
+
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const baseUrl = getApiBaseUrl();
   
@@ -107,10 +114,9 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const headers: Record<string, string> = { ...options.headers } as any;
   
   // Only attach explicit browser user identity on same-origin requests.
-  // In forwarded/company cross-origin deployments, rely on backend env/proxy identity
-  // to avoid gateway/preflight auth failures on custom headers.
   if (shouldAttachUserIdHeader(url)) {
     headers['X-User-Id'] = getCurrentUserId();
+    headers['X-Tenant-Id'] = getCurrentTenantId();
   }
 
   if (!(options.body instanceof FormData) && !headers['Content-Type']) {

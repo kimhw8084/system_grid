@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update, func
 from sqlalchemy.orm import joinedload
@@ -506,7 +506,7 @@ async def to_monitoring_response(db: AsyncSession, item: models.MonitoringItem):
             )
     return resp
 
-async def save_monitoring_history(item_id: int, version: int, db: AsyncSession, summary: str = None):
+async def save_monitoring_history(item_id: int, version: int, db: AsyncSession, summary: str = None, user_id: str = None):
     # Fetch the item with owners
     result = await db.execute(
         select(models.MonitoringItem)
@@ -515,7 +515,7 @@ async def save_monitoring_history(item_id: int, version: int, db: AsyncSession, 
     )
     item = result.unique().scalar_one()
     snapshot = build_monitoring_snapshot(item)
-    
+
     # Clean up any existing history entry for this specific version to avoid UNIQUE constraints on retries
     await db.execute(
         delete(models.MonitoringHistory)
@@ -524,12 +524,13 @@ async def save_monitoring_history(item_id: int, version: int, db: AsyncSession, 
             models.MonitoringHistory.version == version
         )
     )
-    
+
     history_obj = models.MonitoringHistory(
         monitoring_item_id=item_id,
         version=version,
         snapshot=snapshot,
-        change_summary=summary
+        change_summary=summary,
+        created_by_user_id=user_id
     )
     db.add(history_obj)
 
@@ -636,24 +637,25 @@ async def get_monitoring_items(device_id: Optional[int] = None, include_deleted:
     return res
 
 @router.post("", response_model=schemas.MonitoringItemResponse)
-async def create_monitoring_item(data: schemas.MonitoringItemCreate, db: AsyncSession = Depends(get_db)):
+async def create_monitoring_item(data: schemas.MonitoringItemCreate, db: AsyncSession = Depends(get_db), user_id: str = Header(None, alias="X-User-Id")):
     item_data, owners_data = await build_monitoring_payload(db, data.model_dump(), partial=False)
     await ensure_monitoring_item_uniqueness(db, item_data=item_data)
-    
+
     db_obj = models.MonitoringItem(**item_data)
     db.add(db_obj)
     await db.flush() # To get db_obj.id
-    
+
     for owner in owners_data or []:
         db_owner = models.MonitoringOwner(**owner, monitoring_item_id=db_obj.id)
         db.add(db_owner)
-        
+
     await db.flush()
     await save_monitoring_history(
         db_obj.id,
         db_obj.version,
         db,
         summarize_monitoring_snapshot_delta(None, build_monitoring_snapshot_from_values(item_data, owners_data), action_label="create"),
+        user_id
     )
     await db.commit()
     
@@ -662,7 +664,7 @@ async def create_monitoring_item(data: schemas.MonitoringItemCreate, db: AsyncSe
     return await to_monitoring_response(db, db_obj)
 
 @router.put("/{item_id}", response_model=schemas.MonitoringItemResponse)
-async def update_monitoring_item(item_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+async def update_monitoring_item(item_id: int, data: dict, db: AsyncSession = Depends(get_db), user_id: str = Header(None, alias="X-User-Id")):
     item = await load_monitoring_item(db, item_id)
     if not item: raise HTTPException(404, "Monitoring item not found")
     previous_snapshot = build_monitoring_snapshot(item)
@@ -719,6 +721,7 @@ async def update_monitoring_item(item_id: int, data: dict, db: AsyncSession = De
         item.version,
         db,
         summarize_monitoring_snapshot_delta(previous_snapshot, next_snapshot, action_label="update"),
+        user_id
     )
     await db.commit()
     

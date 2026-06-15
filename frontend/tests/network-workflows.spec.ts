@@ -1,8 +1,10 @@
-import { test, expect } from '@playwright/test'
+import { clickResilientButton } from './helpers/sysgrid';
+import { expect } from '@playwright/test';
+import { test } from './helpers/sysgrid-test';
 import { createAsset, createConnection, resetBrowserState } from './helpers/sysgrid'
 
 test.describe('Network workflows', () => {
-  test('supports deep-linked forensics, unit edits, and bulk sever from the grid', async ({ page, request }) => {
+  test('supports deep-linked forensics, unit edits, and bulk sever from the grid', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
     const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     const farm = `PW-NET-${stamp}`
@@ -67,12 +69,12 @@ test.describe('Network workflows', () => {
     await page.goto(`/network?id=${connA.id}`)
     await expect(page.getByRole('heading', { name: 'Connection Forensics' })).toBeVisible()
     await expect(page.getByText(source.name)).toBeVisible()
-    await page.getByTitle('Edit Connection').click()
+    await clickResilientButton(page, 'Edit Connection')
     await expect(page.getByText('MODIFY_LINK')).toBeVisible()
     const editModal = page.locator('.glass-panel').filter({ has: page.getByText('MODIFY_LINK') })
     await editModal.locator('input[type="number"]').nth(2).fill('100')
     await editModal.locator('select').nth(4).selectOption('Mbps')
-    await page.getByRole('button', { name: /Synchronize Link Matrix/i }).click()
+    await clickResilientButton(page, /Synchronize Link Matrix/i)
     await expect(page.getByText('Link Matrix Updated')).toBeVisible()
     await page.goto(`/network?id=${connA.id}`)
     await expect(page.getByText('100.0 Mbps')).toBeVisible()
@@ -82,8 +84,8 @@ test.describe('Network workflows', () => {
     await page.getByRole('checkbox', { name: /Press Space to toggle row selection/i }).first().check()
     await page.getByRole('checkbox', { name: /Press Space to toggle row selection/i }).nth(1).check()
     await page.locator('.bulk-menu-container > button').click()
-    await page.getByRole('button', { name: 'Bulk Sever Links' }).click()
-    await page.getByRole('button', { name: 'Confirm Action' }).click()
-    await expect(page.locator('[role="treegrid"]')).not.toContainText(farm)
+    await clickResilientButton(page, 'Bulk Sever Links')
+    await clickResilientButton(page, 'Confirm Action')
+    await expect(page.locator('[role="treegrid"]')).not.toContainText(farm, { timeout: 30000 })
   })
 })

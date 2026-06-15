@@ -105,7 +105,7 @@ export USER_ID_ENV_VAR="$USER_ID_ENV_VAR_VALUE"
 export "$USER_ID_ENV_VAR_VALUE=$SOURCE_OF_TRUTH_USER_ID"
 export USER_ID="$SOURCE_OF_TRUTH_USER_ID"
 export DEFAULT_EMAIL_DOMAIN="sysgrid.local"
-export BACKEND_CORS_ORIGINS="[\"$FRONTEND_ORIGIN\",\"http://localhost:$FRONTEND_PORT\"]"
+export BACKEND_CORS_ORIGINS="$FRONTEND_ORIGIN,http://localhost:$FRONTEND_PORT"
 export ENVIRONMENT="development"
 
 cleanup() {

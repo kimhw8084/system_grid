@@ -13,7 +13,7 @@ type RegistrySectionProps = {
   category: string
   options: any[]
   icon: any
-  usageTargets?: Array<{ label: string; path: string }>
+  usageTargets?: ReadonlyArray<{ label: string; path: string }>
   description?: string
 }
 

@@ -663,7 +663,7 @@ const AssetReportView = ({ assets, selectedId, onSelect, options, onEdit, onView
             </button>
           ))}
           {!filteredAssets.length && (
-            <div className="py-20 text-center text-slate-600 text-[10px] font-bold uppercase tracking-widest">No matching assets</div>
+            <WorkspaceEmptyState title="No matching assets" description="Adjust your filters or add new assets to the matrix." />
           )}
         </div>
       </div>
@@ -1211,15 +1211,14 @@ export default function AssetGrid() {
         subtitle="Manage logical and physical compute, storage, and networking resources."
         actions={
           <ToolbarGroup>
-            <ToolbarButton onClick={() => setShowConfig(true)} icon={<Settings size={14} />}>
-              Registry Config
+            <ToolbarButton onClick={() => setShowConfig(true)}>
+              <div className="flex items-center gap-2"><Settings size={14} /> Registry Config</div>
             </ToolbarButton>
             <ToolbarButton 
               variant="primary" 
               onClick={() => setActiveModal({})} 
-              icon={<Plus size={14} />}
             >
-              Register Asset
+              <div className="flex items-center gap-2"><Plus size={14} /> Register Asset</div>
             </ToolbarButton>
           </ToolbarGroup>
         }
@@ -1757,7 +1756,7 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
               </td>
             </tr>
           ))}
-          {!hardware?.length && <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-600 font-bold uppercase">No hardware mappings found</td></tr>}
+          {!hardware?.length && <tr><td colSpan={8}><WorkspaceEmptyState compact title="No hardware mappings found" /></td></tr>}
         </tbody>
       </table>
       <ConfirmationModal
@@ -2657,7 +2656,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
                         </button>
                       ))}
                       {filteredAssetsForSelection.length === 0 && (
-                        <div className="py-4 text-center text-[8px] font-bold text-slate-700 uppercase">No Matching Assets</div>
+                        <WorkspaceEmptyState title="No matching assets" description="Adjust your filters or add new assets to the matrix." />
                       )}
                     </div>
                   </div>

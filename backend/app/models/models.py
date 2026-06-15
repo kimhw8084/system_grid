@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, JSON, Text, Table, UniqueConstraint
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
-from ..database import Base
+from ..database_base import Base
 
 class BaseMixin:
     id = Column(Integer, primary_key=True, index=True)
@@ -67,9 +67,10 @@ class Device(Base, BaseMixin):
     name = Column(String, index=True) # Hostname (Removed unique)
     system = Column(String, index=True) # Logical System name
     environment = Column(String)
-    status = Column(String)
+    status = Column(String) # Active, Virtual, Decommissioned
     type = Column(String) # Physical, Virtual, Storage, Switch
     size_u = Column(Integer, default=1) # Default U-height for the device
+    tenant_id = Column(Integer, index=True, nullable=True) # Added for multi-tenancy. Foreign key removed due to cross-database reference.
     
     manufacturer = Column(String)
     model = Column(String)

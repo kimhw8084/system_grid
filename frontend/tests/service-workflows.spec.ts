@@ -1,10 +1,12 @@
-import { expect, test } from '@playwright/test'
+import { clickResilientButton } from './helpers/sysgrid';
+import { expect } from '@playwright/test';
+import { test } from './helpers/sysgrid-test';
 import { createAsset, createService, resetBrowserState } from './helpers/sysgrid'
 
 const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
 
 test.describe('Service workflows', () => {
-  test('tolerates malformed metadata and clears deep-link state on close', async ({ page, request }) => {
+  test('tolerates malformed metadata and clears deep-link state on close', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
     const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
@@ -42,9 +44,9 @@ test.describe('Service workflows', () => {
 
     await page.goto(`/services?id=${activeService.id}`)
     await expect(page.getByText(activeService.name)).toBeVisible()
-    await page.getByRole('button', { name: 'Editor' }).click()
+    await clickResilientButton(page, 'Editor')
     await expect(page.getByText('Commit Metadata')).toBeVisible()
-    await page.locator('.fixed.inset-0.z-50 .glass-panel').filter({ hasText: activeService.name }).locator('.flex.items-center.justify-between.border-b > button').first().click()
+    await page.getByTitle('Dismiss Workspace').first().click()
     await expect(page).not.toHaveURL(new RegExp(`id=${activeService.id}`))
 
     await page.goto(`/services?id=${purgedService.id}`)

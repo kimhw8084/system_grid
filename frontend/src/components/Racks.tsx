@@ -3367,7 +3367,7 @@ export default function Racks() {
             <WorkspaceEmptyState 
               icon={<Server size={32} />}
               title={activeTab === 'deleted' ? 'No Purged Records' : searchTerm ? `No results for "${searchTerm}"` : 'No Racks in Scope'}
-              message="No physical assets found matching the current filters or site selection."
+              description="No physical assets found matching the current filters or site selection."
             />
           </div>
         )}

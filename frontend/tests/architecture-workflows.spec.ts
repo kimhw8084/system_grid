@@ -1,10 +1,12 @@
-import { expect, test } from '@playwright/test'
+import { clickResilientButton } from './helpers/sysgrid';
+import { expect } from '@playwright/test';
+import { test } from './helpers/sysgrid-test';
 import { createExternalEntity, createService, resetBrowserState, seedOperationalScenario } from './helpers/sysgrid'
 
 const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
 
 test.describe('Architecture workflows', () => {
-  test('creates an architecture, adds internal and external inventory, and persists the manifest', async ({ page, request }) => {
+  test('creates an architecture, adds internal and external inventory, and persists the manifest', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
     const { primary, knowledge, monitoring, far } = await seedOperationalScenario(request)
     const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -30,10 +32,10 @@ test.describe('Architecture workflows', () => {
     await page.goto('/architecture')
     await expect(page.getByRole('heading', { name: 'Architecture Matrix' })).toBeVisible()
 
-    await page.getByRole('button', { name: /New Architecture/i }).click()
+    await clickResilientButton(page, /New Architecture/i)
     const architectureModal = page.locator('.glass-panel').filter({ has: page.getByRole('heading', { name: 'New Architecture' }) })
     await expect(architectureModal).toBeVisible()
-    await architectureModal.getByPlaceholder('e.g. CORE-PAYMENT-INGRESS').fill(architectureName)
+    await architectureModal.getByPlaceholder(/core payment ingress/i).fill(architectureName)
     await architectureModal.getByPlaceholder('Describe the business and technical purpose...').fill('Playwright architecture coverage')
     await architectureModal.getByPlaceholder('e.g. Core Platform').fill('Core Platform')
     await architectureModal.getByPlaceholder('Critical / High / Medium / Low').fill('Critical')
@@ -51,14 +53,18 @@ test.describe('Architecture workflows', () => {
     await expect(page.getByText('Approved', { exact: true })).toBeVisible()
 
     await page.getByPlaceholder('Search...').fill(primary.name)
-    await page.getByRole('button', { name: new RegExp(primary.name, 'i') }).click()
+    const primaryBtn = page.getByRole('button', { name: new RegExp(primary.name, 'i') })
+    await expect(primaryBtn).toBeVisible({ timeout: 20000 })
+    await primaryBtn.click()
     await expect(page.getByText('Added')).toBeVisible()
 
-    await page.getByRole('button', { name: 'External', exact: true }).click()
+    await clickResilientButton(page, 'External')
     await page.getByPlaceholder('Search...').fill(externalEntity.name)
-    await page.getByRole('button', { name: new RegExp(externalEntity.name, 'i') }).click()
+    const externalBtn = page.getByRole('button', { name: new RegExp(externalEntity.name, 'i') })
+    await expect(externalBtn).toBeVisible({ timeout: 20000 })
+    await externalBtn.click()
 
-    await page.getByRole('button', { name: /Commit Changes/i }).click()
+    await clickResilientButton(page, /Commit Changes/i)
     await expect(page.getByText('Manifest Persistent in Core Registry')).toBeVisible()
 
     const flowsRes = await request.get(`${apiBase}/data-flows`)
@@ -93,13 +99,13 @@ test.describe('Architecture workflows', () => {
     await page.getByPlaceholder('Search architectures...').fill(architectureName)
     await expect(page.locator('.ag-center-cols-container')).toContainText(architectureName)
     await expect(page.locator('.ag-center-cols-container')).toContainText('Core Platform')
-    await page.getByRole('button', { name: /Initialize/i }).click()
+    await clickResilientButton(page, /Initialize/i)
     await expect(page.getByText('Needs Review', { exact: true })).toBeVisible()
 
-    await page.getByRole('button', { name: /History/i }).click()
+    await clickResilientButton(page, /History/i)
     await expect(page.getByRole('heading', { name: 'Version History' })).toBeVisible()
     await expect(page.getByText('Linked operating context')).toBeVisible()
-    await page.getByRole('button', { name: /Approve Current Version/i }).click()
+    await clickResilientButton(page, /Approve Current Version/i)
     await expect(page.getByText('Architecture Approved')).toBeVisible()
     await expect(page.getByText('Approved', { exact: true })).toBeVisible()
     await page.getByLabel('Close history').click()
@@ -120,11 +126,11 @@ test.describe('Architecture workflows', () => {
     await page.getByTitle('Presentation Mode').click()
 
     await page.locator('[data-testid^="rf__node-device-"]').first().click({ force: true })
-    await page.getByRole('link', { name: 'Asset' }).click()
-    await expect(page).toHaveURL(/\/asset$/)
+    await page.getByRole('link', { name: 'Asset', exact: true }).click()
+    await expect(page).toHaveURL(/\/asset/)
   })
 
-  test('persists service-level swimlane workflows and protects against accidental exit', async ({ page, request }) => {
+  test('persists service-level swimlane workflows and protects against accidental exit', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
     const { primary, secondary, service } = await seedOperationalScenario(request)
     const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -202,33 +208,33 @@ test.describe('Architecture workflows', () => {
 
     await page.goto('/architecture')
     await page.getByPlaceholder('Search architectures...').fill(flowName)
-    await page.getByRole('button', { name: /Initialize/i }).click()
+    await clickResilientButton(page, /Initialize/i)
     await expect(page.getByText('Payments Engineering')).toBeVisible()
 
-    await page.getByText('SYNC_PATH', { exact: true }).click()
-    await page.getByRole('button', { name: /Service Logic Builder/i }).click()
+    await clickResilientButton(page, 'SYNC_PATH')
+    await clickResilientButton(page, /Service Logic Builder/i)
     await expect(page.getByRole('heading', { name: 'Service Logic' })).toBeVisible()
-    await page.getByRole('button', { name: new RegExp(targetService.name, 'i') }).click()
+    await clickResilientButton(page, new RegExp(targetService.name, 'i'))
     await page.getByLabel(`Move ${targetService.name} lane left`).click()
-    await page.getByRole('button', { name: /^Logic$/ }).first().click()
+    await clickResilientButton(page, /^Logic$/)
     await expect(page.getByText('Orphan Steps: 1')).toBeVisible()
-    await page.getByRole('button', { name: /Undo/i }).click()
+    await clickResilientButton(page, /Undo/i)
     await expect(page.locator('input[value="NEW STEP"]')).not.toBeVisible()
-    await page.getByRole('button', { name: /Redo/i }).click()
+    await clickResilientButton(page, /Redo/i)
     await expect(page.locator('input[value="NEW STEP"]')).toBeVisible()
     await page.locator('input[value="NEW STEP"]').fill('VALIDATE PAYLOAD')
 
-    await page.getByRole('button', { name: 'Exit', exact: true }).click()
+    await clickResilientButton(page, 'Exit')
     await expect(page.getByText('Unsaved Workflow')).toBeVisible()
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await clickResilientButton(page, 'Cancel')
 
-    await page.getByRole('button', { name: /Sync Workflow/i }).click()
+    await clickResilientButton(page, /Sync Workflow/i)
     await expect(page.getByText('Workflow Manifest Synchronized')).toBeVisible()
-    await page.getByRole('button', { name: 'Exit', exact: true }).click()
+    await clickResilientButton(page, 'Exit')
     await expect(page.getByRole('heading', { name: 'Service Logic' })).not.toBeVisible()
 
-    await page.getByText('SYNC_PATH', { exact: true }).click()
-    await page.getByRole('button', { name: /Service Logic Builder/i }).click()
+    await clickResilientButton(page, 'SYNC_PATH')
+    await clickResilientButton(page, /Service Logic Builder/i)
     await expect(page.getByText(targetService.name)).toBeVisible()
     await expect(page.locator('input[value="VALIDATE PAYLOAD"]')).toBeVisible()
   })

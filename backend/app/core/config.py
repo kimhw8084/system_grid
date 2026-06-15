@@ -10,8 +10,14 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "production"  # development, production, test
     PORT: int = 8000
     
-    # CORS Origins (comma-separated string converted to list)
-    BACKEND_CORS_ORIGINS: List[str] = ["*"]
+    # CORS Origins (comma-separated string)
+    BACKEND_CORS_ORIGINS: str = "*"
+
+    @property
+    def cors_origins(self) -> List[str]:
+        if not self.BACKEND_CORS_ORIGINS or self.BACKEND_CORS_ORIGINS == "*":
+            return ["*"]
+        return [o.strip() for o in self.BACKEND_CORS_ORIGINS.split(",") if o.strip()]
 
     # Deployment/runtime configuration
     DATABASE_URL: str = ""

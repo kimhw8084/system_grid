@@ -21,11 +21,11 @@ async def test_create_tenant_grants_selected_admin_access_and_returns_serializab
     })
     assert settings_res.status_code == 200, settings_res.text
 
-    create_res = await client.post("/api/v1/tenants/admin/create", json={"name": "Factory Test Tenant"})
+    create_res = await client.post("/api/v1/tenants/admin/create", json={"name": f"Factory Test Tenant {tmp_path.name}"})
     assert create_res.status_code == 200, create_res.text
     payload = create_res.json()
 
-    assert payload["name"] == "Factory Test Tenant"
+    assert payload["name"] == f"Factory Test Tenant {tmp_path.name}"
     assert payload["is_active"] is True
     assert payload["is_online"] is True
     assert payload["db_url"].startswith("sqlite+aiosqlite:///")
@@ -35,7 +35,7 @@ async def test_create_tenant_grants_selected_admin_access_and_returns_serializab
     assert tenants_res.status_code == 200, tenants_res.text
     tenants = tenants_res.json()
     assert len(tenants) == 1
-    assert tenants[0]["name"] == "Factory Test Tenant"
+    assert tenants[0]["name"] == f"Factory Test Tenant {tmp_path.name}"
     assert tenants[0]["role"] == "ADMIN"
     assert tenants[0]["is_selected"] is True
 
@@ -58,7 +58,7 @@ async def test_create_tenant_accepts_custom_parent_folder_and_db_name(client, mo
     assert settings_res.status_code == 200, settings_res.text
 
     create_res = await client.post("/api/v1/tenants/admin/create", json={
-        "name": "Custom Folder Tenant",
+        "name": f"Custom Folder Tenant {tmp_path.name}",
         "db_name": "fab_cluster_primary",
         "parent_folder": str(custom_parent),
     })
@@ -87,19 +87,19 @@ async def test_attach_tenant_registers_existing_db_and_selects_it_for_request_us
     assert settings_res.status_code == 200, settings_res.text
 
     attach_res = await client.post("/api/v1/tenants/admin/attach", json={
-        "name": "Attached Tenant",
+        "name": f"Attached Tenant {tmp_path.name}",
         "db_path": str(db_path),
     })
     assert attach_res.status_code == 200, attach_res.text
     payload = attach_res.json()
-    assert payload["name"] == "Attached Tenant"
+    assert payload["name"] == f"Attached Tenant {tmp_path.name}"
     assert payload["is_online"] is True
 
     tenants_res = await client.get("/api/v1/tenants/me")
     assert tenants_res.status_code == 200, tenants_res.text
     tenants = tenants_res.json()
     assert len(tenants) == 1
-    assert tenants[0]["name"] == "Attached Tenant"
+    assert tenants[0]["name"] == f"Attached Tenant {tmp_path.name}"
     assert tenants[0]["is_selected"] is True
 
 
@@ -119,11 +119,11 @@ async def test_select_tenant_switches_selection_without_validation_errors(client
     })
     assert settings_res.status_code == 200, settings_res.text
 
-    create_one = await client.post("/api/v1/tenants/admin/create", json={"name": "Tenant One"})
+    create_one = await client.post("/api/v1/tenants/admin/create", json={"name": f"Tenant One {tmp_path.name}"})
     assert create_one.status_code == 200, create_one.text
     first = create_one.json()
 
-    create_two = await client.post("/api/v1/tenants/admin/create", json={"name": "Tenant Two"})
+    create_two = await client.post("/api/v1/tenants/admin/create", json={"name": f"Tenant Two {tmp_path.name}"})
     assert create_two.status_code == 200, create_two.text
     second = create_two.json()
 
@@ -136,7 +136,7 @@ async def test_select_tenant_switches_selection_without_validation_errors(client
     tenants = sorted(tenants_res.json(), key=lambda item: item["id"])
     assert tenants[0]["is_selected"] is True
     assert tenants[1]["is_selected"] is False
-    assert {tenant["name"] for tenant in tenants} == {"Tenant One", "Tenant Two"}
+    assert {tenant["name"] for tenant in tenants} == {f"Tenant One {tmp_path.name}", f"Tenant Two {tmp_path.name}"}
 
 
 @pytest.mark.anyio
@@ -155,7 +155,7 @@ async def test_create_tenant_provisions_far_and_rca_runtime_schema(client, monke
     })
     assert settings_res.status_code == 200, settings_res.text
 
-    create_res = await client.post("/api/v1/tenants/admin/create", json={"name": "Runtime Ready Tenant"})
+    create_res = await client.post("/api/v1/tenants/admin/create", json={"name": f"Runtime Ready Tenant {tmp_path.name}"})
     assert create_res.status_code == 200, create_res.text
     payload = create_res.json()
     db_path = payload["db_url"].replace("sqlite+aiosqlite:///", "/")

@@ -53,13 +53,13 @@ export function WorkspaceModal({
 
   const modal = (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[3500] flex items-center justify-center bg-[#020617]/80 p-4 backdrop-blur-sm sm:p-6 lg:p-8">
+      <div className="fixed inset-0 z-[3500] flex items-center justify-center bg-[#020617]/80 p-4 backdrop-blur-sm sm:p-6 lg:p-8" role="dialog" aria-modal="true">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className={`${getWorkspaceModalShellClass(isMaximized ? 'fullscreen' : size)} flex flex-col overflow-hidden bg-[#0b1222] ${(isMaximized || size === 'fullscreen') ? '' : `${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} border border-white/10 shadow-[0_24px_80px_rgba(0,0,0,0.62)]`} ${className}`}
+          className={`${getWorkspaceModalShellClass(isMaximized ? 'fullscreen' : size)} glass-panel flex flex-col overflow-hidden bg-[#0b1222] ${(isMaximized || size === 'fullscreen') ? '' : `${OPERATIONAL_WORKSPACE_VISUALS.standardRadius} border border-white/10 shadow-[0_24px_80px_rgba(0,0,0,0.62)]`} ${className}`}
         >
           <WorkspaceModalHeader
             icon={icon}

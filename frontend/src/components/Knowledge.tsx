@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
+import { WorkspaceEmptyState } from "./shared/OperationalWorkspacePrimitives";
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
@@ -696,7 +697,7 @@ export default function Knowledge() {
             <div className="h-full flex flex-col items-center justify-center space-y-6 text-slate-700 opacity-50">
                <FileSearch size={64} strokeWidth={1} />
                <div className="text-center">
-                 <p className="text-sm font-black uppercase tracking-[0.3em]">No Intelligence Found</p>
+                 <WorkspaceEmptyState title="No Intelligence Found" description="The database query returned zero records." />
                  <p className="text-[10px] font-bold mt-2 uppercase">Adjust filters or initialize new knowledge node</p>
                </div>
             </div>

@@ -1,16 +1,18 @@
 from fastapi import HTTPException, Request, status
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
-from sqlalchemy import event, MetaData, select
+from sqlalchemy import event, MetaData, select, update
 from .core.config import settings
 import os
-from .models.config import ConfigBase, Tenant, UserTenantAccess, MasterSystemSetting, GlobalSetting
+from .database_base import Base, ConfigBase
 
 SAFE_READ_METHODS = {"GET", "HEAD", "OPTIONS"}
+
 
 # 1. Master Configuration Database (Always Local)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_DATABASE_URL = settings.CONFIG_DATABASE_URL
+print(f"DEBUG: Initializing config engine with URL: {CONFIG_DATABASE_URL}")
 
 def is_sqlite_url(db_url: str) -> bool:
     return db_url.startswith("sqlite")
@@ -53,10 +55,19 @@ ConfigSessionLocal = async_sessionmaker(
 engine_cache = {}
 
 def get_tenant_engine(db_url: str):
+    # Convert relative sqlite paths to absolute paths
+    if is_sqlite_url(db_url):
+        path = sqlite_path_from_url(db_url)
+        if path and path.startswith("./"):
+            # Resolve path relative to the backend directory
+            backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            absolute_path = os.path.join(backend_dir, path)
+            db_url = db_url.replace(path, absolute_path)
+            
     if db_url not in engine_cache:
         new_engine = build_engine(db_url)
         
-        # Enable WAL mode for production reliability on S3/Network mounts
+        # Enable WAL mode for production reliability
         if is_sqlite_url(db_url):
             @event.listens_for(new_engine.sync_engine, "connect")
             def set_sqlite_pragma(dbapi_connection, connection_record):
@@ -64,11 +75,11 @@ def get_tenant_engine(db_url: str):
                 cursor.execute("PRAGMA journal_mode=WAL")
                 cursor.execute("PRAGMA synchronous=NORMAL")
                 cursor.execute("PRAGMA busy_timeout=5000")
-                cursor.execute("PRAGMA cache_size=-64000")
                 cursor.execute("PRAGMA foreign_keys=ON")
                 cursor.close()
             
         engine_cache[db_url] = new_engine
+        
     return engine_cache[db_url]
 
 # Legacy/Default Session for internal use (seeding, etc)
@@ -107,46 +118,111 @@ async def get_db(request: Request):
     Dynamic DB dependency. Determines tenant DB based on USER_ID.
     """
     from .api.utils import get_current_user_id
+    from .models.config import Tenant, UserTenantAccess
 
-    # 1. Get User ID from unified utility
+    # 1. Get User ID and Tenant ID from request headers
     user_id = get_current_user_id(request)
     request_method = (request.method or "GET").upper()
     is_safe_read = request_method in SAFE_READ_METHODS
+    
+    header_tenant_id = request.headers.get("X-Tenant-Id")
+    tenant_url = None
+    access_role = "VIEWER"
+    current_tenant_id = None
 
-    # 2. Lookup active tenant for this user in config.db
     async with ConfigSessionLocal() as config_db:
-        selected_stmt = (
-            select(Tenant.db_url, UserTenantAccess.role)
-            .join(UserTenantAccess)
-            .filter(UserTenantAccess.user_id == user_id)
-            .filter(UserTenantAccess.is_selected == True)
-        )
-        selected_result = await config_db.execute(selected_stmt)
-        selected_access = selected_result.first()
+        # Prioritize tenant from X-Tenant-Id header if present
+        if header_tenant_id:
+            try:
+                # Attempt to convert to int if it's an ID, otherwise treat as name
+                tenant_identifier = int(header_tenant_id)
+                tenant_stmt = select(Tenant).filter(Tenant.id == tenant_identifier)
+            except ValueError:
+                tenant_stmt = select(Tenant).filter(Tenant.name == header_tenant_id)
+            
+            tenant_result = await config_db.execute(tenant_stmt)
+            target_tenant = tenant_result.scalar_one_or_none()
 
-        tenant_url = selected_access[0] if selected_access else None
-        access_role = (selected_access[1] if selected_access else None) or "VIEWER"
+            if target_tenant:
+                user_access_stmt = select(UserTenantAccess).filter(
+                    UserTenantAccess.user_id == user_id,
+                    UserTenantAccess.tenant_id == target_tenant.id
+                )
+                user_access_result = await config_db.execute(user_access_stmt)
+                user_access = user_access_result.scalar_one_or_none()
 
-        if not tenant_url and settings.PUBLIC_READONLY_ENABLED and is_safe_read:
-            public_tenant_stmt = (
-                select(Tenant.db_url)
-                .filter(Tenant.is_active == True)
-                .filter(Tenant.name == settings.PUBLIC_READONLY_TENANT_NAME)
+                if user_access:
+                    tenant_url = target_tenant.db_url
+                    access_role = user_access.role
+                    current_tenant_id = target_tenant.id
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"User '{user_id}' does not have access to tenant '{header_tenant_id}'."
+                    )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Tenant '{header_tenant_id}' not found."
+                )
+        
+        # Fallback to selected tenant logic if no header or header logic didn't yield a tenant
+        if not tenant_url:
+            selected_stmt = (
+                select(Tenant.db_url, UserTenantAccess.role, Tenant.id)
+                .join(UserTenantAccess)
+                .filter(UserTenantAccess.user_id == user_id)
+                .filter(UserTenantAccess.is_selected == True)
             )
-            public_tenant_result = await config_db.execute(public_tenant_stmt)
-            tenant_url = public_tenant_result.scalar_one_or_none()
+            selected_result = await config_db.execute(selected_stmt)
+            selected_access = selected_result.first()
 
+            tenant_url = selected_access[0] if selected_access else None
+            access_role = (selected_access[1] if selected_access else None) or "VIEWER"
+            current_tenant_id = selected_access[2] if selected_access else None
+
+            # SAFETY FALLBACK: If no tenant is selected but user has access to at least one, auto-select the first one.
             if not tenant_url:
-                fallback_tenant_result = await config_db.execute(
-                    select(Tenant.db_url)
-                    .filter(Tenant.is_active == True)
+                fallback_access_stmt = (
+                    select(Tenant.db_url, UserTenantAccess.role, Tenant.id)
+                    .join(UserTenantAccess)
+                    .filter(UserTenantAccess.user_id == user_id)
                     .order_by(Tenant.id.asc())
                 )
-                tenant_url = fallback_tenant_result.scalars().first()
+                fallback_result = await config_db.execute(fallback_access_stmt)
+                fallback_row = fallback_result.first()
+                if fallback_row:
+                    tenant_url = fallback_row[0]
+                    access_role = fallback_row[1]
+                    current_tenant_id = fallback_row[2]
+                    # Update DB state for next time
+                    await config_db.execute(
+                        update(UserTenantAccess)
+                        .where(UserTenantAccess.user_id == user_id, UserTenantAccess.tenant_id == fallback_row[2])
+                        .values(is_selected=True)
+                    )
+                    await config_db.commit()
 
-            access_role = "VIEWER"
-            if tenant_url and request is not None:
-                request.state.sysgrid_public_readonly = True
+            if not tenant_url and settings.PUBLIC_READONLY_ENABLED and is_safe_read:
+                public_tenant_stmt = (
+                    select(Tenant.db_url)
+                    .filter(Tenant.is_active == True)
+                    .filter(Tenant.name == settings.PUBLIC_READONLY_TENANT_NAME)
+                )
+                public_tenant_result = await config_db.execute(public_tenant_stmt)
+                tenant_url = public_tenant_result.scalar_one_or_none()
+
+                if not tenant_url:
+                    fallback_tenant_result = await config_db.execute(
+                        select(Tenant.db_url)
+                        .filter(Tenant.is_active == True)
+                        .order_by(Tenant.id.asc())
+                    )
+                    tenant_url = fallback_tenant_result.scalars().first()
+
+                access_role = "VIEWER"
+                if tenant_url and request is not None:
+                    request.state.sysgrid_public_readonly = True
 
         if not tenant_url:
             raise HTTPException(
@@ -181,11 +257,13 @@ async def get_db(request: Request):
         try:
             if request is not None:
                 request.state.sysgrid_access_role = access_role
+                request.state.tenant_id = current_tenant_id # Store tenant ID
             yield session
         finally:
             await session.close()
 
 async def init_config_db():
+    from .models.config import ConfigBase, Tenant, MasterSystemSetting
     """Initializes the master configuration database."""
     async with config_engine.begin() as conn:
         await conn.run_sync(ConfigBase.metadata.create_all)

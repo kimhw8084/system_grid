@@ -1,4 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { clickResilientButton } from './helpers/sysgrid';
+import { expect } from '@playwright/test';
+import { test } from './helpers/sysgrid-test';
 import { resetBrowserState, seedOperationalScenario } from './helpers/sysgrid'
 
 const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
@@ -8,65 +10,71 @@ test.describe('Settings and audit workflows', () => {
     await resetBrowserState(page)
 
     await page.goto('/settings')
-    await expect(page.getByText('Core Infrastructure')).toBeVisible()
+    await expect(page.getByText('Infrastructure Domain')).toBeVisible()
 
-    await page.getByRole('button', { name: /^Light$/ }).click()
+    await clickResilientButton(page, /^Light$/)
     await expect.poll(async () => page.evaluate(() => document.documentElement.getAttribute('data-theme'))).toBe('pure-clarity')
 
     await page.reload()
     await page.waitForLoadState('networkidle')
-    await expect(page.getByText('Core Infrastructure')).toBeVisible()
+    await expect(page.getByText('Infrastructure Domain')).toBeVisible()
     await expect.poll(async () => page.evaluate(() => document.documentElement.getAttribute('data-theme'))).toBe('pure-clarity')
 
-    await page.getByRole('button', { name: /Permission/i }).click()
-    await expect(page.getByText('User Permission')).toBeVisible()
-    await expect(page.getByPlaceholder('Search users, teams, or departments...')).toBeVisible()
+    await clickResilientButton(page, /Permission/i)
+    await expect(page.getByText('Identity Sync Pipeline')).toBeVisible()
+    await expect(page.getByPlaceholder('Search identity, department, or team...')).toBeVisible()
 
-    await page.getByRole('button', { name: /Tenants/i }).click()
-    await expect(page.getByText('Infrastructure Registry')).toBeVisible()
-    await expect(page.getByRole('button', { name: /Provision Cluster/i })).toBeVisible()
+    await clickResilientButton(page, /Tenants/i)
+    await expect(page.getByText('Tenant Registry')).toBeVisible()
+    await expect(page.getByRole('button', { name: /Create Tenant/i })).toBeVisible()
   })
 
   test('filters operators and keeps tenant input after a failed create attempt', async ({ page }) => {
     await resetBrowserState(page)
 
     await page.goto('/settings?tab=permissions')
-    await expect(page.getByText('User Permission')).toBeVisible()
-    await page.getByPlaceholder('Search users, teams, or departments...').fill('admin_root')
-    await expect(page.locator('table')).toContainText('System Administrator')
+    await expect(page.getByText('Identity Sync Pipeline')).toBeVisible()
+    await page.getByPlaceholder('Search identity, department, or team...').fill('admin_root')
+    await expect(page.locator('table > tbody > tr').first()).toContainText('System Administrator')
     await expect(page.getByText('No operators match the current filter')).not.toBeVisible()
 
-    await page.getByPlaceholder('Search users, teams, or departments...').fill('not-a-real-operator')
+    await page.getByPlaceholder('Search identity, department, or team...').fill('not-a-real-operator')
     await expect(page.getByText('No operators match the current filter')).toBeVisible()
 
-    await page.getByRole('button', { name: /Tenants/i }).click()
-    await expect(page.getByText('Infrastructure Registry')).toBeVisible()
-    const tenantInput = page.getByPlaceholder('CLUSTER_ID')
+    await clickResilientButton(page, /Tenants/i)
+    await expect(page.getByText('Tenant Registry')).toBeVisible()
+    const tenantInput = page.getByPlaceholder('Tenant name')
     await tenantInput.fill('Default Engine')
-    await page.getByRole('button', { name: /Provision Cluster/i }).click()
-    await expect(page.getByText(/Creation Failed/i)).toBeVisible()
+    await clickResilientButton(page, /Create Tenant/i)
+    await expect(page.getByText(/Failed to create tenant/i)).toBeVisible()
     await expect(tenantInput).toHaveValue('Default Engine')
   })
 
-  test('stores and exposes user-pool sync script history', async ({ page, request }) => {
+  test('stores and exposes user-pool sync script history', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
     const response = await request.post(`${apiBase}/settings/user-pool/refresh`, {
-      data: { script: "print('playwright sync')" },
-      headers: { 'X-User-Id': 'admin_root' }
+      data: { 
+        records: [
+          { external_id: 'pw.sync.1', username: 'pwsync1', full_name: 'PW Sync One', email: 'pwsync1@example.com', registration_status: 'Verified' }
+        ],
+        source: "playwright_test"
+      },
+      /* headers auto-injected */
     })
+    if (!response.ok()) { console.error(await response.text()); }
     expect(response.ok()).toBeTruthy()
 
     await page.goto('/settings?tab=permissions')
-    await expect(page.getByText('User Permission')).toBeVisible()
-    await page.getByRole('button', { name: /Identity Sync/i }).click()
+    await expect(page.getByText('Identity Sync Pipeline')).toBeVisible()
+    await clickResilientButton(page, /Identity Sync/i)
     await page.waitForTimeout(1000)
-    await page.getByRole('button', { name: /View Sync History/i }).click()
-    await page.getByRole('button', { name: /View Script History/i }).first().click()
+    await clickResilientButton(page, /View Sync History/i)
+    await clickResilientButton(page, /View Script History/i)
     await expect(page.getByText('Historical Sync Logic')).toBeVisible()
     await expect(page.getByRole('button', { name: /Restore to Editor/i })).toBeVisible()
   })
 
-  test('renders scoped audit logs for seeded service activity', async ({ page, request }) => {
+  test('renders scoped audit logs for seeded service activity', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
     const { service } = await seedOperationalScenario(request)
 

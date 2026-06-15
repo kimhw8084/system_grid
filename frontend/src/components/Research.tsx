@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
+import { WorkspaceEmptyState } from "./shared/OperationalWorkspacePrimitives";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
   Plus, Search, Trash2, Edit2, Info, 
