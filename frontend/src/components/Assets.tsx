@@ -1437,6 +1437,9 @@ export default function Assets() {
     queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities?include_deleted=true')).json())
   })
 
+  const [activeModal, setActiveModal] = useState<any>(null)
+  const [activeDetails, setActiveDetails] = useState<any>(null)
+
   // --- Synchronization Hooks ---
   useEffect(() => {
     if (allEntities && idParam && !activeDetails) {
@@ -1444,9 +1447,6 @@ export default function Assets() {
       if (entity) setActiveDetails(entity)
     }
   }, [allEntities, idParam, activeDetails])
-
-  const [activeModal, setActiveModal] = useState<any>(null)
-  const [activeDetails, setActiveDetails] = useState<any>(null)
   const [activeServiceDetails, setActiveServiceDetails] = useState<any>(null)
   const [activeServiceEdit, setActiveServiceEdit] = useState<any>(null)
   const [selectedConnection, setSelectedConnection] = useState<any>(null)
