@@ -5,6 +5,7 @@ from sqlalchemy import select, text
 from .database import engine, Base
 from .models import models
 from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings as settings_api, monitoring, troubleshoot, data_flows, intelligence, rca, investigations, far, projects, vendors, knowledge, tenants
+from .api.error_utils import standardize_validation_errors
 
 from .core.config import settings
 
@@ -69,6 +70,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan, redirect_slashes=False)
+standardize_validation_errors(app)
 
 # Make manager accessible to routers
 app.state.ws_manager = manager

@@ -12,6 +12,7 @@ import { StatusPill } from '../shared/StatusPill'
 import { apiFetch } from '../../api/apiClient'
 import { useQuery } from '@tanstack/react-query'
 import { sanitizeMonitoringPayload } from '../../utils/monitoring'
+import { parseCommaSeparatedValues } from '../../utils/dataParsers'
 
 import * as React from 'react'
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'

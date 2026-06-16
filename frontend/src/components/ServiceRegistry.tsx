@@ -258,10 +258,11 @@ export const ServiceDetailsView = ({ service, options, devices }: { service: any
                 {tab === 'editor' && (
                   <button 
                     onClick={() => updateMutation.mutate(formData)} 
-                    disabled={!!metadataError}
+                    disabled={!!metadataError || updateMutation.isPending} 
+                    data-testid="service-metadata-commit-btn"
                     className="px-5 py-1.5 bg-emerald-600 disabled:opacity-30 text-white rounded-lg text-[9px] font-bold uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all "
                   >
-                    Commit Metadata
+                    {updateMutation.isPending ? <Activity size={12} className="animate-spin" /> : 'Commit Metadata'}
                   </button>
                 )}
             </div>
@@ -281,7 +282,8 @@ export const ServiceDetailsView = ({ service, options, devices }: { service: any
     )
 }
 
-export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
+export const ServiceForm = ({ initialData, onSave, isPending, options, devices }: any) => {
+  console.log("ServiceForm isPending:", isPending);
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [formData, setFormData] = useState({ 
     name: "", service_type: "Database", status: "Active", environment: "Production", version: "",
@@ -354,7 +356,14 @@ export const ServiceForm = ({ initialData, onSave, options, devices }: any) => {
         </div>
       </div>
 
-      <button onClick={() => { if(!formData.name) return toast.error("Instance name required"); onSave(formData) }} disabled={!!metadataError} className="w-full py-4 bg-blue-600 disabled:opacity-30 text-white rounded-lg text-[11px] font-bold uppercase tracking-[0.3em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all ">Commit Service Registration</button>
+      <button 
+        onClick={() => { if(!formData.name) return toast.error("Instance name required"); onSave(formData) }} 
+        disabled={!!metadataError || isPending} 
+        data-testid="service-commit-btn"
+        className="w-full py-4 bg-blue-600 disabled:opacity-30 text-white rounded-lg text-[11px] font-bold uppercase tracking-[0.3em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+      >
+        {isPending ? <Activity size={14} className="animate-spin" /> : 'Commit Service Registration'}
+      </button>
     </div>
   )
 }
@@ -564,7 +573,7 @@ export default function ServiceRegistry() {
         }
       >
         <div className="pt-6">
-          <ServiceForm initialData={activeModal} onSave={mutation.mutate} options={options} devices={devices} />
+          <ServiceForm initialData={activeModal} onSave={mutation.mutate} isPending={mutation.isPending} options={options} devices={devices} />
         </div>
       </WorkspaceModal>
 

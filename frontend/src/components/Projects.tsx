@@ -755,7 +755,7 @@ const TaskRow = React.memo(({
           {(isPackingMode || width <= 120 || showHologram) && (
             <div className="absolute left-full ml-6 flex items-center h-full pointer-events-none whitespace-nowrap z-20">
                <div className="w-10 h-px bg-blue-500/30 -ml-6" />
-               <span className="text-[10px] font-black italic uppercase text-slate-400 tracking-[0.15em] font-inter ml-2 drop-shadow-lg shadow-black">
+               <span data-testid={`task-name-${task.id}`} className="text-[10px] font-black italic uppercase text-slate-400 tracking-[0.15em] font-inter ml-2 drop-shadow-lg shadow-black">
                   {task.name}
                </span>
             </div>
@@ -1436,9 +1436,11 @@ const DependencyLines = React.memo(({ lines }: any) => {
                                   onUpdate({ ...project, tasks: updatedTasks })
                                   setSelectedTaskId(null)
                                 }} 
-                                className="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white shadow-lg shadow-blue-600/20 transition-all flex items-center gap-2"
+                                disabled={project.isUpdating}
+                                data-testid="project-commit-btn"
+                                className="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white shadow-lg shadow-blue-600/20 transition-all flex items-center gap-2 disabled:opacity-50"
                               >
-                                 <Save size={14}/> 
+                                 {project.isUpdating ? <Activity size={14} className="animate-spin" /> : <Save size={14}/>}
                                  <span className="text-[10px] font-bold uppercase tracking-widest">Commit Changes</span>
                               </button>
                               <button onClick={() => setSelectedTaskId(null)} className="p-2 text-slate-500 hover:text-white rounded-lg transition-all"><X size={20}/></button>
@@ -3210,7 +3212,7 @@ export default function Projects() {
                                  />
                               </motion.div>
                             )}
-                            {activeTab === 'GANTT' && <motion.div key="gantt" className="h-full"><PrecisionGantt project={selectedProject} onUpdate={(data: any) => mutation.mutate({ data, silent: true })} /></motion.div>}
+                            {activeTab === 'GANTT' && <motion.div key="gantt" className="h-full"><PrecisionGantt project={{...selectedProject, isUpdating: mutation.isPending}} onUpdate={(data: any) => mutation.mutate({ data, silent: true })} /></motion.div>}
                             {activeTab === 'ACTIVITY' && <motion.div key="activity" className="h-full"><ProjectActivityStream project={selectedProject} allProjects={projects || []} /></motion.div>}
                             {activeTab === 'ADOPTION' && (
                               <motion.div key={`adoption-${selectedProjectId}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full overflow-y-auto custom-scrollbar">

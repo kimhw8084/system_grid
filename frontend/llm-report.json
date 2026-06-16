@@ -1,0 +1,26 @@
+{
+  "failed_count": 3,
+  "failures": [
+    {
+      "test": "Add Monitor: Validate field sanitization and success",
+      "file": "/Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-comprehensive.spec.ts",
+      "line": 15,
+      "status": "failed",
+      "error": "Error: Warning: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and co"
+    },
+    {
+      "test": "Edit Monitor: Validate state propagation and save",
+      "file": "/Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-comprehensive.spec.ts",
+      "line": 25,
+      "status": "failed",
+      "error": "Error: Warning: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and co"
+    },
+    {
+      "test": "Validation: Triggers error on empty title",
+      "file": "/Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-comprehensive.spec.ts",
+      "line": 36,
+      "status": "failed",
+      "error": "Error: Warning: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and co"
+    }
+  ]
+}

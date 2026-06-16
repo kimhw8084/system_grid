@@ -52,6 +52,7 @@ import {
 } from './shared/OperationalWorkspacePrimitives'
 import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shared/WorkspaceFlyout'
 import { StatusPill } from './shared/StatusPill'
+import { parseCommaSeparatedValues } from '../utils/dataParsers'
 import { HeaderScopeSwitch, PageHeader, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
 import { WorkspaceCommandBar } from './shared/WorkspaceCommandBar'
 import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
@@ -2546,11 +2547,14 @@ export default function MonitoringGrid() {
                   </div>
 
                   {activeTab === 'deleted' ? (
-                    <button
+                      <button
                       onClick={() => bulkMutation.mutate({ action: 'restore' })}
-                      className="w-full rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-left transition-all hover:bg-emerald-500/15"
+                      disabled={bulkMutation.isPending}
+                      className="w-full rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-left transition-all hover:bg-emerald-500/15 disabled:opacity-50"
                     >
-                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">Restore Selection</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">
+                        {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : 'Restore Selection'}
+                      </p>
                     </button>
                   ) : (
                     <div className="space-y-2">
@@ -2575,7 +2579,7 @@ export default function MonitoringGrid() {
                           placeholder="Choose status"
                           actionLabel="Apply Status"
                           onApply={() => bulkMutation.mutate({ action: 'update', payload: { status: bulkDraft.status } })}
-                          disabled={!bulkDraft.status}
+                          disabled={!bulkDraft.status || bulkMutation.isPending}
                         />
                       )}
 
@@ -2592,7 +2596,7 @@ export default function MonitoringGrid() {
                           placeholder="Choose severity"
                           actionLabel="Apply Severity"
                           onApply={() => bulkMutation.mutate({ action: 'update', payload: { severity: bulkDraft.severity } })}
-                          disabled={!bulkDraft.severity}
+                          disabled={!bulkDraft.severity || bulkMutation.isPending}
                         />
                       )}
 
@@ -2609,7 +2613,7 @@ export default function MonitoringGrid() {
                           placeholder="Choose notification path"
                           actionLabel="Apply Notification"
                           onApply={() => bulkMutation.mutate({ action: 'update', payload: { notification_method: bulkDraft.notification_method } })}
-                          disabled={!bulkDraft.notification_method}
+                          disabled={!bulkDraft.notification_method || bulkMutation.isPending}
                         />
                       )}
                     </div>
@@ -2625,16 +2629,19 @@ export default function MonitoringGrid() {
                       bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' })
                     }}
                     onMouseLeave={() => setBulkDeleteConfirm(false)}
+                    disabled={bulkMutation.isPending}
                     className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
                       bulkDeleteConfirm 
                         ? 'border-rose-500 bg-rose-600 animate-pulse' 
                         : 'border-rose-900/70 bg-rose-950/70 hover:bg-rose-950'
-                    }`}
+                    } disabled:opacity-50`}
                   >
                     <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
-                      {bulkDeleteConfirm 
-                        ? (activeTab === 'deleted' ? 'Confirm Permanent Purge?' : 'Confirm De-activation?') 
-                        : (activeTab === 'deleted' ? 'Purge Selection' : 'De-activate Selection')}
+                      {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
+                        bulkDeleteConfirm 
+                          ? (activeTab === 'deleted' ? 'Confirm Permanent Purge?' : 'Confirm De-activation?') 
+                          : (activeTab === 'deleted' ? 'Purge Selection' : 'De-activate Selection')
+                      )}
                     </p>
                   </button>
                   </WorkspaceFloatingPanel>
@@ -3867,11 +3874,7 @@ const getLogicExtensions = (logicType?: MonitoringLogicEntry['type']) => {
 
 type MonitoringFormErrors = Record<string, string>
 
-const parseCommaSeparatedValues = (value: string | null | undefined) =>
-  String(value || '')
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter(Boolean)
+// Removed local definition
 
 const stringifyOwnerUserIds = (owners: MonitoringOwner[] = []) =>
   owners

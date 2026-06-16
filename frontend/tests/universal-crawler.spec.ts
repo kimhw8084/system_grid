@@ -2,10 +2,15 @@ import { expect } from '@playwright/test';
 import { test } from './helpers/sysgrid-test';
 import { resetBrowserState, waitForAppIdle } from './helpers/sysgrid';
 
-test.describe('Universal View Resilience Crawler', () => {
-    test('Automatically crawls all views to verify standard rendering, API health, and corner cases', async ({ page, sysApi }) => {
-        // Increase timeout since this crawls the entire app
-        test.setTimeout(120_000); 
+test.describe('Universal View Resilience Crawler (Automated Chaos)', () => {
+    test('Automatically crawls all views and injects chaos to verify resilience', async ({ page, chaos, interactionChaos, networkChaos }) => {
+        // Increase timeout since this crawls the entire app with chaos
+        test.setTimeout(180_000); 
+
+        // Enable chaos globally
+        await chaos.enable('interaction-chaos');
+        await chaos.enable('network-chaos');
+        await networkChaos.stallRequest('/api/v1', 500); // Latency
 
         await resetBrowserState(page);
         
@@ -40,29 +45,20 @@ test.describe('Universal View Resilience Crawler', () => {
             const mainBody = page.locator('main, #root, #app-root').first();
             await expect(mainBody).toBeVisible();
 
-            // 4. Verify standard generic search input triggers standard WorkspaceEmptyState
-            const searchInput = page.getByPlaceholder(/search|filter/i).first();
-            if (await searchInput.isVisible()) {
-                await searchInput.fill('UNIVERSAL-CRAWLER-INVALID-DATA-XYZ');
-                await waitForAppIdle(page);
-                
-                // Assert the view gracefully degrades into our standardized WorkspaceEmptyState 
-                const emptyState = page.locator('text=no').filter({ hasText: /(found|match|assets|projects|items|results|operators|records|data|protocols|intelligence)/i }).first();
-                
-                try {
-                    await expect(emptyState).toBeVisible({ timeout: 3000 });
-                } catch (e) {
-                    console.warn(`[Auto-Crawler] WARNING: View ${route} failed standard Empty State check.`);
-                    // We don't fail the entire crawler for missing empty states yet, 
-                    // but we log it for future strict enforcement.
+            // 4. Inject Interaction Chaos
+            const buttons = page.locator('button').filter({ hasNotText: /close/i });
+            const buttonCount = await buttons.count();
+            if (buttonCount > 0) {
+                const btn = buttons.nth(Math.floor(Math.random() * buttonCount));
+                if (await btn.isVisible()) {
+                    await interactionChaos.rapidFireClick(btn, 2);
                 }
-                
-                await searchInput.clear();
-                await waitForAppIdle(page);
             }
-            
+
             // 5. Assert no fatal API errors occurred during the load and interaction of this view
             expect(errors).toEqual([]);
         }
+        
+        await chaos.killAll();
     });
 });

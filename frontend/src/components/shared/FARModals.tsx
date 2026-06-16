@@ -406,7 +406,13 @@ export function ResolutionManagerModal({ isOpen, onClose, cause, onSave }: any) 
                       </div>
                       <div className="flex items-center gap-2">
                          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight">{formatAppDate(res.created_at)}</span>
-                         <button onClick={() => deleteResolutionMutation.mutate(res.id)} className="p-1.5 text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><X size={14}/></button>
+                         <button 
+                            onClick={() => deleteResolutionMutation.mutate(res.id)} 
+                            disabled={deleteResolutionMutation.isPending}
+                            className="p-1.5 text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
+                         >
+                            {deleteResolutionMutation.isPending ? <Activity size={14} className="animate-spin" /> : <X size={14}/>}
+                         </button>
                       </div>
                    </div>
                    <div className="bg-black/40 border border-white/5 rounded-lg p-3 text-[10px] font-bold text-slate-400 uppercase leading-relaxed tracking-tight shadow-inner">

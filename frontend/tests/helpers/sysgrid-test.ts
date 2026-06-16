@@ -1,7 +1,37 @@
 import { test as base } from '@playwright/test';
+import { ChaosController } from './chaosController';
+import { InteractionChaos } from './chaosInteractions';
+import { NetworkChaos } from './chaosNetwork';
+import { StateChaos } from './chaosState';
 
-// Extend the base test to include a globally pre-configured API client
-export const test = base.extend({
+// Extend the base test to include a globally pre-configured API client and ChaosController
+export const test = base.extend<{ 
+  chaos: ChaosController, 
+  interactionChaos: InteractionChaos, 
+  networkChaos: NetworkChaos,
+  stateChaos: StateChaos 
+}>({
+  chaos: async ({}, use) => {
+    const controller = new ChaosController();
+    await use(controller);
+    // Cleanup chaos state after each test
+    controller.killAll();
+  },
+  interactionChaos: async ({ page, chaos }, use) => {
+    const interactionTool = new InteractionChaos(page);
+    chaos.register(interactionTool);
+    await use(interactionTool);
+  },
+  networkChaos: async ({ page, chaos }, use) => {
+    const networkTool = new NetworkChaos(page);
+    chaos.register(networkTool);
+    await use(networkTool);
+  },
+  stateChaos: async ({ page, chaos }, use) => {
+    const stateTool = new StateChaos(page);
+    chaos.register(stateTool);
+    await use(stateTool);
+  },
   sysApi: async ({ request, baseURL }, use) => {
     // We wrap the raw Playwright request with our deterministic headers
     // ensuring no test ever forgets the tenant or user context.
