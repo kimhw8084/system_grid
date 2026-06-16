@@ -1430,6 +1430,13 @@ export default function Assets() {
   const searchParam = searchParams.get('search')
   const statusParam = searchParams.get('status')
 
+  const [quickLookId, setQuickLookId] = useState<number | null>(null)
+
+  const { data: allEntities, isLoading: isEntitiesLoading } = useQuery({
+    queryKey: ['external-entities', { include_deleted: true }],
+    queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities?include_deleted=true')).json())
+  })
+
   // --- Synchronization Hooks ---
   useEffect(() => {
     if (allEntities && idParam && !activeDetails) {
@@ -1438,47 +1445,8 @@ export default function Assets() {
     }
   }, [allEntities, idParam, activeDetails])
 
-  useEffect(() => {
-    if (activeDetails) {
-      setSearchParams({ id: String(activeDetails.id) })
-    } else {
-      if (searchParams.has('id')) {
-          setSearchParams({})
-      }
-    }
-  }, [activeDetails, setSearchParams, searchParams])
-
-  
-  // --- STYLE LABORATORY STATE ---
-  const [fontSize, setFontSize] = useState(11)
-  const [rowDensity, setRowDensity] = useState(10) // Extra padding per row
-  const [showStyleLab, setShowStyleLab] = useState(true)
-
-  const [activeTab, setActiveTab] = useState<'inventory' | 'deleted'>('inventory')
-  const [viewMode, setViewMode] = useState<'grid' | 'report' | 'map' | 'compare'>('grid')
-  const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
-
   const [activeModal, setActiveModal] = useState<any>(null)
   const [activeDetails, setActiveDetails] = useState<any>(null)
-  const [isMaximized, setIsMaximized] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<number[]>([])
-  const [showBulkMenu, setShowBulkMenu] = useState(false)
-  const [showColumnPicker, setShowColumnPicker] = useState(false)
-  const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
-  const [showConfig, setShowConfig] = useState(false)
-  const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
-  const [isBulkEnvOpen, setIsBulkEnvOpen] = useState(false)
-  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
-
-  const [quickLookId, setQuickLookId] = useState<number | null>(null)
-
-  const { data: allEntities, isLoading: isEntitiesLoading } = useQuery({
-    queryKey: ['external-entities', { include_deleted: true }],
-    queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities?include_deleted=true')).json())
-  })
-
-  // Shared Service Modal States (Moved from AssetDetailsView to top-level for screen-wide focus)
   const [activeServiceDetails, setActiveServiceDetails] = useState<any>(null)
   const [activeServiceEdit, setActiveServiceEdit] = useState<any>(null)
   const [selectedConnection, setSelectedConnection] = useState<any>(null)
