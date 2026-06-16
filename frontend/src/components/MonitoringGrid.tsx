@@ -19,6 +19,7 @@ import { AgGridReact } from "ag-grid-react"
 import toast from 'react-hot-toast'
 import { showWorkspaceToast } from './shared/WorkspaceToast'
 import { apiFetch } from '../api/apiClient'
+import { buildMonitoringFormErrors, getMonitoringTabErrorCounts } from '../utils/monitoringValidation'
 import { formatAppDate, formatAppTime, formatAppDay, parseAppDate } from '../utils/dateUtils'
 import { AppDropdown } from './shared/AppDropdown'
 import { ConfigRegistryModal } from "./ConfigRegistry"
@@ -3884,8 +3885,6 @@ const stringifyOwnerUserIds = (owners: MonitoringOwner[] = []) =>
 
 const isMonitoringFieldRequired = (fieldName: string) => MONITORING_REQUIRED_FIELD_NAMES.has(fieldName)
 
-const buildMonitoringFormErrors = (formData: any) => {
-  const errors: MonitoringFormErrors = {}
   const unsafeUrlPattern = /[<>"']|javascript:|data:|vbscript:/i
 
   if (isMonitoringFieldRequired('title') && !formData.title?.trim()) errors.title = 'Title is required.'
@@ -3921,19 +3920,6 @@ const buildMonitoringFormErrors = (formData: any) => {
     errors.recovery_docs = 'Critical monitors require at least one linked recovery procedure.'
   }
 
-  ;(formData.logic_json || []).forEach((entry: MonitoringLogicEntry) => {
-    if (!entry.description?.trim()) errors[`logic_${entry.id}_description`] = 'Logic description is required.'
-    if (!entry.logic_info?.trim()) errors[`logic_${entry.id}_logic_info`] = 'Logic definition is required.'
-  })
-
-  return errors
-}
-
-const getMonitoringTabErrorCounts = (errors: MonitoringFormErrors) => ({
-  context: Object.keys(errors).filter((key) => ['title', 'category', 'status', 'owner_team', 'owners', 'ownership', 'monitoring_url'].includes(key)).length,
-  logic: Object.keys(errors).filter((key) => ['check_interval', 'alert_duration'].includes(key) || key.startsWith('logic_')).length,
-  alerting: Object.keys(errors).filter((key) => ['severity', 'notification_method', 'notification_throttle', 'recovery_docs'].includes(key)).length,
-})
 
 const monitoringInputClass = (error?: string) => getWorkspaceInputClass(error)
 

@@ -2308,14 +2308,16 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
         }
       >
         <div className="pt-6">
-          <AssetDetailsView
-            device={activeDetails}
-            options={options}
-            onViewServiceDetails={(s:any) => setActiveServiceDetails(s)}
-            onEditService={(s:any) => setActiveServiceEdit(s)}
-            onEditLink={(l:any) => setActiveNetworkEdit(l)}
-            onViewLink={(l:any) => setSelectedConnection(l)}
-          />
+          {activeDetails && (
+            <AssetDetailsView
+              device={activeDetails}
+              options={options}
+              onViewServiceDetails={(s:any) => setActiveServiceDetails(s)}
+              onEditService={(s:any) => setActiveServiceEdit(s)}
+              onEditLink={(l:any) => setActiveNetworkEdit(l)}
+              onViewLink={(l:any) => setSelectedConnection(l)}
+            />
+          )}
         </div>
       </WorkspaceModal>
 
@@ -4038,6 +4040,7 @@ function AssetMap({ assets, connections, relationships, systemsList }: any) {
   const [depth, setDepth] = useState(1)
   const [selectedNode, setSelectedNode] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [showLegend, setShowLegend] = useState(true)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isTopologyCollapsed, setIsTopologyCollapsed] = useState(false)

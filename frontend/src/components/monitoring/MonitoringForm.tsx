@@ -14,6 +14,7 @@ import { useQuery } from '@tanstack/react-query'
 import { sanitizeMonitoringPayload } from '../../utils/monitoring'
 import { parseCommaSeparatedValues } from '../../utils/dataParsers'
 
+import { buildMonitoringFormErrors, getMonitoringTabErrorCounts } from '../../utils/monitoringValidation'
 import * as React from 'react'
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 
