@@ -90,13 +90,59 @@ const MONITORING_FIXED_WIDTH_COLUMN_IDS = new Set([
   'row_actions',
 ])
 
-const STATUSES = [
+export const STATUSES = [
   { value: 'Existing', label: 'Existing', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
   { value: 'Planned', label: 'Planned', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
   { value: 'Cancelled', label: 'Cancelled', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
   { value: 'Decommissioned', label: 'Decommissioned', color: 'bg-slate-500/20 text-slate-400 border-white/20' },
   { value: 'Deleted', label: 'Deleted', color: 'bg-slate-800 text-slate-500 border-white/5' }
 ]
+
+export const LOGIC_TYPES = ['Threshold', 'Anomaly', 'Availability']
+export const CHECK_INTERVAL_MIN = 30
+export const CHECK_INTERVAL_MAX = 86400
+export const ALERT_DURATION_MIN = 0
+export const ALERT_DURATION_MAX = 3600
+export const NOTIFICATION_THROTTLE_MIN = 60
+export const NOTIFICATION_THROTTLE_MAX = 86400
+
+export const LOGIC_SUGGESTIONS: Record<string, string> = {
+  Threshold: 'CPU > 90%',
+  Anomaly: 'Trend analysis',
+  Availability: 'HTTP 200 check'
+}
+
+export const getLogicExtensions = (logicType?: string) => []
+
+export interface MonitoringLogicEntry {
+  id: number
+  type: string
+  description: string
+  logic_info: string
+}
+
+export interface MonitoringOwner {
+  operator_id: number
+  role: string
+  name: string
+  external_id: string
+}
+
+export type MonitoringFormErrors = Record<string, string>
+export interface MonitoringTeamOption {
+  id: number
+  name: string
+  operators: any[]
+}
+export interface OperatorRecord {
+  id: number
+  username: string
+  full_name: string
+  external_id: string
+  team_id?: number
+  team?: string
+}
+
 
 const MONITORING_SEVERITIES = [
   { value: 'Critical', label: 'Critical', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
@@ -109,45 +155,6 @@ const MONITORING_OWNER_ROLES = [
   { value: 'Escalation', label: 'Escalation' },
   { value: 'Observer', label: 'Observer' }
 ]
-
-const CHECK_INTERVAL_MIN = 15
-const CHECK_INTERVAL_MAX = 86400
-const ALERT_DURATION_MIN = 0
-const ALERT_DURATION_MAX = 86400
-const NOTIFICATION_THROTTLE_MIN = 60
-const NOTIFICATION_THROTTLE_MAX = 604800
-
-interface MonitoringLogicEntry {
-  id: number
-  type: 'Threshold' | 'Regex' | 'Query' | 'Health Check' | 'Log Pattern' | 'Synthetic' | 'Custom'
-  description: string
-  logic_info: string
-}
-
-interface MonitoringOwner {
-  operator_id: number
-  role: string
-  name?: string | null
-  external_id?: string | null
-}
-
-interface OperatorRecord {
-  id: number
-  full_name?: string | null
-  username?: string | null
-  external_id?: string | null
-  team?: string | null
-  team_id?: number | null
-  email?: string | null
-}
-
-interface MonitoringTeamOption {
-  id: number
-  name: string
-  description?: string | null
-  source?: string | null
-  operators?: Array<{ id: number; external_id?: string | null }>
-}
 
 const MONITORING_REQUIRED_FIELD_NAMES = new Set(['title', 'category', 'status', 'severity'])
 
@@ -624,7 +631,7 @@ export default function MonitoringGrid() {
   const [historyItem, setHistoryItem] = useState<any>(null)
   const [showImportModal, setShowImportModal] = useState(false)
   const [recipientPopup, setRecipientPopup] = useState<{ recipients: string[], method: string } | null>(null)
-  const [bkmPopup, setBkmPopup] = useState<{ ids: number[], titles: string[], monitorId?: number } | null>(null)
+  const [bkmPopup, setBkmPopup] = useState<{ docs: number[], ids: number[], titles: string[], monitorId?: number } | null>(null)
   const [activeBkm, setActiveBkm] = useState<any>(null)
   const [compareOpen, setCompareOpen] = useState(false)
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
@@ -1707,7 +1714,7 @@ export default function MonitoringGrid() {
       const changedCount = Number(result?.changed ?? idsToUse.length)
       if (changedCount <= 0) {
         lastUndoRef.current = null
-        showWorkspaceToast(result?.summary || 'No semantic change', { type: 'info' })
+        showWorkspaceToast(result?.summary || 'No semantic change', { type: 'success' })
         return
       }
 
@@ -3925,7 +3932,7 @@ const isMonitoringFieldRequired = (fieldName: string) => MONITORING_REQUIRED_FIE
 
 const monitoringInputClass = (error?: string) => getWorkspaceInputClass(error)
 
-function MonitoringAssetField({
+export function MonitoringAssetField({
   devices,
   deviceId,
   onChange,

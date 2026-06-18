@@ -372,4 +372,3 @@ export function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, on
     </>
   )
 }
-`,file_path:

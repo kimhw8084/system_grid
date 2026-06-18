@@ -151,6 +151,15 @@ wait_for_backend() {
 
 echo "Preparing disposable local SysGrid environment..."
 
+# Automated Pre-Flight Check: Catch structural errors before startup
+echo "Running pre-flight structural validation..."
+cd "$FRONTEND_DIR" && npx tsc --noEmit
+if [ $? -ne 0 ]; then
+    echo "Pre-flight validation FAILED. Please fix the TypeScript errors above before starting."
+    exit 1
+fi
+echo "Pre-flight validation PASSED."
+
 # Add cleanup for frontend build artifacts
 echo "Cleaning frontend build artifacts..."
 rm -rf "$FRONTEND_DIR/dist" "$FRONTEND_DIR/.vite" "$FRONTEND_DIR/node_modules/.cache"

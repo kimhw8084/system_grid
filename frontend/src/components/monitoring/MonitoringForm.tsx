@@ -1,4 +1,30 @@
 
+import { WorkspaceModal } from '../shared/WorkspaceModal'
+import { 
+  WorkspaceSplitView, 
+  WorkspaceEmptyState,
+  useEscapeDismiss, 
+  useBodyModalFlag,
+  WorkspaceFieldLabel as FieldLabel,
+  WorkspaceFieldError as FieldError,
+  WorkspaceSectionCard,
+  WorkspaceCollapsibleHeader,
+  WorkspaceSectionBadge,
+  WorkspacePanelTitle as PanelTitle,
+  WorkspacePanelSubtitle as PanelSubtitle,
+  WorkspaceValidationBanner,
+  WorkspaceInfoTooltip,
+  WorkspaceSelectField as MonitoringSelectField,
+  getWorkspaceInputClass as monitoringInputClass
+} from '../shared/OperationalWorkspacePrimitives'
+import { StatusPill } from '../shared/StatusPill'
+import { ToolbarButton } from '../shared/LayoutPrimitives'
+import CodeMirror from '@uiw/react-codemirror'
+import { MonitoringAssetField } from '../MonitoringGrid'
+import { showWorkspaceToast } from '../shared/WorkspaceToast'
+import { STATUSES, LOGIC_TYPES, CHECK_INTERVAL_MIN, CHECK_INTERVAL_MAX, ALERT_DURATION_MIN, ALERT_DURATION_MAX, NOTIFICATION_THROTTLE_MIN, NOTIFICATION_THROTTLE_MAX, LOGIC_SUGGESTIONS, getLogicExtensions, MonitoringLogicEntry, MonitoringOwner, MonitoringFormErrors, MonitoringTeamOption, OperatorRecord } from '../MonitoringGrid'
+import { isMonitoringFieldRequired } from '../../utils/monitoringValidation'
+
 import { 
   Edit2, 
   Plus,
@@ -54,7 +80,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
     notification_throttle: number
     severity: string
     is_active: boolean
-    recovery_docs: number[]
+    recovery_docs: Array<{id: number, note: string}>
     owners: MonitoringOwner[]
   }>({
     category: 'Infrastructure',

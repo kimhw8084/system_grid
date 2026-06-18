@@ -1,0 +1,355 @@
+node_modules/@tanstack/query-core/build/legacy/_tsup-dts-rollup.d.ts(2,25): error TS2307: Cannot find module 'tsup' or its corresponding type declarations.
+node_modules/@tanstack/react-query/build/legacy/_tsup-dts-rollup.d.ts(93,25): error TS2307: Cannot find module 'tsup' or its corresponding type declarations.
+node_modules/@vitest/expect/dist/index.d.ts(6,27): error TS2307: Cannot find module '@vitest/utils/display' or its corresponding type declarations.
+  There are types at '/Users/haewonkim/home/development/sysgrid/frontend/node_modules/@vitest/utils/dist/display.d.ts', but this result could not be resolved under your current 'moduleResolution' setting. Consider updating to 'node16', 'nodenext', or 'bundler'.
+node_modules/goober/goober.d.ts(3,1): error TS1203: Export assignment cannot be used when targeting ECMAScript modules. Consider using 'export default' or another module format instead.
+node_modules/vite/dist/node/index.d.ts(1,23): error TS2688: Cannot find type definition file for 'node'.
+node_modules/vite/dist/node/index.d.ts(5,41): error TS2307: Cannot find module 'rollup/parseAst' or its corresponding type declarations.
+  There are types at '/Users/haewonkim/home/development/sysgrid/frontend/node_modules/rollup/dist/parseAst.d.ts', but this result could not be resolved under your current 'moduleResolution' setting. Consider updating to 'node16', 'nodenext', or 'bundler'.
+node_modules/vite/dist/node/index.d.ts(6,23): error TS2307: Cannot find module 'node:http' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(7,119): error TS2307: Cannot find module 'node:http' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(8,35): error TS2307: Cannot find module 'node:http2' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(9,21): error TS2307: Cannot find module 'node:fs' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(10,25): error TS2307: Cannot find module 'node:events' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(11,30): error TS2307: Cannot find module 'node:events' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(12,76): error TS2307: Cannot find module 'node:https' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(13,22): error TS2307: Cannot find module 'node:net' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(14,22): error TS2307: Cannot find module 'node:url' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(15,21): error TS2307: Cannot find module 'node:url' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(16,25): error TS2307: Cannot find module 'node:stream' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(17,39): error TS2307: Cannot find module 'node:stream' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(20,38): error TS2307: Cannot find module 'node:tls' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(21,29): error TS2307: Cannot find module 'node:zlib' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(309,35): error TS2503: Cannot find namespace 'NodeJS'.
+node_modules/vite/dist/node/index.d.ts(391,11): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1014,40): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1084,55): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1102,39): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1119,55): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1137,39): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1154,55): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1172,39): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1189,38): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1201,56): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1210,38): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1222,59): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1237,18): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1237,41): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1242,24): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1242,47): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1247,39): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1247,48): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1278,25): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1309,24): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1309,33): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1389,20): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(2401,63): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(3561,84): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vitest/dist/chunks/evaluatedModules.d.BxJ5omdx.d.ts(1,34): error TS2307: Cannot find module 'vite/module-runner' or its corresponding type declarations.
+  There are types at '/Users/haewonkim/home/development/sysgrid/frontend/node_modules/vitest/node_modules/vite/dist/node/module-runner.d.ts', but this result could not be resolved under your current 'moduleResolution' setting. Consider updating to 'node16', 'nodenext', or 'bundler'.
+node_modules/vitest/dist/chunks/rpc.d.B_8sPU0w.d.ts(3,51): error TS2307: Cannot find module 'vite/module-runner' or its corresponding type declarations.
+  There are types at '/Users/haewonkim/home/development/sysgrid/frontend/node_modules/vitest/node_modules/vite/dist/node/module-runner.d.ts', but this result could not be resolved under your current 'moduleResolution' setting. Consider updating to 'node16', 'nodenext', or 'bundler'.
+node_modules/vitest/dist/chunks/worker.d.ZpHpO4yb.d.ts(2,34): error TS2307: Cannot find module 'vite/module-runner' or its corresponding type declarations.
+  There are types at '/Users/haewonkim/home/development/sysgrid/frontend/node_modules/vitest/node_modules/vite/dist/node/module-runner.d.ts', but this result could not be resolved under your current 'moduleResolution' setting. Consider updating to 'node16', 'nodenext', or 'bundler'.
+src/api/apiClient.ts(13,5): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/api/apiClient.ts(13,17): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/api/apiClient.ts(22,11): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/api/apiClient.ts(22,23): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/components/Assets.tsx(1427,46): error TS2448: Block-scoped variable 'showBulkMenu' used before its declaration.
+src/components/Assets.tsx(1471,5): error TS2304: Cannot find name 'setConfirmModal'.
+src/components/Assets.tsx(1499,7): error TS2304: Cannot find name 'setSearchTerm'.
+src/components/Assets.tsx(1512,5): error TS2304: Cannot find name 'setSelectedAssetId'.
+src/components/Assets.tsx(1515,5): error TS2304: Cannot find name 'setViewMode'.
+src/components/Assets.tsx(1516,23): error TS2304: Cannot find name 'setSearchTerm'.
+src/components/Assets.tsx(1529,52): error TS2304: Cannot find name 'searchTerm'.
+src/components/Assets.tsx(1581,18): error TS2304: Cannot find name 'searchTerm'.
+src/components/Assets.tsx(1603,24): error TS2304: Cannot find name 'searchTerm'.
+src/components/Assets.tsx(1612,5): error TS2304: Cannot find name 'setSelectedIds'.
+src/components/Assets.tsx(1616,9): error TS2304: Cannot find name 'viewMode'.
+src/components/Assets.tsx(1617,7): error TS2304: Cannot find name 'setViewMode'.
+src/components/Assets.tsx(1619,7): error TS2304: Cannot find name 'viewMode'.
+src/components/Assets.tsx(1622,9): error TS2304: Cannot find name 'viewMode'.
+src/components/Assets.tsx(1622,45): error TS2304: Cannot find name 'selectedAssetId'.
+src/components/Assets.tsx(1626,44): error TS2304: Cannot find name 'selectedAssetId'.
+src/components/Assets.tsx(1633,7): error TS2304: Cannot find name 'viewMode'.
+src/components/Assets.tsx(1633,17): error TS2304: Cannot find name 'selectedAssetId'.
+src/components/Assets.tsx(1633,49): error TS2304: Cannot find name 'searchTerm'.
+src/components/Assets.tsx(1639,14): error TS2304: Cannot find name 'viewMode'.
+src/components/Assets.tsx(1645,14): error TS2304: Cannot find name 'viewMode'.
+src/components/Assets.tsx(1676,39): error TS2304: Cannot find name 'selectedIds'.
+src/components/Assets.tsx(1687,11): error TS2304: Cannot find name 'viewMode'.
+src/components/Assets.tsx(1688,9): error TS2304: Cannot find name 'setSelectedIds'.
+src/components/Assets.tsx(1691,7): error TS2304: Cannot find name 'setIsBulkStatusOpen'.
+src/components/Assets.tsx(1741,13): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1743,253): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1743,316): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1743,397): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1761,44): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1763,13): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1785,43): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1792,13): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1795,256): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1795,319): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1795,400): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1796,242): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1796,305): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1796,386): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1797,248): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1797,311): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1797,392): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1798,242): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1798,305): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1798,386): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1799,240): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1799,303): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1799,384): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1800,245): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1800,308): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1800,389): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1805,39): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1809,13): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1815,39): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1819,13): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1829,71): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1829,134): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1830,13): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1840,71): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1840,134): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1841,13): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1854,43): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1860,13): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1863,247): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1863,310): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1863,391): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1864,247): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1864,310): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1864,391): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1873,61): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1874,13): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1884,61): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1885,13): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1887,231): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1887,294): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1887,375): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1888,219): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1888,259): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1889,197): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1889,270): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1890,193): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(1890,266): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1919,18): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(1919,33): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(2029,40): error TS2304: Cannot find name 'setViewMode'.
+src/components/Assets.tsx(2029,187): error TS2304: Cannot find name 'viewMode'.
+src/components/Assets.tsx(2032,40): error TS2304: Cannot find name 'setViewMode'.
+src/components/Assets.tsx(2032,189): error TS2304: Cannot find name 'viewMode'.
+src/components/Assets.tsx(2035,40): error TS2304: Cannot find name 'setViewMode'.
+src/components/Assets.tsx(2035,186): error TS2304: Cannot find name 'viewMode'.
+src/components/Assets.tsx(2040,13): error TS2304: Cannot find name 'viewMode'.
+src/components/Assets.tsx(2042,71): error TS2304: Cannot find name 'setSelectedIds'.
+src/components/Assets.tsx(2045,69): error TS2304: Cannot find name 'setSelectedIds'.
+src/components/Assets.tsx(2052,10): error TS2304: Cannot find name 'viewMode'.
+src/components/Assets.tsx(2056,30): error TS2304: Cannot find name 'searchTerm'.
+src/components/Assets.tsx(2056,57): error TS2304: Cannot find name 'setSearchTerm'.
+src/components/Assets.tsx(2084,39): error TS2304: Cannot find name 'setShowStyleLab'.
+src/components/Assets.tsx(2084,56): error TS2304: Cannot find name 'showStyleLab'.
+src/components/Assets.tsx(2084,109): error TS2304: Cannot find name 'showStyleLab'.
+src/components/Assets.tsx(2087,39): error TS2304: Cannot find name 'setShowColumnPicker'.
+src/components/Assets.tsx(2087,60): error TS2304: Cannot find name 'showColumnPicker'.
+src/components/Assets.tsx(2087,117): error TS2304: Cannot find name 'showColumnPicker'.
+src/components/Assets.tsx(2099,39): error TS2304: Cannot find name 'setShowConfig'.
+src/components/Assets.tsx(2107,27): error TS2304: Cannot find name 'selectedIds'.
+src/components/Assets.tsx(2108,70): error TS2304: Cannot find name 'selectedIds'.
+src/components/Assets.tsx(2115,139): error TS2304: Cannot find name 'selectedIds'.
+src/components/Assets.tsx(2120,28): error TS2304: Cannot find name 'selectedIds'.
+src/components/Assets.tsx(2121,76): error TS2304: Cannot find name 'selectedIds'.
+src/components/Assets.tsx(2121,90): error TS2304: Cannot find name 'setViewMode'.
+src/components/Assets.tsx(2126,28): error TS2304: Cannot find name 'selectedIds'.
+src/components/Assets.tsx(2127,54): error TS2304: Cannot find name 'setSelectedIds'.
+src/components/Assets.tsx(2127,135): error TS2304: Cannot find name 'setViewMode'.
+src/components/Assets.tsx(2132,52): error TS2304: Cannot find name 'setIsBulkStatusOpen'.
+src/components/Assets.tsx(2133,52): error TS2304: Cannot find name 'setIsBulkEnvOpen'.
+src/components/Assets.tsx(2152,10): error TS2304: Cannot find name 'viewMode'.
+src/components/Assets.tsx(2155,8): error TS2304: Cannot find name 'viewMode'.
+src/components/Assets.tsx(2168,27): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(2168,38): error TS2304: Cannot find name 'rowDensity'.
+src/components/Assets.tsx(2169,24): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(2169,35): error TS2304: Cannot find name 'rowDensity'.
+src/components/Assets.tsx(2179,15): error TS2304: Cannot find name 'setSelectedIds'.
+src/components/Assets.tsx(2196,14): error TS2304: Cannot find name 'showColumnPicker'.
+src/components/Assets.tsx(2207,42): error TS2304: Cannot find name 'setShowColumnPicker'.
+src/components/Assets.tsx(2215,37): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(2217,33): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(2218,31): error TS2304: Cannot find name 'setHiddenColumns'.
+src/components/Assets.tsx(2218,48): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(2220,31): error TS2304: Cannot find name 'setHiddenColumns'.
+src/components/Assets.tsx(2220,52): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(2225,86): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(2226,30): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(2229,110): error TS2304: Cannot find name 'hiddenColumns'.
+src/components/Assets.tsx(2234,43): error TS2304: Cannot find name 'setHiddenColumns'.
+src/components/Assets.tsx(2240,11): error TS2304: Cannot find name 'viewMode'.
+src/components/Assets.tsx(2243,24): error TS2304: Cannot find name 'selectedAssetId'.
+src/components/Assets.tsx(2244,22): error TS2304: Cannot find name 'setSelectedAssetId'.
+src/components/Assets.tsx(2252,11): error TS2304: Cannot find name 'viewMode'.
+src/components/Assets.tsx(2256,27): error TS2304: Cannot find name 'setViewMode'.
+src/components/Assets.tsx(2271,17): error TS2304: Cannot find name 'isBulkStatusOpen'.
+src/components/Assets.tsx(2272,24): error TS2304: Cannot find name 'setIsBulkStatusOpen'.
+src/components/Assets.tsx(2275,16): error TS2304: Cannot find name 'selectedIds'.
+src/components/Assets.tsx(2279,17): error TS2304: Cannot find name 'isBulkEnvOpen'.
+src/components/Assets.tsx(2280,24): error TS2304: Cannot find name 'setIsBulkEnvOpen'.
+src/components/Assets.tsx(2283,16): error TS2304: Cannot find name 'selectedIds'.
+src/components/Assets.tsx(2287,17): error TS2304: Cannot find name 'confirmModal'.
+src/components/Assets.tsx(2288,24): error TS2304: Cannot find name 'setConfirmModal'.
+src/components/Assets.tsx(2288,45): error TS2304: Cannot find name 'confirmModal'.
+src/components/Assets.tsx(2289,20): error TS2304: Cannot find name 'confirmModal'.
+src/components/Assets.tsx(2290,16): error TS2304: Cannot find name 'confirmModal'.
+src/components/Assets.tsx(2291,18): error TS2304: Cannot find name 'confirmModal'.
+src/components/Assets.tsx(2292,18): error TS2304: Cannot find name 'confirmModal'.
+src/components/Assets.tsx(2299,22): error TS2304: Cannot find name 'isMaximized'.
+src/components/Assets.tsx(2300,33): error TS2304: Cannot find name 'setIsMaximized'.
+src/components/Assets.tsx(2300,49): error TS2304: Cannot find name 'isMaximized'.
+src/components/Assets.tsx(2315,22): error TS2304: Cannot find name 'isMaximized'.
+src/components/Assets.tsx(2316,33): error TS2304: Cannot find name 'setIsMaximized'.
+src/components/Assets.tsx(2316,49): error TS2304: Cannot find name 'isMaximized'.
+src/components/Assets.tsx(2317,9): error TS2322: Type 'Element' is not assignable to type 'string'.
+src/components/Assets.tsx(2382,17): error TS2304: Cannot find name 'showConfig'.
+src/components/Assets.tsx(2383,24): error TS2304: Cannot find name 'setShowConfig'.
+src/components/Assets.tsx(2401,29): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(2408,26): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(2416,26): error TS2304: Cannot find name 'fontSize'.
+src/components/Assets.tsx(3099,74): error TS2304: Cannot find name 'showBulkMenu'.
+src/components/assets/AssetDetailsView.tsx(2,22): error TS2552: Cannot find name 'useNavigate'. Did you mean 'navigate'?
+src/components/assets/AssetDetailsView.tsx(3,27): error TS2304: Cannot find name 'useState'.
+src/components/assets/AssetDetailsView.tsx(4,25): error TS2552: Cannot find name 'useQueryClient'. Did you mean 'queryClient'?
+src/components/assets/AssetDetailsView.tsx(7,32): error TS2304: Cannot find name 'useQuery'.
+src/components/assets/AssetDetailsView.tsx(9,42): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(13,38): error TS2304: Cannot find name 'useQuery'.
+src/components/assets/AssetDetailsView.tsx(15,42): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(19,39): error TS2304: Cannot find name 'useQuery'.
+src/components/assets/AssetDetailsView.tsx(21,35): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(25,41): error TS2304: Cannot find name 'useQuery'.
+src/components/assets/AssetDetailsView.tsx(27,42): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(31,40): error TS2304: Cannot find name 'useQuery'.
+src/components/assets/AssetDetailsView.tsx(33,35): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(38,42): error TS2304: Cannot find name 'useQuery'.
+src/components/assets/AssetDetailsView.tsx(44,23): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(49,42): error TS2304: Cannot find name 'useQuery'.
+src/components/assets/AssetDetailsView.tsx(51,35): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(55,39): error TS2304: Cannot find name 'useQuery'.
+src/components/assets/AssetDetailsView.tsx(57,35): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(61,24): error TS2304: Cannot find name 'getAssetConsoleUrl'.
+src/components/assets/AssetDetailsView.tsx(69,22): error TS2304: Cannot find name 'useMutation'.
+src/components/assets/AssetDetailsView.tsx(71,31): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(77,146): error TS2304: Cannot find name 'toast'.
+src/components/assets/AssetDetailsView.tsx(78,30): error TS2304: Cannot find name 'toast'.
+src/components/assets/AssetDetailsView.tsx(89,32): error TS2304: Cannot find name 'Box'.
+src/components/assets/AssetDetailsView.tsx(165,51): error TS2304: Cannot find name 'MonitoringTab'.
+src/components/assets/AssetDetailsView.tsx(167,30): error TS2304: Cannot find name 'AssetServicesTable'.
+src/components/assets/AssetDetailsView.tsx(173,48): error TS2304: Cannot find name 'NetworkingTab'.
+src/components/assets/AssetDetailsView.tsx(175,49): error TS2304: Cannot find name 'SecurityTab'.
+src/components/assets/AssetDetailsView.tsx(178,33): error TS2304: Cannot find name 'MetadataViewer'.
+src/components/assets/AssetDetailsView.tsx(196,28): error TS2304: Cannot find name 'Terminal'.
+src/components/assets/AssetDetailsView.tsx(203,28): error TS2304: Cannot find name 'Activity'.
+src/components/assets/AssetDetailsView.tsx(211,28): error TS2304: Cannot find name 'AlertTriangle'.
+src/components/assets/AssetDetailsView.tsx(218,28): error TS2304: Cannot find name 'RefreshCw'.
+src/components/assets/AssetDetailsView.tsx(228,25): error TS2304: Cannot find name 'Activity'.
+src/components/assets/AssetDetailsView.tsx(245,25): error TS2304: Cannot find name 'Book'.
+src/components/assets/AssetDetailsView.tsx(262,25): error TS2304: Cannot find name 'Settings'.
+src/components/assets/AssetDetailsView.tsx(294,23): error TS2304: Cannot find name 'useQueryClient'.
+src/components/assets/AssetDetailsView.tsx(295,33): error TS2304: Cannot find name 'useState'.
+src/components/assets/AssetDetailsView.tsx(297,20): error TS2304: Cannot find name 'useMutation'.
+src/components/assets/AssetDetailsView.tsx(299,25): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(316,60): error TS2304: Cannot find name 'toast'.
+src/components/assets/AssetDetailsView.tsx(324,23): error TS2304: Cannot find name 'useQueryClient'.
+src/components/assets/AssetDetailsView.tsx(325,30): error TS2304: Cannot find name 'useQuery'.
+src/components/assets/AssetDetailsView.tsx(325,111): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(326,37): error TS2304: Cannot find name 'useState'.
+src/components/assets/AssetDetailsView.tsx(327,35): error TS2304: Cannot find name 'useState'.
+src/components/assets/AssetDetailsView.tsx(328,43): error TS2304: Cannot find name 'useState'.
+src/components/assets/AssetDetailsView.tsx(330,23): error TS2304: Cannot find name 'useMutation'.
+src/components/assets/AssetDetailsView.tsx(331,39): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(332,94): error TS2304: Cannot find name 'toast'.
+src/components/assets/AssetDetailsView.tsx(333,26): error TS2304: Cannot find name 'toast'.
+src/components/assets/AssetDetailsView.tsx(336,26): error TS2304: Cannot find name 'useMutation'.
+src/components/assets/AssetDetailsView.tsx(337,38): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(344,9): error TS2304: Cannot find name 'toast'.
+src/components/assets/AssetDetailsView.tsx(346,26): error TS2304: Cannot find name 'toast'.
+src/components/assets/AssetDetailsView.tsx(375,22): error TS2304: Cannot find name 'StyledSelect'.
+src/components/assets/AssetDetailsView.tsx(403,152): error TS2304: Cannot find name 'Check'.
+src/components/assets/AssetDetailsView.tsx(404,133): error TS2304: Cannot find name 'X'.
+src/components/assets/AssetDetailsView.tsx(408,192): error TS2304: Cannot find name 'Edit2'.
+src/components/assets/AssetDetailsView.tsx(409,296): error TS2304: Cannot find name 'Trash2'.
+src/components/assets/AssetDetailsView.tsx(415,54): error TS2304: Cannot find name 'WorkspaceEmptyState'.
+src/components/assets/AssetDetailsView.tsx(418,8): error TS2304: Cannot find name 'ConfirmationModal'.
+src/components/assets/AssetDetailsView.tsx(431,23): error TS2304: Cannot find name 'useQueryClient'.
+src/components/assets/AssetDetailsView.tsx(432,31): error TS2304: Cannot find name 'useState'.
+src/components/assets/AssetDetailsView.tsx(434,20): error TS2304: Cannot find name 'useMutation'.
+src/components/assets/AssetDetailsView.tsx(436,25): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(440,192): error TS2304: Cannot find name 'toast'.
+src/components/assets/AssetDetailsView.tsx(455,13): error TS2304: Cannot find name 'StyledSelect'.
+src/components/assets/AssetDetailsView.tsx(474,92): error TS2304: Cannot find name 'toast'.
+src/components/assets/AssetDetailsView.tsx(482,23): error TS2304: Cannot find name 'useQueryClient'.
+src/components/assets/AssetDetailsView.tsx(483,29): error TS2304: Cannot find name 'useQuery'.
+src/components/assets/AssetDetailsView.tsx(483,115): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(484,37): error TS2304: Cannot find name 'useState'.
+src/components/assets/AssetDetailsView.tsx(485,35): error TS2304: Cannot find name 'useState'.
+src/components/assets/AssetDetailsView.tsx(486,39): error TS2304: Cannot find name 'useState'.
+src/components/assets/AssetDetailsView.tsx(487,43): error TS2304: Cannot find name 'useState'.
+src/components/assets/AssetDetailsView.tsx(493,23): error TS2304: Cannot find name 'useMutation'.
+src/components/assets/AssetDetailsView.tsx(494,39): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(495,99): error TS2304: Cannot find name 'toast'.
+src/components/assets/AssetDetailsView.tsx(496,26): error TS2304: Cannot find name 'toast'.
+src/components/assets/AssetDetailsView.tsx(499,26): error TS2304: Cannot find name 'useMutation'.
+src/components/assets/AssetDetailsView.tsx(500,38): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(503,119): error TS2304: Cannot find name 'toast'.
+src/components/assets/AssetDetailsView.tsx(504,26): error TS2304: Cannot find name 'toast'.
+src/components/assets/AssetDetailsView.tsx(532,22): error TS2304: Cannot find name 'StyledSelect'.
+src/components/assets/AssetDetailsView.tsx(552,57): error TS2304: Cannot find name 'EyeOff'.
+src/components/assets/AssetDetailsView.tsx(552,79): error TS2304: Cannot find name 'Eye'.
+src/components/assets/AssetDetailsView.tsx(565,152): error TS2304: Cannot find name 'Check'.
+src/components/assets/AssetDetailsView.tsx(566,133): error TS2304: Cannot find name 'X'.
+src/components/assets/AssetDetailsView.tsx(570,192): error TS2304: Cannot find name 'Edit2'.
+src/components/assets/AssetDetailsView.tsx(571,291): error TS2304: Cannot find name 'Trash2'.
+src/components/assets/AssetDetailsView.tsx(580,8): error TS2304: Cannot find name 'ConfirmationModal'.
+src/components/assets/AssetDetailsView.tsx(593,23): error TS2304: Cannot find name 'useQueryClient'.
+src/components/assets/AssetDetailsView.tsx(594,29): error TS2304: Cannot find name 'useQuery'.
+src/components/assets/AssetDetailsView.tsx(594,98): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(596,17): error TS2304: Cannot find name 'useMemo'.
+src/components/assets/AssetDetailsView.tsx(604,25): error TS2304: Cannot find name 'useMemo'.
+src/components/assets/AssetDetailsView.tsx(606,31): error TS2304: Cannot find name 'useState'.
+src/components/assets/AssetDetailsView.tsx(613,20): error TS2304: Cannot find name 'useMutation'.
+src/components/assets/AssetDetailsView.tsx(615,25): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(624,9): error TS2304: Cannot find name 'toast'.
+src/components/assets/AssetDetailsView.tsx(649,20): error TS2304: Cannot find name 'useMemo'.
+src/components/assets/AssetDetailsView.tsx(667,17): error TS2304: Cannot find name 'StyledSelect'.
+src/components/assets/AssetDetailsView.tsx(681,20): error TS2304: Cannot find name 'ArrowRightLeft'.
+src/components/assets/AssetDetailsView.tsx(686,17): error TS2304: Cannot find name 'StyledSelect'.
+src/components/assets/AssetDetailsView.tsx(695,17): error TS2304: Cannot find name 'StyledSelect'.
+src/components/assets/AssetDetailsView.tsx(711,68): error TS2304: Cannot find name 'toast'.
+src/components/assets/AssetDetailsView.tsx(714,17): error TS2304: Cannot find name 'Plus'.
+src/components/assets/AssetDetailsView.tsx(724,23): error TS2304: Cannot find name 'useQueryClient'.
+src/components/assets/AssetDetailsView.tsx(725,35): error TS2304: Cannot find name 'useQuery'.
+src/components/assets/AssetDetailsView.tsx(725,117): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(726,29): error TS2304: Cannot find name 'useQuery'.
+src/components/assets/AssetDetailsView.tsx(726,98): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(727,43): error TS2304: Cannot find name 'useState'.
+src/components/assets/AssetDetailsView.tsx(728,37): error TS2304: Cannot find name 'useState'.
+src/components/assets/AssetDetailsView.tsx(729,35): error TS2304: Cannot find name 'useState'.
+src/components/assets/AssetDetailsView.tsx(731,25): error TS2304: Cannot find name 'useMemo'.
+src/components/assets/AssetDetailsView.tsx(733,23): error TS2304: Cannot find name 'useMutation'.
+src/components/assets/AssetDetailsView.tsx(734,39): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(735,95): error TS2304: Cannot find name 'toast'.
+src/components/assets/AssetDetailsView.tsx(736,26): error TS2304: Cannot find name 'toast'.
+src/components/assets/AssetDetailsView.tsx(739,26): error TS2304: Cannot find name 'useMutation'.
+src/components/assets/AssetDetailsView.tsx(740,38): error TS2304: Cannot find name 'apiFetch'.
+src/components/assets/AssetDetailsView.tsx(743,115): error TS2304: Cannot find name 'toast'.
+src/components/assets/AssetDetailsView.tsx(744,26): error TS2304: Cannot find name 'toast'.
+src/components/assets/AssetDetailsView.tsx(805,28): error TS2304: Cannot find name 'ArrowRightLeft'.
+src/components/assets/AssetDetailsView.tsx(837,165): error TS2304: Cannot find name 'Check'.
+src/components/assets/AssetDetailsView.tsx(838,148): error TS2304: Cannot find name 'X'.
+src/components/assets/AssetDetailsView.tsx(842,192): error TS2304: Cannot find name 'Edit2'.
+src/components/assets/AssetDetailsView.tsx(843,293): error TS2304: Cannot find name 'Trash2'.
+src/components/assets/AssetDetailsView.tsx(853,8): error TS2304: Cannot find name 'ConfirmationModal'.
+src/components/ServiceRegistry.tsx(567,15): error TS2304: Cannot find name 'setGridApi'.
+src/components/ServiceRegistry.tsx(568,15): error TS2304: Cannot find name 'setGridColumnApi'.

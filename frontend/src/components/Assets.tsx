@@ -1433,6 +1433,11 @@ export default function Assets() {
   const queryClient = useQueryClient()
   const [showImportModal, setShowImportModal] = useState(false)
   const [showBulkMenu, setShowBulkMenu] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
+  const [viewMode, setViewMode] = useState<'table' | 'graph'>('table')
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
   const [searchParams, setSearchParams] = useSearchParams()
   const gridRef = React.useRef<any>(null)
   const [gridApi, setGridApi] = useState<any>(null)
@@ -1464,6 +1469,7 @@ export default function Assets() {
   const [selectedConnection, setSelectedConnection] = useState<any>(null)
   const [activeNetworkEdit, setActiveNetworkEdit] = useState<any>(null)
   const [activeLens, setActiveLens] = useState<'all' | 'mine' | 'team' | 'unowned' | 'degraded' | 'at_risk' | 'needs_docs'>('all')
+  const [activeTab, setActiveTab] = useState<'inventory' | 'deleted'>('inventory')
   const [compareSnapshotIds, setCompareSnapshotIds] = useState<number[]>([])
 
   const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
