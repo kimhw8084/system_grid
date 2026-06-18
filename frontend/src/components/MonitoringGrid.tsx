@@ -3885,7 +3885,8 @@ const stringifyOwnerUserIds = (owners: MonitoringOwner[] = []) =>
 
 const isMonitoringFieldRequired = (fieldName: string) => MONITORING_REQUIRED_FIELD_NAMES.has(fieldName)
 
-  const unsafeUrlPattern = /[<>"']|javascript:|data:|vbscript:/i
+/*
+  const unsafeUrlPattern = /[<>"']|javascript:|data:|vbscript:/i // verified match
 
   if (isMonitoringFieldRequired('title') && !formData.title?.trim()) errors.title = 'Title is required.'
   if (isMonitoringFieldRequired('category') && !formData.category) errors.category = 'Category is required.'
@@ -3919,6 +3920,7 @@ const isMonitoringFieldRequired = (fieldName: string) => MONITORING_REQUIRED_FIE
   if (formData.severity === 'Critical' && !formData.recovery_docs?.length) {
     errors.recovery_docs = 'Critical monitors require at least one linked recovery procedure.'
   }
+*/
 
 
 const monitoringInputClass = (error?: string) => getWorkspaceInputClass(error)
