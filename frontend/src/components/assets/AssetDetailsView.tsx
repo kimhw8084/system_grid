@@ -1,11 +1,86 @@
 import React, { useState, useMemo } from 'react'
-import { ArrowRightLeft, Check, X, Edit2, Trash2, Box, Zap, Clock, Globe, Info, Search, Plus } from 'lucide-react'
+import { ArrowRightLeft, Check, X, Edit2, Trash2, Box, Zap, Clock, Globe, Info, Search, Plus, Terminal, Activity, AlertTriangle, RefreshCw, Book, Settings, Eye, EyeOff } from 'lucide-react'
 import { ConfirmationModal } from '../shared/ConfirmationModal'
 import { apiFetch } from '../../api/apiClient'
 import toast from 'react-hot-toast'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { StyledSelect } from '../shared/StyledSelect'
 import { useNavigate } from 'react-router-dom'
+import { WorkspaceEmptyState } from '../shared/OperationalWorkspacePrimitives'
+import { AssetServicesTable, MetadataViewer, MiniMonitoringTable } from '../AssetGrid_Legacy'
+
+const getAssetConsoleUrl = (asset: any) => {
+  if (asset?.management_url) {
+    const trimmed = String(asset.management_url).trim()
+    if (!trimmed) return null
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+  }
+  if (asset?.management_ip) return `https://${asset.management_ip}`
+  return null
+}
+
+const MonitoringTab = ({ deviceId }: { deviceId: number }) => <MiniMonitoringTable deviceId={deviceId} />
+
+const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number, onEditLink: (l: any) => void, onViewLink: (l: any) => void }) => {
+  const { data: connections, isLoading } = useQuery({
+    queryKey: ['asset-detail-network', deviceId],
+    queryFn: async () => (await apiFetch(`/api/v1/networks/connections?device_id=${deviceId}`)).json(),
+    enabled: !!deviceId,
+  })
+
+  if (isLoading) {
+    return <div className="p-8 text-center text-[10px] font-bold uppercase text-slate-500">Loading connectivity...</div>
+  }
+
+  if (!connections?.length) {
+    return <WorkspaceEmptyState compact title="No connections mapped" description="No network links are currently recorded for this asset." />
+  }
+
+  return (
+    <div className="p-4">
+      <table className="w-full text-[10px]">
+        <thead className="bg-white/5 border-b border-white/5">
+          <tr>
+            <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Peer</th>
+            <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Ports</th>
+            <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/5">
+          {connections.map((link: any) => (
+            <tr key={link.id} className="hover:bg-white/5">
+              <td className="px-4 py-3 font-bold text-slate-200">{link.target_device_name || link.source_device_name || 'Peer'}</td>
+              <td className="px-4 py-3 text-slate-400 font-mono">{`${link.source_port || 'n/a'} -> ${link.target_port || 'n/a'}`}</td>
+              <td className="px-4 py-3 text-center">
+                <div className="flex items-center justify-center gap-1">
+                  <button onClick={() => onViewLink(link)} className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg"><Eye size={14} /></button>
+                  <button onClick={() => onEditLink(link)} className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-lg"><Edit2 size={14} /></button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+const SecurityTab = ({ device }: { device: any }) => (
+  <div className="p-6 grid grid-cols-2 gap-4">
+    <div className="rounded-lg border border-white/5 bg-white/[0.03] p-4">
+      <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Ownership</p>
+      <p className="mt-2 text-sm font-bold text-white">{device.owner || 'Unowned'}</p>
+    </div>
+    <div className="rounded-lg border border-white/5 bg-white/[0.03] p-4">
+      <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Exposure</p>
+      <p className="mt-2 text-sm font-bold text-white">{device.management_ip || device.primary_ip || 'No address recorded'}</p>
+    </div>
+    <div className="col-span-2 rounded-lg border border-white/5 bg-white/[0.03] p-4">
+      <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Security posture notes</p>
+      <p className="mt-2 text-sm font-bold text-slate-300">{device.notes || device.purpose || 'No security notes captured for this asset.'}</p>
+    </div>
+  </div>
+)
 
 export const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService, onEditLink, onViewLink }: { device: any, options: any, onViewServiceDetails: (s:any)=>void, onEditService: (s:any)=>void, onEditLink: (l:any)=>void, onViewLink: (l:any)=>void }) => {
     const navigate = useNavigate()

@@ -2,6 +2,9 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { AnimatePresence, motion } from 'framer-motion'
+import ForceGraph2D from 'react-force-graph-2d'
+import { createPortal } from 'react-dom'
 import { AssetDetailsView } from './assets/AssetDetailsView'
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
 import { WorkspaceEmptyState } from "./shared/OperationalWorkspacePrimitives";
@@ -1417,23 +1420,23 @@ const AssetInsightBar = ({ assets }: any) => {
 }
 
 export default function Assets() {
-  // --- AUTO-DEBUG ---
-  console.log("Assets.tsx rendering. Checking scope...")
-  try {
-    // Check if showBulkMenu exists in this function scope
-    console.log("showBulkMenu type:", typeof showBulkMenu);
-  } catch (e) {
-    console.error("DEBUG: showBulkMenu not reachable in Assets scope:", e);
-  }
-  // ------------------
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [showImportModal, setShowImportModal] = useState(false)
   const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
-  const [viewMode, setViewMode] = useState<'table' | 'graph'>('table')
+  const [viewMode, setViewMode] = useState<'grid' | 'report' | 'map' | 'compare'>('grid')
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [showStyleLab, setShowStyleLab] = useState(false)
+  const [showColumnPicker, setShowColumnPicker] = useState(false)
+  const [showConfig, setShowConfig] = useState(false)
+  const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
+  const [isBulkEnvOpen, setIsBulkEnvOpen] = useState(false)
+  const [isMaximized, setIsMaximized] = useState(false)
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
+  const [fontSize] = useState(10)
+  const [rowDensity] = useState(16)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
   const [searchParams, setSearchParams] = useSearchParams()
   const gridRef = React.useRef<any>(null)
@@ -3098,7 +3101,6 @@ const MonitoringTab = ({ deviceId }: { deviceId: number }) => {
                              </tr>
                           </thead>
                           <tbody className="divide-y divide-white/5">
-                             {console.log("DEBUG: showBulkMenu=", typeof showBulkMenu)}
                              {item.logic_json.map((l: any, idx: number) => (
                                 <tr key={idx} className="hover:bg-white/5 transition-colors">
                                    <td className="px-4 py-2 font-bold text-blue-400 uppercase">{l.type}</td>

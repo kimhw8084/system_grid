@@ -91,6 +91,8 @@ def parse_iso_date(date_str: str):
     """
     if not date_str:
         return None
+    if not isinstance(date_str, str):
+        return None
     try:
         # Handle cases with 'Z' or offset
         clean_str = date_str.replace('Z', '+00:00')

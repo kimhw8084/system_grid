@@ -71,7 +71,7 @@ test.describe('External workflows', () => {
     await expect(phoneButton).toBeEnabled()
     await page.locator('.glass-panel').filter({ has: page.getByRole('heading', { name: externalEntity.name }) }).locator('div.border-b').first().getByRole('button').click()
 
-    const entityRow = page.locator('.ag-row', { hasText: entity.name })
+    const entityRow = page.locator('.ag-row', { hasText: externalEntity.name })
     await entityRow.getByTitle('Edit Entity').click()
     const editModal = page.locator('.glass-panel').filter({ has: page.getByText('Modify Entity Registry') })
     await editModal.locator('select').first().selectOption({ index: 1 })
@@ -109,7 +109,7 @@ test.describe('External workflows', () => {
     await expect(page.getByText('Interconnect Established')).toBeVisible()
 
     await clickResilientButton(page, 'Registry')
-    await page.locator('.ag-pinned-right-cols-container .ag-row').nth(await findEntityRowIndex()).getByTitle('View Details').click()
+    await page.locator('.ag-row', { hasText: externalEntity.name }).getByTitle('View Details').click()
     await clickResilientButton(page, /Dependencies/i)
     await expect(page.getByText('Dependency Matrix')).toBeVisible()
     await expect(page.getByText(internalAsset.name)).toBeVisible()

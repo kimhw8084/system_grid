@@ -136,7 +136,8 @@ class MonitoringOwnerBase(BaseModel):
     role: str
 
 class MonitoringOwnerCreate(MonitoringOwnerBase): pass
-class MonitoringOwnerResponse(MonitoringOwnerBase, BaseSchema): pass
+class MonitoringOwnerResponse(MonitoringOwnerBase, BaseSchema):
+    operator_id: Optional[int] = None
 
 class MonitoringLogicEntry(BaseModel):
     id: int

@@ -212,9 +212,8 @@ async def get_devices_summary(
 
 @router.get("/{device_id}/interfaces")
 async def get_device_interfaces(request: Request, device_id: int, db: AsyncSession = Depends(get_db)):
-    tenant_id = request.state.tenant_id
     # Fetch interfaces for the device
-    res = await db.execute(select(models.NetworkInterface).filter(models.NetworkInterface.device_id == device_id, models.NetworkInterface.tenant_id == tenant_id))
+    res = await db.execute(select(models.NetworkInterface).filter(models.NetworkInterface.device_id == device_id))
     interfaces = res.scalars().all()
     
     # Fetch all connections involving this device to map to interfaces
@@ -404,59 +403,52 @@ async def bulk_action(request: Request, data: dict, db: AsyncSession = Depends(g
 
 @router.get("/{device_id}/hardware")
 async def get_hardware(request: Request, device_id: int, db: AsyncSession = Depends(get_db)):
-    tenant_id = request.state.tenant_id
-    res = await db.execute(select(models.HardwareComponent).filter(models.HardwareComponent.device_id == device_id, models.HardwareComponent.tenant_id == tenant_id))
+    res = await db.execute(select(models.HardwareComponent).filter(models.HardwareComponent.device_id == device_id))
     return res.scalars().all()
 
 @router.post("/{device_id}/hardware")
 async def add_hardware(request: Request, device_id: int, data: dict, db: AsyncSession = Depends(get_db)):
-    tenant_id = request.state.tenant_id
     # Audit: Ensure data is not empty
     if not data or not any(data.values()): raise HTTPException(400, "Empty hardware data")
     clean = filter_valid_columns(models.HardwareComponent, data)
-    comp = models.HardwareComponent(device_id=device_id, tenant_id=tenant_id, **clean)
+    comp = models.HardwareComponent(device_id=device_id, **clean)
     db.add(comp); await db.commit(); return comp
 
 @router.get("/{device_id}/secrets")
 async def get_secrets(request: Request, device_id: int, db: AsyncSession = Depends(get_db)):
-    tenant_id = request.state.tenant_id
-    res = await db.execute(select(models.SecretVault).filter(models.SecretVault.device_id == device_id, models.SecretVault.tenant_id == tenant_id))
+    res = await db.execute(select(models.SecretVault).filter(models.SecretVault.device_id == device_id))
     return res.scalars().all()
 
 @router.post("/{device_id}/secrets")
 async def add_secret(request: Request, device_id: int, data: dict, db: AsyncSession = Depends(get_db)):
-    tenant_id = request.state.tenant_id
     if not data or not data.get("secret_type"): raise HTTPException(400, "Secret type required")
     clean = filter_valid_columns(models.SecretVault, data)
-    sec = models.SecretVault(device_id=device_id, tenant_id=tenant_id, **clean)
+    sec = models.SecretVault(device_id=device_id, **clean)
     db.add(sec); await db.commit(); return sec
 
 @router.get("/relationships/all")
 async def get_all_relationships(request: Request, db: AsyncSession = Depends(get_db)):
-    tenant_id = request.state.tenant_id
-    res = await db.execute(select(models.DeviceRelationship).filter(models.DeviceRelationship.tenant_id == tenant_id))
+    res = await db.execute(select(models.DeviceRelationship))
     return res.scalars().all()
 
 @router.get("/{device_id}/relationships")
 async def get_relationships(request: Request, device_id: int, db: AsyncSession = Depends(get_db)):
-    tenant_id = request.state.tenant_id
     from sqlalchemy import or_
     res = await db.execute(select(models.DeviceRelationship).filter(
         or_(
             models.DeviceRelationship.source_device_id == device_id,
             models.DeviceRelationship.target_device_id == device_id
-        ), models.DeviceRelationship.tenant_id == tenant_id
+        )
     ))
     return res.scalars().all()
 
 @router.post("/{device_id}/relationships")
 async def add_relationship(request: Request, device_id: int, data: dict, db: AsyncSession = Depends(get_db)):
-    tenant_id = request.state.tenant_id
     target_id = data.get("target_device_id")
     if not target_id: raise HTTPException(400, "Target device ID required")
     if int(target_id) == device_id: raise HTTPException(400, "Cannot link server to itself")
     clean = filter_valid_columns(models.DeviceRelationship, data)
-    rel = models.DeviceRelationship(source_device_id=device_id, tenant_id=tenant_id, **clean)
+    rel = models.DeviceRelationship(source_device_id=device_id, **clean)
     db.add(rel); await db.commit(); return rel
 
 @router.delete("/{device_id}")
@@ -471,19 +463,17 @@ async def delete_device(request: Request, device_id: int, db: AsyncSession = Dep
 
 @router.delete("/{resource}/{id}")
 async def delete_resource(request: Request, resource: str, id: int, db: AsyncSession = Depends(get_db)):
-    tenant_id = request.state.tenant_id
     model_map = {"hardware": models.HardwareComponent, "software": models.DeviceSoftware, "secrets": models.SecretVault, "relationships": models.DeviceRelationship}
     if resource not in model_map: raise HTTPException(400)
-    await db.execute(delete(model_map[resource]).where(model_map[resource].id == id, model_map[resource].tenant_id == tenant_id))
+    await db.execute(delete(model_map[resource]).where(model_map[resource].id == id))
     await db.commit(); return {"status": "success"}
 
 @router.put("/{resource}/{id}")
 async def update_resource(request: Request, resource: str, id: int, data: dict, db: AsyncSession = Depends(get_db)):
-    tenant_id = request.state.tenant_id
     model_map = {"hardware": models.HardwareComponent, "software": models.DeviceSoftware, "secrets": models.SecretVault, "relationships": models.DeviceRelationship}
     if resource not in model_map: raise HTTPException(400)
     
-    res = await db.execute(select(model_map[resource]).filter(model_map[resource].id == id, model_map[resource].tenant_id == tenant_id))
+    res = await db.execute(select(model_map[resource]).filter(model_map[resource].id == id))
     item = res.scalar_one_or_none()
     if not item: raise HTTPException(404)
     

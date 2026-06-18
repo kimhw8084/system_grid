@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../api/apiClient'
 import { toast } from 'react-hot-toast'
 import { StyledSelect } from './StyledSelect'
-import { MonitoringForm } from '../MonitoringGrid'
+import { MonitoringForm } from '../monitoring/MonitoringForm'
 import { ProjectForm } from '../Projects'
 import { WorkspaceModal } from './WorkspaceModal'
 

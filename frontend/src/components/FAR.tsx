@@ -22,7 +22,7 @@ import { OPERATIONAL_GRID_AUTO_SIZE_STRATEGY } from './shared/OperationalGridSiz
 import { StyledSelect } from './shared/StyledSelect'
 import { StatusPill } from './shared/StatusPill'
 import { ConfigRegistryModal } from './ConfigRegistry'
-import { MonitoringForm } from './MonitoringGrid'
+import { MonitoringForm } from './monitoring/MonitoringForm'
 import { ProjectForm } from './Projects'
 import { RootCauseFormModal, MitigationFormModal, PreventionFormModal, ResolutionManagerModal } from './shared/FARModals'
 import { EnhancedRcaDetails } from './Research'

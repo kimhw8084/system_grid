@@ -4,6 +4,7 @@ from copy import deepcopy
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy import select, delete, update
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from ..database import get_db, get_config_db, Base
 from ..models import models
 from ..models.config import Tenant, UserTenantAccess, GlobalSetting
@@ -765,16 +766,17 @@ async def get_user_env_vars(request: Request):
 async def update_user_settings(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
     user_id = get_current_user_id(request)
     for key, value in data.items():
-        res = await db.execute(select(models.UserPreference).filter(
-            models.UserPreference.user_id == user_id,
-            models.UserPreference.key == key
-        ))
-        pref = res.scalar_one_or_none()
         serialized_value = serialize_user_preference_value(value)
-        if pref:
-            pref.value = serialized_value
-        else:
-            db.add(models.UserPreference(user_id=user_id, key=key, value=serialized_value))
+        statement = sqlite_insert(models.UserPreference).values(
+            user_id=user_id,
+            key=key,
+            value=serialized_value,
+        )
+        statement = statement.on_conflict_do_update(
+            index_elements=["user_id", "key"],
+            set_={"value": serialized_value},
+        )
+        await db.execute(statement)
     await db.commit()
     return {"status": "success"}
 

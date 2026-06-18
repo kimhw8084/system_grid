@@ -1,17 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Monitor, Share, ArrowRightLeft, FileText, MessageSquare, Globe, Clock, Zap, ExternalLink, Info, Zap as ZapIcon, Code, ChevronUp, ChevronDown, Users, Briefcase, UserCheck, AlertCircle, Shield } from 'lucide-react'
+import { Monitor, Share, ArrowRightLeft, FileText, MessageSquare, Globe, Clock, Zap, ExternalLink, Info, Zap as ZapIcon, Code, ChevronUp, ChevronDown, Users, Briefcase, UserCheck, AlertCircle, Shield, Terminal } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { apiFetch } from '../../api/apiClient'
-import { 
-  WorkspaceModal, 
-  WorkspaceDossierShell, 
-  WorkspaceSplitView, 
-  WorkspaceEmptyState,
-  useEscapeDismiss, 
-  useBodyModalFlag 
-} from '../shared/OperationalWorkspacePrimitives'
+import { WorkspaceSplitView, WorkspaceEmptyState, useEscapeDismiss, useBodyModalFlag } from '../shared/OperationalWorkspacePrimitives'
+import { WorkspaceModal } from '../shared/WorkspaceModal'
+import { WorkspaceDossierShell } from '../shared/WorkspaceModalShells'
 import { ToolbarButton } from '../shared/LayoutPrimitives'
 import { StatusPill } from '../shared/StatusPill'
 

@@ -38,6 +38,19 @@ async def test_settings_user_profile_env_and_global_edges(seeded_admin_tenant, s
     assert settings_res.json()["theme"] == {"mode": "dark"}
     assert settings_res.json()["pinnedViews"] == ["dashboard", "monitoring"]
 
+    update_again_res = await client.patch(
+        "/api/v1/settings/user/settings",
+        json={"theme": {"mode": "light"}, "monitoring_ui_state": None},
+        headers=headers,
+    )
+    assert update_again_res.status_code == 200, update_again_res.text
+
+    settings_updated_res = await client.get("/api/v1/settings/user/settings", headers=headers)
+    assert settings_updated_res.status_code == 200, settings_updated_res.text
+    updated_settings = settings_updated_res.json()
+    assert updated_settings["theme"] == {"mode": "light"}
+    assert updated_settings["monitoring_ui_state"] is None
+
     profile_res = await client.get("/api/v1/settings/user/profile", headers=headers)
     assert profile_res.status_code == 200, profile_res.text
     profile = profile_res.json()

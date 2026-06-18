@@ -562,6 +562,8 @@ async def bulk_action(data: dict, request: Request, db: AsyncSession = Depends(g
         db.add(log)
         await db.commit()
         return {"status": "success", "relocated": relocated_ids, "conflicts": conflict_ids}
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported bulk action")
     
     await db.commit()
     return {"status": "success"}
@@ -621,7 +623,7 @@ async def move_device(data: dict, request: Request, db: AsyncSession = Depends(g
         changes={"rack_id": target_rack_id, "start_unit": target_start_u}
     )
     db.add(log)
-    
+
     await db.commit()
     return {"status": "success"}
 

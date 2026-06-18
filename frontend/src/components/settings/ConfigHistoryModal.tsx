@@ -1,12 +1,9 @@
 import React, { useState } from 'react'
 import { History as HistoryIcon, Clock, Share2 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { 
-  WorkspaceModal, 
-  WorkspaceHistoryShell, 
-  useEscapeDismiss, 
-  useBodyModalFlag 
-} from '../shared/OperationalWorkspacePrimitives'
+import { useEscapeDismiss, useBodyModalFlag } from '../shared/OperationalWorkspacePrimitives'
+import { WorkspaceModal } from '../shared/WorkspaceModal'
+import { WorkspaceHistoryShell } from '../shared/WorkspaceModalShells'
 import { ToolbarButton } from '../shared/LayoutPrimitives'
 
 export function ConfigHistoryModal({ field, versions, onClose, onRevert }: { field: string, versions: any[], onClose: () => void, onRevert: (val: string) => void }) {

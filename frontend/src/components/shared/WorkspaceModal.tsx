@@ -14,7 +14,7 @@ interface WorkspaceModalProps {
   isOpen: boolean
   onClose: () => void
   size?: WorkspaceModalSize
-  title: string
+  title: React.ReactNode
   subtitle?: React.ReactNode
   icon?: React.ReactNode
   status?: React.ReactNode

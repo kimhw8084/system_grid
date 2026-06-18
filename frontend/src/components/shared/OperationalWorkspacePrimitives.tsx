@@ -621,7 +621,7 @@ export function WorkspaceModalHeader({
   onTabChange,
 }: {
   icon: React.ReactNode
-  title: string
+  title: React.ReactNode
   subtitle: React.ReactNode
   status?: React.ReactNode
   forensicLineage?: { createdAt?: string | Date; updatedAt?: string | Date }

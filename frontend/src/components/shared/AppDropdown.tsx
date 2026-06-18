@@ -33,6 +33,9 @@ export const AppDropdown = ({
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const { triggerRef, panelRef, panelStyle } = useWorkspaceAnchoredLayer(isOpen, { minWidth: 200 })
+  const uniqueOptions = options.filter((option, index, items) => (
+    items.findIndex((candidate) => candidate.value === option.value) === index
+  ))
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -50,7 +53,7 @@ export const AppDropdown = ({
     if (isOpen) setSearchTerm('')
   }, [isOpen])
 
-  const filteredOptions = options.filter(opt => 
+  const filteredOptions = uniqueOptions.filter(opt => 
     String(opt.label).toLowerCase().includes(searchTerm.toLowerCase()) ||
     String(opt.value).toLowerCase().includes(searchTerm.toLowerCase())
   )
@@ -78,10 +81,10 @@ export const AppDropdown = ({
   const getLabel = () => {
     if (multi && Array.isArray(value)) {
       if (value.length === 0) return placeholder || 'Select...'
-      if (value.length === 1) return options.find(o => o.value === value[0])?.label || value[0]
+      if (value.length === 1) return uniqueOptions.find(o => o.value === value[0])?.label || value[0]
       return `${value.length} selected`
     }
-    const selectedOption = options.find(opt => opt.value === value)
+    const selectedOption = uniqueOptions.find(opt => opt.value === value)
     return selectedOption ? selectedOption.label : placeholder || 'Select...'
   }
 

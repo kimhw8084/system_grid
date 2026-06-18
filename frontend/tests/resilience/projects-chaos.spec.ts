@@ -22,7 +22,7 @@ test('Projects task update resilience: Network Stall + Rapid Interaction', async
   await waitForAppIdle(page);
   
   // Switch to Gantt tab
-  await page.getByText('Precision Gantt').click();
+  await clickResilientButton(page, 'Precision Gantt');
   await waitForAppIdle(page);
   
   // Find a task row using the task name span

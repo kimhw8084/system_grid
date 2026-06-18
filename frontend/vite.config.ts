@@ -11,6 +11,20 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    test: {
+      environment: 'jsdom',
+      globals: true,
+      setupFiles: ['./src/test/setup.ts'],
+      include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+      exclude: ['tests/**', 'node_modules/**', 'dist/**'],
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'json-summary', 'html'],
+        reportsDirectory: './coverage',
+        include: ['src/**/*.ts', 'src/**/*.tsx'],
+        exclude: ['src/**/*.d.ts'],
+      },
+    },
     server: {
       port: frontendPort,
       host: true,

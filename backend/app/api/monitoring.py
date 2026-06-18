@@ -35,7 +35,7 @@ def normalize_string_list(values: list[Any] | None) -> list[str]:
         for normalized in (normalize_string(value) for value in (values or []))
         if normalized
     }
-    return sorted(cleaned, key=lambda value: value.lower())
+    return sorted(cleaned, key=lambda value: (value.lower(), value))
 
 def normalize_monitoring_url(value: Optional[str]) -> Optional[str]:
     if value is None:

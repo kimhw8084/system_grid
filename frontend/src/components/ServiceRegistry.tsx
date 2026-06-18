@@ -374,6 +374,8 @@ export default function ServiceRegistry() {
   const [showImportModal, setShowImportModal] = useState(false)
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
+  const [, setGridApi] = useState<any>(null)
+  const [, setGridColumnApi] = useState<any>(null)
   const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
   const [showStyleLab, setShowStyleLab] = useState(true)

@@ -64,6 +64,7 @@ cd "$BACKEND_DIR"
 
 cd "$FRONTEND_DIR"
 npm run test:lint
+npm run typecheck
 npm run test:coverage
 npm run build
 

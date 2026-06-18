@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { MonitoringView } from './pom/MonitoringView'
 import {
+  clickResilientButton,
   createMonitoring,
   expectToast,
   fillGridSearch,
@@ -76,22 +77,22 @@ test.describe('Monitoring workflows', () => {
 
     await page.goto(`/monitoring?id=${monitoring.id}`)
     await expect(page.getByText(monitoring.title)).toBeVisible()
-    await page.getByRole('button', { name: 'Recovery', exact: true }).click()
+    await clickResilientButton(page, 'Recovery')
     await expect(page.getByText('Recovery Procedures').last()).toBeVisible()
     await expect(page.getByText(knowledge.title)).toBeVisible()
 
-    await page.getByRole('button', { name: 'Link Procedure', exact: true }).click()
+    await clickResilientButton(page, 'Link Procedure')
     await page.getByPlaceholder('Search Knowledge Base by title or category...').fill(extraKnowledge.title)
-    await page.getByRole('button', { name: new RegExp(extraKnowledge.title, 'i') }).click()
+    await clickResilientButton(page, new RegExp(extraKnowledge.title, 'i'))
     await expect(page.getByText(extraKnowledge.title)).toBeVisible()
-    await page.getByRole('button', { name: /Close Search/i }).click()
+    await clickResilientButton(page, /Close Search/i)
     await page.getByRole('button').filter({ hasText: /^PW-RUNBOOK-/ }).click()
     await expect(page.getByText('Operational Triage Instruction')).toBeVisible()
     await page.keyboard.press('Escape')
 
     await page.goto(`/monitoring?id=${monitoring.id}`)
     await expect(page.getByText(monitoring.title)).toBeVisible()
-    await page.getByRole('button', { name: /Open Recovery BKM/i }).click()
+    await clickResilientButton(page, /Open Recovery BKM/i)
     await expect(page).toHaveURL(new RegExp(`/knowledge\\?id=${knowledge.id}`))
   })
 
@@ -170,12 +171,12 @@ test.describe('Monitoring workflows', () => {
 
     await gotoView(page, `/monitoring?id=${monitoring.id}`, 'Monitoring')
     await expect(page.getByText(monitoring.title)).toBeVisible()
-    await page.getByRole('button', { name: 'Edit Monitor' }).click()
+    await clickResilientButton(page, 'Edit Monitor')
     await expect(page.getByText('Update Monitoring')).toBeVisible()
 
     await page.getByPlaceholder('e.g. CORE-DB: High CPU Load Alert').fill(updatedTitle)
     await page.getByPlaceholder('Why are we monitoring this?').fill(updatedPurpose)
-    await page.getByRole('button', { name: 'Save Monitoring' }).click()
+    await clickResilientButton(page, 'Save Monitoring')
     await expect(page.getByText('Update Monitoring')).not.toBeVisible()
 
     await gotoView(page, `/monitoring?id=${monitoring.id}`, 'Monitoring')
@@ -293,7 +294,7 @@ test.describe('Monitoring workflows', () => {
     await expect(page.getByRole('heading', { name: 'Monitoring' })).toBeVisible()
     await fillGridSearch(page, 'Scan matrix...', createdLongTitle)
     await openToolbarButton(page, 'Views')
-    await page.getByRole('button', { name: new RegExp(`^${viewName}`) }).first().click()
+    await clickResilientButton(page, new RegExp(`^${viewName}`))
     await page.keyboard.press('Escape')
     await fillGridSearch(page, 'Scan matrix...', createdLongTitle)
     await expect.poll(async () => getColumnWidth(page, 'device_name')).toBe(manualViewWidth)
@@ -310,20 +311,20 @@ test.describe('Monitoring workflows', () => {
     await expect(page.getByRole('heading', { name: 'Monitoring Import' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Download Template' })).toBeVisible()
 
-    await page.getByRole('button', { name: 'Paste CSV / Grid' }).click()
+    await clickResilientButton(page, 'Paste CSV / Grid')
     await page.getByPlaceholder('Paste CSV with headers, or paste spreadsheet cells directly.').fill([
       'device_name,category,status,title,platform,owner_team,severity,recovery_doc_titles',
       `${primary.name},Infrastructure,Existing,${importTitle},Zabbix,${monitoring.owner_team},Critical,${knowledge.title}`,
       `UNKNOWN-ASSET,Infrastructure,Existing,${invalidTitle},Zabbix,${monitoring.owner_team},Warning,`,
     ].join('\n'))
-    await page.getByRole('button', { name: 'Load Into Builder' }).click()
-    await page.getByRole('button', { name: 'Initiate Audit' }).click()
+    await clickResilientButton(page, 'Load Into Builder')
+    await clickResilientButton(page, 'Initiate Audit')
 
     await expect(page.getByText('VALID').first()).toBeVisible()
     await expect(page.getByText('INVALID').first()).toBeVisible()
     await expect(page.getByText('Unknown Target Asset: UNKNOWN-ASSET').first()).toBeVisible()
 
-    await page.getByRole('button', { name: 'Import 1' }).click()
+    await clickResilientButton(page, 'Import 1')
     await expectToast(page, /Imported 1 row/i)
     await expect(page.getByRole('heading', { name: 'Monitoring Import' })).not.toBeVisible()
 

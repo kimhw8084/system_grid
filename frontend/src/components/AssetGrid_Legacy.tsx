@@ -84,7 +84,7 @@ const SharedServiceModals = ({
   )
 }
 
-const AssetServicesTable = ({ deviceId, onViewDetails, onEdit }: { deviceId: number, onViewDetails: (s: any) => void, onEdit: (s: any) => void }) => {
+export const AssetServicesTable = ({ deviceId, onViewDetails, onEdit }: { deviceId: number, onViewDetails: (s: any) => void, onEdit: (s: any) => void }) => {
   const { data: services, isLoading } = useQuery({
     queryKey: ['device-services', deviceId],
     queryFn: async () => (await (await apiFetch(`/api/v1/logical-services/?device_id=${deviceId}`)).json())
@@ -362,7 +362,7 @@ const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v
   )
 }
 
-const MetadataViewer = ({ data }: { data: any }) => {
+export const MetadataViewer = ({ data }: { data: any }) => {
   let obj: any = {}
   try {
     obj = typeof data === 'string' ? JSON.parse(data || '{}') : (data || {})
@@ -397,7 +397,7 @@ const MetadataViewer = ({ data }: { data: any }) => {
   )
 }
 
-const MiniMonitoringTable = ({ deviceId }: { deviceId: number }) => {
+export const MiniMonitoringTable = ({ deviceId }: { deviceId: number }) => {
   const { data: monitors, isLoading } = useQuery({
     queryKey: ['device-monitors', deviceId],
     queryFn: async () => (await apiFetch(`/api/v1/monitoring/?device_id=${deviceId}`)).json()

@@ -415,7 +415,7 @@ const GridMatrix = React.memo(({
 
   useEffect(() => {
     if (apiRef.current) {
-      apiRef.current.refreshCells({ force: true })
+      apiRef.current.refreshCells({ columns: ['favorite', 'watch'], force: true })
     }
   }, [context])
 
@@ -435,9 +435,11 @@ const GridMatrix = React.memo(({
       defaultColDef={defaultColDef}
       getRowId={getRowId}
       rowSelection="multiple"
-      animateRows={true}
+      animateRows={false}
       headerHeight={fontSize + rowDensity + 10}
       rowHeight={fontSize + rowDensity + 4}
+      rowBuffer={6}
+      valueCache={true}
       context={context}
       onGridReady={onGridReady}
       onSelectionChanged={onSelectionChanged}
@@ -459,7 +461,7 @@ const GridMatrix = React.memo(({
       suppressRowClickSelection={true}
       enableCellTextSelection={true}
       suppressMovableColumns={false}
-      ensureDomOrder={true}
+      ensureDomOrder={false}
       overlayNoRowsTemplate="<span class='text-slate-500 font-semibold text-[10px]'>No monitoring data found</span>"
     />
   )
@@ -1041,8 +1043,10 @@ export default function MonitoringGrid() {
   }, [pendingIds])
 
   const openRecoveryDocuments = (item: any) => {
+    const recoveryDocs = item.recovery_docs || []
     setBkmPopup({
-      ids: item.recovery_docs || [],
+      docs: recoveryDocs,
+      ids: recoveryDocs,
       titles: item.recovery_doc_titles || [],
       monitorId: item.id
     })
@@ -3009,11 +3013,17 @@ export default function MonitoringGrid() {
         )}
         {detailItem && (
           <MonitoringDetailModal
+            key={`monitoring-detail-${detailItem.id}`}
             item={detailItem}
             onClose={() => { setDetailItem(null); setDetailDeleteConfirm(false); }}
             onEdit={(monitor: any) => { setDetailItem(null); setEditingItem(monitor); setIsFormOpen(true); setDetailDeleteConfirm(false); }}
             onOpenHistory={(monitor: any) => { setDetailItem(null); setHistoryItem(monitor); setDetailDeleteConfirm(false); }}
-            onOpenBkm={(monitor: any) => { setDetailItem(null); setBkmPopup({ docs: monitor.recovery_docs || [], monitorId: monitor.id }); setDetailDeleteConfirm(false); }}
+            onOpenBkm={(monitor: any) => {
+              const recoveryDocs = monitor.recovery_docs || []
+              setDetailItem(null)
+              setBkmPopup({ docs: recoveryDocs, ids: recoveryDocs, titles: monitor.recovery_doc_titles || [], monitorId: monitor.id })
+              setDetailDeleteConfirm(false)
+            }}
             onDelete={(monitor: any) => {
               if (!detailDeleteConfirm) {
                 setDetailDeleteConfirm(true)
@@ -3028,20 +3038,22 @@ export default function MonitoringGrid() {
             deleteConfirm={detailDeleteConfirm}
           />
         )}
-        {historyItem && <MonitoringHistoryModal item={historyItem} onClose={() => setHistoryItem(null)} />}
-        {recipientPopup && <RecipientsModal recipients={recipientPopup.recipients} method={recipientPopup.method} onClose={() => setRecipientPopup(null)} />}
+        {historyItem && <MonitoringHistoryModal key={`monitoring-history-${historyItem.id}`} item={historyItem} onClose={() => setHistoryItem(null)} />}
+        {recipientPopup && <RecipientsModal key={`monitoring-recipients-${recipientPopup.method}-${recipientPopup.recipients.join('|')}`} recipients={recipientPopup.recipients} method={recipientPopup.method} onClose={() => setRecipientPopup(null)} />}
         {bkmPopup && (
           <BkmListModal 
+            key={`monitoring-bkm-list-${bkmPopup.monitorId ?? 'none'}-${bkmPopup.docs.join('-')}`}
             docs={bkmPopup.docs} 
             monitorId={bkmPopup.monitorId}
             onOpenBkm={setActiveBkm} 
             onClose={() => setBkmPopup(null)} 
           />
         )}
-        {activeBkm && <BkmDetailModal bkmId={activeBkm} onClose={() => setActiveBkm(null)} />}
-        {compareOpen && <CompareMonitorsModal items={compareItems} onClose={() => setCompareOpen(false)} />}
+        {activeBkm && <BkmDetailModal key={`monitoring-bkm-detail-${activeBkm}`} bkmId={activeBkm} onClose={() => setActiveBkm(null)} />}
+        {compareOpen && <CompareMonitorsModal key={`monitoring-compare-${compareItems.map((item) => item.id).join('-') || 'empty'}`} items={compareItems} onClose={() => setCompareOpen(false)} />}
         {showBulkEditModal && (
           <BulkEditTableModal
+            key={`monitoring-bulk-edit-${selectedItems.map((item) => item.id).join('-') || 'empty'}`}
             items={selectedItems}
             teams={teams || []}
             operators={operators || []}
@@ -3055,12 +3067,14 @@ export default function MonitoringGrid() {
           />
         )}
         <OperationalImportModal
+          key="monitoring-import-modal"
           isOpen={showImportModal}
           onClose={() => setShowImportModal(false)}
           tableName="monitoring_items"
           displayName="Monitoring"
         />
         <ConfigRegistryModal
+            key="monitoring-config-registry"
             isOpen={showRegistry}
             onClose={() => setShowRegistry(false)}
             title="Monitoring Matrix Enumerations"
@@ -3503,7 +3517,7 @@ function RecipientsModal({ recipients, method, onClose }: any) {
     >
       <div className="space-y-2">
         {recipients.map((r: string, i: number) => (
-          <div key={`${i}-${item.id}`} className="bg-white/5 border border-white/5 p-3 rounded-lg flex items-center space-x-3 group hover:border-emerald-500/30 transition-all shadow-inner">
+          <div key={`${i}-${r}`} className="bg-white/5 border border-white/5 p-3 rounded-lg flex items-center space-x-3 group hover:border-emerald-500/30 transition-all shadow-inner">
             <Mail size={14} className="text-emerald-500" />
             <span className="text-[11px] font-bold text-slate-100">{r}</span>
           </div>
@@ -3861,28 +3875,7 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
   )
 }
 
-// --- REST OF THE FORM COMPONENT ---
-
-const LOGIC_TYPES = ['Threshold', 'Regex', 'Query', 'Health Check', 'Log Pattern', 'Synthetic', 'Custom']
-
-const LOGIC_SUGGESTIONS: any = {
-  'Threshold': 'Example: cpu_usage > 90% for 5m\nWait for 3 consecutive violations before alerting.',
-  'Regex': 'Example: /.*(Critical|Error|Fatal).*/i\nCapture group $1 for metadata enrichment.',
-  'Query': 'Example: SELECT average(load) FROM system_metrics WHERE host = "$TARGET" AND time > now() - 10m',
-  'Health Check': 'Example: HTTP GET /api/health\nExpected Status: 200\nTimeout: 5000ms',
-  'Log Pattern': 'Example: [TIMESTAMP] [LEVEL] [COMPONENT] [MESSAGE]\nDetect spike in "Connection Refused" patterns.',
-  'Synthetic': 'Example: Browser Script\n1. Navigate to /login\n2. Fill credentials\n3. Verify dashboard element exists',
-  'Custom': 'Enter full custom logic script or detailed specifications here...'
-}
-
-const getLogicExtensions = (logicType?: MonitoringLogicEntry['type']) => {
-  if (logicType === 'Query') return [sql()]
-  return [javascript()]
-}
-
-type MonitoringFormErrors = Record<string, string>
-
-// Removed local definition
+// Shared monitoring form constants and types are declared at the top of this module.
 
 const stringifyOwnerUserIds = (owners: MonitoringOwner[] = []) =>
   owners
