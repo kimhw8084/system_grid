@@ -1607,7 +1607,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
 
        <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-sky-400 ">Strategic Mitigation Roadmap</h3>
-          <div className="flex gap-2">
+          <div className="flex flex-nowrap gap-2">
              <button onClick={() => setActiveMitigationModal({ isOpen: true, type: 'WORKAROUND' })} disabled={!selectedCauseId} className="px-6 py-2 whitespace-nowrap bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-lg text-[10px] font-bold uppercase  hover:bg-amber-600 hover:text-white transition-all disabled:opacity-20">+ Add Workaround</button>
              <button onClick={() => setActiveMitigationModal({ isOpen: true, type: 'MONITORING' })} disabled={!selectedCauseId} className="px-6 py-2 whitespace-nowrap bg-sky-600/20 border border-sky-500/30 text-sky-400 rounded-lg text-[10px] font-bold uppercase  hover:bg-sky-600 hover:text-white transition-all disabled:opacity-20">+ Add Monitoring</button>
              <button onClick={() => setActivePreventionModal({ isOpen: true })} disabled={!selectedCauseId} className="px-6 py-2 whitespace-nowrap bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-[10px] font-bold uppercase  hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-20">+ Add Prevention</button>
