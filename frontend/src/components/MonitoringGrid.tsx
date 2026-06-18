@@ -1578,10 +1578,6 @@ export default function MonitoringGrid() {
     gridRef.current.api.forEachNode((node: any) => {
       node.setSelected(selectedIds.includes(node.data?.id))
     })
-    const firstSelectedIndex = displayedItems.findIndex((item: any) => selectedIds.includes(item.id))
-    if (firstSelectedIndex >= 0) {
-      gridRef.current.api.ensureIndexVisible(firstSelectedIndex, 'middle')
-    }
   }, [displayedItems, selectedIds])
 
   useEffect(() => {
