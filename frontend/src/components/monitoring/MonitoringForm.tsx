@@ -1,14 +1,19 @@
 
-import { WorkspaceModal } from '../shared/WorkspaceModal'
 import { 
-  WorkspaceDossierShell, 
-  WorkspaceSplitView, 
-  WorkspaceEmptyState,
-  useEscapeDismiss, 
-  useBodyModalFlag 
-} from '../shared/OperationalWorkspacePrimitives'
-import { ToolbarButton } from '../shared/LayoutPrimitives'
-import { StatusPill } from '../shared/StatusPill'
+  Edit2, 
+  Plus,
+  Globe, 
+  AlertCircle, 
+  Clock, 
+  Check, 
+  X, 
+  Activity, 
+  Settings, 
+  Trash2, 
+  List, 
+  FileText,
+  Search
+} from 'lucide-react'
 import { apiFetch } from '../../api/apiClient'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { sanitizeMonitoringPayload } from '../../utils/monitoring'
@@ -993,7 +998,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                  const isLinked = formData.recovery_docs?.some((d: any) => (typeof d === 'number' ? d === entry.id : d.id === entry.id));
                                  return (
                                   <button
-                                    key={entry.id}
+                                    key={`rec-${entry.id}`}
                                     type="button"
                                     onClick={() => toggleRecoveryDoc(entry.id)}
                                     className={`p-4 rounded-lg border text-left transition-all relative overflow-hidden group ${
