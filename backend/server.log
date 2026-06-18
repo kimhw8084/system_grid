@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "/Users/haewonkim/home/development/sysgrid/backend/app/main.py", line 5, in <module>
-    from .database import engine, Base, AsyncSessionLocal
-ImportError: attempted relative import with no known parent package
