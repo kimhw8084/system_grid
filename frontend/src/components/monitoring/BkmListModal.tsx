@@ -1,7 +1,8 @@
 
+import React, { useState, useEffect, useMemo } from 'react'
+import { Monitor, X, Plus, Search, BookOpen, Clock, Trash2, MessageSquare } from 'lucide-react'
 import { WorkspaceModal } from '../shared/WorkspaceModal'
 import { 
-  WorkspaceDossierShell, 
   WorkspaceSplitView, 
   WorkspaceEmptyState,
   useEscapeDismiss, 
@@ -10,9 +11,11 @@ import {
 import { ToolbarButton } from '../shared/LayoutPrimitives'
 import { StatusPill } from '../shared/StatusPill'
 import { apiFetch } from '../../api/apiClient'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { MonitoringRecoveryDoc } from '../MonitoringGrid'
+import { showWorkspaceToast } from '../shared/WorkspaceToast'
+import { formatAppDate } from '../../utils/dateUtils'
 
-import React from 'react'
 
 export function BkmListModal({ docs, monitorId, onOpenBkm, onClose }: { docs: any[]; monitorId: number; onOpenBkm: (id: number) => void; onClose: () => void }) {
   useEscapeDismiss(onClose)

@@ -483,7 +483,7 @@ const readMonitoringUiState = () => {
   return readMonitoringWorkspaceStateFromLocalStorage()?.uiState ?? null
 }
 
-interface MonitoringRecoveryDoc {
+export interface MonitoringRecoveryDoc {
   id: number
   note?: string
   added_at?: string

@@ -1,7 +1,7 @@
 
 import { WorkspaceModal } from '../shared/WorkspaceModal'
 import { 
-  WorkspaceDossierShell, 
+   
   WorkspaceSplitView, 
   WorkspaceEmptyState,
   useEscapeDismiss, 
