@@ -151,6 +151,10 @@ wait_for_backend() {
 
 echo "Preparing disposable local SysGrid environment..."
 
+# Add cleanup for frontend build artifacts
+echo "Cleaning frontend build artifacts..."
+rm -rf "$FRONTEND_DIR/dist" "$FRONTEND_DIR/.vite" "$FRONTEND_DIR/node_modules/.cache"
+
 require_file "$BACKEND_DIR/venv/bin/python" "Create the backend venv first, for example: cd backend && python3 -m venv venv && venv/bin/pip install -r requirements.txt"
 require_file "$FRONTEND_DIR/node_modules" "Install frontend dependencies first: cd frontend && npm install"
 

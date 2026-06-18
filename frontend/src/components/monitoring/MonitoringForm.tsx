@@ -318,6 +318,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
   }, [formErrors])
 
   const addRecipient = () => {
+    console.log("DEBUG: addRecipient executing")
     if (recipientInput && !formData.notification_recipients.includes(recipientInput)) {
       setFormData({ ...formData, notification_recipients: [...formData.notification_recipients, recipientInput] })
       setRecipientInput('')

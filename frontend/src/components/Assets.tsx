@@ -1420,6 +1420,15 @@ const AssetInsightBar = ({ assets }: any) => {
 }
 
 export default function Assets() {
+  // --- AUTO-DEBUG ---
+  console.log("Assets.tsx rendering. Checking scope...")
+  try {
+    // Check if showBulkMenu exists in this function scope
+    console.log("showBulkMenu type:", typeof showBulkMenu);
+  } catch (e) {
+    console.error("DEBUG: showBulkMenu not reachable in Assets scope:", e);
+  }
+  // ------------------
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [showImportModal, setShowImportModal] = useState(false)
@@ -3085,6 +3094,7 @@ const MonitoringTab = ({ deviceId }: { deviceId: number }) => {
                              </tr>
                           </thead>
                           <tbody className="divide-y divide-white/5">
+                             {console.log("DEBUG: showBulkMenu=", typeof showBulkMenu)}
                              {item.logic_json.map((l: any, idx: number) => (
                                 <tr key={idx} className="hover:bg-white/5 transition-colors">
                                    <td className="px-4 py-2 font-bold text-blue-400 uppercase">{l.type}</td>
