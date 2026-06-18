@@ -1,0 +1,178 @@
+import pytest
+from sqlalchemy import select
+
+from app.api.settings import ensure_tenant_admin_async
+from app.models.config import Tenant
+
+
+async def _ensure_admin(seeded_admin_tenant, setup_db):
+    tenant_id = seeded_admin_tenant["tenant_id"]
+    async with setup_db[1]() as config_db:
+        tenant_res = await config_db.execute(select(Tenant).filter(Tenant.id == tenant_id))
+        tenant = tenant_res.scalar_one()
+    await ensure_tenant_admin_async(
+        tenant_db_url=tenant.db_url,
+        admin_user="admin_root",
+        full_name="Admin Root",
+        email="admin_root@test.com",
+        department="IT",
+    )
+
+
+@pytest.mark.anyio
+async def test_settings_user_profile_env_and_global_edges(seeded_admin_tenant, setup_db, monkeypatch):
+    client = seeded_admin_tenant["client"]
+    tenant_id = seeded_admin_tenant["tenant_id"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(tenant_id)}
+    await _ensure_admin(seeded_admin_tenant, setup_db)
+
+    save_res = await client.post(
+        "/api/v1/settings/user/settings",
+        json={"theme": {"mode": "dark"}, "pinnedViews": ["dashboard", "monitoring"]},
+        headers=headers,
+    )
+    assert save_res.status_code == 200, save_res.text
+
+    settings_res = await client.get("/api/v1/settings/user/settings", headers=headers)
+    assert settings_res.status_code == 200, settings_res.text
+    assert settings_res.json()["theme"] == {"mode": "dark"}
+    assert settings_res.json()["pinnedViews"] == ["dashboard", "monitoring"]
+
+    profile_res = await client.get("/api/v1/settings/user/profile", headers=headers)
+    assert profile_res.status_code == 200, profile_res.text
+    profile = profile_res.json()
+    assert profile["username"] == "admin_root"
+    assert profile["access_mode"] == "assigned"
+    assert profile["role"] == "Admin"
+
+    monkeypatch.setenv("API_KEY", "super-secret")
+    monkeypatch.setenv("SAFE_NAME", "visible")
+    monkeypatch.setenv("VITE_UI_DEBUG_LOGGING", "true")
+    monkeypatch.setenv("HTTP_X_FORWARDED_FOR", "1.1.1.1")
+    env_res = await client.get("/api/v1/settings/user/env-vars", headers=headers)
+    assert env_res.status_code == 200, env_res.text
+    env_payload = env_res.json()
+    assert env_payload["API_KEY"] == "********"
+    assert env_payload["SAFE_NAME"] == "visible"
+    assert env_payload["USER_ID"] == "admin_root"
+    assert env_payload["SESSION_TYPE"] == "PROXIED"
+    assert env_payload["DEBUG_MODE"] == "True"
+
+    protected_res = await client.post("/api/v1/settings/global", json={"DATABASE_URL": "sqlite://blocked"}, headers=headers)
+    assert protected_res.status_code == 400
+    assert "deploy-time setting" in protected_res.json()["detail"]
+
+    update_global = await client.post(
+        "/api/v1/settings/global",
+        json={"VITE_ORG_NAME": "SysGrid QA", "PORT": 9000},
+        headers=headers,
+    )
+    assert update_global.status_code == 200, update_global.text
+
+    global_res = await client.get("/api/v1/settings/global", headers=headers)
+    assert global_res.status_code == 200, global_res.text
+    global_payload = global_res.json()
+    assert global_payload["VITE_ORG_NAME"] == "SysGrid QA"
+    assert global_payload["PORT"] == "9000"
+    assert "backend" in global_payload["_raw_env"]
+    assert "frontend" in global_payload["_raw_env"]
+
+    bootstrap_res = await client.get("/api/v1/settings/bootstrap")
+    assert bootstrap_res.status_code == 200, bootstrap_res.text
+    assert bootstrap_res.json()["VITE_ORG_NAME"] == "SysGrid QA"
+
+    startup_res = await client.get(
+        "/api/v1/settings/startup-check",
+        headers={**headers, "Origin": "http://frontend.example.com"},
+    )
+    assert startup_res.status_code == 200, startup_res.text
+    startup_payload = startup_res.json()
+    assert startup_payload["api"]["request_origin"] == "http://frontend.example.com"
+    assert startup_payload["tenant"]["selected_tenant"]
+    assert isinstance(startup_payload["warnings"], list)
+
+
+@pytest.mark.anyio
+async def test_settings_options_and_ui_constraints(seeded_admin_tenant, setup_db):
+    client = seeded_admin_tenant["client"]
+    tenant_id = seeded_admin_tenant["tenant_id"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(tenant_id)}
+    await _ensure_admin(seeded_admin_tenant, setup_db)
+
+    device_res = await client.post(
+        "/api/v1/devices",
+        json={
+            "name": "OWNER-EDGE-01",
+            "system": "OWNER-EDGE",
+            "status": "Active",
+            "type": "Physical",
+            "serial_number": "OWNER-EDGE-SN",
+            "asset_tag": "OWNER-EDGE-AT",
+            "owner": "LegacyOwner",
+        },
+        headers=headers,
+    )
+    assert device_res.status_code == 200, device_res.text
+    device = device_res.json()
+
+    create_option = await client.post(
+        "/api/v1/settings/options",
+        json={"category": "Owner", "label": "Legacy Owner", "value": "LegacyOwner", "description": "Old owner"},
+        headers=headers,
+    )
+    assert create_option.status_code == 200, create_option.text
+    option = create_option.json()
+
+    list_owner = await client.get("/api/v1/settings/options?category=Owner", headers=headers)
+    assert list_owner.status_code == 200, list_owner.text
+    assert any(item["id"] == option["id"] for item in list_owner.json())
+
+    relational = await client.get("/api/v1/settings/options?category=MonitoringTeam", headers=headers)
+    assert relational.status_code == 200
+    assert relational.json() == []
+
+    locked_res = await client.post(
+        "/api/v1/settings/options",
+        json={"category": "MonitoringSeverity", "label": "Critical", "value": "Critical"},
+        headers=headers,
+    )
+    assert locked_res.status_code == 400
+
+    relational_create = await client.post(
+        "/api/v1/settings/options",
+        json={"category": "MonitoringTeam", "label": "Ops", "value": "Ops"},
+        headers=headers,
+    )
+    assert relational_create.status_code == 400
+
+    rename_res = await client.put(
+        f"/api/v1/settings/options/{option['id']}",
+        json={"label": "Current Owner", "value": "CurrentOwner"},
+        headers=headers,
+    )
+    assert rename_res.status_code == 200, rename_res.text
+
+    devices_res = await client.get("/api/v1/devices", headers=headers)
+    assert devices_res.status_code == 200, devices_res.text
+    renamed_device = next(item for item in devices_res.json() if item["id"] == device["id"])
+    assert renamed_device["owner"] == "CurrentOwner"
+
+    delete_in_use = await client.delete(f"/api/v1/settings/options/{option['id']}", headers=headers)
+    assert delete_in_use.status_code == 400
+    assert "currently in use" in delete_in_use.json()["detail"]
+
+    ui_default = await client.get("/api/v1/settings/ui", headers=headers)
+    assert ui_default.status_code == 200, ui_default.text
+    assert ui_default.json()["status_badged"] is True
+
+    ui_update = await client.post(
+        "/api/v1/settings/ui",
+        json={"status_badged": False, "status_colors": {"Active": "#000000", "Planned": "#ffffff"}},
+        headers=headers,
+    )
+    assert ui_update.status_code == 200, ui_update.text
+
+    ui_after = await client.get("/api/v1/settings/ui", headers=headers)
+    assert ui_after.status_code == 200, ui_after.text
+    assert ui_after.json()["status_badged"] is False
+    assert ui_after.json()["status_colors"]["Active"] == "#000000"

@@ -1425,6 +1425,8 @@ export default function Assets() {
   const [showImportModal, setShowImportModal] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const gridRef = React.useRef<any>(null)
+  const [gridApi, setGridApi] = useState<any>(null)
+  const [gridColumnApi, setGridColumnApi] = useState<any>(null)
   
   const idParam = searchParams.get('id')
   const searchParam = searchParams.get('search')
@@ -1606,19 +1608,18 @@ export default function Assets() {
   }, [viewMode, compareSnapshotIds])
 
   useEffect(() => {
-    if (viewMode !== 'grid' || !gridRef.current?.api || !selectedAssetId) return
+    if (viewMode !== 'grid' || !gridApi || !selectedAssetId) return
 
-    const api = gridRef.current.api
     requestAnimationFrame(() => {
-      api.forEachNode((node: any) => {
+      gridApi.forEachNode((node: any) => {
         const isTarget = node.data?.id === selectedAssetId
         node.setSelected(isTarget)
         if (isTarget) {
-          api.ensureNodeVisible(node, 'middle')
+          gridApi.ensureNodeVisible(node, 'middle')
         }
       })
     })
-  }, [viewMode, selectedAssetId, visibleAssets, searchTerm])
+  }, [viewMode, selectedAssetId, visibleAssets, searchTerm, gridApi])
 
   // Only fetch full fabric map data when explicitly requested or in Map View
   const { data: allConnections } = useQuery({ 
@@ -1907,8 +1908,8 @@ export default function Assets() {
   ], [activeTab, hiddenColumns, fontSize]) as any
 
   const handleExportCSV = () => {
-    if (gridRef.current?.api) {
-      gridRef.current.api.exportDataAsCsv({
+    if (gridApi) {
+      gridApi.exportDataAsCsv({
         fileName: `SysGrid_Assets_${new Date().toISOString().split('T')[0]}.csv`,
         allColumns: false, // only currently viewed columns
         onlySelected: false // everything in view (filtered, etc)
@@ -1917,8 +1918,8 @@ export default function Assets() {
   }
 
   const handleCopyToClipboard = () => {
-    if (gridRef.current?.api) {
-      const csvData = gridRef.current.api.getDataAsCsv({
+    if (gridApi) {
+      const csvData = gridApi.getDataAsCsv({
         allColumns: false,
         onlySelected: true,
         suppressQuotes: true
@@ -2155,6 +2156,13 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
             rowSelection="multiple"
             headerHeight={fontSize + rowDensity + 10}
             rowHeight={fontSize + rowDensity + 10}
+            onGridReady={(params) => {
+              setGridApi(params.api)
+              setGridColumnApi(params.columnApi)
+              if (statusParam) {
+                params.api.setFilterModel({ status: { filterType: 'text', type: 'equals', filter: statusParam } })
+              }
+            }}
             onSelectionChanged={(e) => {
               const nodes = e?.api?.getSelectedNodes() || []
               setSelectedIds(nodes.map((n: any) => n.data?.id).filter(Boolean))

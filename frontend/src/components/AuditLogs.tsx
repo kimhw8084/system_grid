@@ -15,6 +15,8 @@ export default function AuditLogs() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const gridRef = React.useRef<any>(null)
+  const [gridApi, setGridApi] = useState<any>(null)
+  const [gridColumnApi, setGridColumnApi] = useState<any>(null)
   const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
   const [showStyleLab, setShowStyleLab] = useState(false)

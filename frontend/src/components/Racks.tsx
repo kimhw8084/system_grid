@@ -787,7 +787,7 @@ const AuditLogModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                     value={quickSearch}
                     onChange={e => {
                       setQuickSearch(e.target.value)
-                      gridRef.current?.api?.setQuickFilter(e.target.value)
+                      gridApi?.setQuickFilter(e.target.value)
                     }}
                     placeholder="SCAN TRANSACTION MATRIX..." 
                     className="bg-black/40 border border-white/5 rounded-lg pl-12 pr-6 py-3 text-[11px] font-black uppercase tracking-widest text-white outline-none focus:border-blue-500/30 focus:bg-white/[0.08] transition-all min-w-[350px]"

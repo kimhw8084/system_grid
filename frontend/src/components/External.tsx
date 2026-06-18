@@ -1444,7 +1444,10 @@ export default function External() {
           columnDefs={columnDefs as any} 
           headerHeight={fontSize + rowDensity + 10}
           rowHeight={fontSize + rowDensity + 10}
-          quickFilterText={searchTerm}
+          onGridReady={(params) => {
+            setGridApi(params.api)
+            setGridColumnApi(params.columnApi)
+          }}
           animateRows={true}
           enableCellTextSelection={true}
           autoSizeStrategy={autoSizeStrategy}
