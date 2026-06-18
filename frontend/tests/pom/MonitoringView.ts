@@ -21,14 +21,14 @@ export class MonitoringView extends BaseView {
   }
 
   async clickShareLink() {
-    await this.getModal().getByTitle('Share direct link').click();
-  }
+    await (await this.getModal()).getByTitle('Share direct link').click();
+    }
 
-  async getMonitorTitle() {
-    return this.getModal().locator('h2'); 
-  }
+    async getTitle() {
+    return (await this.getModal()).locator('h2');
+    }
 
-  async openRecovery() {
-      await this.getModal().getByRole('button', { name: /Recovery/i }).click();
+    async clickRecovery() {
+    await (await this.getModal()).getByRole('button', { name: /Recovery/i }).click();
   }
 }

@@ -1,14 +1,11 @@
-import React, { useMemo, useState, useEffect } from 'react'
-import { AssetDetailsView } from './assets/AssetDetailsView'
-import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
-import { WorkspaceEmptyState } from "./shared/OperationalWorkspacePrimitives";
-import { createPortal } from 'react-dom'
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import ForceGraph2D from 'react-force-graph-2d'
+import { AssetDetailsView } from './assets/AssetDetailsView'
+import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
+import { WorkspaceEmptyState } from "./shared/OperationalWorkspacePrimitives";
 import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Clipboard, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Network, Server, ExternalLink, Share2, ZoomIn, ZoomOut, Maximize2, Minimize2, Shield, Zap, Save, Upload, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, Book } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
 import { BulkImportModal } from "./shared/BulkImportModal"

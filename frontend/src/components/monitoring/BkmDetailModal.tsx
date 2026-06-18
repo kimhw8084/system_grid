@@ -1,7 +1,8 @@
 
+import React, { useState } from 'react'
+import { Monitor, Share, FileText, MessageSquare, Globe, Clock, Zap, ExternalLink, Info, Zap as ZapIcon, Code, ChevronUp, ChevronDown, Users, Briefcase, UserCheck, AlertCircle, Shield, BookOpen, User } from 'lucide-react'
 import { WorkspaceModal } from '../shared/WorkspaceModal'
 import { 
-   
   WorkspaceSplitView, 
   WorkspaceEmptyState,
   useEscapeDismiss, 
@@ -12,7 +13,6 @@ import { StatusPill } from '../shared/StatusPill'
 import { apiFetch } from '../../api/apiClient'
 import { useQuery } from '@tanstack/react-query'
 
-import React from 'react'
 
 export function BkmDetailModal({ bkmId, onClose }: any) {
   useEscapeDismiss(onClose)

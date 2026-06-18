@@ -1,3 +1,12 @@
+import React, { useState, useMemo } from 'react'
+import { ArrowRightLeft, Check, X, Edit2, Trash2, Box, Zap, Clock, Globe, Info, Search, Plus } from 'lucide-react'
+import { ConfirmationModal } from '../shared/ConfirmationModal'
+import { apiFetch } from '../../api/apiClient'
+import toast from 'react-hot-toast'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { StyledSelect } from '../shared/StyledSelect'
+import { useNavigate } from 'react-router-dom'
+
 export const AssetDetailsView = ({ device, options, onViewServiceDetails, onEditService, onEditLink, onViewLink }: { device: any, options: any, onViewServiceDetails: (s:any)=>void, onEditService: (s:any)=>void, onEditLink: (l:any)=>void, onViewLink: (l:any)=>void }) => {
     const navigate = useNavigate()
     const [tab, setTab] = useState('hardware')

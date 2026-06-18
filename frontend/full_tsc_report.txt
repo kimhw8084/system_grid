@@ -1,4 +1,60 @@
-src/api/apiClient.test.ts(1,54): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+node_modules/@tanstack/query-core/build/legacy/_tsup-dts-rollup.d.ts(2,25): error TS2307: Cannot find module 'tsup' or its corresponding type declarations.
+node_modules/@tanstack/react-query/build/legacy/_tsup-dts-rollup.d.ts(93,25): error TS2307: Cannot find module 'tsup' or its corresponding type declarations.
+node_modules/@vitest/expect/dist/index.d.ts(6,27): error TS2307: Cannot find module '@vitest/utils/display' or its corresponding type declarations.
+  There are types at '/Users/haewonkim/home/development/sysgrid/frontend/node_modules/@vitest/utils/dist/display.d.ts', but this result could not be resolved under your current 'moduleResolution' setting. Consider updating to 'node16', 'nodenext', or 'bundler'.
+node_modules/goober/goober.d.ts(3,1): error TS1203: Export assignment cannot be used when targeting ECMAScript modules. Consider using 'export default' or another module format instead.
+node_modules/vite/dist/node/index.d.ts(1,23): error TS2688: Cannot find type definition file for 'node'.
+node_modules/vite/dist/node/index.d.ts(5,41): error TS2307: Cannot find module 'rollup/parseAst' or its corresponding type declarations.
+  There are types at '/Users/haewonkim/home/development/sysgrid/frontend/node_modules/rollup/dist/parseAst.d.ts', but this result could not be resolved under your current 'moduleResolution' setting. Consider updating to 'node16', 'nodenext', or 'bundler'.
+node_modules/vite/dist/node/index.d.ts(6,23): error TS2307: Cannot find module 'node:http' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(7,119): error TS2307: Cannot find module 'node:http' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(8,35): error TS2307: Cannot find module 'node:http2' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(9,21): error TS2307: Cannot find module 'node:fs' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(10,25): error TS2307: Cannot find module 'node:events' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(11,30): error TS2307: Cannot find module 'node:events' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(12,76): error TS2307: Cannot find module 'node:https' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(13,22): error TS2307: Cannot find module 'node:net' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(14,22): error TS2307: Cannot find module 'node:url' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(15,21): error TS2307: Cannot find module 'node:url' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(16,25): error TS2307: Cannot find module 'node:stream' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(17,39): error TS2307: Cannot find module 'node:stream' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(20,38): error TS2307: Cannot find module 'node:tls' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(21,29): error TS2307: Cannot find module 'node:zlib' or its corresponding type declarations.
+node_modules/vite/dist/node/index.d.ts(309,35): error TS2503: Cannot find namespace 'NodeJS'.
+node_modules/vite/dist/node/index.d.ts(391,11): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1014,40): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1084,55): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1102,39): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1119,55): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1137,39): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1154,55): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1172,39): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1189,38): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1201,56): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1210,38): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1222,59): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1237,18): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1237,41): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1242,24): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1242,47): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1247,39): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1247,48): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1278,25): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1309,24): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1309,33): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(1389,20): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(2401,63): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vite/dist/node/index.d.ts(3561,84): error TS2580: Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.
+node_modules/vitest/dist/chunks/evaluatedModules.d.BxJ5omdx.d.ts(1,34): error TS2307: Cannot find module 'vite/module-runner' or its corresponding type declarations.
+  There are types at '/Users/haewonkim/home/development/sysgrid/frontend/node_modules/vitest/node_modules/vite/dist/node/module-runner.d.ts', but this result could not be resolved under your current 'moduleResolution' setting. Consider updating to 'node16', 'nodenext', or 'bundler'.
+node_modules/vitest/dist/chunks/rpc.d.B_8sPU0w.d.ts(3,51): error TS2307: Cannot find module 'vite/module-runner' or its corresponding type declarations.
+  There are types at '/Users/haewonkim/home/development/sysgrid/frontend/node_modules/vitest/node_modules/vite/dist/node/module-runner.d.ts', but this result could not be resolved under your current 'moduleResolution' setting. Consider updating to 'node16', 'nodenext', or 'bundler'.
+node_modules/vitest/dist/chunks/worker.d.ZpHpO4yb.d.ts(2,34): error TS2307: Cannot find module 'vite/module-runner' or its corresponding type declarations.
+  There are types at '/Users/haewonkim/home/development/sysgrid/frontend/node_modules/vitest/node_modules/vite/dist/node/module-runner.d.ts', but this result could not be resolved under your current 'moduleResolution' setting. Consider updating to 'node16', 'nodenext', or 'bundler'.
+src/api/apiClient.ts(13,5): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/api/apiClient.ts(13,17): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
+src/api/apiClient.ts(22,11): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/api/apiClient.ts(22,23): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
 src/components/Assets.tsx(1427,46): error TS2448: Block-scoped variable 'showBulkMenu' used before its declaration.
 src/components/Assets.tsx(1520,17): error TS2345: Argument of type '"grid"' is not assignable to parameter of type 'SetStateAction<"table" | "graph">'.
 src/components/Assets.tsx(1621,9): error TS2367: This comparison appears to be unintentional because the types '"table" | "graph"' and '"compare"' have no overlap.
@@ -124,9 +180,9 @@ src/components/Assets.tsx(2406,29): error TS2304: Cannot find name 'fontSize'.
 src/components/Assets.tsx(2413,26): error TS2304: Cannot find name 'fontSize'.
 src/components/Assets.tsx(2421,26): error TS2304: Cannot find name 'fontSize'.
 src/components/Assets.tsx(3104,74): error TS2304: Cannot find name 'showBulkMenu'.
-src/components/assets/AssetDetailsView.tsx(2,22): error TS2552: Cannot find name 'useNavigate'. Did you mean 'navigate'?
+src/components/assets/AssetDetailsView.tsx(2,22): error TS2304: Cannot find name 'useNavigate'.
 src/components/assets/AssetDetailsView.tsx(3,27): error TS2304: Cannot find name 'useState'.
-src/components/assets/AssetDetailsView.tsx(4,25): error TS2552: Cannot find name 'useQueryClient'. Did you mean 'queryClient'?
+src/components/assets/AssetDetailsView.tsx(4,25): error TS2304: Cannot find name 'useQueryClient'.
 src/components/assets/AssetDetailsView.tsx(7,32): error TS2304: Cannot find name 'useQuery'.
 src/components/assets/AssetDetailsView.tsx(9,42): error TS2304: Cannot find name 'apiFetch'.
 src/components/assets/AssetDetailsView.tsx(13,38): error TS2304: Cannot find name 'useQuery'.
@@ -256,8 +312,6 @@ src/components/assets/AssetDetailsView.tsx(838,148): error TS2304: Cannot find n
 src/components/assets/AssetDetailsView.tsx(842,192): error TS2304: Cannot find name 'Edit2'.
 src/components/assets/AssetDetailsView.tsx(843,293): error TS2304: Cannot find name 'Trash2'.
 src/components/assets/AssetDetailsView.tsx(853,8): error TS2304: Cannot find name 'ConfirmationModal'.
-src/components/assets/CopyButton.test.tsx(1,57): error TS2307: Cannot find module '@testing-library/react' or its corresponding type declarations.
-src/components/assets/CopyButton.test.tsx(2,54): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
 src/components/External.tsx(1448,13): error TS2304: Cannot find name 'setGridApi'.
 src/components/External.tsx(1449,13): error TS2304: Cannot find name 'setGridColumnApi'.
 src/components/FAR.tsx(25,10): error TS2724: '"./MonitoringGrid"' has no exported member named 'MonitoringForm'. Did you mean 'MonitoringOwner'?
@@ -266,9 +320,6 @@ src/components/monitoring/BkmDetailModal.tsx(36,14): error TS2304: Cannot find n
 src/components/monitoring/BkmDetailModal.tsx(44,15): error TS2304: Cannot find name 'Clock'.
 src/components/monitoring/BkmDetailModal.tsx(51,21): error TS2304: Cannot find name 'Zap'.
 src/components/monitoring/BkmDetailModal.tsx(79,24): error TS2304: Cannot find name 'User'.
-src/components/monitoring/MonitoringDetailModal.tsx(8,3): error TS2724: '"../shared/OperationalWorkspacePrimitives"' has no exported member named 'WorkspaceModal'. Did you mean 'WorkspaceModalSize'?
-src/components/monitoring/MonitoringDetailModal.tsx(9,3): error TS2305: Module '"../shared/OperationalWorkspacePrimitives"' has no exported member 'WorkspaceDossierShell'.
-src/components/monitoring/MonitoringDetailModal.tsx(279,54): error TS2304: Cannot find name 'Terminal'.
 src/components/MonitoringGrid.tsx(101,14): error TS2395: Individual declarations in merged declaration 'LOGIC_TYPES' must be all exported or all local.
 src/components/MonitoringGrid.tsx(109,14): error TS2395: Individual declarations in merged declaration 'LOGIC_SUGGESTIONS' must be all exported or all local.
 src/components/MonitoringGrid.tsx(115,14): error TS2395: Individual declarations in merged declaration 'getLogicExtensions' must be all exported or all local.
@@ -285,23 +336,6 @@ src/components/MonitoringGrid.tsx(3883,6): error TS2395: Individual declarations
 src/components/Racks.tsx(790,23): error TS2304: Cannot find name 'gridApi'.
 src/components/ServiceRegistry.tsx(567,15): error TS2304: Cannot find name 'setGridApi'.
 src/components/ServiceRegistry.tsx(568,15): error TS2304: Cannot find name 'setGridColumnApi'.
-src/components/settings/ConfigHistoryModal.tsx(5,3): error TS2724: '"../shared/OperationalWorkspacePrimitives"' has no exported member named 'WorkspaceModal'. Did you mean 'WorkspaceModalSize'?
-src/components/settings/ConfigHistoryModal.tsx(6,3): error TS2305: Module '"../shared/OperationalWorkspacePrimitives"' has no exported member 'WorkspaceHistoryShell'.
-src/components/shared/AppDropdown.test.tsx(1,51): error TS2307: Cannot find module '@testing-library/react' or its corresponding type declarations.
-src/components/shared/AppDropdown.test.tsx(2,42): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
 src/components/shared/FARModals.tsx(9,10): error TS2724: '"../MonitoringGrid"' has no exported member named 'MonitoringForm'. Did you mean 'MonitoringOwner'?
-src/stores/errorStore.test.tsx(1,33): error TS2307: Cannot find module '@testing-library/react' or its corresponding type declarations.
-src/stores/errorStore.test.tsx(2,54): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
-src/utils/dataParsers.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
-src/utils/dateUtils.test.ts(1,42): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
-src/utils/monitoring.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
-src/utils/monitoringValidation.test.ts(1,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
-src/utils/payloadGenerator.test.ts(1,42): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
-tests/external-workflows.spec.ts(74,58): error TS2304: Cannot find name 'entity'.
-tests/external-workflows.spec.ts(112,77): error TS2304: Cannot find name 'findEntityRowIndex'.
-tests/pom/MonitoringView.ts(24,27): error TS2339: Property 'getByTitle' does not exist on type 'Promise<Locator>'.
-tests/pom/MonitoringView.ts(28,28): error TS2339: Property 'locator' does not exist on type 'Promise<Locator>'.
-tests/pom/MonitoringView.ts(32,29): error TS2339: Property 'getByRole' does not exist on type 'Promise<Locator>'.
-tests/view-empty-states.spec.ts(3,10): error TS2305: Module '"./helpers/sysgrid"' has no exported member 'bootstrapBrowserTenant'.
-tests/view-empty-states.spec.ts(3,34): error TS2305: Module '"./helpers/sysgrid"' has no exported member 'getTestApiBase'.
-tests/view-empty-states.spec.ts(3,50): error TS2305: Module '"./helpers/sysgrid"' has no exported member 'getTestUserId'.
+src/stores/errorStore.test.tsx(6,10): error TS1323: Dynamic imports are only supported when the '--module' flag is set to 'es2020', 'es2022', 'esnext', 'commonjs', 'amd', 'system', 'umd', 'node16', 'node18', 'node20', or 'nodenext'.
+src/stores/errorStore.test.tsx(156,25): error TS1323: Dynamic imports are only supported when the '--module' flag is set to 'es2020', 'es2022', 'esnext', 'commonjs', 'amd', 'system', 'umd', 'node16', 'node18', 'node20', or 'nodenext'.

@@ -9,7 +9,8 @@ export const test = base.extend<{
   chaos: ChaosController, 
   interactionChaos: InteractionChaos, 
   networkChaos: NetworkChaos,
-  stateChaos: StateChaos 
+  stateChaos: StateChaos,
+  sysApi: any
 }>({
   chaos: async ({}, use) => {
     const controller = new ChaosController();

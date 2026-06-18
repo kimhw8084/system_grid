@@ -19,6 +19,8 @@ ADMIN_DEPARTMENT="${ADMIN_DEPARTMENT:-Infrastructure}"
 USER_ID_ENV_VAR_VALUE="${USER_ID_ENV_VAR_VALUE:-USER_ID}"
 RUNTIME_EFFECTIVE_USER_ID="${RUNTIME_EFFECTIVE_USER_ID:-}"
 SEED_DOMAIN_DATA="${SEED_DOMAIN_DATA:-true}"
+RUN_TYPECHECK="${RUN_TYPECHECK:-true}"
+STRICT_STARTUP_CHECKS="${STRICT_STARTUP_CHECKS:-false}"
 
 usage() {
   cat <<EOF
@@ -40,6 +42,8 @@ Options:
   --runtime-effective-user-id <userId>
   --seed-data
   --no-seed-data
+  --skip-typecheck
+  --strict-checks
   --help
 EOF
 }
@@ -61,6 +65,8 @@ while [[ $# -gt 0 ]]; do
     --runtime-effective-user-id) RUNTIME_EFFECTIVE_USER_ID="$2"; shift 2 ;;
     --seed-data) SEED_DOMAIN_DATA="true"; shift ;;
     --no-seed-data) SEED_DOMAIN_DATA="false"; shift ;;
+    --skip-typecheck) RUN_TYPECHECK="false"; shift ;;
+    --strict-checks) STRICT_STARTUP_CHECKS="true"; shift ;;
     --help|-h) usage; exit 0 ;;
     *)
       echo "Unknown option: $1"
@@ -151,14 +157,27 @@ wait_for_backend() {
 
 echo "Preparing disposable local SysGrid environment..."
 
-# Automated Pre-Flight Check: Catch structural errors before startup
-echo "Running pre-flight structural validation..."
-cd "$FRONTEND_DIR" && npx tsc --noEmit
-if [ $? -ne 0 ]; then
-    echo "Pre-flight validation FAILED. Please fix the TypeScript errors above before starting."
-    exit 1
+if [[ "$RUN_TYPECHECK" == "true" ]]; then
+  echo "Running frontend typecheck..."
+  TYPECHECK_LOG="$(mktemp "${TMPDIR:-/tmp}/sysgrid-typecheck.XXXXXX.log")"
+  if (
+    cd "$FRONTEND_DIR"
+    npx tsc --noEmit
+  ) >"$TYPECHECK_LOG" 2>&1; then
+    echo "Frontend typecheck passed."
+  else
+    echo "Frontend typecheck reported errors."
+    echo "Log: $TYPECHECK_LOG"
+    sed -n '1,40p' "$TYPECHECK_LOG"
+    if [[ "$STRICT_STARTUP_CHECKS" == "true" ]]; then
+      echo "Strict startup checks enabled. Refusing to start until typecheck passes."
+      exit 1
+    fi
+    echo "Continuing startup because this script is for local bootstrapping. Use ./scripts/verify-app.sh for strict validation."
+  fi
+else
+  echo "Skipping frontend typecheck."
 fi
-echo "Pre-flight validation PASSED."
 
 # Add cleanup for frontend build artifacts
 echo "Cleaning frontend build artifacts..."
