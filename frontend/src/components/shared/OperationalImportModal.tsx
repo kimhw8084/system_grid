@@ -543,7 +543,7 @@ export function OperationalImportModal({
     <WorkspaceModal
       isOpen={isOpen}
       onClose={onClose}
-      size="standard"
+      size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
       title={`${displayName} Import`}

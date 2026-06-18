@@ -119,7 +119,7 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
     <WorkspaceModal
       isOpen={isOpen}
       onClose={onClose}
-      size="standard"
+      size="workspace"
       title="Data Ingestion Pipeline"
       subtitle={(
         <div className="flex items-center gap-4">

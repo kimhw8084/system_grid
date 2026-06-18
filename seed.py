@@ -116,6 +116,7 @@ def ensure_config_schema() -> None:
         ]
         
         # 3. Monitoring Options
+        session.query(GlobalSetting).filter(GlobalSetting.category.in_(["MonitoringPlatform", "MonitoringCategory", "NotificationMethod"])).delete(synchronize_session=False)
         monitoring_options = [
             ("MonitoringPlatform", "Zabbix", "Monitoring system platform", False),
             ("MonitoringPlatform", "Prometheus", "Monitoring system platform", False),
