@@ -87,7 +87,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
     status: 'Planned',
     title: '',
     spec: '',
-    platform: platforms?.[0]?.value || 'Zabbix',
+    platform: platforms?.[0]?.value || '',
     monitoring_url: '',
     purpose: '',
     impact: '',

@@ -115,7 +115,33 @@ def ensure_config_schema() -> None:
             ("feature_guided_bkm", "true", "Experimental", "Enable Directive [06] logic", False),
         ]
         
+        # 3. Monitoring Options
+        monitoring_options = [
+            ("MonitoringPlatform", "Zabbix", "Monitoring system platform", False),
+            ("MonitoringPlatform", "Prometheus", "Monitoring system platform", False),
+            ("MonitoringPlatform", "Datadog", "Monitoring system platform", False),
+            ("MonitoringCategory", "Hardware", "Monitoring category", False),
+            ("MonitoringCategory", "Application", "Monitoring category", False),
+            ("MonitoringCategory", "Network", "Monitoring category", False),
+            ("MonitoringCategory", "Synthetic", "Monitoring category", False),
+            ("NotificationMethod", "Email", "Notification delivery method", False),
+            ("NotificationMethod", "Slack", "Notification delivery method", False),
+            ("NotificationMethod", "PagerDuty", "Notification delivery method", False),
+        ]
+        
         for key, val, cat, desc, public in default_settings:
+            existing = session.execute(select(GlobalSetting).where(GlobalSetting.key == key)).scalar_one_or_none()
+            if not existing:
+                session.add(GlobalSetting(key=key, value=val, category=cat, description=desc, is_public=public))
+        
+        for cat, val, desc, public in monitoring_options:
+            # For settings that have multiple options, the key needs to be unique.
+            # Using category + val as unique key might work if they don't overlap,
+            # but maybe a different key approach is needed.
+            # Let's check how they are fetched.
+            # The API returns options, so probably GlobalSetting.key isn't just the platform name.
+            # I will use a composite key for now.
+            key = f"option_{cat}_{val}"
             existing = session.execute(select(GlobalSetting).where(GlobalSetting.key == key)).scalar_one_or_none()
             if not existing:
                 session.add(GlobalSetting(key=key, value=val, category=cat, description=desc, is_public=public))
@@ -759,11 +785,15 @@ async def seed_domain_data(tenant_db_url: str):
         admin_operators = operator_result.scalars().all()
         monitored_keys = set()
         monitoring_items = []
+        
+        valid_platforms = ["Zabbix", "Prometheus", "Datadog"]
+        valid_categories = ["Hardware", "Application", "Network", "Synthetic"]
+
         for i in range(72):
             dev = random.choice(all_devices)
             title = random.choice(['CPU High', 'Latency Spike', 'Disk Full', 'Auth Error'])
-            category = random.choice(["Hardware", "Application", "Network", "Synthetic"])
-            platform = random.choice(["Zabbix", "Prometheus", "Datadog"])
+            category = random.choice(valid_categories)
+            platform = random.choice(valid_platforms)
             
             key = (dev.id, title, category, platform)
             if key in monitored_keys:
