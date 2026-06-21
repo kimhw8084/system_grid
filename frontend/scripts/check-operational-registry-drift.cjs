@@ -4,7 +4,16 @@ const fs = require('fs')
 const path = require('path')
 
 const repoRoot = path.resolve(__dirname, '..')
-const defaultTargets = process.argv.slice(2)
+const cliTargets = process.argv.slice(2)
+const knownDefaultTargets = [
+  'src/components/AssetReal.tsx',
+  'src/components/ServicesReal.tsx',
+  'src/components/NetworkReal.tsx',
+  'src/components/VendorsReal.tsx',
+]
+const defaultTargets = cliTargets.length > 0
+  ? cliTargets
+  : knownDefaultTargets.filter((target) => fs.existsSync(path.resolve(repoRoot, target)))
 
 const checks = [
   {
@@ -34,7 +43,7 @@ const checks = [
 ]
 
 if (defaultTargets.length === 0) {
-  console.log('No target files provided. Pass one or more component paths to scan for monitoring clone drift.')
+  console.log('No target files available to scan for monitoring clone drift.')
   process.exit(0)
 }
 
