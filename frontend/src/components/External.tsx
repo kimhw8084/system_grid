@@ -2295,7 +2295,6 @@ export default function External() {
 
   return (
     <OperationalWorkspaceShell
-      className="overflow-hidden"
       header={{
         eyebrow: 'External Intelligence',
         title: (
@@ -2331,26 +2330,30 @@ export default function External() {
       toolbarControls={(
         <>
           <ToolbarGroup>
-            <ToolbarButton active={showViewsMenu} onClick={() => setShowViewsMenu((current) => !current)} ref={viewsMenuButtonRef as any}>
-              <span className="flex items-center gap-2">
-                <LayoutGrid size={14} />
-                Views
-              </span>
-            </ToolbarButton>
-            <ToolbarButton active={showDisplayMenu} onClick={() => setShowDisplayMenu((current) => !current)} ref={displayMenuButtonRef as any}>
-              <span className="flex items-center gap-2">
-                <Sliders size={14} />
-                Display
-              </span>
-            </ToolbarButton>
+            <div className="views-menu-container">
+              <ToolbarButton active={showViewsMenu} onClick={() => setShowViewsMenu((current) => !current)} ref={viewsMenuButtonRef as any}>
+                <span className="flex items-center gap-2">
+                  <LayoutGrid size={14} />
+                  Views
+                </span>
+              </ToolbarButton>
+            </div>
+            <div className="display-menu-container">
+              <ToolbarButton active={showDisplayMenu} onClick={() => setShowDisplayMenu((current) => !current)} ref={displayMenuButtonRef as any}>
+                <span className="flex items-center gap-2">
+                  <Sliders size={14} />
+                  Display
+                </span>
+              </ToolbarButton>
+            </div>
             <ToolbarIconButton onClick={handleExportCSV} title="Export Manifest">
-              <FileText size={14} />
+              <FileText size={16} />
             </ToolbarIconButton>
             <ToolbarIconButton onClick={handleCopyToClipboard} title="Secure Copy">
-              <Clipboard size={14} />
+              <Clipboard size={16} />
             </ToolbarIconButton>
             <ToolbarIconButton onClick={() => setShowConfig(true)} title="Registry Config">
-              <Settings size={14} />
+              <Settings size={16} />
             </ToolbarIconButton>
           </ToolbarGroup>
           <ToolbarGroup>
@@ -2423,7 +2426,7 @@ export default function External() {
         </div>
       ) : null}
       toolbarActions={(
-        <ToolbarGroup>
+        <>
           <ToolbarButton
             onClick={openCompare}
             disabled={selectedIds.length < 2 || selectedIds.length > 5}
@@ -2455,7 +2458,7 @@ export default function External() {
           >
             + Add {externalViewLabel}
           </ToolbarButton>
-        </ToolbarGroup>
+        </>
       )}
       filterChips={[
           ...(searchTerm ? [{
@@ -3169,6 +3172,35 @@ export default function External() {
         displayName={externalRegistryLabel}
       />
 
+      <style>{`
+        .ag-theme-alpine-dark {
+          --ag-background-color: #1a1b26;
+          --ag-header-background-color: #24283b;
+          --ag-border-color: rgba(255, 255, 255, 0.05);
+          --ag-foreground-color: #f1f5f9;
+          --ag-header-foreground-color: #3b82f6;
+        }
+        .ag-root-wrapper { border: none !important; }
+        .ag-header-cell-label, .ag-header-group-cell-label {
+          font-weight: 700 !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.1em !important;
+          font-size: ${fontSize}px !important;
+          justify-content: center !important;
+          white-space: nowrap !important;
+        }
+        .ag-cell {
+          display: flex;
+          align-items: center;
+          justify-content: center !important;
+          font-weight: 700 !important;
+          font-size: ${fontSize}px !important;
+        }
+        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
+        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
+        .row-action-trigger { opacity: 1; }
+        .ag-side-bar { background-color: #24283b !important; border-left: 1px solid rgba(255,255,255,0.05) !important; }
+      `}</style>
 
     </OperationalWorkspaceShell>
   )
