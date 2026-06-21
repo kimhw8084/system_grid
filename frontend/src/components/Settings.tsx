@@ -1546,6 +1546,9 @@ export default function SettingsPage() {
     LogicalSystem: [{ label: 'Assets', path: '/asset' }, { label: 'Vendors', path: '/vendors' }],
     ServiceType: [{ label: 'Services', path: '/services' }],
     ExternalType: [{ label: 'External', path: '/external' }],
+    LinkPurpose: [{ label: 'Network', path: '/network' }],
+    NetworkFarm: [{ label: 'Network', path: '/network' }],
+    NetworkCableType: [{ label: 'Network', path: '/network' }],
     VendorCountry: [{ label: 'Vendors', path: '/vendors' }],
     VendorDeviceType: [{ label: 'Vendors', path: '/vendors' }],
   } as const
@@ -1820,6 +1823,30 @@ export default function SettingsPage() {
                       description="Shared external integration and dependency type taxonomy."
                       usageTargets={metadataViewBindings.ExternalType}
                       options={(options || []).filter((o:any) => o.category === "ExternalType")} 
+                   />
+                   <ConfigSection 
+                      title="Network Link Purposes" 
+                      category="LinkPurpose" 
+                      icon={Network}
+                      description="Connection purpose taxonomy used by the network registry."
+                      usageTargets={metadataViewBindings.LinkPurpose}
+                      options={(options || []).filter((o:any) => o.category === "LinkPurpose")} 
+                   />
+                   <ConfigSection 
+                      title="Network Farms" 
+                      category="NetworkFarm" 
+                      icon={Globe}
+                      description="Network operating farm taxonomy used by the network registry."
+                      usageTargets={metadataViewBindings.NetworkFarm}
+                      options={(options || []).filter((o:any) => o.category === "NetworkFarm")} 
+                   />
+                   <ConfigSection 
+                      title="Network Cable Types" 
+                      category="NetworkCableType" 
+                      icon={Network}
+                      description="Cable type taxonomy used by the network registry."
+                      usageTargets={metadataViewBindings.NetworkCableType}
+                      options={(options || []).filter((o:any) => o.category === "NetworkCableType")} 
                    />
                    <div className="h-px bg-white/5 my-4" />
                    <ConfigSection 

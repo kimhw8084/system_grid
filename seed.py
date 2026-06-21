@@ -116,7 +116,6 @@ def ensure_config_schema() -> None:
         ]
         
         # 3. Monitoring Options
-        session.query(GlobalSetting).filter(GlobalSetting.category.in_(["MonitoringPlatform", "MonitoringCategory", "NotificationMethod"])).delete(synchronize_session=False)
         monitoring_options = [
             ("MonitoringPlatform", "Zabbix", "Monitoring system platform", False),
             ("MonitoringPlatform", "Prometheus", "Monitoring system platform", False),
@@ -128,6 +127,19 @@ def ensure_config_schema() -> None:
             ("NotificationMethod", "Email", "Notification delivery method", False),
             ("NotificationMethod", "Slack", "Notification delivery method", False),
             ("NotificationMethod", "PagerDuty", "Notification delivery method", False),
+            ("LinkPurpose", "Data", "Network link purpose", False),
+            ("LinkPurpose", "Management", "Network link purpose", False),
+            ("LinkPurpose", "Storage", "Network link purpose", False),
+            ("LinkPurpose", "Backup", "Network link purpose", False),
+            ("LinkPurpose", "Control", "Network link purpose", False),
+            ("LinkPurpose", "Voice", "Network link purpose", False),
+            ("NetworkFarm", "Prod", "Network farm", False),
+            ("NetworkFarm", "Stage", "Network farm", False),
+            ("NetworkFarm", "Lab", "Network farm", False),
+            ("NetworkCableType", "Fiber", "Network cable type", False),
+            ("NetworkCableType", "Copper", "Network cable type", False),
+            ("NetworkCableType", "DAC", "Network cable type", False),
+            ("NetworkCableType", "AOC", "Network cable type", False),
         ]
         
         for key, val, cat, desc, public in default_settings:
@@ -321,6 +333,36 @@ async def seed_domain_data(tenant_db_url: str):
     
     async with async_session() as session:
         await clear_domain_data(session)
+        
+        # Seed Monitoring Options
+        monitoring_options = [
+            ("MonitoringPlatform", "Zabbix", "Monitoring system platform", False),
+            ("MonitoringPlatform", "Prometheus", "Monitoring system platform", False),
+            ("MonitoringPlatform", "Datadog", "Monitoring system platform", False),
+            ("MonitoringCategory", "Hardware", "Monitoring category", False),
+            ("MonitoringCategory", "Application", "Monitoring category", False),
+            ("MonitoringCategory", "Network", "Monitoring category", False),
+            ("MonitoringCategory", "Synthetic", "Monitoring category", False),
+            ("NotificationMethod", "Email", "Notification delivery method", False),
+            ("NotificationMethod", "Slack", "Notification delivery method", False),
+            ("NotificationMethod", "PagerDuty", "Notification delivery method", False),
+            ("LinkPurpose", "Data", "Network link purpose", False),
+            ("LinkPurpose", "Management", "Network link purpose", False),
+            ("LinkPurpose", "Storage", "Network link purpose", False),
+            ("LinkPurpose", "Backup", "Network link purpose", False),
+            ("LinkPurpose", "Control", "Network link purpose", False),
+            ("LinkPurpose", "Voice", "Network link purpose", False),
+            ("NetworkFarm", "Prod", "Network farm", False),
+            ("NetworkFarm", "Stage", "Network farm", False),
+            ("NetworkFarm", "Lab", "Network farm", False),
+            ("NetworkCableType", "Fiber", "Network cable type", False),
+            ("NetworkCableType", "Copper", "Network cable type", False),
+            ("NetworkCableType", "DAC", "Network cable type", False),
+            ("NetworkCableType", "AOC", "Network cable type", False),
+        ]
+        for cat, val, desc, is_default in monitoring_options:
+            session.add(models.SettingOption(category=cat, label=val, value=val, description=desc, is_default=is_default))
+        await session.commit()
 
         # 1. Teams & Org Structure
         print(" -> Teams & Sites")

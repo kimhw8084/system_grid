@@ -2,8 +2,8 @@ import React, { useMemo, useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Plus, Trash2, X, Check, Edit2, Layout, Settings, ChevronDown, ChevronRight, PlusCircle, ExternalLink } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import toast from "react-hot-toast"
 import { apiFetch } from "../api/apiClient"
+import { showWorkspaceToast } from "./shared/WorkspaceToast"
 import { WorkspaceModal } from "./shared/WorkspaceModal"
 import { ToolbarButton } from "./shared/LayoutPrimitives"
 import { useEscapeDismiss, useBodyModalFlag } from "./shared/OperationalWorkspacePrimitives"
@@ -71,9 +71,9 @@ export const ConfigSection = ({ title, category, options, icon: Icon, usageTarge
       invalidateRegistry()
       setNewValue("")
       setNewDescription("")
-      toast.success(`Added ${newValue}`)
+      showWorkspaceToast(`Added ${newValue}`, { type: 'success' })
     },
-    onError: (error: any) => toast.error(error.message),
+    onError: (error: any) => showWorkspaceToast(error.message, { type: 'error' }),
   })
 
   const updateMutation = useMutation({
@@ -106,9 +106,9 @@ export const ConfigSection = ({ title, category, options, icon: Icon, usageTarge
       invalidateRegistry()
       setEditingId(null)
       setEditDescription("")
-      toast.success(isTeamCategory ? "Team updated" : "Option updated")
+      showWorkspaceToast(isTeamCategory ? "Team updated" : "Option updated", { type: 'success' })
     },
-    onError: (error: any) => toast.error(error.message),
+    onError: (error: any) => showWorkspaceToast(error.message, { type: 'error' }),
   })
 
   const deleteMutation = useMutation({
@@ -125,9 +125,9 @@ export const ConfigSection = ({ title, category, options, icon: Icon, usageTarge
     },
     onSuccess: () => {
       invalidateRegistry()
-      toast.success(isTeamCategory ? "Team removed" : "Option removed")
+      // showWorkspaceToast(isTeamCategory ? "Team removed" : "Option removed", { type: 'success' })
     },
-    onError: (error: any) => toast.error(error.message),
+    onError: (error: any) => showWorkspaceToast(error.message, { type: 'error' }),
   })
 
   return (

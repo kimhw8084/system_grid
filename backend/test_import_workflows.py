@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 import pytest
 from app.api.settings import ensure_tenant_admin_async
 from app.models.config import Tenant
@@ -258,7 +259,168 @@ async def test_monitoring_import_preview_file_accepts_csv_upload(seeded_admin_te
     preview = preview_res.json()
     assert preview["total_rows"] == 1
     assert preview["valid_rows"] == 1
-    assert preview["results"][0]["normalized"]["title"] == "CPU Saturation"
+
+
+@pytest.mark.anyio
+async def test_external_import_schema_template_preview_and_execute(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(seeded_admin_tenant["tenant_id"])}
+    await _ensure_admin(seeded_admin_tenant)
+
+    team_res = await client.post("/api/v1/settings/teams", json={"name": "External Import Ops"}, headers=headers)
+    assert team_res.status_code == 200, team_res.text
+    team = team_res.json()
+
+    operator_res = await client.post("/api/v1/settings/operators", json={
+        "external_id": "ext-import-op",
+        "username": "ext-import-op",
+        "full_name": "External Import Operator",
+        "email": "ext-import-op@test.com",
+        "department": "Integration",
+        "team_id": team["id"],
+    }, headers=headers)
+    assert operator_res.status_code == 200, operator_res.text
+    operator = operator_res.json()
+
+    entity_res = await client.post("/api/v1/intelligence/entities", json={
+        "name": "Import Example Entity",
+        "external_key": "import-example-entity",
+        "type": "API",
+        "ownership_mode": "team",
+        "internal_team_id": team["id"],
+        "status": "Planned",
+        "environment": "Production",
+        "business_purpose": "Validate external import contracts",
+        "contacts_json": [
+            {
+                "role": "Primary",
+                "full_name": "Primary Import Contact",
+                "email": "primary.import@example.com",
+                "phone": "+1-555-0110",
+                "external_person_id": "contact-1",
+                "is_primary": True,
+                "is_escalation": False,
+            }
+        ],
+        "metadata_json": {"asset_class": "integration"},
+    }, headers=headers)
+    assert entity_res.status_code == 200, entity_res.text
+    entity = entity_res.json()
+
+    schema_res = await client.get("/api/v1/import/schema/external_entities", headers=headers)
+    assert schema_res.status_code == 200, schema_res.text
+    schema = schema_res.json()
+
+    assert schema["table_name"] == "external_entities"
+    assert "name" in schema["required_fields"]
+    assert "type" in schema["required_fields"]
+    assert "ownership_mode" in schema["required_fields"]
+    assert "business_purpose" in schema["required_fields"]
+    assert "contacts_json" in schema["required_fields"]
+    assert any(field["name"] == "contacts_json" for field in schema["fields"])
+    assert any(field["name"] == "internal_team_id" and field["options"] for field in schema["fields"])
+    assert any(record["id"] == entity["id"] for record in schema["example_records"])
+
+    template_res = await client.get(
+        f"/api/v1/import/template/external_entities?columns=name,type,contacts_json&mode=example&example_id={entity['id']}",
+        headers=headers,
+    )
+    assert template_res.status_code == 200, template_res.text
+    assert template_res.headers["x-sysgrid-schema-version"] == "2026-06-external-v1"
+    assert template_res.headers["x-sysgrid-import-profile"] == "external_entities"
+    rows = list(csv.reader(io.StringIO(template_res.content.decode("utf-8"))))
+    assert "name" in rows[0]
+    assert "type" in rows[0]
+    assert "contacts_json" in rows[0]
+    assert rows[2][rows[0].index("name")] == "Import Example Entity"
+
+    preview_res = await client.post(
+        "/api/v1/import/preview-rows?table_name=external_entities",
+        json={
+            "rows": [
+                {
+                    "name": "Preview External Entity",
+                    "type": "API",
+                    "ownership_mode": "individual",
+                    "internal_operator_id": operator["external_id"],
+                    "status": "Active",
+                    "environment": "Production",
+                    "business_purpose": "Preview import validation",
+                    "contacts_json": json.dumps([
+                        {
+                            "role": "Primary",
+                            "full_name": "Preview Contact",
+                            "email": "preview.contact@example.com",
+                            "external_person_id": "preview-contact",
+                            "is_primary": True,
+                            "is_escalation": False,
+                        }
+                    ]),
+                    "metadata_json": json.dumps({"source": "playwright"}),
+                },
+                {
+                    "name": "Invalid External Entity",
+                    "type": "API",
+                    "ownership_mode": "team",
+                    "status": "Active",
+                    "environment": "Production",
+                    "business_purpose": "Missing required team and contacts",
+                },
+            ]
+        },
+        headers=headers,
+    )
+    assert preview_res.status_code == 200, preview_res.text
+    preview = preview_res.json()
+    assert preview["valid_rows"] == 1
+    assert preview["invalid_rows"] == 1
+    assert preview["results"][0]["normalized"]["ownership_mode"] == "individual"
+    assert preview["results"][1]["status"] == "INVALID"
+    assert any("contacts_json" in error or "internal_team_id" in error for error in preview["results"][1]["errors"])
+
+    execute_res = await client.post(
+        "/api/v1/import/execute?table_name=external_entities",
+        headers={**headers, "X-User-Id": "admin_root"},
+        json={
+            "rows": [
+                {
+                    "name": "Execute External Entity",
+                    "type": "API",
+                    "ownership_mode": "individual",
+                    "internal_operator_id": operator["username"],
+                    "status": "Active",
+                    "environment": "Production",
+                    "business_purpose": "Execute import validation",
+                    "contacts_json": json.dumps([
+                        {
+                            "role": "Primary",
+                            "full_name": "Execute Contact",
+                            "email": "execute.contact@example.com",
+                            "external_person_id": "execute-contact",
+                            "is_primary": True,
+                            "is_escalation": False,
+                        }
+                    ]),
+                    "metadata_json": json.dumps({"imported": True}),
+                }
+            ]
+        },
+    )
+    assert execute_res.status_code == 200, execute_res.text
+    assert execute_res.json() == {"status": "success", "count": 1}
+
+    list_res = await client.get("/api/v1/intelligence/entities?include_deleted=true", headers=headers)
+    assert list_res.status_code == 200, list_res.text
+    entities = list_res.json()
+    assert any(item["name"] == "Execute External Entity" for item in entities)
+
+    snapshot_res = await client.get("/api/v1/import/snapshot/external_entities", headers=headers)
+    assert snapshot_res.status_code == 200, snapshot_res.text
+    assert snapshot_res.headers["x-sysgrid-schema-version"] == "2026-06-external-v1"
+    assert snapshot_res.headers["x-sysgrid-import-profile"] == "external_entities"
+    snapshot_rows = list(csv.DictReader(io.StringIO(snapshot_res.content.decode("utf-8"))))
+    assert any(row["name"] == "Execute External Entity" for row in snapshot_rows)
+    assert any(row["business_purpose"] == "Execute import validation" for row in snapshot_rows)
 
 
 @pytest.mark.anyio

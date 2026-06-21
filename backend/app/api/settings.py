@@ -12,7 +12,7 @@ from ..core.config import settings
 from .utils import filter_valid_columns, get_current_user_id, normalize_json_list, normalize_json_object
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
-LOCKED_MONITORING_OPTION_CATEGORIES = {"MonitoringSeverity", "MonitoringOwnerRole"}
+LOCKED_MONITORING_OPTION_CATEGORIES = {"MonitoringSeverity", "MonitoringOwnerRole", "MonitoringPlatform", "MonitoringCategory", "NotificationMethod"}
 RELATIONAL_OPTION_CATEGORIES = {"MonitoringTeam"}
 
 
@@ -251,6 +251,10 @@ async def rename_setting_option_references(db: AsyncSession, category: str, old_
         await rename_vendor_personnel_pc_types(db, old_value, new_value)
     elif category == "LinkPurpose":
         await db.execute(update(models.PortConnection).where(models.PortConnection.link_type == old_value).values(link_type=new_value))
+    elif category == "NetworkFarm":
+        await db.execute(update(models.PortConnection).where(models.PortConnection.farm == old_value).values(farm=new_value))
+    elif category == "NetworkCableType":
+        await db.execute(update(models.PortConnection).where(models.PortConnection.cable_type == old_value).values(cable_type=new_value))
     elif category == "Manufacturer":
         await db.execute(update(models.Device).where(models.Device.manufacturer == old_value).values(manufacturer=new_value))
     elif category == "Model":
@@ -298,6 +302,10 @@ async def setting_option_is_in_use(db: AsyncSession, category: str, value: str) 
         return bool((await db.execute(select(models.VendorPersonnel.id).filter(models.VendorPersonnel.pcs.contains([{"type": value}])))).scalars().first())
     if category == "LinkPurpose":
         return bool((await db.execute(select(models.PortConnection.id).filter(models.PortConnection.link_type == value))).scalars().first())
+    if category == "NetworkFarm":
+        return bool((await db.execute(select(models.PortConnection.id).filter(models.PortConnection.farm == value))).scalars().first())
+    if category == "NetworkCableType":
+        return bool((await db.execute(select(models.PortConnection.id).filter(models.PortConnection.cable_type == value))).scalars().first())
     if category == "Manufacturer":
         return bool((await db.execute(select(models.Device.id).filter(models.Device.manufacturer == value))).scalars().first())
     if category == "Model":

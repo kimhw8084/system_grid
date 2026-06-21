@@ -178,6 +178,36 @@
     @apply font-sans antialiased;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
+
+  /* Force buttons to one line */
+  button, .button-like {
+    white-space: nowrap !important;
+  }
+
+  /* Allow text to wrap naturally within containers */
+  p, span, div {
+    white-space: normal;
+  }
+
+  /* Robust overflow handling */
+  * {
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+  }
+}
+
+/* Global spacing utility */
+.modal-content-spacing {
+  @apply pt-6;
+}
+
+.modal-footer-spacing {
+  @apply py-6;
+}
+
+.modal-element-gap {
+  @apply my-3;
 }
 
 .glass-panel {
@@ -200,6 +230,32 @@
   justify-content: center !important;
   width: 100% !important;
   color: var(--text-secondary) !important;
+}
+
+/* Prevent the global `* { max-width: 100% }` from clipping AG Grid row backgrounds */
+.ag-root-wrapper,
+.ag-root,
+.ag-header,
+.ag-header-row,
+.ag-header-cell,
+.ag-row,
+.ag-cell,
+.ag-body,
+.ag-body-viewport,
+.ag-body-horizontal-scroll,
+.ag-body-horizontal-scroll-viewport,
+.ag-center-cols-clipper,
+.ag-center-cols-container,
+.ag-center-cols-viewport,
+.ag-pinned-left-cols-container,
+.ag-pinned-right-cols-container,
+.ag-floating-top,
+.ag-floating-bottom,
+.ag-full-width-container,
+.ag-overlay {
+  max-width: none !important;
+  overflow-wrap: normal !important;
+  word-wrap: normal !important;
 }
 
 .monitoring-grid-shell .ag-root-wrapper {
@@ -225,6 +281,20 @@
 .monitoring-grid-shell .ag-header-cell-label,
 .monitoring-grid-shell .ag-header-group-cell-label {
   padding-right: 10px !important;
+}
+
+.monitoring-grid-shell .ag-cell,
+.monitoring-grid-shell .ag-cell-value,
+.monitoring-grid-shell .ag-header-cell-label,
+.monitoring-grid-shell .ag-header-cell-text,
+.monitoring-grid-shell .ag-header-group-cell-label,
+.monitoring-grid-shell .ag-header-group-cell-text {
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  min-width: 0 !important;
 }
 
 .monitoring-grid-shell .ag-header-cell-resize {
@@ -257,45 +327,8 @@
   background: rgba(59, 130, 246, 0.1) !important;
 }
 
-.monitoring-grid-shell .ag-pinned-left-cols-container .ag-row.monitoring-grid-row-even .ag-cell,
-.monitoring-grid-shell .ag-pinned-right-cols-container .ag-row.monitoring-grid-row-even .ag-cell,
-.monitoring-grid-shell .monitoring-grid-row-even .ag-pinned-left-cols-container .ag-cell,
-.monitoring-grid-shell .monitoring-grid-row-even .ag-pinned-right-cols-container .ag-cell,
-.monitoring-grid-shell .ag-row.monitoring-grid-row-even .ag-cell.ag-cell-first-right-pinned,
-.monitoring-grid-shell .ag-row.monitoring-grid-row-even .ag-cell.ag-cell-last-left-pinned,
-.monitoring-grid-shell .ag-row.monitoring-grid-row-even .ag-cell.ag-cell-not-inline-editing.ag-cell-value {
+.monitoring-grid-shell .ag-cell {
   background: transparent !important;
-}
-
-.monitoring-grid-shell .ag-pinned-left-cols-container .ag-row.monitoring-grid-row-odd .ag-cell,
-.monitoring-grid-shell .ag-pinned-right-cols-container .ag-row.monitoring-grid-row-odd .ag-cell,
-.monitoring-grid-shell .monitoring-grid-row-odd .ag-pinned-left-cols-container .ag-cell,
-.monitoring-grid-shell .monitoring-grid-row-odd .ag-pinned-right-cols-container .ag-cell,
-.monitoring-grid-shell .ag-row.monitoring-grid-row-odd .ag-cell.ag-cell-first-right-pinned,
-.monitoring-grid-shell .ag-row.monitoring-grid-row-odd .ag-cell.ag-cell-last-left-pinned {
-  background: transparent !important;
-}
-
-.monitoring-grid-shell .ag-pinned-left-cols-container .ag-row-hover.monitoring-grid-row-even .ag-cell,
-.monitoring-grid-shell .ag-pinned-right-cols-container .ag-row-hover.monitoring-grid-row-even .ag-cell,
-.monitoring-grid-shell .ag-pinned-left-cols-container .ag-row-hover.monitoring-grid-row-odd .ag-cell,
-.monitoring-grid-shell .ag-pinned-right-cols-container .ag-row-hover.monitoring-grid-row-odd .ag-cell,
-.monitoring-grid-shell .ag-row-hover.monitoring-grid-row-even .ag-pinned-left-cols-container .ag-cell,
-.monitoring-grid-shell .ag-row-hover.monitoring-grid-row-even .ag-pinned-right-cols-container .ag-cell,
-.monitoring-grid-shell .ag-row-hover.monitoring-grid-row-odd .ag-pinned-left-cols-container .ag-cell,
-.monitoring-grid-shell .ag-row-hover.monitoring-grid-row-odd .ag-pinned-right-cols-container .ag-cell {
-  background: rgba(255, 255, 255, 0.05) !important;
-}
-
-.monitoring-grid-shell .ag-pinned-left-cols-container .ag-row-selected.monitoring-grid-row-even .ag-cell,
-.monitoring-grid-shell .ag-pinned-right-cols-container .ag-row-selected.monitoring-grid-row-even .ag-cell,
-.monitoring-grid-shell .ag-pinned-left-cols-container .ag-row-selected.monitoring-grid-row-odd .ag-cell,
-.monitoring-grid-shell .ag-pinned-right-cols-container .ag-row-selected.monitoring-grid-row-odd .ag-cell,
-.monitoring-grid-shell .ag-row-selected.monitoring-grid-row-even .ag-pinned-left-cols-container .ag-cell,
-.monitoring-grid-shell .ag-row-selected.monitoring-grid-row-even .ag-pinned-right-cols-container .ag-cell,
-.monitoring-grid-shell .ag-row-selected.monitoring-grid-row-odd .ag-pinned-left-cols-container .ag-cell,
-.monitoring-grid-shell .ag-row-selected.monitoring-grid-row-odd .ag-pinned-right-cols-container .ag-cell {
-  background: rgba(59, 130, 246, 0.1) !important;
 }
 
 .monitoring-grid-shell .ag-center-cols-viewport,

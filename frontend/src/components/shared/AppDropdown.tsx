@@ -14,6 +14,7 @@ interface AppDropdownProps {
   onChange: (value: any) => void
   options: Option[]
   label?: string
+  required?: boolean
   placeholder?: string
   className?: string
   disabled?: boolean
@@ -25,6 +26,7 @@ export const AppDropdown = ({
   onChange,
   options,
   label,
+  required = false,
   placeholder,
   className = '',
   disabled = false,
@@ -92,7 +94,10 @@ export const AppDropdown = ({
     <div className={`space-y-1 ${className} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}>
       {label && (
         <label className={`block px-1 ${OPERATIONAL_WORKSPACE_VISUALS.fieldLabelText}`}>
-          {label}
+          <span className="inline-flex items-center gap-1">
+            <span>{label}</span>
+            {required && <span className="text-rose-400">*</span>}
+          </span>
         </label>
       )}
       <div>

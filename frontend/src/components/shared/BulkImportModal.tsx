@@ -120,6 +120,7 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
       isOpen={isOpen}
       onClose={onClose}
       size="workspace"
+      className="max-h-[92vh] flex flex-col"
       title="Data Ingestion Pipeline"
       subtitle={(
         <div className="flex items-center gap-4">
@@ -143,16 +144,16 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
         </button>
       )}
       footerRight={(
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0 flex-nowrap">
           {step === 'upload' && (
             <button 
               type="button"
               onClick={() => auditMutation.mutate()}
               disabled={(uploadMode === 'file' ? !file : !pastedData.trim()) || auditMutation.isPending}
-              className="flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white shadow-xl shadow-blue-500/20 transition-all hover:bg-blue-500 disabled:opacity-30"
+              className="flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white shadow-xl shadow-blue-500/20 transition-all hover:bg-blue-500 disabled:opacity-30 whitespace-nowrap"
             >
               {auditMutation.isPending ? <RefreshCcw className="animate-spin" size={14} /> : <Terminal size={14} />}
-              Initiate Audit
+              <span>Initiate Audit</span>
             </button>
           )}
 
@@ -161,10 +162,10 @@ export function BulkImportModal({ isOpen, onClose, tableName, displayName }: Bul
               type="button"
               onClick={() => executeMutation.mutate(selectedRowsData)}
               disabled={selectedRowIndices.size === 0 || executeMutation.isPending}
-              className="flex items-center gap-2 rounded-lg bg-emerald-600 px-6 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white shadow-xl shadow-emerald-500/20 transition-all hover:bg-emerald-700 disabled:opacity-30"
+              className="flex items-center gap-2 rounded-lg bg-emerald-600 px-6 py-2.5 text-[9px] font-bold uppercase tracking-widest text-white shadow-xl shadow-emerald-500/20 transition-all hover:bg-emerald-700 disabled:opacity-30 whitespace-nowrap"
             >
               {executeMutation.isPending ? <RefreshCcw className="animate-spin" size={14} /> : <Database size={14} />}
-              Commit {selectedRowIndices.size} Vectors
+              <span>Commit {selectedRowIndices.size} Vectors</span>
             </button>
           )}
         </div>

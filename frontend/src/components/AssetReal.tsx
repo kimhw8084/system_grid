@@ -6,7 +6,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import CodeMirror from '@uiw/react-codemirror'
 import { sql } from '@codemirror/lang-sql'
 import { javascript } from '@codemirror/lang-javascript'
-import { AgGridReact } from "ag-grid-react"
 import {
   Activity, Plus, Search, Filter, ExternalLink,
   Trash2, Edit2, Shield, Cpu, Database, Network, 
@@ -42,7 +41,6 @@ import {
   WorkspacePanelTitle as PanelTitle,
   WorkspaceSectionCard,
   WorkspaceSelectField as MonitoringSelectField,
-  WorkspaceSplitView,
   WorkspaceValidationBanner,
   getWorkspaceModalFrameClass,
   getWorkspaceModalShellClass,
@@ -57,16 +55,11 @@ import { parseCommaSeparatedValues } from '../utils/dataParsers'
 import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
 import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
 import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } from './shared/WorkspaceModalShells'
+import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
 import { OperationalImportModal } from './shared/OperationalImportModal'
-import {
-  OperationalAnchoredPanel,
-  OperationalDisplayPanel,
-  OperationalGridSurface,
-  OperationalGroupedGridSection,
-  OperationalGroupedGridView,
-  OperationalSavedViewsPanel,
-  OperationalWorkspaceShell
-} from './shared/OperationalWorkspaceShells'
+import { OperationalGridMatrix } from './shared/OperationalGridMatrix'
+import { OperationalDisplayPanel, OperationalGridSurface, OperationalSavedViewsPanel, OperationalWorkspaceFrame } from './shared/OperationalWorkspaceShells'
+import { AssetDetailsView } from './assets/AssetDetailsView'
 import {
   applyOperationalColumnSizing,
   applyOperationalColumnState,
@@ -79,12 +72,12 @@ import {
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
 
-const MONITORING_VIEW_STORAGE_KEY = 'sysgrid_monitoring_views_v1'
-const MONITORING_ACTIVE_VIEW_KEY = 'sysgrid_monitoring_active_view_v1'
-const MONITORING_FAVORITES_STORAGE_KEY = 'sysgrid_monitoring_favorites_v1'
-const MONITORING_UI_STATE_KEY = 'sysgrid_monitoring_ui_state_v1'
-const MONITORING_WATCH_STORAGE_KEY = 'sysgrid_monitoring_watch_v1'
-const MONITORING_WORKSPACE_PREFERENCE_KEY = 'monitoring_workspace_state_v2'
+const MONITORING_VIEW_STORAGE_KEY = 'sysgrid_asset_real_views_v1'
+const MONITORING_ACTIVE_VIEW_KEY = 'sysgrid_asset_real_active_view_v1'
+const MONITORING_FAVORITES_STORAGE_KEY = 'sysgrid_asset_real_favorites_v1'
+const MONITORING_UI_STATE_KEY = 'sysgrid_asset_real_ui_state_v1'
+const MONITORING_WATCH_STORAGE_KEY = 'sysgrid_asset_real_watch_v1'
+const MONITORING_WORKSPACE_PREFERENCE_KEY = 'asset_real_workspace_state_v1'
 const MONITORING_WORKSPACE_PREFERENCE_VERSION = 2
 const BULK_MENU_MAX_HEIGHT = 560
 const MONITORING_FIXED_WIDTH_COLUMN_IDS = new Set([
@@ -93,8 +86,6 @@ const MONITORING_FIXED_WIDTH_COLUMN_IDS = new Set([
   'recent_change',
   'favorite',
   'watch',
-  'is_active',
-  'check_interval',
   'row_actions',
 ])
 
@@ -169,29 +160,75 @@ const MONITORING_REQUIRED_FIELD_NAMES = new Set(['title', 'category', 'status', 
 const DEFAULT_MONITORING_VIEWS = []
 const DEFAULT_MONITORING_VIEW_IDS = new Set(DEFAULT_MONITORING_VIEWS.map((view) => view.id))
 const MONITORING_SUPPORTS_COMPARE = MONITORING_WORKSPACE_STANDARD.sharedCapabilities.includes('compare')
-const MONITORING_VALID_GROUP_BY = new Set(['raw', 'category', 'platform', 'status', 'severity', 'notification_method'])
+const MONITORING_VALID_GROUP_BY = new Set(['raw', 'status', 'system', 'type', 'owner'])
 const MONITORING_PERSISTED_COLUMN_IDS = new Set([
   'select',
   'id',
   'recent_change',
   'favorite',
   'watch',
-  'device_name',
-  'title',
+  'name',
+  'system',
+  'type',
   'status',
-  'owners',
-  'category',
-  'is_active',
-  'monitored_service_names',
-  'platform',
-  'severity',
-  'check_interval',
-  'notification_method',
-  'purpose',
+  'environment',
+  'owner',
+  'manufacturer',
+  'model',
+  'os_name',
+  'os_version',
+  'primary_ip',
+  'management_ip',
+  'hardware_summary',
+  'hardware_age',
+  'open_incident_count',
+  'site_name',
+  'rack_name',
+  'depth',
+  'mount_orientation',
+  'u_start',
+  'size_u',
+  'power_typical_w',
+  'power_max_w',
   'created_at',
   'updated_at',
   'row_actions',
 ])
+const ASSET_DEFAULT_COLUMN_ORDER = [
+  'select',
+  'id',
+  'recent_change',
+  'favorite',
+  'watch',
+  'name',
+  'system',
+  'type',
+  'status',
+  'environment',
+  'owner',
+  'manufacturer',
+  'model',
+  'os_name',
+  'os_version',
+  'primary_ip',
+  'management_ip',
+  'hardware_summary',
+  'hardware_age',
+  'open_incident_count',
+  'site_name',
+  'rack_name',
+  'depth',
+  'mount_orientation',
+  'u_start',
+  'size_u',
+  'power_typical_w',
+  'power_max_w',
+  'created_at',
+  'updated_at',
+  'row_actions',
+]
+const ASSET_DEFAULT_COLUMN_ORDER_MAP = new Map(ASSET_DEFAULT_COLUMN_ORDER.map((colId, index) => [colId, index]))
+const NETWORK_DEFAULT_COLUMN_ORDER_MAP = ASSET_DEFAULT_COLUMN_ORDER_MAP
 
 const readJsonStorage = <T,>(storageKey: string, fallback: T): T => {
   if (typeof window === 'undefined') return fallback
@@ -214,8 +251,8 @@ const normalizeMonitoringIdList = (value: any): number[] => {
 
 const normalizeMonitoringQuickFilters = (value: any) => ({
   status: Array.isArray(value?.status) ? value.status.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [],
-  severity: Array.isArray(value?.severity) ? value.severity.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [],
-  platform: Array.isArray(value?.platform) ? value.platform.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [],
+  system: Array.isArray(value?.system) ? value.system.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [],
+  type: Array.isArray(value?.type) ? value.type.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [],
   owner: Array.isArray(value?.owner) ? value.owner.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [],
 })
 
@@ -242,6 +279,14 @@ const normalizeMonitoringSavedViews = (value: any) => {
 
 const sanitizeMonitoringViewConfig = (config: any) => {
   const safeConfig = config && typeof config === 'object' ? config : {}
+  const sanitizeNetworkLayout = (layout: any[], preserveWidths: boolean) => {
+    const sanitized = sanitizeOperationalColumnLayout(layout, MONITORING_PERSISTED_COLUMN_IDS, preserveWidths)
+    return [...sanitized].sort((a: any, b: any) => {
+      const aIndex = NETWORK_DEFAULT_COLUMN_ORDER_MAP.get(a?.colId) ?? 1000
+      const bIndex = NETWORK_DEFAULT_COLUMN_ORDER_MAP.get(b?.colId) ?? 1000
+      return aIndex - bIndex
+    })
+  }
   return {
     fontSize: Number.isFinite(safeConfig.fontSize) ? safeConfig.fontSize : 11,
     rowDensity: Number.isFinite(safeConfig.rowDensity) ? safeConfig.rowDensity : 8,
@@ -250,11 +295,7 @@ const sanitizeMonitoringViewConfig = (config: any) => {
       : [],
     groupBy: typeof safeConfig.groupBy === 'string' && MONITORING_VALID_GROUP_BY.has(safeConfig.groupBy) ? safeConfig.groupBy : 'raw',
     showFilterBar: safeConfig.showFilterBar !== false,
-    columnLayoutState: sanitizeOperationalColumnLayout(
-      Array.isArray(safeConfig.columnLayoutState) ? safeConfig.columnLayoutState : [],
-      MONITORING_PERSISTED_COLUMN_IDS,
-      true
-    ),
+    columnLayoutState: sanitizeNetworkLayout(Array.isArray(safeConfig.columnLayoutState) ? safeConfig.columnLayoutState : [], true),
     quickFilter: typeof safeConfig.quickFilter === 'string' ? safeConfig.quickFilter : '',
     quickFilters: normalizeMonitoringQuickFilters(safeConfig.quickFilters),
     filterModel: sanitizeOperationalFilterModel(safeConfig.filterModel, MONITORING_PERSISTED_COLUMN_IDS),
@@ -281,7 +322,7 @@ const normalizeMonitoringWorkspaceState = (value: any) => {
       quickFilters: normalizeMonitoringQuickFilters(uiState.quickFilters),
       groupBy: typeof uiState.groupBy === 'string' && MONITORING_VALID_GROUP_BY.has(uiState.groupBy) ? uiState.groupBy : 'raw',
       showFilterBar: uiState.showFilterBar !== false,
-      columnLayoutState: sanitizeOperationalColumnLayout(Array.isArray(uiState.columnLayoutState) ? uiState.columnLayoutState : [], MONITORING_PERSISTED_COLUMN_IDS, false),
+      columnLayoutState: sanitizeMonitoringViewConfig({ columnLayoutState: Array.isArray(uiState.columnLayoutState) ? uiState.columnLayoutState : [] }).columnLayoutState,
       lastVisitedAt: Number.isFinite(uiState.lastVisitedAt) ? uiState.lastVisitedAt : 0,
       searchTerm: typeof uiState.searchTerm === 'string' ? uiState.searchTerm : '',
     }
@@ -386,104 +427,6 @@ const getPointFloatingStyle = ({
 }
 
 // Isolated component to prevent UI state changes (menus) from triggering AgGrid recalculations
-const GridMatrix = React.memo(({ 
-  gridRef, 
-  rowData, 
-  columnDefs, 
-  autoSizeStrategy,
-  colResizeDefault,
-  fontSize, 
-  rowDensity, 
-  context,
-  getRowId,
-  onGridReady,
-  onSelectionChanged,
-  onColumnResized,
-  onColumnMoved,
-  onDragStopped,
-  onColumnPinned,
-  onColumnVisible,
-  onFilterChanged,
-  onSortChanged,
-  onRowClicked,
-  onRowDoubleClicked,
-  onCellContextMenu,
-  getRowClass,
-  onFirstDataRendered,
-  onRowDataUpdated
-}: any) => {
-  const apiRef = useRef<any>(null)
-
-  const defaultColDef = useMemo(() => ({
-    sortable: true,
-    resizable: true,
-    filter: true,
-    suppressMovable: false
-  }), [])
-
-  useEffect(() => {
-    if (apiRef.current) {
-      apiRef.current.refreshCells({ columns: ['favorite', 'watch'], force: true })
-    }
-  }, [context])
-
-  return (
-    <AgGridReact
-      ref={(ref) => {
-        apiRef.current = ref?.api
-        if (gridRef) {
-          if (typeof gridRef === 'function') gridRef(ref)
-          else gridRef.current = ref
-        }
-      }}
-      rowData={rowData}
-      columnDefs={columnDefs}
-      autoSizeStrategy={autoSizeStrategy}
-      colResizeDefault={colResizeDefault}
-      defaultColDef={defaultColDef}
-      getRowId={getRowId}
-      rowSelection="multiple"
-      animateRows={false}
-      headerHeight={fontSize + rowDensity + 10}
-      rowHeight={fontSize + rowDensity + 4}
-      rowBuffer={6}
-      valueCache={true}
-      context={context}
-      onGridReady={onGridReady}
-      onSelectionChanged={onSelectionChanged}
-      onColumnResized={onColumnResized}
-      onColumnMoved={onColumnMoved}
-      onDragStopped={onDragStopped}
-      onColumnPinned={onColumnPinned}
-      onColumnVisible={onColumnVisible}
-      onFilterChanged={onFilterChanged}
-      onSortChanged={onSortChanged}
-      onRowClicked={onRowClicked}
-      onRowDoubleClicked={onRowDoubleClicked}
-      onCellContextMenu={onCellContextMenu}
-      getRowClass={getRowClass}
-      onFirstDataRendered={onFirstDataRendered}
-      onRowDataUpdated={onRowDataUpdated}
-      suppressScrollOnNewData={true}
-      suppressCellFocus={true}
-      suppressRowClickSelection={true}
-      enableCellTextSelection={true}
-      suppressMovableColumns={false}
-      ensureDomOrder={false}
-      overlayNoRowsTemplate="<span class='text-slate-500 font-semibold text-[10px]'>No monitoring data found</span>"
-    />
-  )
-}, (prev, next) => {
-  return prev.rowData === next.rowData && 
-         prev.columnDefs === next.columnDefs && 
-         prev.fontSize === next.fontSize && 
-         prev.rowDensity === next.rowDensity &&
-         prev.context?.favoriteIds === next.context?.favoriteIds &&
-         prev.context?.watchIds === next.context?.watchIds
-})
-GridMatrix.displayName = 'GridMatrix'
-
-
 const getMonitorGroupValue = (item: any, field: string) => {
   if (field === 'notification_method') return item.notification_method || 'No notification path'
   return item[field] || 'Unspecified'
@@ -544,11 +487,83 @@ const sanitizeMonitoringPayload = (item: any) => {
   return next
 }
 
+const ASSET_STATUSES = ['Planned', 'Active', 'Maintenance', 'Standby', 'Failed', 'Decommissioned', 'Provisioning', 'Reserved', 'Deleted']
+const ASSET_ENVIRONMENTS = ['Production', 'Staging', 'QA', 'Dev', 'DR', 'Lab', 'Sandbox', 'Legacy']
+const ASSET_DEPTHS = ['Full', 'Half']
+const ASSET_MOUNT_ORIENTATIONS = ['Front', 'Rear']
+const getAssetTitle = (asset: any) => asset?.name || `Asset ${asset?.id ?? ''}`.trim()
+
+const normalizeAssetRecord = (asset: any) => ({
+  ...asset,
+  name: asset?.name || 'Unnamed Asset',
+  system: asset?.system || 'Unassigned',
+  type: asset?.type || 'Physical',
+  status: asset?.status || 'Active',
+  environment: asset?.environment || 'Production',
+  owner: asset?.owner || '',
+  manufacturer: asset?.manufacturer || '',
+  model: asset?.model || '',
+  os_name: asset?.os_name || '',
+  os_version: asset?.os_version || '',
+  primary_ip: asset?.primary_ip || '',
+  management_ip: asset?.management_ip || '',
+  hardware_summary: asset?.hardware_summary || 'No Components',
+  hardware_age: asset?.hardware_age || 'N/A',
+  open_incident_count: Number(asset?.open_incident_count || 0),
+  site_name: asset?.site_name || '',
+  rack_name: asset?.rack_name || '',
+  depth: asset?.depth || asset?.mount_depth || 'Full',
+  mount_orientation: asset?.mount_orientation || 'Front',
+  u_start: asset?.u_start ?? null,
+  size_u: asset?.size_u ?? asset?.u_size ?? 1,
+  power_typical_w: Number(asset?.power_typical_w || 0),
+  power_max_w: Number(asset?.power_max_w || 0),
+  created_at: asset?.created_at || asset?.updated_at || null,
+  updated_at: asset?.updated_at || asset?.created_at || null,
+  is_deleted: Boolean(asset?.is_deleted),
+})
+
+const sanitizeAssetPayload = (item: any) => ({
+  name: String(item?.name || '').trim(),
+  system: item?.system ? String(item.system).trim() : null,
+  environment: item?.environment ? String(item.environment).trim() : 'Production',
+  status: item?.status ? String(item.status).trim() : 'Active',
+  type: item?.type ? String(item.type).trim() : 'Physical',
+  manufacturer: item?.manufacturer ? String(item.manufacturer).trim() : null,
+  model: item?.model ? String(item.model).trim() : null,
+  serial_number: item?.serial_number ? String(item.serial_number).trim() : '',
+  asset_tag: item?.asset_tag ? String(item.asset_tag).trim() : '',
+  os_name: item?.os_name ? String(item.os_name).trim() : null,
+  os_version: item?.os_version ? String(item.os_version).trim() : null,
+  management_ip: item?.management_ip ? String(item.management_ip).trim() : null,
+  primary_ip: item?.primary_ip ? String(item.primary_ip).trim() : null,
+  management_url: item?.management_url ? String(item.management_url).trim() : null,
+  owner: item?.owner ? String(item.owner).trim() : null,
+  business_unit: item?.business_unit ? String(item.business_unit).trim() : null,
+  role: item?.role ? String(item.role).trim() : null,
+  purchase_date: item?.purchase_date || null,
+  install_date: item?.install_date || null,
+  warranty_end: item?.warranty_end || null,
+  eol_date: item?.eol_date || null,
+  power_typical_w: item?.power_typical_w === '' || item?.power_typical_w == null ? 0 : Number(item.power_typical_w),
+  power_max_w: item?.power_max_w === '' || item?.power_max_w == null ? 0 : Number(item.power_max_w),
+  depth: item?.depth ? String(item.depth).trim() : 'Full',
+  size_u: item?.size_u === '' || item?.size_u == null ? 1 : Number(item.size_u),
+  mount_orientation: item?.mount_orientation ? String(item.mount_orientation).trim() : 'Front',
+  metadata_json: item?.metadata_json && typeof item.metadata_json === 'object' ? item.metadata_json : {},
+})
+const NETWORK_LINK_TYPES = ['Physical', 'Virtual', 'Storage', 'Switch', 'Firewall', 'Load Balancer', 'PDU', 'UPS', 'Console-Server', 'Patch Panel']
+const NETWORK_DIRECTIONS = ['Primary', 'Secondary', 'Out-of-band']
+const NETWORK_UNITS = ['W', 'U']
+const NETWORK_STATUSES = ASSET_STATUSES
+const getNetworkConnectionTitle = getAssetTitle
+const sanitizeNetworkConnectionPayload = sanitizeAssetPayload
+
 const ObservabilityHUD = ({ items }: any) => {
   const stats = useMemo(() => {
     if (!items?.length) return null
-    const active = items.filter((i: any) => i.status === 'Existing').length
-    const critical = items.filter((i: any) => i.severity === 'Critical' || i.severity === 'S1').length
+    const active = items.filter((i: any) => i.status === 'Active').length
+    const critical = items.filter((i: any) => Number(i.open_incident_count || 0) > 0).length
     const recent = items.filter((i: any) => {
       const updated = parseAppDate(i.updated_at)
       return updated ? (new Date().getTime() - updated.getTime() < 3600000) : false // 1 hour
@@ -561,44 +576,44 @@ const ObservabilityHUD = ({ items }: any) => {
   return (
     <div className="grid grid-cols-4 gap-6 mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
        <div className="bg-black/40 border border-white/5 p-6 rounded-lg backdrop-blur-xl shadow-xl group hover:border-blue-500/20 transition-all">
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-blue-400 transition-colors">Global Pulse</p>
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-blue-400 transition-colors">Registry Pulse</p>
           <div className="flex items-center gap-4">
              <div className="w-12 h-12 bg-blue-600/10 rounded-lg flex items-center justify-center text-blue-400 border border-blue-500/20">
                 <Activity size={24} className="animate-pulse" />
              </div>
              <div>
-                <h4 className="text-2xl font-black text-white tracking-tighter">{stats.active} Active Traces</h4>
-                <p className="text-[9px] font-bold text-slate-500 uppercase">Live Infrastructure Monitoring</p>
+                <h4 className="text-2xl font-black text-white tracking-tighter">{stats.active} Active Assets</h4>
+                <p className="text-[9px] font-bold text-slate-500 uppercase">Live Asset Registry</p>
              </div>
           </div>
        </div>
        <div className="bg-black/40 border border-white/5 p-6 rounded-lg backdrop-blur-xl shadow-xl group hover:border-rose-500/20 transition-all">
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-rose-400 transition-colors">Alert Flux</p>
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-rose-400 transition-colors">Incident Flux</p>
           <div className="flex items-center gap-4">
              <div className="w-12 h-12 bg-rose-600/10 rounded-lg flex items-center justify-center text-rose-500 border border-rose-500/20">
                 <Bell size={24} className={stats.critical > 0 ? 'animate-bounce' : ''} />
              </div>
              <div>
-                <h4 className="text-2xl font-black text-white tracking-tighter">{stats.critical} Critical Events</h4>
+                <h4 className="text-2xl font-black text-white tracking-tighter">{stats.critical} At-Risk Assets</h4>
                 <p className="text-[9px] font-bold text-slate-500 uppercase">Immediate Intervention Required</p>
              </div>
           </div>
        </div>
        <div className="bg-black/40 border border-white/5 p-6 rounded-lg backdrop-blur-xl shadow-xl group hover:border-emerald-500/20 transition-all">
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-emerald-400 transition-colors">Discovery Momentum</p>
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-emerald-400 transition-colors">Registry Momentum</p>
           <div className="flex items-center gap-4">
              <div className="w-12 h-12 bg-emerald-600/10 rounded-lg flex items-center justify-center text-emerald-400 border border-emerald-500/20">
                 <Zap size={24} />
              </div>
              <div>
-                <h4 className="text-2xl font-black text-white tracking-tighter">{stats.recent} New Signals</h4>
+                <h4 className="text-2xl font-black text-white tracking-tighter">{stats.recent} Updated Assets</h4>
                 <p className="text-[9px] font-bold text-slate-500 uppercase">Captured in current session</p>
              </div>
           </div>
        </div>
        <div className="bg-indigo-600/10 border border-indigo-500/20 p-6 rounded-lg backdrop-blur-xl shadow-xl flex items-center justify-between group hover:bg-indigo-600/20 transition-all">
           <div>
-             <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-1">Health Stability</p>
+             <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-1">Registry Stability</p>
              <h4 className="text-2xl font-black text-white tracking-tighter">{stats.critical === 0 ? 'Optimal' : 'Degraded'}</h4>
           </div>
           <Shield size={28} className="text-indigo-500 opacity-20 group-hover:opacity-100 group-hover:scale-110 transition-all" />
@@ -607,7 +622,7 @@ const ObservabilityHUD = ({ items }: any) => {
   )
 }
 
-export default function MonitoringGrid() {
+export default function AssetReal() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const idParam = searchParams.get('id')
@@ -621,7 +636,30 @@ export default function MonitoringGrid() {
     () => normalizeMonitoringWorkspaceState(userSettings?.[MONITORING_WORKSPACE_PREFERENCE_KEY]),
     [userSettings]
   )
-  const initialWorkspaceState = remoteWorkspaceState ?? readMonitoringWorkspaceStateFromLocalStorage()
+  const localWorkspaceState = useMemo(() => readMonitoringWorkspaceStateFromLocalStorage(), [])
+  const hasStoredFavoriteIds = useMemo(
+    () => typeof window !== 'undefined' && window.localStorage.getItem(MONITORING_FAVORITES_STORAGE_KEY) !== null,
+    []
+  )
+  const hasStoredWatchIds = useMemo(
+    () => typeof window !== 'undefined' && window.localStorage.getItem(MONITORING_WATCH_STORAGE_KEY) !== null,
+    []
+  )
+  const initialWorkspaceState = useMemo(() => {
+    if (!remoteWorkspaceState) return localWorkspaceState
+    if (!localWorkspaceState) return remoteWorkspaceState
+    return {
+      ...remoteWorkspaceState,
+      savedViews: localWorkspaceState.savedViews?.length ? localWorkspaceState.savedViews : remoteWorkspaceState.savedViews,
+      activeViewId: localWorkspaceState.activeViewId ?? remoteWorkspaceState.activeViewId,
+      favoriteIds: hasStoredFavoriteIds ? (localWorkspaceState.favoriteIds ?? []) : remoteWorkspaceState.favoriteIds,
+      watchIds: hasStoredWatchIds ? (localWorkspaceState.watchIds ?? []) : remoteWorkspaceState.watchIds,
+      uiState: {
+        ...remoteWorkspaceState.uiState,
+        ...localWorkspaceState.uiState,
+      },
+    }
+  }, [hasStoredFavoriteIds, hasStoredWatchIds, localWorkspaceState, remoteWorkspaceState])
   const persistedUiState = initialWorkspaceState?.uiState ?? null
   
   // --- STYLE LABORATORY STATE ---
@@ -663,17 +701,17 @@ export default function MonitoringGrid() {
     return initialWorkspaceState?.savedViews ?? normalizeMonitoringSavedViews([])
   })
   const [activeViewId, setActiveViewId] = useWorkspaceSessionValue<string | null>(
-    'sysgrid_monitoring_session_init',
+    'sysgrid_asset_real_session_init',
     null,
     () => initialWorkspaceState?.activeViewId ?? (typeof window === 'undefined' ? null : window.localStorage.getItem(MONITORING_ACTIVE_VIEW_KEY))
   )
   const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>(MONITORING_FAVORITES_STORAGE_KEY, initialWorkspaceState?.favoriteIds ?? [])
   const [watchIds, setWatchIds] = usePersistentJsonState<number[]>(MONITORING_WATCH_STORAGE_KEY, initialWorkspaceState?.watchIds ?? [])
-  const [quickFilters, setQuickFilters] = useState(persistedUiState?.quickFilters ?? { status: [] as string[], severity: [] as string[], platform: [] as string[], owner: [] as string[] })
+  const [quickFilters, setQuickFilters] = useState(persistedUiState?.quickFilters ?? { status: [] as string[], system: [] as string[], type: [] as string[], owner: [] as string[] })
   const [searchTerm, setSearchTerm] = useState(persistedUiState?.searchTerm ?? '')
   const [groupBy, setGroupBy] = useState<string>(persistedUiState?.groupBy ?? 'raw')
-  const [bulkDraft, setBulkDraft] = useState({ status: '', severity: '', notification_method: '' })
-  const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'severity' | 'notification' | null>(null)
+  const [bulkDraft, setBulkDraft] = useState({ status: '', link_type: '', direction: '' })
+  const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'link_type' | 'direction' | null>(null)
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
   const [pendingIds, setPendingIds] = useState<number[]>([])
   const selectionAnchorRef = useRef<number | null>(null)
@@ -760,13 +798,13 @@ export default function MonitoringGrid() {
   useEffect(() => {
     if (remoteWorkspaceState && !monitoringPreferenceHydratedRef.current) {
       monitoringPreferenceHydratedRef.current = true
-      const payload = normalizeMonitoringWorkspaceState(remoteWorkspaceState)
+      const payload = initialWorkspaceState ?? normalizeMonitoringWorkspaceState(remoteWorkspaceState)
       const serialized = JSON.stringify(payload)
       monitoringPreferenceSyncRef.current = serialized
       setSavedViews(payload?.savedViews ?? normalizeMonitoringSavedViews([]))
       setActiveViewId(payload?.activeViewId ?? null)
-      setFavoriteIds(payload?.favoriteIds ?? [])
-      setWatchIds(payload?.watchIds ?? [])
+      setFavoriteIds(hasStoredFavoriteIds ? (localWorkspaceState?.favoriteIds ?? []) : (payload?.favoriteIds ?? []))
+      setWatchIds(hasStoredWatchIds ? (localWorkspaceState?.watchIds ?? []) : (payload?.watchIds ?? []))
       setFontSize(payload?.uiState.fontSize ?? 11)
       setRowDensity(payload?.uiState.rowDensity ?? 8)
       setHiddenColumns(payload?.uiState.hiddenColumns ?? ['created_at', 'updated_at'])
@@ -792,7 +830,11 @@ export default function MonitoringGrid() {
     }
   }, [
     buildMonitoringWorkspacePreferencePayload,
+    hasStoredFavoriteIds,
+    hasStoredWatchIds,
     hasUserSettings,
+    initialWorkspaceState,
+    localWorkspaceState,
     remoteWorkspaceState,
     setActiveViewId,
     setColumnLayoutState,
@@ -862,6 +904,7 @@ export default function MonitoringGrid() {
 
     if (!isAutoResizeSource) {
       clearPendingAutoSize()
+      preserveExplicitColumnWidthsRef.current = true
       setTransientManualColumnWidths(true)
     }
 
@@ -874,6 +917,20 @@ export default function MonitoringGrid() {
   }, [])
 
   const handleRowId = useCallback((params: any) => String(params.data.id), [])
+  const openNetworkDetail = useCallback((item: any, replace: boolean = false) => {
+    if (!item?.id) return
+    setDetailItem(item)
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.set('id', String(item.id))
+    navigate({ search: `?${nextParams.toString()}` }, { replace })
+  }, [navigate, searchParams])
+  const closeNetworkDetail = useCallback((replace: boolean = true) => {
+    setDetailItem(null)
+    setDetailDeleteConfirm(false)
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('id')
+    navigate({ search: nextParams.toString() ? `?${nextParams.toString()}` : '' }, { replace })
+  }, [navigate, searchParams])
 
   const openRowActionMenuAtPoint = useCallback((item: any, x: number, y: number) => {
     setRowActionMenu({
@@ -891,7 +948,7 @@ export default function MonitoringGrid() {
 
   const handleGridReady = useCallback((event: any) => {
     if (typeof window !== 'undefined') {
-      ;(window as any).__DEBUG_MONITORING_GRID_API__ = event.api
+      ;(window as any).__DEBUG_NETWORK_GRID_API__ = event.api
     }
     // Immediately apply layout if we have it to prevent squish
     if (columnLayoutState.length > 0) {
@@ -948,9 +1005,25 @@ export default function MonitoringGrid() {
     queryFn: async () => (await (await apiFetch('/api/v1/settings/teams')).json())
   })
 
-  const categories = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "MonitoringCategory") : [], [settingsOptions])
-  const platforms = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "MonitoringPlatform") : [], [settingsOptions])
-  const notificationMethods = useMemo(() => Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "NotificationMethod") : [], [settingsOptions])
+  const linkPurposeOptions = useMemo(() => {
+    const options = Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "LinkPurpose") : []
+    return options.length > 0
+      ? options.map((option: any) => ({ value: option.value, label: option.label }))
+      : NETWORK_LINK_TYPES.map((value) => ({ value, label: value }))
+  }, [settingsOptions])
+  const farmOptions = useMemo(() => {
+    const options = Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "NetworkFarm") : []
+    return options.length > 0
+      ? options.map((option: any) => ({ value: option.value, label: option.label }))
+      : ['Prod', 'Stage', 'Lab'].map((value) => ({ value, label: value }))
+  }, [settingsOptions])
+  const cableTypeOptions = useMemo(() => {
+    const options = Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === "NetworkCableType") : []
+    return options.length > 0
+      ? options.map((option: any) => ({ value: option.value, label: option.label }))
+      : ['Fiber', 'Copper', 'DAC', 'AOC'].map((value) => ({ value, label: value }))
+  }, [settingsOptions])
+  const notificationMethods = useMemo(() => NETWORK_DIRECTIONS.map((value) => ({ value, label: value })), [])
   const severities = MONITORING_SEVERITIES
   const ownerRoles = MONITORING_OWNER_ROLES
 
@@ -974,7 +1047,7 @@ export default function MonitoringGrid() {
         zIndex
       }
     }
-    return getAnchoredFloatingStyle({ rect: button.getBoundingClientRect(), width, height, zIndex })
+    return getAnchoredFloatingStyle({ rect: button.getBoundingClientRect(), width, height, zIndex, offset: 12 })
   }
 
   const toggleBulkWindow = () => {
@@ -987,7 +1060,10 @@ export default function MonitoringGrid() {
 
   const toggleFavorite = useCallback((monitorId: number) => {
     const id = Number(monitorId)
-    setFavoriteIds((current) => current.includes(id) ? current.filter((i) => i !== id) : [...current, id])
+    setFavoriteIds((current) => {
+      const normalized = normalizeMonitoringIdList(current)
+      return normalized.includes(id) ? normalized.filter((i) => i !== id) : [...normalized, id]
+    })
   }, [])
 
   const toggleWatch = useCallback((monitorId: number) => {
@@ -1047,8 +1123,8 @@ export default function MonitoringGrid() {
   const handleRowDoubleClicked = useCallback((event: any) => {
     if (!event?.data || shouldIgnoreRowSelection(event.event?.target)) return
     if (pendingIds.includes(event.data.id)) return
-    setDetailItem(event.data)
-  }, [pendingIds])
+    openNetworkDetail(event.data)
+  }, [openNetworkDetail, pendingIds])
 
   const openRecoveryDocuments = (item: any) => {
     const recoveryDocs = item.recovery_docs || []
@@ -1068,7 +1144,7 @@ export default function MonitoringGrid() {
           type="button"
           onClick={(event) => {
             event.stopPropagation()
-            setDetailItem(item)
+            openNetworkDetail(item)
           }}
           title="Open details"
           className="rounded-lg p-1 text-blue-400 transition-all hover:bg-blue-400/10 active:scale-90"
@@ -1089,28 +1165,6 @@ export default function MonitoringGrid() {
         </button>
         <button
           type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            setHistoryItem(item)
-          }}
-          title="View history"
-          className="rounded-lg p-1 text-amber-400 transition-all hover:bg-amber-400/10 active:scale-90"
-        >
-          <Clock size={13} />
-        </button>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            openRecoveryDocuments(item)
-          }}
-          title="Knowledge documents"
-          className="rounded-lg p-1 text-purple-400 transition-all hover:bg-purple-400/10 active:scale-90"
-        >
-          <BookOpen size={13} />
-        </button>
-        <button
-          type="button"
           onClick={(event: any) => openRowActionMenu(event, item)}
           title="More actions"
           className="row-action-trigger row-action-menu-container rounded-lg p-1 text-slate-400 transition-all hover:bg-slate-400/10 hover:text-white active:scale-90"
@@ -1124,7 +1178,7 @@ export default function MonitoringGrid() {
   const handleExportCSV = () => {
     if (gridRef.current?.api) {
       gridRef.current.api.exportDataAsCsv({
-        fileName: `SysGrid_Monitoring_${new Date().toISOString().split('T')[0]}.csv`,
+        fileName: `SysGrid_AssetReal_${new Date().toISOString().split('T')[0]}.csv`,
         allColumns: false,
         onlySelected: false
       })
@@ -1174,7 +1228,7 @@ export default function MonitoringGrid() {
     setColumnLayoutState(config.columnLayoutState ?? [])
     setTransientManualColumnWidths(false)
     setSearchTerm(config.quickFilter ?? '')
-    setQuickFilters(config.quickFilters ?? { status: [] as string[], severity: [] as string[], platform: [] as string[], owner: [] as string[] })
+    setQuickFilters(config.quickFilters ?? { status: [] as string[], system: [] as string[], type: [] as string[], owner: [] as string[] })
     setGridFilterModel(config.filterModel ?? {})
     setGridSortModel((config.sortModel && config.sortModel.length > 0) ? config.sortModel : [{ colId: 'favorite', sort: 'desc' }])
     setActiveViewId(viewId)
@@ -1249,7 +1303,7 @@ export default function MonitoringGrid() {
     setShowFilterBar(true)
     setColumnLayoutState([])
     setSearchTerm('')
-    setQuickFilters({ status: [] as string[], severity: [] as string[], platform: [] as string[], owner: [] as string[] })
+    setQuickFilters({ status: [] as string[], system: [] as string[], type: [] as string[], owner: [] as string[] })
     setGridSortModel([{ colId: 'favorite', sort: 'desc' }])
     if (gridRef.current?.api) {
        gridRef.current.api.setFilterModel({})
@@ -1326,7 +1380,8 @@ export default function MonitoringGrid() {
           rect: displayMenuButtonRef.current.getBoundingClientRect(),
           width: 320,
           height: 420,
-          zIndex: 1100
+          zIndex: 1100,
+          offset: 12
         }))
       }
       if (showViewsMenu && viewsMenuButtonRef.current) {
@@ -1334,16 +1389,12 @@ export default function MonitoringGrid() {
           rect: viewsMenuButtonRef.current.getBoundingClientRect(),
           width: 380,
           height: 460,
-          zIndex: 1100
+          zIndex: 1100,
+          offset: 12
         }))
       }
       if (showBulkMenu && bulkMenuButtonRef.current) {
-        setBulkMenuStyle(getAnchoredFloatingStyle({
-          rect: bulkMenuButtonRef.current.getBoundingClientRect(),
-          width: 340,
-          height: BULK_MENU_MAX_HEIGHT,
-          zIndex: 1105
-        }))
+        setBulkMenuStyle(positionUtilityWindow(bulkMenuButtonRef.current, 340, BULK_MENU_MAX_HEIGHT, 1105))
       }
     }
 
@@ -1359,8 +1410,8 @@ export default function MonitoringGrid() {
   }, [showBulkMenu, showDisplayMenu, showViewsMenu])
 
   const { data: allItems, isLoading } = useQuery({
-    queryKey: ['monitoring-items'],
-    queryFn: async () => (await apiFetch('/api/v1/monitoring?include_deleted=true')).json()
+    queryKey: ['asset-real-devices'],
+    queryFn: async () => (await apiFetch('/api/v1/devices?include_deleted=true')).json()
   })
 
   const lifecycleCounts = useMemo(() => {
@@ -1380,16 +1431,18 @@ export default function MonitoringGrid() {
 
   const items = useMemo(() => {
     if (!allItems || !Array.isArray(allItems)) return []
-    return allItems.filter((i: any) => activeTab === 'active' ? !i.is_deleted : i.is_deleted)
+    return allItems
+      .map((asset: any) => normalizeAssetRecord(asset))
+      .filter((item: any) => activeTab === 'active' ? !item.is_deleted : item.is_deleted)
   }, [allItems, activeTab])
 
   const platformOptions = useMemo(() => {
-    const values = Array.from(new Set((items || []).map((item: any) => item.platform).filter(Boolean)))
+    const values = Array.from(new Set((items || []).map((item: any) => item.system).filter(Boolean)))
     return values.sort().map((value) => ({ value, label: value }))
   }, [items])
 
   const ownerOptions = useMemo(() => {
-    const values = Array.from(new Set((items || []).flatMap((item: any) => (item.owners || []).map((owner: any) => owner.name)).filter(Boolean)))
+    const values = Array.from(new Set((items || []).map((item: any) => item.owner).filter(Boolean)))
     return values.sort().map((value) => ({ value, label: value }))
   }, [items])
 
@@ -1401,11 +1454,10 @@ export default function MonitoringGrid() {
 
   const groupOptions = [
     { value: 'raw', label: 'Raw Rows' },
-    { value: 'category', label: 'Category' },
-    { value: 'platform', label: 'Platform' },
     { value: 'status', label: 'Status' },
-    { value: 'severity', label: 'Severity' },
-    { value: 'notification_method', label: 'Notification Path' }
+    { value: 'system', label: 'System' },
+    { value: 'type', label: 'Type' },
+    { value: 'owner', label: 'Owner' }
   ]
 
   const displayedItems = useMemo(() => {
@@ -1414,15 +1466,18 @@ export default function MonitoringGrid() {
         const query = searchTerm.trim().toLowerCase()
         const haystack = [
           String(item.id || ''),
-          item.device_name,
-          item.category,
+          item.name,
+          item.system,
+          item.owner,
+          item.manufacturer,
+          item.model,
           item.status,
-          item.severity,
-          item.title,
-          item.platform,
-          item.notification_method,
-          item.purpose,
-          ...(item.owners || []).map((owner: any) => owner.name)
+          item.type,
+          item.environment,
+          item.primary_ip,
+          item.management_ip,
+          item.site_name,
+          item.rack_name,
         ]
           .filter(Boolean)
           .join(' ')
@@ -1431,9 +1486,9 @@ export default function MonitoringGrid() {
         if (!haystack.includes(query)) return false
       }
       if (quickFilters.status.length > 0 && !quickFilters.status.includes(item.status)) return false
-      if (quickFilters.severity.length > 0 && !quickFilters.severity.includes(item.severity)) return false
-      if (quickFilters.platform.length > 0 && !quickFilters.platform.includes(item.platform)) return false
-      if (quickFilters.owner.length > 0 && !quickFilters.owner.some(o => (item.owners || []).some((owner: any) => owner.name === o))) return false
+      if (quickFilters.system.length > 0 && !quickFilters.system.includes(item.system)) return false
+      if (quickFilters.type.length > 0 && !quickFilters.type.includes(item.type)) return false
+      if (quickFilters.owner.length > 0 && !quickFilters.owner.includes(item.owner)) return false
       return true
     })
     return filtered
@@ -1525,9 +1580,9 @@ export default function MonitoringGrid() {
   }, [lastVisitedAt])
 
   const bulkPreview = useMemo(() => {
-    const field = expandedBulkSection === 'notification' ? 'notification_method' : expandedBulkSection
+    const field = expandedBulkSection
     if (!field) return null
-    const nextValue = expandedBulkSection === 'notification' ? bulkDraft.notification_method : bulkDraft[expandedBulkSection]
+    const nextValue = bulkDraft[field]
     const currentCounts = selectedItems.reduce((acc: Record<string, number>, item: any) => {
       const key = item[field] || 'Unspecified'
       acc[key] = (acc[key] || 0) + 1
@@ -1596,7 +1651,7 @@ export default function MonitoringGrid() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    ;(window as any).__DEBUG_SET_MONITORING_COLUMN_WIDTH__ = (colId: string, width: number) => {
+    ;(window as any).__DEBUG_SET_ASSET_COLUMN_WIDTH__ = (colId: string, width: number) => {
       if (!gridRef.current?.api) return
       gridRef.current.api.applyColumnState({
         state: [{ colId, width }],
@@ -1606,7 +1661,7 @@ export default function MonitoringGrid() {
       syncColumnLayoutState(gridRef.current.api, true)
     }
     return () => {
-      delete (window as any).__DEBUG_SET_MONITORING_COLUMN_WIDTH__
+      delete (window as any).__DEBUG_SET_ASSET_COLUMN_WIDTH__
     }
   }, [setTransientManualColumnWidths, syncColumnLayoutState])
 
@@ -1669,22 +1724,14 @@ export default function MonitoringGrid() {
     const undo = lastUndoRef.current
     if (!undo) return
     if (undo.mode === 'bulk') {
-      const res = await apiFetch('/api/v1/monitoring/bulk-action', {
+      const res = await apiFetch('/api/v1/devices/bulk-action', {
         method: 'POST',
-        body: JSON.stringify({ ids: undo.ids, action: undo.action, payload: undo.payload || {} })
+        body: JSON.stringify({ ids: undo.ids, action: undo.action })
       })
       if (!res.ok) throw new Error(await res.text())
-    } else if (undo.mode === 'restore_snapshots') {
-      for (const snapshot of undo.snapshots) {
-        const res = await apiFetch(`/api/v1/monitoring/${snapshot.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(sanitizeMonitoringPayload(snapshot))
-        })
-        if (!res.ok) throw new Error(await res.text())
-      }
     }
     lastUndoRef.current = null
-    queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
+    queryClient.invalidateQueries({ queryKey: ['asset-real-devices'] })
   }
 
   const bulkMutation = useMutation({
@@ -1699,22 +1746,41 @@ export default function MonitoringGrid() {
     mutationFn: async ({ action, payload = {}, ids: overrideIds }: any) => {
       const idsToUse = overrideIds ?? selectedIds
       const previousSnapshots = (allItems || []).filter((item: any) => idsToUse.includes(item.id)).map((item: any) => ({ ...item }))
-      const res = await apiFetch('/api/v1/monitoring/bulk-action', {
-        method: 'POST',
-        body: JSON.stringify({ ids: idsToUse, action, payload })
-      })
+      let res
+      if (action === 'update') {
+        const directPayload = {
+          ...(payload.status ? { status: payload.status } : {}),
+          ...(payload.environment ? { environment: payload.environment } : {}),
+          ...(payload.system ? { system: payload.system } : {}),
+          ...(payload.owner ? { owner: payload.owner } : {}),
+        }
+        if (Object.keys(directPayload).length === 0) {
+          res = new Response(JSON.stringify({ changed: 0, summary: 'No asset fields selected' }), { status: 200 })
+        } else {
+          for (const id of idsToUse) {
+            const putRes = await apiFetch(`/api/v1/devices/${id}`, {
+              method: 'PUT',
+              body: JSON.stringify(directPayload)
+            })
+            if (!putRes.ok) throw new Error(await putRes.text())
+          }
+          res = new Response(JSON.stringify({ changed: idsToUse.length, summary: `Updated ${idsToUse.length} assets` }), { status: 200 })
+        }
+      } else {
+        res = await apiFetch('/api/v1/devices/bulk-action', {
+          method: 'POST',
+          body: JSON.stringify({ ids: idsToUse, action })
+        })
+      }
       if (!res.ok) throw new Error(await res.text())
       const result = await res.json()
       return { result, action, payload, idsToUse, previousSnapshots }
     },
     onSuccess: ({ result, action, payload, idsToUse, previousSnapshots }: any) => {
-      queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
-      idsToUse.forEach((id: number) => {
-        queryClient.invalidateQueries({ queryKey: ['monitoring-history', id] })
-      })
+      queryClient.invalidateQueries({ queryKey: ['asset-real-devices'] })
       setShowBulkMenu(false)
       setExpandedBulkSection(null)
-      setBulkDraft({ status: '', severity: '', notification_method: '' })
+        setBulkDraft({ status: '', link_type: '', direction: '' })
       setIsBulkStatusOpen(false)
       setIsBulkSeverityOpen(false)
       setIsBulkNotifyOpen(false)
@@ -1722,26 +1788,26 @@ export default function MonitoringGrid() {
       const changedCount = Number(result?.changed ?? idsToUse.length)
       if (changedCount <= 0) {
         lastUndoRef.current = null
-        showWorkspaceToast(result?.summary || 'No semantic change', { type: 'success' })
         return
       }
 
       if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
       else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
-      else if (action === 'update') lastUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
       else lastUndoRef.current = null
 
       if (lastUndoRef.current) {
-        showWorkspaceToast(result?.summary || 'Updated monitoring state', {
+        showWorkspaceToast(result?.summary || 'Updated assets', {
           onRevert: async () => {
             try {
               await runUndo()
-              showWorkspaceToast('Reverted monitoring operation', { type: 'success' })
+              showWorkspaceToast('Reverted asset operation', { type: 'success' })
             } catch (error: any) {
               showWorkspaceToast(error.message || 'Undo failed', { type: 'error' })
             }
           }
         })
+      } else {
+        showWorkspaceToast(result?.summary || 'Updated assets', { type: 'success' })
       }
     },
     onError: (e: any) => showWorkspaceToast(`Operation failed: ${e.message}`, { type: 'error' })
@@ -1764,350 +1830,417 @@ export default function MonitoringGrid() {
       }
     }
     
+    const renderText = (value: any, className = '') => (
+      <span
+        title={value == null ? '' : String(value)}
+        style={{ fontSize: `${fontSize}px` }}
+        className={`block w-full min-w-0 truncate whitespace-nowrap overflow-hidden text-ellipsis ${className}`}
+      >
+        {value ?? 'N/A'}
+      </span>
+    )
+
     const defs = [
-    { 
-      colId: "select",
-      headerName: "", 
-      width: 48,
-      checkboxSelection: true, 
-      headerCheckboxSelection: true, 
-      pinned: 'left', 
-      cellClass: 'flex items-center justify-center border-r border-white/5', 
-      headerClass: 'flex items-center justify-center border-r border-white/5', 
-      suppressSizeToFit: true,
-      sortable: false,
-      filter: false,
-      lockVisible: true
-    },
-    { 
-      colId: "id",
-      field: "id", 
-      headerName: "ID", 
-      width: 90,
-      pinned: 'left',
-      cellClass: 'text-center font-bold text-slate-500 border-r border-white/5 flex items-center justify-center',
-      headerClass: 'text-center border-r border-white/5',
-      filter: 'agNumberColumnFilter',
-      lockVisible: true
-    },
-    {
-      colId: "recent_change",
-      headerName: "Chg",
-      field: "recent_change",
-      width: 80,
-      pinned: 'left',
-      sortable: false,
-      filter: false,
-      lockVisible: true,
-      cellClass: 'text-center border-r border-white/5 flex items-center justify-center !overflow-visible',
-      headerClass: 'text-center border-r border-white/5',
-      hide: !isIntelligenceExpanded,
-      cellRenderer: (p: any) => {
-        if (!p.data || !isRecentChange(p.data)) return null
-        const dateStr = formatAppDate(p.data.updated_at || p.data.created_at)
-        const author = p.data.created_by_user_id || 'System'
-        return (
-          <div className="group relative flex items-center justify-center h-full w-full">
-            <div className="absolute h-10 w-10 rounded-lg bg-[radial-gradient(circle,_rgba(251,191,36,0.2)_0%,_transparent_70%)] blur-md animate-pulse" />
-            <span className="relative z-[1] block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
-            
-            {/* Hover Peek Activity */}
-            <div className="invisible group-hover:visible absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-[2000] w-52 p-3 rounded-lg border border-white/10 bg-slate-950/90 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl pointer-events-none transition-all duration-300 transform scale-95 group-hover:scale-100 opacity-0 group-hover:opacity-100">
-               <div className="flex items-center gap-2 mb-2">
-                 <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-400">Recent Activity</p>
-               </div>
-               <div className="space-y-1">
-                 <p className="text-[11px] text-slate-100 font-bold leading-tight">{dateStr}</p>
-                 <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/5">
+      {
+        colId: 'select',
+        headerName: '',
+        width: 48,
+        checkboxSelection: true,
+        headerCheckboxSelection: true,
+        pinned: 'left',
+        cellClass: 'flex items-center justify-center border-r border-white/5',
+        headerClass: 'flex items-center justify-center border-r border-white/5',
+        suppressSizeToFit: true,
+        sortable: false,
+        filter: false,
+        lockVisible: true,
+      },
+      {
+        colId: 'id',
+        field: 'id',
+        headerName: 'ID',
+        width: 90,
+        pinned: 'left',
+        cellClass: 'text-center font-bold text-slate-500 border-r border-white/5 flex items-center justify-center',
+        headerClass: 'text-center border-r border-white/5',
+        filter: 'agNumberColumnFilter',
+        lockVisible: true,
+      },
+      {
+        colId: 'recent_change',
+        headerName: 'Chg',
+        field: 'recent_change',
+        width: 80,
+        pinned: 'left',
+        sortable: false,
+        filter: false,
+        lockVisible: true,
+        cellClass: 'text-center border-r border-white/5 flex items-center justify-center !overflow-visible',
+        headerClass: 'text-center border-r border-white/5',
+        hide: !isIntelligenceExpanded,
+        cellRenderer: (p: any) => {
+          if (!p.data || !isRecentChange(p.data)) return null
+          const dateStr = formatAppDate(p.data.updated_at || p.data.created_at)
+          const author = p.data.created_by_user_id || 'System'
+          return (
+            <div className="group relative flex items-center justify-center h-full w-full">
+              <div className="absolute h-10 w-10 rounded-lg bg-[radial-gradient(circle,_rgba(251,191,36,0.2)_0%,_transparent_70%)] blur-md animate-pulse" />
+              <span className="relative z-[1] block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
+              <div className="invisible group-hover:visible absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-[2000] w-52 p-3 rounded-lg border border-white/10 bg-slate-950/90 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl pointer-events-none transition-all duration-300 transform scale-95 group-hover:scale-100 opacity-0 group-hover:opacity-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-400">Recent Activity</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] text-slate-100 font-bold leading-tight">{dateStr}</p>
+                  <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/5">
                     <User size={10} className="text-slate-500" />
                     <p className="text-[9px] text-slate-500 font-bold tracking-widest">@{author}</p>
-                 </div>
-               </div>
-               {/* Arrow */}
-               <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-950/90" />
+                  </div>
+                </div>
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-950/90" />
+              </div>
             </div>
-          </div>
-        )
-      }
-    },
-    {
-      colId: "favorite",
-      headerName: "Fav",
-      field: "favorite",
-      width: 80,
-      pinned: 'left',
-      cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
-      headerClass: 'text-center border-r border-white/5',
-      sortable: true,
-      filter: false,
-      lockVisible: true,
-      valueGetter: (p: any) => p.context?.favoriteIds?.includes(p.data?.id) ? 1 : 0,
-      cellRenderer: (p: any) => {
-        const isFavorite = p.context?.favoriteIds?.includes(p.data?.id)
-        return (
-          <div className="flex h-full w-full items-center justify-center">
-            <button
-              onClick={(event) => {
-                event.stopPropagation()
-                toggleFavorite(p.data.id)
-              }}
-              title={isFavorite ? 'Unpin monitor' : 'Pin monitor'}
-              className={`rounded-lg p-1 transition-all flex items-center justify-center ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
-            >
-              <Star size={15} className={isFavorite ? 'fill-current' : ''} />
-            </button>
-          </div>
-        )
-      }
-    },
-    {
-      colId: "watch",
-      headerName: "Watch",
-      field: "watch",
-      width: 85,
-      pinned: 'left',
-      cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
-      headerClass: 'text-center border-r border-white/5',
-      sortable: false,
-      filter: false,
-      lockVisible: true,
-      hide: !isIntelligenceExpanded,
-      cellRenderer: (p: any) => {
-        const isWatched = p.context?.watchIds?.includes(p.data?.id)
-        return (
-          <div className="flex h-full w-full items-center justify-center">
-            <button
-              onClick={(event) => {
-                event.stopPropagation()
-                toggleWatch(p.data.id)
-              }}
-              title={isWatched ? 'Unfollow monitor' : 'Follow monitor'}
-              className={`rounded-lg p-1 transition-all flex items-center justify-center ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
-            >
-              <Eye size={15} className={isWatched ? 'fill-current' : ''} />
-            </button>
-          </div>
-        )
-      }
-    },
-    { 
-      field: "device_name", 
-      headerName: "Target Asset", 
-      width: 160, 
-      filter: true,
-      cellClass: "font-bold text-center flex items-center justify-center", 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
-      hide: hiddenColumns.includes("device_name")
-    },
-    { 
-      field: "title", 
-      headerName: "Title", 
-      width: 280,
-      filter: true,
-      cellClass: "font-bold text-left tracking-tight flex items-center", 
-      headerClass: 'text-left',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
-      hide: hiddenColumns.includes("title")
-    },
-    { 
-      field: "status", 
-      headerName: "Status", 
-      width: 130,
-      filter: true,
-      cellClass: 'text-center flex items-center justify-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => <StatusPill value={p.value || 'Unknown'} fontSize={fontSize} />,
-      hide: hiddenColumns.includes("status")
-    },
-    { 
-      field: "owners",
-      headerName: "Owners",
-      width: 140,
-      filter: true,
-      cellClass: "text-center font-bold flex items-center justify-center",
-      headerClass: 'text-center',
-      valueFormatter: (p: any) => p.value?.map((o: any) => o.name).join(', ') || 'N/A',
-      cellRenderer: (p: any) => {
-        const owners = p.value || []
-        const count = owners.length
-        if (count === 0) return <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500">N/A</span>
-        const summary = count > 1 ? `${owners[0].name} +${count - 1}` : owners[0].name
-        const tooltip = owners
-          .map((owner: any) => `${owner.name}${owner.role ? ` (${owner.role})` : ''}${owner.external_id ? ` - ${owner.external_id}` : ''}`)
-          .join('\n')
-        return (
-          <HoverPreview summary={summary} tooltip={tooltip} fontSize={fontSize} />
-        )
+          )
+        },
       },
-      hide: hiddenColumns.includes("owners")
-    },
-    { 
-      field: "category", 
-      headerName: "Category", 
-      width: 140,
-      filter: true,
-      cellClass: 'text-center flex items-center justify-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        const colors: any = {
-          'Hardware': 'text-amber-500',
-          'Network': 'text-blue-500',
-          'OS': 'text-purple-500',
-          'Application': 'text-emerald-500',
-          'Database': 'text-rose-500'
-        }
-        return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold ${colors[p.value] || 'text-slate-400'}`}>{p.value || 'N/A'}</span>
-      },
-      hide: hiddenColumns.includes("category")
-    },
-    { 
-      field: "is_active", 
-      headerName: "Existing", 
-      width: 70,
-      cellClass: 'text-center flex items-center justify-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        const isActive = p.value
-        const isDeleted = p.data?.is_deleted || p.data?.status === 'Deleted'
-        return (
-          <div className="flex items-center justify-center h-full">
-            <div className="relative">
-              <div className={`w-2 h-2 rounded-full ${isDeleted ? 'bg-slate-700' : isActive ? 'bg-emerald-500' : 'bg-rose-500/50'}`} />
-              {(isActive && !isDeleted) && (
-                <div className="absolute -inset-1 rounded-lg bg-emerald-500 animate-pulse opacity-40 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
-              )}
+      {
+        colId: 'favorite',
+        headerName: 'Fav',
+        field: 'favorite',
+        width: 80,
+        pinned: 'left',
+        cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
+        headerClass: 'text-center border-r border-white/5',
+        sortable: true,
+        filter: false,
+        lockVisible: true,
+        valueGetter: (p: any) => p.context?.favoriteIds?.includes(p.data?.id) ? 1 : 0,
+        cellRenderer: (p: any) => {
+          const isFavorite = p.context?.favoriteIds?.includes(p.data?.id)
+          return (
+            <div className="flex h-full w-full items-center justify-center">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  toggleFavorite(p.data.id)
+                }}
+                title={isFavorite ? 'Unpin connection' : 'Pin connection'}
+                className={`rounded-lg p-1 transition-all flex items-center justify-center ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
+              >
+                <Star size={15} className={isFavorite ? 'fill-current' : ''} />
+              </button>
             </div>
-          </div>
-        )
-      },      hide: hiddenColumns.includes("is_active")
-    },
-    { 
-      field: "monitored_service_names", 
-      headerName: "Services", 
-      width: 110, 
-      valueFormatter: (p: any) => p.value?.join(', ') || 'N/A',
-      cellClass: "text-center flex items-center justify-center", 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        const names = p.value || []
-        const count = names.length
-        if (count === 0) return <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold">N/A</span>
-        const summary = count > 1 ? `${names[0]} +${count - 1}` : names[0]
-        return (
-          <div className="flex items-center justify-center h-full">
-            <HoverPreview
-              summary={summary}
-              tooltip={names.join('\n')}
-              tone="blue"
-              fontSize={fontSize}
-            />
-          </div>
-        )
+          )
+        },
       },
-      hide: hiddenColumns.includes("monitored_service_names")
-    },
-    { 
-      field: "platform", 
-      headerName: "Platform", 
-      filter: true,
-      cellClass: 'text-center font-bold text-slate-300 flex items-center justify-center', 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold">N/A</span>,
-      hide: hiddenColumns.includes("platform")
-    },
-    { 
-      field: "severity", 
-      headerName: "Severity", 
-      width: 130,
-      filter: true,
-      cellClass: 'text-center flex items-center justify-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => <StatusPill value={p.value || 'N/A'} fontSize={fontSize} />,
-      hide: hiddenColumns.includes("severity")
-    },
-    { 
-      field: "check_interval", 
-      headerName: "Freq", 
-      width: 80, 
-      cellClass: 'text-center font-bold flex items-center justify-center', 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value ? `${p.value}s` : 'N/A'}</span>,
-      hide: hiddenColumns.includes("check_interval")
-    },
-    { 
-      field: "notification_method", 
-      headerName: "Notify", 
-      width: 130, 
-      filter: true,
-      cellClass: 'text-center flex items-center justify-center', 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center h-full">
-           <button 
-             onClick={() => setRecipientPopup({ recipients: p.data.notification_recipients || [], method: p.value })}
-             className="flex items-center space-x-1 hover:text-blue-400 transition-colors"
-           >
-              <span style={{ fontSize: `${fontSize}px` }} className="font-bold text-slate-300 border-b border-dashed border-slate-700">{p.value || 'N/A'}</span>
-           </button>
-        </div>
-      ),
-      hide: hiddenColumns.includes("notification_method")
-    },
-    { 
-      field: "purpose", 
-      headerName: "Purpose", 
-      width: 220,
-      filter: true,
-      cellClass: "font-bold text-slate-500 text-left truncate px-4 flex items-center", 
-      headerClass: 'text-left',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
-      hide: hiddenColumns.includes("purpose")
-    },
-    { 
-      field: "created_at", 
-      headerName: "Created", 
-      width: 180,
-      filter: 'agDateColumnFilter',
-      cellClass: 'text-center font-bold text-slate-500 flex items-center justify-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? (
-        <div className="flex items-center gap-2">
-           <Clock size={12} className="opacity-40" />
-           <span style={{ fontSize: `${fontSize}px` }}>{formatAppDate(p.value)}</span>
-        </div>
-      ) : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500">N/A</span>,
-      hide: hiddenColumns.includes("created_at")
-    },
-    { 
-      field: "updated_at", 
-      headerName: "Updated", 
-      width: 180,
-      filter: 'agDateColumnFilter',
-      cellClass: 'text-center font-bold text-slate-500 flex items-center justify-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? (
-        <div className="flex items-center gap-2">
-           <Clock size={12} className="opacity-40" />
-           <span style={{ fontSize: `${fontSize}px` }}>{formatAppDate(p.value)}</span>
-        </div>
-      ) : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500">N/A</span>,
-      hide: hiddenColumns.includes("updated_at")
-    },
-    {
-      colId: "row_actions",
-      headerName: "Action",
-      width: 210,
-      pinned: 'right',
-      cellClass: 'text-right pr-3 flex items-center justify-end',
-      headerClass: 'text-center',
-      sortable: false,
-      filter: false,
-      cellRenderer: (p: any) => p.data ? renderPrimaryRowActions(p.data) : null,
-      lockVisible: true
-    }
-  ]
+      {
+        colId: 'watch',
+        headerName: 'Watch',
+        field: 'watch',
+        width: 85,
+        pinned: 'left',
+        cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
+        headerClass: 'text-center border-r border-white/5',
+        sortable: false,
+        filter: false,
+        lockVisible: true,
+        hide: !isIntelligenceExpanded,
+        cellRenderer: (p: any) => {
+          const isWatched = p.context?.watchIds?.includes(p.data?.id)
+          return (
+            <div className="flex h-full w-full items-center justify-center">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  toggleWatch(p.data.id)
+                }}
+                title={isWatched ? 'Unfollow connection' : 'Follow connection'}
+                className={`rounded-lg p-1 transition-all flex items-center justify-center ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
+              >
+                <Eye size={15} className={isWatched ? 'fill-current' : ''} />
+              </button>
+            </div>
+          )
+        },
+      },
+      {
+        field: 'status',
+        colId: 'status',
+        headerName: 'Status',
+        width: 120,
+        filter: true,
+        cellClass: 'text-center flex items-center justify-center',
+        headerClass: 'text-center',
+        cellRenderer: (p: any) => <StatusPill value={p.value || 'Active'} fontSize={fontSize} />,
+      },
+      {
+        field: 'name',
+        colId: 'name',
+        headerName: 'Name',
+        width: 190,
+        filter: true,
+        cellClass: 'text-left flex items-center justify-start',
+        headerClass: 'text-left',
+        cellRenderer: (p: any) => renderText(p.value, 'text-blue-300 font-semibold'),
+      },
+      {
+        field: 'system',
+        colId: 'system',
+        headerName: 'System',
+        width: 130,
+        filter: true,
+        cellClass: 'text-center flex items-center justify-center',
+        headerClass: 'text-center',
+        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+      },
+      {
+        field: 'type',
+        colId: 'type',
+        headerName: 'Type',
+        width: 120,
+        filter: true,
+        cellClass: 'text-center flex items-center justify-center',
+        headerClass: 'text-center',
+        cellRenderer: (p: any) => renderText(p.value, 'text-emerald-300'),
+      },
+      {
+        field: 'environment',
+        colId: 'environment',
+        headerName: 'Env',
+        width: 100,
+        filter: true,
+        cellClass: 'text-center flex items-center justify-center',
+        headerClass: 'text-center',
+        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+      },
+      {
+        field: 'owner',
+        colId: 'owner',
+        headerName: 'Owner',
+        width: 140,
+        filter: true,
+        cellClass: 'text-left flex items-center justify-start',
+        headerClass: 'text-left',
+        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+      },
+      {
+        field: 'manufacturer',
+        colId: 'manufacturer',
+        headerName: 'Make',
+        width: 120,
+        filter: true,
+        cellClass: 'text-left flex items-center justify-start',
+        headerClass: 'text-left',
+        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+      },
+      {
+        field: 'model',
+        colId: 'model',
+        headerName: 'Model',
+        width: 120,
+        filter: true,
+        cellClass: 'text-left flex items-center justify-start',
+        headerClass: 'text-left',
+        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+      },
+      {
+        field: 'os_name',
+        colId: 'os_name',
+        headerName: 'OS',
+        width: 120,
+        filter: true,
+        cellClass: 'text-left flex items-center justify-start',
+        headerClass: 'text-left',
+        cellRenderer: (p: any) => renderText(p.value, 'text-blue-300'),
+      },
+      {
+        field: 'os_version',
+        colId: 'os_version',
+        headerName: 'Ver',
+        width: 100,
+        filter: true,
+        cellClass: 'text-left flex items-center justify-start',
+        headerClass: 'text-left',
+        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+      },
+      {
+        field: 'primary_ip',
+        colId: 'primary_ip',
+        headerName: 'Primary IP',
+        width: 140,
+        filter: true,
+        cellClass: 'text-left flex items-center justify-start',
+        headerClass: 'text-left',
+        cellRenderer: (p: any) => renderText(p.value, 'text-blue-300'),
+      },
+      {
+        field: 'management_ip',
+        colId: 'management_ip',
+        headerName: 'Mgmt IP',
+        width: 140,
+        filter: true,
+        cellClass: 'text-left flex items-center justify-start',
+        headerClass: 'text-left',
+        cellRenderer: (p: any) => renderText(p.value, 'text-indigo-300'),
+      },
+      {
+        field: 'hardware_summary',
+        colId: 'hardware_summary',
+        headerName: 'Resources',
+        width: 180,
+        filter: true,
+        cellClass: 'text-left flex items-center justify-start',
+        headerClass: 'text-left',
+        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+      },
+      {
+        field: 'hardware_age',
+        colId: 'hardware_age',
+        headerName: 'Age',
+        width: 90,
+        filter: true,
+        cellClass: 'text-center flex items-center justify-center',
+        headerClass: 'text-center',
+        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+      },
+      {
+        field: 'open_incident_count',
+        colId: 'open_incident_count',
+        headerName: 'Health',
+        width: 100,
+        filter: true,
+        cellClass: 'text-center flex items-center justify-center',
+        headerClass: 'text-center',
+        cellRenderer: (p: any) => Number(p.value || 0) > 0 ? renderText(`${p.value}`, 'text-rose-300 font-semibold') : renderText('OK', 'text-emerald-300 font-semibold'),
+      },
+      {
+        field: 'site_name',
+        colId: 'site_name',
+        headerName: 'Site',
+        width: 120,
+        filter: true,
+        cellClass: 'text-left flex items-center justify-start',
+        headerClass: 'text-left',
+        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+      },
+      {
+        field: 'rack_name',
+        colId: 'rack_name',
+        headerName: 'Rack',
+        width: 120,
+        filter: true,
+        cellClass: 'text-left flex items-center justify-start',
+        headerClass: 'text-left',
+        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+      },
+      {
+        field: 'depth',
+        colId: 'depth',
+        headerName: 'Depth',
+        width: 90,
+        filter: true,
+        cellClass: 'text-center flex items-center justify-center',
+        headerClass: 'text-center',
+        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+      },
+      {
+        field: 'mount_orientation',
+        colId: 'mount_orientation',
+        headerName: 'Mount',
+        width: 90,
+        filter: true,
+        cellClass: 'text-center flex items-center justify-center',
+        headerClass: 'text-center',
+        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+      },
+      {
+        field: 'u_start',
+        colId: 'u_start',
+        headerName: 'U Pos',
+        width: 90,
+        filter: true,
+        cellClass: 'text-center flex items-center justify-center',
+        headerClass: 'text-center',
+        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+      },
+      {
+        field: 'size_u',
+        colId: 'size_u',
+        headerName: 'Size',
+        width: 80,
+        filter: true,
+        cellClass: 'text-center flex items-center justify-center',
+        headerClass: 'text-center',
+        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+      },
+      {
+        field: 'power_typical_w',
+        colId: 'power_typical_w',
+        headerName: 'Avg W',
+        width: 90,
+        filter: true,
+        cellClass: 'text-center flex items-center justify-center',
+        headerClass: 'text-center',
+        cellRenderer: (p: any) => renderText(p.value ? `${p.value}W` : 'N/A', 'text-slate-300'),
+      },
+      {
+        field: 'power_max_w',
+        colId: 'power_max_w',
+        headerName: 'Max W',
+        width: 90,
+        filter: true,
+        cellClass: 'text-center flex items-center justify-center',
+        headerClass: 'text-center',
+        cellRenderer: (p: any) => renderText(p.value ? `${p.value}W` : 'N/A', 'text-slate-300'),
+      },
+      {
+        field: 'created_at',
+        colId: 'created_at',
+        headerName: 'Created',
+        width: 180,
+        filter: 'agDateColumnFilter',
+        cellClass: 'text-center flex items-center justify-center',
+        headerClass: 'text-center',
+        cellRenderer: (p: any) => p.value ? (
+          <div className="flex min-w-0 items-center gap-2">
+            <Clock size={12} className="opacity-40" />
+            <span style={{ fontSize: `${fontSize}px` }} className="block min-w-0 truncate whitespace-nowrap overflow-hidden text-ellipsis">{formatAppDate(p.value)}</span>
+          </div>
+        ) : renderText('N/A'),
+      },
+      {
+        field: 'updated_at',
+        colId: 'updated_at',
+        headerName: 'Updated',
+        width: 180,
+        filter: 'agDateColumnFilter',
+        cellClass: 'text-center flex items-center justify-center',
+        headerClass: 'text-center',
+        cellRenderer: (p: any) => p.value ? (
+          <div className="flex min-w-0 items-center gap-2">
+            <Clock size={12} className="opacity-40" />
+            <span style={{ fontSize: `${fontSize}px` }} className="block min-w-0 truncate whitespace-nowrap overflow-hidden text-ellipsis">{formatAppDate(p.value)}</span>
+          </div>
+        ) : renderText('N/A'),
+      },
+      {
+        colId: 'row_actions',
+        headerName: 'Action',
+        width: 210,
+        pinned: 'right',
+        cellClass: 'text-right pr-3 flex items-center justify-end',
+        headerClass: 'text-center',
+        sortable: false,
+        filter: false,
+        cellRenderer: (p: any) => p.data ? renderPrimaryRowActions(p.data) : null,
+        lockVisible: true,
+      },
+    ]
   
   // Inject saved layout state (widths, pinned, sort) into definitions before first render
   const mergedDefs = defs.map((col: any) => {
@@ -2123,7 +2256,12 @@ export default function MonitoringGrid() {
     }
     const colId = col.colId || col.field
     const layout = layoutById.get(colId)
-    return lockFixedUtilityWidth(applyOperationalColumnSizing(col, layout, preserveExplicitColumnWidths), layout)
+    const sizedColumn = lockFixedUtilityWidth(applyOperationalColumnSizing(col, layout, preserveExplicitColumnWidths), layout)
+    if (sizedColumn.lockVisible) return sizedColumn
+    return {
+      ...sizedColumn,
+      hide: hiddenColumns.includes(colId),
+    }
   })
 
   // Ensure column order is maintained from state to prevent "jumping" during re-renders
@@ -2146,172 +2284,171 @@ export default function MonitoringGrid() {
   )
 
   return (
-   <OperationalWorkspaceShell
+   <OperationalWorkspaceFrame
       header={{
-        eyebrow: "Observability",
+        eyebrow: "Infrastructure",
         title: (
           <div className="flex items-center gap-3">
             <Activity className="text-blue-500" />
-            <span>Monitoring</span>
+            <span>Asset-Real</span>
           </div>
         ),
-        subtitle: "Centralized monitoring configuration and operational status",
+        subtitle: "Centralized asset registry and operational status",
         actions: (
           <HeaderScopeSwitch
-            label="Registry Scope"
-            summary={`${lifecycleCounts.existing} existing · ${lifecycleCounts.archived} archived`}
+            label="Asset Scope"
+            summary={`${lifecycleCounts.existing} active · ${lifecycleCounts.archived} deleted`}
             value={activeTab}
             onChange={(next) => {
               setActiveTab(next as 'active' | 'deleted')
               setSelectedIds([])
             }}
             options={[
-              { label: 'Existing', value: 'active' },
-              { label: 'Archived', value: 'deleted' }
+              { label: 'Active', value: 'active' },
+              { label: 'Deleted', value: 'deleted' }
             ]}
           />
         ),
       }}
-      toolbarSearch={(
-        <ToolbarSearch
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Scan matrix..."
-        />
-      )}
-      toolbarControls={(
-        <>
-          <ToolbarGroup>
-            <div className="views-menu-container">
-              <ToolbarButton active={showViewsMenu} onClick={() => setShowViewsMenu(!showViewsMenu)} ref={viewsMenuButtonRef as any}>
+      commandBar={{
+        left: (
+          <>
+            <ToolbarSearch
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Scan asset registry..."
+            />
+            <ToolbarGroup>
+              <div className="views-menu-container">
+                <ToolbarButton active={showViewsMenu} onClick={() => setShowViewsMenu(!showViewsMenu)} ref={viewsMenuButtonRef as any}>
+                  <span className="flex items-center gap-2">
+                    <LayoutGrid size={14} />
+                    Views
+                  </span>
+                </ToolbarButton>
+              </div>
+              <div className="display-menu-container">
+                <ToolbarButton active={showDisplayMenu} onClick={() => setShowDisplayMenu(!showDisplayMenu)} ref={displayMenuButtonRef as any}>
+                  <span className="flex items-center gap-2">
+                    <Sliders size={14} />
+                    Display
+                  </span>
+                </ToolbarButton>
+              </div>
+              <ToolbarIconButton onClick={handleExportCSV} title="Export CSV">
+                <FileText size={16} />
+              </ToolbarIconButton>
+              <ToolbarIconButton onClick={handleCopyToClipboard} title="Copy to clipboard">
+                <Clipboard size={16} />
+              </ToolbarIconButton>
+              <ToolbarIconButton onClick={() => setShowRegistry(true)} title="Registry configuration">
+               <Settings size={16} />
+              </ToolbarIconButton>
+            </ToolbarGroup>
+            <ToolbarGroup>
+              <ToolbarButton onClick={() => setShowImportModal(true)} title="Import asset rows">
                 <span className="flex items-center gap-2">
-                  <LayoutGrid size={14} />
-                  Views
+                  <Upload size={14} />
+                  Import
                 </span>
               </ToolbarButton>
-            </div>
-            <div className="display-menu-container">
-              <ToolbarButton active={showDisplayMenu} onClick={() => setShowDisplayMenu(!showDisplayMenu)} ref={displayMenuButtonRef as any}>
+              <ToolbarButton
+                active={showFilterBar}
+                onClick={() => setShowFilterBar((current) => !current)}
+                title={showFilterBar ? 'Hide filters' : 'Show filters'}
+              >
                 <span className="flex items-center gap-2">
-                  <Sliders size={14} />
-                  Display
+                  {showFilterBar ? <EyeOff size={14} /> : <Eye size={14} />}
+                  Filters
                 </span>
               </ToolbarButton>
-            </div>
-            <ToolbarIconButton onClick={handleExportCSV} title="Export CSV">
-              <FileText size={16} />
-            </ToolbarIconButton>
-            <ToolbarIconButton onClick={handleCopyToClipboard} title="Copy to clipboard">
-              <Clipboard size={16} />
-            </ToolbarIconButton>
-            <ToolbarIconButton onClick={() => setShowRegistry(true)} title="Registry configuration">
-             <Settings size={16} />
-            </ToolbarIconButton>
-          </ToolbarGroup>
-          <ToolbarGroup>
-            <ToolbarButton onClick={() => setShowImportModal(true)} title="Import monitoring rows">
-              <span className="flex items-center gap-2">
-                <Upload size={14} />
-                Import
-              </span>
-            </ToolbarButton>
-            <ToolbarButton
-              active={showFilterBar}
-              onClick={() => setShowFilterBar((current) => !current)}
-              title={showFilterBar ? 'Hide filters' : 'Show filters'}
+              <ToolbarButton
+               active={isIntelligenceExpanded}
+               onClick={() => setIsIntelligenceExpanded(!isIntelligenceExpanded)}
+               title={isIntelligenceExpanded ? 'Hide Activity Columns' : 'Show Activity Columns'}
+              >
+               <span className="flex items-center gap-2">
+                 {isIntelligenceExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                 Activity
+               </span>
+              </ToolbarButton>
+            </ToolbarGroup>
+          </>
+        ),
+        secondary: showFilterBar ? (
+          <div className="grid w-full gap-3 md:grid-cols-4">
+            <AppDropdown
+              multi
+              value={quickFilters.status}
+              onChange={(val) => setQuickFilters((current) => ({ ...current, status: val }))}
+              options={ASSET_STATUSES.filter((status) => status !== 'Deleted').map((status) => ({ value: status, label: status }))}
+              label="Status Filter"
+              placeholder="All statuses"
+            />
+            <AppDropdown
+              multi
+              value={quickFilters.system}
+              onChange={(val) => setQuickFilters((current) => ({ ...current, system: val }))}
+              options={Array.from(new Set((items || []).map((item: any) => item.system).filter(Boolean))).sort().map((value) => ({ value, label: value }))}
+              label="System Filter"
+              placeholder="All systems"
+            />
+            <AppDropdown
+              multi
+              value={quickFilters.type}
+              onChange={(val) => setQuickFilters((current) => ({ ...current, type: val }))}
+              options={Array.from(new Set((items || []).map((item: any) => item.type).filter(Boolean))).sort().map((value) => ({ value, label: value }))}
+              label="Type Filter"
+              placeholder="All types"
+            />
+            <AppDropdown
+              multi
+              value={quickFilters.owner}
+              onChange={(val) => setQuickFilters((current) => ({ ...current, owner: val }))}
+              options={Array.from(new Set((items || []).map((item: any) => item.owner).filter(Boolean))).sort().map((value) => ({ value, label: value }))}
+              label="Owner Filter"
+              placeholder="All owners"
+            />
+          </div>
+        ) : null,
+        right: (
+	          <>
+              {MONITORING_SUPPORTS_COMPARE && (
+                <ToolbarButton
+                  onClick={openCompare}
+                  disabled={selectedIds.length < 2 || selectedIds.length > 5}
+                  active={compareOpen}
+                  title="Compare selected assets"
+                >
+                  <span className="flex items-center gap-2">
+                    <GitCompare size={14} />
+                    Compare
+                  </span>
+                </ToolbarButton>
+              )}
+		            <ToolbarButton
+                onClick={toggleBulkWindow}
+                disabled={selectedIds.length === 0}
+                active={showBulkMenu}
+                title="Bulk actions"
+                className="bulk-menu-trigger"
+                ref={bulkMenuButtonRef as any}
+              >
+                <span className="flex items-center gap-2">
+                  <Zap size={14} />
+                  Bulk Actions
+                </span>
+              </ToolbarButton>
+	            <ToolbarButton
+	              onClick={() => { setEditingItem(null); setIsFormOpen(true); }}
+	              variant="primary"
+              className="px-6 py-2"
             >
-              <span className="flex items-center gap-2">
-                {showFilterBar ? <EyeOff size={14} /> : <Eye size={14} />}
-                Filters
-              </span>
+                  + Add Asset
             </ToolbarButton>
-            <ToolbarButton
-             active={isIntelligenceExpanded}
-             onClick={() => setIsIntelligenceExpanded(!isIntelligenceExpanded)}
-             title={isIntelligenceExpanded ? 'Hide Activity Columns' : 'Show Activity Columns'}
-            >
-             <span className="flex items-center gap-2">
-               {isIntelligenceExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-               Activity
-             </span>
-            </ToolbarButton>
-          </ToolbarGroup>
-        </>
-      )}
-      secondaryToolbar={showFilterBar ? (
-        <div className="grid w-full gap-3 md:grid-cols-4">
-          <AppDropdown
-            multi
-            value={quickFilters.status}
-            onChange={(val) => setQuickFilters((current) => ({ ...current, status: val }))}
-            options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
-            label="Status Filter"
-            placeholder="All statuses"
-          />
-          <AppDropdown
-            multi
-            value={quickFilters.severity}
-            onChange={(val) => setQuickFilters((current) => ({ ...current, severity: val }))}
-            options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
-            label="Severity Filter"
-            placeholder="All severities"
-          />
-          <AppDropdown
-            multi
-            value={quickFilters.platform}
-            onChange={(val) => setQuickFilters((current) => ({ ...current, platform: val }))}
-            options={platformOptions}
-            label="Platform Filter"
-            placeholder="All platforms"
-          />
-          <AppDropdown
-            multi
-            value={quickFilters.owner}
-            onChange={(val) => setQuickFilters((current) => ({ ...current, owner: val }))}
-            options={ownerOptions}
-            label="Owner Filter"
-            placeholder="All owners"
-          />
-        </div>
-      ) : null}
-      toolbarActions={(
-        <>
-          {MONITORING_SUPPORTS_COMPARE && (
-            <ToolbarButton
-              onClick={openCompare}
-              disabled={selectedIds.length < 2 || selectedIds.length > 5}
-              active={compareOpen}
-              title="Compare selected monitors"
-            >
-              <span className="flex items-center gap-2">
-                <GitCompare size={14} />
-                Compare
-              </span>
-            </ToolbarButton>
-          )}
-          <ToolbarButton
-            onClick={toggleBulkWindow}
-            disabled={selectedIds.length === 0}
-            active={showBulkMenu}
-            title="Bulk actions"
-            className="bulk-menu-trigger"
-            ref={bulkMenuButtonRef as any}
-          >
-            <span className="flex items-center gap-2">
-              <Zap size={14} />
-              Bulk Actions
-            </span>
-          </ToolbarButton>
-          <ToolbarButton
-            onClick={() => { setEditingItem(null); setIsFormOpen(true); }}
-            variant="primary"
-            className="px-6 py-2"
-          >
-            + Add Monitoring
-          </ToolbarButton>
-        </>
-      )}
-      filterChips={[
+          </>
+        ),
+        filterChips: [
           ...activeFilterChips,
           ...(activeFilterChips.length > 0
             ? [{
@@ -2320,13 +2457,16 @@ export default function MonitoringGrid() {
                 onRemove: () => {
                   setSearchTerm('')
                   setGridFilterModel({})
-                  setQuickFilters({ status: [] as string[], severity: [] as string[], platform: [] as string[], owner: [] as string[] })
+            setQuickFilters({ status: [] as string[], system: [] as string[], type: [] as string[], owner: [] as string[] })
                   gridRef.current?.api?.setFilterModel({})
                 }
               }]
             : []),
-        ]}
-      floatingPanels={
+        ],
+      }}
+    >
+
+      {typeof document !== 'undefined' && createPortal(
         <>
           <OperationalDisplayPanel
             isOpen={showDisplayMenu}
@@ -2353,7 +2493,7 @@ export default function MonitoringGrid() {
           <OperationalSavedViewsPanel
             isOpen={showViewsMenu}
             panelStyle={viewsMenuStyle}
-            entityLabel="Monitoring"
+            entityLabel="Asset-Real"
             onClose={() => setShowViewsMenu(false)}
             activeViewId={activeViewId}
             currentViewName={activeViewId ? savedViews.find((view) => view.id === activeViewId)?.name || 'Unsaved working view' : 'Unsaved working view'}
@@ -2368,20 +2508,23 @@ export default function MonitoringGrid() {
             onDeleteView={deleteView}
             describeView={(view) => view.config?.groupBy && view.config.groupBy !== 'raw'
               ? `Grouped by ${groupOptions.find((option) => option.value === view.config.groupBy)?.label || view.config.groupBy}`
-              : 'Raw monitoring table'}
+              : 'Raw asset table'}
           />
 
-          <OperationalAnchoredPanel
-            isOpen={showBulkMenu}
-            panelKey="bulk-menu"
-            style={bulkMenuStyle}
-            className="bulk-menu-container"
-            yOffset={10}
-          >
-            <WorkspaceFloatingPanel kind="context" className="max-h-[560px] overflow-y-auto custom-scrollbar p-3">
+	          <AnimatePresence>
+		            {showBulkMenu && !!bulkMenuStyle.top && (
+		            <motion.div
+		            key="bulk-menu"
+		            initial={{ opacity: 0, y: 10 }}
+		            animate={{ opacity: 1, y: 0 }}
+		            exit={{ opacity: 0, y: 10 }}
+		            style={bulkMenuStyle}
+                  className="bulk-menu-container"
+                >
+                  <WorkspaceFloatingPanel kind="context" className="max-h-[560px] overflow-y-auto custom-scrollbar p-3">
                   <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
                     <p className="text-[10px] font-semibold text-slate-400">Bulk actions</p>
-                    <p className="pt-1 text-[12px] font-semibold text-slate-100">{selectedIds.length} monitors selected</p>
+                    <p className="pt-1 text-[12px] font-semibold text-slate-100">{selectedIds.length} assets selected</p>
                   </div>
 
                   {activeTab === 'deleted' ? (
@@ -2401,7 +2544,7 @@ export default function MonitoringGrid() {
                         className="w-full rounded-lg border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-left transition-all hover:bg-blue-500/15"
                       >
                         <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">Bulk Edit Table</p>
-                        <p className="pt-1 text-[10px] font-semibold text-slate-400">Edit selected monitors row by row using safe columns only.</p>
+                        <p className="pt-1 text-[10px] font-semibold text-slate-400">Edit selected assets row by row using safe columns only.</p>
                       </button>
 
                       <WorkspaceFlyoutActionCard
@@ -2422,36 +2565,36 @@ export default function MonitoringGrid() {
                       )}
 
                       <WorkspaceFlyoutActionCard
-                        title="Set Severity"
-                        active={expandedBulkSection === 'severity'}
-                        onClick={() => setExpandedBulkSection(expandedBulkSection === 'severity' ? null : 'severity')}
+                        title="Set System"
+                        active={expandedBulkSection === 'link_type'}
+                        onClick={() => setExpandedBulkSection(expandedBulkSection === 'link_type' ? null : 'link_type')}
                       />
-                      {expandedBulkSection === 'severity' && (
+                      {expandedBulkSection === 'link_type' && (
                         <WorkspaceFlyoutDropdownEditor
-                          value={bulkDraft.severity}
-                          onChange={(value) => setBulkDraft((current) => ({ ...current, severity: value }))}
-                          options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
-                          placeholder="Choose severity"
-                          actionLabel="Apply Severity"
-                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { severity: bulkDraft.severity } })}
-                          disabled={!bulkDraft.severity || bulkMutation.isPending}
+                          value={bulkDraft.link_type}
+                          onChange={(value) => setBulkDraft((current) => ({ ...current, link_type: value }))}
+                          options={Array.from(new Set((items || []).map((item: any) => item.system).filter(Boolean))).sort().map((value) => ({ value, label: value }))}
+                          placeholder="Choose system"
+                          actionLabel="Apply System"
+                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { system: bulkDraft.link_type } })}
+                          disabled={!bulkDraft.link_type || bulkMutation.isPending}
                         />
                       )}
 
                       <WorkspaceFlyoutActionCard
-                        title="Set Notification"
-                        active={expandedBulkSection === 'notification'}
-                        onClick={() => setExpandedBulkSection(expandedBulkSection === 'notification' ? null : 'notification')}
+                        title="Set Owner"
+                        active={expandedBulkSection === 'direction'}
+                        onClick={() => setExpandedBulkSection(expandedBulkSection === 'direction' ? null : 'direction')}
                       />
-                      {expandedBulkSection === 'notification' && (
+                      {expandedBulkSection === 'direction' && (
                         <WorkspaceFlyoutDropdownEditor
-                          value={bulkDraft.notification_method}
-                          onChange={(value) => setBulkDraft((current) => ({ ...current, notification_method: value }))}
-                          options={notificationMethods.map((method: any) => ({ value: method.value, label: method.label }))}
-                          placeholder="Choose notification path"
-                          actionLabel="Apply Notification"
-                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { notification_method: bulkDraft.notification_method } })}
-                          disabled={!bulkDraft.notification_method || bulkMutation.isPending}
+                          value={bulkDraft.direction}
+                          onChange={(value) => setBulkDraft((current) => ({ ...current, direction: value }))}
+                          options={Array.from(new Set((items || []).map((item: any) => item.owner).filter(Boolean))).sort().map((value) => ({ value, label: value }))}
+                          placeholder="Choose owner"
+                          actionLabel="Apply Owner"
+                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { owner: bulkDraft.direction } })}
+                          disabled={!bulkDraft.direction || bulkMutation.isPending}
                         />
                       )}
                     </div>
@@ -2477,27 +2620,32 @@ export default function MonitoringGrid() {
                     <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
                       {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
                         bulkDeleteConfirm 
-                          ? (activeTab === 'deleted' ? 'Confirm Permanent Purge?' : 'Confirm De-activation?') 
-                          : (activeTab === 'deleted' ? 'Purge Selection' : 'De-activate Selection')
+                          ? (activeTab === 'deleted' ? 'Confirm Permanent Purge?' : 'Confirm Archive?') 
+                          : (activeTab === 'deleted' ? 'Purge Selection' : 'Archive Selection')
                       )}
                     </p>
                   </button>
-            </WorkspaceFloatingPanel>
-          </OperationalAnchoredPanel>
+                  </WorkspaceFloatingPanel>
+                </motion.div>
+	            )}
+	          </AnimatePresence>
 
-          <OperationalAnchoredPanel
-            isOpen={!!rowActionMenu}
-            panelKey="row-action-menu"
-            style={rowActionMenu?.style ?? { position: 'fixed', top: -9999, left: -9999 }}
-            className="row-action-menu-container"
-          >
-            {rowActionMenu ? (
-              <WorkspaceFloatingPanel kind="context" className="overflow-hidden">
+	          <AnimatePresence>
+            {rowActionMenu && (
+              <motion.div
+                key="row-action-menu"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                style={rowActionMenu.style}
+                className="row-action-menu-container"
+              >
+                <WorkspaceFloatingPanel kind="context" className="overflow-hidden">
                 <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
                   <div className="min-w-0">
                     <p className="truncate text-[10px] font-semibold text-slate-400">Row actions</p>
-                    <p className="pt-1 text-[11px] font-semibold text-slate-100">ID {rowActionMenu.item.id} · {rowActionMenu.item.device_name || 'No target asset linked'}</p>
-                    <p className="truncate pt-1 text-[12px] text-slate-300">{rowActionMenu.item.title}</p>
+                    <p className="pt-1 text-[11px] font-semibold text-slate-100">ID {rowActionMenu.item.id} · {rowActionMenu.item.name || 'Unnamed asset'}</p>
+                    <p className="truncate pt-1 text-[12px] text-slate-300">{rowActionMenu.item.system || 'No system'} · {rowActionMenu.item.type || 'No type'}</p>
                   </div>
                   <button
                     onClick={() => setRowActionMenu(null)}
@@ -2514,7 +2662,7 @@ export default function MonitoringGrid() {
                   <div className="grid grid-cols-3 gap-2 px-2 pb-3 border-b border-slate-800 mb-2">
                     <button
                       onClick={() => {
-                        setDetailItem(rowActionMenu.item)
+                        openNetworkDetail(rowActionMenu.item)
                         setRowActionMenu(null)
                       }}
                       className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-blue-400 transition-all hover:border-blue-500/30 hover:bg-blue-600/10 active:scale-95"
@@ -2533,83 +2681,9 @@ export default function MonitoringGrid() {
                       <Edit2 size={14} />
                       Edit
                     </button>
-                    <button
-                      onClick={() => {
-                        setHistoryItem(rowActionMenu.item)
-                        setRowActionMenu(null)
-                      }}
-                      className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-amber-400 transition-all hover:border-amber-500/30 hover:bg-amber-600/10 active:scale-95"
-                    >
-                      <Clock size={14} />
-                      History
-                    </button>
                   </div>
 
-                  <div className="px-3 py-1">
-                    <p className="text-[10px] font-semibold text-slate-400">Related destinations</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 px-2 pb-1">
-                    <button
-                      onClick={() => {
-                        if (rowActionMenu.item.device_id) navigate(`/asset?id=${rowActionMenu.item.device_id}`)
-                        setRowActionMenu(null)
-                      }}
-                      className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
-                    >
-                      <Monitor size={12} className="text-blue-400" />
-                      Asset
-                    </button>
-                    <button
-                      onClick={() => {
-                        const firstDoc = rowActionMenu.item.recovery_docs?.[0]
-                        const docId = typeof firstDoc === 'object' ? firstDoc?.id : firstDoc
-                        if (docId) navigate(`/knowledge?id=${docId}`)
-                        setRowActionMenu(null)
-                      }}
-                      disabled={!rowActionMenu.item.recovery_docs?.[0]}
-                      className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900 disabled:cursor-not-allowed disabled:text-slate-600"
-                    >
-                      <BookOpen size={12} className="text-emerald-400" />
-                      Knowledge
-                    </button>
-                    <button
-                      onClick={() => {
-                        toggleWatch(rowActionMenu.item.id)
-                      }}
-                      className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
-                    >
-                      {watchIds.includes(rowActionMenu.item.id) ? (
-                        <>
-                          <EyeOff size={12} className="text-slate-400" />
-                          Unwatch
-                        </>
-                      ) : (
-                        <>
-                          <Eye size={12} className="text-sky-400" />
-                          Watch
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => {
-                        toggleFavorite(rowActionMenu.item.id)
-                      }}
-                      className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
-                    >
-                      {favoriteIds.includes(rowActionMenu.item.id) ? (
-                        <>
-                          <Star size={12} className="fill-amber-400 text-amber-400" />
-                          Unpin
-                        </>
-                      ) : (
-                        <>
-                          <Star size={12} className="text-amber-400" />
-                          Pin
-                        </>
-                      )}
-                    </button>
-                  </div>
-		                <div className="mx-2 my-2 h-px bg-slate-800" />
+                  <div className="mx-2 my-2 h-px bg-slate-800" />
                 {activeTab === 'deleted' && (
                   <button
                     onClick={() => {
@@ -2619,7 +2693,7 @@ export default function MonitoringGrid() {
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300 transition-all hover:bg-emerald-950/80"
                   >
                     <Undo2 size={14} />
-                    Restore Monitor
+                    Restore Asset
                   </button>
                 )}
                 <button
@@ -2641,17 +2715,18 @@ export default function MonitoringGrid() {
                   }`}
                 >
                   <Trash2 size={14} />
-                  {rowDeleteConfirmId === rowActionMenu.item.id
-                    ? (activeTab === 'active' ? 'Confirm De-activate?' : 'Confirm Purge?')
-                    : (activeTab === 'active' ? 'De-activate' : 'Purge')}
+                    {rowDeleteConfirmId === rowActionMenu.item.id
+                    ? (activeTab === 'active' ? 'Confirm Delete?' : 'Confirm Purge?')
+                    : (activeTab === 'active' ? 'Delete' : 'Purge')}
                 </button>
                 </div>
-              </WorkspaceFloatingPanel>
-            ) : null}
-          </OperationalAnchoredPanel>
-        </>
-      }
-    >
+                </WorkspaceFloatingPanel>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>,
+        document.body
+      )}
 
       {groupBy === 'raw' ? (
 	        <OperationalGridSurface
@@ -2662,9 +2737,9 @@ export default function MonitoringGrid() {
             } as React.CSSProperties}
             loading={isLoading}
             loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
-            loadingLabel={<p className="text-[10px] font-semibold text-blue-400">Scanning monitoring matrix...</p>}
+            loadingLabel={<p className="text-[10px] font-semibold text-blue-400">Scanning asset registry...</p>}
           >
-	          <GridMatrix
+	          <OperationalGridMatrix
             gridRef={gridRef}
 	            rowData={displayedItemsInOrder || []} 
 	            columnDefs={columnDefs} 
@@ -2689,55 +2764,62 @@ export default function MonitoringGrid() {
             getRowClass={getRowClass}
             onFirstDataRendered={handleGridDataUpdated}
             onRowDataUpdated={handleGridDataUpdated}
+            noRowsLabel="No asset data found"
 	          />
 
 	        </OperationalGridSurface>
       ) : (
-        <OperationalGroupedGridView
-          summary={
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 custom-scrollbar">
+          <div className="rounded-lg border border-white/5 bg-black/20 px-6 py-4 flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-semibold text-slate-400">Grouped monitoring matrix</p>
+              <p className="text-[10px] font-semibold text-slate-400">Grouped asset registry</p>
               <p className="pt-1 text-[12px] font-semibold text-slate-100">Sorted by {groupOptions.find((option) => option.value === groupBy)?.label || groupBy}</p>
             </div>
-          }
-          actions={
-            <>
-              <button 
-                onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: false }), {}))}
-                className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
-              >
-                Expand All
-              </button>
-              <button 
-                onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: true }), {}))}
-                className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
-              >
-                Collapse All
-              </button>
-              <div className="w-px h-6 bg-white/10 mx-1" />
-              <button 
-                onClick={() => setGroupBy('raw')}
-                className="px-3 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-[9px] font-semibold text-rose-400 hover:bg-rose-500/20 transition-all flex items-center gap-2"
-              >
-                <X size={12} />
-                <span>Cancel</span>
-              </button>
-            </>
-          }
-          sections={groupedSections.map((section) => {
+            <div className="flex items-center gap-3">
+               <button 
+                 onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: false }), {}))}
+                 className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+               >
+                 Expand All
+               </button>
+               <button 
+                 onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: true }), {}))}
+                 className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+               >
+                 Collapse All
+               </button>
+               <div className="w-px h-6 bg-white/10 mx-1" />
+               <button 
+                 onClick={() => setGroupBy('raw')}
+                 className="px-3 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-[9px] font-semibold text-rose-400 hover:bg-rose-500/20 transition-all flex items-center gap-2"
+               >
+                 <X size={12} />
+                 <span>Cancel</span>
+               </button>
+            </div>
+          </div>
+          {groupedSections.map((section) => {
             const isCollapsed = collapsedGroups[section.key]
             const selectedCount = section.items.filter((item: any) => selectedIds.includes(item.id)).length
             return (
-              <OperationalGroupedGridSection
-                key={section.key}
-                labelMeta={<span className="text-[9px] font-semibold text-blue-400">{groupOptions.find((option) => option.value === groupBy)?.label}</span>}
-                label={section.label}
-                count={section.items.length}
-                countLabel="monitors"
-                selectedCount={selectedCount}
-                collapsed={isCollapsed}
-                onToggle={() => setCollapsedGroups((current) => ({ ...current, [section.key]: !current[section.key] }))}
-              >
+              <section key={section.key} className="glass-panel overflow-hidden rounded-lg border border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setCollapsedGroups((current) => ({ ...current, [section.key]: !current[section.key] }))}
+                  className="flex w-full items-center justify-between gap-4 border-b border-white/5 bg-white/[0.03] px-5 py-4 text-left transition-all hover:bg-white/[0.05]"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="text-[9px] font-semibold text-blue-400">{groupOptions.find((option) => option.value === groupBy)?.label}</span>
+                      <h3 className="text-sm font-semibold text-slate-100">{section.label}</h3>
+                    </div>
+                    <p className="pt-1 text-[11px] text-slate-400">{section.items.length} assets{selectedCount ? ` · ${selectedCount} selected` : ''}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                  <span className="rounded-lg border border-white/5 bg-black/30 px-2.5 py-1 text-[9px] font-semibold text-slate-300">{section.items.length}</span>
+                    {isCollapsed ? <ChevronDown size={16} className="text-slate-500" /> : <ChevronUp size={16} className="text-slate-500" />}
+                  </div>
+                </button>
                 {!isCollapsed && (
                   <OperationalGridSurface
                     className="monitoring-grid-shell monitoring-grid w-full"
@@ -2747,7 +2829,7 @@ export default function MonitoringGrid() {
                       height: `${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px`
                     } as React.CSSProperties}
                   >
-	                    <GridMatrix
+                    <OperationalGridMatrix
                       rowData={section.items} 
                       columnDefs={columnDefs} 
                       autoSizeStrategy={autoSizeStrategy}
@@ -2768,15 +2850,16 @@ export default function MonitoringGrid() {
                       onRowClicked={handleRowClicked}
                       onRowDoubleClicked={handleRowDoubleClicked}
                       getRowClass={getRowClass}
-	                      onFirstDataRendered={handleGridDataUpdated}
-	                      onRowDataUpdated={handleGridDataUpdated}
+                      onFirstDataRendered={handleGridDataUpdated}
+                      onRowDataUpdated={handleGridDataUpdated}
+                      noRowsLabel="No asset data found"
                     />
                   </OperationalGridSurface>
                 )}
-              </OperationalGroupedGridSection>
+              </section>
             )
           })}
-        />
+        </div>
       )}
 
       <BulkActionModals
@@ -2801,52 +2884,30 @@ export default function MonitoringGrid() {
 
       <AnimatePresence>
         {isFormOpen && (
-          <MonitoringForm 
-            key={`monitoring-form-${editingItem?.id || 'new'}`}
-            item={editingItem} 
-            devices={devices}
-            categories={categories}
-            severities={severities}
-            platforms={platforms}
-            teams={teams}
-            operators={operators || []}
-            notificationMethods={notificationMethods}
-            ownerRoles={ownerRoles}
-            onClose={() => setIsFormOpen(false)} 
+          <AssetRecordFormModal
+            key={`asset-form-${editingItem?.id || 'new'}`}
+            item={editingItem}
+            onClose={() => setIsFormOpen(false)}
             onSuccess={() => {
-              queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
-              if (editingItem?.id) {
-                queryClient.invalidateQueries({ queryKey: ['monitoring-history', editingItem.id] })
-              }
+              queryClient.invalidateQueries({ queryKey: ['asset-real-devices'] })
               setIsFormOpen(false)
             }}
           />
         )}
         {detailItem && (
-          <MonitoringDetailModal
-            key={`monitoring-detail-${detailItem.id}`}
+          <AssetRecordDetailModal
+            key={`asset-detail-${detailItem.id}`}
             item={detailItem}
-            onClose={() => { setDetailItem(null); setDetailDeleteConfirm(false); }}
-            onEdit={(monitor: any) => { setDetailItem(null); setEditingItem(monitor); setIsFormOpen(true); setDetailDeleteConfirm(false); }}
-            onOpenHistory={(monitor: any) => { setDetailItem(null); setHistoryItem(monitor); setDetailDeleteConfirm(false); }}
-            onOpenBkm={(monitor: any) => {
-              const recoveryDocs = monitor.recovery_docs || []
-              setDetailItem(null)
-              setBkmPopup({ docs: recoveryDocs, ids: recoveryDocs, titles: monitor.recovery_doc_titles || [], monitorId: monitor.id })
-              setDetailDeleteConfirm(false)
-            }}
-            onDelete={(monitor: any) => {
+            onClose={() => closeNetworkDetail()}
+            onEdit={(asset: any) => { closeNetworkDetail(); setEditingItem(asset); setIsFormOpen(true); }}
+            onDelete={(asset: any) => {
               if (!detailDeleteConfirm) {
                 setDetailDeleteConfirm(true)
                 return
               }
-              bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [monitor.id] })
-              setDetailItem(null)
-              setDetailDeleteConfirm(false)
+              bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [asset.id] })
+              closeNetworkDetail()
             }}
-            onOpenAsset={(deviceId: number) => navigate(`/asset?id=${deviceId}`)}
-            onOpenKnowledge={(knowledgeId: number) => navigate(`/knowledge?id=${knowledgeId}`)}
-            deleteConfirm={detailDeleteConfirm}
           />
         )}
         {historyItem && <MonitoringHistoryModal key={`monitoring-history-${historyItem.id}`} item={historyItem} onClose={() => setHistoryItem(null)} />}
@@ -2864,15 +2925,18 @@ export default function MonitoringGrid() {
         {compareOpen && <CompareMonitorsModal key={`monitoring-compare-${compareItems.map((item) => item.id).join('-') || 'empty'}`} items={compareItems} onClose={() => setCompareOpen(false)} />}
         {showBulkEditModal && (
           <BulkEditTableModal
-            key={`monitoring-bulk-edit-${selectedItems.map((item) => item.id).join('-') || 'empty'}`}
+            key={`network-bulk-edit-${selectedItems.map((item) => item.id).join('-') || 'empty'}`}
             items={selectedItems}
             teams={teams || []}
             operators={operators || []}
+            linkPurposeOptions={linkPurposeOptions}
+            farmOptions={farmOptions}
+            cableTypeOptions={cableTypeOptions}
             severities={severities}
             notificationMethods={notificationMethods}
             onClose={() => setShowBulkEditModal(false)}
             onSuccess={() => {
-              queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
+              queryClient.invalidateQueries({ queryKey: ['asset-real-devices'] })
               setShowBulkEditModal(false)
             }}
           />
@@ -2881,18 +2945,18 @@ export default function MonitoringGrid() {
           key="monitoring-import-modal"
           isOpen={showImportModal}
           onClose={() => setShowImportModal(false)}
-          tableName="monitoring_items"
-          displayName="Monitoring"
+          tableName="devices"
+          displayName="Asset-Real"
         />
         <ConfigRegistryModal
             key="monitoring-config-registry"
             isOpen={showRegistry}
             onClose={() => setShowRegistry(false)}
-            title="Monitoring Matrix Enumerations"
+            title="Asset Registry Enumerations"
             sections={[
-                { title: "Categories", category: "MonitoringCategory", icon: Layers },
-                { title: "Platforms", category: "MonitoringPlatform", icon: Globe },
-                { title: "Notification Methods", category: "NotificationMethod", icon: Bell },
+                { title: "Asset Types", category: "DeviceType", icon: Layers },
+                { title: "Logical Systems", category: "LogicalSystem", icon: Globe },
+                { title: "Business Units", category: "BusinessUnit", icon: Bell },
             ]}
         />
       </AnimatePresence>
@@ -2906,28 +2970,12 @@ export default function MonitoringGrid() {
           --ag-header-foreground-color: #3b82f6;
         }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label, .ag-header-group-cell-label { 
-            font-weight: 700 !important; 
-            text-transform: uppercase !important; 
-            letter-spacing: 0.1em !important; 
-            font-size: ${fontSize}px !important; 
-            justify-content: center !important; 
-            white-space: nowrap !important;
-        }
-        .ag-cell { 
-            display: flex; 
-            align-items: center; 
-            justify-content: center !important; 
-            font-weight: 700 !important;
-            font-size: ${fontSize}px !important;
-        }
-
 	        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
 	        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
           .row-action-trigger { opacity: 1; }
 	        .ag-side-bar { background-color: #24283b !important; border-left: 1px solid rgba(255,255,255,0.05) !important; }
 	      `}</style>
-    </OperationalWorkspaceShell>
+    </OperationalWorkspaceFrame>
   )
 }
 
@@ -2938,12 +2986,17 @@ function CompareMonitorsModal({ items, onClose }: any) {
 
   const fields = useMemo(() => [
     { label: 'Status', getValue: (item: any) => item.status || 'Unknown' },
-    { label: 'Severity', getValue: (item: any) => item.severity || 'N/A' },
-    { label: 'Platform', getValue: (item: any) => item.platform || 'N/A' },
-    { label: 'Notify', getValue: (item: any) => item.notification_method || 'None' },
-    { label: 'Owners', getValue: (item: any) => (item.owners || []).map((owner: any) => owner.name).join(', ') || 'None' },
-    { label: 'Recovery', getValue: (item: any) => item.recovery_doc_titles?.join(', ') || 'None linked' },
-    { label: 'Purpose', getValue: (item: any) => item.purpose || 'No purpose documented', multiline: true },
+    { label: 'System', getValue: (item: any) => item.system || 'N/A' },
+    { label: 'Type', getValue: (item: any) => item.type || 'N/A' },
+    { label: 'Environment', getValue: (item: any) => item.environment || 'N/A' },
+    { label: 'Owner', getValue: (item: any) => item.owner || 'N/A' },
+    { label: 'Manufacturer', getValue: (item: any) => item.manufacturer || 'N/A' },
+    { label: 'Model', getValue: (item: any) => item.model || 'N/A' },
+    { label: 'Primary IP', getValue: (item: any) => item.primary_ip || 'N/A' },
+    { label: 'Mgmt IP', getValue: (item: any) => item.management_ip || 'N/A' },
+    { label: 'Rack', getValue: (item: any) => item.rack_name || 'N/A' },
+    { label: 'Site', getValue: (item: any) => item.site_name || 'N/A' },
+    { label: 'Resources', getValue: (item: any) => item.hardware_summary || 'N/A', multiline: true },
     { label: 'Created', getValue: (item: any) => formatAppDate(item.created_at) },
     { label: 'Updated', getValue: (item: any) => formatAppDate(item.updated_at) },
   ], [])
@@ -2969,8 +3022,8 @@ function CompareMonitorsModal({ items, onClose }: any) {
       size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
-      title="Compare Monitors"
-      subtitle={`Temporal Variance Analysis · Comparing ${items.length} monitoring states for semantic drift`}
+      title="Compare Assets"
+      subtitle={`Temporal Variance Analysis · Comparing ${items.length} asset states for semantic drift`}
       icon={<GitCompare size={20} />}
       footerRight={
         <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
@@ -2983,7 +3036,7 @@ function CompareMonitorsModal({ items, onClose }: any) {
               <div key={item.id} className="rounded-lg border border-white/5 bg-black/40 p-5 shadow-inner">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-[9px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20">ID {item.id}</span>
-                  <StatusPill value={item.severity} />
+                  <StatusPill value={item.status} />
                 </div>
                 <h4 className="text-sm font-black text-white truncate mb-1">{item.title}</h4>
                 <p className="text-[9px] font-bold text-slate-500 tracking-widest truncate">{item.device_name || 'No Target Asset'}</p>
@@ -3085,18 +3138,18 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
             isOpen={true}
             onClose={onClose}
             size="compact"
-            title="Update Severity"
-            subtitle="Recalibrate alert priorities for selection."
+            title="Update Type"
+            subtitle="Recalibrate the connection type for selection."
             icon={<Shield size={20} />}
             footerRight={
               <div className="flex items-center gap-3">
                 <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
                 <ToolbarButton 
                   disabled={!val} 
-                  onClick={() => onApply('severity', val)} 
+                  onClick={() => onApply('link_type', val)} 
                   variant="danger"
                 >
-                  Apply Severity
+                  Apply Type
                 </ToolbarButton>
               </div>
             }
@@ -3105,9 +3158,9 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
               <AppDropdown
                 value={val}
                 onChange={v => setVal(v)}
-                options={severities.map((s:any) => ({ value: s.value, label: s.label }))}
-                placeholder="Select Severity..."
-                label="Target Severity"
+                options={NETWORK_LINK_TYPES.map((value) => ({ value, label: value }))}
+                placeholder="Select Type..."
+                label="Target Type"
               />
             </div>
           </WorkspaceModal>
@@ -3120,18 +3173,18 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
             isOpen={true}
             onClose={onClose}
             size="compact"
-            title="Update Notification"
-            subtitle="Reroute notification paths for selection."
+            title="Update Direction"
+            subtitle="Reroute the connection direction for selection."
             icon={<Bell size={20} />}
             footerRight={
               <div className="flex items-center gap-3">
                 <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
                 <ToolbarButton 
                   disabled={!val} 
-                  onClick={() => onApply('notification_method', val)} 
+                  onClick={() => onApply('direction', val)} 
                   variant="primary"
                 >
-                  Apply Method
+                  Apply Direction
                 </ToolbarButton>
               </div>
             }
@@ -3140,9 +3193,9 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
               <AppDropdown
                 value={val}
                 onChange={v => setVal(v)}
-                options={notificationMethods.map((m:any) => ({ value: m.value, label: m.label }))}
-                placeholder="Select Method..."
-                label="Notification Path"
+                options={NETWORK_DIRECTIONS.map((value) => ({ value, label: value }))}
+                placeholder="Select Direction..."
+                label="Target Direction"
               />
             </div>
           </WorkspaceModal>
@@ -3152,23 +3205,29 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     return null;
 }
 
-function BulkEditTableModal({ items, teams, operators, severities, notificationMethods, onClose, onSuccess }: any) {
+function BulkEditTableModal({ items, teams, operators, linkPurposeOptions, farmOptions, cableTypeOptions, severities, notificationMethods, onClose, onSuccess }: any) {
   const [rows, setRows] = useState(() => items.map((item: any) => ({
     id: item.id,
-    title: item.title,
+    title: item.name || `Asset ${item.id}`,
     status: item.status || '',
-    severity: item.severity || '',
-    notification_method: item.notification_method || '',
-    owner_team: item.owner_team || '',
-    owner_user_ids: stringifyOwnerUserIds(item.owners || []),
-    check_interval: item.check_interval ?? '',
-    alert_duration: item.alert_duration ?? '',
-    notification_throttle: item.notification_throttle ?? '',
+    link_type: item.system || '',
+    direction: item.owner || '',
+    farm: item.environment || '',
+    purpose: item.role || '',
+    speed_gbps: item.size_u ?? '',
+    unit: item.primary_ip || '',
+    cable_type: item.management_ip || '',
+    request_link: item.management_url || '',
     is_active: item.is_active !== false,
   })))
   const [isMaximized, setIsMaximized] = useState(false)
 
   useEscapeDismiss(onClose)
+
+  const mergeOptionsWithCurrentValue = useCallback((options: Array<{ value: string; label: string }>, value: string) => {
+    const current = value ? [{ value, label: value }] : []
+    return Array.from(new Map([...(options || []), ...current].map((option: any) => [option.value, option])).values())
+  }, [])
 
   const updateRow = (rowId: number, field: string, value: any) => {
     setRows((current: any[]) => current.map((row: any) => row.id === rowId ? { ...row, [field]: value } : row))
@@ -3179,19 +3238,16 @@ function BulkEditTableModal({ items, teams, operators, severities, notificationM
       for (const row of rows) {
         const payload = {
           status: row.status,
-          severity: row.severity || null,
-          notification_method: row.notification_method || null,
-          owner_team: row.owner_team || null,
-          owners: parseCommaSeparatedValues(row.owner_user_ids).map((externalId) => ({
-            external_id: externalId,
-            role: 'Primary Support',
-          })),
-          check_interval: row.check_interval === '' ? null : Number(row.check_interval),
-          alert_duration: row.alert_duration === '' ? null : Number(row.alert_duration),
-          notification_throttle: row.notification_throttle === '' ? null : Number(row.notification_throttle),
-          is_active: Boolean(row.is_active),
+          system: row.link_type || null,
+          owner: row.direction || null,
+          environment: row.farm || null,
+          role: row.purpose || null,
+          size_u: row.speed_gbps === '' ? null : Number(row.speed_gbps),
+          primary_ip: row.unit || null,
+          management_ip: row.cable_type || null,
+          management_url: row.request_link || null,
         }
-        const res = await apiFetch(`/api/v1/monitoring/${row.id}`, {
+        const res = await apiFetch(`/api/v1/devices/${row.id}`, {
           method: 'PUT',
           body: JSON.stringify(payload)
         })
@@ -3199,7 +3255,7 @@ function BulkEditTableModal({ items, teams, operators, severities, notificationM
       }
     },
     onSuccess: () => {
-      showWorkspaceToast(`Updated ${rows.length} monitor${rows.length === 1 ? '' : 's'}`)
+      showWorkspaceToast(`Updated ${rows.length} asset${rows.length === 1 ? '' : 's'}`)
       onSuccess()
     },
     onError: (error: any) => showWorkspaceToast(error.message || 'Bulk edit failed', { type: 'error' }),
@@ -3212,8 +3268,8 @@ function BulkEditTableModal({ items, teams, operators, severities, notificationM
       size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
-      title="Bulk Edit Monitoring"
-      subtitle="Safe table-based edits for selected monitors."
+      title="Bulk Edit Asset-Real"
+      subtitle="Safe table-based edits for selected assets."
       icon={<Edit2 size={20} />}
       footerRight={
         <div className="flex items-center gap-3">
@@ -3234,49 +3290,22 @@ function BulkEditTableModal({ items, teams, operators, severities, notificationM
         <div className="rounded-lg border border-white/10 bg-black/20 px-5 py-4">
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Active Selection</p>
           <p className="mt-1 text-[12px] font-bold text-slate-200">{rows.length} rows staged for modification</p>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <WorkspaceInfoTooltip
-              label={<span>Allowed team names</span>}
-              content={
-                (teams || []).length > 0
-                  ? (teams || []).map((team: any) => (
-                      <div key={team.id} className="rounded-lg border border-white/5 bg-black/20 px-3 py-2">
-                        <p className="text-[10px] font-semibold text-slate-100">{team.name}</p>
-                        <p className="mt-1 text-[9px] font-semibold text-slate-500">{team.operators?.length || 0} members</p>
-                      </div>
-                    ))
-                  : <p>No teams available.</p>
-              }
-            />
-            <WorkspaceInfoTooltip
-              label={<span>Allowed owner user IDs</span>}
-              content={
-                (operators || []).length > 0
-                  ? (operators as OperatorRecord[]).map((operator) => (
-                      <div key={operator.id} className="rounded-lg border border-white/5 bg-black/20 px-3 py-2">
-                        <p className="text-[10px] font-semibold text-slate-100">{operator.external_id || operator.username || String(operator.id)}</p>
-                        <p className="mt-1 text-[9px] font-semibold text-slate-500">{operator.full_name || operator.team || 'No team'}</p>
-                      </div>
-                    ))
-                  : <p>No operators available.</p>
-              }
-            />
-          </div>
         </div>
 
         <div className="overflow-x-auto rounded-lg border border-white/10 bg-black/20 custom-scrollbar">
           <table className="min-w-full divide-y divide-white/10">
             <thead className="bg-slate-950/90 sticky top-0 z-10">
               <tr>
-                <th className="px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Title</th>
-                <th className="min-w-[160px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Status</th>
-                <th className="min-w-[160px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Severity</th>
-                <th className="min-w-[180px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Notification</th>
-                <th className="min-w-[220px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Owner Team(s)</th>
-                <th className="min-w-[240px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Owner User ID(s)</th>
-                <th className="min-w-[130px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Freq (s)</th>
-                <th className="min-w-[130px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Delay (s)</th>
-                <th className="min-w-[150px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Throttle (s)</th>
+                <th className="px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Asset</th>
+                <th className="min-w-[140px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Status</th>
+                <th className="min-w-[160px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">System</th>
+                <th className="min-w-[160px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Owner</th>
+                <th className="min-w-[180px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Environment</th>
+                <th className="min-w-[220px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Role</th>
+                <th className="min-w-[120px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Size U</th>
+                <th className="min-w-[160px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Primary IP</th>
+                <th className="min-w-[160px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Mgmt IP</th>
+                <th className="min-w-[220px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Mgmt URL</th>
                 <th className="min-w-[120px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Control</th>
               </tr>
             </thead>
@@ -3284,14 +3313,15 @@ function BulkEditTableModal({ items, teams, operators, severities, notificationM
               {rows.map((row: any) => (
                 <tr key={row.id} className="hover:bg-white/[0.02] transition-colors">
                   <td className="px-4 py-3 text-[10px] font-bold text-slate-200">{row.title}</td>
-                  <td className="px-2 py-2"><AppDropdown value={row.status} onChange={(value) => updateRow(row.id, 'status', value)} options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))} placeholder="Status" /></td>
-                  <td className="px-2 py-2"><AppDropdown value={row.severity} onChange={(value) => updateRow(row.id, 'severity', value)} options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))} placeholder="Severity" /></td>
-                  <td className="px-2 py-2"><AppDropdown value={row.notification_method} onChange={(value) => updateRow(row.id, 'notification_method', value)} options={notificationMethods.map((method: any) => ({ value: method.value, label: method.label }))} placeholder="Notification" /></td>
-                  <td className="px-2 py-2"><input value={row.owner_team} onChange={(event) => updateRow(row.id, 'owner_team', event.target.value)} placeholder="Team names..." className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
-                  <td className="px-2 py-2"><input value={row.owner_user_ids} onChange={(event) => updateRow(row.id, 'owner_user_ids', event.target.value)} placeholder="User IDs..." className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
-                  <td className="px-2 py-2"><input type="number" value={row.check_interval} min={CHECK_INTERVAL_MIN} max={CHECK_INTERVAL_MAX} onChange={(event) => updateRow(row.id, 'check_interval', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] [appearance:textfield]`} /></td>
-                  <td className="px-2 py-2"><input type="number" value={row.alert_duration} min={ALERT_DURATION_MIN} max={ALERT_DURATION_MAX} onChange={(event) => updateRow(row.id, 'alert_duration', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] [appearance:textfield]`} /></td>
-                  <td className="px-2 py-2"><input type="number" value={row.notification_throttle} min={NOTIFICATION_THROTTLE_MIN} max={NOTIFICATION_THROTTLE_MAX} onChange={(event) => updateRow(row.id, 'notification_throttle', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] [appearance:textfield]`} /></td>
+                  <td className="px-2 py-2"><AppDropdown value={row.status} onChange={(value) => updateRow(row.id, 'status', value)} options={ASSET_STATUSES.filter((status) => status !== 'Deleted').map((status) => ({ value: status, label: status }))} placeholder="Status" /></td>
+                  <td className="px-2 py-2"><input value={row.link_type} onChange={(event) => updateRow(row.id, 'link_type', event.target.value)} placeholder="System" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+                  <td className="px-2 py-2"><input value={row.direction} onChange={(event) => updateRow(row.id, 'direction', event.target.value)} placeholder="Owner" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+                  <td className="px-2 py-2"><AppDropdown value={row.farm} onChange={(value) => updateRow(row.id, 'farm', value)} options={ASSET_ENVIRONMENTS.map((value) => ({ value, label: value }))} placeholder="Environment" /></td>
+                  <td className="px-2 py-2"><input value={row.purpose} onChange={(event) => updateRow(row.id, 'purpose', event.target.value)} placeholder="Role" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+                  <td className="px-2 py-2"><input type="number" value={row.speed_gbps} onChange={(event) => updateRow(row.id, 'speed_gbps', event.target.value)} placeholder="Size U" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] [appearance:textfield]`} /></td>
+                  <td className="px-2 py-2"><input value={row.unit} onChange={(event) => updateRow(row.id, 'unit', event.target.value)} placeholder="Primary IP" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+                  <td className="px-2 py-2"><input value={row.cable_type} onChange={(event) => updateRow(row.id, 'cable_type', event.target.value)} placeholder="Mgmt IP" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+                  <td className="px-2 py-2"><input value={row.request_link} onChange={(event) => updateRow(row.id, 'request_link', event.target.value)} placeholder="Mgmt URL" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
                   <td className="px-4 py-2">
                     <button
                       type="button"
@@ -3334,7 +3364,7 @@ function RecipientsModal({ recipients, method, onClose }: any) {
           </div>
         ))}
         {recipients.length === 0 && (
-          <WorkspaceEmptyState compact title="No recipients defined" description="No direct delivery targets found for this monitoring item." />
+          <WorkspaceEmptyState compact title="No recipients defined" description="No direct delivery targets found for this connection." />
         )}
       </div>
     </WorkspaceModal>
@@ -3345,6 +3375,340 @@ function RecipientsModal({ recipients, method, onClose }: any) {
 
 // Extracted to BkmDetailModal.tsx
 
+function AssetRecordDetailModal({ item, onClose, onEdit, onDelete }: any) {
+  useEscapeDismiss(onClose)
+  useBodyModalFlag()
+  const [isMaximized, setIsMaximized] = useState(false)
+  const detailTitle = getAssetTitle(item)
+
+  return (
+    <WorkspaceModal
+      isOpen={true}
+      onClose={onClose}
+      size="workspace"
+      isMaximized={isMaximized}
+      onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+      title={
+        <div className="flex items-center gap-3">
+          <span>{detailTitle}</span>
+          <WorkspaceShareHeader id={String(item.id)} title={detailTitle} />
+        </div>
+      }
+      subtitle={`${item.system || 'No system'} · ${item.type || 'No type'} · ${item.primary_ip || 'No IP'}`}
+      icon={<Monitor size={20} />}
+      forensicLineage={{ createdAt: item.created_at, updatedAt: item.updated_at }}
+      status={
+        <div className="flex items-center gap-2">
+          <StatusPill value={item.status || 'Active'} />
+          <StatusPill value={item.environment || 'Production'} />
+        </div>
+      }
+      footerRight={
+        <div className="flex items-center gap-3">
+          <ToolbarButton onClick={() => onEdit?.(item)}>Edit Asset</ToolbarButton>
+          <ToolbarButton variant="danger" onClick={() => onDelete?.(item)}>
+            {item.is_deleted ? 'Purge' : 'Archive'}
+          </ToolbarButton>
+        </div>
+      }
+    >
+      <WorkspaceDossierShell
+        body={
+          <div className="space-y-6">
+            <section className="grid gap-4 md:grid-cols-4">
+              {[
+                ['Owner', item.owner || 'Unassigned'],
+                ['Management IP', item.management_ip || 'N/A'],
+                ['Rack', item.rack_name || 'Unplaced'],
+                ['Hardware Age', item.hardware_age || 'N/A'],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-lg border border-white/5 bg-white/[0.03] p-4 shadow-inner">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">{label}</p>
+                  <p className="mt-2 text-[12px] font-bold text-slate-200">{value}</p>
+                </div>
+              ))}
+            </section>
+            <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4 shadow-inner">
+              <AssetDetailsView
+                device={item}
+                options={[]}
+                onViewServiceDetails={() => {}}
+                onEditService={() => {}}
+                onEditLink={() => {}}
+                onViewLink={() => {}}
+              />
+            </div>
+          </div>
+        }
+      />
+    </WorkspaceModal>
+  )
+}
+
+function AssetRecordFormModal({ item, onClose, onSuccess }: any) {
+  useEscapeDismiss(onClose)
+  useBodyModalFlag()
+  const queryClient = useQueryClient()
+  const [isMaximized, setIsMaximized] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+  const [metadataJsonText, setMetadataJsonText] = useState(() => JSON.stringify(item?.metadata_json || {}, null, 2))
+  const [formData, setFormData] = useState(() => ({
+    name: item?.name || '',
+    system: item?.system || '',
+    type: item?.type || 'Physical',
+    status: item?.status || 'Active',
+    environment: item?.environment || 'Production',
+    owner: item?.owner || '',
+    business_unit: item?.business_unit || '',
+    role: item?.role || '',
+    manufacturer: item?.manufacturer || '',
+    model: item?.model || '',
+    serial_number: item?.serial_number || '',
+    asset_tag: item?.asset_tag || '',
+    os_name: item?.os_name || '',
+    os_version: item?.os_version || '',
+    primary_ip: item?.primary_ip || '',
+    management_ip: item?.management_ip || '',
+    management_url: item?.management_url || '',
+    depth: item?.depth || 'Full',
+    mount_orientation: item?.mount_orientation || 'Front',
+    size_u: item?.size_u ?? 1,
+    power_typical_w: item?.power_typical_w ?? 0,
+    power_max_w: item?.power_max_w ?? 0,
+    purchase_date: item?.purchase_date ? String(item.purchase_date).split('T')[0] : '',
+    install_date: item?.install_date ? String(item.install_date).split('T')[0] : '',
+    warranty_end: item?.warranty_end ? String(item.warranty_end).split('T')[0] : '',
+    eol_date: item?.eol_date ? String(item.eol_date).split('T')[0] : '',
+  }))
+
+  const updateField = useCallback((field: string, value: any) => {
+    setFormData((current) => ({ ...current, [field]: value }))
+    setFormErrors((current) => {
+      if (!current[field]) return current
+      const next = { ...current }
+      delete next[field]
+      return next
+    })
+  }, [])
+
+  const validate = useCallback(() => {
+    const nextErrors: Record<string, string> = {}
+    if (!String(formData.name || '').trim()) nextErrors.name = 'Hostname is required.'
+    if (!String(formData.system || '').trim()) nextErrors.system = 'Logical system is required.'
+    if (!String(formData.serial_number || '').trim()) nextErrors.serial_number = 'Serial number is required.'
+    if (!String(formData.asset_tag || '').trim()) nextErrors.asset_tag = 'Asset tag is required.'
+    try {
+      JSON.parse(metadataJsonText || '{}')
+    } catch {
+      nextErrors.metadata_json = 'Metadata JSON must be valid.'
+    }
+    return nextErrors
+  }, [formData, metadataJsonText])
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      setIsSaving(true)
+      const payload = {
+        ...sanitizeAssetPayload({
+          ...formData,
+          metadata_json: JSON.parse(metadataJsonText || '{}'),
+        }),
+      }
+      const url = item?.id ? `/api/v1/devices/${item.id}` : '/api/v1/devices'
+      const method = item?.id ? 'PUT' : 'POST'
+      const res = await apiFetch(url, { method, body: JSON.stringify(payload) })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['asset-real-devices'] })
+      setIsSaving(false)
+      onSuccess?.()
+    },
+    onError: (error: any) => {
+      setIsSaving(false)
+      showWorkspaceToast(error?.message || 'Failed to save asset', { type: 'error' })
+    },
+  })
+
+  const handleSave = useCallback(() => {
+    const nextErrors = validate()
+    setFormErrors(nextErrors)
+    if (Object.keys(nextErrors).length > 0) {
+      showWorkspaceToast('Fix the highlighted asset fields before saving.', { type: 'error' })
+      return
+    }
+    mutation.mutate()
+  }, [mutation, validate])
+
+  const fieldClass = useCallback((field: string) => monitoringInputClass(formErrors[field]), [formErrors])
+  const formTitle = item?.id ? getAssetTitle(item) : 'Create Asset'
+
+  return (
+    <WorkspaceModal
+      isOpen={true}
+      onClose={onClose}
+      size="workspace"
+      isMaximized={isMaximized}
+      onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+      title={
+        <div className="flex items-center gap-3">
+          <span>{item?.id ? 'Edit Asset' : 'Create Asset'}</span>
+          {item?.id && <WorkspaceShareHeader id={String(item.id)} title={formTitle} />}
+        </div>
+      }
+      subtitle={item?.id ? `Asset ID ${item.id}` : 'Create a new asset'}
+      icon={<Activity size={20} />}
+      status={
+        <div className="flex items-center gap-2">
+          <StatusPill value={formData.status || 'Active'} />
+          <StatusPill value={formData.environment || 'Production'} />
+        </div>
+      }
+      footerRight={
+        <div className="flex items-center gap-3">
+          <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
+          <ToolbarButton onClick={handleSave} disabled={isSaving} variant="primary">
+            {isSaving ? 'Saving...' : 'Save Asset'}
+          </ToolbarButton>
+        </div>
+      }
+    >
+      <WorkspaceDossierShell
+        body={
+          <div className="space-y-6">
+            <section className="grid gap-4 xl:grid-cols-3">
+              <WorkspaceSectionCard title="Identity">
+                <div className="space-y-4">
+                  <div>
+                    <FieldLabel label="Hostname" required />
+                    <input value={formData.name} onChange={(e) => updateField('name', e.target.value)} className={fieldClass('name')} />
+                    <FieldError message={formErrors.name} />
+                  </div>
+                  <div>
+                    <FieldLabel label="Role / Description" />
+                    <input value={formData.role} onChange={(e) => updateField('role', e.target.value)} className={fieldClass('role')} />
+                  </div>
+                  <div>
+                    <FieldLabel label="Logical System" required />
+                    <input value={formData.system} onChange={(e) => updateField('system', e.target.value)} className={fieldClass('system')} />
+                    <FieldError message={formErrors.system} />
+                  </div>
+                  <div>
+                    <FieldLabel label="Owner" />
+                    <input value={formData.owner} onChange={(e) => updateField('owner', e.target.value)} className={fieldClass('owner')} />
+                  </div>
+                  <div>
+                    <FieldLabel label="Business Unit" />
+                    <input value={formData.business_unit} onChange={(e) => updateField('business_unit', e.target.value)} className={fieldClass('business_unit')} />
+                  </div>
+                </div>
+              </WorkspaceSectionCard>
+              <WorkspaceSectionCard title="Classification">
+                <div className="space-y-4">
+                  <AppDropdown label="Asset Type" value={formData.type} onChange={(value) => updateField('type', value)} options={['Physical', 'Virtual', 'Storage', 'Switch', 'Firewall', 'Load Balancer', 'PDU', 'UPS', 'Console-Server', 'Patch Panel'].map((value) => ({ value, label: value }))} />
+                  <AppDropdown label="Status" value={formData.status} onChange={(value) => updateField('status', value)} options={ASSET_STATUSES.filter((value) => value !== 'Deleted').map((value) => ({ value, label: value }))} />
+                  <AppDropdown label="Environment" value={formData.environment} onChange={(value) => updateField('environment', value)} options={ASSET_ENVIRONMENTS.map((value) => ({ value, label: value }))} />
+                  <AppDropdown label="Depth" value={formData.depth} onChange={(value) => updateField('depth', value)} options={ASSET_DEPTHS.map((value) => ({ value, label: value }))} />
+                  <AppDropdown label="Mount Orientation" value={formData.mount_orientation} onChange={(value) => updateField('mount_orientation', value)} options={ASSET_MOUNT_ORIENTATIONS.map((value) => ({ value, label: value }))} />
+                  <div>
+                    <FieldLabel label="Size (U)" />
+                    <input type="number" min="1" value={formData.size_u} onChange={(e) => updateField('size_u', e.target.value)} className={fieldClass('size_u')} />
+                  </div>
+                </div>
+              </WorkspaceSectionCard>
+              <WorkspaceSectionCard title="Management">
+                <div className="space-y-4">
+                  <div>
+                    <FieldLabel label="Primary IP" />
+                    <input value={formData.primary_ip} onChange={(e) => updateField('primary_ip', e.target.value)} className={fieldClass('primary_ip')} />
+                  </div>
+                  <div>
+                    <FieldLabel label="Management IP" />
+                    <input value={formData.management_ip} onChange={(e) => updateField('management_ip', e.target.value)} className={fieldClass('management_ip')} />
+                  </div>
+                  <div>
+                    <FieldLabel label="Management URL" />
+                    <input value={formData.management_url} onChange={(e) => updateField('management_url', e.target.value)} className={fieldClass('management_url')} />
+                  </div>
+                  <div>
+                    <FieldLabel label="OS Name" />
+                    <input value={formData.os_name} onChange={(e) => updateField('os_name', e.target.value)} className={fieldClass('os_name')} />
+                  </div>
+                  <div>
+                    <FieldLabel label="OS Version" />
+                    <input value={formData.os_version} onChange={(e) => updateField('os_version', e.target.value)} className={fieldClass('os_version')} />
+                  </div>
+                </div>
+              </WorkspaceSectionCard>
+            </section>
+            <section className="grid gap-4 xl:grid-cols-2">
+              <WorkspaceSectionCard title="Hardware & Inventory">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <FieldLabel label="Manufacturer" />
+                    <input value={formData.manufacturer} onChange={(e) => updateField('manufacturer', e.target.value)} className={fieldClass('manufacturer')} />
+                  </div>
+                  <div>
+                    <FieldLabel label="Model" />
+                    <input value={formData.model} onChange={(e) => updateField('model', e.target.value)} className={fieldClass('model')} />
+                  </div>
+                  <div>
+                    <FieldLabel label="Serial Number" required />
+                    <input value={formData.serial_number} onChange={(e) => updateField('serial_number', e.target.value)} className={fieldClass('serial_number')} />
+                    <FieldError message={formErrors.serial_number} />
+                  </div>
+                  <div>
+                    <FieldLabel label="Asset Tag" required />
+                    <input value={formData.asset_tag} onChange={(e) => updateField('asset_tag', e.target.value)} className={fieldClass('asset_tag')} />
+                    <FieldError message={formErrors.asset_tag} />
+                  </div>
+                  <div>
+                    <FieldLabel label="Typical Power (W)" />
+                    <input type="number" min="0" value={formData.power_typical_w} onChange={(e) => updateField('power_typical_w', e.target.value)} className={fieldClass('power_typical_w')} />
+                  </div>
+                  <div>
+                    <FieldLabel label="Max Power (W)" />
+                    <input type="number" min="0" value={formData.power_max_w} onChange={(e) => updateField('power_max_w', e.target.value)} className={fieldClass('power_max_w')} />
+                  </div>
+                </div>
+              </WorkspaceSectionCard>
+              <WorkspaceSectionCard title="Lifecycle & Metadata">
+                <div className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <FieldLabel label="Purchase Date" />
+                      <input type="date" value={formData.purchase_date} onChange={(e) => updateField('purchase_date', e.target.value)} className={fieldClass('purchase_date')} />
+                    </div>
+                    <div>
+                      <FieldLabel label="Install Date" />
+                      <input type="date" value={formData.install_date} onChange={(e) => updateField('install_date', e.target.value)} className={fieldClass('install_date')} />
+                    </div>
+                    <div>
+                      <FieldLabel label="Warranty End" />
+                      <input type="date" value={formData.warranty_end} onChange={(e) => updateField('warranty_end', e.target.value)} className={fieldClass('warranty_end')} />
+                    </div>
+                    <div>
+                      <FieldLabel label="EOL Date" />
+                      <input type="date" value={formData.eol_date} onChange={(e) => updateField('eol_date', e.target.value)} className={fieldClass('eol_date')} />
+                    </div>
+                  </div>
+                  <div>
+                    <FieldLabel label="Metadata JSON" />
+                    <textarea value={metadataJsonText} onChange={(e) => setMetadataJsonText(e.target.value)} className={`${fieldClass('metadata_json')} min-h-[180px] font-mono text-[11px]`} />
+                    <FieldError message={formErrors.metadata_json} />
+                  </div>
+                </div>
+              </WorkspaceSectionCard>
+            </section>
+          </div>
+        }
+      />
+    </WorkspaceModal>
+  )
+}
+
 function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm, onDelete, onOpenAsset, onOpenKnowledge, deleteConfirm }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
@@ -3352,6 +3716,7 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
   const [expandedLogic, setExpandedLogic] = useState<number | null>(item.logic_json?.[0]?.id || null)
   const [showLineNumbers, setShowLineNumbers] = useState(true)
   const [interventionDoc, setInterventionDoc] = useState<any>(null)
+  const detailTitle = getNetworkConnectionTitle(item)
 
   const { data: suggestedKnowledge } = useQuery({
     queryKey: ['monitoring-knowledge-suggestions', item.id, item.device_id],
@@ -3376,8 +3741,13 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
       size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
-      title={item.title}
-      subtitle={`Monitor ID: ${item.id} · ${item.device_name || 'No Target Asset'}`}
+      title={
+        <div className="flex items-center gap-3">
+          <span>{detailTitle}</span>
+          <WorkspaceShareHeader id={String(item.id)} title={detailTitle} />
+        </div>
+      }
+      subtitle={`Connection ID: ${item.id} · ${item.device_name || detailTitle}`}
       icon={<Monitor size={20} />}
       forensicLineage={{ createdAt: item.created_at, updatedAt: item.updated_at }}
       status={
@@ -3386,22 +3756,20 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
           <StatusPill value={item.severity} />
           <div className="h-3 w-px bg-white/10 mx-1" />
           <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">
-            {item.platform || 'No platform'} · {item.check_interval ? `${item.check_interval}s checks` : 'No frequency'}
+            {item.farm || 'No farm'} · {item.type || item.link_type || 'No type'} · {item.speed || (item.speed_gbps != null ? `${item.speed_gbps} ${item.unit || 'Gbps'}` : 'No speed')}
           </span>
         </div>
       }
       footerRight={
         <div className="flex items-center gap-3">
-            <ToolbarButton onClick={() => onEdit?.(item)}>Edit Monitor</ToolbarButton>
-            <ToolbarButton onClick={() => onOpenHistory?.(item)}>History</ToolbarButton>
-            <ToolbarButton onClick={() => onOpenBkm?.(item)}>Recovery</ToolbarButton>
+            <ToolbarButton onClick={() => onEdit?.(item)}>Edit Connection</ToolbarButton>
             <ToolbarButton 
               variant="danger" 
               onClick={() => {
                 if (deleteConfirm) {
                   const action = item.is_deleted ? 'Purged' : 'Archived';
                   onDelete?.(item);
-                  showWorkspaceToast(`${action} ${item.title} from matrix`, {
+                  showWorkspaceToast(`${action} ${detailTitle} from registry`, {
                     type: 'success'
                   });
                 } else {
@@ -3418,217 +3786,158 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
       }
     >
       <WorkspaceDossierShell
-          body={
-           <WorkspaceSplitView
-             className="gap-8"
-             sidebar={<div className="space-y-8">
-                 <section className="space-y-3">
-                    <h3 className="px-1 text-[11px] font-black text-slate-500 uppercase tracking-widest">Target scope</h3>
-                    <div className="space-y-3">
-                       <button
-                         disabled={!item.device_id}
-                         onClick={() => item.device_id && onOpenAsset?.(item.device_id)}
-                         className="w-full rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 text-left transition-all hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-30 shadow-inner group"
-                       >
-                         <div className="flex items-center justify-between mb-2">
-                            <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Registry asset</p>
-                            <ArrowRightLeft size={10} className="text-blue-500/50 group-hover:translate-x-1 transition-transform" />
-                         </div>
-                         <p className="text-[11px] font-black text-slate-100">{item.device_name || 'No linked asset'}</p>
-                       </button>
-                       
-                       <div className="bg-black/20 border border-white/5 rounded-lg p-4 shadow-inner space-y-3">
-                          <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Monitored services</p>
-                          <div className="flex flex-wrap gap-1.5">
-                             {item.monitored_service_names?.map((name: string, i: number) => (
-                               <span key={`${i}-${item.id}`} className="bg-blue-600/10 border border-blue-500/20 text-blue-300 px-2 py-0.5 rounded-lg text-[9px] font-bold">
-                                  {name}
-                               </span>
-                             ))}
-                             {(!item.monitored_service_names || item.monitored_service_names.length === 0) && (
-                               <span key="no-services" className="text-[9px] font-bold text-slate-700 italic">No services mapped</span>
-                             )}
-                          </div>
-                       </div>
-                    </div>
-                 </section>
+        body={
+          <div className="space-y-6">
+            <section className="grid gap-4 xl:grid-cols-2">
+              <article className="rounded-lg border border-blue-500/20 bg-blue-500/[0.06] p-5 shadow-inner">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-blue-400">Source endpoint</p>
+                    <h4 className="mt-2 truncate text-sm font-black text-slate-100">{item.src_node || item.server_a || 'Unknown'}</h4>
+                    <p className="mt-1 text-[10px] font-semibold text-slate-500">{item.src_rack_slot || 'No rack slot'}</p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!item.source_device_id}
+                    onClick={() => item.source_device_id && onOpenAsset?.(item.source_device_id)}
+                    className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-[0.18em] text-blue-300 transition-all hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    Open asset
+                  </button>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Port</p>
+                    <p className="mt-1 text-[11px] font-bold text-slate-200">{item.src_port || 'N/A'}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">IP</p>
+                    <p className="mt-1 text-[11px] font-bold text-slate-200">{item.src_ip || 'N/A'}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">MAC</p>
+                    <p className="mt-1 text-[11px] font-bold text-slate-200">{item.source_mac || 'N/A'}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">VLAN</p>
+                    <p className="mt-1 text-[11px] font-bold text-slate-200">{item.source_vlan ?? 'N/A'}</p>
+                  </div>
+                </div>
+              </article>
 
-                 <section className="space-y-3">
-                    <h3 className="px-1 text-[11px] font-black text-slate-500 uppercase tracking-widest">Recovery protocol</h3>
-                    <div className="space-y-2">
-                       {item.recovery_doc_details?.map((doc: any, i: number) => (
-                         <button
-                           key={`${i}-${item.id}`}
-                           type="button"
-                           onClick={() => doc.note ? setInterventionDoc(doc) : onOpenKnowledge?.(doc.id)}
-                           className="w-full bg-slate-900/60 border border-white/5 rounded-lg p-3 flex items-center space-x-3 hover:border-amber-500/30 transition-all cursor-pointer group text-left shadow-inner"
-                         >
-                            <div className="p-1.5 bg-black/40 rounded-lg text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all"><FileText size={14}/></div>
-                            <div className="min-w-0 flex-1">
-                               <p className="text-[11px] font-bold text-slate-300 tracking-tight leading-tight group-hover:text-white truncate">{doc.title}</p>
-                               <div className="flex items-center justify-between mt-0.5">
-                                  <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Procedure {i+1}</p>
-                                  {doc.note && (
-                                     <div className="flex items-center gap-1 text-blue-500/60">
-                                        <MessageSquare size={8} />
-                                        <span className="text-[8px] font-black uppercase tracking-widest">Note attached</span>
-                                     </div>
-                                  )}
-                               </div>
-                            </div>
-                         </button>
-                       ))}
-                       {(!item.recovery_doc_details || item.recovery_doc_details.length === 0) && (
-                         <WorkspaceEmptyState compact icon={<AlertCircle size={18} />} title="No procedures linked" description="Guaranteed operational response protocol missing." />
-                       )}
-                    </div>
-                 </section>
+              <article className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] p-5 shadow-inner">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-emerald-400">Peer endpoint</p>
+                    <h4 className="mt-2 truncate text-sm font-black text-slate-100">{item.peer_node || item.server_b || 'Unknown'}</h4>
+                    <p className="mt-1 text-[10px] font-semibold text-slate-500">{item.peer_rack_slot || 'No rack slot'}</p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!item.target_device_id}
+                    onClick={() => item.target_device_id && onOpenAsset?.(item.target_device_id)}
+                    className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-[0.18em] text-emerald-300 transition-all hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    Open asset
+                  </button>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Port</p>
+                    <p className="mt-1 text-[11px] font-bold text-slate-200">{item.peer_port || 'N/A'}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">IP</p>
+                    <p className="mt-1 text-[11px] font-bold text-slate-200">{item.peer_ip || 'N/A'}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">MAC</p>
+                    <p className="mt-1 text-[11px] font-bold text-slate-200">{item.target_mac || 'N/A'}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">VLAN</p>
+                    <p className="mt-1 text-[11px] font-bold text-slate-200">{item.target_vlan ?? 'N/A'}</p>
+                  </div>
+                </div>
+              </article>
+            </section>
 
-                 <section className="space-y-3">
-                    <h3 className="px-1 text-[11px] font-black text-slate-500 uppercase tracking-widest">Operational meta</h3>
-                    <div className="bg-white/5 border border-white/5 rounded-lg overflow-hidden divide-y divide-white/5 shadow-inner">
-                       {[
-                          { label: 'Platform', value: item.platform, color: 'text-blue-400', icon: Globe },
-                          { label: 'Frequency', value: `${item.check_interval}s`, color: 'text-slate-300', icon: Clock },
-                          { label: 'Throttle', value: `${item.notification_throttle}s`, color: 'text-amber-400', icon: Zap }
-                       ].map((stat, i) => (
-                          <div key={`${i}-${item.id}-meta`} className="p-3 flex items-center justify-between hover:bg-white/5 transition-all">
-                             <div className="flex items-center gap-3">
-                                <div className="p-1.5 bg-black/40 rounded-lg text-slate-600">
-                                   <stat.icon size={12} />
-                                </div>
-                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{stat.label}</span>
-                             </div>
-                             <span className={`text-[10px] font-black ${stat.color}`}>{stat.value}</span>
-                          </div>
-                       ))}
-                    </div>
-                 </section>
+            <section className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.9fr)]">
+              <div className="rounded-lg border border-white/5 bg-white/[0.03] p-5 shadow-inner">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-2 text-blue-400">
+                    <Info size={14} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500">Purpose and routing</p>
+                    <p className="mt-1 text-[12px] font-bold text-slate-300">
+                      {item.purpose || 'No purpose defined.'}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Connection type</p>
+                    <p className="mt-1 text-[11px] font-bold text-blue-300">{item.type || item.link_type || 'N/A'}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Direction</p>
+                    <p className="mt-1 text-[11px] font-bold text-emerald-300">{item.direction || 'N/A'}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Farm</p>
+                    <p className="mt-1 text-[11px] font-bold text-slate-200">{item.farm || 'N/A'}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Cable</p>
+                    <p className="mt-1 text-[11px] font-bold text-slate-200">{item.cable_type || 'N/A'}</p>
+                  </div>
+                </div>
+                {item.request_link && (
+                  <button
+                    type="button"
+                    onClick={() => window.open(item.request_link, '_blank')}
+                    className="mt-4 inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-600/10 px-3 py-2 text-[9px] font-black uppercase tracking-[0.18em] text-blue-300 transition-all hover:bg-blue-600/20"
+                  >
+                    <ExternalLink size={13} />
+                    Open request link
+                  </button>
+                )}
+              </div>
 
-                 {item.monitoring_url && (
-                    <button 
-                       onClick={() => window.open(item.monitoring_url, '_blank')}
-                       className="w-full bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-lg font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-blue-500/20 flex items-center justify-center space-x-3"
-                    >
-                       <ExternalLink size={14} />
-                       <span>Open platform console</span>
-                    </button>
-                 )}
-             </div>}
-             main={<div className="space-y-8">
-                 <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-white/[0.03] border border-white/5 rounded-lg p-5 group hover:border-white/10 transition-all shadow-inner">
-                       <div className="flex items-center gap-3 mb-3">
-                          <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg"><Info size={14}/></div>
-                          <h4 className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">Operational Purpose</h4>
-                       </div>
-                       <p className="text-[12px] font-bold text-slate-400 leading-relaxed pl-1">
-                          {item.purpose || 'No purpose defined.'}
-                       </p>
-                    </div>
-                    <div className="bg-white/[0.03] border border-white/5 rounded-lg p-5 group hover:border-white/10 transition-all shadow-inner">
-                       <div className="flex items-center gap-3 mb-3">
-                          <div className="p-2 bg-rose-500/10 text-rose-400 rounded-lg"><Zap size={14}/></div>
-                          <h4 className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">Failure Impact</h4>
-                       </div>
-                       <p className="text-[12px] font-bold text-slate-400 leading-relaxed pl-1">
-                          {item.impact || 'No impact analysis defined.'}
-                       </p>
-                    </div>
-                 </section>
-
-                 <section className="space-y-4">
-                    <div className="flex items-center justify-between px-1">
-                      <div className="flex items-center gap-3">
-                         <div className="p-2 bg-slate-800 text-slate-400 rounded-lg"><Code size={16} /></div>
-                         <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Logic Specification</h3>
-                      </div>
-                      <button 
-                         onClick={() => setShowLineNumbers(!showLineNumbers)}
-                         className={`text-[8px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border transition-all ${showLineNumbers ? 'bg-blue-600/20 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-white/5 text-slate-500'}`}
-                      >
-                         {showLineNumbers ? 'Line Numbers: ON' : 'Line Numbers: OFF'}
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                       {item.logic_json?.map((log: any) => (
-                         <div key={log.id} className="bg-[#0f172a] border border-white/5 rounded-lg overflow-hidden transition-all hover:border-white/10 shadow-lg">
-                            <button 
-                               onClick={() => setExpandedLogic(expandedLogic === log.id ? null : log.id)}
-                               className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-all group"
-                            >
-                               <div className="flex items-center space-x-4">
-                                  <span className="text-[8px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20 uppercase tracking-widest">{log.type}</span>
-                                  <span className="text-slate-300 font-bold text-[11px] tracking-tight group-hover:text-white transition-colors">{log.description}</span>
-                               </div>
-                               {expandedLogic === log.id ? <ChevronUp size={16} className="text-slate-600" /> : <ChevronDown size={16} className="text-slate-600" />}
-                            </button>
-                            <AnimatePresence>
-                               {expandedLogic === log.id && (
-                                 <motion.div 
-                                    key={`logic-${log.id}`}
-                                    initial={{ height: 0, opacity: 0 }} 
-                                    animate={{ height: 'auto', opacity: 1 }} 
-                                    exit={{ height: 0, opacity: 0 }} 
-                                    className="overflow-hidden bg-black/40 border-t border-white/5"
-                                 >
-                                    <div className="flex font-mono text-[11px] leading-relaxed overflow-x-auto custom-scrollbar">
-                                       {showLineNumbers && (
-                                          <div className="bg-white/5 border-r border-white/10 px-3 py-5 text-slate-700 text-right select-none whitespace-pre min-w-[40px]">
-                                             {log.logic_info.split('\n').map((_: any, i: number) => i + 1).join('\n')}
-                                          </div>
-                                       )}
-                                       <pre className="p-5 text-emerald-400 flex-1 selection:bg-emerald-500/20">
-                                          {log.logic_info}
-                                       </pre>
-                                    </div>
-                                 </motion.div>
-                               )}
-                            </AnimatePresence>
-                         </div>
-                       ))}
-                       {(!item.logic_json || item.logic_json.length === 0) && (
-                         <WorkspaceEmptyState icon={<Terminal size={32} />} title="No logic specification found" description="This monitor has no active logic entries defined." />
-                       )}
-                    </div>
-                 </section>
-
-                 <section className="space-y-4">
-                    <div className="flex items-center gap-3 px-1">
-                       <div className="p-2 bg-blue-600/10 text-blue-400 rounded-lg"><Users size={16} /></div>
-                       <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Ownership Matrix</h3>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                       <div className="bg-white/[0.03] border border-white/5 rounded-lg p-5 shadow-inner">
-                          <h4 className="text-[10px] font-black text-slate-500 mb-3 uppercase tracking-widest">Primary Team Mapping</h4>
-                          <div className="flex items-center gap-3">
-                             <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                                <Briefcase size={14} />
-                             </div>
-                             <p className="text-[12px] font-black text-slate-200">{item.owner_team || 'Unassigned'}</p>
-                          </div>
-                       </div>
-                       <div className="bg-white/[0.03] border border-white/5 rounded-lg p-5 shadow-inner">
-                          <h4 className="text-[10px] font-black text-slate-500 mb-3 uppercase tracking-widest">Assigned Personnel</h4>
-                          <div className="flex flex-wrap gap-2">
-                             {item.owners?.map((o: any, i: number) => (
-                               <div key={`${i}-${o.operator_id}`} className="bg-blue-600/10 border border-blue-500/20 text-blue-300 px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-2">
-                                  <UserCheck size={10} className="text-blue-500" />
-                                  <span>{o.name} <span className="text-slate-500 font-normal ml-1">[{o.role}]</span></span>
-                               </div>
-                             ))}
-                             {(!item.owners || item.owners.length === 0) && (
-                               <div className="flex items-center gap-2 text-slate-600 py-1">
-                                  <AlertCircle size={12} />
-                                  <span className="text-[10px] font-black uppercase tracking-widest">No individual owners assigned</span>
-                               </div>
-                             )}
-                          </div>
-                       </div>
-                    </div>
-                 </section>
-             </div>}
-           />
+              <div className="rounded-lg border border-white/5 bg-[#0f172a] p-5 shadow-inner">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg border border-slate-700 bg-slate-800/80 p-2 text-slate-300">
+                    <Layers size={14} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500">Capacity and audit</p>
+                    <p className="mt-1 text-[12px] font-bold text-slate-300">
+                      {item.speed || (item.speed_gbps != null ? `${item.speed_gbps} ${item.unit || 'Gbps'}` : 'N/A')}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Created</p>
+                    <p className="mt-1 text-[11px] font-bold text-slate-200">{formatAppDate(item.created_at)}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Updated</p>
+                    <p className="mt-1 text-[11px] font-bold text-slate-200">{formatAppDate(item.updated_at)}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Status</p>
+                    <p className="mt-1 text-[11px] font-bold text-slate-200">{item.status || 'N/A'}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Link speed</p>
+                    <p className="mt-1 text-[11px] font-bold text-slate-200">{item.speed || (item.speed_gbps != null ? `${item.speed_gbps} ${item.unit || 'Gbps'}` : 'N/A')}</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
         }
       />
     </WorkspaceModal>
@@ -3708,13 +4017,13 @@ const isMonitoringFieldRequired = (fieldName: string) => MONITORING_REQUIRED_FIE
     try {
       const parsed = new URL(formData.monitoring_url)
       if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname) {
-        errors.monitoring_url = 'Monitoring URL must use http/https and include a host.'
+        errors.monitoring_url = 'Request link must use http/https and include a host.'
       }
     } catch {
-      errors.monitoring_url = 'Monitoring URL must be a valid http/https URL.'
+      errors.monitoring_url = 'Request link must be a valid http/https URL.'
     }
     if (unsafeUrlPattern.test(formData.monitoring_url)) {
-      errors.monitoring_url = 'Monitoring URL contains unsafe content.'
+      errors.monitoring_url = 'Request link contains unsafe content.'
     }
   }
 
@@ -3729,12 +4038,350 @@ const isMonitoringFieldRequired = (fieldName: string) => MONITORING_REQUIRED_FIE
   }
 
   if (formData.severity === 'Critical' && !formData.recovery_docs?.length) {
-    errors.recovery_docs = 'Critical monitors require at least one linked recovery procedure.'
+    errors.recovery_docs = 'Critical connections require at least one linked reference.'
   }
 */
 
 
 const monitoringInputClass = (error?: string) => getWorkspaceInputClass(error)
+
+function NetworkConnectionForm({ item, devices, onClose, onSuccess, linkPurposeOptions, farmOptions, cableTypeOptions }: any) {
+  useEscapeDismiss(onClose)
+  useBodyModalFlag()
+  const queryClient = useQueryClient()
+  const [isSaving, setIsSaving] = useState(false)
+  const [isMaximized, setIsMaximized] = useState(false)
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+  const [formData, setFormData] = useState(() => ({
+    source_device_id: item?.source_device_id ?? '',
+    source_port: item?.source_port ?? '',
+    source_ip: item?.source_ip ?? '',
+    source_mac: item?.source_mac ?? '',
+    source_vlan: item?.source_vlan ?? '',
+    target_device_id: item?.target_device_id ?? '',
+    target_port: item?.target_port ?? '',
+    target_ip: item?.target_ip ?? '',
+    target_mac: item?.target_mac ?? '',
+    target_vlan: item?.target_vlan ?? '',
+    link_type: item?.link_type || 'Data',
+    purpose: item?.purpose || '',
+    speed_gbps: item?.speed_gbps ?? 10,
+    unit: item?.unit || 'Gbps',
+    direction: item?.direction || 'Bidirectional',
+    cable_type: item?.cable_type || '',
+    status: item?.status || 'Active',
+    farm: item?.farm || '',
+    request_link: item?.request_link || '',
+  }))
+
+  const deviceOptions = useMemo(() => (devices || []).map((device: any) => ({ value: String(device.id), label: device.name })), [devices])
+  const mergedLinkPurposeOptions = useMemo(() => {
+    const current = item?.link_type ? [{ value: item.link_type, label: item.link_type }] : []
+    return Array.from(new Map([...(linkPurposeOptions || []), ...current].map((option: any) => [option.value, option])).values())
+  }, [item?.link_type, linkPurposeOptions])
+  const mergedFarmOptions = useMemo(() => {
+    const current = item?.farm ? [{ value: item.farm, label: item.farm }] : []
+    return Array.from(new Map([...(farmOptions || []), ...current].map((option: any) => [option.value, option])).values())
+  }, [farmOptions, item?.farm])
+  const mergedCableTypeOptions = useMemo(() => {
+    const current = item?.cable_type ? [{ value: item.cable_type, label: item.cable_type }] : []
+    return Array.from(new Map([...(cableTypeOptions || []), ...current].map((option: any) => [option.value, option])).values())
+  }, [cableTypeOptions, item?.cable_type])
+
+  const clearFieldError = useCallback((field: string) => {
+    setFormErrors((current) => {
+      if (!current[field]) return current
+      const next = { ...current }
+      delete next[field]
+      return next
+    })
+  }, [])
+
+  const updateField = useCallback((field: string, value: any) => {
+    setFormData((current) => ({ ...current, [field]: value }))
+    clearFieldError(field)
+  }, [clearFieldError])
+
+  const validateForm = useCallback((draft = formData) => {
+    const nextErrors: Record<string, string> = {}
+    const sourceDeviceId = Number(draft.source_device_id)
+    const targetDeviceId = Number(draft.target_device_id)
+    const sourcePort = String(draft.source_port || '').trim()
+    const targetPort = String(draft.target_port || '').trim()
+    const sourceIp = String(draft.source_ip || '').trim()
+    const targetIp = String(draft.target_ip || '').trim()
+    const requestLink = String(draft.request_link || '').trim()
+    const speed = draft.speed_gbps === '' || draft.speed_gbps == null ? null : Number(draft.speed_gbps)
+    const sourceVlan = draft.source_vlan === '' || draft.source_vlan == null ? null : Number(draft.source_vlan)
+    const targetVlan = draft.target_vlan === '' || draft.target_vlan == null ? null : Number(draft.target_vlan)
+
+    const isValidIp = (value: string) => {
+      if (!value) return true
+      if (/^(\d{1,3}\.){3}\d{1,3}$/.test(value)) {
+        return value.split('.').every((part) => Number(part) >= 0 && Number(part) <= 255)
+      }
+      return /^[0-9a-fA-F:]+$/.test(value) && value.includes(':')
+    }
+
+    const isValidUrl = (value: string) => {
+      if (!value) return true
+      try {
+        const parsed = new URL(value)
+        return ['http:', 'https:'].includes(parsed.protocol) && Boolean(parsed.hostname)
+      } catch {
+        return false
+      }
+    }
+
+    if (!Number.isFinite(sourceDeviceId) || sourceDeviceId <= 0) nextErrors.source_device_id = 'Source device is required.'
+    if (!Number.isFinite(targetDeviceId) || targetDeviceId <= 0) nextErrors.target_device_id = 'Peer device is required.'
+    if (!sourcePort) nextErrors.source_port = 'Source port is required.'
+    if (!targetPort) nextErrors.target_port = 'Peer port is required.'
+    if (!draft.link_type) nextErrors.link_type = 'Connection type is required.'
+    if (!draft.status) nextErrors.status = 'Status is required.'
+    if (!draft.direction) nextErrors.direction = 'Direction is required.'
+    if (!draft.unit) nextErrors.unit = 'Unit is required.'
+    if (sourceDeviceId === targetDeviceId && sourceDeviceId > 0) nextErrors.target_device_id = 'Peer device must be different from source.'
+    if (sourceIp && !isValidIp(sourceIp)) nextErrors.source_ip = 'Source IP must be a valid IPv4 or IPv6 address.'
+    if (targetIp && !isValidIp(targetIp)) nextErrors.target_ip = 'Peer IP must be a valid IPv4 or IPv6 address.'
+    if (requestLink && !isValidUrl(requestLink)) nextErrors.request_link = 'Request link must be a valid http/https URL.'
+    if (speed != null && (!Number.isFinite(speed) || speed <= 0)) nextErrors.speed_gbps = 'Speed must be greater than zero.'
+    if (sourceVlan != null && (!Number.isInteger(sourceVlan) || sourceVlan < 0 || sourceVlan > 4094)) nextErrors.source_vlan = 'Source VLAN must be between 0 and 4094.'
+    if (targetVlan != null && (!Number.isInteger(targetVlan) || targetVlan < 0 || targetVlan > 4094)) nextErrors.target_vlan = 'Peer VLAN must be between 0 and 4094.'
+    if (draft.farm && mergedFarmOptions.length > 0 && !mergedFarmOptions.some((option: any) => option.value === draft.farm)) nextErrors.farm = 'Select a valid farm.'
+    if (draft.cable_type && mergedCableTypeOptions.length > 0 && !mergedCableTypeOptions.some((option: any) => option.value === draft.cable_type)) nextErrors.cable_type = 'Select a valid cable type.'
+    if (draft.link_type && mergedLinkPurposeOptions.length > 0 && !mergedLinkPurposeOptions.some((option: any) => option.value === draft.link_type)) nextErrors.link_type = 'Select a valid connection type.'
+
+    return nextErrors
+  }, [formData, mergedCableTypeOptions, mergedFarmOptions, mergedLinkPurposeOptions])
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      setIsSaving(true)
+      const payload = sanitizeNetworkConnectionPayload(formData)
+      const url = item?.id ? `/api/v1/networks/connections/${item.id}` : '/api/v1/networks/connections'
+      const method = item?.id ? 'PUT' : 'POST'
+      const res = await apiFetch(url, { method, body: JSON.stringify(payload) })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['network-connections'] })
+      setIsSaving(false)
+      onSuccess?.()
+    },
+    onError: (error: any) => {
+      setIsSaving(false)
+      showWorkspaceToast(error?.message || 'Failed to save network connection', { type: 'error' })
+    },
+  })
+
+  const handleSave = useCallback(() => {
+    const nextErrors = validateForm()
+    setFormErrors(nextErrors)
+    if (Object.keys(nextErrors).length > 0) {
+      showWorkspaceToast('Fix the highlighted network fields before saving.', { type: 'error' })
+      return
+    }
+    mutation.mutate()
+  }, [mutation, validateForm])
+
+  const fieldClass = useCallback((field: string) => monitoringInputClass(formErrors[field]), [formErrors])
+  const formTitle = item?.id ? getNetworkConnectionTitle(item) : 'Create Network Connection'
+
+  return (
+    <WorkspaceModal
+      isOpen={true}
+      onClose={onClose}
+      size="workspace"
+      isMaximized={isMaximized}
+      onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+      title={
+        <div className="flex items-center gap-3">
+          <span>{item?.id ? 'Edit Network Connection' : 'Create Network Connection'}</span>
+          {item?.id && <WorkspaceShareHeader id={String(item.id)} title={formTitle} />}
+        </div>
+      }
+      subtitle={item?.id ? `Connection ID ${item.id}` : 'Create a new network connection'}
+      icon={<Network size={20} />}
+      status={
+        <div className="flex items-center gap-2">
+          <StatusPill value={formData.status} />
+          <StatusPill value={formData.link_type || 'N/A'} />
+          <StatusPill value={formData.direction || 'N/A'} />
+        </div>
+      }
+      footerRight={
+        <div className="flex items-center gap-3">
+          <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
+          <ToolbarButton onClick={handleSave} disabled={isSaving} variant="primary">
+            {isSaving ? 'Saving...' : 'Save Connection'}
+          </ToolbarButton>
+        </div>
+      }
+    >
+      <WorkspaceDossierShell
+        body={
+          <div className="space-y-6">
+            <section className="grid gap-4 xl:grid-cols-2">
+              <WorkspaceSectionCard title="Source Endpoint">
+                <div className="space-y-4">
+                  <AppDropdown
+                    label="Source Device"
+                    required
+                    value={String(formData.source_device_id)}
+                    onChange={(value) => updateField('source_device_id', value)}
+                    options={deviceOptions}
+                    placeholder="Select source device"
+                  />
+                  <FieldError message={formErrors.source_device_id} />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <FieldLabel label="Source Port" required />
+                      <input value={formData.source_port} onChange={(e) => updateField('source_port', e.target.value)} placeholder="Source port" className={fieldClass('source_port')} />
+                      <FieldError message={formErrors.source_port} />
+                    </div>
+                    <div>
+                      <FieldLabel label="Source VLAN" />
+                      <input type="number" min="0" max="4094" step="1" value={formData.source_vlan} onChange={(e) => updateField('source_vlan', e.target.value)} placeholder="0-4094" className={fieldClass('source_vlan')} />
+                      <FieldError message={formErrors.source_vlan} />
+                    </div>
+                    <div>
+                      <FieldLabel label="Source IP" />
+                      <input value={formData.source_ip} onChange={(e) => updateField('source_ip', e.target.value)} placeholder="192.168.1.10" className={fieldClass('source_ip')} />
+                      <FieldError message={formErrors.source_ip} />
+                    </div>
+                    <div>
+                      <FieldLabel label="Source MAC" />
+                      <input value={formData.source_mac} onChange={(e) => updateField('source_mac', e.target.value)} placeholder="00:11:22:33:44:55" className={fieldClass('source_mac')} />
+                    </div>
+                  </div>
+                </div>
+              </WorkspaceSectionCard>
+
+              <WorkspaceSectionCard title="Peer Endpoint">
+                <div className="space-y-4">
+                  <AppDropdown
+                    label="Peer Device"
+                    required
+                    value={String(formData.target_device_id)}
+                    onChange={(value) => updateField('target_device_id', value)}
+                    options={deviceOptions}
+                    placeholder="Select peer device"
+                  />
+                  <FieldError message={formErrors.target_device_id} />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <FieldLabel label="Peer Port" required />
+                      <input value={formData.target_port} onChange={(e) => updateField('target_port', e.target.value)} placeholder="Peer port" className={fieldClass('target_port')} />
+                      <FieldError message={formErrors.target_port} />
+                    </div>
+                    <div>
+                      <FieldLabel label="Peer VLAN" />
+                      <input type="number" min="0" max="4094" step="1" value={formData.target_vlan} onChange={(e) => updateField('target_vlan', e.target.value)} placeholder="0-4094" className={fieldClass('target_vlan')} />
+                      <FieldError message={formErrors.target_vlan} />
+                    </div>
+                    <div>
+                      <FieldLabel label="Peer IP" />
+                      <input value={formData.target_ip} onChange={(e) => updateField('target_ip', e.target.value)} placeholder="192.168.1.11" className={fieldClass('target_ip')} />
+                      <FieldError message={formErrors.target_ip} />
+                    </div>
+                    <div>
+                      <FieldLabel label="Peer MAC" />
+                      <input value={formData.target_mac} onChange={(e) => updateField('target_mac', e.target.value)} placeholder="00:11:22:33:44:66" className={fieldClass('target_mac')} />
+                    </div>
+                  </div>
+                </div>
+              </WorkspaceSectionCard>
+            </section>
+
+            <section className="grid gap-4">
+              <WorkspaceSectionCard title="Connection Metadata">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <AppDropdown
+                      label="Connection Type"
+                      value={formData.link_type}
+                      onChange={(value) => updateField('link_type', value)}
+                      options={mergedLinkPurposeOptions}
+                      placeholder="Select connection type"
+                    />
+                    <FieldError message={formErrors.link_type} />
+                  </div>
+                  <div>
+                    <AppDropdown
+                      label="Status"
+                      value={formData.status}
+                      onChange={(value) => updateField('status', value)}
+                      options={NETWORK_STATUSES.map((value) => ({ value, label: value }))}
+                      placeholder="Select status"
+                    />
+                    <FieldError message={formErrors.status} />
+                  </div>
+                  <div>
+                    <FieldLabel label="Speed" />
+                    <input type="number" step="0.1" min="0" value={formData.speed_gbps} onChange={(e) => updateField('speed_gbps', e.target.value)} placeholder="10" className={fieldClass('speed_gbps')} />
+                    <FieldError message={formErrors.speed_gbps} />
+                  </div>
+                  <div>
+                    <AppDropdown
+                      label="Unit"
+                      value={formData.unit}
+                      onChange={(value) => updateField('unit', value)}
+                      options={NETWORK_UNITS.map((value) => ({ value, label: value }))}
+                      placeholder="Select unit"
+                    />
+                    <FieldError message={formErrors.unit} />
+                  </div>
+                  <div>
+                    <AppDropdown
+                      label="Direction"
+                      value={formData.direction}
+                      onChange={(value) => updateField('direction', value)}
+                      options={NETWORK_DIRECTIONS.map((value) => ({ value, label: value }))}
+                      placeholder="Select direction"
+                    />
+                    <FieldError message={formErrors.direction} />
+                  </div>
+                  <div>
+                    <AppDropdown
+                      label="Farm"
+                      value={formData.farm}
+                      onChange={(value) => updateField('farm', value)}
+                      options={mergedFarmOptions}
+                      placeholder="Select farm"
+                    />
+                    <FieldError message={formErrors.farm} />
+                  </div>
+                  <div>
+                    <AppDropdown
+                      label="Cable Type"
+                      value={formData.cable_type}
+                      onChange={(value) => updateField('cable_type', value)}
+                      options={mergedCableTypeOptions}
+                      placeholder="Select cable type"
+                    />
+                    <FieldError message={formErrors.cable_type} />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <FieldLabel label="Request Link" />
+                    <input type="url" value={formData.request_link} onChange={(e) => updateField('request_link', e.target.value)} placeholder="https://..." className={fieldClass('request_link')} />
+                    <FieldError message={formErrors.request_link} />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <FieldLabel label="Purpose" />
+                    <textarea value={formData.purpose} onChange={(e) => updateField('purpose', e.target.value)} placeholder="Why this connection exists" className={`${fieldClass('purpose')} min-h-[110px]`} />
+                    <FieldError message={formErrors.purpose} />
+                  </div>
+                </div>
+              </WorkspaceSectionCard>
+            </section>
+          </div>
+        }
+      />
+    </WorkspaceModal>
+  )
+}
 
 export function MonitoringAssetField({
   devices,
@@ -3928,7 +4575,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
       size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
-      title="Revision History"
+      title="Change History"
       subtitle={`Temporal lineage for ${item.title}`}
       icon={<HistoryIcon size={20} />}
       status={
@@ -3949,14 +4596,14 @@ function MonitoringHistoryModal({ item, onClose }: any) {
           sidebar={
            <div className="flex h-full flex-col min-h-0">
               <div className="mb-4 flex items-center justify-between px-1">
-                 <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Revision Timeline</h3>
-                 <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20">{indexedVersions.length} states</span>
+                 <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Change Timeline</h3>
+                 <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20">{indexedVersions.length} revisions</span>
               </div>
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
                 {isLoading ? (
                    <div className="flex flex-col items-center justify-center py-20 space-y-4">
                       <RefreshCcw size={24} className="animate-spin text-blue-500" />
-                      <span className="text-[10px] font-black text-blue-500 animate-pulse uppercase tracking-widest">Syncing timeline...</span>
+                      <span className="text-[10px] font-black text-blue-500 animate-pulse uppercase tracking-widest">Syncing revisions...</span>
                    </div>
                 ) : (
                   indexedVersions.map((h: any, idx: number) => {
@@ -3984,7 +4631,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                            </span>
                         </div>
                         <p className={`text-[10px] font-bold leading-tight line-clamp-2 ${isSelected ? 'text-white/90' : 'text-slate-300'}`}>
-                           {h.change_summary || 'Configuration Modification'}
+                           {h.change_summary || 'Connection Modification'}
                         </p>
                         {Array.isArray(h.changed_labels) && h.changed_labels.length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -4083,7 +4730,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                        </div>
                     </div>
                  ) : !isLoading ? (
-                    <WorkspaceEmptyState icon={<HistoryIcon size={32} />} title="No Diff Data" description="Select two versions to compare or pick a version to see changes from its predecessor." />
+                    <WorkspaceEmptyState icon={<HistoryIcon size={32} />} title="No Diff Data" description="Select two revisions to compare or pick a revision to see changes from its predecessor." />
                  ) : null}
               </div>
            </>

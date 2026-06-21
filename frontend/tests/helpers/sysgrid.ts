@@ -471,7 +471,7 @@ export async function expectToast(page: Page, message: string | RegExp) {
 }
 
 export async function waitForAppIdle(page: Page) {
-  const loaders = ['Scanning monitoring matrix...', 'Synchronizing Matrix...', 'Scanning infrastructure registry...', 'Loading...'];
+  const loaders = ['Scanning monitoring matrix...', 'Synchronizing Matrix...', 'Scanning infrastructure registry...', 'Synchronizing Intelligence Matrix...', 'Loading...'];
   for (const loader of loaders) {
     await page.getByText(loader).waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
   }

@@ -186,10 +186,10 @@ export function OperationalImportModal({
   const [selectedPreviewRows, setSelectedPreviewRows] = useState<number[]>([])
   const [templateMode, setTemplateMode] = useState<TemplateMode>('raw')
   const [exampleRecordId, setExampleRecordId] = useState<number | null>(null)
-  const [isMaximized, setIsMaximized] = useState(true)
   const [isPickerOpening, setIsPickerOpening] = useState(false)
   const [isTemplateCollapsed, setIsTemplateCollapsed] = useState(false)
   const [isValidationPopoutOpen, setIsValidationPopoutOpen] = useState(false)
+  const [isMaximized, setIsMaximized] = useState(false)
 
   const { triggerRef: validationTriggerRef, panelRef: validationPanelRef, panelStyle: validationPanelStyle } = useWorkspaceAnchoredLayer(isValidationPopoutOpen, { minWidth: 360, offset: 12 })
 
@@ -250,7 +250,7 @@ export function OperationalImportModal({
       setDraftRows([])
       setTemplateMode('raw')
       setExampleRecordId(null)
-      setIsMaximized(true)
+      setIsMaximized(false)
       setIsPickerOpening(false)
       setIsTemplateCollapsed(false)
     }
@@ -566,16 +566,16 @@ export function OperationalImportModal({
         </div>
       )}
       footerRight={(
-        <div className="flex items-center gap-3">
-          <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
+        <div className="flex items-center gap-3 shrink-0">
+          <ToolbarButton onClick={onClose} className="!whitespace-nowrap">Cancel</ToolbarButton>
           <ToolbarButton
             onClick={() => executeMutation.mutate()}
             disabled={!preview || selectedImportCount === 0 || executeMutation.isPending}
             variant="primary"
-            className="px-8"
+            className="!inline-flex !flex-row !items-center !justify-center gap-2 px-8 !whitespace-nowrap"
           >
             {executeMutation.isPending ? <RefreshCcw className="animate-spin mr-2" size={12} /> : <CheckSquare className="mr-2" size={12} />}
-            <span>{executeMutation.isPending ? 'Importing...' : `Import ${selectedImportCount || ''}`.trim()}</span>
+            <span className="!whitespace-nowrap">{executeMutation.isPending ? 'Importing...' : `Import ${selectedImportCount || ''}`.trim()}</span>
           </ToolbarButton>
         </div>
       )}
@@ -604,7 +604,7 @@ export function OperationalImportModal({
                     )}
                     <div className="rounded-lg border border-white/10 bg-black/20 p-3">
                       <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Download Mode</p>
-                      <div className="mt-3 grid grid-cols-3 gap-2">
+                      <div className="mt-3 flex gap-2">
                         {[
                           { id: 'raw', label: 'Raw', description: 'Headers only.' },
                           { id: 'hints', label: 'Hints', description: 'Headers plus guidance row.' },
@@ -615,13 +615,13 @@ export function OperationalImportModal({
                             type="button"
                             title={option.description}
                             onClick={() => setTemplateMode(option.id as TemplateMode)}
-                            className={`rounded-lg border px-3 py-2 text-center transition-all ${
+                            className={`flex-1 rounded-lg border px-2 py-2 text-center transition-all ${
                               templateMode === option.id
                                 ? 'border-blue-500/30 bg-blue-500/10 text-blue-300'
                                 : 'border-white/10 bg-slate-950/60 text-slate-400 hover:text-slate-200'
                             }`}
                           >
-                            <p className="text-[10px] font-black uppercase tracking-widest">{option.label}</p>
+                            <p className="text-[9px] font-black uppercase tracking-widest">{option.label}</p>
                           </button>
                         ))}
                       </div>
@@ -955,7 +955,7 @@ export function OperationalImportModal({
                 )}
               </WorkspaceSectionCard>
 
-              <WorkspaceSectionCard>
+              <WorkspaceSectionCard className="flex-1">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
                     <WorkspacePanelTitle>Validation & Audit</WorkspacePanelTitle>

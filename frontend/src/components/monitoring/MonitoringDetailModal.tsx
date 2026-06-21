@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Monitor, Share, ArrowRightLeft, FileText, MessageSquare, Globe, Clock, Zap, ExternalLink, Info, Zap as ZapIcon, Code, ChevronUp, ChevronDown, Users, Briefcase, UserCheck, AlertCircle, Shield, Terminal } from 'lucide-react'
+import { Monitor, ArrowRightLeft, FileText, MessageSquare, Globe, Clock, Zap, ExternalLink, Info, Zap as ZapIcon, Code, ChevronUp, ChevronDown, Users, Briefcase, UserCheck, AlertCircle, Shield, Terminal } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
@@ -9,6 +9,7 @@ import { WorkspaceModal } from '../shared/WorkspaceModal'
 import { WorkspaceDossierShell } from '../shared/WorkspaceModalShells'
 import { ToolbarButton } from '../shared/LayoutPrimitives'
 import { StatusPill } from '../shared/StatusPill'
+import { WorkspaceShareHeader } from '../shared/WorkspaceShareHeader'
 
 interface MonitoringLogicEntry {
   id: number
@@ -50,19 +51,8 @@ export function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, on
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
       title={
         <div className="flex items-center gap-3">
-          {item.title}
-          <button
-            onClick={() => {
-              const url = new URL(window.location.href);
-              url.searchParams.set('id', String(item.id));
-              navigator.clipboard.writeText(url.toString());
-              toast.success("Direct link copied to clipboard");
-            }}
-            className="text-slate-500 hover:text-blue-400 transition-colors p-1"
-            title="Share direct link"
-          >
-            <Share size={16} />
-          </button>
+          <span>{item.title}</span>
+          <WorkspaceShareHeader id={String(item.id)} title={item.title} />
         </div>
       }
       subtitle={`Monitor ID: ${item.id} · ${item.device_name || 'No Target Asset'}`}
@@ -92,7 +82,7 @@ export function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, on
                   onDelete?.(item);
                 }
               }}
-              className={deleteConfirm ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : ''}
+              className={`${deleteConfirm ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : ''} whitespace-nowrap`}
             >
               {deleteConfirm 
                 ? (item.is_deleted ? 'Confirm Purge?' : 'Confirm Archive?') 

@@ -1,29 +1,113 @@
+import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
-import React, { useMemo, useState, useEffect, useRef } from 'react'
-import { AgGridReact } from 'ag-grid-react'
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
   Plus, Trash2, Globe, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileText, Clipboard, 
   Link as LinkIcon, Share2, ExternalLink, Shield, Server, Database, Cloud, Activity, 
-  Sliders, Settings, Check, User, Mail, Phone, Tag, Info, AlertCircle, Briefcase, 
-  Clock, DollarSign, Target, ChevronRight, Layers, Box, Cpu, Zap, FileJson, MoreVertical, Eye, EyeOff, Key
+  Sliders, Settings, User, Users, Mail, Phone, Tag, Info, AlertCircle, Briefcase, 
+  Clock, DollarSign, Target, ChevronRight, Layers, Box, Cpu, Zap, FileJson, MoreVertical, Eye, EyeOff, Key, Upload, Check, Maximize2,
+  Star, GitCompare, Minimize2, ChevronUp, ChevronDown, Bell, Undo2
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
+import { parseAppDate, formatAppDate } from '../utils/dateUtils'
 import { 
-  PageHeader, 
-  PageToolbar, 
+  HeaderScopeSwitch,
   ToolbarGroup, 
   ToolbarSearch, 
   ToolbarButton, 
   ToolbarIconButton, 
   ToolbarSegmented 
 } from './shared/LayoutPrimitives'
+
+// ... (existing code)
+
+const ObservabilityHUD = ({ items }: any) => {
+  const stats = useMemo(() => {
+    if (!items?.length) return null
+    const active = items.filter((i: any) => i.status === 'Active').length
+    const critical = items.filter((i: any) => i.criticality === 'Critical').length
+    const recent = items.filter((i: any) => {
+      const updated = parseAppDate(i.updated_at)
+      return updated ? (new Date().getTime() - updated.getTime() < 3600000) : false // 1 hour
+    }).length
+    return { active, critical, recent }
+  }, [items])
+
+  if (!stats) return null
+
+  return (
+    <div className="grid grid-cols-4 gap-6 mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
+       <div className="bg-black/40 border border-white/5 p-6 rounded-lg backdrop-blur-xl shadow-xl group hover:border-blue-500/20 transition-all">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-blue-400 transition-colors">Registry Pulse</p>
+          <div className="flex items-center gap-4">
+             <div className="w-12 h-12 bg-blue-600/10 rounded-lg flex items-center justify-center text-blue-400 border border-blue-500/20">
+                <Activity size={24} className="animate-pulse" />
+             </div>
+             <div>
+                <h4 className="text-2xl font-black text-white tracking-tighter">{stats.active} Active Entities</h4>
+                <p className="text-[9px] font-bold text-slate-500 uppercase">Live External Registry</p>
+             </div>
+          </div>
+       </div>
+       <div className="bg-black/40 border border-white/5 p-6 rounded-lg backdrop-blur-xl shadow-xl group hover:border-rose-500/20 transition-all">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-rose-400 transition-colors">Entity Flux</p>
+          <div className="flex items-center gap-4">
+             <div className="w-12 h-12 bg-rose-600/10 rounded-lg flex items-center justify-center text-rose-500 border border-rose-500/20">
+                <Bell size={24} className={stats.critical > 0 ? 'animate-bounce' : ''} />
+             </div>
+             <div>
+                <h4 className="text-2xl font-black text-white tracking-tighter">{stats.critical} Critical Entities</h4>
+                <p className="text-[9px] font-bold text-slate-500 uppercase">Immediate Intervention Required</p>
+             </div>
+          </div>
+       </div>
+       <div className="bg-black/40 border border-white/5 p-6 rounded-lg backdrop-blur-xl shadow-xl group hover:border-emerald-500/20 transition-all">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-emerald-400 transition-colors">Registry Momentum</p>
+          <div className="flex items-center gap-4">
+             <div className="w-12 h-12 bg-emerald-600/10 rounded-lg flex items-center justify-center text-emerald-400 border border-emerald-500/20">
+                <Zap size={24} />
+             </div>
+             <div>
+                <h4 className="text-2xl font-black text-white tracking-tighter">{stats.recent} New Entities</h4>
+                <p className="text-[9px] font-bold text-slate-500 uppercase">Captured in current session</p>
+             </div>
+          </div>
+       </div>
+       <div className="bg-indigo-600/10 border border-indigo-500/20 p-6 rounded-lg backdrop-blur-xl shadow-xl flex items-center justify-between group hover:bg-indigo-600/20 transition-all">
+          <div>
+             <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-1">Registry Stability</p>
+             <h4 className="text-2xl font-black text-white tracking-tighter">{stats.critical === 0 ? 'Optimal' : 'Degraded'}</h4>
+          </div>
+          <Shield size={28} className="text-indigo-500 opacity-20 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+       </div>
+    </div>
+  )
+}
+
+import { AppDropdown } from './shared/AppDropdown'
 import { StyledSelect } from "./shared/StyledSelect"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { ConfigRegistryModal } from "./ConfigRegistry"
-import { OPERATIONAL_GRID_AUTO_SIZE_STRATEGY } from './shared/OperationalGridSizing'
+import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
+import { WorkspaceCompareShell } from './shared/WorkspaceModalShells'
+import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shared/WorkspaceFlyout'
+import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers } from './shared/OperationalWorkspaceHooks'
+import { useWorkspaceAnchoredLayer, WorkspaceEmptyState, useEscapeDismiss, useBodyModalFlag, WorkspaceFloatingPanel, WorkspaceSplitView } from './shared/OperationalWorkspacePrimitives'
+import { OperationalDisplayPanel, OperationalGridSurface, OperationalSavedViewsPanel, OperationalWorkspaceFrame } from './shared/OperationalWorkspaceShells'
+import { OperationalImportModal } from './shared/OperationalImportModal'
+import { WorkspaceModal } from './shared/WorkspaceModal'
+import { OperationalGridMatrix } from './shared/OperationalGridMatrix'
+import {
+  applyOperationalColumnSizing,
+  autoSizeOperationalColumns,
+  OPERATIONAL_GRID_AUTO_SIZE_STRATEGY,
+  sanitizeOperationalColumnLayout,
+  sanitizeOperationalFilterModel,
+  sanitizeOperationalSortModel,
+} from './shared/OperationalGridSizing'
 
 // --- Sub-components ---
 
@@ -69,9 +153,103 @@ const extensionMetadataKeysByType: Record<string, string[]> = {
   Script: ['runtime', 'path', 'schedule'],
 }
 
+const FALLBACK_EXTERNAL_TYPE_OPTIONS = Object.keys(extensionMetadataKeysByType).map((value) => ({
+  value,
+  label: value,
+}))
+
 const reservedMetadataKeys = new Set([
   'business_purpose',
 ])
+
+const EXTERNAL_VIEW_STORAGE_KEY = 'sysgrid_external_views_v1'
+const EXTERNAL_ACTIVE_VIEW_KEY = 'sysgrid_external_active_view_v1'
+const EXTERNAL_UI_STATE_KEY = 'sysgrid_external_ui_state_v1'
+const EXTERNAL_FAVORITES_STORAGE_KEY = 'sysgrid_external_favorites_v1'
+const EXTERNAL_WATCH_STORAGE_KEY = 'sysgrid_external_watch_v1'
+const EXTERNAL_FIXED_WIDTH_COLUMN_IDS = new Set(['select', 'id', 'recent_change', 'favorite', 'watch', 'row_actions'])
+const EXTERNAL_DEFAULT_GROUP_OPTIONS = [
+  { value: 'raw', label: 'Raw Registry' },
+  { value: 'type', label: 'Type' },
+  { value: 'status', label: 'Status' },
+  { value: 'environment', label: 'Environment' },
+  { value: 'criticality', label: 'Criticality' },
+]
+const EXTERNAL_PERSISTED_COLUMN_IDS = new Set([
+  'select',
+  'id',
+  'recent_change',
+  'favorite',
+  'watch',
+  'name',
+  'external_entity_name',
+  'direction',
+  'device_name',
+  'service_name',
+  'purpose',
+  'protocol',
+  'port',
+  'type',
+  'internal_owner',
+  'status',
+  'environment',
+  'link_count',
+  'warning_count',
+  'row_actions',
+])
+
+const normalizeExternalHiddenColumns = (value: any) =>
+  Array.isArray(value)
+    ? value.filter((entry) => typeof entry === 'string' && EXTERNAL_PERSISTED_COLUMN_IDS.has(entry))
+    : []
+
+const normalizeExternalQuickFilters = (value: any) => ({
+  status: Array.isArray(value?.status) ? value.status.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [] as string[],
+  type: Array.isArray(value?.type) ? value.type.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [] as string[],
+  environment: Array.isArray(value?.environment) ? value.environment.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [] as string[],
+  owner: Array.isArray(value?.owner) ? value.owner.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [] as string[],
+  direction: Array.isArray(value?.direction) ? value.direction.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [] as string[],
+  protocol: Array.isArray(value?.protocol) ? value.protocol.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [] as string[],
+})
+
+const sanitizeExternalViewConfig = (config: any) => {
+  const safeConfig = config && typeof config === 'object' ? config : {}
+  return {
+    fontSize: Number.isFinite(safeConfig.fontSize) ? safeConfig.fontSize : 11,
+    rowDensity: Number.isFinite(safeConfig.rowDensity) ? safeConfig.rowDensity : 8,
+    hiddenColumns: normalizeExternalHiddenColumns(safeConfig.hiddenColumns),
+    groupBy: typeof safeConfig.groupBy === 'string' ? safeConfig.groupBy : 'raw',
+    activeTab: (safeConfig.activeTab === 'deleted' ? 'deleted' : 'active') as 'active' | 'deleted',
+    searchTerm: typeof safeConfig.searchTerm === 'string' ? safeConfig.searchTerm : '',
+    showFilterBar: safeConfig.showFilterBar !== false,
+    quickFilters: normalizeExternalQuickFilters(safeConfig.quickFilters),
+    columnLayoutState: sanitizeOperationalColumnLayout(
+      Array.isArray(safeConfig.columnLayoutState) ? safeConfig.columnLayoutState : [],
+      EXTERNAL_PERSISTED_COLUMN_IDS,
+      true
+    ),
+    filterModel: sanitizeOperationalFilterModel(safeConfig.filterModel, EXTERNAL_PERSISTED_COLUMN_IDS),
+    sortModel: sanitizeOperationalSortModel(safeConfig.sortModel, EXTERNAL_PERSISTED_COLUMN_IDS),
+  }
+}
+
+const normalizeExternalSavedViews = (value: any) =>
+  (Array.isArray(value) ? value : []).filter((view: any) => (
+    view &&
+    typeof view === 'object' &&
+    typeof view.id === 'string' &&
+    typeof view.name === 'string'
+  )).map((view: any) => ({
+    ...view,
+    config: sanitizeExternalViewConfig(view.config),
+  }))
+
+const normalizeExternalWorkspaceState = (value: any) => {
+  const normalized = sanitizeExternalViewConfig(value)
+  return {
+    ...normalized,
+  }
+}
 
 const normalizeLegacyContacts = (entity: any) => {
   if (Array.isArray(entity?.contacts_json) && entity.contacts_json.length) return entity.contacts_json
@@ -516,7 +694,16 @@ const ExternalSecretsTab = ({ entityId }: { entityId: number }) => {
   )
 }
 
-const ExternalForm = ({ initialData, onSave, isSaving, options, teams, operators }: any) => {
+const ExternalForm = ({
+  initialData,
+  onSave,
+  isSaving,
+  options,
+  teams,
+  operators,
+  formId = 'external-entity-form',
+  renderActions = true,
+}: any) => {
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formData, setFormData] = useState(() => {
@@ -547,7 +734,8 @@ const ExternalForm = ({ initialData, onSave, isSaving, options, teams, operators
       ? entries
       : [{ value: currentValue, label: currentValue }, ...entries]
   }
-  const types = ensureCurrentOption(getOptions('ExternalType'), formData.type)
+  const externalTypeOptions = getOptions('ExternalType')
+  const types = ensureCurrentOption(externalTypeOptions.length ? externalTypeOptions : FALLBACK_EXTERNAL_TYPE_OPTIONS, formData.type)
   const statusOptions = ensureCurrentOption(getOptions('Status'), formData.status)
   const envOptions = ensureCurrentOption(getOptions('Environment'), formData.environment)
   const selectedTypeOption = types.find((type: any) => type.value === formData.type)
@@ -590,8 +778,24 @@ const ExternalForm = ({ initialData, onSave, isSaving, options, teams, operators
     return Object.keys(nextErrors).length === 0
   }
 
+  const handleSubmit = () => {
+    if (!validate()) return
+    onSave({
+      ...formData,
+      internal_team_id: formData.ownership_mode === 'team' && formData.internal_team_id ? parseInt(formData.internal_team_id, 10) : null,
+      internal_operator_id: formData.ownership_mode === 'individual' && formData.internal_operator_id ? parseInt(formData.internal_operator_id, 10) : null,
+    })
+  }
+
   return (
-    <div className="space-y-8 py-6">
+    <form
+      id={formId}
+      className="space-y-8 py-6"
+      onSubmit={(event) => {
+        event.preventDefault()
+        handleSubmit()
+      }}
+    >
       <div className="grid grid-cols-2 gap-8">
         <div className="space-y-4">
           <h3 className="text-[10px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3">Identity & Classification</h3>
@@ -664,268 +868,495 @@ const ExternalForm = ({ initialData, onSave, isSaving, options, teams, operators
         </div>
       </div>
 
-      <div className="flex space-x-4 pt-4 border-t border-white/5">
-        <button
-          disabled={isSaving}
-          onClick={() => {
-            if (!validate()) return
-            onSave({
-              ...formData,
-              internal_team_id: formData.ownership_mode === 'team' && formData.internal_team_id ? parseInt(formData.internal_team_id, 10) : null,
-              internal_operator_id: formData.ownership_mode === 'individual' && formData.internal_operator_id ? parseInt(formData.internal_operator_id, 10) : null,
-            })
-          }}
-          className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center space-x-3"
-        >
-          {isSaving && <RefreshCcw size={18} className="animate-spin" />}
-          <span>{initialData.id ? 'Synchronize Entity Manifest' : 'Authorize External Registry Admission'}</span>
-        </button>
-      </div>
-    </div>
+      {renderActions ? (
+        <div className="flex space-x-4 pt-4 border-t border-white/5">
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center space-x-3"
+          >
+            {isSaving && <RefreshCcw size={18} className="animate-spin" />}
+            <span>{initialData.id ? 'Synchronize Entity Manifest' : 'Authorize External Registry Admission'}</span>
+          </button>
+        </div>
+      ) : null}
+    </form>
   )
 }
 
-const ExternalDetailsView = ({ entity, links }: { entity: any, links: any[] }) => {
-  const [tab, setTab] = useState('overview')
+const ExternalDetailsView = ({
+  entity,
+  links,
+}: {
+  entity: any
+  links: any[]
+}) => {
   const insights = useMemo(() => getEntityInsights(entity, links), [entity, links])
   const summaryFacts = [
     ['Business purpose', entity.business_purpose || 'Not documented'],
     ['Type', entity.type || 'Unspecified'],
     ['Environment', entity.environment || 'Unspecified'],
-    ['External organization', entity.owner_organization || 'Unassigned'],
+    ['Accountable owner', insights.internalOwnerLabel],
   ]
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex space-x-1 bg-black/40 p-1 rounded-lg w-fit">
-          {[
-            { id: 'overview', label: 'Overview', icon: LayoutGrid },
-            { id: 'org', label: 'Ownership & Contacts', icon: Briefcase },
-            { id: 'dependencies', label: 'Dependencies', icon: Share2 },
-            { id: 'secrets', label: 'Credentials', icon: Tag },
-            { id: 'metadata', label: 'Extensions', icon: List },
-          ].map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center space-x-2 ${tab === t.id ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
-              <t.icon size={12} /> <span>{t.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="glass-panel rounded-lg border-white/5 overflow-hidden p-8 bg-black/20">
-        {tab === 'overview' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-4 gap-4">
-              {[
-                { label: 'Linked Dependencies', value: insights.linked.length, tone: 'text-blue-400' },
-                { label: 'Stored Credentials', value: entity.secrets?.length || 0, tone: 'text-emerald-400' },
-                { label: 'Contacts', value: insights.contacts.length, tone: 'text-amber-400' },
-                { label: 'Warnings', value: insights.warnings.length, tone: insights.warnings.length ? 'text-rose-400' : 'text-slate-400' },
-              ].map(card => (
-                <div key={card.label} className="bg-white/5 border border-white/5 p-5 rounded-lg space-y-2">
-                  <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">{card.label}</p>
-                  <p className={`text-3xl font-bold ${card.tone}`}>{card.value}</p>
+    <WorkspaceSplitView
+      className="gap-8"
+      sidebar={
+        <div className="space-y-8">
+          <section className="space-y-3">
+            <h3 className="px-1 text-[11px] font-black text-slate-500 uppercase tracking-widest">Target scope</h3>
+            <div className="space-y-3">
+              <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 shadow-inner">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest">External identity</p>
+                  <Globe size={10} className="text-blue-500/50" />
                 </div>
-              ))}
-            </div>
+                <p className="text-[11px] font-black text-slate-100">{entity.name}</p>
+                <p className="mt-1 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                  {entity.external_key || 'No external key'} · {entity.status || 'Unknown'}
+                </p>
+              </div>
 
-            <div className="grid grid-cols-2 gap-6">
-              <div className="bg-slate-900/60 p-5 rounded-lg border border-white/10 space-y-4">
-                <h3 className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Mission Summary</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">Business Purpose</p>
-                    <p className="text-sm font-bold text-white">{entity.business_purpose || entity.description || 'Not documented'}</p>
-                  </div>
-                  <div>
-                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">External Organization</p>
-                    <p className="text-sm font-bold text-blue-400 break-all">{entity.owner_organization || 'Not documented'}</p>
-                  </div>
-                  <div>
-                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">External Team</p>
-                    <p className="text-sm font-bold text-emerald-400 break-all">{entity.owner_team || 'Not documented'}</p>
-                  </div>
-                  <div>
-                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">Accountable Owner</p>
-                    <p className="text-sm font-bold text-white">{insights.internalOwnerLabel}</p>
-                  </div>
+              <div className="bg-black/20 border border-white/5 rounded-lg p-4 shadow-inner space-y-3">
+                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Contacts</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {insights.contacts.length > 0 ? (
+                    insights.contacts.map((contact: any, index: number) => (
+                      <span
+                        key={`${contact.external_person_id || contact.full_name || index}`}
+                        className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold text-amber-300"
+                      >
+                        {contact.full_name}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-[9px] font-bold text-slate-700 italic">No contacts defined</span>
+                  )}
                 </div>
               </div>
 
-              <div className="bg-slate-900/60 p-5 rounded-lg border border-white/10 space-y-4">
-                <h3 className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Registry Snapshot</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {summaryFacts.map(([label, value]) => (
-                    <div key={label} className="border border-white/5 rounded-lg p-3 bg-black/30">
-                      <p className="text-[8px] font-bold uppercase tracking-widest text-slate-600">{label}</p>
-                      <p className="text-[10px] font-bold text-white mt-1 break-words">{value}</p>
-                    </div>
-                  ))}
+              <div className="bg-black/20 border border-white/5 rounded-lg p-4 shadow-inner space-y-3">
+                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Dependencies</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border border-white/5 bg-white/[0.03] p-3">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Links</p>
+                    <p className="mt-1 text-[12px] font-black text-blue-400">{insights.linked.length}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/5 bg-white/[0.03] p-3">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Warnings</p>
+                    <p className={`mt-1 text-[12px] font-black ${insights.warnings.length ? 'text-rose-400' : 'text-emerald-400'}`}>
+                      {insights.warnings.length}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </div>
-
-            <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
-              <div className="px-4 py-2 bg-white/5 border-b border-white/5">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Attention Required</span>
-              </div>
-              <div className="p-4 flex flex-wrap gap-2">
-                {insights.warnings.length ? insights.warnings.map(warning => (
-                  <span key={warning} className="px-3 py-2 rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-400 text-[9px] font-bold uppercase tracking-widest">
-                    {warning}
-                  </span>
-                )) : (
-                  <span className="px-3 py-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 text-[9px] font-bold uppercase tracking-widest">
-                    Governance coverage healthy
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {tab === 'metadata' && (
-          <div className="space-y-8">
-             <MetadataViewer data={entity.metadata_json} />
-          </div>
-        )}
-        
-        {tab === 'secrets' && (
-          <ExternalSecretsTab entityId={entity.id} />
-        )}
-
-        {tab === 'org' && (
-          <div className="space-y-6">
-            <div className="bg-slate-900/60 p-5 rounded-lg border border-white/10 relative overflow-hidden group">
-               <h3 className="text-[9px] font-bold uppercase text-slate-500 tracking-widest mb-3 flex items-center gap-2"><Target size={12}/> Ownership Context</h3>
-               <div className="grid grid-cols-3 gap-6 relative z-10">
-                  <div className="flex flex-col border-l-2 border-white/5 pl-4">
-                     <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-0.5">External Organization</span>
-                     <span className="text-sm font-bold text-white tracking-tight ">{entity.owner_organization || 'Unassigned'}</span>
-                  </div>
-                  <div className="flex flex-col border-l-2 border-emerald-500/30 pl-4">
-                     <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-0.5">External Team</span>
-                     <span className="text-sm font-bold text-emerald-400 tracking-tight ">{entity.owner_team || 'Unassigned'}</span>
-                  </div>
-                  <div className="flex flex-col border-l-2 border-blue-500/30 pl-4">
-                     <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mb-0.5">Accountable Owner</span>
-                     <span className="text-sm font-bold text-blue-300 tracking-tight ">{insights.internalOwnerLabel}</span>
-                  </div>
-               </div>
-            </div>
-
-            <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Contact Matrix</span>
-                <span className="text-[8px] font-bold text-amber-500 uppercase bg-amber-500/10 px-2 py-0.5 rounded-lg">{insights.contacts.length || 0} Contacts</span>
-              </div>
-              <div className="p-3 grid grid-cols-2 gap-3">
-                   {insights.contacts && insights.contacts.length > 0 ? insights.contacts.map((poc: any, idx: number) => (
-                     <div key={idx} className="bg-black/40 p-3 rounded-lg border border-white/5 flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                           <div className="w-7 h-7 rounded-lg bg-amber-600/10 flex items-center justify-center text-amber-400 border border-amber-500/20 font-bold text-[10px]">{poc.full_name?.split(' ').map((part: string) => part[0]).slice(0, 2).join('')}</div>
-                           <div>
-                              <p className="text-[10px] font-bold text-white leading-none">{poc.full_name}</p>
-                              <p className="text-[8px] font-bold text-amber-500 uppercase tracking-widest mt-0.5">{poc.role}{poc.external_person_id ? ` · ${poc.external_person_id}` : ''}</p>
-                           </div>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                           <button onClick={() => window.location.href = `mailto:${poc.email}`} title={poc.email} className="text-slate-500 hover:text-amber-400 transition-colors"><Mail size={12}/></button>
-                           <button
-                             onClick={() => {
-                               if (poc.phone) {
-                                 window.location.href = `tel:${poc.phone}`
-                               }
-                             }}
-                             disabled={!poc.phone}
-                             title={poc.phone || 'No phone number registered'}
-                             className="text-slate-500 hover:text-amber-400 transition-colors disabled:opacity-40 disabled:hover:text-slate-500"
-                           >
-                             <Phone size={12}/>
-                           </button>
-                        </div>
-                     </div>
-                   )) : (
-                     <div className="col-span-2 py-6 text-center text-slate-600 font-bold uppercase tracking-widest text-[9px]">No contacts defined</div>
-                   )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {tab === 'dependencies' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-white/5 border border-white/5 p-4 rounded-lg">
-                <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">Mapped Assets</p>
-                <p className="text-2xl font-bold text-blue-400">{new Set(insights.linked.map((link: any) => link.device_id)).size}</p>
-              </div>
-              <div className="bg-white/5 border border-white/5 p-4 rounded-lg">
-                <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">Mapped Services</p>
-                <p className="text-2xl font-bold text-emerald-400">{insights.linked.filter((link: any) => link.service_id).length}</p>
-              </div>
-              <div className="bg-white/5 border border-white/5 p-4 rounded-lg">
-                <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">Audit Trail</p>
                 <button
+                  type="button"
                   onClick={() => window.location.href = `/logs?target_table=external_entities&target_id=${entity.id}`}
-                  className="mt-2 text-[9px] font-bold uppercase tracking-widest text-indigo-400 hover:text-indigo-300"
+                  className="w-full rounded-lg border border-indigo-500/20 bg-indigo-500/10 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-indigo-300 transition-colors hover:bg-indigo-500/20"
                 >
-                  Open Logs
+                  Open audit logs
                 </button>
               </div>
             </div>
+          </section>
 
-            <div className="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
-              <div className="px-4 py-2 bg-white/5 border-b border-white/5">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Dependency Matrix</span>
+          <section className="space-y-3">
+            <h3 className="px-1 text-[11px] font-black text-slate-500 uppercase tracking-widest">Credentials</h3>
+            <div className="bg-black/20 border border-white/5 rounded-lg p-4 shadow-inner">
+              <div className="flex items-center justify-between">
+                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Stored secrets</p>
+                <span className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-emerald-300">
+                  {entity.secrets?.length || 0}
+                </span>
               </div>
-              <div className="divide-y divide-white/5">
-                {insights.linked.length ? insights.linked.map((link: any) => (
-                  <div key={link.id} className="p-4 flex items-center justify-between gap-4 hover:bg-white/5">
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold uppercase text-white">{link.device_name || 'Unknown asset'}{link.service_name ? ` // ${link.service_name}` : ''}</p>
-                      <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">{link.direction} · {link.protocol || 'Unknown protocol'} · {link.port || 'No port'} · {link.purpose || 'No purpose documented'}</p>
+              <div className="mt-3 space-y-2">
+                {entity.secrets?.length ? (
+                  entity.secrets.map((secret: any) => (
+                    <div key={secret.id} className="rounded-lg border border-white/5 bg-white/[0.03] p-3">
+                      <p className="text-[10px] font-bold text-slate-100">{secret.secret_label}</p>
+                      <p className="mt-1 text-[8px] font-bold uppercase tracking-widest text-slate-500">
+                        {secret.credential_status || 'Active'} · {secret.vault_provider || 'Inline'}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => window.location.href = `/asset?id=${link.device_id}`} className="px-3 py-2 rounded-lg bg-blue-600/10 text-blue-400 border border-blue-500/20 text-[8px] font-bold uppercase tracking-widest">Asset</button>
-                      {link.service_id && <button onClick={() => window.location.href = `/services?id=${link.service_id}`} className="px-3 py-2 rounded-lg bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 text-[8px] font-bold uppercase tracking-widest">Service</button>}
-                    </div>
-                  </div>
-                )) : (
-                  <div className="p-8 text-center text-slate-600 font-bold uppercase tracking-widest text-[9px]">No dependency links mapped yet</div>
+                  ))
+                ) : (
+                  <WorkspaceEmptyState compact title="No credentials stored" description="This external identity has no credential references yet." />
                 )}
               </div>
             </div>
-          </div>
-        )}
+          </section>
 
+          <section className="space-y-3">
+            <h3 className="px-1 text-[11px] font-black text-slate-500 uppercase tracking-widest">Operational meta</h3>
+            <div className="bg-white/5 border border-white/5 rounded-lg overflow-hidden divide-y divide-white/5 shadow-inner">
+              {[
+                { label: 'Criticality', value: entity.criticality || 'Low', color: 'text-rose-400', icon: Bell },
+                { label: 'Risk', value: entity.risk_rating || 'Low', color: 'text-amber-400', icon: Shield },
+                { label: 'Tier', value: entity.dependency_tier || 'Tier 3', color: 'text-blue-400', icon: Layers },
+              ].map((stat, index) => (
+                <div key={`${stat.label}-${index}`} className="flex items-center justify-between p-3 transition-all hover:bg-white/5">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-lg bg-black/40 p-1.5 text-slate-600">
+                      <stat.icon size={12} />
+                    </div>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">{stat.label}</span>
+                  </div>
+                  <span className={`text-[10px] font-black ${stat.color}`}>{stat.value}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      }
+      main={
+        <div className="space-y-8">
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {[
+              { label: 'Linked dependencies', value: insights.linked.length, tone: 'text-blue-400' },
+              { label: 'Stored credentials', value: entity.secrets?.length || 0, tone: 'text-emerald-400' },
+              { label: 'Contacts', value: insights.contacts.length, tone: 'text-amber-400' },
+              { label: 'Warnings', value: insights.warnings.length, tone: insights.warnings.length ? 'text-rose-400' : 'text-slate-400' },
+            ].map((card) => (
+              <div key={card.label} className="rounded-lg border border-white/5 bg-white/[0.03] p-5 shadow-inner">
+                <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">{card.label}</p>
+                <p className={`mt-2 text-3xl font-black ${card.tone}`}>{card.value}</p>
+              </div>
+            ))}
+          </section>
+
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="rounded-lg border border-white/5 bg-white/[0.03] p-5 shadow-inner">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="rounded-lg bg-blue-500/10 p-2 text-blue-400">
+                  <Info size={14} />
+                </div>
+                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Mission Summary</h4>
+              </div>
+              <p className="pl-1 text-[12px] font-bold leading-relaxed text-slate-400">
+                {entity.business_purpose || entity.description || 'Not documented'}
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-white/5 bg-white/[0.03] p-5 shadow-inner">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-400">
+                  <Briefcase size={14} />
+                </div>
+                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">Ownership Context</h4>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {summaryFacts.map(([label, value]) => (
+                  <div key={label} className="rounded-lg border border-white/5 bg-black/30 p-3">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-600">{label}</p>
+                    <p className="mt-1 break-words text-[10px] font-black text-white">{value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-slate-800 p-2 text-slate-400">
+                  <Users size={16} />
+                </div>
+                <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Contact Matrix</h3>
+              </div>
+            </div>
+            <div className="rounded-lg border border-white/5 bg-black/20 overflow-hidden">
+              <div className="divide-y divide-white/5">
+                {insights.contacts.length ? insights.contacts.map((contact: any) => (
+                  <div key={contact.external_person_id || contact.full_name} className="flex items-center justify-between gap-4 p-4 hover:bg-white/5">
+                    <div className="min-w-0">
+                      <p className="truncate text-[10px] font-black uppercase text-white">{contact.full_name}</p>
+                      <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-500">
+                        {contact.role}{contact.external_person_id ? ` · ${contact.external_person_id}` : ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => contact.email && (window.location.href = `mailto:${contact.email}`)} className="text-slate-500 transition-colors hover:text-amber-400">
+                        <Mail size={12} />
+                      </button>
+                      <button onClick={() => contact.phone && (window.location.href = `tel:${contact.phone}`)} className="text-slate-500 transition-colors hover:text-amber-400">
+                        <Phone size={12} />
+                      </button>
+                    </div>
+                  </div>
+                )) : (
+                  <WorkspaceEmptyState compact title="No contacts defined" description="Accountable contacts have not been registered." />
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <div className="flex items-center gap-3 px-1">
+              <div className="rounded-lg bg-blue-600/10 p-2 text-blue-400">
+                <Share2 size={16} />
+              </div>
+              <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Dependency Matrix</h3>
+            </div>
+            <div className="rounded-lg border border-white/5 bg-black/20 overflow-hidden">
+              <div className="divide-y divide-white/5">
+                {insights.linked.length ? insights.linked.map((link: any) => (
+                  <div key={link.id} className="flex items-center justify-between gap-4 p-4 hover:bg-white/5">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black uppercase text-white">
+                        {link.device_name || 'Unknown asset'}
+                        {link.service_name ? ` // ${link.service_name}` : ''}
+                      </p>
+                      <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">
+                        {link.direction} · {link.protocol || 'Unknown protocol'} · {link.port || 'No port'} · {link.purpose || 'No purpose documented'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => window.location.href = `/asset?id=${link.device_id}`}
+                        className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-[8px] font-black uppercase tracking-widest text-blue-400"
+                      >
+                        Asset
+                      </button>
+                      {link.service_id && (
+                        <button
+                          onClick={() => window.location.href = `/services?id=${link.service_id}`}
+                          className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-[8px] font-black uppercase tracking-widest text-emerald-400"
+                        >
+                          Service
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )) : (
+                  <WorkspaceEmptyState compact title="No dependency links mapped yet" description="Use the map link action to register interconnects." />
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <div className="flex items-center gap-3 px-1">
+              <div className="rounded-lg bg-slate-800 p-2 text-slate-400">
+                <List size={16} />
+              </div>
+              <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Metadata</h3>
+            </div>
+            <MetadataViewer data={entity.metadata_json} />
+          </section>
+
+          <section className="space-y-4">
+            <div className="flex items-center gap-3 px-1">
+              <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-400">
+                <Key size={16} />
+              </div>
+              <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Credentials</h3>
+            </div>
+            <ExternalSecretsTab entityId={entity.id} />
+          </section>
+        </div>
+      }
+    />
+  )
+}
+
+function CompareRow({ label, value, multiline = false, colorIndex = -1 }: { label: string; value: string; multiline?: boolean; colorIndex?: number }) {
+  const isDiff = colorIndex !== -1
+  
+  const diffStyles = [
+    { border: 'border-amber-500/30', bg: 'bg-amber-500/5', text: 'text-amber-400', val: 'text-amber-200' },
+    { border: 'border-sky-500/30', bg: 'bg-sky-500/5', text: 'text-sky-400', val: 'text-sky-200' },
+    { border: 'border-emerald-500/30', bg: 'bg-emerald-500/5', text: 'text-emerald-400', val: 'text-emerald-200' },
+    { border: 'border-rose-500/30', bg: 'bg-rose-500/5', text: 'text-rose-400', val: 'text-rose-200' },
+    { border: 'border-purple-500/30', bg: 'bg-purple-500/5', text: 'text-purple-400', val: 'text-purple-200' },
+  ]
+
+  const style = isDiff ? diffStyles[colorIndex % diffStyles.length] : { border: 'border-white/5', bg: 'bg-black/20', text: 'text-slate-500', val: 'text-slate-300' }
+
+  return (
+    <div className={`rounded-lg border px-3 py-2.5 transition-all ${style.border} ${style.bg} ${isDiff ? 'shadow-lg' : ''} ${multiline ? '' : 'flex items-center justify-between gap-3'}`}>
+      <div className="flex items-center gap-2">
+        <p className={`text-[8px] font-black uppercase tracking-widest ${style.text}`}>{label}</p>
+        {isDiff && <div className={`w-1 h-1 rounded-full ${style.text.replace('text-', 'bg-')} animate-pulse`} />}
       </div>
+      <p className={`pt-0.5 font-bold ${style.val} ${multiline ? 'leading-relaxed text-[11px] mt-1' : 'text-right text-[10px]'}`}>{value}</p>
     </div>
+  )
+}
+
+function CompareExternalModal({ items, onClose }: { items: any[]; onClose: () => void }) {
+  useEscapeDismiss(onClose)
+  useBodyModalFlag()
+  const [isMaximized, setIsMaximized] = useState(false)
+  const fields = useMemo(() => [
+    { label: 'Status', getValue: (item: any) => item.status || 'Unknown' },
+    { label: 'Type', getValue: (item: any) => item.type || 'N/A' },
+    { label: 'Subtype', getValue: (item: any) => item.subtype || 'N/A' },
+    { label: 'Environment', getValue: (item: any) => item.environment || 'N/A' },
+    { label: 'Criticality', getValue: (item: any) => item.criticality || 'N/A' },
+    { label: 'Risk Rating', getValue: (item: any) => item.risk_rating || 'N/A' },
+    { label: 'Dependency Tier', getValue: (item: any) => item.dependency_tier || 'N/A' },
+    { label: 'Organization', getValue: (item: any) => item.owner_organization || 'N/A' },
+    { label: 'Accountable Team', getValue: (item: any) => item.owner_team || 'N/A' },
+    { label: 'Endpoint (Primary)', getValue: (item: any) => item.primary_endpoint_url || 'N/A' },
+  ], [])
+
+  const diffMap = useMemo(() => {
+    const map: Record<string, any[]> = {}
+    fields.forEach(f => {
+      const vals = items.map(f.getValue)
+      const unique = Array.from(new Set(vals))
+      if (unique.length > 1) {
+        map[f.label] = unique
+      }
+    })
+    return map
+  }, [items, fields])
+
+  const gridCols = items.length === 2 ? 'md:grid-cols-2' : items.length === 3 ? 'md:grid-cols-3' : items.length === 4 ? 'md:grid-cols-4' : 'md:grid-cols-5'
+
+  return (
+    <WorkspaceModal
+      isOpen={true}
+      onClose={onClose}
+      size="workspace"
+      isMaximized={isMaximized}
+      onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+      title="Compare External Identities"
+      subtitle={`Temporal Variance Analysis · Comparing ${items.length} external states for semantic drift`}
+      icon={<GitCompare size={20} />}
+      footerRight={
+        <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
+      }
+    >
+      <WorkspaceCompareShell
+        body={
+          <div className={`grid gap-4 ${gridCols}`}>
+            {items.map((item: any) => (
+              <div key={item.id} className="rounded-lg border border-white/5 bg-black/40 p-5 shadow-inner">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-[9px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20">ID {item.id}</span>
+                  <span className={`rounded-lg border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
+                    item.status === 'Active'
+                      ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+                      : 'border-amber-500/20 bg-amber-500/10 text-amber-300'
+                  }`}>
+                    {item.status || 'Unknown'}
+                  </span>
+                </div>
+                <h4 className="text-sm font-black text-white truncate mb-1">{item.name}</h4>
+                <p className="text-[9px] font-bold text-slate-500 tracking-widest truncate">{item.owner_organization || 'No Organization'}</p>
+                
+                <div className="mt-6 space-y-2.5">
+                  {fields.map(f => {
+                    const val = f.getValue(item)
+                    const diffSet = diffMap[f.label]
+                    const colorIndex = diffSet ? diffSet.indexOf(val) : -1
+                    return (
+                      <CompareRow 
+                        key={f.label} 
+                        label={f.label} 
+                        value={val} 
+                        colorIndex={colorIndex}
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        }
+      />
+    </WorkspaceModal>
   )
 }
 
 export default function External() {
   const [searchParams, setSearchParams] = useSearchParams()
   const entityIdFromUrl = searchParams.get('id')
+  const externalStorageNamespace = 'sysgrid_external'
+  const externalViewStorageKey = `${externalStorageNamespace}_views_v1`
+  const externalActiveViewKey = `${externalStorageNamespace}_active_view_v1`
+  const externalUiStateKey = `${externalStorageNamespace}_ui_state_v1`
+  const externalFavoritesKey = `${externalStorageNamespace}_favorites_v1`
+  const externalWatchKey = `${externalStorageNamespace}_watch_v1`
+  const externalLastVisitedKey = `${externalStorageNamespace}_last_visited_v1`
+  const externalViewLabel = 'External'
+  const externalRegistryLabel = 'External Registry'
   const queryClient = useQueryClient()
   const gridRef = useRef<any>(null)
   const [, setGridApi] = useState<any>(null)
   const [, setGridColumnApi] = useState<any>(null)
-  
-  const [fontSize, setFontSize] = useState(11)
-  const [rowDensity, setRowDensity] = useState(10)
-  const [showStyleLab, setShowStyleLab] = useState(true)
-  const [showColumnPicker, setShowColumnPicker] = useState(false)
-  const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
+  const [savedViews, setSavedViews] = usePersistentJsonState(externalViewStorageKey, [] as any[])
+  const [activeViewId, setActiveViewId] = usePersistentJsonState<string | null>(externalActiveViewKey, null)
+  const [persistedUiState, setPersistedUiState] = usePersistentJsonState(externalUiStateKey, () => normalizeExternalWorkspaceState(null))
+  const [fontSize, setFontSize] = useState(persistedUiState.fontSize)
+  const [rowDensity, setRowDensity] = useState(persistedUiState.rowDensity)
+  const [showDisplayMenu, setShowDisplayMenu] = useState(false)
+  const [showViewsMenu, setShowViewsMenu] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [showFilterBar, setShowFilterBar] = useState(persistedUiState.showFilterBar ?? true)
+  const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
+  const [lastVisitedAt] = useState<number>(() => {
+    try {
+      const raw = window.localStorage.getItem(externalLastVisitedKey)
+      return raw ? Number(raw) : 0
+    } catch { return 0 }
+  })
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedUiState.hiddenColumns ?? ['created_at', 'updated_at'])
   const [showConfig, setShowConfig] = useState(false)
-  const [activeTab, setActiveTab] = useState<'active' | 'deleted' | 'links'>('active')
+  const [activeTab, setActiveTab] = useState<'active' | 'deleted' | 'links'>(persistedUiState.activeTab === 'deleted' ? 'deleted' : 'active')
   const [activeModal, setActiveModal] = useState<any>(null)
   const [activeDetails, setActiveDetails] = useState<any>(null)
   const [showLinkModal, setShowLinkModal] = useState(false)
+  const [linkSeedEntityId, setLinkSeedEntityId] = useState<number | null>(null)
+  const [isWorkspaceMaximized, setIsWorkspaceMaximized] = useState(false)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, id: null, purge: false, type: 'entity' })
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm] = useState(persistedUiState.searchTerm)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+
+  // Cloned states from Monitoring view
+  const [groupBy, setGroupBy] = useState<string>(persistedUiState.groupBy || 'raw')
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
+  const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>(externalFavoritesKey, [])
+  const [watchIds, setWatchIds] = usePersistentJsonState<number[]>(externalWatchKey, [])
+  const [compareOpen, setCompareOpen] = useState(false)
+  const [showBulkMenu, setShowBulkMenu] = useState(false)
+  const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
+  const [isBulkEnvOpen, setIsBulkEnvOpen] = useState(false)
+  const [isBulkCriticalityOpen, setIsBulkCriticalityOpen] = useState(false)
+  const [isBulkRiskOpen, setIsBulkRiskOpen] = useState(false)
+  const [bulkDraft, setBulkDraft] = useState({ status: '', environment: '', criticality: '', risk_rating: '' })
+  const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'environment' | 'criticality' | 'risk_rating' | null>(null)
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
+  const [rowActionMenu, setRowActionMenu] = useState<{ item: any; style: React.CSSProperties } | null>(null)
+  const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<number | null>(null)
+
+  const [quickFilters, setQuickFilters] = useState(persistedUiState.quickFilters || {
+    status: [] as string[],
+    type: [] as string[],
+    environment: [] as string[],
+    owner: [] as string[],
+    direction: [] as string[],
+    protocol: [] as string[],
+  })
+  const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>(persistedUiState.filterModel || {})
+  const [gridSortModel, setGridSortModel] = useState<Array<{ colId: string; sort: string }>>(persistedUiState.sortModel || [])
+  const [newViewName, setNewViewName] = useState('')
+  const [pendingGridRestore, setPendingGridRestore] = useState<any | null>(null)
+
+  const { triggerRef: displayMenuButtonRef, panelRef: displayMenuPanelRef, panelStyle: displayMenuStyle } = useWorkspaceAnchoredLayer(showDisplayMenu, { minWidth: 320 })
+  const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
+  const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
+
+  const {
+    columnLayoutState,
+    setColumnLayoutState,
+    preserveExplicitColumnWidths,
+    applyColumnLayoutState,
+    syncColumnLayoutState,
+    handleColumnResized,
+  } = useOperationalGridLayout(persistedUiState.columnLayoutState ?? [], Boolean(activeViewId))
   const { data: options } = useQuery({ 
     queryKey: ['settings-options'], 
     queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) 
@@ -952,16 +1383,18 @@ export default function External() {
     }
   }, [allEntities, entityIdFromUrl, activeDetails])
 
-  // Update URL when activeDetails changes
   useEffect(() => {
     if (activeDetails) {
       setSearchParams({ id: String(activeDetails.id) })
-    } else {
-      if (searchParams.has('id')) {
-          setSearchParams({})
-      }
     }
-  }, [activeDetails, setSearchParams, searchParams])
+  }, [activeDetails, setSearchParams])
+
+  const closeDetails = () => {
+    setActiveDetails(null)
+    if (searchParams.has('id')) {
+      setSearchParams({})
+    }
+  }
 
 
   const { data: links, isLoading: linkLoading } = useQuery({ 
@@ -973,13 +1406,33 @@ export default function External() {
     queryKey: ['devices'], 
     queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) 
   })
-  const registrySummary = useMemo(() => {
-    const source = Array.isArray(allEntities) ? allEntities : []
-    const missingOwners = source.filter((entity: any) => !getEntityInsights(entity, links || []).hasOwner).length
-    const missingDependencies = source.filter((entity: any) => getEntityInsights(entity, links || []).linked.length === 0).length
-    const missingContacts = source.filter((entity: any) => !getEntityInsights(entity, links || []).hasPoc).length
-    return { total: source.length, missingOwners, missingDependencies, missingContacts }
-  }, [allEntities, links])
+
+  useWorkspaceDismissHandlers({
+    active: showDisplayMenu,
+    onDismiss: () => setShowDisplayMenu(false),
+    shouldDismiss: (target) => !(
+      displayMenuButtonRef.current?.contains(target) ||
+      displayMenuPanelRef.current?.contains(target)
+    ),
+  })
+
+  useWorkspaceDismissHandlers({
+    active: showViewsMenu,
+    onDismiss: () => setShowViewsMenu(false),
+    shouldDismiss: (target) => !(
+      viewsMenuButtonRef.current?.contains(target) ||
+      viewsMenuPanelRef.current?.contains(target)
+    ),
+  })
+
+  useWorkspaceDismissHandlers({
+    active: showBulkMenu,
+    onDismiss: () => setShowBulkMenu(false),
+    shouldDismiss: (target) => !(
+      bulkMenuButtonRef.current?.contains(target) ||
+      bulkMenuPanelRef.current?.contains(target)
+    ),
+  })
 
   const entities = useMemo(() => {
     if (!allEntities) return []
@@ -996,11 +1449,219 @@ export default function External() {
       .filter((e: any) => activeTab === 'active' ? !e.is_deleted : e.is_deleted)
   }, [allEntities, activeTab, links])
 
+  const sortedEntities = useMemo(() => {
+    const sorted = [...entities].sort((a, b) => {
+      // Pin favorites to top
+      const aFav = favoriteIds.includes(a.id) ? 1 : 0
+      const bFav = favoriteIds.includes(b.id) ? 1 : 0
+      if (aFav !== bFav) return bFav - aFav
+      
+      // Secondary fallback
+      return a.id - b.id
+    })
+    return sorted
+  }, [entities, favoriteIds])
+
+  const registryCounts = useMemo(() => ({
+    active: allEntities?.filter((entity: any) => !entity.is_deleted).length || 0,
+    archived: allEntities?.filter((entity: any) => entity.is_deleted).length || 0,
+  }), [allEntities])
+
+  const toFilterOptions = (values: any[]) => Array.from(new Set(values.filter((value) => typeof value === 'string' && value.trim().length > 0)))
+    .sort()
+    .map((value) => ({ value, label: value }))
+
+  const entityFilterOptions = useMemo(() => ({
+    status: toFilterOptions(entities.map((entity: any) => entity.status)),
+    type: toFilterOptions(entities.map((entity: any) => entity.type)),
+    environment: toFilterOptions(entities.map((entity: any) => entity.environment)),
+    owner: toFilterOptions(entities.map((entity: any) => entity.internal_owner)),
+  }), [entities])
+
+  const filteredEntities = useMemo(() => sortedEntities.filter((entity: any) => {
+    if (quickFilters.status.length && !quickFilters.status.includes(entity.status)) return false
+    if (quickFilters.type.length && !quickFilters.type.includes(entity.type)) return false
+    if (quickFilters.environment.length && !quickFilters.environment.includes(entity.environment)) return false
+    if (quickFilters.owner.length && !quickFilters.owner.includes(entity.internal_owner)) return false
+    return true
+  }), [sortedEntities, quickFilters])
+
+  const filteredLinks: any[] = []
+
+  const getEntityGroupValue = (item: any, field: string) => {
+    if (field === 'owner') return item.internal_owner || 'Unassigned'
+    return item[field] || 'Unspecified'
+  }
+
+  const groupedSections = useMemo(() => {
+    if (groupBy === 'raw') return []
+    const sections = filteredEntities.reduce((acc: Array<{ key: string; label: string; items: any[] }>, item: any) => {
+      const val = getEntityGroupValue(item, groupBy)
+      const label = String(val)
+      const existing = acc.find((section) => section.key === label)
+      if (existing) {
+        existing.items.push(item)
+      } else {
+        acc.push({ key: label, label, items: [item] })
+      }
+      return acc
+    }, [])
+    return sections.sort((a, b) => a.label.localeCompare(b.label))
+  }, [filteredEntities, groupBy])
+
   useEffect(() => {
-    if (gridRef.current?.api) {
-      setTimeout(() => gridRef.current.api.autoSizeAllColumns(), 100)
+    if (groupBy === 'raw') return
+    setCollapsedGroups((current) => {
+      const next = { ...current }
+      groupedSections.forEach((section) => {
+        if (!(section.key in next)) next[section.key] = false
+      })
+      Object.keys(next).forEach((key) => {
+        if (!groupedSections.some((section) => section.key === key)) delete next[key]
+      })
+      return next
+    })
+  }, [groupBy, groupedSections])
+
+  useEffect(() => {
+    const intelligenceColumnIds = ['recent_change', 'watch']
+    setHiddenColumns((current) => {
+      if (isIntelligenceExpanded) {
+        return current.filter((columnId) => !intelligenceColumnIds.includes(columnId))
+      }
+      const next = [...current]
+      intelligenceColumnIds.forEach((columnId) => {
+        if (!next.includes(columnId)) next.push(columnId)
+      })
+      return next
+    })
+  }, [isIntelligenceExpanded])
+
+  const isRecentChange = useCallback((item: any) => {
+    const changedAt = item?.updated_at || item?.created_at
+    if (!changedAt || !lastVisitedAt) return false
+    const time = parseAppDate(changedAt)?.getTime() || 0
+    return time > lastVisitedAt
+  }, [lastVisitedAt])
+
+  // Persist last visited timestamp on unmount
+  useEffect(() => {
+    return () => {
+      try { window.localStorage.setItem(externalLastVisitedKey, String(Date.now())) } catch {}
     }
-  }, [fontSize, rowDensity, entities, links, activeTab])
+  }, [externalLastVisitedKey])
+
+  const normalizedSavedViews = useMemo(() => normalizeExternalSavedViews(savedViews), [savedViews])
+
+  const currentWorkspaceConfig = useMemo(() => sanitizeExternalViewConfig({
+    fontSize,
+    rowDensity,
+    hiddenColumns,
+    groupBy,
+    activeTab,
+    searchTerm,
+    columnLayoutState,
+    filterModel: gridFilterModel,
+    sortModel: gridSortModel,
+  }), [fontSize, rowDensity, hiddenColumns, groupBy, activeTab, searchTerm, columnLayoutState, gridFilterModel, gridSortModel])
+
+  useEffect(() => {
+    setPersistedUiState(currentWorkspaceConfig)
+  }, [currentWorkspaceConfig, setPersistedUiState])
+
+  const applyGridState = (config: any) => {
+    const api = gridRef.current?.api
+    if (!api) return
+    applyColumnLayoutState(api, config.columnLayoutState, true)
+    api.setFilterModel(config.filterModel || {})
+    api.applyColumnState({
+      state: (config.sortModel || []).map((entry: any) => ({ colId: entry.colId, sort: entry.sort as 'asc' | 'desc' })),
+      defaultState: { sort: null },
+      applyOrder: false,
+    })
+  }
+
+  const applyWorkspaceConfig = (config: any, nextActiveViewId: string | null) => {
+    const sanitized = sanitizeExternalViewConfig(config)
+    setActiveViewId(nextActiveViewId)
+    setFontSize(sanitized.fontSize)
+    setRowDensity(sanitized.rowDensity)
+    setHiddenColumns(sanitized.hiddenColumns)
+    setActiveTab(sanitized.activeTab)
+    setSearchTerm(sanitized.searchTerm)
+    setGridFilterModel(sanitized.filterModel)
+    setGridSortModel(sanitized.sortModel)
+    setColumnLayoutState(sanitized.columnLayoutState)
+    setGroupBy(sanitized.groupBy || 'raw')
+    setPendingGridRestore(sanitized)
+    setSelectedIds([])
+  }
+
+  const applySystemDefault = () => {
+    applyWorkspaceConfig(normalizeExternalWorkspaceState(null), null)
+    setGroupBy('raw')
+    setShowViewsMenu(false)
+  }
+
+  const createViewFromCurrent = () => {
+    const trimmedName = newViewName.trim()
+    if (!trimmedName) {
+      toast.error('Name the view before saving it')
+      return
+    }
+    const nextView = {
+      id: `external-${Date.now()}`,
+      name: trimmedName,
+      config: currentWorkspaceConfig,
+    }
+    setSavedViews([...normalizedSavedViews, nextView])
+    setActiveViewId(nextView.id)
+    setNewViewName('')
+    setShowViewsMenu(false)
+    toast.success('External workspace view saved')
+  }
+
+  const saveCurrentToView = (viewId: string) => {
+    setSavedViews(normalizedSavedViews.map((view: any) => (
+      view.id === viewId
+        ? { ...view, config: currentWorkspaceConfig }
+        : view
+    )))
+    setActiveViewId(viewId)
+    toast.success('External workspace view updated')
+  }
+
+  const deleteView = (viewId: string) => {
+    setSavedViews(normalizedSavedViews.filter((view: any) => view.id !== viewId))
+    if (activeViewId === viewId) setActiveViewId(null)
+    setShowViewsMenu(false)
+    toast.success('External workspace view removed')
+  }
+
+  const applySavedView = (viewId: string) => {
+    const view = normalizedSavedViews.find((entry: any) => entry.id === viewId)
+    if (!view) return
+    applyWorkspaceConfig(view.config, view.id)
+    setShowViewsMenu(false)
+  }
+
+  useEffect(() => {
+    const api = gridRef.current?.api
+    if (!api) return
+    if (pendingGridRestore) {
+      window.setTimeout(() => {
+        applyGridState(pendingGridRestore)
+        setPendingGridRestore(null)
+      }, 0)
+      return
+    }
+    if (!preserveExplicitColumnWidths) {
+      autoSizeOperationalColumns({
+        api,
+        skipColumnIds: Array.from(EXTERNAL_FIXED_WIDTH_COLUMN_IDS),
+      })
+    }
+  }, [fontSize, rowDensity, entities, links, activeTab, pendingGridRestore, preserveExplicitColumnWidths, columnLayoutState])
 
   const handleExportCSV = () => {
     if (gridRef.current?.api) {
@@ -1027,6 +1688,80 @@ export default function External() {
     }
   }
 
+  const toggleFavorite = useCallback((entityId: number) => {
+    const id = Number(entityId)
+    setFavoriteIds((current) => current.includes(id) ? current.filter((i) => i !== id) : [...current, id])
+  }, [setFavoriteIds])
+
+  const toggleWatch = useCallback((entityId: number) => {
+    const id = Number(entityId)
+    setWatchIds((current) => current.includes(id) ? current.filter((i) => i !== id) : [...current, id])
+  }, [setWatchIds])
+
+  const openCompare = () => {
+    if (selectedIds.length < 2 || selectedIds.length > 5) return
+    setCompareOpen(true)
+  }
+
+  const toggleBulkWindow = () => {
+    setShowBulkMenu((current) => {
+      return !current
+    })
+  }
+
+  const bulkMutation = useMutation({
+    mutationFn: async ({ action, payload = {}, ids: overrideIds }: any) => {
+      const idsToUse = overrideIds ?? selectedIds
+      const promises = idsToUse.map(async (id: number) => {
+        if (action === 'update') {
+          const original = allEntities.find((e: any) => e.id === id)
+          if (!original) return
+          const updatePayload = {
+            ...original,
+            ...payload
+          }
+          delete updatePayload.id
+          delete updatePayload.created_at
+          delete updatePayload.updated_at
+          delete updatePayload.created_by_user_id
+          delete updatePayload.secrets
+          delete updatePayload.internal_team_name
+          delete updatePayload.internal_operator_name
+          delete updatePayload.internal_operator_external_id
+
+          const res = await apiFetch(`/api/v1/intelligence/entities/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(updatePayload)
+          })
+          if (!res.ok) throw new Error(await res.text())
+        } else if (action === 'delete') {
+          const res = await apiFetch(`/api/v1/intelligence/entities/${id}`, { method: 'DELETE' })
+          if (!res.ok) throw new Error(await res.text())
+        } else if (action === 'purge') {
+          const res = await apiFetch(`/api/v1/intelligence/entities/${id}?purge=true`, { method: 'DELETE' })
+          if (!res.ok) throw new Error(await res.text())
+        } else if (action === 'restore') {
+          const res = await apiFetch(`/api/v1/intelligence/entities/${id}/restore`, { method: 'POST' })
+          if (!res.ok) throw new Error(await res.text())
+        }
+      })
+      await Promise.all(promises)
+      return { action, idsToUse }
+    },
+    onSuccess: ({ action, idsToUse }) => {
+      queryClient.invalidateQueries({ queryKey: ['external-entities'] })
+      queryClient.invalidateQueries({ queryKey: ['external-links'] })
+      setSelectedIds([])
+      setShowBulkMenu(false)
+      setBulkDraft({ status: '', environment: '', criticality: '', risk_rating: '' })
+      setExpandedBulkSection(null)
+      toast.success(`Bulk ${action} succeeded on ${idsToUse.length} items.`)
+    },
+    onError: (e: any) => {
+      toast.error(`Bulk operation failed: ${e.message}`)
+    }
+  })
+
   const mutation = useMutation({
     mutationFn: async (data: any) => {
       const url = data.id ? `/api/v1/intelligence/entities/${data.id}` : `/api/v1/intelligence/entities`
@@ -1051,6 +1786,7 @@ export default function External() {
       queryClient.invalidateQueries({ queryKey: ['external-links'] })
       toast.success('Interconnect Established')
       setShowLinkModal(false)
+      setLinkSeedEntityId(null)
     },
     onError: (e: any) => toast.error(e.message || 'Interconnect establishment failed')
   })
@@ -1088,95 +1824,368 @@ export default function External() {
     onError: (e: any) => toast.error(e.message)
   })
 
-  const columnDefs = useMemo(() => [
+  const handleExternalRowClick = useCallback((event: any) => {
+    if (!event?.node || !event?.data) return
+    const target = event.event?.target as HTMLElement | null
+    if (target?.closest('button') || target?.closest('a') || target?.closest('input') || target?.closest('.ag-selection-checkbox') || target?.closest('.ag-checkbox-input-wrapper')) return
+    const mouseEvent = event.event as MouseEvent | undefined
+    const isToggleSelection = Boolean(mouseEvent?.metaKey || mouseEvent?.ctrlKey)
+    if (isToggleSelection) {
+      event.node.setSelected(!event.node.isSelected())
+    } else {
+      event.api.deselectAll()
+      event.node.setSelected(true)
+    }
+  }, [])
+
+  const handleExternalSelectionChanged = useCallback((e: any) => {
+    const selectedNodes = e?.api?.getSelectedNodes?.() || []
+    setSelectedIds(selectedNodes.map((n: any) => n.data?.id).filter(Boolean))
+  }, [])
+
+  const getRowClass = useCallback((params: any) => {
+    return params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd'
+  }, [])
+
+  const openRowActionMenuAtPoint = useCallback((item: any, x: number, y: number) => {
+    const vW = window.innerWidth
+    const vH = window.innerHeight
+    const width = 280
+    const height = 360
+    const edge = 16
+    let left = x
+    let top = y + 4
+    if (left + width > vW - edge) left = x - width
+    if (top + height > vH - edge) top = y - height - 4
+    left = Math.max(edge, Math.min(left, vW - width - edge))
+    top = Math.max(edge, Math.min(top, vH - height - edge))
+    setRowActionMenu({ item, style: { position: 'fixed', top, left, width, zIndex: 1115 } })
+  }, [])
+
+  const handleCellContextMenu = useCallback((e: any) => {
+    if (!e?.data) return
+    const mouseEvent = e.event as MouseEvent
+    mouseEvent?.preventDefault?.()
+    openRowActionMenuAtPoint(e.data, mouseEvent.clientX, mouseEvent.clientY)
+  }, [openRowActionMenuAtPoint])
+
+  const handleExternalRowDoubleClick = (event: any) => {
+    if (!event?.data) return
+    const target = event.event?.target as HTMLElement | null
+    if (target?.closest('button') || target?.closest('a') || target?.closest('input')) return
+    setActiveDetails(event.data)
+  }
+
+  const getExternalRowId = (params: any) => String(params.data?.id ?? '')
+
+  const renderPrimaryRowActions = (item: any) => (
+    <div className="flex items-center justify-end gap-1.5 pr-2">
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation()
+          setActiveDetails(item)
+        }}
+        title="Open details"
+        className="rounded-lg p-1 text-blue-400 transition-all hover:bg-blue-400/10 active:scale-90"
+      >
+        <Maximize2 size={13} />
+      </button>
+      {activeTab === 'active' && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            setActiveModal(item)
+          }}
+          title="Edit configuration"
+          className="rounded-lg p-1 text-emerald-400 transition-all hover:bg-emerald-400/10 active:scale-90"
+        >
+          <Edit2 size={13} />
+        </button>
+      )}
+      {activeTab !== 'deleted' && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            setConfirmModal({ isOpen: true, id: item.id, purge: false, type: 'entity' })
+          }}
+          title="Deactivate external"
+          className="rounded-lg p-1 text-rose-400 transition-all hover:bg-rose-400/10 active:scale-90"
+        >
+          <Trash2 size={13} />
+        </button>
+      )}
+      {activeTab === 'deleted' && (
+        <>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              restoreMutation.mutate(item.id)
+            }}
+            title="Restore external"
+            className="rounded-lg p-1 text-emerald-400 transition-all hover:bg-emerald-400/10 active:scale-90"
+          >
+            <RefreshCcw size={13} />
+          </button>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              setConfirmModal({ isOpen: true, id: item.id, purge: true, type: 'entity' })
+            }}
+            title="Purge external"
+            className="rounded-lg p-1 text-rose-400 transition-all hover:bg-rose-400/10 active:scale-90"
+          >
+            <Trash2 size={13} />
+          </button>
+        </>
+      )}
+      <button
+        type="button"
+        onClick={(event: any) => {
+          event.stopPropagation()
+          openRowActionMenuAtPoint(item, event.clientX, event.clientY)
+        }}
+        title="More actions"
+        className="row-action-trigger row-action-menu-container rounded-lg p-1 text-slate-400 transition-all hover:bg-slate-400/10 hover:text-white active:scale-90"
+      >
+        <MoreVertical size={13} />
+      </button>
+    </div>
+  )
+
+  const columnDefs = useMemo(() => {
+    const layoutById = new Map(columnLayoutState.map((column: any) => [column.colId, column]))
+    const lockFixedUtilityWidth = (column: any, layout?: any) => {
+      const colId = column.colId || column.field
+      const lockedWidth = layout?.width ?? column.width ?? column.initialWidth
+      if (!EXTERNAL_FIXED_WIDTH_COLUMN_IDS.has(colId) || lockedWidth == null) return column
+      return {
+        ...column,
+        width: lockedWidth,
+        initialWidth: lockedWidth,
+        minWidth: lockedWidth,
+        maxWidth: lockedWidth,
+        flex: undefined,
+        initialFlex: undefined,
+      }
+    }
+
+    const baseColumns = [
     { 
+      colId: "select",
       headerName: "", 
-      width: 50,
-      minWidth: 50,
-      maxWidth: 50,
+      width: 48,
       checkboxSelection: true, 
       headerCheckboxSelection: true, 
       pinned: 'left', 
-      cellClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
-      headerClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
+      cellClass: 'flex items-center justify-center', 
+      headerClass: 'flex items-center justify-center', 
       suppressSizeToFit: true,
-      resizable: false,
       sortable: false,
       filter: false,
       lockVisible: true
     },
     { 
+      colId: "id",
       field: "id", 
       headerName: "ID", 
-      width: 70,
-      minWidth: 70,
+      width: 90, 
       pinned: 'left',
-      cellClass: 'text-center font-bold text-slate-500',
+      cellClass: 'text-center font-bold text-slate-500 flex items-center justify-center',
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
+      lockVisible: true
+    },
+    ...(activeTab !== 'links' ? [
+    {
+      colId: "recent_change",
+      headerName: "Chg",
+      field: "recent_change",
+      width: 80,
+      pinned: 'left',
+      sortable: false,
+      filter: false,
+      lockVisible: true,
+      cellClass: 'text-center flex items-center justify-center !overflow-visible',
+      headerClass: 'text-center',
+      hide: !isIntelligenceExpanded,
+      cellRenderer: (p: any) => {
+        if (!p.data || !isRecentChange(p.data)) return null
+        const dateStr = formatAppDate(p.data.updated_at || p.data.created_at)
+        const author = p.data.created_by_user_id || 'System'
+        return (
+          <div className="group relative flex items-center justify-center h-full w-full">
+            <div className="absolute h-10 w-10 rounded-lg bg-[radial-gradient(circle,_rgba(251,191,36,0.2)_0%,_transparent_70%)] blur-md animate-pulse" />
+            <span className="relative z-[1] block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
+            <div className="invisible group-hover:visible absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-[2000] w-52 p-3 rounded-lg border border-white/10 bg-slate-950/90 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl pointer-events-none transition-all duration-300 transform scale-95 group-hover:scale-100 opacity-0 group-hover:opacity-100">
+               <div className="flex items-center gap-2 mb-2">
+                 <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-400">Recent Activity</p>
+               </div>
+               <div className="space-y-1">
+                 <p className="text-[11px] text-slate-100 font-bold leading-tight">{dateStr}</p>
+                 <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/5">
+                    <User size={10} className="text-slate-500" />
+                    <p className="text-[9px] text-slate-500 font-bold tracking-widest">@{author}</p>
+                 </div>
+               </div>
+               <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-950/90" />
+            </div>
+          </div>
+        )
+      }
     },
     { 
+      colId: "favorite",
+      headerName: "Fav",
+      field: "favorite",
+      width: 80,
+      pinned: 'left',
+      cellClass: 'text-center flex items-center justify-center',
+      headerClass: 'text-center',
+      valueGetter: (p: any) => p.context?.favoriteIds?.includes(p.data?.id) ? 1 : 0,
+      cellRenderer: (p: any) => {
+        const isFavorite = p.context?.favoriteIds?.includes(p.data?.id)
+        return (
+          <div className="flex h-full w-full items-center justify-center">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleFavorite(p.data.id)
+              }}
+              title={isFavorite ? 'Unpin peer' : 'Pin peer'}
+              className={`rounded-lg p-1 transition-all flex items-center justify-center ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
+            >
+              <Star size={15} className={isFavorite ? 'fill-current' : ''} />
+            </button>
+          </div>
+        )
+      },
+      sortable: true,
+      filter: false,
+      lockVisible: true
+    },
+    { 
+      colId: "watch",
+      headerName: "Watch",
+      field: "watch",
+      width: 85,
+      pinned: 'left',
+      cellClass: 'text-center flex items-center justify-center',
+      headerClass: 'text-center',
+      cellRenderer: (p: any) => {
+        const isWatched = p.context?.watchIds?.includes(p.data?.id)
+        return (
+          <div className="flex h-full w-full items-center justify-center">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleWatch(p.data.id)
+              }}
+              title={isWatched ? 'Unfollow peer' : 'Follow peer'}
+              className={`rounded-lg p-1 transition-all flex items-center justify-center ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
+            >
+              <Eye size={15} className={isWatched ? 'fill-current' : ''} />
+            </button>
+          </div>
+        )
+      },
+      sortable: false,
+      filter: false,
+      hide: !isIntelligenceExpanded
+    }
+    ] : []),
+    { 
+      colId: activeTab === 'links' ? "external_entity_name" : "name",
       field: activeTab === 'links' ? "external_entity_name" : "name", 
       headerName: activeTab === 'links' ? "External Peer" : "Name", 
       pinned: 'left',
+      width: 200,
       filter: true,
-      cellClass: 'text-left font-bold uppercase text-blue-400',
+      cellClass: 'font-bold text-left flex items-center',
       headerClass: 'text-left',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      cellRenderer: (p: any) => (
+        activeTab === 'links' ? (
+          <span style={{ fontSize: `${fontSize}px` }} className="font-bold text-slate-200">{p.value}</span>
+        ) : (
+          <button
+            type="button"
+            title="View Details"
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation()
+              setActiveDetails(p.data)
+            }}
+            className="w-full truncate bg-transparent text-left font-bold text-blue-400 uppercase tracking-tight transition-colors hover:text-blue-200"
+            style={{ fontSize: `${fontSize}px` }}
+          >
+            {p.value}
+          </button>
+        )
+      ),
       hide: hiddenColumns.includes("name")
     },
     ...(activeTab === 'links' ? [
-       { 
-         field: "direction", 
+      {
+        colId: "direction",
+        field: "direction",
          headerName: "Flow", 
-         width: 100, 
-         cellClass: "text-center",
+         width: 120, 
+         cellClass: "text-center flex items-center justify-center",
          headerClass: "text-center",
          cellRenderer: (p: any) => (
            <div className="flex items-center justify-center h-full">
-             <div style={{ fontSize: `${fontSize}px` }} className={`px-2 py-0.5 rounded-lg font-bold uppercase inline-block border ${p.value === 'Upstream' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'}`}>
+             <div style={{ fontSize: `${fontSize}px` }} className={`px-2 py-0.5 rounded-lg font-bold uppercase inline-block border ${p.value === 'Inbound' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : p.value === 'Bidirectional' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'}`}>
                {p.value}
              </div>
            </div>
          ),
          hide: hiddenColumns.includes("direction")
-       },
-       { 
-         field: "device_name", 
+      },
+      {
+        colId: "device_name",
+        field: "device_name",
          headerName: "Internal Asset", 
-         width: 150, 
-         cellClass: "font-bold text-center uppercase tracking-tight", 
+         width: 160, 
+         cellClass: "font-bold text-center flex items-center justify-center", 
          headerClass: 'text-center', 
          cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'N/A'}</span>,
          hide: hiddenColumns.includes("device_name")
-       },
-       { 
-         field: "service_name", 
+      },
+      {
+        colId: "service_name",
+        field: "service_name",
          headerName: "Logical Service", 
-         width: 150, 
-         cellClass: "text-center uppercase text-slate-400 font-bold tracking-tight", 
+         width: 160, 
+         cellClass: "text-center text-slate-400 font-bold flex items-center justify-center", 
          headerClass: 'text-center', 
          cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'N/A'}</span>,
          hide: hiddenColumns.includes("service_name")
-       },
-       { 
-         field: "purpose", 
+      },
+      {
+        colId: "purpose",
+        field: "purpose",
          headerName: "Interconnect Purpose", 
          flex: 1.5, 
          headerClass: 'text-left', 
-         cellClass: 'font-bold uppercase', 
+         cellClass: 'font-bold text-slate-500 text-left truncate px-4 flex items-center', 
          cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'N/A'}</span>,
          hide: hiddenColumns.includes("purpose")
-       },
-       { field: "protocol", headerName: "Prot", width: 80, cellClass: "text-center font-mono font-bold uppercase", headerClass: 'text-center', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>, hide: hiddenColumns.includes("protocol") },
-       { field: "port", headerName: "Port", width: 80, cellClass: "text-center font-mono font-bold uppercase", headerClass: 'text-center', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>, hide: hiddenColumns.includes("port") },
+      },
+      { colId: "protocol", field: "protocol", headerName: "Prot", width: 80, cellClass: "text-center font-mono font-bold uppercase flex items-center justify-center", headerClass: 'text-center', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>, hide: hiddenColumns.includes("protocol") },
+      { colId: "port", field: "port", headerName: "Port", width: 80, cellClass: "text-center font-mono font-bold uppercase flex items-center justify-center", headerClass: 'text-center', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>, hide: hiddenColumns.includes("port") },
     ] : [
-       { 
-         field: "type", 
+      { 
+        colId: "type",
+        field: "type", 
          headerName: "Type", 
          width: 140, 
          filter: true,
-         cellClass: 'text-center', 
+         cellClass: 'text-center flex items-center justify-center', 
          headerClass: 'text-center',
          cellRenderer: (p: any) => {
            const colors: any = {
@@ -1193,22 +2202,24 @@ export default function External() {
          },
          hide: hiddenColumns.includes("type")
        },
-       { 
-         field: "internal_owner", 
-         headerName: "Accountable Owner", 
-         width: 150, 
+      { 
+        colId: "internal_owner",
+        field: "internal_owner", 
+         headerName: "Owner", 
+         width: 140, 
          filter: true,
-         cellClass: 'text-center font-bold text-slate-400', 
+         cellClass: 'text-center font-bold text-slate-400 flex items-center justify-center', 
          headerClass: 'text-center', 
          cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold">N/A</span>, 
          hide: hiddenColumns.includes("internal_owner") 
        },
-       { 
-         field: "status", 
+      { 
+        colId: "status",
+        field: "status", 
          headerName: "Status", 
          width: 130, 
          filter: true,
-         cellClass: 'text-center',
+         cellClass: 'text-center flex items-center justify-center',
          headerClass: 'text-center',
          cellRenderer: (p: any) => {
            const colors: any = {
@@ -1223,7 +2234,7 @@ export default function External() {
            }
            return (
              <div className="flex items-center justify-center h-full w-full">
-               <div className={`flex items-center justify-center w-28 h-5 rounded-lg border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
+               <div className={`flex items-center justify-center px-3 h-5 rounded-lg border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
                  <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">
                    {p.value || 'Planned'}
                  </span>
@@ -1233,343 +2244,924 @@ export default function External() {
          },
          hide: hiddenColumns.includes("status")
        },
-       { 
-         field: "environment", 
+      { 
+        colId: "environment",
+        field: "environment", 
          headerName: "Env", 
-         width: 100, 
+         width: 110, 
          filter: true,
-         cellClass: 'text-center font-bold text-slate-400 uppercase', 
+         cellClass: 'text-center font-bold text-slate-400 uppercase flex items-center justify-center', 
          headerClass: 'text-center',
          cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
          hide: hiddenColumns.includes("environment")
        },
-       {
-         field: "link_count",
+      {
+        colId: "link_count",
+        field: "link_count",
          headerName: "Links",
          width: 85,
-         cellClass: 'text-center font-bold text-blue-400',
+         cellClass: 'text-center font-bold text-blue-400 flex items-center justify-center',
          headerClass: 'text-center',
          hide: hiddenColumns.includes("link_count")
        },
-       {
-         field: "warning_count",
-         headerName: "Warnings",
-         width: 100,
-         cellClass: 'text-center',
-         headerClass: 'text-center',
-         cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${p.value ? 'text-amber-400' : 'text-emerald-400'}`}>{p.value}</span>,
-         hide: hiddenColumns.includes("warning_count")
-       },
     ]),
     { 
+      colId: "row_actions",
       headerName: "Action",
-      width: 120,
-      minWidth: 120,
+      width: 210,
       pinned: 'right',
-      cellClass: 'text-center',
+      cellClass: 'text-right pr-3 flex items-center justify-end',
       headerClass: 'text-center',
-      resizable: false,
-      cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center space-x-1 h-full">
-           <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
-               {activeTab !== 'links' && <button onClick={() => setActiveDetails(p.data)} title="View Details" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><List size={14}/></button>}
-               {activeTab === 'active' ? (
-                 <>
-                   <button onClick={() => setActiveModal(p.data)} title="Edit" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
-                   <button onClick={() => setConfirmModal({ isOpen: true, id: p.data.id, purge: false, type: 'entity' })} title="Delete" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
-                 </>
-               ) : activeTab === 'deleted' ? (
-                 <>
-                   <button onClick={() => restoreMutation.mutate(p.data.id)} title="Restore" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><RefreshCcw size={14}/></button>
-                   <button onClick={() => setConfirmModal({ isOpen: true, id: p.data.id, purge: true, type: 'entity' })} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
-                 </>
-               ) : (
-                 <button onClick={() => setConfirmModal({ isOpen: true, id: p.data.id, purge: false, type: 'link' })} title="Sever Link" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
-               )}
-           </div>
-        </div>
-      ),
+      sortable: false,
+      filter: false,
+      cellRenderer: (p: any) => p.data ? renderPrimaryRowActions(p.data) : null,
       lockVisible: true
     }
-  ], [fontSize, hiddenColumns, activeTab]) as any
+  ]
+
+    return baseColumns.map((column: any) => {
+      const colId = column.colId || column.field
+      const layout = layoutById.get(colId)
+      return lockFixedUtilityWidth(applyOperationalColumnSizing(column, layout, preserveExplicitColumnWidths), layout)
+    })
+  }, [fontSize, hiddenColumns, activeTab, columnLayoutState, isRecentChange, preserveExplicitColumnWidths]) as any
 
   const autoSizeStrategy = OPERATIONAL_GRID_AUTO_SIZE_STRATEGY
+  const gridContext = useMemo(() => ({ activeTab, favoriteIds, watchIds }), [activeTab, favoriteIds, watchIds])
+
+  useEffect(() => {
+    if (gridRef.current?.api) {
+      gridRef.current.api.refreshCells({ columns: ['favorite', 'watch'], force: true })
+    }
+  }, [favoriteIds, watchIds])
 
   return (
-    <div className="h-full flex flex-col space-y-4 min-h-0 overflow-hidden">
-      <PageHeader
-        title="Partner IQ"
-        subtitle="Global Entity Reference & Interconnect Intelligence"
-        actions={
-          <ToolbarButton 
-            variant="primary"
-            onClick={() => activeTab === 'links' ? setShowLinkModal(true) : setActiveModal({})} 
-          >
-            <Plus size={14} className="mr-2 inline-block" /> {activeTab === 'links' ? 'Map Link' : 'Admission'}
-          </ToolbarButton>
-        }
-      />
-
-      <PageToolbar
-        left={
-          <ToolbarGroup>
-            <ToolbarSegmented
-              options={[
-                { label: 'Registry', value: 'active' },
-                { label: 'Connectivity', value: 'links' },
-                { label: 'Archive', value: 'deleted' }
-              ]}
-              value={activeTab}
-              onChange={(val) => setActiveTab(val as any)}
+    <OperationalWorkspaceFrame
+      className="overflow-hidden"
+      header={{
+        eyebrow: 'External Intelligence',
+        title: (
+          <div className="flex items-center gap-3">
+            <Globe className="text-blue-500" />
+            <span>{externalViewLabel}</span>
+          </div>
+        ),
+        subtitle: `${externalRegistryLabel} and dependency intelligence`,
+        actions: (
+          <HeaderScopeSwitch
+            label="Registry Scope"
+            summary={`${registryCounts.active} active · ${registryCounts.archived} archived`}
+            value={activeTab}
+            onChange={(value) => {
+              setActiveTab(value as 'active' | 'deleted')
+              setSelectedIds([])
+            }}
+            options={[
+              { label: 'Active', value: 'active' },
+              { label: 'Archived', value: 'deleted' }
+            ]}
+          />
+        ),
+      }}
+      commandBar={{
+        left: (
+          <>
+            <ToolbarSearch
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Scan registry..."
             />
-          </ToolbarGroup>
-        }
-        right={
-          <ToolbarGroup>
-            <ToolbarSearch 
-              value={searchTerm} 
-              onChange={e => setSearchTerm(e.target.value)} 
-              placeholder="SCAN REGISTRY..." 
+            <ToolbarGroup>
+              <ToolbarButton active={showViewsMenu} onClick={() => setShowViewsMenu((current) => !current)} ref={viewsMenuButtonRef as any}>
+                <span className="flex items-center gap-2">
+                  <LayoutGrid size={14} />
+                  Views
+                </span>
+              </ToolbarButton>
+              <ToolbarButton active={showDisplayMenu} onClick={() => setShowDisplayMenu((current) => !current)} ref={displayMenuButtonRef as any}>
+                <span className="flex items-center gap-2">
+                  <Sliders size={14} />
+                  Display
+                </span>
+              </ToolbarButton>
+              <ToolbarIconButton onClick={handleExportCSV} title="Export Manifest">
+                <FileText size={14} />
+              </ToolbarIconButton>
+              <ToolbarIconButton onClick={handleCopyToClipboard} title="Secure Copy">
+                <Clipboard size={14} />
+              </ToolbarIconButton>
+              <ToolbarIconButton onClick={() => setShowConfig(true)} title="Registry Config">
+                <Settings size={14} />
+              </ToolbarIconButton>
+            </ToolbarGroup>
+            <ToolbarGroup>
+              <ToolbarButton
+                onClick={() => setShowImportModal(true)}
+                title="Import external registry rows"
+              >
+                <span className="flex items-center gap-2">
+                  <Upload size={14} />
+                  Import
+                </span>
+              </ToolbarButton>
+              <ToolbarButton
+                active={showFilterBar}
+                onClick={() => setShowFilterBar((current) => !current)}
+                title={showFilterBar ? 'Hide filters' : 'Show filters'}
+              >
+                <span className="flex items-center gap-2">
+                  {showFilterBar ? <EyeOff size={14} /> : <Eye size={14} />}
+                  Filters
+                </span>
+              </ToolbarButton>
+              <ToolbarButton
+                active={isIntelligenceExpanded}
+                onClick={() => setIsIntelligenceExpanded((current) => !current)}
+                title={isIntelligenceExpanded ? 'Collapse activity columns' : 'Expand activity columns'}
+              >
+                <span className="flex items-center gap-2">
+                  {isIntelligenceExpanded ? <Minimize2 size={14} /> : <Activity size={14} />}
+                  Activity
+                </span>
+              </ToolbarButton>
+            </ToolbarGroup>
+          </>
+        ),
+        secondary: showFilterBar ? (
+          <div className="grid w-full gap-3 md:grid-cols-4">
+            <AppDropdown
+              multi
+              value={quickFilters.status}
+              onChange={(value) => setQuickFilters((current) => ({ ...current, status: value }))}
+              options={entityFilterOptions.status}
+              label="Status Filter"
+              placeholder="All statuses"
             />
-            
-            <div className="w-px h-6 bg-white/10 mx-1" />
-
-            <ToolbarIconButton 
-              onClick={() => setShowStyleLab(!showStyleLab)} 
-              active={showStyleLab}
-              title="Toggle Style Lab"
+            <AppDropdown
+              multi
+              value={quickFilters.type}
+              onChange={(value) => setQuickFilters((current) => ({ ...current, type: value }))}
+              options={entityFilterOptions.type}
+              label="Type Filter"
+              placeholder="All types"
+            />
+            <AppDropdown
+              multi
+              value={quickFilters.environment}
+              onChange={(value) => setQuickFilters((current) => ({ ...current, environment: value }))}
+              options={entityFilterOptions.environment}
+              label="Environment Filter"
+              placeholder="All environments"
+            />
+            <AppDropdown
+              multi
+              value={quickFilters.owner}
+              onChange={(value) => setQuickFilters((current) => ({ ...current, owner: value }))}
+              options={entityFilterOptions.owner}
+              label="Owner Filter"
+              placeholder="All owners"
+            />
+          </div>
+        ) : null,
+        right: (
+          <ToolbarGroup>
+            <ToolbarButton
+              onClick={openCompare}
+              disabled={selectedIds.length < 2 || selectedIds.length > 5}
+              active={compareOpen}
+              title="Compare selected peers"
             >
-              <Activity size={14} />
-            </ToolbarIconButton>
-            <ToolbarIconButton 
-              onClick={() => setShowColumnPicker(!showColumnPicker)} 
-              active={showColumnPicker}
-              title="Column Picker"
+              <span className="flex items-center gap-2">
+                <GitCompare size={14} />
+                Compare
+              </span>
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={toggleBulkWindow}
+              disabled={selectedIds.length === 0}
+              active={showBulkMenu}
+              title="Bulk actions"
+              className="bulk-menu-trigger"
+              ref={bulkMenuButtonRef as any}
             >
-              <Sliders size={14} />
-            </ToolbarIconButton>
-            <ToolbarIconButton 
-              onClick={handleExportCSV} 
-              title="Export Manifest"
+              <span className="flex items-center gap-2">
+                <Zap size={14} />
+                Bulk Actions
+              </span>
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => setActiveModal({})}
+              variant="primary"
+              className="px-6 py-2"
             >
-              <FileText size={14} />
-            </ToolbarIconButton>
-            <ToolbarIconButton 
-              onClick={handleCopyToClipboard} 
-              title="Secure Copy"
-            >
-              <Clipboard size={14} />
-            </ToolbarIconButton>
-            <ToolbarIconButton 
-              onClick={() => setShowConfig(true)} 
-              title="Registry Config"
-            >
-              <Settings size={14} />
-            </ToolbarIconButton>
+              + Add {externalViewLabel}
+            </ToolbarButton>
           </ToolbarGroup>
-        }
-      />
+        ),
+        filterChips: [
+          ...(searchTerm ? [{
+            id: 'search',
+            label: `Search: ${searchTerm}`,
+            onRemove: () => setSearchTerm(''),
+          }] : []),
+          ...Object.entries({
+                status: quickFilters.status,
+                type: quickFilters.type,
+                environment: quickFilters.environment,
+                owner: quickFilters.owner,
+              }).flatMap(([key, values]) => values.map((value) => ({
+                id: `${key}-${value}`,
+                label: `${key}: ${value}`,
+                onRemove: () => setQuickFilters((current) => ({
+                  ...current,
+                  [key]: (current as any)[key].filter((entry: string) => entry !== value),
+                })),
+              }))),
+          ...(searchTerm || Object.values(quickFilters).some(v => v.length)
+            ? [{
+                id: 'clear-all',
+                label: 'Clear All',
+                onRemove: () => {
+                  setSearchTerm('')
+                  setGridFilterModel({})
+                  setQuickFilters({
+                    status: [],
+                    type: [],
+                    environment: [],
+                    owner: [],
+                    direction: [],
+                    protocol: [],
+                  })
+                  gridRef.current?.api?.setFilterModel({})
+                }
+              }]
+            : []),
+        ],
+      }}
+    >
 
-      {activeTab !== 'links' && (
-        <div className="grid grid-cols-4 gap-3">
-          {[
-            { label: 'Registry Entries', value: registrySummary.total, tone: 'text-blue-400' },
-            { label: 'Contacts Missing', value: registrySummary.missingContacts, tone: 'text-amber-400' },
-            { label: 'Owner Missing', value: registrySummary.missingOwners, tone: 'text-fuchsia-400' },
-            { label: 'Unmapped Dependencies', value: registrySummary.missingDependencies, tone: 'text-slate-300' },
-          ].map(card => (
-            <div key={card.label} className="glass-panel rounded-lg border border-white/5 p-4 bg-black/20">
-              <p className="text-[8px] font-bold uppercase tracking-widest text-slate-500">{card.label}</p>
-              <p className={`text-2xl font-bold mt-2 ${card.tone}`}>{card.value}</p>
+      {typeof document !== 'undefined' && createPortal(
+        <>
+          <OperationalDisplayPanel
+            isOpen={showDisplayMenu}
+            panelStyle={displayMenuStyle}
+            panelRef={displayMenuPanelRef}
+            onClose={() => setShowDisplayMenu(false)}
+            fontSize={fontSize}
+            onFontSizeChange={setFontSize}
+            rowDensity={rowDensity}
+            onRowDensityChange={setRowDensity}
+            groupBy={groupBy}
+            onGroupByChange={setGroupBy}
+            groupOptions={EXTERNAL_DEFAULT_GROUP_OPTIONS}
+            columns={columnDefs}
+            hiddenColumns={hiddenColumns}
+            onToggleColumn={(field) => {
+              if (hiddenColumns.includes(field)) {
+                setHiddenColumns(hiddenColumns.filter((entry) => entry !== field))
+              } else {
+                setHiddenColumns([...hiddenColumns, field])
+              }
+            }}
+          />
+          <OperationalSavedViewsPanel
+            isOpen={showViewsMenu}
+            panelStyle={viewsMenuStyle}
+            panelRef={viewsMenuPanelRef}
+            entityLabel={externalViewLabel}
+            onClose={() => setShowViewsMenu(false)}
+            activeViewId={activeViewId}
+            currentViewName={activeViewId ? normalizedSavedViews.find((view: any) => view.id === activeViewId)?.name || 'Unsaved working view' : 'Unsaved working view'}
+            newViewName={newViewName}
+            onNewViewNameChange={setNewViewName}
+            onCreateView={createViewFromCurrent}
+            onApplySystemDefault={applySystemDefault}
+            savedViews={normalizedSavedViews}
+            defaultViewIds={new Set<string>()}
+            onApplyView={applySavedView}
+            onOverwriteView={saveCurrentToView}
+            onDeleteView={deleteView}
+            describeView={(view: any) => {
+              const tabLabel = view.config?.activeTab === 'deleted' ? 'Archive' : 'Registry'
+              const groupLabel = view.config?.groupBy && view.config.groupBy !== 'raw'
+                ? `Grouped by ${EXTERNAL_DEFAULT_GROUP_OPTIONS.find((o) => o.value === view.config.groupBy)?.label || view.config.groupBy}`
+                : 'Raw Table'
+              return `${tabLabel} · ${groupLabel} · ${view.config?.searchTerm ? 'Scoped search' : 'Full workspace'}`
+            }}
+          />
+
+          <AnimatePresence>
+            {showBulkMenu && !!bulkMenuStyle.top && (
+              <motion.div
+                key="bulk-menu"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                style={bulkMenuStyle}
+                className="bulk-menu-container"
+                ref={bulkMenuPanelRef}
+              >
+                <WorkspaceFloatingPanel kind="context" className="max-h-[560px] overflow-y-auto custom-scrollbar p-3">
+                  <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
+                    <p className="text-[10px] font-semibold text-slate-400">Bulk actions</p>
+                    <p className="pt-1 text-[12px] font-semibold text-slate-100">{selectedIds.length} peers selected</p>
+                  </div>
+
+                  {activeTab === 'deleted' ? (
+                    <button
+                      onClick={() => bulkMutation.mutate({ action: 'restore' })}
+                      disabled={bulkMutation.isPending}
+                      className="w-full rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-left transition-all hover:bg-emerald-500/15 disabled:opacity-50"
+                    >
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">
+                        {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : 'Restore Selection'}
+                      </p>
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <WorkspaceFlyoutActionCard
+                        title="Set Status"
+                        active={expandedBulkSection === 'status'}
+                        onClick={() => setExpandedBulkSection(expandedBulkSection === 'status' ? null : 'status')}
+                      />
+                      {expandedBulkSection === 'status' && (
+                        <WorkspaceFlyoutDropdownEditor
+                          value={bulkDraft.status}
+                          onChange={(value) => setBulkDraft((current) => ({ ...current, status: value }))}
+                          options={entityFilterOptions.status}
+                          placeholder="Choose status"
+                          actionLabel="Apply Status"
+                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { status: bulkDraft.status } })}
+                          disabled={!bulkDraft.status || bulkMutation.isPending}
+                        />
+                      )}
+
+                      <WorkspaceFlyoutActionCard
+                        title="Set Environment"
+                        active={expandedBulkSection === 'environment'}
+                        onClick={() => setExpandedBulkSection(expandedBulkSection === 'environment' ? null : 'environment')}
+                      />
+                      {expandedBulkSection === 'environment' && (
+                        <WorkspaceFlyoutDropdownEditor
+                          value={bulkDraft.environment}
+                          onChange={(value) => setBulkDraft((current) => ({ ...current, environment: value }))}
+                          options={entityFilterOptions.environment}
+                          placeholder="Choose environment"
+                          actionLabel="Apply Environment"
+                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { environment: bulkDraft.environment } })}
+                          disabled={!bulkDraft.environment || bulkMutation.isPending}
+                        />
+                      )}
+
+                      <WorkspaceFlyoutActionCard
+                        title="Set Criticality"
+                        active={expandedBulkSection === 'criticality'}
+                        onClick={() => setExpandedBulkSection(expandedBulkSection === 'criticality' ? null : 'criticality')}
+                      />
+                      {expandedBulkSection === 'criticality' && (
+                        <WorkspaceFlyoutDropdownEditor
+                          value={bulkDraft.criticality}
+                          onChange={(value) => setBulkDraft((current) => ({ ...current, criticality: value }))}
+                          options={[
+                            { value: 'Low', label: 'Low' },
+                            { value: 'Medium', label: 'Medium' },
+                            { value: 'High', label: 'High' },
+                            { value: 'Critical', label: 'Critical' },
+                          ]}
+                          placeholder="Choose criticality"
+                          actionLabel="Apply Criticality"
+                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { criticality: bulkDraft.criticality } })}
+                          disabled={!bulkDraft.criticality || bulkMutation.isPending}
+                        />
+                      )}
+
+                      <WorkspaceFlyoutActionCard
+                        title="Set Risk Rating"
+                        active={expandedBulkSection === 'risk_rating'}
+                        onClick={() => setExpandedBulkSection(expandedBulkSection === 'risk_rating' ? null : 'risk_rating')}
+                      />
+                      {expandedBulkSection === 'risk_rating' && (
+                        <WorkspaceFlyoutDropdownEditor
+                          value={bulkDraft.risk_rating}
+                          onChange={(value) => setBulkDraft((current) => ({ ...current, risk_rating: value }))}
+                          options={[
+                            { value: 'Low', label: 'Low' },
+                            { value: 'Medium', label: 'Medium' },
+                            { value: 'High', label: 'High' },
+                          ]}
+                          placeholder="Choose risk rating"
+                          actionLabel="Apply Risk Rating"
+                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { risk_rating: bulkDraft.risk_rating } })}
+                          disabled={!bulkDraft.risk_rating || bulkMutation.isPending}
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  <div className="mx-1 my-3 h-px bg-slate-800" />
+                  <button
+                    onClick={() => {
+                      if (!bulkDeleteConfirm) {
+                        setBulkDeleteConfirm(true)
+                        return
+                      }
+                      bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' })
+                    }}
+                    onMouseLeave={() => setBulkDeleteConfirm(false)}
+                    disabled={bulkMutation.isPending}
+                    className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
+                      bulkDeleteConfirm 
+                        ? 'border-rose-500 bg-rose-600 animate-pulse' 
+                        : 'border-rose-900/70 bg-rose-950/70 hover:bg-rose-950'
+                    } disabled:opacity-50`}
+                  >
+                    <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
+                      {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
+                        bulkDeleteConfirm 
+                          ? (activeTab === 'deleted' ? 'Confirm Permanent Purge?' : 'Confirm Deactivation?') 
+                          : (activeTab === 'deleted' ? 'Purge Selection' : 'Deactivate Selection')
+                      )}
+                    </p>
+                  </button>
+                </WorkspaceFloatingPanel>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {rowActionMenu && (
+              <motion.div
+                key="row-action-menu"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                style={rowActionMenu.style}
+                className="row-action-menu-container"
+              >
+                <WorkspaceFloatingPanel kind="context" className="overflow-hidden">
+                <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-[10px] font-semibold text-slate-400">Row actions</p>
+                    <p className="pt-1 text-[11px] font-semibold text-slate-100">ID {rowActionMenu.item.id} · {rowActionMenu.item.name}</p>
+                    <p className="truncate pt-1 text-[12px] text-slate-300">
+                      {rowActionMenu.item.type || 'External Peer'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setRowActionMenu(null)}
+                    className="ml-3 flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-slate-400 transition-all hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
+                    aria-label="Close row actions"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+                <div className="max-h-[calc(100vh-180px)] overflow-y-auto p-2.5 custom-scrollbar">
+                  <div className="px-3 py-1">
+                    <p className="text-[10px] font-semibold text-slate-400">Quick access</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 px-2 pb-3 border-b border-slate-800 mb-2">
+                    <button
+                      onClick={() => {
+                        setActiveDetails(rowActionMenu.item)
+                        setRowActionMenu(null)
+                      }}
+                      className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-blue-400 transition-all hover:border-blue-500/30 hover:bg-blue-600/10 active:scale-95"
+                    >
+                      <Maximize2 size={14} />
+                      Details
+                    </button>
+                    {activeTab === 'active' && (
+                      <button
+                        onClick={() => {
+                          setActiveModal(rowActionMenu.item)
+                          setRowActionMenu(null)
+                        }}
+                        className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-emerald-400 transition-all hover:border-emerald-500/30 hover:bg-emerald-600/10 active:scale-95"
+                      >
+                        <Edit2 size={14} />
+                        Edit
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="px-3 py-1">
+                    <p className="text-[10px] font-semibold text-slate-400">Follow options</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 px-2 pb-1">
+                    <button
+                      onClick={() => {
+                        toggleWatch(rowActionMenu.item.id)
+                      }}
+                      className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
+                    >
+                      {watchIds.includes(rowActionMenu.item.id) ? (
+                        <>
+                          <EyeOff size={12} className="text-slate-400" />
+                          Unwatch
+                        </>
+                      ) : (
+                        <>
+                          <Eye size={12} className="text-sky-400" />
+                          Watch
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        toggleFavorite(rowActionMenu.item.id)
+                      }}
+                      className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
+                    >
+                      {favoriteIds.includes(rowActionMenu.item.id) ? (
+                        <>
+                          <Star size={12} className="fill-amber-400 text-amber-400" />
+                          Unpin
+                        </>
+                      ) : (
+                        <>
+                          <Star size={12} className="text-amber-400" />
+                          Pin
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  
+                  <div className="mx-2 my-2 h-px bg-slate-800" />
+                  
+                  {activeTab === 'deleted' && (
+                    <button
+                      onClick={() => {
+                        restoreMutation.mutate(rowActionMenu.item.id)
+                        setRowActionMenu(null)
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300 transition-all hover:bg-emerald-950/80"
+                    >
+                      <Undo2 size={14} />
+                      Restore Entity
+                    </button>
+                  )}
+
+                  {activeTab !== 'deleted' && (
+                    <button
+                      onClick={() => {
+                        const item = rowActionMenu.item
+                        setConfirmModal({ 
+                          isOpen: true, 
+                          id: item.id, 
+                          purge: false, 
+                        type: 'entity'
+                        })
+                        setRowActionMenu(null)
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-rose-300 transition-all hover:bg-rose-950/80"
+                    >
+                      <Trash2 size={14} />
+                      Deactivate
+                    </button>
+                  )}
+
+                  {activeTab === 'deleted' && (
+                    <button
+                      onClick={() => {
+                        const item = rowActionMenu.item
+                        setConfirmModal({ 
+                          isOpen: true, 
+                          id: item.id, 
+                          purge: true, 
+                          type: 'entity' 
+                        })
+                        setRowActionMenu(null)
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-rose-300 transition-all hover:bg-rose-950/80"
+                    >
+                      <Trash2 size={14} />
+                      Purge Identity
+                    </button>
+                  )}
+                </div>
+                </WorkspaceFloatingPanel>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>,
+        document.body
+      )}
+
+
+
+      {groupBy === 'raw' ? (
+        <OperationalGridSurface
+          className="monitoring-grid-shell monitoring-grid"
+          style={{
+            '--ag-font-size': `${fontSize}px`,
+            '--ag-font-family': "'Inter', sans-serif",
+          } as React.CSSProperties}
+          loading={isLoading || linkLoading}
+          loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
+          loadingLabel={<p className="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-400">Synchronizing Intelligence Matrix...</p>}
+        >
+          <OperationalGridMatrix
+            gridRef={gridRef}
+            rowData={filteredEntities}
+            columnDefs={columnDefs as any} 
+            autoSizeStrategy={autoSizeStrategy}
+            colResizeDefault="normal"
+            fontSize={fontSize}
+            rowDensity={rowDensity}
+            context={gridContext}
+            quickFilterText={searchTerm}
+            getRowId={getExternalRowId}
+            getRowClass={getRowClass}
+            onGridReady={(params) => {
+              setGridApi(params.api)
+              setGridColumnApi(params.columnApi)
+              if (pendingGridRestore) {
+                applyGridState(pendingGridRestore)
+              } else if (columnLayoutState.length) {
+                applyColumnLayoutState(params.api, columnLayoutState, preserveExplicitColumnWidths)
+                params.api.setFilterModel(gridFilterModel)
+                params.api.applyColumnState({
+                  state: gridSortModel.map((entry) => ({ colId: entry.colId, sort: entry.sort as 'asc' | 'desc' })),
+                  defaultState: { sort: null },
+                  applyOrder: false,
+                })
+              }
+            }}
+            onSelectionChanged={handleExternalSelectionChanged}
+            onColumnResized={handleColumnResized}
+            onColumnMoved={(event) => syncColumnLayoutState(event.api, true)}
+            onDragStopped={(event) => syncColumnLayoutState(event.api, true)}
+            onColumnPinned={(event) => syncColumnLayoutState(event.api, true)}
+            onColumnVisible={(event) => syncColumnLayoutState(event.api, true)}
+            onFilterChanged={(event) => {
+              setGridFilterModel(sanitizeOperationalFilterModel(event.api.getFilterModel(), EXTERNAL_PERSISTED_COLUMN_IDS))
+            }}
+            onSortChanged={(event) => {
+              const nextSortModel = event.columnApi.getColumnState()
+                .filter((column: any) => column.sort === 'asc' || column.sort === 'desc')
+                .map((column: any) => ({ colId: column.colId, sort: column.sort }))
+              setGridSortModel(sanitizeOperationalSortModel(nextSortModel, EXTERNAL_PERSISTED_COLUMN_IDS))
+              syncColumnLayoutState(event.api, true)
+            }}
+            onRowClicked={handleExternalRowClick}
+            onRowDoubleClicked={handleExternalRowDoubleClick}
+            onCellContextMenu={handleCellContextMenu}
+            noRowsLabel="No external registry data found"
+          />
+          {!isLoading && !linkLoading && !filteredEntities.length && (
+            <div className="absolute inset-0 flex items-center justify-center bg-[#020617]/40">
+              <div className="w-full max-w-lg px-6">
+                <WorkspaceEmptyState
+                  title="No external identities found"
+                  description="Adjust the current view or admit new external entities to populate the registry."
+                />
+              </div>
             </div>
-          ))}
+          )}
+        </OperationalGridSurface>
+      ) : (
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 custom-scrollbar">
+          <div className="rounded-lg border border-white/5 bg-black/20 px-6 py-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-semibold text-slate-400">Grouped registry matrix</p>
+              <p className="pt-1 text-[12px] font-semibold text-slate-100">Sorted by {EXTERNAL_DEFAULT_GROUP_OPTIONS.find((option) => option.value === groupBy)?.label || groupBy}</p>
+            </div>
+            <div className="flex items-center gap-3">
+               <button 
+                 onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: false }), {}))}
+                 className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+               >
+                 Expand All
+               </button>
+               <button 
+                 onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: true }), {}))}
+                 className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+               >
+                 Collapse All
+               </button>
+               <div className="w-px h-6 bg-white/10 mx-1" />
+               <button 
+                 onClick={() => setGroupBy('raw')}
+                 className="px-3 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-[9px] font-semibold text-rose-400 hover:bg-rose-500/20 transition-all flex items-center gap-2"
+               >
+                 <X size={12} />
+                 <span>Cancel</span>
+               </button>
+            </div>
+          </div>
+          {groupedSections.map((section) => {
+            const isCollapsed = collapsedGroups[section.key]
+            const selectedCount = section.items.filter((item: any) => selectedIds.includes(item.id)).length
+            return (
+              <section key={section.key} className="glass-panel overflow-hidden rounded-lg border border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setCollapsedGroups((current) => ({ ...current, [section.key]: !current[section.key] }))}
+                  className="flex w-full items-center justify-between gap-4 border-b border-white/5 bg-white/[0.03] px-5 py-4 text-left transition-all hover:bg-white/[0.05]"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="text-[9px] font-semibold text-blue-400">{EXTERNAL_DEFAULT_GROUP_OPTIONS.find((option) => option.value === groupBy)?.label}</span>
+                      <h3 className="text-sm font-semibold text-slate-100">{section.label}</h3>
+                    </div>
+                    <p className="pt-1 text-[11px] text-slate-400">{section.items.length} peers{selectedCount ? ` · ${selectedCount} selected` : ''}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-lg border border-white/5 bg-black/30 px-2.5 py-1 text-[9px] font-semibold text-slate-300">{section.items.length}</span>
+                    {isCollapsed ? <ChevronDown size={16} className="text-slate-500" /> : <ChevronUp size={16} className="text-slate-500" />}
+                  </div>
+                </button>
+                {!isCollapsed && (
+                  <OperationalGridSurface
+                    className="monitoring-grid-shell monitoring-grid w-full"
+                    style={{ 
+                      '--ag-font-size': `${fontSize}px`,
+                      '--ag-font-family': "'Inter', sans-serif",
+                      height: `${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px`
+                    } as React.CSSProperties}
+                  >
+                    <OperationalGridMatrix
+                      rowData={section.items} 
+                      columnDefs={columnDefs as any} 
+                      autoSizeStrategy={autoSizeStrategy}
+                      colResizeDefault="normal"
+                      fontSize={fontSize}
+                      rowDensity={rowDensity}
+                      context={gridContext}
+                      getRowId={getExternalRowId}
+                      getRowClass={getRowClass}
+                      onGridReady={(params) => {
+                        if (pendingGridRestore) {
+                          applyGridState(pendingGridRestore)
+                        } else if (columnLayoutState.length) {
+                          applyColumnLayoutState(params.api, columnLayoutState, preserveExplicitColumnWidths)
+                          params.api.setFilterModel(gridFilterModel)
+                          params.api.applyColumnState({
+                            state: gridSortModel.map((entry) => ({ colId: entry.colId, sort: entry.sort as 'asc' | 'desc' })),
+                            defaultState: { sort: null },
+                            applyOrder: false,
+                          })
+                        }
+                      }}
+                      onSelectionChanged={handleExternalSelectionChanged}
+                      onColumnResized={handleColumnResized}
+                      onColumnMoved={(event) => syncColumnLayoutState(event.api, true)}
+                      onDragStopped={(event) => syncColumnLayoutState(event.api, true)}
+                      onColumnPinned={(event) => syncColumnLayoutState(event.api, true)}
+                      onColumnVisible={(event) => syncColumnLayoutState(event.api, true)}
+                      onFilterChanged={(event) => {
+                        setGridFilterModel(sanitizeOperationalFilterModel(event.api.getFilterModel(), EXTERNAL_PERSISTED_COLUMN_IDS))
+                      }}
+                      onSortChanged={(event) => {
+                        const nextSortModel = event.columnApi.getColumnState()
+                          .filter((column: any) => column.sort === 'asc' || column.sort === 'desc')
+                          .map((column: any) => ({ colId: column.colId, sort: column.sort }))
+                        setGridSortModel(sanitizeOperationalSortModel(nextSortModel, EXTERNAL_PERSISTED_COLUMN_IDS))
+                        syncColumnLayoutState(event.api, true)
+                      }}
+                      onRowClicked={handleExternalRowClick}
+                      onRowDoubleClicked={handleExternalRowDoubleClick}
+                      onCellContextMenu={handleCellContextMenu}
+                      noRowsLabel="No external registry data found"
+                    />
+                  </OperationalGridSurface>
+                )}
+              </section>
+            )
+          })}
         </div>
       )}
 
-      <AnimatePresence>
-        {showStyleLab && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="bg-blue-600/10 border border-blue-500/20 rounded-lg p-4 flex items-center justify-between backdrop-blur-md">
-               <div className="flex items-center space-x-12">
-                  <div className="flex items-center space-x-3">
-                     <Activity size={16} className="text-blue-400" />
-                     <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">View Density Laboratory</span>
-                  </div>
-
-                  <div className="flex items-center space-x-6">
-                     <div className="flex items-center space-x-4">
-                        <span className="text-[9px] font-bold text-slate-500 uppercase">Font Size</span>
-                        <div className="flex items-center space-x-2">
-                            <input 
-                            type="range" min="8" max="14" step="1" 
-                            value={fontSize} onChange={e => setFontSize(Number(e.target.value))}
-                            className="w-32 accent-blue-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
-                            />
-                            <span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span>
-                        </div>
-                     </div>
-
-                     <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
-                        <span className="text-[9px] font-bold text-slate-500 uppercase">Row Density</span>
-                        <div className="flex items-center space-x-2">
-                            <input 
-                            type="range" min="4" max="24" step="2" 
-                            value={rowDensity} onChange={e => setRowDensity(Number(e.target.value))}
-                            className="w-32 accent-indigo-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
-                            />
-                            <span className="text-[10px] text-white w-4 font-bold">{rowDensity}px</span>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-               <button onClick={() => setShowStyleLab(false)} className="text-slate-500 hover:text-white transition-colors"><X size={16}/></button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="flex-1 glass-panel rounded-lg border border-white/5 overflow-hidden ag-theme-alpine-dark relative">
-        {(isLoading || linkLoading) && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
-             <RefreshCcw size={32} className="text-blue-400 animate-spin" />
-             <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-400">Synchronizing Intelligence Matrix...</p>
+      <WorkspaceModal
+        isOpen={!!activeModal}
+        onClose={() => setActiveModal(null)}
+        size="workspace"
+        isMaximized={isWorkspaceMaximized}
+        onMaximizeToggle={() => setIsWorkspaceMaximized((current) => !current)}
+        title={activeModal?.id ? `Modify ${externalViewLabel} Identity` : `Add ${externalViewLabel} Identity`}
+        subtitle={activeModal?.id ? `Updating ${activeModal.name || 'external registry record'}` : `Register ${externalViewLabel.toLowerCase()} entities, ownership, and dependency context.`}
+        icon={activeModal?.id ? <Edit2 size={20} /> : <Plus size={20} />}
+        status={activeModal?.id ? (
+          <div className="flex items-center gap-2">
+            <span className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-widest text-blue-300">
+              {activeModal.type || externalViewLabel}
+            </span>
+            <span className="rounded-lg border border-white/10 bg-black/30 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-widest text-slate-300">
+              {activeModal.environment || 'Unspecified'}
+            </span>
           </div>
-        )}
-        <AgGridReact 
-          ref={gridRef}
-          rowData={activeTab === 'links' ? links : entities} 
-          columnDefs={columnDefs as any} 
-          headerHeight={fontSize + rowDensity + 10}
-          rowHeight={fontSize + rowDensity + 10}
-          onGridReady={(params) => {
-            setGridApi(params.api)
-            setGridColumnApi(params.columnApi)
-          }}
-          animateRows={true}
-          enableCellTextSelection={true}
-          autoSizeStrategy={autoSizeStrategy}
-          rowSelection="multiple"
-          onSelectionChanged={e => setSelectedIds(e?.api?.getSelectedNodes().map((n: any) => n.data?.id).filter(Boolean) || [])}
-        />
-
-        <AnimatePresence>
-          {showColumnPicker && (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl"
+        ) : undefined}
+        footerRight={(
+          <div className="flex items-center gap-3 shrink-0">
+            <ToolbarButton onClick={() => setActiveModal(null)}>Close</ToolbarButton>
+            <ToolbarButton
+              onClick={() => (document.getElementById('external-entity-form') as HTMLFormElement | null)?.requestSubmit()}
+              disabled={mutation.isPending}
+              variant="primary"
+              className="px-8 whitespace-nowrap inline-flex items-center"
             >
-              <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-blue-400 flex items-center space-x-2">
-                  <Sliders size={14} /> <span>Toggle Columns</span>
-                </h3>
-                <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
-              </div>
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
-                {columnDefs.filter((c: any) => c.field && !c.lockVisible).map((col: any) => (
-                  <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
-                    <div className="relative flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={!hiddenColumns.includes(col.field)}
-                        onChange={() => {
-                          if (hiddenColumns.includes(col.field)) {
-                            setHiddenColumns(hiddenColumns.filter(f => f !== col.field))
-                          } else {
-                            setHiddenColumns([...hiddenColumns, col.field])
-                          }
-                        }}
-                        className="sr-only"
-                      />
-                      <div className={`w-4 h-4 rounded-lg border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
-                         {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
-                      </div>
-                    </div>
-                    <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
-                  </label>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <AnimatePresence>
-        {activeModal && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[800px] max-h-[90vh] overflow-y-auto p-10 rounded-lg border border-blue-500/30 custom-scrollbar">
-               <div className="flex items-center justify-between border-b border-white/5 pb-6">
-                  <h2 className="text-2xl font-bold uppercase flex items-center space-x-4 text-blue-400">
-                     <Layers size={28}/> <span>{activeModal.id ? 'Modify Entity Registry' : 'Admit External Identity'}</span>
-                  </h2>
-                  <button onClick={() => setActiveModal(null)} className="text-slate-500 hover:text-white transition-colors"><X size={24}/></button>
-               </div>
-               <ExternalForm initialData={activeModal} onSave={mutation.mutate} isSaving={mutation.isPending} options={options} teams={teams || []} operators={operators || []} />
-            </motion.div>
+              {mutation.isPending ? <RefreshCcw className="animate-spin mr-2" size={14} /> : <Check className="mr-2" size={14} />}
+              <span>{activeModal?.id ? `Save ${externalViewLabel}` : `Add ${externalViewLabel}`}</span>
+            </ToolbarButton>
           </div>
         )}
-        {showLinkModal && (
-           <LinkForm 
-              entities={allEntities?.filter((e: any) => !e.is_deleted)}
-              devices={devices}
-              onClose={() => setShowLinkModal(false)}
-              onSave={(data: any) => linkMutation.mutate(data)}
-              isPending={linkMutation.isPending}
-           />
-        )}
-      </AnimatePresence>
+      >
+        <ExternalForm
+          formId="external-entity-form"
+          renderActions={false}
+          initialData={activeModal}
+          onSave={mutation.mutate}
+          isSaving={mutation.isPending}
+          options={options}
+          teams={teams || []}
+          operators={operators || []}
+        />
+      </WorkspaceModal>
 
-      <AnimatePresence>
-       {activeDetails && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-10">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="glass-panel w-[900px] max-h-[85vh] overflow-hidden p-10 rounded-lg border border-blue-500/30 flex flex-col">
-               <div className="flex items-center justify-between border-b border-white/5 pb-6">
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-bold uppercase text-blue-400 leading-tight tracking-tighter ">{activeDetails.name}</h2>
-                    <div className="flex items-center space-x-3 mt-1">
-                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{activeDetails.type} · {activeDetails.environment}</p>
-                      <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <p className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">ORG: {activeDetails.owner_organization || 'UNASSIGNED'}</p>
-                      <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">OWNER: {activeDetails.internal_operator_name || activeDetails.internal_team_name || 'UNASSIGNED'}</p>
-                      <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <p className={`text-[9px] font-bold uppercase tracking-widest ${
-                        activeDetails.status === 'Active' ? 'text-emerald-400' : 'text-amber-400'
-                      }`}>STATUS: {activeDetails.status}</p>
-                    </div>
-                    <div className="mt-2 p-3 bg-blue-500/5 rounded-lg border border-blue-500/10 max-w-2xl">
-                       <p className="text-[10px] font-bold text-slate-400  leading-relaxed">
-                          "{activeDetails.description || 'No formal functional description provided for this architectural identity.'}"
-                       </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                     <button 
-                       onClick={() => {
-                         navigator.clipboard.writeText(window.location.href);
-                         toast.success("Direct link copied to clipboard");
-                       }} 
-                       className="text-slate-500 hover:text-blue-400 transition-colors p-2"
-                       title="Share direct link"
-                     >
-                       <Share2 size={24}/>
-                     </button>
-                     <button onClick={() => setActiveDetails(null)} className="text-slate-500 hover:text-white transition-colors p-2"><X size={28}/></button>
-                  </div>
-                  </div>
-               <div className="flex-1 overflow-y-auto custom-scrollbar pt-6">
-                  <ExternalDetailsView entity={activeDetails} links={links || []} />
-               </div>
-            </motion.div>
+      {showLinkModal && (
+         <LinkForm 
+            entities={allEntities?.filter((e: any) => !e.is_deleted)}
+            devices={devices}
+            onClose={() => {
+              setShowLinkModal(false)
+              setLinkSeedEntityId(null)
+            }}
+            onSave={(data: any) => linkMutation.mutate(data)}
+            isPending={linkMutation.isPending}
+            initialExternalEntityId={linkSeedEntityId}
+         />
+      )}
+
+      {compareOpen && (
+        <CompareExternalModal
+          items={allEntities?.filter((e: any) => selectedIds.includes(e.id)) || []}
+          onClose={() => setCompareOpen(false)}
+        />
+      )}
+
+      <WorkspaceModal
+        isOpen={!!activeDetails}
+        onClose={closeDetails}
+        size="workspace"
+        isMaximized={isWorkspaceMaximized}
+        onMaximizeToggle={() => setIsWorkspaceMaximized((current) => !current)}
+        title={
+          <div className="flex items-center gap-3">
+            <span>{activeDetails?.name || `${externalViewLabel} Details`}</span>
+            {activeDetails && (
+              <WorkspaceShareHeader id={String(activeDetails.id)} title={activeDetails.name} />
+            )}
           </div>
-        )}
-      </AnimatePresence>
+        }
+        subtitle={activeDetails ? `${activeDetails.type || externalViewLabel} · ${activeDetails.environment || 'Unspecified'} · ${activeDetails.owner_organization || 'Unassigned organization'}` : undefined}
+        icon={<Eye size={20} />}
+        status={activeDetails ? (
+          <div className="flex items-center gap-2">
+            <span className={`rounded-lg border px-2.5 py-1 text-[9px] font-semibold uppercase tracking-widest ${
+              activeDetails.status === 'Active'
+                ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+                : 'border-amber-500/20 bg-amber-500/10 text-amber-300'
+            }`}>
+              {activeDetails.status || 'Unknown'}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveModal(activeDetails)
+                setActiveDetails(null)
+              }}
+              className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-widest text-emerald-300 transition-colors hover:bg-emerald-500/20"
+              title="Edit external identity"
+            >
+              <Edit2 size={12} />
+              Edit
+            </button>
+          </div>
+        ) : undefined}
+        footerRight={activeDetails ? (
+          <div className="flex items-center gap-3 shrink-0">
+            <ToolbarButton
+              onClick={() => {
+                setActiveModal(activeDetails)
+                setActiveDetails(null)
+              }}
+            >
+              Edit
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => {
+                setLinkSeedEntityId(activeDetails.id)
+                setShowLinkModal(true)
+              }}
+            >
+              Map Link
+            </ToolbarButton>
+            <ToolbarButton onClick={closeDetails}>Close</ToolbarButton>
+          </div>
+        ) : undefined}
+      >
+        {activeDetails ? <ExternalDetailsView entity={activeDetails} links={links || []} /> : null}
+      </WorkspaceModal>
 
       <ConfirmationModal 
         isOpen={confirmModal.isOpen}
@@ -1591,34 +3183,26 @@ export default function External() {
             { title: "Environments", category: "Environment", icon: Globe }
         ]}
       />
+      <OperationalImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        tableName="external_entities"
+        displayName={externalRegistryLabel}
+      />
 
-      <style>{`
-        .ag-theme-alpine-dark {
-          --ag-background-color: #1a1b26;
-          --ag-header-background-color: #24283b;
-          --ag-border-color: rgba(255, 255, 255, 0.05);
-          --ag-foreground-color: #f1f5f9;
-          --ag-header-foreground-color: #3b82f6;
-          --ag-font-family: 'Inter', sans-serif;
-          --ag-font-size: ${fontSize}px;
-        }
-        .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-size: ${fontSize}px !important; font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; justify-content: center !important; }
-        .ag-cell { font-weight: 700 !important; justify-content: center !important; display: flex; align-items: center; font-size: ${fontSize}px !important; }
-        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
-        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
-      `}</style>
-    </div>
+
+    </OperationalWorkspaceFrame>
   )
 }
 
-function LinkForm({ entities, devices, onClose, onSave, isPending }: any) {
+function LinkForm({ entities, devices, onClose, onSave, isPending, initialExternalEntityId }: any) {
   const [formData, setFormData] = useState({
-    external_entity_id: '', device_id: '', service_id: '', direction: 'Outbound', purpose: '', protocol: 'TCP', port: '',
+    external_entity_id: initialExternalEntityId ? String(initialExternalEntityId) : '', device_id: '', service_id: '', direction: 'Outbound', purpose: '', protocol: 'TCP', port: '',
     host_or_fqdn: '', path_or_resource: '', network_zone: '', transport_security: '', link_status: 'Active', credential_reference: '',
     credentials: { username: '', vault_path: '', note: '' }
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isMaximized, setIsMaximized] = useState(false)
 
   const { data: services } = useQuery({
     queryKey: ['device-services', formData.device_id],
@@ -1630,21 +3214,57 @@ function LinkForm({ entities, devices, onClose, onSave, isPending }: any) {
   })
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-xl p-10">
-      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-panel w-full max-w-5xl h-[85vh] rounded-lg border border-indigo-500/20 overflow-hidden flex flex-col shadow-2xl">
-        <div className="p-10 border-b border-white/5 bg-white/5 flex items-start justify-between shrink-0">
-           <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                 <div className="px-3 py-1 rounded-lg bg-indigo-600/20 border border-indigo-500/30 text-[9px] font-black text-indigo-400 uppercase tracking-widest">MAP_INTERCONNECT</div>
-                 <div className="px-3 py-1 rounded-lg bg-emerald-600/20 border border-emerald-500/30 text-[9px] font-black text-emerald-400 uppercase tracking-widest">DATA_FLOW_ESTABLISHMENT</div>
-              </div>
-              <h1 className="text-5xl font-black uppercase tracking-tighter text-white">ESTABLISH_LINK</h1>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em]">Mapping Topology Between Global & Local Matrix</p>
-           </div>
-           <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all"><X size={24}/></button>
+    <WorkspaceModal
+      isOpen={true}
+      onClose={onClose}
+      size="workspace"
+      isMaximized={isMaximized}
+      onMaximizeToggle={() => setIsMaximized((current) => !current)}
+      title="Establish External Link"
+      subtitle="Map topology and credentials between the external registry and internal assets."
+      icon={<LinkIcon size={20} />}
+      status={(
+        <div className="flex items-center gap-2">
+          <span className="rounded-lg border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-widest text-indigo-300">
+            Map Interconnect
+          </span>
+          <span className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-widest text-emerald-300">
+            Data Flow
+          </span>
         </div>
-
-        <div className="flex-1 overflow-y-auto p-10 custom-scrollbar space-y-10">
+      )}
+      footerRight={(
+        <div className="flex items-center gap-3 shrink-0">
+          <ToolbarButton onClick={onClose}>Close</ToolbarButton>
+          <ToolbarButton 
+            onClick={() => {
+              const nextErrors: Record<string, string> = {}
+              if (!formData.purpose.trim()) nextErrors.purpose = 'Interconnect purpose is required'
+              if (formData.port && (Number(formData.port) < 1 || Number(formData.port) > 65535)) nextErrors.port = 'Port must be between 1 and 65535'
+              setErrors(nextErrors)
+              if (Object.keys(nextErrors).length) return
+              onSave({
+                ...formData,
+                external_entity_id: parseInt(formData.external_entity_id),
+                device_id: parseInt(formData.device_id),
+                service_id: formData.service_id ? parseInt(formData.service_id) : null,
+                port: formData.port ? parseInt(formData.port, 10) : null,
+                network_zone: formData.network_zone || null,
+                transport_security: formData.transport_security || null,
+                credential_reference: formData.credential_reference || null,
+              })
+            }}
+            disabled={!formData.external_entity_id || !formData.device_id || isPending}
+            variant="primary"
+            className="px-8 whitespace-nowrap inline-flex items-center"
+          >
+            {isPending ? <RefreshCcw className="animate-spin mr-2" size={14} /> : <Check className="mr-2" size={14} />}
+            <span>Save Link</span>
+          </ToolbarButton>
+        </div>
+      )}
+    >
+      <div className="space-y-10 pt-6">
            <div className="grid grid-cols-2 gap-10">
               <div className="p-8 bg-indigo-600/5 border border-indigo-500/10 rounded-lg space-y-6">
                  <h3 className="text-[10px] font-black uppercase text-indigo-500 tracking-[0.3em] flex items-center gap-2"><Globe size={14}/> External Peer</h3>
@@ -1750,33 +3370,7 @@ function LinkForm({ entities, devices, onClose, onSave, isPending }: any) {
                  </div>
               </div>
            </div>
-        </div>
-
-        <div className="p-10 border-t border-white/5 bg-white/5 shrink-0 flex items-center space-x-4">
-           <button onClick={onClose} className="px-10 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-white transition-all">Abort</button>
-           <button 
-             onClick={() => {
-               const nextErrors: Record<string, string> = {}
-               if (!formData.purpose.trim()) nextErrors.purpose = 'Interconnect purpose is required'
-               if (formData.port && (Number(formData.port) < 1 || Number(formData.port) > 65535)) nextErrors.port = 'Port must be between 1 and 65535'
-               setErrors(nextErrors)
-               if (Object.keys(nextErrors).length) return
-               onSave({
-                 ...formData,
-                 external_entity_id: parseInt(formData.external_entity_id),
-                 device_id: parseInt(formData.device_id),
-                 service_id: formData.service_id ? parseInt(formData.service_id) : null,
-                 port: formData.port ? parseInt(formData.port, 10) : null,
-               })
-             }}
-             disabled={!formData.external_entity_id || !formData.device_id || isPending}
-             className="flex-1 py-5 bg-indigo-600 text-white rounded-lg text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 active:scale-95 transition-all flex items-center justify-center space-x-3"
-           >
-              {isPending && <RefreshCcw size={16} className="animate-spin" />}
-              <span>Establish Interconnect Link</span>
-           </button>
-        </div>
-      </motion.div>
-    </div>
+      </div>
+    </WorkspaceModal>
   )
 }

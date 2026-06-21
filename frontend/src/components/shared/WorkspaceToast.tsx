@@ -105,6 +105,9 @@ export const WorkspaceToast = ({ t, message, onRevert, type = 'success' }: Works
 }
 
 export const showWorkspaceToast = (message: string, options?: { onRevert?: () => void, type?: 'success' | 'error' | 'loading' }) => {
+  // Use message as ID to ensure uniqueness for this specific message
+  toast.dismiss(message);
+  
   toast.custom((t) => (
     <WorkspaceToast 
       t={t} 
@@ -114,6 +117,7 @@ export const showWorkspaceToast = (message: string, options?: { onRevert?: () =>
     />
   ), {
     duration: options?.onRevert ? 5000 : 2000,
-    position: 'top-right'
+    position: 'top-right',
+    id: message 
   })
 }

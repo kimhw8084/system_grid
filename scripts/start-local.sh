@@ -159,7 +159,7 @@ echo "Preparing disposable local SysGrid environment..."
 
 if [[ "$RUN_TYPECHECK" == "true" ]]; then
   echo "Running frontend typecheck..."
-  TYPECHECK_LOG="$(mktemp "${TMPDIR:-/tmp}/sysgrid-typecheck.XXXXXX.log")"
+  TYPECHECK_LOG="$(mktemp -t sysgrid-typecheck)"
   if (
     cd "$FRONTEND_DIR"
     npx tsc --noEmit

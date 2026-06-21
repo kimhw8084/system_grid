@@ -100,7 +100,7 @@ export function WorkspaceModal({
             onTabChange={onTabChange}
           />
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-10 sm:px-8">
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-6 pb-20 sm:px-8 modal-content-spacing">
             {children}
           </div>
 

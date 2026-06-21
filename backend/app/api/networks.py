@@ -9,6 +9,60 @@ from .utils import build_audit_log, filter_valid_columns
 
 router = APIRouter(prefix="/networks", tags=["Network Fabric"])
 
+NETWORK_DIRECTION_VALUES = {"Bidirectional", "Unidirectional", "Source to Target", "Target to Source"}
+NETWORK_UNIT_VALUES = {"Gbps", "Mbps", "Kbps"}
+NETWORK_STATUS_VALUES = {"Active", "Maintenance", "Down", "Planned", "Requested", "Standby", "Offline", "Deleted"}
+
+
+async def _get_setting_values(db: AsyncSession, category: str) -> set[str]:
+    result = await db.execute(
+        select(models.SettingOption.value).filter(models.SettingOption.category == category)
+    )
+    return {str(value).strip() for (value,) in result.all() if str(value).strip()}
+
+
+async def _validate_network_enums(
+    db: AsyncSession,
+    *,
+    link_type: str | None,
+    farm: str | None,
+    cable_type: str | None,
+    direction: str | None,
+    status: str | None,
+) -> None:
+    if link_type is not None:
+        allowed_link_types = await _get_setting_values(db, "LinkPurpose")
+        if allowed_link_types and link_type not in allowed_link_types:
+            raise HTTPException(status_code=400, detail=f"Invalid link type '{link_type}'")
+
+    if farm is not None:
+        allowed_farms = await _get_setting_values(db, "NetworkFarm")
+        if allowed_farms and farm not in allowed_farms:
+            raise HTTPException(status_code=400, detail=f"Invalid farm '{farm}'")
+
+    if cable_type is not None:
+        allowed_cables = await _get_setting_values(db, "NetworkCableType")
+        if allowed_cables and cable_type not in allowed_cables:
+            raise HTTPException(status_code=400, detail=f"Invalid cable type '{cable_type}'")
+
+    if direction is not None and direction not in NETWORK_DIRECTION_VALUES:
+        raise HTTPException(status_code=400, detail=f"Invalid direction '{direction}'")
+
+    if status is not None and status not in NETWORK_STATUS_VALUES:
+        raise HTTPException(status_code=400, detail=f"Invalid status '{status}'")
+
+
+async def _get_connection_by_id(db: AsyncSession, conn_id: int):
+    result = await db.execute(select(models.PortConnection).filter(models.PortConnection.id == conn_id))
+    return result.scalar_one_or_none()
+
+
+async def _get_connections_for_ids(db: AsyncSession, ids: list[int]):
+    if not ids:
+        return []
+    result = await db.execute(select(models.PortConnection).filter(models.PortConnection.id.in_(ids)))
+    return result.scalars().all()
+
 @router.get("/interfaces")
 async def get_interfaces(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.NetworkInterface))
@@ -41,7 +95,7 @@ async def update_interface(interface_id: int, data: dict, db: AsyncSession = Dep
     return item
 
 @router.get("/connections")
-async def get_connections(device_id: int = None, db: AsyncSession = Depends(get_db)):
+async def get_connections(device_id: int = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
     from sqlalchemy.orm import aliased
     DeviceA = aliased(models.Device)
     DeviceB = aliased(models.Device)
@@ -86,6 +140,8 @@ async def get_connections(device_id: int = None, db: AsyncSession = Depends(get_
     
     if device_id:
         query = query.filter(or_(models.PortConnection.source_device_id == device_id, models.PortConnection.target_device_id == device_id))
+    if not include_deleted:
+        query = query.filter(or_(models.PortConnection.status != "Deleted", models.PortConnection.status.is_(None)))
     
     result = await db.execute(query)
     rows = result.all()
@@ -94,6 +150,9 @@ async def get_connections(device_id: int = None, db: AsyncSession = Depends(get_
     for conn, server_a, server_b, rack_a, slot_a, rack_b, slot_b in rows:
         final_result.append({
             "id": conn.id,
+            "created_at": conn.created_at,
+            "updated_at": conn.updated_at,
+            "created_by_user_id": conn.created_by_user_id,
             "source_device_id": conn.source_device_id,
             "src_device_id": conn.source_device_id,
             "server_a": server_a or "Unknown",
@@ -126,26 +185,38 @@ async def get_connections(device_id: int = None, db: AsyncSession = Depends(get_
             "direction": conn.direction,
             "cable_type": conn.cable_type,
             "status": conn.status,
+            "is_deleted": conn.status == "Deleted",
+            "is_active": conn.status != "Deleted",
             "farm": conn.farm,
             "request_link": conn.request_link
         })
     return final_result
 
 @router.post("/connections")
-async def create_connection(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
-    source_device_id = data.get('device_a_id')
-    source_port = data.get('source_port') or data.get('port_a')
-    target_device_id = data.get('device_b_id')
-    target_port = data.get('target_port') or data.get('port_b')
+async def create_connection(data: schemas.NetworkConnectionCreate, request: Request, db: AsyncSession = Depends(get_db)):
+    payload = data.model_dump(exclude_none=True)
+    source_device_id = payload["source_device_id"]
+    source_port = payload["source_port"]
+    target_device_id = payload["target_device_id"]
+    target_port = payload["target_port"]
+    link_type = payload["link_type"]
+    status_value = payload.get("status", "Active")
+    direction_value = payload.get("direction", "Bidirectional")
+    farm_value = payload.get("farm")
+    cable_type_value = payload.get("cable_type")
+    unit_value = payload.get("unit", "Gbps")
 
-    if not all([source_device_id, source_port, target_device_id, target_port]):
-        raise HTTPException(400, "Incomplete mapping data")
-    if str(source_device_id) == str(target_device_id):
-        raise HTTPException(400, "Source and peer assets must be different")
-    if source_port == target_port and str(source_device_id) == str(target_device_id):
-        raise HTTPException(400, "Loopback mappings on the same asset and port are not allowed")
+    if unit_value not in NETWORK_UNIT_VALUES:
+        raise HTTPException(status_code=400, detail=f"Invalid unit '{unit_value}'")
+    await _validate_network_enums(
+        db,
+        link_type=link_type,
+        farm=farm_value,
+        cable_type=cable_type_value,
+        direction=direction_value,
+        status=status_value,
+    )
 
-    # Duplicate check: port on a device can only have one physical connection
     dup_query = select(models.PortConnection).filter(
         or_(
             and_(models.PortConnection.source_device_id == source_device_id, models.PortConnection.source_port == source_port),
@@ -156,28 +227,28 @@ async def create_connection(data: dict, request: Request, db: AsyncSession = Dep
     )
     dup_res = await db.execute(dup_query)
     if dup_res.scalars().first():
-        raise HTTPException(400, "One of the selected ports is already physically cross-connected")
+        raise HTTPException(status_code=400, detail="One of the selected ports is already physically cross-connected")
 
     conn = models.PortConnection(
         source_device_id=source_device_id,
         source_port=source_port,
-        source_ip=data.get('source_ip'),
-        source_mac=data.get('source_mac'),
-        source_vlan=data.get('source_vlan'),
+        source_ip=payload.get('source_ip'),
+        source_mac=payload.get('source_mac'),
+        source_vlan=payload.get('source_vlan'),
         target_device_id=target_device_id,
         target_port=target_port,
-        target_ip=data.get('target_ip'),
-        target_mac=data.get('target_mac'),
-        target_vlan=data.get('target_vlan'),
-        link_type=data.get('link_type'), 
-        purpose=data.get('purpose'),
-        speed_gbps=data.get('speed_gbps'),
-        unit=data.get('unit', 'Gbps'),
-        direction=data.get('direction'),
-        cable_type=data.get('cable_type'),
-        status=data.get('status', 'Active'),
-        farm=data.get('farm'),
-        request_link=data.get('request_link')
+        target_ip=payload.get('target_ip'),
+        target_mac=payload.get('target_mac'),
+        target_vlan=payload.get('target_vlan'),
+        link_type=link_type,
+        purpose=payload.get('purpose'),
+        speed_gbps=payload.get('speed_gbps'),
+        unit=unit_value,
+        direction=direction_value,
+        cable_type=cable_type_value,
+        status=status_value,
+        farm=farm_value,
+        request_link=payload.get('request_link')
     )
     db.add(conn)
     log = build_audit_log(request=request, action="CREATE", target_table="port_connections", description=f"Established link between dev {source_device_id} and {target_device_id}")
@@ -186,23 +257,126 @@ async def create_connection(data: dict, request: Request, db: AsyncSession = Dep
     await db.refresh(conn)
     return conn
 
+@router.post("/connections/bulk-status")
+async def bulk_update_status(data: schemas.NetworkConnectionBulkStatus, request: Request, db: AsyncSession = Depends(get_db)):
+    ids = data.ids
+    new_status = data.status
+    if new_status not in NETWORK_STATUS_VALUES:
+        raise HTTPException(status_code=400, detail=f"Invalid status '{new_status}'")
+
+    await db.execute(
+        update(models.PortConnection)
+        .where(models.PortConnection.id.in_(ids))
+        .values(status=new_status)
+    )
+
+    log = build_audit_log(request=request, action="BULK_UPDATE", target_table="port_connections", description=f"Bulk updated {len(ids)} links to {new_status}")
+    db.add(log)
+    await db.commit()
+    return {"status": "success", "count": len(ids), "changed": len(ids), "summary": f"Updated {len(ids)} links to {new_status}"}
+
+@router.post("/connections/bulk-restore")
+async def bulk_restore_connections(data: schemas.NetworkConnectionBulkIds, request: Request, db: AsyncSession = Depends(get_db)):
+    ids = data.ids
+    connections = await _get_connections_for_ids(db, ids)
+    if not connections:
+        return {"status": "success", "count": 0, "changed": 0, "summary": "No deleted connections restored"}
+    if any(conn.status != "Deleted" for conn in connections):
+        raise HTTPException(status_code=400, detail="Only deleted connections can be restored")
+
+    await db.execute(
+        update(models.PortConnection)
+        .where(models.PortConnection.id.in_(ids))
+        .values(status="Active")
+    )
+
+    log = build_audit_log(request=request, action="BULK_RESTORE", target_table="port_connections", description=f"Bulk restored {len(ids)} network links")
+    db.add(log)
+    await db.commit()
+    return {"status": "success", "count": len(ids), "changed": len(ids), "summary": f"Restored {len(ids)} connections"}
+
+@router.post("/connections/bulk-delete")
+async def bulk_delete_connections(data: schemas.NetworkConnectionBulkIds, request: Request, db: AsyncSession = Depends(get_db)):
+    ids = data.ids
+    if not ids:
+        raise HTTPException(status_code=400, detail="IDs required")
+
+    result = await db.execute(select(models.PortConnection).filter(models.PortConnection.id.in_(ids)))
+    connections = result.scalars().all()
+    if not connections:
+        return {"status": "success", "count": 0, "changed": 0, "summary": "No connections archived"}
+
+    deleted_ids = []
+    for conn in connections:
+        deleted_ids.append(conn.id)
+        conn.status = "Deleted"
+
+    log = build_audit_log(request=request, action="BULK_DELETE", target_table="port_connections", description=f"Bulk severed {len(deleted_ids)} network links")
+    db.add(log)
+    await db.commit()
+    return {"status": "success", "count": len(deleted_ids), "changed": len(deleted_ids), "deleted_ids": deleted_ids, "summary": f"Archived {len(deleted_ids)} connections"}
+
+@router.post("/connections/bulk-purge")
+async def bulk_purge_connections(data: schemas.NetworkConnectionBulkIds, request: Request, db: AsyncSession = Depends(get_db)):
+    ids = data.ids
+    if not ids:
+        raise HTTPException(status_code=400, detail="IDs required")
+
+    connections = await _get_connections_for_ids(db, ids)
+    if not connections:
+        return {"status": "success", "count": 0, "changed": 0, "summary": "No deleted connections purged"}
+    if any(conn.status != "Deleted" for conn in connections):
+        raise HTTPException(status_code=400, detail="Only deleted connections can be purged")
+
+    deleted_ids = [conn.id for conn in connections]
+    log = build_audit_log(request=request, action="BULK_PURGE", target_table="port_connections", description=f"Bulk purged {len(deleted_ids)} network links")
+    db.add(log)
+    for conn in connections:
+        await db.delete(conn)
+    await db.commit()
+    return {"status": "success", "count": len(deleted_ids), "changed": len(deleted_ids), "deleted_ids": deleted_ids, "summary": f"Purged {len(deleted_ids)} connections"}
+
 @router.put("/connections/{conn_id}")
-async def update_connection(conn_id: int, data: dict, request: Request, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(models.PortConnection).filter(models.PortConnection.id == conn_id))
-    conn = result.scalar_one_or_none()
-    if not conn: raise HTTPException(404)
+async def update_connection(conn_id: int, data: schemas.NetworkConnectionUpdate, request: Request, db: AsyncSession = Depends(get_db)):
+    conn = await _get_connection_by_id(db, conn_id)
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connection not found")
 
-    source_device_id = data.get('device_a_id', conn.source_device_id)
-    source_port = data.get('source_port') or data.get('port_a') or conn.source_port
-    target_device_id = data.get('device_b_id', conn.target_device_id)
-    target_port = data.get('target_port') or data.get('port_b') or conn.target_port
+    payload = data.model_dump(exclude_unset=True)
+    for field_name, label in (
+        ("source_device_id", "Source device"),
+        ("source_port", "Source port"),
+        ("target_device_id", "Peer device"),
+        ("target_port", "Peer port"),
+        ("link_type", "Connection type"),
+    ):
+        if field_name in payload and payload[field_name] is None:
+            raise HTTPException(status_code=400, detail=f"{label} is required")
 
-    if not all([source_device_id, source_port, target_device_id, target_port]):
-        raise HTTPException(400, "Incomplete mapping data")
-    if str(source_device_id) == str(target_device_id):
-        raise HTTPException(400, "Source and peer assets must be different")
-    if source_port == target_port and str(source_device_id) == str(target_device_id):
-        raise HTTPException(400, "Loopback mappings on the same asset and port are not allowed")
+    source_device_id = payload.get('source_device_id', conn.source_device_id)
+    source_port = payload.get('source_port', conn.source_port)
+    target_device_id = payload.get('target_device_id', conn.target_device_id)
+    target_port = payload.get('target_port', conn.target_port)
+    link_type = payload.get('link_type', conn.link_type)
+    direction_value = payload.get('direction', conn.direction)
+    status_value = payload.get('status', conn.status)
+    farm_value = payload.get('farm', conn.farm)
+    cable_type_value = payload.get('cable_type', conn.cable_type)
+    unit_value = payload.get('unit', conn.unit or 'Gbps')
+
+    if unit_value not in NETWORK_UNIT_VALUES:
+        raise HTTPException(status_code=400, detail=f"Invalid unit '{unit_value}'")
+    await _validate_network_enums(
+        db,
+        link_type=link_type,
+        farm=farm_value,
+        cable_type=cable_type_value,
+        direction=direction_value,
+        status=status_value,
+    )
+
+    if source_device_id == target_device_id:
+        raise HTTPException(status_code=400, detail="Source and peer assets must be different")
 
     dup_query = select(models.PortConnection).filter(
         models.PortConnection.id != conn_id,
@@ -215,80 +389,70 @@ async def update_connection(conn_id: int, data: dict, request: Request, db: Asyn
     )
     dup_res = await db.execute(dup_query)
     if dup_res.scalars().first():
-        raise HTTPException(400, "One of the selected ports is already physically cross-connected")
+        raise HTTPException(status_code=400, detail="One of the selected ports is already physically cross-connected")
 
     conn.source_device_id = source_device_id
     conn.source_port = source_port
     conn.target_device_id = target_device_id
     conn.target_port = target_port
-    if 'source_ip' in data: conn.source_ip = data['source_ip']
-    if 'source_mac' in data: conn.source_mac = data['source_mac']
-    if 'source_vlan' in data: conn.source_vlan = data['source_vlan']
-    if 'target_ip' in data: conn.target_ip = data['target_ip']
-    if 'target_mac' in data: conn.target_mac = data['target_mac']
-    if 'target_vlan' in data: conn.target_vlan = data['target_vlan']
-    if 'link_type' in data: conn.link_type = data['link_type']
-    if 'purpose' in data: conn.purpose = data['purpose']
-    if 'speed_gbps' in data: conn.speed_gbps = data['speed_gbps']
-    if 'unit' in data: conn.unit = data['unit']
-    if 'direction' in data: conn.direction = data['direction']
-    if 'cable_type' in data: conn.cable_type = data['cable_type']
-    if 'status' in data: conn.status = data['status']
-    if 'farm' in data: conn.farm = data['farm']
-    if 'request_link' in data: conn.request_link = data['request_link']
+    if 'source_ip' in payload: conn.source_ip = payload['source_ip']
+    if 'source_mac' in payload: conn.source_mac = payload['source_mac']
+    if 'source_vlan' in payload: conn.source_vlan = payload['source_vlan']
+    if 'target_ip' in payload: conn.target_ip = payload['target_ip']
+    if 'target_mac' in payload: conn.target_mac = payload['target_mac']
+    if 'target_vlan' in payload: conn.target_vlan = payload['target_vlan']
+    if 'link_type' in payload: conn.link_type = payload['link_type']
+    if 'purpose' in payload: conn.purpose = payload['purpose']
+    if 'speed_gbps' in payload: conn.speed_gbps = payload['speed_gbps']
+    if 'unit' in payload: conn.unit = payload['unit']
+    if 'direction' in payload: conn.direction = payload['direction']
+    if 'cable_type' in payload: conn.cable_type = payload['cable_type']
+    if 'status' in payload: conn.status = payload['status']
+    if 'farm' in payload: conn.farm = payload['farm']
+    if 'request_link' in payload: conn.request_link = payload['request_link']
 
     log = build_audit_log(request=request, action="UPDATE", target_table="port_connections", target_id=str(conn_id), description="Modified network link")
     db.add(log)
     await db.commit()
+    await db.refresh(conn)
     return conn
 
 @router.delete("/connections/{conn_id}")
 async def delete_connection(conn_id: int, request: Request, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(models.PortConnection).filter(models.PortConnection.id == conn_id))
-    conn = result.scalar_one_or_none()
-    if not conn: raise HTTPException(status_code=404, detail="Connection not found")
-    
-    await db.delete(conn)
+    conn = await _get_connection_by_id(db, conn_id)
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connection not found")
+
+    conn.status = "Deleted"
     log = build_audit_log(request=request, action="DELETE", target_table="port_connections", target_id=str(conn_id), description="Severed network link")
     db.add(log)
     await db.commit()
-    return {"status": "success"}
+    return {"status": "success", "id": conn.id}
 
-@router.post("/connections/bulk-status")
-async def bulk_update_status(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
-    ids = data.get("ids", [])
-    new_status = data.get("status")
-    if not ids or not new_status:
-        raise HTTPException(400, "IDs and Status required")
-    
-    await db.execute(
-        update(models.PortConnection)
-        .where(models.PortConnection.id.in_(ids))
-        .values(status=new_status)
-    )
-    
-    log = build_audit_log(request=request, action="BULK_UPDATE", target_table="port_connections", description=f"Bulk updated {len(ids)} links to {new_status}")
+@router.post("/connections/{conn_id}/restore")
+async def restore_connection(conn_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    conn = await _get_connection_by_id(db, conn_id)
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    if conn.status != "Deleted":
+        raise HTTPException(status_code=400, detail="Only deleted connections can be restored")
+
+    conn.status = "Active"
+    log = build_audit_log(request=request, action="RESTORE", target_table="port_connections", target_id=str(conn_id), description="Restored network link")
     db.add(log)
     await db.commit()
-    return {"status": "success", "count": len(ids)}
+    return {"status": "success", "id": conn.id}
 
-@router.post("/connections/bulk-delete")
-async def bulk_delete_connections(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
-    ids = data.get("ids", [])
-    if not ids:
-        raise HTTPException(400, "IDs required")
+@router.post("/connections/{conn_id}/purge")
+async def purge_connection(conn_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    conn = await _get_connection_by_id(db, conn_id)
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    if conn.status != "Deleted":
+        raise HTTPException(status_code=400, detail="Only deleted connections can be purged")
 
-    result = await db.execute(select(models.PortConnection).filter(models.PortConnection.id.in_(ids)))
-    connections = result.scalars().all()
-    if not connections:
-        return {"status": "success", "count": 0}
-
-    deleted_ids = []
-    for conn in connections:
-        deleted_ids.append(conn.id)
-        await db.delete(conn)
-
-    log = build_audit_log(request=request, action="BULK_DELETE", target_table="port_connections", description=f"Bulk severed {len(deleted_ids)} network links")
+    log = build_audit_log(request=request, action="PURGE", target_table="port_connections", target_id=str(conn_id), description="Purged network link")
     db.add(log)
+    await db.delete(conn)
     await db.commit()
-    return {"status": "success", "count": len(deleted_ids), "deleted_ids": deleted_ids}
+    return {"status": "success", "id": conn_id}

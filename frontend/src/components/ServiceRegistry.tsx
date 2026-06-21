@@ -13,6 +13,19 @@ import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { OPERATIONAL_GRID_AUTO_SIZE_STRATEGY } from './shared/OperationalGridSizing'
 import { StyledSelect } from "./shared/StyledSelect"
+import { AppDropdown } from "./shared/AppDropdown"
+
+const SERVICE_LICENSE_OPTIONS = ["One-time", "Subscription", "OEM", "Free"]
+const SERVICE_CURRENCY_OPTIONS = ["USD", "EUR", "KRW", "JPY", "GBP"]
+const SERVICE_STATUS_FALLBACKS = ["Active", "Inactive", "Deprecated", "Maintenance", "Planned"]
+const SERVICE_ENVIRONMENT_FALLBACKS = ["Production", "Stage", "Development", "Lab"]
+
+const serviceFieldClass = (invalid?: boolean) =>
+  `w-full rounded-lg border px-3 py-2 text-[10px] font-bold outline-none transition-all ${
+    invalid
+      ? "border-rose-500/60 bg-rose-500/10 text-white focus:border-rose-400"
+      : "border-white/10 bg-slate-950/80 text-slate-100 focus:border-blue-500"
+  }`
 
 const MetadataEditor = ({ value, onChange, onError }: { value: any, onChange: (v: any) => void, onError?: (err: string | null) => void }) => {
   const parseMetadataValue = (input: any) => {
@@ -225,144 +238,349 @@ const ServiceSecretsTab = ({ serviceId }: { serviceId: number }) => {
 }
 
 export const ServiceDetailsView = ({ service, options, devices }: { service: any, options: any, devices: any }) => {
-    const queryClient = useQueryClient()
-    const [tab, setTab] = useState('metadata')
-    const [metadataError, setMetadataError] = useState<string | null>(null)
-    const [formData, setFormData] = useState({ ...service })
-
-    const updateMutation = useMutation({
-        mutationFn: async (data: any) => {
-            const res = await apiFetch(`/api/v1/logical-services/${service.id}`, { 
-                method: 'PUT', body: JSON.stringify(data) 
-            })
-            return res.json()
-        },
-        onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['logical-services'] }); toast.success('Service Registry Synced') },
-        onError: (e: any) => toast.error(e.message || 'Failed to sync service registry')
-    })
+    const [tab, setTab] = useState<'metadata' | 'secrets'>('metadata')
+    const fundamentals = [
+      { label: 'Name', value: service.name || 'N/A' },
+      { label: 'Host', value: service.device_name || 'Unassigned' },
+      { label: 'Type', value: service.service_type || 'N/A' },
+      { label: 'Environment', value: service.environment || 'N/A' },
+      { label: 'Version', value: service.version || 'N/A' },
+      { label: 'Status', value: service.status || 'N/A' },
+      { label: 'Deployment Date', value: service.installation_date ? String(service.installation_date).split('T')[0] : 'N/A' },
+      { label: 'Manufacturer', value: service.manufacturer || 'N/A' },
+      { label: 'Supplier', value: service.supplier || 'N/A' },
+      { label: 'License Type', value: service.purchase_type || 'N/A' },
+      { label: 'Expiry Date', value: service.expiry_date ? String(service.expiry_date).split('T')[0] : 'N/A' },
+      { label: 'Cost', value: service.cost != null ? `${service.currency || 'USD'} ${service.cost}` : 'N/A' },
+    ]
 
     return (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <div className="flex space-x-0.5 bg-black/40 p-0.5 rounded-lg w-fit border border-white/5">
-                    {[
-                      {id: 'metadata', label: 'Matrix', icon: List}, 
-                      {id: 'editor', label: 'Editor', icon: Edit2}, 
-                      {id: 'secrets', label: 'Vault', icon: Tag}
-                    ].map(t => (
-                        <button key={t.id} onClick={() => setTab(t.id)} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all flex items-center space-x-2 ${tab === t.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                            <t.icon size={12}/> <span>{t.label}</span>
-                        </button>
-                    ))}
+      <div className="space-y-6">
+        <section className="rounded-xl border border-white/8 bg-gradient-to-br from-slate-950/95 via-slate-900/95 to-blue-950/60 p-5 shadow-inner">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+            <div className="space-y-4">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-blue-400">Fundamental Data</p>
+                <h3 className="mt-2 text-lg font-black tracking-tight text-white">{service.name || 'Unnamed Service'}</h3>
+                <p className="mt-2 text-[11px] font-bold leading-relaxed text-slate-300">
+                  {service.purpose || 'No service purpose documented.'}
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {fundamentals.map((entry) => (
+                  <div key={entry.label} className="rounded-lg border border-white/8 bg-black/20 px-3 py-3">
+                    <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">{entry.label}</p>
+                    <p className="mt-1 truncate text-[11px] font-bold text-slate-100">{entry.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/8 bg-black/20 p-4">
+              <p className="text-[9px] font-black uppercase tracking-[0.22em] text-emerald-400">Service Snapshot</p>
+              <div className="mt-3 space-y-3">
+                <div className="rounded-lg border border-white/8 bg-white/[0.03] px-3 py-3">
+                  <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Metadata Keys</p>
+                  <p className="mt-1 text-[12px] font-black text-white">{Object.keys(service.config_json || {}).length}</p>
                 </div>
-                {tab === 'editor' && (
-                  <button 
-                    onClick={() => updateMutation.mutate(formData)} 
-                    disabled={!!metadataError || updateMutation.isPending} 
-                    data-testid="service-metadata-commit-btn"
-                    className="px-5 py-1.5 bg-emerald-600 disabled:opacity-30 text-white rounded-lg text-[9px] font-bold uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all "
-                  >
-                    {updateMutation.isPending ? <Activity size={12} className="animate-spin" /> : 'Commit Metadata'}
-                  </button>
-                )}
+                <div className="rounded-lg border border-white/8 bg-white/[0.03] px-3 py-3">
+                  <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">Secrets</p>
+                  <p className="mt-1 text-[12px] font-black text-white">{service.secret_count ?? service.secrets?.length ?? 0}</p>
+                </div>
+                <div className="rounded-lg border border-white/8 bg-white/[0.03] px-3 py-3">
+                  <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">License</p>
+                  <p className="mt-1 text-[11px] font-bold text-slate-100">{service.purchase_type || 'N/A'}</p>
+                </div>
+              </div>
             </div>
-            
-            <div className="glass-panel rounded-lg border-white/5 overflow-hidden p-6 bg-black/20">
-                {tab === 'metadata' && <MetadataViewer data={formData.config_json} />}
-                {tab === 'editor' && (
-                  <MetadataEditor 
-                    value={formData.config_json} 
-                    onChange={v => setFormData({...formData, config_json: v})} 
-                    onError={setMetadataError}
-                  />
-                )}
-                {tab === 'secrets' && <ServiceSecretsTab serviceId={service.id} />}
-            </div>
+          </div>
+        </section>
+
+        <div className="flex items-center justify-between">
+          <div className="flex space-x-0.5 rounded-lg border border-white/5 bg-black/40 p-0.5">
+            {[
+              { id: 'metadata', label: 'Metadata', icon: List },
+              { id: 'secrets', label: 'Secrets', icon: Tag },
+            ].map((entry) => (
+              <button
+                key={entry.id}
+                onClick={() => setTab(entry.id as 'metadata' | 'secrets')}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-1.5 text-[9px] font-bold uppercase tracking-widest transition-all ${
+                  tab === entry.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                <entry.icon size={12} />
+                <span>{entry.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
+
+        <div className="glass-panel rounded-lg border-white/5 overflow-hidden p-6 bg-black/20">
+          {tab === 'metadata' && <MetadataViewer data={service.config_json} />}
+          {tab === 'secrets' && <ServiceSecretsTab serviceId={service.id} />}
+        </div>
+      </div>
     )
 }
 
 export const ServiceForm = ({ initialData, onSave, isPending, options, devices }: any) => {
-  console.log("ServiceForm isPending:", isPending);
   const [metadataError, setMetadataError] = useState<string | null>(null)
-  const [formData, setFormData] = useState({ 
-    name: "", service_type: "Database", status: "Active", environment: "Production", version: "",
-    device_id: null, config_json: {}, 
-    license_key: "", purchase_type: "One-time", 
-    purchase_date: "", expiry_date: "", installation_date: "", 
-    purpose: "", documentation_link: "", cost: 0, currency: "USD", 
-    manufacturer: "", supplier: "",
-    ...initialData 
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [formData, setFormData] = useState({
+    name: "",
+    service_type: "Database",
+    status: "Active",
+    environment: "Production",
+    version: "",
+    device_id: null,
+    config_json: {},
+    custom_attributes: {},
+    logic_json: [],
+    license_key: "",
+    purchase_type: "One-time",
+    purchase_date: "",
+    expiry_date: "",
+    installation_date: "",
+    purpose: "",
+    documentation_link: "",
+    cost: 0,
+    currency: "USD",
+    manufacturer: "",
+    supplier: "",
+    ...initialData,
   })
 
-  const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
+  const getOptions = (category: string) => Array.isArray(options) ? options.filter((entry: any) => entry.category === category) : []
   const ensureCurrentOption = (entries: Array<{ value: string; label: string }>, currentValue: string) => {
     if (!currentValue) return entries
-    return entries.some((entry) => entry.value === currentValue)
-      ? entries
-      : [{ value: currentValue, label: currentValue }, ...entries]
+    return entries.some((entry) => entry.value === currentValue) ? entries : [{ value: currentValue, label: currentValue }, ...entries]
   }
+  const statusOptions = ensureCurrentOption(
+    (getOptions('Status').map((entry: any) => ({ value: entry.value, label: entry.label })) || []),
+    formData.status
+  )
+  const resolvedStatusOptions = statusOptions.length > 0 ? statusOptions : SERVICE_STATUS_FALLBACKS.map((value) => ({ value, label: value }))
+  const environmentOptions = ensureCurrentOption(
+    (getOptions('Environment').map((entry: any) => ({ value: entry.value, label: entry.label })) || []),
+    formData.environment
+  )
+  const resolvedEnvironmentOptions = environmentOptions.length > 0 ? environmentOptions : SERVICE_ENVIRONMENT_FALLBACKS.map((value) => ({ value, label: value }))
+  const serviceTypeOptions = ensureCurrentOption(
+    (getOptions('ServiceType').map((entry: any) => ({ value: entry.value, label: entry.label })) || []),
+    formData.service_type
+  )
+  const resolvedServiceTypeOptions = serviceTypeOptions.length > 0 ? serviceTypeOptions : ['Database', 'Application', 'OS', 'Middleware', 'API'].map((value) => ({ value, label: value }))
+  const resolvedCurrencyOptions = SERVICE_CURRENCY_OPTIONS.map((value) => ({ value, label: value }))
+  const resolvedLicenseOptions = SERVICE_LICENSE_OPTIONS.map((value) => ({ value, label: value }))
+  const hostOptions = (devices || []).map((device: any) => ({
+    value: String(device.id),
+    label: `${device.name} [${device.type || device.system || 'Asset'}]`,
+  }))
 
   useEffect(() => {
-    if (!initialData.id) {
-      const selectedType = getOptions('ServiceType').find(o => o.value === formData.service_type);
-      if (selectedType?.metadata_keys) {
-        const newConfig: any = {};
-        selectedType.metadata_keys.forEach((key: string) => { newConfig[key] = ""; });
-        setFormData(prev => ({ ...prev, config_json: newConfig }));
-      } else {
-        setFormData(prev => ({ ...prev, config_json: {} }));
-      }
+    if (initialData.id) return
+    const selectedType = getOptions('ServiceType').find((entry: any) => entry.value === formData.service_type)
+    const metadataKeys = Array.isArray(selectedType?.metadata_keys) ? selectedType.metadata_keys : []
+    const nextConfig: Record<string, string> = {}
+    metadataKeys.forEach((key: string) => {
+      nextConfig[key] = typeof formData.config_json?.[key] === 'string' ? formData.config_json[key] : ''
+    })
+    setFormData((current: any) => ({ ...current, config_json: nextConfig }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.service_type, initialData.id, options])
+
+  const updateField = (field: string, value: any) => {
+    setFormData((current: any) => ({ ...current, [field]: value }))
+    setValidationErrors((current) => {
+      if (!current[field]) return current
+      const next = { ...current }
+      delete next[field]
+      return next
+    })
+  }
+
+  const validate = () => {
+    const nextErrors: Record<string, string> = {}
+    const trimmedName = String(formData.name || '').trim()
+    const deviceId = Number(formData.device_id)
+    const costValue = formData.cost === '' || formData.cost == null ? 0 : Number(formData.cost)
+    const licenseType = String(formData.purchase_type || '')
+    const expiryRequired = licenseType === 'Subscription' || licenseType === 'OEM'
+
+    if (!trimmedName) nextErrors.name = 'Name is required.'
+    if (!Number.isFinite(deviceId) || deviceId <= 0) nextErrors.device_id = 'Host is required.'
+    if (!String(formData.service_type || '').trim()) nextErrors.service_type = 'Type is required.'
+    if (!String(formData.status || '').trim()) nextErrors.status = 'Status is required.'
+    if (!String(formData.environment || '').trim()) nextErrors.environment = 'Environment is required.'
+    if (!metadataError && (formData.config_json == null || typeof formData.config_json !== 'object' || Array.isArray(formData.config_json))) nextErrors.config_json = 'Metadata must remain a key/value object.'
+    if (!Number.isFinite(costValue) || costValue < 0) nextErrors.cost = 'Cost must be zero or greater.'
+    if (expiryRequired && !String(formData.expiry_date || '').trim()) nextErrors.expiry_date = 'Expiry date is required for this license type.'
+
+    setValidationErrors(nextErrors)
+    return Object.keys(nextErrors).length === 0
+  }
+
+  const handleSave = () => {
+    if (metadataError) {
+      toast.error('Fix metadata errors before saving')
+      return
     }
-  }, [formData.service_type, options, initialData.id]);
+    if (!validate()) {
+      toast.error('Fix the highlighted service fields before saving')
+      return
+    }
+    onSave({
+      ...formData,
+      name: String(formData.name || '').trim(),
+      service_type: String(formData.service_type || '').trim(),
+      status: String(formData.status || '').trim(),
+      environment: String(formData.environment || '').trim(),
+      version: formData.version ? String(formData.version).trim() : '',
+      purpose: formData.purpose ? String(formData.purpose).trim() : '',
+      manufacturer: formData.manufacturer ? String(formData.manufacturer).trim() : '',
+      supplier: formData.supplier ? String(formData.supplier).trim() : '',
+      purchase_type: formData.purchase_type ? String(formData.purchase_type).trim() : 'One-time',
+      currency: formData.currency ? String(formData.currency).trim() : 'USD',
+      cost: formData.cost === '' || formData.cost == null ? 0 : Number(formData.cost),
+      config_json: formData.config_json && typeof formData.config_json === 'object' ? formData.config_json : {},
+      custom_attributes: formData.custom_attributes && typeof formData.custom_attributes === 'object' ? formData.custom_attributes : {},
+      logic_json: Array.isArray(formData.logic_json) ? formData.logic_json : [],
+    })
+  }
 
   return (
-    <div className="space-y-6 py-4 font-bold uppercase tracking-tight">
-      <div className="grid grid-cols-2 gap-6">
-        <div className="space-y-4">
-           <h3 className="text-[9px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-blue-600 pl-3 ">Identity & Logical Deployment</h3>
-           <div className="grid grid-cols-2 gap-3">
-             <div className="col-span-2">
-                <label className="text-[8px] font-bold text-slate-400 uppercase block mb-1 px-1 ">Service Identifier *</label>
-                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className={`w-full bg-slate-900 border ${!formData.name ? 'border-rose-500/50' : 'border-white/10'} rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-blue-500`} placeholder="e.g. ERP DB Prod 01" />
-             </div>
-             <StyledSelect label="Host Node" value={formData.device_id || ""} onChange={e => setFormData({...formData, device_id: e.target.value ? parseInt(e.target.value) : null})} options={devices?.map((d:any)=>({ value: String(d.id), label: `${d.name} [${d.type}]` })) || []} placeholder="Unassigned (Floating)" />
-             <StyledSelect label="Matrix Type" value={formData.service_type} onChange={e => setFormData(prev => ({...prev, service_type: e.target.value}))} options={ensureCurrentOption(getOptions('ServiceType'), formData.service_type)} />
-           </div>
-           <div className="grid grid-cols-2 gap-3">
-             <div><label className="text-[8px] font-bold text-slate-400 uppercase block mb-1 px-1 ">Deployment Date</label><input type="date" value={formData.installation_date ? formData.installation_date.split('T')[0] : ""} onChange={e => setFormData({...formData, installation_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold outline-none focus:border-blue-500" /></div>
-             <div><label className="text-[8px] font-bold text-slate-400 uppercase block mb-1 px-1 ">Software Version</label><input value={formData.version || ""} onChange={e => setFormData({...formData, version: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold outline-none focus:border-blue-500" placeholder="v1.0.0" /></div>
-           </div>
-           <div><label className="text-[8px] font-bold text-slate-400 uppercase block mb-1 px-1 ">Mission Objective</label><textarea value={formData.purpose || ""} onChange={e => setFormData({...formData, purpose: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold outline-none focus:border-blue-500 h-16 resize-none" placeholder="Primary transactional store..." /></div>
-        </div>
+    <div className="space-y-6 py-2">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+        <section className="space-y-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5 shadow-inner">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[0.22em] text-blue-400">Core Service Identity</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2 space-y-1.5">
+              <label className="block px-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Name <span className="text-rose-400">*</span></label>
+              <input value={formData.name || ''} onChange={(e) => updateField('name', e.target.value)} className={serviceFieldClass(Boolean(validationErrors.name))} placeholder="e.g. ERP DB Prod 01" />
+              {validationErrors.name && <p className="px-1 text-[9px] font-bold text-rose-400">{validationErrors.name}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <AppDropdown
+                label="Host"
+                required
+                value={formData.device_id ? String(formData.device_id) : ''}
+                onChange={(value) => updateField('device_id', value ? parseInt(String(value), 10) : null)}
+                options={hostOptions}
+                placeholder="Select host node"
+              />
+              {validationErrors.device_id && <p className="px-1 text-[9px] font-bold text-rose-400">{validationErrors.device_id}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <AppDropdown
+                label="Type"
+                required
+                value={formData.service_type || ''}
+                onChange={(value) => updateField('service_type', String(value))}
+                options={resolvedServiceTypeOptions}
+                placeholder="Select service type"
+              />
+              {validationErrors.service_type && <p className="px-1 text-[9px] font-bold text-rose-400">{validationErrors.service_type}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <label className="block px-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Deployment Date</label>
+              <input type="date" value={formData.installation_date ? String(formData.installation_date).split('T')[0] : ''} onChange={(e) => updateField('installation_date', e.target.value)} className={serviceFieldClass(false)} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block px-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Version</label>
+              <input value={formData.version || ''} onChange={(e) => updateField('version', e.target.value)} className={serviceFieldClass(false)} placeholder="v1.0.0" />
+            </div>
+            <div className="sm:col-span-2 space-y-1.5">
+              <label className="block px-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Purpose</label>
+              <textarea value={formData.purpose || ''} onChange={(e) => updateField('purpose', e.target.value)} className={`${serviceFieldClass(false)} min-h-[110px] resize-none`} placeholder="Primary transactional store..." />
+            </div>
+          </div>
+        </section>
 
-        <div className="space-y-4">
-           <h3 className="text-[9px] font-bold uppercase text-slate-500 tracking-widest border-l-2 border-emerald-600 pl-3 ">Runtime Configuration</h3>
-           <div className="grid grid-cols-2 gap-3">
-             <StyledSelect label="Runtime State" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} options={ensureCurrentOption(getOptions('Status'), formData.status)} />
-             <StyledSelect label="Environment" value={formData.environment} onChange={e => setFormData({...formData, environment: e.target.value})} options={ensureCurrentOption(getOptions('Environment'), formData.environment)} />
-           </div>
-           <div className="col-span-2 mt-4"><MetadataEditor value={formData.config_json} onChange={v => setFormData({...formData, config_json: v})} onError={setMetadataError} /></div>
-        </div>
-
-        <div className="col-span-2 space-y-4 bg-white/5 p-4 rounded-lg border border-white/5">
-           <h3 className="text-[9px] font-bold uppercase text-slate-500 tracking-widest ">Licensing & Procurement Artifacts</h3>
-           <div className="grid grid-cols-4 gap-3">
-              <div className="space-y-1"><label className="text-[7px] font-bold text-slate-500 uppercase px-1 ">Purchase Model</label><select value={formData.purchase_type || "One-time"} onChange={e => setFormData({...formData, purchase_type: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[9px] font-bold outline-none focus:border-blue-500"><option value="One-time">Purchase</option><option value="Subscription">SaaS</option><option value="OEM">OEM</option><option value="Free">OpenSource</option></select></div>
-              <div className="space-y-1"><label className="text-[7px] font-bold text-slate-500 uppercase px-1 ">Developer</label><input value={formData.manufacturer || ""} onChange={e => setFormData({...formData, manufacturer: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[9px] font-bold outline-none focus:border-blue-500" placeholder="Developer" /></div>
-              <div className="space-y-1"><label className="text-[7px] font-bold text-slate-500 uppercase px-1 ">License Key</label><input value={formData.license_key || ""} onChange={e => setFormData({...formData, license_key: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[9px] font-mono outline-none focus:border-blue-500" placeholder="XXXX-XXXX" /></div>
-              <div className="space-y-1"><label className="text-[7px] font-bold text-slate-500 uppercase px-1 ">Expiry Date</label><input type="date" value={formData.expiry_date ? formData.expiry_date.split('T')[0] : ""} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-[9px] font-bold outline-none focus:border-blue-500" /></div>
-           </div>
-        </div>
+        <section className="space-y-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-5 shadow-inner">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[0.22em] text-emerald-400">Runtime & Licensing</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <AppDropdown
+                label="Status"
+                required
+                value={formData.status || ''}
+                onChange={(value) => updateField('status', String(value))}
+                options={resolvedStatusOptions}
+                placeholder="Select status"
+              />
+              {validationErrors.status && <p className="px-1 text-[9px] font-bold text-rose-400">{validationErrors.status}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <AppDropdown
+                label="Environment"
+                required
+                value={formData.environment || ''}
+                onChange={(value) => updateField('environment', String(value))}
+                options={resolvedEnvironmentOptions}
+                placeholder="Select environment"
+              />
+              {validationErrors.environment && <p className="px-1 text-[9px] font-bold text-rose-400">{validationErrors.environment}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <AppDropdown
+                label="License Type"
+                value={formData.purchase_type || 'One-time'}
+                onChange={(value) => updateField('purchase_type', String(value))}
+                options={resolvedLicenseOptions}
+                placeholder="Select license type"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block px-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Expiry Date</label>
+              <input type="date" value={formData.expiry_date ? String(formData.expiry_date).split('T')[0] : ''} onChange={(e) => updateField('expiry_date', e.target.value)} className={serviceFieldClass(Boolean(validationErrors.expiry_date))} />
+              {validationErrors.expiry_date && <p className="px-1 text-[9px] font-bold text-rose-400">{validationErrors.expiry_date}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <label className="block px-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Manufacturer</label>
+              <input value={formData.manufacturer || ''} onChange={(e) => updateField('manufacturer', e.target.value)} className={serviceFieldClass(false)} placeholder="Vendor / publisher" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block px-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Supplier</label>
+              <input value={formData.supplier || ''} onChange={(e) => updateField('supplier', e.target.value)} className={serviceFieldClass(false)} placeholder="Reseller / supplier" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block px-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Cost</label>
+              <input type="number" min="0" step="0.01" value={formData.cost ?? 0} onChange={(e) => updateField('cost', e.target.value)} className={serviceFieldClass(Boolean(validationErrors.cost))} placeholder="0.00" />
+              {validationErrors.cost && <p className="px-1 text-[9px] font-bold text-rose-400">{validationErrors.cost}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <AppDropdown
+                label="Currency"
+                value={formData.currency || 'USD'}
+                onChange={(value) => updateField('currency', String(value))}
+                options={resolvedCurrencyOptions}
+                placeholder="Select currency"
+              />
+            </div>
+          </div>
+        </section>
       </div>
 
-      <button 
-        onClick={() => { if(!formData.name) return toast.error("Instance name required"); onSave(formData) }} 
-        disabled={!!metadataError || isPending} 
+      <section className="space-y-4 rounded-xl border border-white/8 bg-white/[0.03] p-5 shadow-inner">
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">Metadata</p>
+          <p className="mt-1 text-[10px] font-bold text-slate-500">Configuration metadata keys follow the selected service type when definitions exist.</p>
+        </div>
+        <MetadataEditor value={formData.config_json} onChange={(value) => updateField('config_json', value)} onError={setMetadataError} />
+        {validationErrors.config_json && <p className="px-1 text-[9px] font-bold text-rose-400">{validationErrors.config_json}</p>}
+      </section>
+
+      <button
+        onClick={handleSave}
+        disabled={!!metadataError || isPending}
         data-testid="service-commit-btn"
-        className="w-full py-4 bg-blue-600 disabled:opacity-30 text-white rounded-lg text-[11px] font-bold uppercase tracking-[0.3em] shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+        className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-4 text-[11px] font-bold uppercase tracking-[0.3em] text-white shadow-xl shadow-blue-500/20 transition-all active:scale-95 disabled:opacity-30"
       >
-        {isPending ? <Activity size={14} className="animate-spin" /> : 'Commit Service Registration'}
+        {isPending ? <Activity size={14} className="animate-spin" /> : 'Save Service'}
       </button>
     </div>
   )

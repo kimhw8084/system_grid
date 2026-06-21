@@ -212,3 +212,82 @@ async def test_network_edit_persists_unit_and_bulk_delete_is_atomic(seeded_admin
     remaining_ids = {row["id"] for row in final_res.json()}
     assert conn_a["id"] not in remaining_ids
     assert conn_b["id"] not in remaining_ids
+
+
+@pytest.mark.anyio
+async def test_network_restore_purge_and_validation_rules(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    tenant_id = seeded_admin_tenant["tenant_id"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(tenant_id)}
+
+    source_res = await client.post("/api/v1/devices", json={
+        "name": "NET-RP-SRC-01",
+        "system": "NET-RP",
+        "status": "Active",
+        "type": "Physical",
+        "serial_number": "NET-RP-SRC-SN-01",
+        "asset_tag": "NET-RP-SRC-AT-01",
+    }, headers=headers)
+    peer_res = await client.post("/api/v1/devices", json={
+        "name": "NET-RP-PEER-01",
+        "system": "NET-RP",
+        "status": "Active",
+        "type": "Physical",
+        "serial_number": "NET-RP-PEER-SN-01",
+        "asset_tag": "NET-RP-PEER-AT-01",
+    }, headers=headers)
+    assert source_res.status_code == 200 and peer_res.status_code == 200
+    source = source_res.json()
+    peer = peer_res.json()
+
+    invalid_res = await client.post("/api/v1/networks/connections", json={
+        "device_a_id": source["id"],
+        "source_port": "eth0",
+        "device_b_id": peer["id"],
+        "target_port": "eth1",
+        "link_type": "Data",
+        "source_ip": "999.1.1.1",
+        "speed_gbps": 10,
+        "unit": "Gbps",
+        "status": "Active",
+    }, headers=headers)
+    assert invalid_res.status_code == 422
+
+    create_res = await client.post("/api/v1/networks/connections", json={
+        "device_a_id": source["id"],
+        "source_port": "eth0",
+        "device_b_id": peer["id"],
+        "target_port": "eth1",
+        "link_type": "Data",
+        "farm": "Prod",
+        "cable_type": "Fiber",
+        "direction": "Bidirectional",
+        "speed_gbps": 10,
+        "unit": "Gbps",
+        "status": "Active",
+    }, headers=headers)
+    assert create_res.status_code == 200, create_res.text
+    connection = create_res.json()
+
+    delete_res = await client.delete(f"/api/v1/networks/connections/{connection['id']}", headers=headers)
+    assert delete_res.status_code == 200, delete_res.text
+
+    restore_res = await client.post(f"/api/v1/networks/connections/{connection['id']}/restore", headers=headers)
+    assert restore_res.status_code == 200, restore_res.text
+
+    restore_again_res = await client.post("/api/v1/networks/connections/bulk-restore", json={
+        "ids": [connection["id"]]
+    }, headers=headers)
+    assert restore_again_res.status_code == 400
+
+    delete_again_res = await client.delete(f"/api/v1/networks/connections/{connection['id']}", headers=headers)
+    assert delete_again_res.status_code == 200, delete_again_res.text
+
+    purge_res = await client.post("/api/v1/networks/connections/bulk-purge", json={
+        "ids": [connection["id"]]
+    }, headers=headers)
+    assert purge_res.status_code == 200, purge_res.text
+
+    final_res = await client.get("/api/v1/networks/connections?include_deleted=true", headers=headers)
+    assert final_res.status_code == 200
+    assert all(row["id"] != connection["id"] for row in final_res.json())

@@ -11,15 +11,17 @@ import { ErrorConsole } from "./components/shared/ErrorConsole"
 import Dashboard from "./components/Dashboard"
 import AssetGrid_Legacy from "./components/AssetGrid_Legacy"
 import Assets from "./components/Assets"
-import NetworkFabric from "./components/NetworkFabric"
 import Intelligence from "./components/Intelligence"
 import AuditLogs from "./components/AuditLogs"
-import ServiceRegistry from "./components/ServiceRegistry"
+import ServicesReal from "./components/ServicesReal"
 import SettingsPage from "./components/Settings"
 import Maintenance from "./components/Maintenance"
 import MonitoringGrid from "./components/MonitoringGrid"
 import Research from "./components/Research"
+import NetworkReal from "./components/NetworkReal"
+import AssetReal from "./components/AssetReal"
 import Vendor from "./components/Vendor"
+import VendorsReal from "./components/VendorsReal"
 import Knowledge from "./components/Knowledge"
 import FAR from "./components/FAR"
 import DataFlowDesigner from "./components/DataFlowDesigner"
@@ -251,6 +253,11 @@ const ProtectedRoute = ({ children, view, userProfile }: any) => {
   return children;
 }
 ;
+
+const LegacyNetworkRedirect = () => {
+  const location = useLocation()
+  return <Navigate to={`/network${location.search || ''}`} replace />
+}
 
 const PatchNotesModal = ({ onClose }: any) => {
   const [expandedIndex, setExpandedIndex] = useState(0)
@@ -584,13 +591,14 @@ function MainLayout() {
 
           <SidebarGroup label="INFRASTRUCTURE" isSidebarOpen={isSidebarOpen}>
             <SidebarItem icon={Server} label="Assets" path="/asset" active={location.pathname === "/asset"} isOpen={isSidebarOpen} isSubItem disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "assets") < 1} />
+            <SidebarItem icon={Server} label="Asset-Real" path="/asset-real" active={location.pathname.startsWith("/asset-real")} isOpen={isSidebarOpen} isSubItem disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "assets") < 1} />
             <SidebarItem icon={Package} label="Racks" path="/racks" active={location.pathname === "/racks"} isOpen={isSidebarOpen} isSubItem disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "racks") < 1} />
             <SidebarItem icon={Layers} label="Services" path="/services" active={location.pathname === "/services"} isOpen={isSidebarOpen} isSubItem disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "services") < 1} />
             <SidebarItem icon={Share2} label="External" path="/external" active={location.pathname === "/external"} isOpen={isSidebarOpen} isSubItem disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "external") < 1} />
           </SidebarGroup>
 
           <SidebarGroup label="CONNECTIVITY" isSidebarOpen={isSidebarOpen}>
-            <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network"} isOpen={isSidebarOpen} isSubItem disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "network") < 1} />
+            <SidebarItem icon={Network} label="Network" path="/network" active={location.pathname === "/network" || location.pathname.startsWith("/network-real")} isOpen={isSidebarOpen} isSubItem disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "network") < 1} />
             <SidebarItem icon={Workflow} label="Architecture" path="/architecture" active={location.pathname === "/architecture"} isOpen={isSidebarOpen} isSubItem disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "architecture") < 1} />
           </SidebarGroup>
 
@@ -706,14 +714,17 @@ function MainLayout() {
               <Route path="/projects" element={<ProtectedRoute view="projects" userProfile={userProfile}><Projects /></ProtectedRoute>} />
               <Route path="/racks" element={<ProtectedRoute view="racks" userProfile={userProfile}><Racks /></ProtectedRoute>} />
               <Route path="/asset" element={<ProtectedRoute view="assets" userProfile={userProfile}><Assets /></ProtectedRoute>} />
-              <Route path="/services" element={<ProtectedRoute view="services" userProfile={userProfile}><ServiceRegistry /></ProtectedRoute>} />
+              <Route path="/asset-real" element={<ProtectedRoute view="assets" userProfile={userProfile}><AssetReal /></ProtectedRoute>} />
+              <Route path="/services" element={<ProtectedRoute view="services" userProfile={userProfile}><ServicesReal /></ProtectedRoute>} />
               <Route path="/external" element={<ProtectedRoute view="external" userProfile={userProfile}><External /></ProtectedRoute>} />
-              <Route path="/network" element={<ProtectedRoute view="network" userProfile={userProfile}><NetworkFabric /></ProtectedRoute>} />
+              <Route path="/network" element={<ProtectedRoute view="network" userProfile={userProfile}><NetworkReal /></ProtectedRoute>} />
+              <Route path="/network-real" element={<ProtectedRoute view="network" userProfile={userProfile}><LegacyNetworkRedirect /></ProtectedRoute>} />
               <Route path="/architecture" element={<ProtectedRoute view="architecture" userProfile={userProfile}><DataFlowDesigner /></ProtectedRoute>} />
               <Route path="/research" element={<ProtectedRoute view="research" userProfile={userProfile}><Research /></ProtectedRoute>} />
               <Route path="/far" element={<ProtectedRoute view="far" userProfile={userProfile}><FAR /></ProtectedRoute>} />
               <Route path="/monitoring" element={<ProtectedRoute view="monitoring" userProfile={userProfile}><MonitoringGrid /></ProtectedRoute>} />
               <Route path="/vendors" element={<ProtectedRoute view="vendors" userProfile={userProfile}><Vendor /></ProtectedRoute>} />
+              <Route path="/vendors-real" element={<ProtectedRoute view="vendors" userProfile={userProfile}><VendorsReal /></ProtectedRoute>} />
               <Route path="/knowledge" element={<ProtectedRoute view="knowledge" userProfile={userProfile}><Knowledge /></ProtectedRoute>} />
               <Route path="/logs" element={<ProtectedRoute view="logs" userProfile={userProfile}><AuditLogs /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute view="settings" userProfile={userProfile}><SettingsPage /></ProtectedRoute>} />

@@ -434,14 +434,14 @@ export function MonitoringForm({ item, devices, categories, severities, platform
       footerRight={
         <div className="flex items-center gap-3 flex-nowrap shrink-0">
           <ToolbarButton onClick={onClose} className="whitespace-nowrap">Close</ToolbarButton>
-          <ToolbarButton 
-            onClick={handleSave} 
-            disabled={mutation.isPending} 
+          <ToolbarButton
+            onClick={handleSave}
+            disabled={mutation.isPending}
             variant="primary"
-            className="px-8 whitespace-nowrap"
+            className="px-8 whitespace-nowrap inline-flex items-center"
           >
             {mutation.isPending ? <Clock className="animate-spin mr-2" size={14} /> : <Check className="mr-2" size={14} />}
-            <span>{item ? 'Save Monitoring' : 'Add Monitoring'}</span>
+            <span className="whitespace-nowrap">{item ? 'Save Monitoring' : 'Add Monitoring'}</span>
           </ToolbarButton>
         </div>
       }

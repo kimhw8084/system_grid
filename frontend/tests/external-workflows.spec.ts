@@ -4,6 +4,50 @@ import { test } from './helpers/sysgrid-test';
 import { createAsset, createExternalEntity, resetBrowserState } from './helpers/sysgrid'
 
 test.describe('External workflows', () => {
+  test('matches the workspace shell contract and opens the shared import modal', async ({ page, sysApi: request }) => {
+    await resetBrowserState(page)
+    const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const externalEntity = await createExternalEntity(request, {
+      name: `PW-EXT-SHELL-${stamp}`,
+      external_key: `pw-ext-shell-${stamp}`.toLowerCase(),
+      type: 'API',
+      owner_organization: 'PartnerCo',
+      ownership_mode: 'individual',
+      status: 'Active',
+      environment: 'Production',
+      description: 'Shell parity coverage entity',
+      contacts_json: [
+        {
+          role: 'Primary',
+          full_name: 'Jane Doe',
+          external_person_id: `JD-${stamp}`,
+          email: 'jane.doe@example.com',
+          phone: '+1-555-0101',
+          is_primary: true,
+          is_escalation: false,
+        }
+      ],
+      business_purpose: 'Workspace shell regression',
+      metadata_json: { version: 'v1' }
+    })
+
+    await page.goto('/external')
+    await expect(page.getByRole('heading', { name: 'External' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Views' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Display' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Import' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Activity' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Compare' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Bulk Actions' })).toBeVisible()
+
+    await clickResilientButton(page, /Import/i)
+    const importModal = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'External Registry Import' }) })
+    await expect(importModal).toBeVisible()
+    await expect(importModal).toContainText('External Registry')
+    await expect(importModal).toContainText('external_entities')
+    await page.keyboard.press('Escape')
+  })
+
   test('preserves metadata, supports credentials, and surfaces link failures clearly', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
     const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -43,42 +87,30 @@ test.describe('External workflows', () => {
       metadata_json: { version: 'v1', custom_note: 'retain-me' }
     })
 
-    await page.goto('/external')
-    await expect(page.getByRole('heading', { name: 'Partner IQ' })).toBeVisible()
-    await page.getByPlaceholder('SCAN REGISTRY...').fill(externalEntity.name)
-    await expect(page.locator('.ag-pinned-left-cols-container')).toContainText(externalEntity.name)
-
-    const externalEntityRow = page.locator('.ag-row', { hasText: externalEntity.name })
-    await externalEntityRow.getByTitle('View Details').click()
-    const detailsPanel = page.locator('.glass-panel').filter({ has: page.getByRole('heading', { name: externalEntity.name }) })
-    await expect(detailsPanel.getByText('Mission Summary')).toBeVisible()
+    await page.goto(`/external?id=${externalEntity.id}`)
+    await expect(page.getByRole('heading', { name: 'External' })).toBeVisible()
+    const detailsPanel = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: externalEntity.name }) })
+    await expect(page.getByText('Mission Summary')).toBeVisible()
     await expect(detailsPanel).toContainText('Customer event ingestion')
-    await expect(page.getByRole('button', { name: /Dependencies/i })).toBeVisible()
+    await expect(page.getByText('Dependency Matrix')).toBeVisible()
+    await expect(page.getByText('Contact Matrix')).toBeVisible()
 
-    await clickResilientButton(page, /Credentials/i)
     await page.getByPlaceholder('Partner production token').fill(`Partner token ${stamp}`)
     await page.getByPlaceholder('E.G. ADMIN_SVC').fill(`svc_${stamp}`)
     await page.getByPlaceholder('vault://partner/prod/token').fill(`vault://partner/${stamp}/token`)
     await page.getByPlaceholder('Readonly feed access').fill('Readonly feed access')
     await clickResilientButton(page, /Register Credential Reference/i)
     await expect(page.getByText('Credential Added')).toBeVisible()
-    await expect(page.locator('table')).toContainText(`Partner token ${stamp}`)
-    await expect(page.locator('table')).toContainText(`vault://partner/${stamp}/token`)
+    await expect(page.getByText(`Partner token ${stamp}`)).toBeVisible()
+    await expect(page.getByText(`vault://partner/${stamp}/token`)).toBeVisible()
 
-    await clickResilientButton(page, /Ownership & Contacts/i)
-    const pocCard = page.locator('div').filter({ hasText: /Jane Doe/i }).first()
-    const phoneButton = pocCard.getByRole('button').nth(1)
-    await expect(phoneButton).toBeEnabled()
-    await page.locator('.glass-panel').filter({ has: page.getByRole('heading', { name: externalEntity.name }) }).locator('div.border-b').first().getByRole('button').click()
-
-    const entityRow = page.locator('.ag-row', { hasText: externalEntity.name })
-    await entityRow.getByTitle('Edit Entity').click()
-    const editModal = page.locator('.glass-panel').filter({ has: page.getByText('Modify Entity Registry') })
-    await editModal.locator('select').first().selectOption({ index: 1 })
+    await expect(page.getByText('Jane Doe').first()).toBeVisible()
+    await detailsPanel.getByRole('button', { name: 'Edit', exact: true }).last().click()
+    const editModal = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Modify External Identity' }) })
+    await editModal.locator('select').first().selectOption('Virtual Server')
     await expect(editModal.locator('input[value="hypervisor"]')).toBeVisible()
-    await editModal.locator('div.border-b').first().getByRole('button').click()
+    await editModal.getByText('Close', { exact: true }).evaluate((node: HTMLElement) => node.click())
 
-    await clickResilientButton(page, 'Connectivity')
     await page.route('**/api/v1/intelligence/links', async route => {
       await route.fulfill({
         status: 500,
@@ -86,31 +118,29 @@ test.describe('External workflows', () => {
         body: JSON.stringify({ detail: 'Simulated interconnect failure' })
       })
     })
-    await clickResilientButton(page, /Map Link/i)
-    const linkModal = page.locator('.glass-panel').filter({ has: page.getByText('ESTABLISH_LINK') })
-    await expect(linkModal.locator('select').first().locator('option').nth(1)).toContainText('API')
-    await expect(linkModal.locator('select').first().locator('option').nth(1)).not.toContainText('No IP')
+    await expect(page.getByRole('button', { name: /Map Link/i })).toBeVisible()
+    await clickResilientButton(page, 'Map Link')
+    const linkModal = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Establish External Link' }) })
+    await expect(linkModal.locator('select').first()).toContainText(externalEntity.name)
     await linkModal.locator('select').first().selectOption(String(externalEntity.id))
     await linkModal.locator('select').nth(2).selectOption(String(internalAsset.id))
     await linkModal.getByPlaceholder('e.g., Daily DB Synchronization Feed').fill('Partner feed ingress')
-    await clickResilientButton(page, /Establish Interconnect Link/i)
-    await expect(page.getByText('Simulated interconnect failure')).toBeVisible()
-    await expect(page.getByText('ESTABLISH_LINK')).toBeVisible()
-    await linkModal.locator('button').first().click()
+    await clickResilientButton(page, /Save Link/i)
+    await expect(page.getByRole('status').filter({ hasText: 'Simulated interconnect failure' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Establish External Link' })).toBeVisible()
+    await linkModal.getByText('Close', { exact: true }).click()
 
     await page.unroute('**/api/v1/intelligence/links')
-    await clickResilientButton(page, 'Connectivity')
-    await clickResilientButton(page, /Map Link/i)
-    const successLinkModal = page.locator('.glass-panel').filter({ has: page.getByText('ESTABLISH_LINK') })
+    await expect(page.getByRole('button', { name: /Map Link/i })).toBeVisible()
+    await clickResilientButton(page, 'Map Link')
+    const successLinkModal = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Establish External Link' }) })
+    await expect(successLinkModal.locator('select').first()).toContainText(externalEntity.name)
     await successLinkModal.locator('select').first().selectOption(String(externalEntity.id))
     await successLinkModal.locator('select').nth(2).selectOption(String(internalAsset.id))
     await successLinkModal.getByPlaceholder('e.g., Daily DB Synchronization Feed').fill('Partner feed ingress')
-    await successLinkModal.getByRole('button', { name: /Establish Interconnect Link/i }).click()
-    await expect(page.getByText('Interconnect Established')).toBeVisible()
+    await clickResilientButton(page, /Save Link/i)
 
-    await clickResilientButton(page, 'Registry')
-    await page.locator('.ag-row', { hasText: externalEntity.name }).getByTitle('View Details').click()
-    await clickResilientButton(page, /Dependencies/i)
+    await page.goto(`/external?id=${externalEntity.id}`)
     await expect(page.getByText('Dependency Matrix')).toBeVisible()
     await expect(page.getByText(internalAsset.name)).toBeVisible()
   })

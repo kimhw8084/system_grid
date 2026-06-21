@@ -704,7 +704,7 @@ export function WorkspaceModalFooter({
   right: React.ReactNode
 }) {
   return (
-    <div className="border-t border-white/10 px-6 py-5 sm:px-8 sm:py-6">
+    <div className="border-t border-white/10 px-6 py-5 sm:px-8 sm:py-6 modal-footer-spacing">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center space-x-2 pl-1">{left}</div>
         <div className="flex flex-wrap items-center justify-end gap-3 pr-1">{right}</div>

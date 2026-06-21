@@ -13,7 +13,7 @@ test.describe('Smoke Tests', () => {
     { path: '/asset', expectedText: /Registry/i },
     { path: '/services', expectedText: /Service Registry/i },
     { path: '/external', expectedText: /Intelligence/i },
-    { path: '/network', expectedText: /Fabric/i },
+    { path: '/network', expectedText: /Network/i },
     { path: '/monitoring', expectedText: /Monitoring/i },
     { path: '/settings', expectedText: /Infrastructure/i },
   ]

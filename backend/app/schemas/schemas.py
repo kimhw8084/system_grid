@@ -1,7 +1,8 @@
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, AliasChoices, field_validator, model_validator
 from typing import List, Optional, Any, Dict, Literal
 from datetime import datetime
 from urllib.parse import urlparse
+from ipaddress import ip_address
 import re
 
 class BaseSchema(BaseModel):
@@ -647,6 +648,109 @@ class ExternalLinkResponse(ExternalLinkBase, BaseSchema):
     external_entity_name: Optional[str] = None
     device_name: Optional[str] = None
     service_name: Optional[str] = None
+
+NETWORK_CONNECTION_DIRECTIONS = ("Bidirectional", "Unidirectional", "Source to Target", "Target to Source")
+NETWORK_CONNECTION_UNITS = ("Gbps", "Mbps", "Kbps")
+NETWORK_CONNECTION_STATUSES = ("Active", "Maintenance", "Down", "Planned", "Requested", "Standby", "Offline", "Deleted")
+
+class NetworkConnectionBase(BaseModel):
+    source_device_id: Optional[int] = Field(default=None, ge=1, validation_alias=AliasChoices("source_device_id", "device_a_id", "src_device_id"))
+    source_port: Optional[str] = Field(default=None, validation_alias=AliasChoices("source_port", "port_a", "src_port"))
+    source_ip: Optional[str] = None
+    source_mac: Optional[str] = None
+    source_vlan: Optional[int] = Field(default=None, ge=0, le=4094)
+    target_device_id: Optional[int] = Field(default=None, ge=1, validation_alias=AliasChoices("target_device_id", "device_b_id", "dst_device_id"))
+    target_port: Optional[str] = Field(default=None, validation_alias=AliasChoices("target_port", "port_b", "dst_port"))
+    target_ip: Optional[str] = None
+    target_mac: Optional[str] = None
+    target_vlan: Optional[int] = Field(default=None, ge=0, le=4094)
+    link_type: Optional[str] = None
+    purpose: Optional[str] = None
+    speed_gbps: Optional[float] = Field(default=None, gt=0)
+    unit: Literal["Gbps", "Mbps", "Kbps"] = "Gbps"
+    direction: Literal["Bidirectional", "Unidirectional", "Source to Target", "Target to Source"] = "Bidirectional"
+    cable_type: Optional[str] = None
+    status: Literal["Active", "Maintenance", "Down", "Planned", "Requested", "Standby", "Offline", "Deleted"] = "Active"
+    farm: Optional[str] = None
+    request_link: Optional[str] = None
+
+    @field_validator(
+        "source_port",
+        "target_port",
+        "link_type",
+        "purpose",
+        "source_mac",
+        "target_mac",
+        "cable_type",
+        "farm",
+        mode="before",
+    )
+    @classmethod
+    def validate_and_trim_text(cls, value):
+        if value is None:
+            return None
+        cleaned = str(value).strip()
+        return cleaned or None
+
+    @field_validator("source_ip", "target_ip", mode="before")
+    @classmethod
+    def validate_ip_address(cls, value):
+        if value is None:
+            return None
+        cleaned = str(value).strip()
+        if not cleaned:
+            return None
+        try:
+            ip_address(cleaned)
+        except ValueError as exc:
+            raise ValueError("IP address must be valid IPv4 or IPv6") from exc
+        return cleaned
+
+    @field_validator("request_link", mode="before")
+    @classmethod
+    def validate_request_link(cls, value):
+        if value is None:
+            return None
+        cleaned = str(value).strip()
+        if not cleaned:
+            return None
+        if any(token in cleaned.lower() for token in ["<script", "javascript:", "data:text/html", "vbscript:"]):
+            raise ValueError("Request link contains unsafe content")
+        parsed = urlparse(cleaned)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("Request link must be a valid http/https URL")
+        return cleaned
+
+class NetworkConnectionCreate(NetworkConnectionBase):
+    @model_validator(mode="after")
+    def validate_identity(self):
+        if self.source_device_id is None:
+            raise ValueError("Source device is required")
+        if self.target_device_id is None:
+            raise ValueError("Peer device is required")
+        if self.source_port is None:
+            raise ValueError("Source port is required")
+        if self.target_port is None:
+            raise ValueError("Peer port is required")
+        if self.link_type is None:
+            raise ValueError("Connection type is required")
+        if self.source_device_id == self.target_device_id and self.source_port == self.target_port:
+            raise ValueError("Loopback mappings on the same asset and port are not allowed")
+        if self.source_device_id == self.target_device_id:
+            raise ValueError("Source and peer assets must be different")
+        return self
+
+
+class NetworkConnectionUpdate(NetworkConnectionBase):
+    pass
+
+
+class NetworkConnectionBulkIds(BaseModel):
+    ids: List[int] = Field(default_factory=list, min_length=1)
+
+
+class NetworkConnectionBulkStatus(NetworkConnectionBulkIds):
+    status: Literal["Active", "Maintenance", "Down", "Planned", "Requested", "Standby", "Offline", "Deleted"]
 
 # --- FAR (FAILURE ANALYSIS & RESOLUTION) SCHEMAS ---
 
