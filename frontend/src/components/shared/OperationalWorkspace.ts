@@ -138,6 +138,94 @@ export interface OperationalWorkspaceAdapter {
   hasVersioning?: boolean
 }
 
+export type OperationalRegistrySlotKey =
+  | 'columns'
+  | 'grid'
+  | 'filters'
+  | 'savedViews'
+  | 'displayControls'
+  | 'rowActions'
+  | 'bulkActions'
+  | 'formBody'
+  | 'detailBody'
+  | 'relationshipPanels'
+  | 'modalShell'
+  | 'flyoutShell'
+
+export type OperationalRegistryLifecycleAction = 'archive' | 'recover' | 'delete'
+
+export interface OperationalRegistrySlotConfig {
+  columns?: string
+  grid?: string
+  filters?: string
+  savedViews?: string
+  displayControls?: string
+  rowActions?: string
+  bulkActions?: string
+  formBody?: string
+  detailBody?: string
+  relationshipPanels?: string
+  modalShell?: string
+  flyoutShell?: string
+}
+
+export interface OperationalRegistryImportExportConfig {
+  importLabel?: string
+  exportLabel?: string
+  supportsImport?: boolean
+  supportsExport?: boolean
+}
+
+export interface OperationalRegistryWorkspaceAdapter {
+  entityKey: string
+  entityLabel: string
+  pluralEntityLabel: string
+  routePath: string
+  searchPlaceholder: string
+  slots: OperationalRegistrySlotConfig
+  importExport?: OperationalRegistryImportExportConfig
+  lifecycleCapabilities: Partial<Record<OperationalRegistryLifecycleAction, WorkspaceCapability | true>>
+}
+
+export const defineOperationalRegistryWorkspace = <T extends OperationalRegistryWorkspaceAdapter>(adapter: T) => adapter
+
+export const MONITORING_REGISTRY_WORKSPACE = defineOperationalRegistryWorkspace({
+  entityKey: 'monitoring',
+  entityLabel: 'Monitor',
+  pluralEntityLabel: 'Monitoring',
+  routePath: '/monitoring',
+  searchPlaceholder: 'Search monitors, owners, platforms, links, and notes...',
+  slots: {
+    columns: 'MonitoringGrid columns',
+    grid: 'OperationalGridSurface',
+    filters: 'Monitoring filter bar',
+    savedViews: 'OperationalSavedViewsPanel',
+    displayControls: 'OperationalDisplayPanel',
+    rowActions: 'Monitoring row action menu',
+    bulkActions: 'Monitoring bulk action flyout',
+    formBody: 'MonitoringForm',
+    detailBody: 'Monitoring detail dossier',
+    relationshipPanels: 'Linked record side panels',
+    modalShell: 'WorkspaceModalShells',
+    flyoutShell: 'WorkspaceFlyout',
+  },
+  importExport: {
+    importLabel: 'Import monitors',
+    exportLabel: 'Export monitors',
+    supportsImport: true,
+    supportsExport: true,
+  },
+  lifecycleCapabilities: {
+    archive: 'archiveRestore',
+    recover: 'archiveRestore',
+    delete: true,
+  },
+})
+
+// Legacy compatibility alias for the pre-standardized vendor view.
+// Keep this until Vendors gets its own workspace contract.
+export const VENDOR_WORKSPACE_STANDARD: WorkspaceDefinition = MONITORING_WORKSPACE_STANDARD
+
 export const OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX: Record<string, OperationalWorkspaceAdapter> = {
   monitoring: {
     entityLabel: 'Monitor',
