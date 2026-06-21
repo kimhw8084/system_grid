@@ -1,4 +1,3 @@
-import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -9,7 +8,6 @@ import {
   Clock, DollarSign, Target, ChevronRight, Layers, Box, Cpu, Zap, FileJson, MoreVertical, Eye, EyeOff, Key, Upload, Check, Maximize2,
   Star, GitCompare, Minimize2, ChevronUp, ChevronDown, Bell, Undo2
 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
 import { parseAppDate, formatAppDate } from '../utils/dateUtils'
@@ -96,7 +94,7 @@ import { WorkspaceCompareShell } from './shared/WorkspaceModalShells'
 import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shared/WorkspaceFlyout'
 import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers } from './shared/OperationalWorkspaceHooks'
 import { useWorkspaceAnchoredLayer, WorkspaceEmptyState, useEscapeDismiss, useBodyModalFlag, WorkspaceFloatingPanel, WorkspaceSplitView } from './shared/OperationalWorkspacePrimitives'
-import { OperationalDisplayPanel, OperationalGridSurface, OperationalSavedViewsPanel, OperationalWorkspaceFrame } from './shared/OperationalWorkspaceShells'
+import { OperationalAnchoredPanel, OperationalDisplayPanel, OperationalGridSurface, OperationalSavedViewsPanel, OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'
 import { OperationalImportModal } from './shared/OperationalImportModal'
 import { WorkspaceModal } from './shared/WorkspaceModal'
 import { OperationalGridMatrix } from './shared/OperationalGridMatrix'
@@ -2296,7 +2294,7 @@ export default function External() {
   }, [favoriteIds, watchIds])
 
   return (
-    <OperationalWorkspaceFrame
+    <OperationalWorkspaceShell
       className="overflow-hidden"
       header={{
         eyebrow: 'External Intelligence',
@@ -2323,142 +2321,143 @@ export default function External() {
           />
         ),
       }}
-      commandBar={{
-        left: (
-          <>
-            <ToolbarSearch
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              placeholder="Scan registry..."
-            />
-            <ToolbarGroup>
-              <ToolbarButton active={showViewsMenu} onClick={() => setShowViewsMenu((current) => !current)} ref={viewsMenuButtonRef as any}>
-                <span className="flex items-center gap-2">
-                  <LayoutGrid size={14} />
-                  Views
-                </span>
-              </ToolbarButton>
-              <ToolbarButton active={showDisplayMenu} onClick={() => setShowDisplayMenu((current) => !current)} ref={displayMenuButtonRef as any}>
-                <span className="flex items-center gap-2">
-                  <Sliders size={14} />
-                  Display
-                </span>
-              </ToolbarButton>
-              <ToolbarIconButton onClick={handleExportCSV} title="Export Manifest">
-                <FileText size={14} />
-              </ToolbarIconButton>
-              <ToolbarIconButton onClick={handleCopyToClipboard} title="Secure Copy">
-                <Clipboard size={14} />
-              </ToolbarIconButton>
-              <ToolbarIconButton onClick={() => setShowConfig(true)} title="Registry Config">
-                <Settings size={14} />
-              </ToolbarIconButton>
-            </ToolbarGroup>
-            <ToolbarGroup>
-              <ToolbarButton
-                onClick={() => setShowImportModal(true)}
-                title="Import external registry rows"
-              >
-                <span className="flex items-center gap-2">
-                  <Upload size={14} />
-                  Import
-                </span>
-              </ToolbarButton>
-              <ToolbarButton
-                active={showFilterBar}
-                onClick={() => setShowFilterBar((current) => !current)}
-                title={showFilterBar ? 'Hide filters' : 'Show filters'}
-              >
-                <span className="flex items-center gap-2">
-                  {showFilterBar ? <EyeOff size={14} /> : <Eye size={14} />}
-                  Filters
-                </span>
-              </ToolbarButton>
-              <ToolbarButton
-                active={isIntelligenceExpanded}
-                onClick={() => setIsIntelligenceExpanded((current) => !current)}
-                title={isIntelligenceExpanded ? 'Collapse activity columns' : 'Expand activity columns'}
-              >
-                <span className="flex items-center gap-2">
-                  {isIntelligenceExpanded ? <Minimize2 size={14} /> : <Activity size={14} />}
-                  Activity
-                </span>
-              </ToolbarButton>
-            </ToolbarGroup>
-          </>
-        ),
-        secondary: showFilterBar ? (
-          <div className="grid w-full gap-3 md:grid-cols-4">
-            <AppDropdown
-              multi
-              value={quickFilters.status}
-              onChange={(value) => setQuickFilters((current) => ({ ...current, status: value }))}
-              options={entityFilterOptions.status}
-              label="Status Filter"
-              placeholder="All statuses"
-            />
-            <AppDropdown
-              multi
-              value={quickFilters.type}
-              onChange={(value) => setQuickFilters((current) => ({ ...current, type: value }))}
-              options={entityFilterOptions.type}
-              label="Type Filter"
-              placeholder="All types"
-            />
-            <AppDropdown
-              multi
-              value={quickFilters.environment}
-              onChange={(value) => setQuickFilters((current) => ({ ...current, environment: value }))}
-              options={entityFilterOptions.environment}
-              label="Environment Filter"
-              placeholder="All environments"
-            />
-            <AppDropdown
-              multi
-              value={quickFilters.owner}
-              onChange={(value) => setQuickFilters((current) => ({ ...current, owner: value }))}
-              options={entityFilterOptions.owner}
-              label="Owner Filter"
-              placeholder="All owners"
-            />
-          </div>
-        ) : null,
-        right: (
+      toolbarSearch={(
+        <ToolbarSearch
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          placeholder="Scan registry..."
+        />
+      )}
+      toolbarControls={(
+        <>
+          <ToolbarGroup>
+            <ToolbarButton active={showViewsMenu} onClick={() => setShowViewsMenu((current) => !current)} ref={viewsMenuButtonRef as any}>
+              <span className="flex items-center gap-2">
+                <LayoutGrid size={14} />
+                Views
+              </span>
+            </ToolbarButton>
+            <ToolbarButton active={showDisplayMenu} onClick={() => setShowDisplayMenu((current) => !current)} ref={displayMenuButtonRef as any}>
+              <span className="flex items-center gap-2">
+                <Sliders size={14} />
+                Display
+              </span>
+            </ToolbarButton>
+            <ToolbarIconButton onClick={handleExportCSV} title="Export Manifest">
+              <FileText size={14} />
+            </ToolbarIconButton>
+            <ToolbarIconButton onClick={handleCopyToClipboard} title="Secure Copy">
+              <Clipboard size={14} />
+            </ToolbarIconButton>
+            <ToolbarIconButton onClick={() => setShowConfig(true)} title="Registry Config">
+              <Settings size={14} />
+            </ToolbarIconButton>
+          </ToolbarGroup>
           <ToolbarGroup>
             <ToolbarButton
-              onClick={openCompare}
-              disabled={selectedIds.length < 2 || selectedIds.length > 5}
-              active={compareOpen}
-              title="Compare selected peers"
+              onClick={() => setShowImportModal(true)}
+              title="Import external registry rows"
             >
               <span className="flex items-center gap-2">
-                <GitCompare size={14} />
-                Compare
+                <Upload size={14} />
+                Import
               </span>
             </ToolbarButton>
             <ToolbarButton
-              onClick={toggleBulkWindow}
-              disabled={selectedIds.length === 0}
-              active={showBulkMenu}
-              title="Bulk actions"
-              className="bulk-menu-trigger"
-              ref={bulkMenuButtonRef as any}
+              active={showFilterBar}
+              onClick={() => setShowFilterBar((current) => !current)}
+              title={showFilterBar ? 'Hide filters' : 'Show filters'}
             >
               <span className="flex items-center gap-2">
-                <Zap size={14} />
-                Bulk Actions
+                {showFilterBar ? <EyeOff size={14} /> : <Eye size={14} />}
+                Filters
               </span>
             </ToolbarButton>
             <ToolbarButton
-              onClick={() => setActiveModal({})}
-              variant="primary"
-              className="px-6 py-2"
+              active={isIntelligenceExpanded}
+              onClick={() => setIsIntelligenceExpanded((current) => !current)}
+              title={isIntelligenceExpanded ? 'Collapse activity columns' : 'Expand activity columns'}
             >
-              + Add {externalViewLabel}
+              <span className="flex items-center gap-2">
+                {isIntelligenceExpanded ? <Minimize2 size={14} /> : <Activity size={14} />}
+                Activity
+              </span>
             </ToolbarButton>
           </ToolbarGroup>
-        ),
-        filterChips: [
+        </>
+      )}
+      secondaryToolbar={showFilterBar ? (
+        <div className="grid w-full gap-3 md:grid-cols-4">
+          <AppDropdown
+            multi
+            value={quickFilters.status}
+            onChange={(value) => setQuickFilters((current) => ({ ...current, status: value }))}
+            options={entityFilterOptions.status}
+            label="Status Filter"
+            placeholder="All statuses"
+          />
+          <AppDropdown
+            multi
+            value={quickFilters.type}
+            onChange={(value) => setQuickFilters((current) => ({ ...current, type: value }))}
+            options={entityFilterOptions.type}
+            label="Type Filter"
+            placeholder="All types"
+          />
+          <AppDropdown
+            multi
+            value={quickFilters.environment}
+            onChange={(value) => setQuickFilters((current) => ({ ...current, environment: value }))}
+            options={entityFilterOptions.environment}
+            label="Environment Filter"
+            placeholder="All environments"
+          />
+          <AppDropdown
+            multi
+            value={quickFilters.owner}
+            onChange={(value) => setQuickFilters((current) => ({ ...current, owner: value }))}
+            options={entityFilterOptions.owner}
+            label="Owner Filter"
+            placeholder="All owners"
+          />
+        </div>
+      ) : null}
+      toolbarActions={(
+        <ToolbarGroup>
+          <ToolbarButton
+            onClick={openCompare}
+            disabled={selectedIds.length < 2 || selectedIds.length > 5}
+            active={compareOpen}
+            title="Compare selected peers"
+          >
+            <span className="flex items-center gap-2">
+              <GitCompare size={14} />
+              Compare
+            </span>
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={toggleBulkWindow}
+            disabled={selectedIds.length === 0}
+            active={showBulkMenu}
+            title="Bulk actions"
+            className="bulk-menu-trigger"
+            ref={bulkMenuButtonRef as any}
+          >
+            <span className="flex items-center gap-2">
+              <Zap size={14} />
+              Bulk Actions
+            </span>
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => setActiveModal({})}
+            variant="primary"
+            className="px-6 py-2"
+          >
+            + Add {externalViewLabel}
+          </ToolbarButton>
+        </ToolbarGroup>
+      )}
+      filterChips={[
           ...(searchTerm ? [{
             id: 'search',
             label: `Search: ${searchTerm}`,
@@ -2496,11 +2495,8 @@ export default function External() {
                 }
               }]
             : []),
-        ],
-      }}
-    >
-
-      {typeof document !== 'undefined' && createPortal(
+        ]}
+      floatingPanels={
         <>
           <OperationalDisplayPanel
             isOpen={showDisplayMenu}
@@ -2550,18 +2546,15 @@ export default function External() {
             }}
           />
 
-          <AnimatePresence>
-            {showBulkMenu && !!bulkMenuStyle.top && (
-              <motion.div
-                key="bulk-menu"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                style={bulkMenuStyle}
-                className="bulk-menu-container"
-                ref={bulkMenuPanelRef}
-              >
-                <WorkspaceFloatingPanel kind="context" className="max-h-[560px] overflow-y-auto custom-scrollbar p-3">
+          <OperationalAnchoredPanel
+            isOpen={showBulkMenu}
+            panelKey="bulk-menu"
+            style={bulkMenuStyle}
+            className="bulk-menu-container"
+            panelRef={bulkMenuPanelRef}
+            yOffset={10}
+          >
+            <WorkspaceFloatingPanel kind="context" className="max-h-[560px] overflow-y-auto custom-scrollbar p-3">
                   <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
                     <p className="text-[10px] font-semibold text-slate-400">Bulk actions</p>
                     <p className="pt-1 text-[12px] font-semibold text-slate-100">{selectedIds.length} peers selected</p>
@@ -2683,22 +2676,17 @@ export default function External() {
                       )}
                     </p>
                   </button>
-                </WorkspaceFloatingPanel>
-              </motion.div>
-            )}
-          </AnimatePresence>
+            </WorkspaceFloatingPanel>
+          </OperationalAnchoredPanel>
 
-          <AnimatePresence>
-            {rowActionMenu && (
-              <motion.div
-                key="row-action-menu"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 8 }}
-                style={rowActionMenu.style}
-                className="row-action-menu-container"
-              >
-                <WorkspaceFloatingPanel kind="context" className="overflow-hidden">
+          <OperationalAnchoredPanel
+            isOpen={!!rowActionMenu}
+            panelKey="row-action-menu"
+            style={rowActionMenu?.style ?? { position: 'fixed', top: -9999, left: -9999 }}
+            className="row-action-menu-container"
+          >
+            {rowActionMenu ? (
+              <WorkspaceFloatingPanel kind="context" className="overflow-hidden">
                 <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
                   <div className="min-w-0">
                     <p className="truncate text-[10px] font-semibold text-slate-400">Row actions</p>
@@ -2839,15 +2827,12 @@ export default function External() {
                     </button>
                   )}
                 </div>
-                </WorkspaceFloatingPanel>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </>,
-        document.body
-      )}
-
-
+              </WorkspaceFloatingPanel>
+            ) : null}
+          </OperationalAnchoredPanel>
+        </>
+      }
+    >
 
       {groupBy === 'raw' ? (
         <OperationalGridSurface
@@ -3191,7 +3176,7 @@ export default function External() {
       />
 
 
-    </OperationalWorkspaceFrame>
+    </OperationalWorkspaceShell>
   )
 }
 
