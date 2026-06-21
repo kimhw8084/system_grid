@@ -1,4 +1,3 @@
-import { BkmListModal, BkmDetailModal, MonitoringForm } from './monitoring/Modals'
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useSearchParams, useNavigate } from 'react-router-dom'
@@ -14,16 +13,14 @@ import {
   BookOpen, Eye, EyeOff, FileText, User, Users, Mail, MessageSquare, Monitor, MoreVertical,
   Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, Star, GitCompare, Undo2, List, LayoutGrid, Upload, Terminal, History as HistoryIcon, Edit2 as EditIcon
 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { showWorkspaceToast } from './shared/WorkspaceToast'
 import { apiFetch } from '../api/apiClient'
-import { buildMonitoringFormErrors, getMonitoringTabErrorCounts } from '../utils/monitoringValidation'
 import { formatAppDate, formatAppTime, formatAppDay, parseAppDate } from '../utils/dateUtils'
 import { AppDropdown } from './shared/AppDropdown'
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
-import { MONITORING_WORKSPACE_STANDARD } from './shared/OperationalWorkspace'
 import { WorkspaceModal } from './shared/WorkspaceModal'
 import {
   WorkspaceCollapsibleHeader,
@@ -40,12 +37,10 @@ import {
   WorkspacePanelSubtitle as PanelSubtitle,
   WorkspacePanelTitle as PanelTitle,
   WorkspaceSectionCard,
-  WorkspaceSelectField as MonitoringSelectField,
   WorkspaceValidationBanner,
   getWorkspaceModalFrameClass,
   getWorkspaceModalShellClass,
   getWorkspaceInputClass,
-  useWorkspaceAnchoredLayer,
   useEscapeDismiss,
   useBodyModalFlag,
 } from './shared/OperationalWorkspacePrimitives'
@@ -54,11 +49,19 @@ import { StatusPill } from './shared/StatusPill'
 import { parseCommaSeparatedValues } from '../utils/dataParsers'
 import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
 import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
-import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } from './shared/WorkspaceModalShells'
+import { WorkspaceCompareShell, WorkspaceDossierShell } from './shared/WorkspaceModalShells'
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
 import { OperationalImportModal } from './shared/OperationalImportModal'
 import { OperationalGridMatrix } from './shared/OperationalGridMatrix'
-import { OperationalDisplayPanel, OperationalGridSurface, OperationalSavedViewsPanel, OperationalWorkspaceFrame } from './shared/OperationalWorkspaceShells'
+import {
+  OperationalAnchoredPanel,
+  OperationalDisplayPanel,
+  OperationalGridSurface,
+  OperationalGroupedGridSection,
+  OperationalGroupedGridView,
+  OperationalSavedViewsPanel,
+  OperationalWorkspaceShell,
+} from './shared/OperationalWorkspaceShells'
 import { ServiceDetailsView, ServiceForm } from './ServiceRegistry'
 import {
   applyOperationalColumnSizing,
@@ -72,15 +75,15 @@ import {
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
 
-const MONITORING_VIEW_STORAGE_KEY = 'sysgrid_services_views_v1'
-const MONITORING_ACTIVE_VIEW_KEY = 'sysgrid_services_active_view_v1'
-const MONITORING_FAVORITES_STORAGE_KEY = 'sysgrid_services_favorites_v1'
-const MONITORING_UI_STATE_KEY = 'sysgrid_services_ui_state_v1'
-const MONITORING_WATCH_STORAGE_KEY = 'sysgrid_services_watch_v1'
-const MONITORING_WORKSPACE_PREFERENCE_KEY = 'services_workspace_state_v1'
-const MONITORING_WORKSPACE_PREFERENCE_VERSION = 2
+const SERVICE_VIEW_STORAGE_KEY = 'sysgrid_services_views_v1'
+const SERVICE_ACTIVE_VIEW_KEY = 'sysgrid_services_active_view_v1'
+const SERVICE_FAVORITES_STORAGE_KEY = 'sysgrid_services_favorites_v1'
+const SERVICE_UI_STATE_KEY = 'sysgrid_services_ui_state_v1'
+const SERVICE_WATCH_STORAGE_KEY = 'sysgrid_services_watch_v1'
+const SERVICE_WORKSPACE_PREFERENCE_KEY = 'services_workspace_state_v1'
+const SERVICE_WORKSPACE_PREFERENCE_VERSION = 2
 const BULK_MENU_MAX_HEIGHT = 560
-const MONITORING_FIXED_WIDTH_COLUMN_IDS = new Set([
+const SERVICE_FIXED_WIDTH_COLUMN_IDS = new Set([
   'select',
   'id',
   'recent_change',
@@ -113,26 +116,6 @@ export const LOGIC_SUGGESTIONS: Record<string, string> = {
 
 export const getLogicExtensions = (logicType?: string) => []
 
-export interface MonitoringLogicEntry {
-  id: number
-  type: string
-  description: string
-  logic_info: string
-}
-
-export interface MonitoringOwner {
-  operator_id: number
-  role: string
-  name: string
-  external_id: string
-}
-
-export type MonitoringFormErrors = Record<string, string>
-export interface MonitoringTeamOption {
-  id: number
-  name: string
-  operators: any[]
-}
 export interface OperatorRecord {
   id: number
   username: string
@@ -142,26 +125,11 @@ export interface OperatorRecord {
   team?: string
 }
 
-
-const MONITORING_SEVERITIES = [
-  { value: 'Critical', label: 'Critical', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
-  { value: 'Warning', label: 'Warning', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-  { value: 'Info', label: 'Info', color: 'bg-sky-500/20 text-sky-400 border-sky-500/30' }
-]
-
-const MONITORING_OWNER_ROLES = [
-  { value: 'Primary Support', label: 'Primary Support' },
-  { value: 'Escalation', label: 'Escalation' },
-  { value: 'Observer', label: 'Observer' }
-]
-
-const MONITORING_REQUIRED_FIELD_NAMES = new Set(['title', 'category', 'status', 'severity'])
-
-const DEFAULT_MONITORING_VIEWS = []
-const DEFAULT_MONITORING_VIEW_IDS = new Set(DEFAULT_MONITORING_VIEWS.map((view) => view.id))
-const MONITORING_SUPPORTS_COMPARE = MONITORING_WORKSPACE_STANDARD.sharedCapabilities.includes('compare')
-const MONITORING_VALID_GROUP_BY = new Set(['raw', 'status', 'environment', 'service_type', 'device_name'])
-const MONITORING_PERSISTED_COLUMN_IDS = new Set([
+const DEFAULT_SERVICE_VIEWS = []
+const DEFAULT_SERVICE_VIEW_IDS = new Set(DEFAULT_SERVICE_VIEWS.map((view) => view.id))
+const SERVICE_SUPPORTS_COMPARE = true
+const SERVICE_VALID_GROUP_BY = new Set(['raw', 'status', 'environment', 'service_type', 'device_name'])
+const SERVICE_PERSISTED_COLUMN_IDS = new Set([
   'select',
   'id',
   'recent_change',
@@ -219,7 +187,7 @@ const readJsonStorage = <T,>(storageKey: string, fallback: T): T => {
   }
 }
 
-const normalizeMonitoringIdList = (value: any): number[] => {
+const normalizeServiceIdList = (value: any): number[] => {
   if (!Array.isArray(value)) return []
   return Array.from(new Set(
     value
@@ -228,16 +196,16 @@ const normalizeMonitoringIdList = (value: any): number[] => {
   ))
 }
 
-const normalizeMonitoringQuickFilters = (value: any) => ({
+const normalizeServiceQuickFilters = (value: any) => ({
   status: Array.isArray(value?.status) ? value.status.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [],
   environment: Array.isArray(value?.environment) ? value.environment.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [],
   service_type: Array.isArray(value?.service_type) ? value.service_type.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [],
   device_name: Array.isArray(value?.device_name) ? value.device_name.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [],
 })
 
-const normalizeMonitoringSavedViews = (value: any) => {
+const normalizeServiceSavedViews = (value: any) => {
   const parsed = Array.isArray(value) ? value : []
-  const systemIds = new Set(DEFAULT_MONITORING_VIEWS.map((view) => view.id))
+  const systemIds = new Set(DEFAULT_SERVICE_VIEWS.map((view) => view.id))
   const legacyIds = new Set(['ops', 'incident', 'recovery'])
   const customViews = parsed.filter((view: any) => (
     view &&
@@ -248,18 +216,18 @@ const normalizeMonitoringSavedViews = (value: any) => {
     !legacyIds.has(view.id)
   ))
   return [
-    ...DEFAULT_MONITORING_VIEWS.map((view) => parsed.find((entry: any) => entry?.id === view.id) || view),
+    ...DEFAULT_SERVICE_VIEWS.map((view) => parsed.find((entry: any) => entry?.id === view.id) || view),
     ...customViews.map((view: any) => ({
       ...view,
-      config: sanitizeMonitoringViewConfig(view?.config),
+      config: sanitizeServiceViewConfig(view?.config),
     })),
   ]
 }
 
-const sanitizeMonitoringViewConfig = (config: any) => {
+const sanitizeServiceViewConfig = (config: any) => {
   const safeConfig = config && typeof config === 'object' ? config : {}
   const sanitizeNetworkLayout = (layout: any[], preserveWidths: boolean) => {
-    const sanitized = sanitizeOperationalColumnLayout(layout, MONITORING_PERSISTED_COLUMN_IDS, preserveWidths)
+    const sanitized = sanitizeOperationalColumnLayout(layout, SERVICE_PERSISTED_COLUMN_IDS, preserveWidths)
     return [...sanitized].sort((a: any, b: any) => {
       const aIndex = SERVICE_DEFAULT_COLUMN_ORDER_MAP.get(a?.colId) ?? 1000
       const bIndex = SERVICE_DEFAULT_COLUMN_ORDER_MAP.get(b?.colId) ?? 1000
@@ -270,38 +238,38 @@ const sanitizeMonitoringViewConfig = (config: any) => {
     fontSize: Number.isFinite(safeConfig.fontSize) ? safeConfig.fontSize : 11,
     rowDensity: Number.isFinite(safeConfig.rowDensity) ? safeConfig.rowDensity : 8,
     hiddenColumns: Array.isArray(safeConfig.hiddenColumns)
-      ? safeConfig.hiddenColumns.filter((entry: any) => typeof entry === 'string' && MONITORING_PERSISTED_COLUMN_IDS.has(entry))
+      ? safeConfig.hiddenColumns.filter((entry: any) => typeof entry === 'string' && SERVICE_PERSISTED_COLUMN_IDS.has(entry))
       : [],
-    groupBy: typeof safeConfig.groupBy === 'string' && MONITORING_VALID_GROUP_BY.has(safeConfig.groupBy) ? safeConfig.groupBy : 'raw',
+    groupBy: typeof safeConfig.groupBy === 'string' && SERVICE_VALID_GROUP_BY.has(safeConfig.groupBy) ? safeConfig.groupBy : 'raw',
     showFilterBar: safeConfig.showFilterBar !== false,
     columnLayoutState: sanitizeNetworkLayout(Array.isArray(safeConfig.columnLayoutState) ? safeConfig.columnLayoutState : [], true),
     quickFilter: typeof safeConfig.quickFilter === 'string' ? safeConfig.quickFilter : '',
-    quickFilters: normalizeMonitoringQuickFilters(safeConfig.quickFilters),
-    filterModel: sanitizeOperationalFilterModel(safeConfig.filterModel, MONITORING_PERSISTED_COLUMN_IDS),
-    sortModel: sanitizeOperationalSortModel(safeConfig.sortModel, MONITORING_PERSISTED_COLUMN_IDS),
+    quickFilters: normalizeServiceQuickFilters(safeConfig.quickFilters),
+    filterModel: sanitizeOperationalFilterModel(safeConfig.filterModel, SERVICE_PERSISTED_COLUMN_IDS),
+    sortModel: sanitizeOperationalSortModel(safeConfig.sortModel, SERVICE_PERSISTED_COLUMN_IDS),
   }
 }
 
-const normalizeMonitoringWorkspaceState = (value: any) => {
+const normalizeServiceWorkspaceState = (value: any) => {
   if (!value || typeof value !== 'object') return null
   const uiState = value.uiState && typeof value.uiState === 'object' ? value.uiState : {}
   const normalized = {
-    version: MONITORING_WORKSPACE_PREFERENCE_VERSION,
-    savedViews: normalizeMonitoringSavedViews(value.savedViews),
+    version: SERVICE_WORKSPACE_PREFERENCE_VERSION,
+    savedViews: normalizeServiceSavedViews(value.savedViews),
     activeViewId: typeof value.activeViewId === 'string' && value.activeViewId.trim() ? value.activeViewId : null,
-    favoriteIds: normalizeMonitoringIdList(value.favoriteIds),
-    watchIds: normalizeMonitoringIdList(value.watchIds),
+    favoriteIds: normalizeServiceIdList(value.favoriteIds),
+    watchIds: normalizeServiceIdList(value.watchIds),
     uiState: {
       activeTab: uiState.activeTab === 'deleted' ? 'deleted' : 'active',
       fontSize: Number.isFinite(uiState.fontSize) ? uiState.fontSize : 11,
       rowDensity: Number.isFinite(uiState.rowDensity) ? uiState.rowDensity : 8,
       hiddenColumns: Array.isArray(uiState.hiddenColumns)
-        ? uiState.hiddenColumns.filter((entry: any) => typeof entry === 'string' && MONITORING_PERSISTED_COLUMN_IDS.has(entry))
+        ? uiState.hiddenColumns.filter((entry: any) => typeof entry === 'string' && SERVICE_PERSISTED_COLUMN_IDS.has(entry))
         : ['created_at', 'updated_at'],
-      quickFilters: normalizeMonitoringQuickFilters(uiState.quickFilters),
-      groupBy: typeof uiState.groupBy === 'string' && MONITORING_VALID_GROUP_BY.has(uiState.groupBy) ? uiState.groupBy : 'raw',
+      quickFilters: normalizeServiceQuickFilters(uiState.quickFilters),
+      groupBy: typeof uiState.groupBy === 'string' && SERVICE_VALID_GROUP_BY.has(uiState.groupBy) ? uiState.groupBy : 'raw',
       showFilterBar: uiState.showFilterBar !== false,
-      columnLayoutState: sanitizeMonitoringViewConfig({ columnLayoutState: Array.isArray(uiState.columnLayoutState) ? uiState.columnLayoutState : [] }).columnLayoutState,
+      columnLayoutState: sanitizeServiceViewConfig({ columnLayoutState: Array.isArray(uiState.columnLayoutState) ? uiState.columnLayoutState : [] }).columnLayoutState,
       lastVisitedAt: Number.isFinite(uiState.lastVisitedAt) ? uiState.lastVisitedAt : 0,
       searchTerm: typeof uiState.searchTerm === 'string' ? uiState.searchTerm : '',
     }
@@ -309,12 +277,12 @@ const normalizeMonitoringWorkspaceState = (value: any) => {
   return normalized
 }
 
-const readMonitoringWorkspaceStateFromLocalStorage = () => normalizeMonitoringWorkspaceState({
-  savedViews: readJsonStorage<any[]>(MONITORING_VIEW_STORAGE_KEY, []),
-  activeViewId: typeof window === 'undefined' ? null : window.localStorage.getItem(MONITORING_ACTIVE_VIEW_KEY),
-  favoriteIds: readJsonStorage<number[]>(MONITORING_FAVORITES_STORAGE_KEY, []),
-  watchIds: readJsonStorage<number[]>(MONITORING_WATCH_STORAGE_KEY, []),
-  uiState: readJsonStorage(MONITORING_UI_STATE_KEY, null),
+const readServiceWorkspaceStateFromLocalStorage = () => normalizeServiceWorkspaceState({
+  savedViews: readJsonStorage<any[]>(SERVICE_VIEW_STORAGE_KEY, []),
+  activeViewId: typeof window === 'undefined' ? null : window.localStorage.getItem(SERVICE_ACTIVE_VIEW_KEY),
+  favoriteIds: readJsonStorage<number[]>(SERVICE_FAVORITES_STORAGE_KEY, []),
+  watchIds: readJsonStorage<number[]>(SERVICE_WATCH_STORAGE_KEY, []),
+  uiState: readJsonStorage(SERVICE_UI_STATE_KEY, null),
 })
 
 const slugifyViewId = (value: string) =>
@@ -411,59 +379,8 @@ const getMonitorGroupValue = (item: any, field: string) => {
   return item[field] || 'Unspecified'
 }
 
-const readMonitoringUiState = () => {
-  return readMonitoringWorkspaceStateFromLocalStorage()?.uiState ?? null
-}
-
-export interface MonitoringRecoveryDoc {
-  id: number
-  note?: string
-  added_at?: string
-}
-
-const sanitizeMonitoringPayload = (item: any) => {
-  if (!item) return item
-  const next = { ...item }
-  delete next.created_at
-  delete next.updated_at
-  delete next.version
-  delete next.is_deleted
-  delete next.device_name
-  delete next.recovery_doc_titles
-  delete next.recovery_doc_details
-  delete next.monitored_service_names
-
-  // Deep sanitize logic_json
-  if (Array.isArray(next.logic_json)) {
-    next.logic_json = next.logic_json.map((entry: any) => ({
-      ...entry,
-      id: typeof entry.id === 'string' ? parseInt(entry.id.replace(/\D/g, '') || '0', 10) : Number(entry.id)
-    }))
-  }
-
-  // Deep sanitize owners
-  if (Array.isArray(next.owners)) {
-    next.owners = next.owners
-      .filter((o: any) => o.operator_id !== null && o.operator_id !== undefined)
-      .map((o: any) => ({
-        ...o,
-        operator_id: Number(o.operator_id)
-      }))
-  }
-
-  // Deep sanitize recovery_docs
-  if (Array.isArray(next.recovery_docs)) {
-    next.recovery_docs = next.recovery_docs.map((d: any) => {
-      if (typeof d === 'number') return { id: d }
-      return { 
-        id: Number(d.id), 
-        note: d.note || '',
-        added_at: d.added_at || null
-      }
-    })
-  }
-
-  return next
+const readServiceUiState = () => {
+  return readServiceWorkspaceStateFromLocalStorage()?.uiState ?? null
 }
 
 const SERVICE_STATUSES = ['Active', 'Inactive', 'Deprecated', 'Maintenance', 'Planned', 'Deleted']
@@ -473,7 +390,6 @@ const NETWORK_STATUSES = SERVICE_STATUSES
 const NETWORK_LINK_TYPES = ['Database', 'Application', 'OS', 'Middleware', 'API']
 const NETWORK_DIRECTIONS = ['Production', 'Stage', 'Development', 'Lab']
 const NETWORK_UNITS = ['USD', 'EUR', 'KRW', 'JPY', 'GBP']
-const getNetworkConnectionTitle = getServiceTitle
 
 const normalizeServiceRecord = (service: any) => {
   const status = service?.status || 'Active'
@@ -493,7 +409,6 @@ const normalizeServiceRecord = (service: any) => {
     type: serviceType,
     device_name: hostName,
     monitored_service_names: configKeys,
-    monitoring_url: service?.documentation_link || '',
     impact: service?.supplier || '',
     notification_method: service?.purchase_type || '',
     notification_recipients: [],
@@ -527,8 +442,6 @@ const sanitizeServicePayload = (item: any) => ({
   cost: item?.cost === '' || item?.cost == null ? 0 : Number(item.cost),
   currency: item?.currency ? String(item.currency).trim() : 'USD',
 })
-const sanitizeNetworkConnectionPayload = sanitizeServicePayload
-
 const ObservabilityHUD = ({ items }: any) => {
   const stats = useMemo(() => {
     if (!items?.length) return null
@@ -603,16 +516,16 @@ export default function ServicesReal() {
     queryFn: async () => (await (await apiFetch('/api/v1/settings/user/settings')).json()),
   })
   const remoteWorkspaceState = useMemo(
-    () => normalizeMonitoringWorkspaceState(userSettings?.[MONITORING_WORKSPACE_PREFERENCE_KEY]),
+    () => normalizeServiceWorkspaceState(userSettings?.[SERVICE_WORKSPACE_PREFERENCE_KEY]),
     [userSettings]
   )
-  const localWorkspaceState = useMemo(() => readMonitoringWorkspaceStateFromLocalStorage(), [])
+  const localWorkspaceState = useMemo(() => readServiceWorkspaceStateFromLocalStorage(), [])
   const hasStoredFavoriteIds = useMemo(
-    () => typeof window !== 'undefined' && window.localStorage.getItem(MONITORING_FAVORITES_STORAGE_KEY) !== null,
+    () => typeof window !== 'undefined' && window.localStorage.getItem(SERVICE_FAVORITES_STORAGE_KEY) !== null,
     []
   )
   const hasStoredWatchIds = useMemo(
-    () => typeof window !== 'undefined' && window.localStorage.getItem(MONITORING_WATCH_STORAGE_KEY) !== null,
+    () => typeof window !== 'undefined' && window.localStorage.getItem(SERVICE_WATCH_STORAGE_KEY) !== null,
     []
   )
   const initialWorkspaceState = useMemo(() => {
@@ -646,11 +559,7 @@ export default function ServicesReal() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<any>(null)
   const [detailItem, setDetailItem] = useState<any>(null)
-  const [historyItem, setHistoryItem] = useState<any>(null)
   const [showImportModal, setShowImportModal] = useState(false)
-  const [recipientPopup, setRecipientPopup] = useState<{ recipients: string[], method: string } | null>(null)
-  const [bkmPopup, setBkmPopup] = useState<{ docs: number[], ids: number[], titles: string[], monitorId?: number } | null>(null)
-  const [activeBkm, setActiveBkm] = useState<any>(null)
   const [compareOpen, setCompareOpen] = useState(false)
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
   
@@ -667,16 +576,16 @@ export default function ServicesReal() {
   const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
   const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
   const [gridSortModel, setGridSortModel] = useState<any[]>([{ colId: 'favorite', sort: 'desc' }])
-  const [savedViews, setSavedViews] = usePersistentJsonState<any[]>(MONITORING_VIEW_STORAGE_KEY, () => {
-    return initialWorkspaceState?.savedViews ?? normalizeMonitoringSavedViews([])
+  const [savedViews, setSavedViews] = usePersistentJsonState<any[]>(SERVICE_VIEW_STORAGE_KEY, () => {
+    return initialWorkspaceState?.savedViews ?? normalizeServiceSavedViews([])
   })
   const [activeViewId, setActiveViewId] = useWorkspaceSessionValue<string | null>(
     'sysgrid_services_session_init',
     null,
-    () => initialWorkspaceState?.activeViewId ?? (typeof window === 'undefined' ? null : window.localStorage.getItem(MONITORING_ACTIVE_VIEW_KEY))
+    () => initialWorkspaceState?.activeViewId ?? (typeof window === 'undefined' ? null : window.localStorage.getItem(SERVICE_ACTIVE_VIEW_KEY))
   )
-  const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>(MONITORING_FAVORITES_STORAGE_KEY, initialWorkspaceState?.favoriteIds ?? [])
-  const [watchIds, setWatchIds] = usePersistentJsonState<number[]>(MONITORING_WATCH_STORAGE_KEY, initialWorkspaceState?.watchIds ?? [])
+  const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>(SERVICE_FAVORITES_STORAGE_KEY, initialWorkspaceState?.favoriteIds ?? [])
+  const [watchIds, setWatchIds] = usePersistentJsonState<number[]>(SERVICE_WATCH_STORAGE_KEY, initialWorkspaceState?.watchIds ?? [])
   const [quickFilters, setQuickFilters] = useState(persistedUiState?.quickFilters ?? { status: [] as string[], environment: [] as string[], service_type: [] as string[], device_name: [] as string[] })
   const [searchTerm, setSearchTerm] = useState(persistedUiState?.searchTerm ?? '')
   const [groupBy, setGroupBy] = useState<string>(persistedUiState?.groupBy ?? 'raw')
@@ -696,10 +605,10 @@ export default function ServicesReal() {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
   const autoSizeFrameRef = useRef<number | null>(null)
   const autoSizeTimeoutRef = useRef<number | null>(null)
-  const monitoringPreferenceHydratedRef = useRef(false)
-  const monitoringPreferenceMigratedRef = useRef(false)
-  const monitoringPreferenceSyncRef = useRef<string | null>(null)
-  const monitoringPreferenceSyncTimeoutRef = useRef<number | null>(null)
+  const servicePreferenceHydratedRef = useRef(false)
+  const servicePreferenceMigratedRef = useRef(false)
+  const servicePreferenceSyncRef = useRef<string | null>(null)
+  const servicePreferenceSyncTimeoutRef = useRef<number | null>(null)
   const preserveExplicitColumnWidthsRef = useRef(false)
   const {
     columnLayoutState,
@@ -728,8 +637,8 @@ export default function ServicesReal() {
     }
   }, [])
 
-  const buildMonitoringWorkspacePreferencePayload = useCallback(() => normalizeMonitoringWorkspaceState({
-    version: MONITORING_WORKSPACE_PREFERENCE_VERSION,
+  const buildServiceWorkspacePreferencePayload = useCallback(() => normalizeServiceWorkspaceState({
+    version: SERVICE_WORKSPACE_PREFERENCE_VERSION,
     savedViews,
     activeViewId,
     favoriteIds,
@@ -766,12 +675,12 @@ export default function ServicesReal() {
   useEffect(() => clearPendingAutoSize, [clearPendingAutoSize])
 
   useEffect(() => {
-    if (remoteWorkspaceState && !monitoringPreferenceHydratedRef.current) {
-      monitoringPreferenceHydratedRef.current = true
-      const payload = initialWorkspaceState ?? normalizeMonitoringWorkspaceState(remoteWorkspaceState)
+    if (remoteWorkspaceState && !servicePreferenceHydratedRef.current) {
+      servicePreferenceHydratedRef.current = true
+      const payload = initialWorkspaceState ?? normalizeServiceWorkspaceState(remoteWorkspaceState)
       const serialized = JSON.stringify(payload)
-      monitoringPreferenceSyncRef.current = serialized
-      setSavedViews(payload?.savedViews ?? normalizeMonitoringSavedViews([]))
+      servicePreferenceSyncRef.current = serialized
+      setSavedViews(payload?.savedViews ?? normalizeServiceSavedViews([]))
       setActiveViewId(payload?.activeViewId ?? null)
       setFavoriteIds(hasStoredFavoriteIds ? (localWorkspaceState?.favoriteIds ?? []) : (payload?.favoriteIds ?? []))
       setWatchIds(hasStoredWatchIds ? (localWorkspaceState?.watchIds ?? []) : (payload?.watchIds ?? []))
@@ -780,26 +689,26 @@ export default function ServicesReal() {
       setHiddenColumns(payload?.uiState.hiddenColumns ?? ['created_at', 'updated_at'])
       setActiveTab(payload?.uiState.activeTab === 'deleted' ? 'deleted' : 'active')
       setShowFilterBar(payload?.uiState.showFilterBar !== false)
-      setQuickFilters(payload?.uiState.quickFilters ?? normalizeMonitoringQuickFilters(null))
+      setQuickFilters(payload?.uiState.quickFilters ?? normalizeServiceQuickFilters(null))
       setGroupBy(payload?.uiState.groupBy ?? 'raw')
       setColumnLayoutState(payload?.uiState.columnLayoutState ?? [])
       setSearchTerm(payload?.uiState.searchTerm ?? '')
       return
     }
 
-    if (hasUserSettings && !remoteWorkspaceState && !monitoringPreferenceMigratedRef.current) {
-      monitoringPreferenceMigratedRef.current = true
-      const localPayload = buildMonitoringWorkspacePreferencePayload()
+    if (hasUserSettings && !remoteWorkspaceState && !servicePreferenceMigratedRef.current) {
+      servicePreferenceMigratedRef.current = true
+      const localPayload = buildServiceWorkspacePreferencePayload()
       if (!localPayload) return
       const serialized = JSON.stringify(localPayload)
-      monitoringPreferenceSyncRef.current = serialized
+      servicePreferenceSyncRef.current = serialized
       apiFetch('/api/v1/settings/user/settings', {
         method: 'PATCH',
-        body: JSON.stringify({ [MONITORING_WORKSPACE_PREFERENCE_KEY]: localPayload })
+        body: JSON.stringify({ [SERVICE_WORKSPACE_PREFERENCE_KEY]: localPayload })
       }).catch(() => {})
     }
   }, [
-    buildMonitoringWorkspacePreferencePayload,
+    buildServiceWorkspacePreferencePayload,
     hasStoredFavoriteIds,
     hasStoredWatchIds,
     hasUserSettings,
@@ -815,30 +724,30 @@ export default function ServicesReal() {
 
   useEffect(() => {
     if (!hasUserSettings) return
-    const payload = buildMonitoringWorkspacePreferencePayload()
+    const payload = buildServiceWorkspacePreferencePayload()
     if (!payload) return
     const serialized = JSON.stringify(payload)
-    if (monitoringPreferenceSyncRef.current === serialized) return
-    if (monitoringPreferenceSyncTimeoutRef.current !== null) {
-      window.clearTimeout(monitoringPreferenceSyncTimeoutRef.current)
+    if (servicePreferenceSyncRef.current === serialized) return
+    if (servicePreferenceSyncTimeoutRef.current !== null) {
+      window.clearTimeout(servicePreferenceSyncTimeoutRef.current)
     }
-    monitoringPreferenceSyncTimeoutRef.current = window.setTimeout(() => {
+    servicePreferenceSyncTimeoutRef.current = window.setTimeout(() => {
       apiFetch('/api/v1/settings/user/settings', {
         method: 'PATCH',
-        body: JSON.stringify({ [MONITORING_WORKSPACE_PREFERENCE_KEY]: payload })
+        body: JSON.stringify({ [SERVICE_WORKSPACE_PREFERENCE_KEY]: payload })
       })
         .then(() => {
-          monitoringPreferenceSyncRef.current = serialized
+          servicePreferenceSyncRef.current = serialized
         })
         .catch(() => {})
     }, 500)
     return () => {
-      if (monitoringPreferenceSyncTimeoutRef.current !== null) {
-        window.clearTimeout(monitoringPreferenceSyncTimeoutRef.current)
-        monitoringPreferenceSyncTimeoutRef.current = null
+      if (servicePreferenceSyncTimeoutRef.current !== null) {
+        window.clearTimeout(servicePreferenceSyncTimeoutRef.current)
+        servicePreferenceSyncTimeoutRef.current = null
       }
     }
-  }, [buildMonitoringWorkspacePreferencePayload, hasUserSettings])
+  }, [buildServiceWorkspacePreferencePayload, hasUserSettings])
 
   useEffect(() => {
     setSelectedIds([])
@@ -864,7 +773,7 @@ export default function ServicesReal() {
   const handleColumnPinned = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
   const handleColumnVisible = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
   const handleFilterChanged = useCallback((e: any) => setGridFilterModel(e.api.getFilterModel() || {}), [])
-  const handleMonitoringColumnResized = useCallback((event: any) => {
+  const handleServiceColumnResized = useCallback((event: any) => {
     const source = event?.source || ''
     const isAutoResizeSource =
       source === 'autosizeColumns' ||
@@ -926,14 +835,14 @@ export default function ServicesReal() {
     }
   }, [columnLayoutState, preserveExplicitColumnWidths])
 
-  const autoSizeMonitoringColumns = useCallback(() => {
+  const autoSizeServiceColumns = useCallback(() => {
     if (!gridRef.current?.api || preserveExplicitColumnWidthsRef.current) return
     clearPendingAutoSize()
     const run = () => {
       if (!gridRef.current?.api || preserveExplicitColumnWidthsRef.current) return
       autoSizeOperationalColumns({
         api: gridRef.current.api,
-        skipColumnIds: Array.from(MONITORING_FIXED_WIDTH_COLUMN_IDS),
+        skipColumnIds: Array.from(SERVICE_FIXED_WIDTH_COLUMN_IDS),
         onSized: () => {
           if (!gridRef.current?.api || preserveExplicitColumnWidthsRef.current) return
           syncColumnLayoutState(gridRef.current.api, false)
@@ -951,11 +860,11 @@ export default function ServicesReal() {
   }, [clearPendingAutoSize, syncColumnLayoutState])
 
   const handleGridDataUpdated = useCallback(() => {
-    autoSizeMonitoringColumns()
-  }, [autoSizeMonitoringColumns])
+    autoSizeServiceColumns()
+  }, [autoSizeServiceColumns])
 
   const getRowClass = useCallback((params: any) => {
-    let classes = params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd'
+    let classes = params.node.rowIndex % 2 === 0 ? 'service-grid-row-even' : 'service-grid-row-odd'
     if (params.data && pendingIds.includes(params.data.id)) {
       classes += ' row-ghost opacity-40 grayscale pointer-events-none'
     }
@@ -966,15 +875,6 @@ export default function ServicesReal() {
     queryKey: ['settings-options'], 
     queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) 
   })
-  const { data: operators } = useQuery({
-    queryKey: ['operators'],
-    queryFn: async () => (await (await apiFetch('/api/v1/settings/operators')).json())
-  })
-  const { data: teams } = useQuery({
-    queryKey: ['teams'],
-    queryFn: async () => (await (await apiFetch('/api/v1/settings/teams')).json())
-  })
-
   const serviceTypeOptions = useMemo(() => {
     const options = Array.isArray(settingsOptions) ? settingsOptions.filter((o:any) => o.category === 'ServiceType') : []
     return options.length > 0
@@ -988,9 +888,6 @@ export default function ServicesReal() {
       : ['Production', 'Stage', 'Development', 'Lab'].map((value) => ({ value, label: value }))
   }, [settingsOptions])
   const purchaseTypeOptions = useMemo(() => SERVICE_PURCHASE_TYPES.map((value) => ({ value, label: value })), [])
-  const notificationMethods = purchaseTypeOptions
-  const severities = MONITORING_SEVERITIES
-  const ownerRoles = MONITORING_OWNER_ROLES
 
   const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
     setConfirmModal({ isOpen: true, title, message, onConfirm, variant })
@@ -1026,7 +923,7 @@ export default function ServicesReal() {
   const toggleFavorite = useCallback((monitorId: number) => {
     const id = Number(monitorId)
     setFavoriteIds((current) => {
-      const normalized = normalizeMonitoringIdList(current)
+      const normalized = normalizeServiceIdList(current)
       return normalized.includes(id) ? normalized.filter((i) => i !== id) : [...normalized, id]
     })
   }, [])
@@ -1090,16 +987,6 @@ export default function ServicesReal() {
     if (pendingIds.includes(event.data.id)) return
     openNetworkDetail(event.data)
   }, [openNetworkDetail, pendingIds])
-
-  const openRecoveryDocuments = (item: any) => {
-    const recoveryDocs = item.recovery_docs || []
-    setBkmPopup({
-      docs: recoveryDocs,
-      ids: recoveryDocs,
-      titles: item.recovery_doc_titles || [],
-      monitorId: item.id
-    })
-  }
 
   const renderPrimaryRowActions = (item: any) => {
     const isPending = pendingIds.includes(item.id)
@@ -1166,7 +1053,7 @@ export default function ServicesReal() {
   }
 
   const buildCurrentViewConfig = () =>
-    sanitizeMonitoringViewConfig({
+    sanitizeServiceViewConfig({
       fontSize,
       rowDensity,
       hiddenColumns,
@@ -1184,7 +1071,7 @@ export default function ServicesReal() {
   const applySavedView = (viewId: string) => {
     const nextView = savedViews.find((view) => view.id === viewId)
     if (!nextView) return
-    const config = sanitizeMonitoringViewConfig(nextView.config)
+    const config = sanitizeServiceViewConfig(nextView.config)
     setFontSize(config.fontSize ?? 11)
     setRowDensity(config.rowDensity ?? 8)
     setHiddenColumns(config.hiddenColumns ?? [])
@@ -1198,7 +1085,7 @@ export default function ServicesReal() {
     setGridSortModel((config.sortModel && config.sortModel.length > 0) ? config.sortModel : [{ colId: 'favorite', sort: 'desc' }])
     setActiveViewId(viewId)
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, viewId)
+      window.localStorage.setItem(SERVICE_ACTIVE_VIEW_KEY, viewId)
     }
     requestAnimationFrame(() => {
       if (gridRef.current?.api) {
@@ -1221,8 +1108,8 @@ export default function ServicesReal() {
     setSavedViews(nextViews)
     setActiveViewId(viewId)
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
-      window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, viewId)
+      window.localStorage.setItem(SERVICE_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
+      window.localStorage.setItem(SERVICE_ACTIVE_VIEW_KEY, viewId)
     }
     showWorkspaceToast(`Saved current table to ${nextViews.find((view) => view.id === viewId)?.name}`)
   }
@@ -1249,8 +1136,8 @@ export default function ServicesReal() {
     setActiveViewId(nextId)
     setNewViewName('')
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
-      window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, nextId)
+      window.localStorage.setItem(SERVICE_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
+      window.localStorage.setItem(SERVICE_ACTIVE_VIEW_KEY, nextId)
     }
     showWorkspaceToast(`Saved new view ${trimmed}`)
   }
@@ -1259,7 +1146,7 @@ export default function ServicesReal() {
     setActiveViewId(null)
     setTransientManualColumnWidths(false)
     if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(MONITORING_ACTIVE_VIEW_KEY)
+      window.localStorage.removeItem(SERVICE_ACTIVE_VIEW_KEY)
     }
     setFontSize(11)
     setRowDensity(8)
@@ -1292,11 +1179,11 @@ export default function ServicesReal() {
         if (activeViewId === viewId) {
           setActiveViewId(null)
           if (typeof window !== 'undefined') {
-             window.localStorage.removeItem(MONITORING_ACTIVE_VIEW_KEY)
+             window.localStorage.removeItem(SERVICE_ACTIVE_VIEW_KEY)
           }
         }
         if (typeof window !== 'undefined') {
-          window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
+          window.localStorage.setItem(SERVICE_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
         }
         showWorkspaceToast(`Deleted view ${view.name}`)
       }
@@ -1495,10 +1382,10 @@ export default function ServicesReal() {
   useEffect(() => {
     if (!displayedItemsInOrder.length) return
     const timer = window.setTimeout(() => {
-      autoSizeMonitoringColumns()
+      autoSizeServiceColumns()
     }, 0)
     return () => window.clearTimeout(timer)
-  }, [autoSizeMonitoringColumns, displayedItemsInOrder, fontSize, hiddenColumns, isIntelligenceExpanded])
+  }, [autoSizeServiceColumns, displayedItemsInOrder, fontSize, hiddenColumns, isIntelligenceExpanded])
 
   const selectedItems = useMemo(
     () => displayedItems.filter((item: any) => selectedIds.includes(item.id)),
@@ -1579,7 +1466,7 @@ export default function ServicesReal() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    window.localStorage.setItem(MONITORING_UI_STATE_KEY, JSON.stringify({
+    window.localStorage.setItem(SERVICE_UI_STATE_KEY, JSON.stringify({
       activeTab,
       fontSize,
       rowDensity,
@@ -1632,8 +1519,8 @@ export default function ServicesReal() {
   useEffect(() => {
     return () => {
       if (typeof window === 'undefined') return
-      const current = readMonitoringUiState() || {}
-      window.localStorage.setItem(MONITORING_UI_STATE_KEY, JSON.stringify({
+      const current = readServiceUiState() || {}
+      window.localStorage.setItem(SERVICE_UI_STATE_KEY, JSON.stringify({
         ...current,
         lastVisitedAt: Date.now()
       }))
@@ -1768,7 +1655,7 @@ export default function ServicesReal() {
           onRevert: async () => {
             try {
               await runUndo()
-              showWorkspaceToast('Reverted network operation', { type: 'success' })
+              showWorkspaceToast('Reverted service operation', { type: 'success' })
             } catch (error: any) {
               showWorkspaceToast(error.message || 'Undo failed', { type: 'error' })
             }
@@ -1786,7 +1673,7 @@ export default function ServicesReal() {
     const lockFixedUtilityWidth = (column: any, layout?: any) => {
       const colId = column.colId || column.field
       const lockedWidth = layout?.width ?? column.width ?? column.initialWidth
-      if (!MONITORING_FIXED_WIDTH_COLUMN_IDS.has(colId) || lockedWidth == null) return column
+      if (!SERVICE_FIXED_WIDTH_COLUMN_IDS.has(colId) || lockedWidth == null) return column
       return {
         ...column,
         width: lockedWidth,
@@ -2157,7 +2044,8 @@ export default function ServicesReal() {
   )
 
   return (
-   <OperationalWorkspaceFrame
+   <OperationalWorkspaceShell
+      className="overflow-hidden"
       header={{
         eyebrow: "Services",
         title: (
@@ -2183,163 +2071,161 @@ export default function ServicesReal() {
           />
         ),
       }}
-      commandBar={{
-        left: (
-          <>
-            <ToolbarSearch
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search services, hosts, or metadata..."
-            />
-            <ToolbarGroup>
-              <div className="views-menu-container">
-                <ToolbarButton active={showViewsMenu} onClick={() => setShowViewsMenu(!showViewsMenu)} ref={viewsMenuButtonRef as any}>
-                  <span className="flex items-center gap-2">
-                    <LayoutGrid size={14} />
-                    Views
-                  </span>
-                </ToolbarButton>
-              </div>
-              <div className="display-menu-container">
-                <ToolbarButton active={showDisplayMenu} onClick={() => setShowDisplayMenu(!showDisplayMenu)} ref={displayMenuButtonRef as any}>
-                  <span className="flex items-center gap-2">
-                    <Sliders size={14} />
-                    Display
-                  </span>
-                </ToolbarButton>
-              </div>
-              <ToolbarIconButton onClick={handleExportCSV} title="Export CSV">
-                <FileText size={16} />
-              </ToolbarIconButton>
-              <ToolbarIconButton onClick={handleCopyToClipboard} title="Copy to clipboard">
-                <Clipboard size={16} />
-              </ToolbarIconButton>
-              <ToolbarIconButton onClick={() => setShowRegistry(true)} title="Registry configuration">
-               <Settings size={16} />
-              </ToolbarIconButton>
-            </ToolbarGroup>
-            <ToolbarGroup>
-              <ToolbarButton onClick={() => setShowImportModal(true)} title="Import service rows">
+      toolbarSearch={(
+        <ToolbarSearch
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search services, hosts, or metadata..."
+        />
+      )}
+      toolbarControls={(
+        <>
+          <ToolbarGroup>
+            <div className="views-menu-container">
+              <ToolbarButton active={showViewsMenu} onClick={() => setShowViewsMenu(!showViewsMenu)} ref={viewsMenuButtonRef as any}>
                 <span className="flex items-center gap-2">
-                  <Upload size={14} />
-                  Import
+                  <LayoutGrid size={14} />
+                  Views
                 </span>
               </ToolbarButton>
-              <ToolbarButton
-                active={showFilterBar}
-                onClick={() => setShowFilterBar((current) => !current)}
-                title={showFilterBar ? 'Hide filters' : 'Show filters'}
-              >
+            </div>
+            <div className="display-menu-container">
+              <ToolbarButton active={showDisplayMenu} onClick={() => setShowDisplayMenu(!showDisplayMenu)} ref={displayMenuButtonRef as any}>
                 <span className="flex items-center gap-2">
-                  {showFilterBar ? <EyeOff size={14} /> : <Eye size={14} />}
-                  Filters
+                  <Sliders size={14} />
+                  Display
                 </span>
               </ToolbarButton>
-              <ToolbarButton
-               active={isIntelligenceExpanded}
-               onClick={() => setIsIntelligenceExpanded(!isIntelligenceExpanded)}
-               title={isIntelligenceExpanded ? 'Hide Activity Columns' : 'Show Activity Columns'}
-              >
-               <span className="flex items-center gap-2">
-                 {isIntelligenceExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                 Activity
-               </span>
-              </ToolbarButton>
-            </ToolbarGroup>
-          </>
-        ),
-        secondary: showFilterBar ? (
-          <div className="grid w-full gap-3 md:grid-cols-4">
-            <AppDropdown
-              multi
-              value={quickFilters.status}
-              onChange={(val) => setQuickFilters((current) => ({ ...current, status: val }))}
-              options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
-              label="Status Filter"
-              placeholder="All statuses"
-            />
-            <AppDropdown
-              multi
-              value={quickFilters.environment}
-              onChange={(val) => setQuickFilters((current) => ({ ...current, environment: val }))}
-              options={Array.from(new Set((items || []).map((item: any) => item.environment).filter(Boolean))).sort().map((value) => ({ value, label: value }))}
-              label="Environment Filter"
-              placeholder="All environments"
-            />
-            <AppDropdown
-              multi
-              value={quickFilters.service_type}
-              onChange={(val) => setQuickFilters((current) => ({ ...current, service_type: val }))}
-              options={Array.from(new Set((items || []).map((item: any) => item.service_type).filter(Boolean))).sort().map((value) => ({ value, label: value }))}
-              label="Type Filter"
-              placeholder="All types"
-            />
-            <AppDropdown
-              multi
-              value={quickFilters.device_name}
-              onChange={(val) => setQuickFilters((current) => ({ ...current, device_name: val }))}
-              options={Array.from(new Set((items || []).map((item: any) => item.device_name).filter(Boolean))).sort().map((value) => ({ value, label: value }))}
-              label="Host Filter"
-              placeholder="All hosts"
-            />
-          </div>
-        ) : null,
-        right: (
-	          <>
-              {MONITORING_SUPPORTS_COMPARE && (
-                <ToolbarButton
-                  onClick={openCompare}
-                  disabled={selectedIds.length < 2 || selectedIds.length > 5}
-                  active={compareOpen}
-                  title="Compare selected services"
-                >
-                  <span className="flex items-center gap-2">
-                    <GitCompare size={14} />
-                    Compare
-                  </span>
-                </ToolbarButton>
-              )}
-		            <ToolbarButton
-                onClick={toggleBulkWindow}
-                disabled={selectedIds.length === 0}
-                active={showBulkMenu}
-                title="Bulk actions"
-                className="bulk-menu-trigger"
-                ref={bulkMenuButtonRef as any}
-              >
-                <span className="flex items-center gap-2">
-                  <Zap size={14} />
-                  Bulk Actions
-                </span>
-              </ToolbarButton>
-	            <ToolbarButton
-	              onClick={() => { setEditingItem(null); setIsFormOpen(true); }}
-	              variant="primary"
-              className="px-6 py-2"
-            >
-                  + Add Service
+            </div>
+            <ToolbarIconButton onClick={handleExportCSV} title="Export CSV">
+              <FileText size={16} />
+            </ToolbarIconButton>
+            <ToolbarIconButton onClick={handleCopyToClipboard} title="Copy to clipboard">
+              <Clipboard size={16} />
+            </ToolbarIconButton>
+            <ToolbarIconButton onClick={() => setShowRegistry(true)} title="Registry configuration">
+             <Settings size={16} />
+            </ToolbarIconButton>
+          </ToolbarGroup>
+          <ToolbarGroup>
+            <ToolbarButton onClick={() => setShowImportModal(true)} title="Import service rows">
+              <span className="flex items-center gap-2">
+                <Upload size={14} />
+                Import
+              </span>
             </ToolbarButton>
-          </>
-        ),
-        filterChips: [
-          ...activeFilterChips,
-          ...(activeFilterChips.length > 0
-            ? [{
-                id: 'clear-all',
-                label: 'Clear All',
-                onRemove: () => {
-                  setSearchTerm('')
-                  setGridFilterModel({})
-            setQuickFilters({ status: [] as string[], environment: [] as string[], service_type: [] as string[], device_name: [] as string[] })
-                  gridRef.current?.api?.setFilterModel({})
-                }
-              }]
-            : []),
-        ],
-      }}
-    >
-
-      {typeof document !== 'undefined' && createPortal(
+            <ToolbarButton
+              active={showFilterBar}
+              onClick={() => setShowFilterBar((current) => !current)}
+              title={showFilterBar ? 'Hide filters' : 'Show filters'}
+            >
+              <span className="flex items-center gap-2">
+                {showFilterBar ? <EyeOff size={14} /> : <Eye size={14} />}
+                Filters
+              </span>
+            </ToolbarButton>
+            <ToolbarButton
+             active={isIntelligenceExpanded}
+             onClick={() => setIsIntelligenceExpanded(!isIntelligenceExpanded)}
+             title={isIntelligenceExpanded ? 'Hide Activity Columns' : 'Show Activity Columns'}
+            >
+             <span className="flex items-center gap-2">
+               {isIntelligenceExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+               Activity
+             </span>
+            </ToolbarButton>
+          </ToolbarGroup>
+        </>
+      )}
+      secondaryToolbar={showFilterBar ? (
+        <div className="grid w-full gap-3 md:grid-cols-4">
+          <AppDropdown
+            multi
+            value={quickFilters.status}
+            onChange={(val) => setQuickFilters((current) => ({ ...current, status: val }))}
+            options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
+            label="Status Filter"
+            placeholder="All statuses"
+          />
+          <AppDropdown
+            multi
+            value={quickFilters.environment}
+            onChange={(val) => setQuickFilters((current) => ({ ...current, environment: val }))}
+            options={Array.from(new Set((items || []).map((item: any) => item.environment).filter(Boolean))).sort().map((value) => ({ value, label: value }))}
+            label="Environment Filter"
+            placeholder="All environments"
+          />
+          <AppDropdown
+            multi
+            value={quickFilters.service_type}
+            onChange={(val) => setQuickFilters((current) => ({ ...current, service_type: val }))}
+            options={Array.from(new Set((items || []).map((item: any) => item.service_type).filter(Boolean))).sort().map((value) => ({ value, label: value }))}
+            label="Type Filter"
+            placeholder="All types"
+          />
+          <AppDropdown
+            multi
+            value={quickFilters.device_name}
+            onChange={(val) => setQuickFilters((current) => ({ ...current, device_name: val }))}
+            options={Array.from(new Set((items || []).map((item: any) => item.device_name).filter(Boolean))).sort().map((value) => ({ value, label: value }))}
+            label="Host Filter"
+            placeholder="All hosts"
+          />
+        </div>
+      ) : null}
+      toolbarActions={(
+        <>
+          {SERVICE_SUPPORTS_COMPARE && (
+            <ToolbarButton
+              onClick={openCompare}
+              disabled={selectedIds.length < 2 || selectedIds.length > 5}
+              active={compareOpen}
+              title="Compare selected services"
+            >
+              <span className="flex items-center gap-2">
+                <GitCompare size={14} />
+                Compare
+              </span>
+            </ToolbarButton>
+          )}
+          <ToolbarButton
+            onClick={toggleBulkWindow}
+            disabled={selectedIds.length === 0}
+            active={showBulkMenu}
+            title="Bulk actions"
+            className="bulk-menu-trigger"
+            ref={bulkMenuButtonRef as any}
+          >
+            <span className="flex items-center gap-2">
+              <Zap size={14} />
+              Bulk Actions
+            </span>
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => { setEditingItem(null); setIsFormOpen(true); }}
+            variant="primary"
+            className="px-6 py-2"
+          >
+            + Add Service
+          </ToolbarButton>
+        </>
+      )}
+      filterChips={[
+        ...activeFilterChips,
+        ...(activeFilterChips.length > 0
+          ? [{
+              id: 'clear-all',
+              label: 'Clear All',
+              onRemove: () => {
+                setSearchTerm('')
+                setGridFilterModel({})
+                setQuickFilters({ status: [] as string[], environment: [] as string[], service_type: [] as string[], device_name: [] as string[] })
+                gridRef.current?.api?.setFilterModel({})
+              }
+            }]
+          : []),
+      ]}
+      floatingPanels={
         <>
           <OperationalDisplayPanel
             isOpen={showDisplayMenu}
@@ -2375,7 +2261,7 @@ export default function ServicesReal() {
             onCreateView={createViewFromCurrent}
             onApplySystemDefault={applySystemDefault}
             savedViews={savedViews}
-            defaultViewIds={DEFAULT_MONITORING_VIEW_IDS}
+            defaultViewIds={DEFAULT_SERVICE_VIEW_IDS}
             onApplyView={applySavedView}
             onOverwriteView={saveCurrentToView}
             onDeleteView={deleteView}
@@ -2384,141 +2270,132 @@ export default function ServicesReal() {
               : 'Raw service table'}
           />
 
-	          <AnimatePresence>
-		            {showBulkMenu && !!bulkMenuStyle.top && (
-		            <motion.div
-		            key="bulk-menu"
-		            initial={{ opacity: 0, y: 10 }}
-		            animate={{ opacity: 1, y: 0 }}
-		            exit={{ opacity: 0, y: 10 }}
-		            style={bulkMenuStyle}
-                  className="bulk-menu-container"
+          <OperationalAnchoredPanel
+            isOpen={showBulkMenu && !!bulkMenuStyle.top}
+            panelKey="bulk-menu"
+            style={bulkMenuStyle}
+            className="bulk-menu-container"
+            yOffset={10}
+          >
+            <WorkspaceFloatingPanel kind="context" className="max-h-[560px] overflow-y-auto custom-scrollbar p-3">
+              <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
+                <p className="text-[10px] font-semibold text-slate-400">Bulk actions</p>
+                <p className="pt-1 text-[12px] font-semibold text-slate-100">{selectedIds.length} services selected</p>
+              </div>
+
+              {activeTab === 'deleted' ? (
+                <button
+                  onClick={() => bulkMutation.mutate({ action: 'restore' })}
+                  disabled={bulkMutation.isPending}
+                  className="w-full rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-left transition-all hover:bg-emerald-500/15 disabled:opacity-50"
                 >
-                  <WorkspaceFloatingPanel kind="context" className="max-h-[560px] overflow-y-auto custom-scrollbar p-3">
-                  <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
-                    <p className="text-[10px] font-semibold text-slate-400">Bulk actions</p>
-                    <p className="pt-1 text-[12px] font-semibold text-slate-100">{selectedIds.length} services selected</p>
-                  </div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">
+                    {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : 'Restore Selection'}
+                  </p>
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setShowBulkEditModal(true)}
+                    className="w-full rounded-lg border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-left transition-all hover:bg-blue-500/15"
+                  >
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">Bulk Edit Table</p>
+                    <p className="pt-1 text-[10px] font-semibold text-slate-400">Edit selected services row by row using safe columns only.</p>
+                  </button>
 
-                  {activeTab === 'deleted' ? (
-                      <button
-                      onClick={() => bulkMutation.mutate({ action: 'restore' })}
-                      disabled={bulkMutation.isPending}
-                      className="w-full rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-left transition-all hover:bg-emerald-500/15 disabled:opacity-50"
-                    >
-                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">
-                        {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : 'Restore Selection'}
-                      </p>
-                    </button>
-                  ) : (
-                    <div className="space-y-2">
-                      <button
-                        onClick={() => setShowBulkEditModal(true)}
-                        className="w-full rounded-lg border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-left transition-all hover:bg-blue-500/15"
-                      >
-                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">Bulk Edit Table</p>
-                        <p className="pt-1 text-[10px] font-semibold text-slate-400">Edit selected services row by row using safe columns only.</p>
-                      </button>
-
-                      <WorkspaceFlyoutActionCard
-                        title="Set Status"
-                        active={expandedBulkSection === 'status'}
-                        onClick={() => setExpandedBulkSection(expandedBulkSection === 'status' ? null : 'status')}
-                      />
-                      {expandedBulkSection === 'status' && (
-                        <WorkspaceFlyoutDropdownEditor
-                          value={bulkDraft.status}
-                          onChange={(value) => setBulkDraft((current) => ({ ...current, status: value }))}
-                          options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
-                          placeholder="Choose status"
-                          actionLabel="Apply Status"
-                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { status: bulkDraft.status } })}
-                          disabled={!bulkDraft.status || bulkMutation.isPending}
-                        />
-                      )}
-
-                      <WorkspaceFlyoutActionCard
-                        title="Set Type"
-                        active={expandedBulkSection === 'service_type'}
-                        onClick={() => setExpandedBulkSection(expandedBulkSection === 'service_type' ? null : 'service_type')}
-                      />
-                      {expandedBulkSection === 'service_type' && (
-                        <WorkspaceFlyoutDropdownEditor
-                          value={bulkDraft.service_type}
-                          onChange={(value) => setBulkDraft((current) => ({ ...current, service_type: value }))}
-                          options={serviceTypeOptions}
-                          placeholder="Choose type"
-                          actionLabel="Apply Type"
-                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { service_type: bulkDraft.service_type } })}
-                          disabled={!bulkDraft.service_type || bulkMutation.isPending}
-                        />
-                      )}
-
-                      <WorkspaceFlyoutActionCard
-                        title="Set Environment"
-                        active={expandedBulkSection === 'environment'}
-                        onClick={() => setExpandedBulkSection(expandedBulkSection === 'environment' ? null : 'environment')}
-                      />
-                      {expandedBulkSection === 'environment' && (
-                        <WorkspaceFlyoutDropdownEditor
-                          value={bulkDraft.environment}
-                          onChange={(value) => setBulkDraft((current) => ({ ...current, environment: value }))}
-                          options={environmentOptions}
-                          placeholder="Choose environment"
-                          actionLabel="Apply Environment"
-                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { environment: bulkDraft.environment } })}
-                          disabled={!bulkDraft.environment || bulkMutation.isPending}
-                        />
-                      )}
-                    </div>
+                  <WorkspaceFlyoutActionCard
+                    title="Set Status"
+                    active={expandedBulkSection === 'status'}
+                    onClick={() => setExpandedBulkSection(expandedBulkSection === 'status' ? null : 'status')}
+                  />
+                  {expandedBulkSection === 'status' && (
+                    <WorkspaceFlyoutDropdownEditor
+                      value={bulkDraft.status}
+                      onChange={(value) => setBulkDraft((current) => ({ ...current, status: value }))}
+                      options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
+                      placeholder="Choose status"
+                      actionLabel="Apply Status"
+                      onApply={() => bulkMutation.mutate({ action: 'update', payload: { status: bulkDraft.status } })}
+                      disabled={!bulkDraft.status || bulkMutation.isPending}
+                    />
                   )}
 
-                  <div className="mx-1 my-3 h-px bg-slate-800" />
-                  <button
-                    onClick={() => {
-                      if (!bulkDeleteConfirm) {
-                        setBulkDeleteConfirm(true)
-                        return
-                      }
-                      bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' })
-                    }}
-                    onMouseLeave={() => setBulkDeleteConfirm(false)}
-                    disabled={bulkMutation.isPending}
-                    className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
-                      bulkDeleteConfirm 
-                        ? 'border-rose-500 bg-rose-600 animate-pulse' 
-                        : 'border-rose-900/70 bg-rose-950/70 hover:bg-rose-950'
-                    } disabled:opacity-50`}
-                  >
-                    <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
-                      {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
-                        bulkDeleteConfirm 
-                          ? (activeTab === 'deleted' ? 'Confirm Permanent Purge?' : 'Confirm De-activation?') 
-                          : (activeTab === 'deleted' ? 'Purge Selection' : 'De-activate Selection')
-                      )}
-                    </p>
-                  </button>
-                  </WorkspaceFloatingPanel>
-                </motion.div>
-	            )}
-	          </AnimatePresence>
+                  <WorkspaceFlyoutActionCard
+                    title="Set Type"
+                    active={expandedBulkSection === 'service_type'}
+                    onClick={() => setExpandedBulkSection(expandedBulkSection === 'service_type' ? null : 'service_type')}
+                  />
+                  {expandedBulkSection === 'service_type' && (
+                    <WorkspaceFlyoutDropdownEditor
+                      value={bulkDraft.service_type}
+                      onChange={(value) => setBulkDraft((current) => ({ ...current, service_type: value }))}
+                      options={serviceTypeOptions}
+                      placeholder="Choose type"
+                      actionLabel="Apply Type"
+                      onApply={() => bulkMutation.mutate({ action: 'update', payload: { service_type: bulkDraft.service_type } })}
+                      disabled={!bulkDraft.service_type || bulkMutation.isPending}
+                    />
+                  )}
 
-	          <AnimatePresence>
-            {rowActionMenu && (
-              <motion.div
-                key="row-action-menu"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 8 }}
-                style={rowActionMenu.style}
-                className="row-action-menu-container"
+                  <WorkspaceFlyoutActionCard
+                    title="Set Environment"
+                    active={expandedBulkSection === 'environment'}
+                    onClick={() => setExpandedBulkSection(expandedBulkSection === 'environment' ? null : 'environment')}
+                  />
+                  {expandedBulkSection === 'environment' && (
+                    <WorkspaceFlyoutDropdownEditor
+                      value={bulkDraft.environment}
+                      onChange={(value) => setBulkDraft((current) => ({ ...current, environment: value }))}
+                      options={environmentOptions}
+                      placeholder="Choose environment"
+                      actionLabel="Apply Environment"
+                      onApply={() => bulkMutation.mutate({ action: 'update', payload: { environment: bulkDraft.environment } })}
+                      disabled={!bulkDraft.environment || bulkMutation.isPending}
+                    />
+                  )}
+                </div>
+              )}
+
+              <div className="mx-1 my-3 h-px bg-slate-800" />
+              <button
+                onClick={() => {
+                  if (!bulkDeleteConfirm) {
+                    setBulkDeleteConfirm(true)
+                    return
+                  }
+                  bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' })
+                }}
+                onMouseLeave={() => setBulkDeleteConfirm(false)}
+                disabled={bulkMutation.isPending}
+                className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
+                  bulkDeleteConfirm
+                    ? 'border-rose-500 bg-rose-600 animate-pulse'
+                    : 'border-rose-900/70 bg-rose-950/70 hover:bg-rose-950'
+                } disabled:opacity-50`}
               >
-                <WorkspaceFloatingPanel kind="context" className="overflow-hidden">
+                <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
+                  {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
+                    bulkDeleteConfirm
+                      ? (activeTab === 'deleted' ? 'Confirm Permanent Purge?' : 'Confirm De-activation?')
+                      : (activeTab === 'deleted' ? 'Purge Selection' : 'De-activate Selection')
+                  )}
+                </p>
+              </button>
+            </WorkspaceFloatingPanel>
+          </OperationalAnchoredPanel>
+
+          <OperationalAnchoredPanel
+            isOpen={Boolean(rowActionMenu)}
+            panelKey="row-action-menu"
+            style={rowActionMenu?.style || {}}
+            className="row-action-menu-container"
+          >
+            <WorkspaceFloatingPanel kind="context" className="overflow-hidden">
                 <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
                   <div className="min-w-0">
                     <p className="truncate text-[10px] font-semibold text-slate-400">Row actions</p>
-                    <p className="pt-1 text-[11px] font-semibold text-slate-100">ID {rowActionMenu.item.id} · {rowActionMenu.item.device_name || 'No host linked'}</p>
-                    <p className="truncate pt-1 text-[12px] text-slate-300">{rowActionMenu.item.title}</p>
+                    <p className="pt-1 text-[11px] font-semibold text-slate-100">ID {rowActionMenu?.item.id} · {rowActionMenu?.item.device_name || 'No host linked'}</p>
+                    <p className="truncate pt-1 text-[12px] text-slate-300">{rowActionMenu?.item.title}</p>
                   </div>
                   <button
                     onClick={() => setRowActionMenu(null)}
@@ -2535,7 +2412,7 @@ export default function ServicesReal() {
                   <div className="grid grid-cols-3 gap-2 px-2 pb-3 border-b border-slate-800 mb-2">
                     <button
                       onClick={() => {
-                        openNetworkDetail(rowActionMenu.item)
+                        openNetworkDetail(rowActionMenu?.item)
                         setRowActionMenu(null)
                       }}
                       className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-blue-400 transition-all hover:border-blue-500/30 hover:bg-blue-600/10 active:scale-95"
@@ -2545,7 +2422,7 @@ export default function ServicesReal() {
                     </button>
                     <button
                       onClick={() => {
-                        setEditingItem(rowActionMenu.item)
+                        setEditingItem(rowActionMenu?.item)
                         setIsFormOpen(true)
                         setRowActionMenu(null)
                       }}
@@ -2560,6 +2437,7 @@ export default function ServicesReal() {
                 {activeTab === 'deleted' && (
                   <button
                     onClick={() => {
+                      if (!rowActionMenu?.item?.id) return
                       bulkMutation.mutate({ action: 'restore', ids: [rowActionMenu.item.id] })
                       setRowActionMenu(null)
                     }}
@@ -2571,7 +2449,8 @@ export default function ServicesReal() {
                 )}
                 <button
                   onClick={() => {
-                    const item = rowActionMenu.item
+                    const item = rowActionMenu?.item
+                    if (!item) return
                     if (rowDeleteConfirmId !== item.id) {
                       setRowDeleteConfirmId(item.id)
                       return
@@ -2588,22 +2467,20 @@ export default function ServicesReal() {
                   }`}
                 >
                   <Trash2 size={14} />
-                    {rowDeleteConfirmId === rowActionMenu.item.id
+                    {rowDeleteConfirmId === rowActionMenu?.item.id
                     ? (activeTab === 'active' ? 'Confirm Delete?' : 'Confirm Purge?')
                     : (activeTab === 'active' ? 'Delete' : 'Purge')}
                 </button>
                 </div>
-                </WorkspaceFloatingPanel>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </>,
-        document.body
-      )}
+            </WorkspaceFloatingPanel>
+          </OperationalAnchoredPanel>
+        </>
+      }
+    >
 
       {groupBy === 'raw' ? (
 	        <OperationalGridSurface
-            className="monitoring-grid-shell monitoring-grid"
+            className="service-grid-shell service-grid"
             style={{ 
               '--ag-font-size': `${fontSize}px`,
               '--ag-font-family': "'Inter', sans-serif",
@@ -2624,7 +2501,7 @@ export default function ServicesReal() {
             getRowId={handleRowId}
             onGridReady={handleGridReady}
 	            onSelectionChanged={(e) => handleSelectionChanged(e, 'raw')}
-            onColumnResized={handleMonitoringColumnResized}
+            onColumnResized={handleServiceColumnResized}
             onColumnMoved={handleColumnMoved}
             onDragStopped={handleDragStopped}
             onColumnPinned={handleColumnPinned}
@@ -2642,60 +2519,56 @@ export default function ServicesReal() {
 
 	        </OperationalGridSurface>
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 custom-scrollbar">
-          <div className="rounded-lg border border-white/5 bg-black/20 px-6 py-4 flex items-center justify-between">
+        <OperationalGroupedGridView
+          summary={(
             <div>
               <p className="text-[10px] font-semibold text-slate-400">Grouped service registry</p>
               <p className="pt-1 text-[12px] font-semibold text-slate-100">Sorted by {groupOptions.find((option) => option.value === groupBy)?.label || groupBy}</p>
             </div>
-            <div className="flex items-center gap-3">
-               <button 
-                 onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: false }), {}))}
-                 className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
-               >
-                 Expand All
-               </button>
-               <button 
-                 onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: true }), {}))}
-                 className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
-               >
-                 Collapse All
-               </button>
-               <div className="w-px h-6 bg-white/10 mx-1" />
-               <button 
-                 onClick={() => setGroupBy('raw')}
-                 className="px-3 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-[9px] font-semibold text-rose-400 hover:bg-rose-500/20 transition-all flex items-center gap-2"
-               >
-                 <X size={12} />
-                 <span>Cancel</span>
-               </button>
-            </div>
-          </div>
+          )}
+          actions={(
+            <>
+              <button
+                onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: false }), {}))}
+                className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+              >
+                Expand All
+              </button>
+              <button
+                onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: true }), {}))}
+                className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+              >
+                Collapse All
+              </button>
+              <div className="w-px h-6 bg-white/10 mx-1" />
+              <button
+                onClick={() => setGroupBy('raw')}
+                className="px-3 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-[9px] font-semibold text-rose-400 hover:bg-rose-500/20 transition-all flex items-center gap-2"
+              >
+                <X size={12} />
+                <span>Cancel</span>
+              </button>
+            </>
+          )}
+          sections={(
+            <>
           {groupedSections.map((section) => {
             const isCollapsed = collapsedGroups[section.key]
             const selectedCount = section.items.filter((item: any) => selectedIds.includes(item.id)).length
             return (
-              <section key={section.key} className="glass-panel overflow-hidden rounded-lg border border-white/5">
-                <button
-                  type="button"
-                  onClick={() => setCollapsedGroups((current) => ({ ...current, [section.key]: !current[section.key] }))}
-                  className="flex w-full items-center justify-between gap-4 border-b border-white/5 bg-white/[0.03] px-5 py-4 text-left transition-all hover:bg-white/[0.05]"
-                >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-[9px] font-semibold text-blue-400">{groupOptions.find((option) => option.value === groupBy)?.label}</span>
-                      <h3 className="text-sm font-semibold text-slate-100">{section.label}</h3>
-                    </div>
-                    <p className="pt-1 text-[11px] text-slate-400">{section.items.length} services{selectedCount ? ` · ${selectedCount} selected` : ''}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                  <span className="rounded-lg border border-white/5 bg-black/30 px-2.5 py-1 text-[9px] font-semibold text-slate-300">{section.items.length}</span>
-                    {isCollapsed ? <ChevronDown size={16} className="text-slate-500" /> : <ChevronUp size={16} className="text-slate-500" />}
-                  </div>
-                </button>
-                {!isCollapsed && (
+              <OperationalGroupedGridSection
+                key={section.key}
+                labelMeta={<span className="text-[9px] font-semibold text-blue-400">{groupOptions.find((option) => option.value === groupBy)?.label}</span>}
+                label={section.label}
+                count={section.items.length}
+                countLabel="services"
+                selectedCount={selectedCount}
+                collapsed={isCollapsed}
+                onToggle={() => setCollapsedGroups((current) => ({ ...current, [section.key]: !current[section.key] }))}
+              >
+                {!isCollapsed ? (
                   <OperationalGridSurface
-                    className="monitoring-grid-shell monitoring-grid w-full"
+                    className="service-grid-shell service-grid w-full"
                     style={{ 
                       '--ag-font-size': `${fontSize}px`,
                       '--ag-font-family': "'Inter', sans-serif",
@@ -2712,7 +2585,7 @@ export default function ServicesReal() {
                       context={gridContext}
                       getRowId={handleRowId}
                       onSelectionChanged={(e) => handleSelectionChanged(e, section.key)}
-                      onColumnResized={handleMonitoringColumnResized}
+                      onColumnResized={handleServiceColumnResized}
                       onColumnMoved={handleColumnMoved}
                       onDragStopped={handleDragStopped}
                       onColumnPinned={handleColumnPinned}
@@ -2728,11 +2601,13 @@ export default function ServicesReal() {
                       noRowsLabel="No service data found"
                     />
                   </OperationalGridSurface>
-                )}
-              </section>
+                ) : null}
+              </OperationalGroupedGridSection>
             )
           })}
-        </div>
+            </>
+          )}
+        />
       )}
 
       <BulkActionModals
@@ -2741,9 +2616,6 @@ export default function ServicesReal() {
         isNotifyOpen={isBulkNotifyOpen}
         onClose={() => { setIsBulkStatusOpen(false); setIsBulkSeverityOpen(false); setIsBulkNotifyOpen(false); }}
         onApply={(action, val) => bulkMutation.mutate({ action: 'update', payload: { [action]: val } })}
-        count={selectedIds.length}
-        severities={severities}
-        notificationMethods={notificationMethods}
       />
 
       <ConfirmationModal 
@@ -2771,7 +2643,7 @@ export default function ServicesReal() {
         )}
         {detailItem && (
           <ServiceRecordDetailModal
-            key={`monitoring-detail-${detailItem.id}`}
+            key={`service-detail-${detailItem.id}`}
             item={detailItem}
             onClose={() => closeNetworkDetail()}
             onEdit={(monitor: any) => { closeNetworkDetail(); setEditingItem(monitor); setIsFormOpen(true); }}
@@ -2789,29 +2661,13 @@ export default function ServicesReal() {
             devices={devices || []}
           />
         )}
-        {recipientPopup && <RecipientsModal key={`monitoring-recipients-${recipientPopup.method}-${recipientPopup.recipients.join('|')}`} recipients={recipientPopup.recipients} method={recipientPopup.method} onClose={() => setRecipientPopup(null)} />}
-        {bkmPopup && (
-          <BkmListModal 
-            key={`monitoring-bkm-list-${bkmPopup.monitorId ?? 'none'}-${bkmPopup.docs.join('-')}`}
-            docs={bkmPopup.docs} 
-            monitorId={bkmPopup.monitorId}
-            onOpenBkm={setActiveBkm} 
-            onClose={() => setBkmPopup(null)} 
-          />
-        )}
-        {activeBkm && <BkmDetailModal key={`monitoring-bkm-detail-${activeBkm}`} bkmId={activeBkm} onClose={() => setActiveBkm(null)} />}
-        {compareOpen && <CompareMonitorsModal key={`monitoring-compare-${compareItems.map((item) => item.id).join('-') || 'empty'}`} items={compareItems} onClose={() => setCompareOpen(false)} />}
+        {compareOpen && <CompareServicesModal key={`services-compare-${compareItems.map((item) => item.id).join('-') || 'empty'}`} items={compareItems} onClose={() => setCompareOpen(false)} />}
         {showBulkEditModal && (
           <BulkEditTableModal
             key={`services-bulk-edit-${selectedItems.map((item) => item.id).join('-') || 'empty'}`}
             items={selectedItems}
-            teams={teams || []}
-            operators={operators || []}
             linkPurposeOptions={serviceTypeOptions}
-            farmOptions={environmentOptions}
-            cableTypeOptions={[]}
-            severities={severities}
-            notificationMethods={notificationMethods}
+            cableTypeOptions={purchaseTypeOptions}
             onClose={() => setShowBulkEditModal(false)}
             onSuccess={() => {
               queryClient.invalidateQueries({ queryKey: ['logical-services'] })
@@ -2820,14 +2676,14 @@ export default function ServicesReal() {
           />
         )}
         <OperationalImportModal
-          key="monitoring-import-modal"
+          key="services-import-modal"
           isOpen={showImportModal}
           onClose={() => setShowImportModal(false)}
           tableName="logical_services"
           displayName="Services"
         />
         <ConfigRegistryModal
-            key="monitoring-config-registry"
+            key="services-config-registry"
             isOpen={showRegistry}
             onClose={() => setShowRegistry(false)}
             title="Service Enumerations"
@@ -2853,11 +2709,11 @@ export default function ServicesReal() {
           .row-action-trigger { opacity: 1; }
 	        .ag-side-bar { background-color: #24283b !important; border-left: 1px solid rgba(255,255,255,0.05) !important; }
 	      `}</style>
-    </OperationalWorkspaceFrame>
+    </OperationalWorkspaceShell>
   )
 }
 
-function CompareMonitorsModal({ items, onClose }: any) {
+function CompareServicesModal({ items, onClose }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
   const [isMaximized, setIsMaximized] = useState(false)
@@ -2966,7 +2822,7 @@ function CompareRow({ label, value, multiline = false, colorIndex = -1 }: { labe
   )
 }
 
-function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose, onApply, severities, notificationMethods }: any) {
+function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose, onApply }: any) {
     const [val, setVal] = useState('')
     
     useEffect(() => { setVal(''); }, [isStatusOpen, isSeverityOpen, isNotifyOpen]);
@@ -3081,7 +2937,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     return null;
 }
 
-function BulkEditTableModal({ items, teams, operators, linkPurposeOptions, farmOptions, cableTypeOptions, severities, notificationMethods, onClose, onSuccess }: any) {
+function BulkEditTableModal({ items, linkPurposeOptions, cableTypeOptions, onClose, onSuccess }: any) {
   const [rows, setRows] = useState(() => items.map((item: any) => ({
     id: item.id,
     title: item.name || `Service ${item.id}`,
@@ -3192,11 +3048,11 @@ function BulkEditTableModal({ items, teams, operators, linkPurposeOptions, farmO
                   <td className="px-2 py-2"><AppDropdown value={row.link_type} onChange={(value) => updateRow(row.id, 'link_type', value)} options={mergeOptionsWithCurrentValue(linkPurposeOptions, row.link_type)} placeholder="Type" /></td>
                   <td className="px-2 py-2"><AppDropdown value={row.direction} onChange={(value) => updateRow(row.id, 'direction', value)} options={NETWORK_DIRECTIONS.map((value) => ({ value, label: value }))} placeholder="Environment" /></td>
                   <td className="px-4 py-3 text-[10px] font-bold text-slate-200">{row.farm || 'Unassigned'}</td>
-                  <td className="px-2 py-2"><input value={row.purpose} onChange={(event) => updateRow(row.id, 'purpose', event.target.value)} placeholder="Purpose" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
-                  <td className="px-2 py-2"><input type="number" value={row.speed_gbps} onChange={(event) => updateRow(row.id, 'speed_gbps', event.target.value)} placeholder="Cost" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] [appearance:textfield]`} /></td>
+                  <td className="px-2 py-2"><input value={row.purpose} onChange={(event) => updateRow(row.id, 'purpose', event.target.value)} placeholder="Purpose" className={`${serviceInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+                  <td className="px-2 py-2"><input type="number" value={row.speed_gbps} onChange={(event) => updateRow(row.id, 'speed_gbps', event.target.value)} placeholder="Cost" className={`${serviceInputClass()} h-[42px] px-3 py-2 text-[10px] [appearance:textfield]`} /></td>
                   <td className="px-2 py-2"><AppDropdown value={row.unit} onChange={(value) => updateRow(row.id, 'unit', value)} options={NETWORK_UNITS.map((value) => ({ value, label: value }))} placeholder="Currency" /></td>
                   <td className="px-2 py-2"><AppDropdown value={row.cable_type} onChange={(value) => updateRow(row.id, 'cable_type', value)} options={mergeOptionsWithCurrentValue(cableTypeOptions, row.cable_type)} placeholder="License type" /></td>
-                  <td className="px-2 py-2"><input type="date" value={row.request_link} onChange={(event) => updateRow(row.id, 'request_link', event.target.value)} placeholder="Deployment date" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+                  <td className="px-2 py-2"><input type="date" value={row.request_link} onChange={(event) => updateRow(row.id, 'request_link', event.target.value)} placeholder="Deployment date" className={`${serviceInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
                   <td className="px-4 py-2">
                     <button
                       type="button"
@@ -3246,10 +3102,6 @@ function RecipientsModal({ recipients, method, onClose }: any) {
   )
 }
 
-// Extracted to BkmListModal.tsx
-
-// Extracted to BkmDetailModal.tsx
-
 function ServiceRecordDetailModal({ item, onClose, onEdit, onDelete, onOpenAsset, deleteConfirm, options, devices }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
@@ -3294,510 +3146,7 @@ function ServiceRecordDetailModal({ item, onClose, onEdit, onDelete, onOpenAsset
   )
 }
 
-// Shared monitoring form constants and types are declared at the top of this module.
-
-const stringifyOwnerUserIds = (owners: MonitoringOwner[] = []) =>
-  owners
-    .map((owner) => owner.external_id || owner.name || String(owner.operator_id))
-    .filter(Boolean)
-    .join(', ')
-
-const isMonitoringFieldRequired = (fieldName: string) => MONITORING_REQUIRED_FIELD_NAMES.has(fieldName)
-
-/*
-  const unsafeUrlPattern = /[<>"']|javascript:|data:|vbscript:/i // verified match
-
-  if (isMonitoringFieldRequired('title') && !formData.title?.trim()) errors.title = 'Title is required.'
-  if (isMonitoringFieldRequired('category') && !formData.category) errors.category = 'Category is required.'
-  if (isMonitoringFieldRequired('status') && !formData.status) errors.status = 'Status is required.'
-  if (isMonitoringFieldRequired('severity') && !formData.severity) errors.severity = 'Severity is required.'
-
-  if (formData.monitoring_url) {
-    try {
-      const parsed = new URL(formData.monitoring_url)
-      if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname) {
-        errors.monitoring_url = 'Request link must use http/https and include a host.'
-      }
-    } catch {
-      errors.monitoring_url = 'Request link must be a valid http/https URL.'
-    }
-    if (unsafeUrlPattern.test(formData.monitoring_url)) {
-      errors.monitoring_url = 'Request link contains unsafe content.'
-    }
-  }
-
-  if (Number.isNaN(formData.check_interval) || formData.check_interval < CHECK_INTERVAL_MIN || formData.check_interval > CHECK_INTERVAL_MAX) {
-    errors.check_interval = `Check interval must be between ${CHECK_INTERVAL_MIN} and ${CHECK_INTERVAL_MAX} seconds.`
-  }
-  if (Number.isNaN(formData.alert_duration) || formData.alert_duration < ALERT_DURATION_MIN || formData.alert_duration > ALERT_DURATION_MAX) {
-    errors.alert_duration = `Alert duration must be between ${ALERT_DURATION_MIN} and ${ALERT_DURATION_MAX} seconds.`
-  }
-  if (Number.isNaN(formData.notification_throttle) || formData.notification_throttle < NOTIFICATION_THROTTLE_MIN || formData.notification_throttle > NOTIFICATION_THROTTLE_MAX) {
-    errors.notification_throttle = `Notification throttle must be between ${NOTIFICATION_THROTTLE_MIN} and ${NOTIFICATION_THROTTLE_MAX} seconds.`
-  }
-
-  if (formData.severity === 'Critical' && !formData.recovery_docs?.length) {
-    errors.recovery_docs = 'Critical connections require at least one linked reference.'
-  }
-*/
-
-
-const monitoringInputClass = (error?: string) => getWorkspaceInputClass(error)
-
-function NetworkConnectionForm({ item, devices, onClose, onSuccess, linkPurposeOptions, farmOptions, cableTypeOptions }: any) {
-  useEscapeDismiss(onClose)
-  useBodyModalFlag()
-  const queryClient = useQueryClient()
-  const [isSaving, setIsSaving] = useState(false)
-  const [isMaximized, setIsMaximized] = useState(false)
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
-  const [formData, setFormData] = useState(() => ({
-    source_device_id: item?.source_device_id ?? '',
-    source_port: item?.source_port ?? '',
-    source_ip: item?.source_ip ?? '',
-    source_mac: item?.source_mac ?? '',
-    source_vlan: item?.source_vlan ?? '',
-    target_device_id: item?.target_device_id ?? '',
-    target_port: item?.target_port ?? '',
-    target_ip: item?.target_ip ?? '',
-    target_mac: item?.target_mac ?? '',
-    target_vlan: item?.target_vlan ?? '',
-    link_type: item?.link_type || 'Data',
-    purpose: item?.purpose || '',
-    speed_gbps: item?.speed_gbps ?? 10,
-    unit: item?.unit || 'Gbps',
-    direction: item?.direction || 'Bidirectional',
-    cable_type: item?.cable_type || '',
-    status: item?.status || 'Active',
-    farm: item?.farm || '',
-    request_link: item?.request_link || '',
-  }))
-
-  const deviceOptions = useMemo(() => (devices || []).map((device: any) => ({ value: String(device.id), label: device.name })), [devices])
-  const mergedLinkPurposeOptions = useMemo(() => {
-    const current = item?.link_type ? [{ value: item.link_type, label: item.link_type }] : []
-    return Array.from(new Map([...(linkPurposeOptions || []), ...current].map((option: any) => [option.value, option])).values())
-  }, [item?.link_type, linkPurposeOptions])
-  const mergedFarmOptions = useMemo(() => {
-    const current = item?.farm ? [{ value: item.farm, label: item.farm }] : []
-    return Array.from(new Map([...(farmOptions || []), ...current].map((option: any) => [option.value, option])).values())
-  }, [farmOptions, item?.farm])
-  const mergedCableTypeOptions = useMemo(() => {
-    const current = item?.cable_type ? [{ value: item.cable_type, label: item.cable_type }] : []
-    return Array.from(new Map([...(cableTypeOptions || []), ...current].map((option: any) => [option.value, option])).values())
-  }, [cableTypeOptions, item?.cable_type])
-
-  const clearFieldError = useCallback((field: string) => {
-    setFormErrors((current) => {
-      if (!current[field]) return current
-      const next = { ...current }
-      delete next[field]
-      return next
-    })
-  }, [])
-
-  const updateField = useCallback((field: string, value: any) => {
-    setFormData((current) => ({ ...current, [field]: value }))
-    clearFieldError(field)
-  }, [clearFieldError])
-
-  const validateForm = useCallback((draft = formData) => {
-    const nextErrors: Record<string, string> = {}
-    const sourceDeviceId = Number(draft.source_device_id)
-    const targetDeviceId = Number(draft.target_device_id)
-    const sourcePort = String(draft.source_port || '').trim()
-    const targetPort = String(draft.target_port || '').trim()
-    const sourceIp = String(draft.source_ip || '').trim()
-    const targetIp = String(draft.target_ip || '').trim()
-    const requestLink = String(draft.request_link || '').trim()
-    const speed = draft.speed_gbps === '' || draft.speed_gbps == null ? null : Number(draft.speed_gbps)
-    const sourceVlan = draft.source_vlan === '' || draft.source_vlan == null ? null : Number(draft.source_vlan)
-    const targetVlan = draft.target_vlan === '' || draft.target_vlan == null ? null : Number(draft.target_vlan)
-
-    const isValidIp = (value: string) => {
-      if (!value) return true
-      if (/^(\d{1,3}\.){3}\d{1,3}$/.test(value)) {
-        return value.split('.').every((part) => Number(part) >= 0 && Number(part) <= 255)
-      }
-      return /^[0-9a-fA-F:]+$/.test(value) && value.includes(':')
-    }
-
-    const isValidUrl = (value: string) => {
-      if (!value) return true
-      try {
-        const parsed = new URL(value)
-        return ['http:', 'https:'].includes(parsed.protocol) && Boolean(parsed.hostname)
-      } catch {
-        return false
-      }
-    }
-
-    if (!Number.isFinite(sourceDeviceId) || sourceDeviceId <= 0) nextErrors.source_device_id = 'Source device is required.'
-    if (!Number.isFinite(targetDeviceId) || targetDeviceId <= 0) nextErrors.target_device_id = 'Peer device is required.'
-    if (!sourcePort) nextErrors.source_port = 'Source port is required.'
-    if (!targetPort) nextErrors.target_port = 'Peer port is required.'
-    if (!draft.link_type) nextErrors.link_type = 'Connection type is required.'
-    if (!draft.status) nextErrors.status = 'Status is required.'
-    if (!draft.direction) nextErrors.direction = 'Direction is required.'
-    if (!draft.unit) nextErrors.unit = 'Unit is required.'
-    if (sourceDeviceId === targetDeviceId && sourceDeviceId > 0) nextErrors.target_device_id = 'Peer device must be different from source.'
-    if (sourceIp && !isValidIp(sourceIp)) nextErrors.source_ip = 'Source IP must be a valid IPv4 or IPv6 address.'
-    if (targetIp && !isValidIp(targetIp)) nextErrors.target_ip = 'Peer IP must be a valid IPv4 or IPv6 address.'
-    if (requestLink && !isValidUrl(requestLink)) nextErrors.request_link = 'Request link must be a valid http/https URL.'
-    if (speed != null && (!Number.isFinite(speed) || speed <= 0)) nextErrors.speed_gbps = 'Speed must be greater than zero.'
-    if (sourceVlan != null && (!Number.isInteger(sourceVlan) || sourceVlan < 0 || sourceVlan > 4094)) nextErrors.source_vlan = 'Source VLAN must be between 0 and 4094.'
-    if (targetVlan != null && (!Number.isInteger(targetVlan) || targetVlan < 0 || targetVlan > 4094)) nextErrors.target_vlan = 'Peer VLAN must be between 0 and 4094.'
-    if (draft.farm && mergedFarmOptions.length > 0 && !mergedFarmOptions.some((option: any) => option.value === draft.farm)) nextErrors.farm = 'Select a valid farm.'
-    if (draft.cable_type && mergedCableTypeOptions.length > 0 && !mergedCableTypeOptions.some((option: any) => option.value === draft.cable_type)) nextErrors.cable_type = 'Select a valid cable type.'
-    if (draft.link_type && mergedLinkPurposeOptions.length > 0 && !mergedLinkPurposeOptions.some((option: any) => option.value === draft.link_type)) nextErrors.link_type = 'Select a valid connection type.'
-
-    return nextErrors
-  }, [formData, mergedCableTypeOptions, mergedFarmOptions, mergedLinkPurposeOptions])
-
-  const mutation = useMutation({
-    mutationFn: async () => {
-      setIsSaving(true)
-      const payload = sanitizeNetworkConnectionPayload(formData)
-      const url = item?.id ? `/api/v1/networks/connections/${item.id}` : '/api/v1/networks/connections'
-      const method = item?.id ? 'PUT' : 'POST'
-      const res = await apiFetch(url, { method, body: JSON.stringify(payload) })
-      if (!res.ok) throw new Error(await res.text())
-      return res.json()
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['network-connections'] })
-      setIsSaving(false)
-      onSuccess?.()
-    },
-    onError: (error: any) => {
-      setIsSaving(false)
-      showWorkspaceToast(error?.message || 'Failed to save network connection', { type: 'error' })
-    },
-  })
-
-  const handleSave = useCallback(() => {
-    const nextErrors = validateForm()
-    setFormErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) {
-      showWorkspaceToast('Fix the highlighted network fields before saving.', { type: 'error' })
-      return
-    }
-    mutation.mutate()
-  }, [mutation, validateForm])
-
-  const fieldClass = useCallback((field: string) => monitoringInputClass(formErrors[field]), [formErrors])
-  const formTitle = item?.id ? getNetworkConnectionTitle(item) : 'Create Network Connection'
-
-  return (
-    <WorkspaceModal
-      isOpen={true}
-      onClose={onClose}
-      size="workspace"
-      isMaximized={isMaximized}
-      onMaximizeToggle={() => setIsMaximized(!isMaximized)}
-      title={
-        <div className="flex items-center gap-3">
-          <span>{item?.id ? 'Edit Network Connection' : 'Create Network Connection'}</span>
-          {item?.id && <WorkspaceShareHeader id={String(item.id)} title={formTitle} />}
-        </div>
-      }
-      subtitle={item?.id ? `Connection ID ${item.id}` : 'Create a new network connection'}
-      icon={<Network size={20} />}
-      status={
-        <div className="flex items-center gap-2">
-          <StatusPill value={formData.status} />
-          <StatusPill value={formData.link_type || 'N/A'} />
-          <StatusPill value={formData.direction || 'N/A'} />
-        </div>
-      }
-      footerRight={
-        <div className="flex items-center gap-3">
-          <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
-          <ToolbarButton onClick={handleSave} disabled={isSaving} variant="primary">
-            {isSaving ? 'Saving...' : 'Save Connection'}
-          </ToolbarButton>
-        </div>
-      }
-    >
-      <WorkspaceDossierShell
-        body={
-          <div className="space-y-6">
-            <section className="grid gap-4 xl:grid-cols-2">
-              <WorkspaceSectionCard title="Source Endpoint">
-                <div className="space-y-4">
-                  <AppDropdown
-                    label="Source Device"
-                    required
-                    value={String(formData.source_device_id)}
-                    onChange={(value) => updateField('source_device_id', value)}
-                    options={deviceOptions}
-                    placeholder="Select source device"
-                  />
-                  <FieldError message={formErrors.source_device_id} />
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <FieldLabel label="Source Port" required />
-                      <input value={formData.source_port} onChange={(e) => updateField('source_port', e.target.value)} placeholder="Source port" className={fieldClass('source_port')} />
-                      <FieldError message={formErrors.source_port} />
-                    </div>
-                    <div>
-                      <FieldLabel label="Source VLAN" />
-                      <input type="number" min="0" max="4094" step="1" value={formData.source_vlan} onChange={(e) => updateField('source_vlan', e.target.value)} placeholder="0-4094" className={fieldClass('source_vlan')} />
-                      <FieldError message={formErrors.source_vlan} />
-                    </div>
-                    <div>
-                      <FieldLabel label="Source IP" />
-                      <input value={formData.source_ip} onChange={(e) => updateField('source_ip', e.target.value)} placeholder="192.168.1.10" className={fieldClass('source_ip')} />
-                      <FieldError message={formErrors.source_ip} />
-                    </div>
-                    <div>
-                      <FieldLabel label="Source MAC" />
-                      <input value={formData.source_mac} onChange={(e) => updateField('source_mac', e.target.value)} placeholder="00:11:22:33:44:55" className={fieldClass('source_mac')} />
-                    </div>
-                  </div>
-                </div>
-              </WorkspaceSectionCard>
-
-              <WorkspaceSectionCard title="Peer Endpoint">
-                <div className="space-y-4">
-                  <AppDropdown
-                    label="Peer Device"
-                    required
-                    value={String(formData.target_device_id)}
-                    onChange={(value) => updateField('target_device_id', value)}
-                    options={deviceOptions}
-                    placeholder="Select peer device"
-                  />
-                  <FieldError message={formErrors.target_device_id} />
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <FieldLabel label="Peer Port" required />
-                      <input value={formData.target_port} onChange={(e) => updateField('target_port', e.target.value)} placeholder="Peer port" className={fieldClass('target_port')} />
-                      <FieldError message={formErrors.target_port} />
-                    </div>
-                    <div>
-                      <FieldLabel label="Peer VLAN" />
-                      <input type="number" min="0" max="4094" step="1" value={formData.target_vlan} onChange={(e) => updateField('target_vlan', e.target.value)} placeholder="0-4094" className={fieldClass('target_vlan')} />
-                      <FieldError message={formErrors.target_vlan} />
-                    </div>
-                    <div>
-                      <FieldLabel label="Peer IP" />
-                      <input value={formData.target_ip} onChange={(e) => updateField('target_ip', e.target.value)} placeholder="192.168.1.11" className={fieldClass('target_ip')} />
-                      <FieldError message={formErrors.target_ip} />
-                    </div>
-                    <div>
-                      <FieldLabel label="Peer MAC" />
-                      <input value={formData.target_mac} onChange={(e) => updateField('target_mac', e.target.value)} placeholder="00:11:22:33:44:66" className={fieldClass('target_mac')} />
-                    </div>
-                  </div>
-                </div>
-              </WorkspaceSectionCard>
-            </section>
-
-            <section className="grid gap-4">
-              <WorkspaceSectionCard title="Connection Metadata">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <AppDropdown
-                      label="Connection Type"
-                      value={formData.link_type}
-                      onChange={(value) => updateField('link_type', value)}
-                      options={mergedLinkPurposeOptions}
-                      placeholder="Select connection type"
-                    />
-                    <FieldError message={formErrors.link_type} />
-                  </div>
-                  <div>
-                    <AppDropdown
-                      label="Status"
-                      value={formData.status}
-                      onChange={(value) => updateField('status', value)}
-                      options={NETWORK_STATUSES.map((value) => ({ value, label: value }))}
-                      placeholder="Select status"
-                    />
-                    <FieldError message={formErrors.status} />
-                  </div>
-                  <div>
-                    <FieldLabel label="Speed" />
-                    <input type="number" step="0.1" min="0" value={formData.speed_gbps} onChange={(e) => updateField('speed_gbps', e.target.value)} placeholder="10" className={fieldClass('speed_gbps')} />
-                    <FieldError message={formErrors.speed_gbps} />
-                  </div>
-                  <div>
-                    <AppDropdown
-                      label="Unit"
-                      value={formData.unit}
-                      onChange={(value) => updateField('unit', value)}
-                      options={NETWORK_UNITS.map((value) => ({ value, label: value }))}
-                      placeholder="Select unit"
-                    />
-                    <FieldError message={formErrors.unit} />
-                  </div>
-                  <div>
-                    <AppDropdown
-                      label="Direction"
-                      value={formData.direction}
-                      onChange={(value) => updateField('direction', value)}
-                      options={NETWORK_DIRECTIONS.map((value) => ({ value, label: value }))}
-                      placeholder="Select direction"
-                    />
-                    <FieldError message={formErrors.direction} />
-                  </div>
-                  <div>
-                    <AppDropdown
-                      label="Farm"
-                      value={formData.farm}
-                      onChange={(value) => updateField('farm', value)}
-                      options={mergedFarmOptions}
-                      placeholder="Select farm"
-                    />
-                    <FieldError message={formErrors.farm} />
-                  </div>
-                  <div>
-                    <AppDropdown
-                      label="Cable Type"
-                      value={formData.cable_type}
-                      onChange={(value) => updateField('cable_type', value)}
-                      options={mergedCableTypeOptions}
-                      placeholder="Select cable type"
-                    />
-                    <FieldError message={formErrors.cable_type} />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <FieldLabel label="Request Link" />
-                    <input type="url" value={formData.request_link} onChange={(e) => updateField('request_link', e.target.value)} placeholder="https://..." className={fieldClass('request_link')} />
-                    <FieldError message={formErrors.request_link} />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <FieldLabel label="Purpose" />
-                    <textarea value={formData.purpose} onChange={(e) => updateField('purpose', e.target.value)} placeholder="Why this connection exists" className={`${fieldClass('purpose')} min-h-[110px]`} />
-                    <FieldError message={formErrors.purpose} />
-                  </div>
-                </div>
-              </WorkspaceSectionCard>
-            </section>
-          </div>
-        }
-      />
-    </WorkspaceModal>
-  )
-}
-
-export function MonitoringAssetField({
-  devices,
-  deviceId,
-  onChange,
-  error,
-}: {
-  devices: any[]
-  deviceId: number | null
-  onChange: (deviceId: number | null) => void
-  error?: string
-}) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const [systemFilter, setSystemFilter] = useState('ALL')
-  const { triggerRef, panelRef, panelStyle } = useWorkspaceAnchoredLayer(isOpen, { minWidth: 420 })
-  const selectedDevice = devices?.find((device: any) => device.id === deviceId)
-  const systems = Array.from(new Set((devices || []).map((device: any) => device.system).filter(Boolean))).sort()
-  const filteredDevices = (devices || []).filter((device: any) => {
-    const matchesSystem = systemFilter === 'ALL' || device.system === systemFilter
-    const needle = `${device.name} ${device.system || ''}`.toLowerCase()
-    const matchesSearch = !search || needle.includes(search.toLowerCase())
-    return matchesSystem && matchesSearch
-  })
-
-  useEffect(() => {
-    if (!isOpen) return
-    const handleClick = (event: MouseEvent) => {
-      const target = event.target as Node
-      if (triggerRef.current?.contains(target) || panelRef.current?.contains(target)) return
-      setIsOpen(false)
-    }
-    window.addEventListener('mousedown', handleClick)
-
-    return () => {
-      window.removeEventListener('mousedown', handleClick)
-    }
-  }, [isOpen, panelRef, triggerRef])
-
-  return (
-    <div className="space-y-1.5">
-      <FieldLabel label="Registry Asset" />
-      <div>
-        <button
-          type="button"
-          onClick={() => setIsOpen((current) => !current)}
-          ref={(node) => {
-            triggerRef.current = node
-          }}
-          className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition-all ${error ? 'border-rose-500/60 bg-rose-500/10' : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30'}`}
-        >
-          <span className={`text-[clamp(10px,0.85vw,12px)] font-black truncate pr-4 ${selectedDevice ? 'text-slate-100' : 'text-slate-500'}`}>
-            {selectedDevice ? `${selectedDevice.name} [${selectedDevice.system}]` : 'Select asset'}
-          </span>
-          <ChevronDown size={12} className={`shrink-0 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-        </button>
-        {isOpen && createPortal(
-          <div ref={panelRef} style={panelStyle}>
-            <WorkspaceFloatingPanel
-              kind="menu"
-              className="p-2"
-            >
-            <div className="grid grid-cols-[140px_minmax(0,1fr)] gap-2">
-              <MonitoringSelectField
-                label="System Filter"
-                value={systemFilter}
-                onChange={(value) => setSystemFilter(value)}
-                options={[{ value: 'all', label: 'All Systems' }, ...systems.map((system) => ({ value: system, label: system }))]}
-                placeholder="All Systems"
-                />
-              <div className="space-y-1.5">
-                <FieldLabel label="Search Asset" />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search hostname or system..."
-                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[10px] font-black text-slate-100 outline-none focus:border-blue-500/40"
-                />
-              </div>
-            </div>
-            <div className="mt-2 max-h-52 overflow-y-auto custom-scrollbar space-y-1 pr-1">
-              <button
-                type="button"
-                onClick={() => {
-                  onChange(null)
-                  setIsOpen(false)
-                }}
-                className={`w-full rounded-lg border px-3 py-2 text-left transition-all ${deviceId == null ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10'}`}
-              >
-                <p className="text-[9px] font-black text-slate-200">No linked asset</p>
-              </button>
-              {filteredDevices.map((device: any) => (
-                <button
-                  key={device.id}
-                  type="button"
-                  onClick={() => {
-                    onChange(device.id)
-                    setIsOpen(false)
-                    setSearch('')
-                  }}
-                  className={`w-full rounded-lg border px-3 py-2 text-left transition-all ${device.id === deviceId ? 'border-blue-500/30 bg-blue-500/10' : 'border-white/5 bg-black/20 hover:border-white/10'}`}
-                >
-                  <p className={`text-[9px] font-black ${device.id === deviceId ? 'text-blue-300' : 'text-slate-200'}`}>{device.name}</p>
-                  <p className="mt-0.5 text-[8px] font-black text-slate-500 truncate">{device.system || 'No system'}</p>
-                </button>
-              ))}
-            </div>
-            </WorkspaceFloatingPanel>
-          </div>,
-          document.body
-        )}
-      </div>
-      <FieldError message={error} />
-    </div>
-  )
-}
-
+const serviceInputClass = (error?: string) => getWorkspaceInputClass(error)
 function ServiceRecordForm({ item, devices, options, onClose, onSuccess }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
@@ -3856,247 +3205,6 @@ function ServiceRecordForm({ item, devices, options, onClose, onSuccess }: any) 
             devices={devices}
           />
         }
-      />
-    </WorkspaceModal>
-  )
-}
-
-// Extracted to MonitoringForm.tsx
-
-function MonitoringHistoryModal({ item, onClose }: any) {
-  useEscapeDismiss(onClose)
-  useBodyModalFlag()
-  const [isMaximized, setIsMaximized] = useState(false)
-  const queryClient = useQueryClient()
-  const { data: history, isLoading } = useQuery({
-    queryKey: ['monitoring-history', item.id],
-    queryFn: async () => (await apiFetch(`/api/v1/monitoring/${item.id}/history`)).json()
-  })
-
-  const [selectedIndices, setSelectedIndices] = useState<number[]>([0])
-
-  const toggleSelection = (idx: number) => {
-    if (selectedIndices.includes(idx)) {
-       if (selectedIndices.length > 1) {
-          setSelectedIndices(selectedIndices.filter(i => i !== idx))
-       }
-    } else {
-       if (selectedIndices.length === 2) {
-          setSelectedIndices([selectedIndices[1], idx])
-       } else {
-          setSelectedIndices([...selectedIndices, idx].sort((a, b) => a - b))
-       }
-    }
-  }
-
-  const indexedVersions = (history || []).map((h: any, i: number) => ({
-    ...h,
-    v_num: h.version,
-    label: formatAppDate(h.created_at)
-  }))
-
-  const newer = indexedVersions?.[Math.min(...selectedIndices)]
-  const older = selectedIndices.length > 1 
-    ? indexedVersions?.[Math.max(...selectedIndices)] 
-    : (selectedIndices[0] + 1 < indexedVersions.length ? indexedVersions[selectedIndices[0] + 1] : null)
-
-  const getDiff = (curr: any, prev: any) => {
-    if (!curr) return []
-    const isImmediatePrevious = !prev || curr.previous_version === prev.version
-    if (isImmediatePrevious && Array.isArray(curr.delta)) {
-      return curr.delta.map((entry: any) => ({
-        field: entry.field,
-        label: entry.label || String(entry.field || '').replace(/_/g, ' '),
-        old: entry.before,
-        new: entry.after,
-        changeType: entry.change_type || 'changed',
-      }))
-    }
-
-    const s1 = curr.snapshot || {}
-    const s2 = prev?.snapshot || {}
-    const keys = Array.from(new Set([...Object.keys(s1), ...Object.keys(s2)]))
-    return keys.filter(k => {
-      if (['updated_at', 'created_at', 'id', 'version', 'is_deleted', 'monitored_service_names', 'recovery_doc_titles', 'device_name'].includes(k)) return false
-      return JSON.stringify(s1[k]) !== JSON.stringify(s2[k])
-    }).map(k => ({
-      field: k,
-      label: k.replace(/_/g, ' '),
-      old: s2[k],
-      new: s1[k],
-      changeType: s2[k] == null ? 'added' : s1[k] == null ? 'removed' : 'changed',
-    }))
-  }
-
-  const diffs = getDiff(newer, older)
-
-  return (
-    <WorkspaceModal
-      isOpen={true}
-      onClose={onClose}
-      size="workspace"
-      isMaximized={isMaximized}
-      onMaximizeToggle={() => setIsMaximized(!isMaximized)}
-      title="Change History"
-      subtitle={`Temporal lineage for ${item.title}`}
-      icon={<HistoryIcon size={20} />}
-      status={
-        <div className="flex items-center gap-4">
-          <StatusPill value={item?.status} />
-          <div className="h-4 w-px bg-white/10" />
-          <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest italic whitespace-nowrap">
-            {indexedVersions?.length || 0} Snapshot(s)
-          </p>
-        </div>
-      }
-      footerRight={
-        <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
-      }
-    >
-      <WorkspaceHistoryShell
-          header={null}
-          sidebar={
-           <div className="flex h-full flex-col min-h-0">
-              <div className="mb-4 flex items-center justify-between px-1">
-                 <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Change Timeline</h3>
-                 <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20">{indexedVersions.length} revisions</span>
-              </div>
-              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
-                {isLoading ? (
-                   <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                      <RefreshCcw size={24} className="animate-spin text-blue-500" />
-                      <span className="text-[10px] font-black text-blue-500 animate-pulse uppercase tracking-widest">Syncing revisions...</span>
-                   </div>
-                ) : (
-                  indexedVersions.map((h: any, idx: number) => {
-                    const isSelected = selectedIndices.includes(idx);
-                    const isNewest = idx === Math.min(...selectedIndices);
-                    return (
-                      <button 
-                        key={h.id}
-                        onClick={() => toggleSelection(idx)}
-                        className={`w-full p-4 rounded-lg border text-left transition-all relative group overflow-hidden ${
-                          isSelected 
-                            ? isNewest ? 'bg-blue-600/20 border-blue-500/40 shadow-lg shadow-blue-500/5' : 'bg-slate-800 border-slate-600' 
-                            : 'bg-white/5 border-white/5 hover:border-white/10'
-                        }`}
-                      >
-                        {isSelected && (
-                          <div className={`absolute top-0 right-0 px-2 py-0.5 text-[8px] font-black uppercase rounded-lg ${isNewest ? 'bg-blue-400 text-blue-950' : 'bg-slate-500 text-slate-200'}`}>
-                             {isNewest ? 'Primary' : 'Ref'}
-                          </div>
-                        )}
-                        <div className="flex items-center justify-between mb-2">
-                           <span className={`text-[11px] font-black tracking-tighter ${isSelected ? 'text-white' : 'text-blue-400'}`}>v{h.v_num}</span>
-                           <span className={`text-[9px] font-bold ${isSelected ? 'text-white/60' : 'text-slate-500'}`}>
-                              {formatAppDay(h.created_at)}
-                           </span>
-                        </div>
-                        <p className={`text-[10px] font-bold leading-tight line-clamp-2 ${isSelected ? 'text-white/90' : 'text-slate-300'}`}>
-                           {h.change_summary || 'Connection Modification'}
-                        </p>
-                        {Array.isArray(h.changed_labels) && h.changed_labels.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {h.changed_labels.slice(0, 3).map((label: string) => (
-                              <span key={label} className="rounded-lg border border-white/10 bg-white/5 px-1.5 py-0.5 text-[8px] font-bold text-slate-400">
-                                {label}
-                              </span>
-                            ))}
-                            {h.changed_labels.length > 3 && (
-                              <span className="rounded-lg border border-white/10 bg-white/5 px-1.5 py-0.5 text-[8px] font-bold text-slate-500">
-                                +{h.changed_labels.length - 3}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        <div className="mt-2 flex items-center space-x-2 justify-between">
-                           <div className="flex items-center space-x-2">
-                             <Clock size={10} className={isSelected ? 'text-white/40' : 'text-slate-600'} />
-                             <span className={`text-[8px] font-semibold ${isSelected ? 'text-white/40' : 'text-slate-600'}`}>
-                                {formatAppTime(h.created_at)}
-                             </span>
-                           </div>
-                           <button 
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               toast.promise(apiFetch(`/api/v1/monitoring/${item.id}/restore/${h.id}`, { method: 'POST' }), {
-                                   loading: 'Restoring state...',
-                                   success: () => { queryClient.invalidateQueries({ queryKey: ['monitoring-items'] }); queryClient.invalidateQueries({ queryKey: ['monitoring-history', item.id] }); return "Restored successfully"; },
-                                   error: "Restore failed"
-                               })
-                             }}
-                             className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${isSelected ? 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/40' : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'}`}
-                           >
-                             Restore
-                           </button>
-                        </div>
-                      </button>
-                    )
-                  })
-                )}
-              </div>
-           </div>
-          }
-          content={
-           <>
-              <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/5 backdrop-blur-md sticky top-0 z-10">
-                 <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2">
-                       <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-[12px] font-black">v{newer?.v_num}</div>
-                       <div className="w-4 h-px bg-slate-700" />
-                       <div className="w-8 h-8 rounded-lg bg-slate-800 border border-white/10 flex items-center justify-center text-slate-500 text-[12px] font-black">{older ? `v${older.v_num}` : 'Ø'}</div>
-                    </div>
-                    <div>
-                       <h3 className="text-[11px] font-black text-slate-300 uppercase tracking-widest">Semantic Delta</h3>
-                       <p className="text-[9px] font-bold text-slate-600">{diffs.length} modification vectors detected</p>
-                    </div>
-                 </div>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
-                 {diffs.length > 0 ? (
-                    <div className="space-y-6">
-                       <div className="overflow-hidden rounded-lg border border-white/5 bg-black/20">
-                          <table className="w-full text-left border-collapse">
-                             <thead>
-                                <tr className="bg-white/5 text-[9px] font-black uppercase text-slate-500 tracking-widest">
-                                   <th className="p-4 w-1/4">Property</th>
-                                   <th className="p-4 w-3/8 text-rose-500/70">Previous (v{older?.v_num || 'Ø'})</th>
-                                   <th className="p-4 w-3/8 text-emerald-500/70">Current (v{newer?.v_num})</th>
-                                </tr>
-                             </thead>
-                             <tbody className="divide-y divide-white/5">
-                                {diffs.map((d: any, i: number) => (
-                                   <tr key={`${i}-row`} className="hover:bg-white/[0.02] transition-colors">
-                                      <td className="p-4 align-top">
-                                         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{d.label || d.field}</span>
-                                      </td>
-                                      <td className="p-4 align-top">
-                                         <div className={`rounded-lg p-3 overflow-hidden ${d.changeType === 'added' ? 'bg-slate-500/5 border border-slate-500/10' : 'bg-rose-500/5 border border-rose-500/10'}`}>
-                                            <pre className={`text-[10px] whitespace-pre-wrap font-mono leading-relaxed break-all ${d.changeType === 'added' ? 'text-slate-600' : 'text-slate-500 line-through'}`}>
-                                               {typeof d.old === 'object' ? JSON.stringify(d.old, null, 2) : String(d.old ?? '(empty)')}
-                                            </pre>
-                                         </div>
-                                      </td>
-                                      <td className="p-4 align-top">
-                                         <div className={`rounded-lg p-3 overflow-hidden ${d.changeType === 'removed' ? 'bg-slate-500/5 border border-slate-500/10' : 'bg-emerald-500/5 border border-emerald-500/10'}`}>
-                                            <pre className={`text-[10px] whitespace-pre-wrap font-mono font-bold leading-relaxed break-all ${d.changeType === 'removed' ? 'text-slate-500' : 'text-emerald-400'}`}>
-                                               {typeof d.new === 'object' ? JSON.stringify(d.new, null, 2) : String(d.new ?? '(empty)')}
-                                            </pre>
-                                         </div>
-                                      </td>
-                                   </tr>
-                                ))}
-                             </tbody>
-                          </table>
-                       </div>
-                    </div>
-                 ) : !isLoading ? (
-                    <WorkspaceEmptyState icon={<HistoryIcon size={32} />} title="No Diff Data" description="Select two revisions to compare or pick a revision to see changes from its predecessor." />
-                 ) : null}
-              </div>
-           </>
-          }
       />
     </WorkspaceModal>
   )
