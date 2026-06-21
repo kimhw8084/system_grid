@@ -1,4 +1,3 @@
-import { BkmListModal, BkmDetailModal, MonitoringForm } from './monitoring/Modals'
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useSearchParams, useNavigate } from 'react-router-dom'
@@ -18,12 +17,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { showWorkspaceToast } from './shared/WorkspaceToast'
 import { apiFetch } from '../api/apiClient'
-import { buildMonitoringFormErrors, getMonitoringTabErrorCounts } from '../utils/monitoringValidation'
 import { formatAppDate, formatAppTime, formatAppDay, parseAppDate } from '../utils/dateUtils'
 import { AppDropdown } from './shared/AppDropdown'
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
-import { MONITORING_WORKSPACE_STANDARD } from './shared/OperationalWorkspace'
 import { WorkspaceModal } from './shared/WorkspaceModal'
 import {
   WorkspaceCollapsibleHeader,
@@ -40,7 +37,7 @@ import {
   WorkspacePanelSubtitle as PanelSubtitle,
   WorkspacePanelTitle as PanelTitle,
   WorkspaceSectionCard,
-  WorkspaceSelectField as MonitoringSelectField,
+  WorkspaceSelectField as NetworkSelectField,
   WorkspaceValidationBanner,
   getWorkspaceModalFrameClass,
   getWorkspaceModalShellClass,
@@ -58,7 +55,15 @@ import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } f
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
 import { OperationalImportModal } from './shared/OperationalImportModal'
 import { OperationalGridMatrix } from './shared/OperationalGridMatrix'
-import { OperationalDisplayPanel, OperationalGridSurface, OperationalSavedViewsPanel, OperationalWorkspaceFrame } from './shared/OperationalWorkspaceShells'
+import {
+  OperationalAnchoredPanel,
+  OperationalDisplayPanel,
+  OperationalGridSurface,
+  OperationalGroupedGridSection,
+  OperationalGroupedGridView,
+  OperationalSavedViewsPanel,
+  OperationalWorkspaceShell
+} from './shared/OperationalWorkspaceShells'
 import {
   applyOperationalColumnSizing,
   applyOperationalColumnState,
@@ -71,15 +76,15 @@ import {
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
 
-const MONITORING_VIEW_STORAGE_KEY = 'sysgrid_network_views_v1'
-const MONITORING_ACTIVE_VIEW_KEY = 'sysgrid_network_active_view_v1'
-const MONITORING_FAVORITES_STORAGE_KEY = 'sysgrid_network_favorites_v1'
-const MONITORING_UI_STATE_KEY = 'sysgrid_network_ui_state_v1'
-const MONITORING_WATCH_STORAGE_KEY = 'sysgrid_network_watch_v1'
-const MONITORING_WORKSPACE_PREFERENCE_KEY = 'network_workspace_state_v1'
-const MONITORING_WORKSPACE_PREFERENCE_VERSION = 2
+const NETWORK_VIEW_STORAGE_KEY = 'sysgrid_network_views_v1'
+const NETWORK_ACTIVE_VIEW_KEY = 'sysgrid_network_active_view_v1'
+const NETWORK_FAVORITES_STORAGE_KEY = 'sysgrid_network_favorites_v1'
+const NETWORK_UI_STATE_KEY = 'sysgrid_network_ui_state_v1'
+const NETWORK_WATCH_STORAGE_KEY = 'sysgrid_network_watch_v1'
+const NETWORK_WORKSPACE_PREFERENCE_KEY = 'network_workspace_state_v1'
+const NETWORK_WORKSPACE_PREFERENCE_VERSION = 2
 const BULK_MENU_MAX_HEIGHT = 560
-const MONITORING_FIXED_WIDTH_COLUMN_IDS = new Set([
+const NETWORK_FIXED_WIDTH_COLUMN_IDS = new Set([
   'select',
   'id',
   'recent_change',
@@ -112,22 +117,22 @@ export const LOGIC_SUGGESTIONS: Record<string, string> = {
 
 export const getLogicExtensions = (logicType?: string) => []
 
-export interface MonitoringLogicEntry {
+export interface NetworkLogicEntry {
   id: number
   type: string
   description: string
   logic_info: string
 }
 
-export interface MonitoringOwner {
+export interface NetworkOwner {
   operator_id: number
   role: string
   name: string
   external_id: string
 }
 
-export type MonitoringFormErrors = Record<string, string>
-export interface MonitoringTeamOption {
+export type NetworkFormErrors = Record<string, string>
+export interface NetworkTeamOption {
   id: number
   name: string
   operators: any[]
@@ -142,25 +147,25 @@ export interface OperatorRecord {
 }
 
 
-const MONITORING_SEVERITIES = [
+const NETWORK_SEVERITIES = [
   { value: 'Critical', label: 'Critical', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
   { value: 'Warning', label: 'Warning', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
   { value: 'Info', label: 'Info', color: 'bg-sky-500/20 text-sky-400 border-sky-500/30' }
 ]
 
-const MONITORING_OWNER_ROLES = [
+const NETWORK_OWNER_ROLES = [
   { value: 'Primary Support', label: 'Primary Support' },
   { value: 'Escalation', label: 'Escalation' },
   { value: 'Observer', label: 'Observer' }
 ]
 
-const MONITORING_REQUIRED_FIELD_NAMES = new Set(['title', 'category', 'status', 'severity'])
+const NETWORK_REQUIRED_FIELD_NAMES = new Set(['title', 'category', 'status', 'severity'])
 
-const DEFAULT_MONITORING_VIEWS = []
-const DEFAULT_MONITORING_VIEW_IDS = new Set(DEFAULT_MONITORING_VIEWS.map((view) => view.id))
-const MONITORING_SUPPORTS_COMPARE = MONITORING_WORKSPACE_STANDARD.sharedCapabilities.includes('compare')
-const MONITORING_VALID_GROUP_BY = new Set(['raw', 'status', 'farm', 'type', 'direction'])
-const MONITORING_PERSISTED_COLUMN_IDS = new Set([
+const DEFAULT_NETWORK_VIEWS = []
+const DEFAULT_NETWORK_VIEW_IDS = new Set(DEFAULT_NETWORK_VIEWS.map((view) => view.id))
+const NETWORK_SUPPORTS_COMPARE = true
+const NETWORK_VALID_GROUP_BY = new Set(['raw', 'status', 'farm', 'type', 'direction'])
+const NETWORK_PERSISTED_COLUMN_IDS = new Set([
   'select',
   'id',
   'recent_change',
@@ -220,7 +225,7 @@ const readJsonStorage = <T,>(storageKey: string, fallback: T): T => {
   }
 }
 
-const normalizeMonitoringIdList = (value: any): number[] => {
+const normalizeNetworkIdList = (value: any): number[] => {
   if (!Array.isArray(value)) return []
   return Array.from(new Set(
     value
@@ -229,16 +234,16 @@ const normalizeMonitoringIdList = (value: any): number[] => {
   ))
 }
 
-const normalizeMonitoringQuickFilters = (value: any) => ({
+const normalizeNetworkQuickFilters = (value: any) => ({
   status: Array.isArray(value?.status) ? value.status.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [],
   farm: Array.isArray(value?.farm) ? value.farm.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [],
   type: Array.isArray(value?.type) ? value.type.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [],
   direction: Array.isArray(value?.direction) ? value.direction.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [],
 })
 
-const normalizeMonitoringSavedViews = (value: any) => {
+const normalizeNetworkSavedViews = (value: any) => {
   const parsed = Array.isArray(value) ? value : []
-  const systemIds = new Set(DEFAULT_MONITORING_VIEWS.map((view) => view.id))
+  const systemIds = new Set(DEFAULT_NETWORK_VIEWS.map((view) => view.id))
   const legacyIds = new Set(['ops', 'incident', 'recovery'])
   const customViews = parsed.filter((view: any) => (
     view &&
@@ -249,18 +254,18 @@ const normalizeMonitoringSavedViews = (value: any) => {
     !legacyIds.has(view.id)
   ))
   return [
-    ...DEFAULT_MONITORING_VIEWS.map((view) => parsed.find((entry: any) => entry?.id === view.id) || view),
+    ...DEFAULT_NETWORK_VIEWS.map((view) => parsed.find((entry: any) => entry?.id === view.id) || view),
     ...customViews.map((view: any) => ({
       ...view,
-      config: sanitizeMonitoringViewConfig(view?.config),
+      config: sanitizeNetworkViewConfig(view?.config),
     })),
   ]
 }
 
-const sanitizeMonitoringViewConfig = (config: any) => {
+const sanitizeNetworkViewConfig = (config: any) => {
   const safeConfig = config && typeof config === 'object' ? config : {}
   const sanitizeNetworkLayout = (layout: any[], preserveWidths: boolean) => {
-    const sanitized = sanitizeOperationalColumnLayout(layout, MONITORING_PERSISTED_COLUMN_IDS, preserveWidths)
+    const sanitized = sanitizeOperationalColumnLayout(layout, NETWORK_PERSISTED_COLUMN_IDS, preserveWidths)
     return [...sanitized].sort((a: any, b: any) => {
       const aIndex = NETWORK_DEFAULT_COLUMN_ORDER_MAP.get(a?.colId) ?? 1000
       const bIndex = NETWORK_DEFAULT_COLUMN_ORDER_MAP.get(b?.colId) ?? 1000
@@ -271,38 +276,38 @@ const sanitizeMonitoringViewConfig = (config: any) => {
     fontSize: Number.isFinite(safeConfig.fontSize) ? safeConfig.fontSize : 11,
     rowDensity: Number.isFinite(safeConfig.rowDensity) ? safeConfig.rowDensity : 8,
     hiddenColumns: Array.isArray(safeConfig.hiddenColumns)
-      ? safeConfig.hiddenColumns.filter((entry: any) => typeof entry === 'string' && MONITORING_PERSISTED_COLUMN_IDS.has(entry))
+      ? safeConfig.hiddenColumns.filter((entry: any) => typeof entry === 'string' && NETWORK_PERSISTED_COLUMN_IDS.has(entry))
       : [],
-    groupBy: typeof safeConfig.groupBy === 'string' && MONITORING_VALID_GROUP_BY.has(safeConfig.groupBy) ? safeConfig.groupBy : 'raw',
+    groupBy: typeof safeConfig.groupBy === 'string' && NETWORK_VALID_GROUP_BY.has(safeConfig.groupBy) ? safeConfig.groupBy : 'raw',
     showFilterBar: safeConfig.showFilterBar !== false,
     columnLayoutState: sanitizeNetworkLayout(Array.isArray(safeConfig.columnLayoutState) ? safeConfig.columnLayoutState : [], true),
     quickFilter: typeof safeConfig.quickFilter === 'string' ? safeConfig.quickFilter : '',
-    quickFilters: normalizeMonitoringQuickFilters(safeConfig.quickFilters),
-    filterModel: sanitizeOperationalFilterModel(safeConfig.filterModel, MONITORING_PERSISTED_COLUMN_IDS),
-    sortModel: sanitizeOperationalSortModel(safeConfig.sortModel, MONITORING_PERSISTED_COLUMN_IDS),
+    quickFilters: normalizeNetworkQuickFilters(safeConfig.quickFilters),
+    filterModel: sanitizeOperationalFilterModel(safeConfig.filterModel, NETWORK_PERSISTED_COLUMN_IDS),
+    sortModel: sanitizeOperationalSortModel(safeConfig.sortModel, NETWORK_PERSISTED_COLUMN_IDS),
   }
 }
 
-const normalizeMonitoringWorkspaceState = (value: any) => {
+const normalizeNetworkWorkspaceState = (value: any) => {
   if (!value || typeof value !== 'object') return null
   const uiState = value.uiState && typeof value.uiState === 'object' ? value.uiState : {}
   const normalized = {
-    version: MONITORING_WORKSPACE_PREFERENCE_VERSION,
-    savedViews: normalizeMonitoringSavedViews(value.savedViews),
+    version: NETWORK_WORKSPACE_PREFERENCE_VERSION,
+    savedViews: normalizeNetworkSavedViews(value.savedViews),
     activeViewId: typeof value.activeViewId === 'string' && value.activeViewId.trim() ? value.activeViewId : null,
-    favoriteIds: normalizeMonitoringIdList(value.favoriteIds),
-    watchIds: normalizeMonitoringIdList(value.watchIds),
+    favoriteIds: normalizeNetworkIdList(value.favoriteIds),
+    watchIds: normalizeNetworkIdList(value.watchIds),
     uiState: {
       activeTab: uiState.activeTab === 'deleted' ? 'deleted' : 'active',
       fontSize: Number.isFinite(uiState.fontSize) ? uiState.fontSize : 11,
       rowDensity: Number.isFinite(uiState.rowDensity) ? uiState.rowDensity : 8,
       hiddenColumns: Array.isArray(uiState.hiddenColumns)
-        ? uiState.hiddenColumns.filter((entry: any) => typeof entry === 'string' && MONITORING_PERSISTED_COLUMN_IDS.has(entry))
+        ? uiState.hiddenColumns.filter((entry: any) => typeof entry === 'string' && NETWORK_PERSISTED_COLUMN_IDS.has(entry))
         : ['created_at', 'updated_at'],
-      quickFilters: normalizeMonitoringQuickFilters(uiState.quickFilters),
-      groupBy: typeof uiState.groupBy === 'string' && MONITORING_VALID_GROUP_BY.has(uiState.groupBy) ? uiState.groupBy : 'raw',
+      quickFilters: normalizeNetworkQuickFilters(uiState.quickFilters),
+      groupBy: typeof uiState.groupBy === 'string' && NETWORK_VALID_GROUP_BY.has(uiState.groupBy) ? uiState.groupBy : 'raw',
       showFilterBar: uiState.showFilterBar !== false,
-      columnLayoutState: sanitizeMonitoringViewConfig({ columnLayoutState: Array.isArray(uiState.columnLayoutState) ? uiState.columnLayoutState : [] }).columnLayoutState,
+      columnLayoutState: sanitizeNetworkViewConfig({ columnLayoutState: Array.isArray(uiState.columnLayoutState) ? uiState.columnLayoutState : [] }).columnLayoutState,
       lastVisitedAt: Number.isFinite(uiState.lastVisitedAt) ? uiState.lastVisitedAt : 0,
       searchTerm: typeof uiState.searchTerm === 'string' ? uiState.searchTerm : '',
     }
@@ -310,12 +315,12 @@ const normalizeMonitoringWorkspaceState = (value: any) => {
   return normalized
 }
 
-const readMonitoringWorkspaceStateFromLocalStorage = () => normalizeMonitoringWorkspaceState({
-  savedViews: readJsonStorage<any[]>(MONITORING_VIEW_STORAGE_KEY, []),
-  activeViewId: typeof window === 'undefined' ? null : window.localStorage.getItem(MONITORING_ACTIVE_VIEW_KEY),
-  favoriteIds: readJsonStorage<number[]>(MONITORING_FAVORITES_STORAGE_KEY, []),
-  watchIds: readJsonStorage<number[]>(MONITORING_WATCH_STORAGE_KEY, []),
-  uiState: readJsonStorage(MONITORING_UI_STATE_KEY, null),
+const readNetworkWorkspaceStateFromLocalStorage = () => normalizeNetworkWorkspaceState({
+  savedViews: readJsonStorage<any[]>(NETWORK_VIEW_STORAGE_KEY, []),
+  activeViewId: typeof window === 'undefined' ? null : window.localStorage.getItem(NETWORK_ACTIVE_VIEW_KEY),
+  favoriteIds: readJsonStorage<number[]>(NETWORK_FAVORITES_STORAGE_KEY, []),
+  watchIds: readJsonStorage<number[]>(NETWORK_WATCH_STORAGE_KEY, []),
+  uiState: readJsonStorage(NETWORK_UI_STATE_KEY, null),
 })
 
 const slugifyViewId = (value: string) =>
@@ -412,17 +417,17 @@ const getMonitorGroupValue = (item: any, field: string) => {
   return item[field] || 'Unspecified'
 }
 
-const readMonitoringUiState = () => {
-  return readMonitoringWorkspaceStateFromLocalStorage()?.uiState ?? null
+const readNetworkUiState = () => {
+  return readNetworkWorkspaceStateFromLocalStorage()?.uiState ?? null
 }
 
-export interface MonitoringRecoveryDoc {
+export interface NetworkRecoveryDoc {
   id: number
   note?: string
   added_at?: string
 }
 
-const sanitizeMonitoringPayload = (item: any) => {
+const sanitizeNetworkPayload = (item: any) => {
   if (!item) return item
   const next = { ...item }
   delete next.created_at
@@ -656,16 +661,16 @@ export default function NetworkReal() {
     queryFn: async () => (await (await apiFetch('/api/v1/settings/user/settings')).json()),
   })
   const remoteWorkspaceState = useMemo(
-    () => normalizeMonitoringWorkspaceState(userSettings?.[MONITORING_WORKSPACE_PREFERENCE_KEY]),
+    () => normalizeNetworkWorkspaceState(userSettings?.[NETWORK_WORKSPACE_PREFERENCE_KEY]),
     [userSettings]
   )
-  const localWorkspaceState = useMemo(() => readMonitoringWorkspaceStateFromLocalStorage(), [])
+  const localWorkspaceState = useMemo(() => readNetworkWorkspaceStateFromLocalStorage(), [])
   const hasStoredFavoriteIds = useMemo(
-    () => typeof window !== 'undefined' && window.localStorage.getItem(MONITORING_FAVORITES_STORAGE_KEY) !== null,
+    () => typeof window !== 'undefined' && window.localStorage.getItem(NETWORK_FAVORITES_STORAGE_KEY) !== null,
     []
   )
   const hasStoredWatchIds = useMemo(
-    () => typeof window !== 'undefined' && window.localStorage.getItem(MONITORING_WATCH_STORAGE_KEY) !== null,
+    () => typeof window !== 'undefined' && window.localStorage.getItem(NETWORK_WATCH_STORAGE_KEY) !== null,
     []
   )
   const initialWorkspaceState = useMemo(() => {
@@ -701,9 +706,6 @@ export default function NetworkReal() {
   const [detailItem, setDetailItem] = useState<any>(null)
   const [historyItem, setHistoryItem] = useState<any>(null)
   const [showImportModal, setShowImportModal] = useState(false)
-  const [recipientPopup, setRecipientPopup] = useState<{ recipients: string[], method: string } | null>(null)
-  const [bkmPopup, setBkmPopup] = useState<{ docs: number[], ids: number[], titles: string[], monitorId?: number } | null>(null)
-  const [activeBkm, setActiveBkm] = useState<any>(null)
   const [compareOpen, setCompareOpen] = useState(false)
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
   
@@ -720,16 +722,16 @@ export default function NetworkReal() {
   const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
   const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
   const [gridSortModel, setGridSortModel] = useState<any[]>([{ colId: 'favorite', sort: 'desc' }])
-  const [savedViews, setSavedViews] = usePersistentJsonState<any[]>(MONITORING_VIEW_STORAGE_KEY, () => {
-    return initialWorkspaceState?.savedViews ?? normalizeMonitoringSavedViews([])
+  const [savedViews, setSavedViews] = usePersistentJsonState<any[]>(NETWORK_VIEW_STORAGE_KEY, () => {
+    return initialWorkspaceState?.savedViews ?? normalizeNetworkSavedViews([])
   })
   const [activeViewId, setActiveViewId] = useWorkspaceSessionValue<string | null>(
     'sysgrid_network_session_init',
     null,
-    () => initialWorkspaceState?.activeViewId ?? (typeof window === 'undefined' ? null : window.localStorage.getItem(MONITORING_ACTIVE_VIEW_KEY))
+    () => initialWorkspaceState?.activeViewId ?? (typeof window === 'undefined' ? null : window.localStorage.getItem(NETWORK_ACTIVE_VIEW_KEY))
   )
-  const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>(MONITORING_FAVORITES_STORAGE_KEY, initialWorkspaceState?.favoriteIds ?? [])
-  const [watchIds, setWatchIds] = usePersistentJsonState<number[]>(MONITORING_WATCH_STORAGE_KEY, initialWorkspaceState?.watchIds ?? [])
+  const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>(NETWORK_FAVORITES_STORAGE_KEY, initialWorkspaceState?.favoriteIds ?? [])
+  const [watchIds, setWatchIds] = usePersistentJsonState<number[]>(NETWORK_WATCH_STORAGE_KEY, initialWorkspaceState?.watchIds ?? [])
   const [quickFilters, setQuickFilters] = useState(persistedUiState?.quickFilters ?? { status: [] as string[], farm: [] as string[], type: [] as string[], direction: [] as string[] })
   const [searchTerm, setSearchTerm] = useState(persistedUiState?.searchTerm ?? '')
   const [groupBy, setGroupBy] = useState<string>(persistedUiState?.groupBy ?? 'raw')
@@ -781,8 +783,8 @@ export default function NetworkReal() {
     }
   }, [])
 
-  const buildMonitoringWorkspacePreferencePayload = useCallback(() => normalizeMonitoringWorkspaceState({
-    version: MONITORING_WORKSPACE_PREFERENCE_VERSION,
+  const buildNetworkWorkspacePreferencePayload = useCallback(() => normalizeNetworkWorkspaceState({
+    version: NETWORK_WORKSPACE_PREFERENCE_VERSION,
     savedViews,
     activeViewId,
     favoriteIds,
@@ -821,10 +823,10 @@ export default function NetworkReal() {
   useEffect(() => {
     if (remoteWorkspaceState && !monitoringPreferenceHydratedRef.current) {
       monitoringPreferenceHydratedRef.current = true
-      const payload = initialWorkspaceState ?? normalizeMonitoringWorkspaceState(remoteWorkspaceState)
+      const payload = initialWorkspaceState ?? normalizeNetworkWorkspaceState(remoteWorkspaceState)
       const serialized = JSON.stringify(payload)
       monitoringPreferenceSyncRef.current = serialized
-      setSavedViews(payload?.savedViews ?? normalizeMonitoringSavedViews([]))
+      setSavedViews(payload?.savedViews ?? normalizeNetworkSavedViews([]))
       setActiveViewId(payload?.activeViewId ?? null)
       setFavoriteIds(hasStoredFavoriteIds ? (localWorkspaceState?.favoriteIds ?? []) : (payload?.favoriteIds ?? []))
       setWatchIds(hasStoredWatchIds ? (localWorkspaceState?.watchIds ?? []) : (payload?.watchIds ?? []))
@@ -833,7 +835,7 @@ export default function NetworkReal() {
       setHiddenColumns(payload?.uiState.hiddenColumns ?? ['created_at', 'updated_at'])
       setActiveTab(payload?.uiState.activeTab === 'deleted' ? 'deleted' : 'active')
       setShowFilterBar(payload?.uiState.showFilterBar !== false)
-      setQuickFilters(payload?.uiState.quickFilters ?? normalizeMonitoringQuickFilters(null))
+      setQuickFilters(payload?.uiState.quickFilters ?? normalizeNetworkQuickFilters(null))
       setGroupBy(payload?.uiState.groupBy ?? 'raw')
       setColumnLayoutState(payload?.uiState.columnLayoutState ?? [])
       setSearchTerm(payload?.uiState.searchTerm ?? '')
@@ -842,17 +844,17 @@ export default function NetworkReal() {
 
     if (hasUserSettings && !remoteWorkspaceState && !monitoringPreferenceMigratedRef.current) {
       monitoringPreferenceMigratedRef.current = true
-      const localPayload = buildMonitoringWorkspacePreferencePayload()
+      const localPayload = buildNetworkWorkspacePreferencePayload()
       if (!localPayload) return
       const serialized = JSON.stringify(localPayload)
       monitoringPreferenceSyncRef.current = serialized
       apiFetch('/api/v1/settings/user/settings', {
         method: 'PATCH',
-        body: JSON.stringify({ [MONITORING_WORKSPACE_PREFERENCE_KEY]: localPayload })
+        body: JSON.stringify({ [NETWORK_WORKSPACE_PREFERENCE_KEY]: localPayload })
       }).catch(() => {})
     }
   }, [
-    buildMonitoringWorkspacePreferencePayload,
+    buildNetworkWorkspacePreferencePayload,
     hasStoredFavoriteIds,
     hasStoredWatchIds,
     hasUserSettings,
@@ -868,7 +870,7 @@ export default function NetworkReal() {
 
   useEffect(() => {
     if (!hasUserSettings) return
-    const payload = buildMonitoringWorkspacePreferencePayload()
+    const payload = buildNetworkWorkspacePreferencePayload()
     if (!payload) return
     const serialized = JSON.stringify(payload)
     if (monitoringPreferenceSyncRef.current === serialized) return
@@ -878,7 +880,7 @@ export default function NetworkReal() {
     monitoringPreferenceSyncTimeoutRef.current = window.setTimeout(() => {
       apiFetch('/api/v1/settings/user/settings', {
         method: 'PATCH',
-        body: JSON.stringify({ [MONITORING_WORKSPACE_PREFERENCE_KEY]: payload })
+        body: JSON.stringify({ [NETWORK_WORKSPACE_PREFERENCE_KEY]: payload })
       })
         .then(() => {
           monitoringPreferenceSyncRef.current = serialized
@@ -891,7 +893,7 @@ export default function NetworkReal() {
         monitoringPreferenceSyncTimeoutRef.current = null
       }
     }
-  }, [buildMonitoringWorkspacePreferencePayload, hasUserSettings])
+  }, [buildNetworkWorkspacePreferencePayload, hasUserSettings])
 
   useEffect(() => {
     setSelectedIds([])
@@ -917,7 +919,7 @@ export default function NetworkReal() {
   const handleColumnPinned = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
   const handleColumnVisible = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
   const handleFilterChanged = useCallback((e: any) => setGridFilterModel(e.api.getFilterModel() || {}), [])
-  const handleMonitoringColumnResized = useCallback((event: any) => {
+  const handleNetworkColumnResized = useCallback((event: any) => {
     const source = event?.source || ''
     const isAutoResizeSource =
       source === 'autosizeColumns' ||
@@ -979,14 +981,14 @@ export default function NetworkReal() {
     }
   }, [columnLayoutState, preserveExplicitColumnWidths])
 
-  const autoSizeMonitoringColumns = useCallback(() => {
+  const autoSizeNetworkColumns = useCallback(() => {
     if (!gridRef.current?.api || preserveExplicitColumnWidthsRef.current) return
     clearPendingAutoSize()
     const run = () => {
       if (!gridRef.current?.api || preserveExplicitColumnWidthsRef.current) return
       autoSizeOperationalColumns({
         api: gridRef.current.api,
-        skipColumnIds: Array.from(MONITORING_FIXED_WIDTH_COLUMN_IDS),
+        skipColumnIds: Array.from(NETWORK_FIXED_WIDTH_COLUMN_IDS),
         onSized: () => {
           if (!gridRef.current?.api || preserveExplicitColumnWidthsRef.current) return
           syncColumnLayoutState(gridRef.current.api, false)
@@ -1004,8 +1006,8 @@ export default function NetworkReal() {
   }, [clearPendingAutoSize, syncColumnLayoutState])
 
   const handleGridDataUpdated = useCallback(() => {
-    autoSizeMonitoringColumns()
-  }, [autoSizeMonitoringColumns])
+    autoSizeNetworkColumns()
+  }, [autoSizeNetworkColumns])
 
   const getRowClass = useCallback((params: any) => {
     let classes = params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd'
@@ -1047,8 +1049,8 @@ export default function NetworkReal() {
       : ['Fiber', 'Copper', 'DAC', 'AOC'].map((value) => ({ value, label: value }))
   }, [settingsOptions])
   const notificationMethods = useMemo(() => NETWORK_DIRECTIONS.map((value) => ({ value, label: value })), [])
-  const severities = MONITORING_SEVERITIES
-  const ownerRoles = MONITORING_OWNER_ROLES
+  const severities = NETWORK_SEVERITIES
+  const ownerRoles = NETWORK_OWNER_ROLES
 
   const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
     setConfirmModal({ isOpen: true, title, message, onConfirm, variant })
@@ -1084,7 +1086,7 @@ export default function NetworkReal() {
   const toggleFavorite = useCallback((monitorId: number) => {
     const id = Number(monitorId)
     setFavoriteIds((current) => {
-      const normalized = normalizeMonitoringIdList(current)
+      const normalized = normalizeNetworkIdList(current)
       return normalized.includes(id) ? normalized.filter((i) => i !== id) : [...normalized, id]
     })
   }, [])
@@ -1148,16 +1150,6 @@ export default function NetworkReal() {
     if (pendingIds.includes(event.data.id)) return
     openNetworkDetail(event.data)
   }, [openNetworkDetail, pendingIds])
-
-  const openRecoveryDocuments = (item: any) => {
-    const recoveryDocs = item.recovery_docs || []
-    setBkmPopup({
-      docs: recoveryDocs,
-      ids: recoveryDocs,
-      titles: item.recovery_doc_titles || [],
-      monitorId: item.id
-    })
-  }
 
   const renderPrimaryRowActions = (item: any) => {
     const isPending = pendingIds.includes(item.id)
@@ -1224,7 +1216,7 @@ export default function NetworkReal() {
   }
 
   const buildCurrentViewConfig = () =>
-    sanitizeMonitoringViewConfig({
+    sanitizeNetworkViewConfig({
       fontSize,
       rowDensity,
       hiddenColumns,
@@ -1242,7 +1234,7 @@ export default function NetworkReal() {
   const applySavedView = (viewId: string) => {
     const nextView = savedViews.find((view) => view.id === viewId)
     if (!nextView) return
-    const config = sanitizeMonitoringViewConfig(nextView.config)
+    const config = sanitizeNetworkViewConfig(nextView.config)
     setFontSize(config.fontSize ?? 11)
     setRowDensity(config.rowDensity ?? 8)
     setHiddenColumns(config.hiddenColumns ?? [])
@@ -1256,7 +1248,7 @@ export default function NetworkReal() {
     setGridSortModel((config.sortModel && config.sortModel.length > 0) ? config.sortModel : [{ colId: 'favorite', sort: 'desc' }])
     setActiveViewId(viewId)
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, viewId)
+      window.localStorage.setItem(NETWORK_ACTIVE_VIEW_KEY, viewId)
     }
     requestAnimationFrame(() => {
       if (gridRef.current?.api) {
@@ -1279,8 +1271,8 @@ export default function NetworkReal() {
     setSavedViews(nextViews)
     setActiveViewId(viewId)
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
-      window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, viewId)
+      window.localStorage.setItem(NETWORK_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
+      window.localStorage.setItem(NETWORK_ACTIVE_VIEW_KEY, viewId)
     }
     showWorkspaceToast(`Saved current table to ${nextViews.find((view) => view.id === viewId)?.name}`)
   }
@@ -1307,8 +1299,8 @@ export default function NetworkReal() {
     setActiveViewId(nextId)
     setNewViewName('')
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
-      window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, nextId)
+      window.localStorage.setItem(NETWORK_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
+      window.localStorage.setItem(NETWORK_ACTIVE_VIEW_KEY, nextId)
     }
     showWorkspaceToast(`Saved new view ${trimmed}`)
   }
@@ -1317,7 +1309,7 @@ export default function NetworkReal() {
     setActiveViewId(null)
     setTransientManualColumnWidths(false)
     if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(MONITORING_ACTIVE_VIEW_KEY)
+      window.localStorage.removeItem(NETWORK_ACTIVE_VIEW_KEY)
     }
     setFontSize(11)
     setRowDensity(8)
@@ -1350,11 +1342,11 @@ export default function NetworkReal() {
         if (activeViewId === viewId) {
           setActiveViewId(null)
           if (typeof window !== 'undefined') {
-             window.localStorage.removeItem(MONITORING_ACTIVE_VIEW_KEY)
+             window.localStorage.removeItem(NETWORK_ACTIVE_VIEW_KEY)
           }
         }
         if (typeof window !== 'undefined') {
-          window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
+          window.localStorage.setItem(NETWORK_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
         }
         showWorkspaceToast(`Deleted view ${view.name}`)
       }
@@ -1555,10 +1547,10 @@ export default function NetworkReal() {
   useEffect(() => {
     if (!displayedItemsInOrder.length) return
     const timer = window.setTimeout(() => {
-      autoSizeMonitoringColumns()
+      autoSizeNetworkColumns()
     }, 0)
     return () => window.clearTimeout(timer)
-  }, [autoSizeMonitoringColumns, displayedItemsInOrder, fontSize, hiddenColumns, isIntelligenceExpanded])
+  }, [autoSizeNetworkColumns, displayedItemsInOrder, fontSize, hiddenColumns, isIntelligenceExpanded])
 
   const selectedItems = useMemo(
     () => displayedItems.filter((item: any) => selectedIds.includes(item.id)),
@@ -1639,7 +1631,7 @@ export default function NetworkReal() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    window.localStorage.setItem(MONITORING_UI_STATE_KEY, JSON.stringify({
+    window.localStorage.setItem(NETWORK_UI_STATE_KEY, JSON.stringify({
       activeTab,
       fontSize,
       rowDensity,
@@ -1692,8 +1684,8 @@ export default function NetworkReal() {
   useEffect(() => {
     return () => {
       if (typeof window === 'undefined') return
-      const current = readMonitoringUiState() || {}
-      window.localStorage.setItem(MONITORING_UI_STATE_KEY, JSON.stringify({
+      const current = readNetworkUiState() || {}
+      window.localStorage.setItem(NETWORK_UI_STATE_KEY, JSON.stringify({
         ...current,
         lastVisitedAt: Date.now()
       }))
@@ -1864,7 +1856,7 @@ export default function NetworkReal() {
     const lockFixedUtilityWidth = (column: any, layout?: any) => {
       const colId = column.colId || column.field
       const lockedWidth = layout?.width ?? column.width ?? column.initialWidth
-      if (!MONITORING_FIXED_WIDTH_COLUMN_IDS.has(colId) || lockedWidth == null) return column
+      if (!NETWORK_FIXED_WIDTH_COLUMN_IDS.has(colId) || lockedWidth == null) return column
       return {
         ...column,
         width: lockedWidth,
@@ -2240,7 +2232,8 @@ export default function NetworkReal() {
   )
 
   return (
-   <OperationalWorkspaceFrame
+   <OperationalWorkspaceShell
+      className="overflow-hidden"
       header={{
         eyebrow: "Connectivity",
         title: (
@@ -2266,163 +2259,161 @@ export default function NetworkReal() {
           />
         ),
       }}
-      commandBar={{
-        left: (
-          <>
-            <ToolbarSearch
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Scan matrix..."
-            />
-            <ToolbarGroup>
-              <div className="views-menu-container">
-                <ToolbarButton active={showViewsMenu} onClick={() => setShowViewsMenu(!showViewsMenu)} ref={viewsMenuButtonRef as any}>
-                  <span className="flex items-center gap-2">
-                    <LayoutGrid size={14} />
-                    Views
-                  </span>
-                </ToolbarButton>
-              </div>
-              <div className="display-menu-container">
-                <ToolbarButton active={showDisplayMenu} onClick={() => setShowDisplayMenu(!showDisplayMenu)} ref={displayMenuButtonRef as any}>
-                  <span className="flex items-center gap-2">
-                    <Sliders size={14} />
-                    Display
-                  </span>
-                </ToolbarButton>
-              </div>
-              <ToolbarIconButton onClick={handleExportCSV} title="Export CSV">
-                <FileText size={16} />
-              </ToolbarIconButton>
-              <ToolbarIconButton onClick={handleCopyToClipboard} title="Copy to clipboard">
-                <Clipboard size={16} />
-              </ToolbarIconButton>
-              <ToolbarIconButton onClick={() => setShowRegistry(true)} title="Registry configuration">
-               <Settings size={16} />
-              </ToolbarIconButton>
-            </ToolbarGroup>
-            <ToolbarGroup>
-              <ToolbarButton onClick={() => setShowImportModal(true)} title="Import network rows">
+      toolbarSearch={(
+        <ToolbarSearch
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Scan matrix..."
+        />
+      )}
+      toolbarControls={(
+        <>
+          <ToolbarGroup>
+            <div className="views-menu-container">
+              <ToolbarButton active={showViewsMenu} onClick={() => setShowViewsMenu(!showViewsMenu)} ref={viewsMenuButtonRef as any}>
                 <span className="flex items-center gap-2">
-                  <Upload size={14} />
-                  Import
+                  <LayoutGrid size={14} />
+                  Views
                 </span>
               </ToolbarButton>
-              <ToolbarButton
-                active={showFilterBar}
-                onClick={() => setShowFilterBar((current) => !current)}
-                title={showFilterBar ? 'Hide filters' : 'Show filters'}
-              >
+            </div>
+            <div className="display-menu-container">
+              <ToolbarButton active={showDisplayMenu} onClick={() => setShowDisplayMenu(!showDisplayMenu)} ref={displayMenuButtonRef as any}>
                 <span className="flex items-center gap-2">
-                  {showFilterBar ? <EyeOff size={14} /> : <Eye size={14} />}
-                  Filters
+                  <Sliders size={14} />
+                  Display
                 </span>
               </ToolbarButton>
-              <ToolbarButton
-               active={isIntelligenceExpanded}
-               onClick={() => setIsIntelligenceExpanded(!isIntelligenceExpanded)}
-               title={isIntelligenceExpanded ? 'Hide Activity Columns' : 'Show Activity Columns'}
-              >
-               <span className="flex items-center gap-2">
-                 {isIntelligenceExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                 Activity
-               </span>
-              </ToolbarButton>
-            </ToolbarGroup>
-          </>
-        ),
-        secondary: showFilterBar ? (
-          <div className="grid w-full gap-3 md:grid-cols-4">
-            <AppDropdown
-              multi
-              value={quickFilters.status}
-              onChange={(val) => setQuickFilters((current) => ({ ...current, status: val }))}
-              options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
-              label="Status Filter"
-              placeholder="All statuses"
-            />
-            <AppDropdown
-              multi
-              value={quickFilters.farm}
-              onChange={(val) => setQuickFilters((current) => ({ ...current, farm: val }))}
-              options={Array.from(new Set((items || []).map((item: any) => item.farm).filter(Boolean))).sort().map((value) => ({ value, label: value }))}
-              label="Farm Filter"
-              placeholder="All farms"
-            />
-            <AppDropdown
-              multi
-              value={quickFilters.type}
-              onChange={(val) => setQuickFilters((current) => ({ ...current, type: val }))}
-              options={Array.from(new Set((items || []).map((item: any) => item.type).filter(Boolean))).sort().map((value) => ({ value, label: value }))}
-              label="Type Filter"
-              placeholder="All types"
-            />
-            <AppDropdown
-              multi
-              value={quickFilters.direction}
-              onChange={(val) => setQuickFilters((current) => ({ ...current, direction: val }))}
-              options={Array.from(new Set((items || []).map((item: any) => item.direction).filter(Boolean))).sort().map((value) => ({ value, label: value }))}
-              label="Direction Filter"
-              placeholder="All directions"
-            />
-          </div>
-        ) : null,
-        right: (
-	          <>
-              {MONITORING_SUPPORTS_COMPARE && (
-                <ToolbarButton
-                  onClick={openCompare}
-                  disabled={selectedIds.length < 2 || selectedIds.length > 5}
-                  active={compareOpen}
-                  title="Compare selected connections"
-                >
-                  <span className="flex items-center gap-2">
-                    <GitCompare size={14} />
-                    Compare
-                  </span>
-                </ToolbarButton>
-              )}
-		            <ToolbarButton
-                onClick={toggleBulkWindow}
-                disabled={selectedIds.length === 0}
-                active={showBulkMenu}
-                title="Bulk actions"
-                className="bulk-menu-trigger"
-                ref={bulkMenuButtonRef as any}
-              >
-                <span className="flex items-center gap-2">
-                  <Zap size={14} />
-                  Bulk Actions
-                </span>
-              </ToolbarButton>
-	            <ToolbarButton
-	              onClick={() => { setEditingItem(null); setIsFormOpen(true); }}
-	              variant="primary"
-              className="px-6 py-2"
-            >
-                  + Add Connection
+            </div>
+            <ToolbarIconButton onClick={handleExportCSV} title="Export CSV">
+              <FileText size={16} />
+            </ToolbarIconButton>
+            <ToolbarIconButton onClick={handleCopyToClipboard} title="Copy to clipboard">
+              <Clipboard size={16} />
+            </ToolbarIconButton>
+            <ToolbarIconButton onClick={() => setShowRegistry(true)} title="Registry configuration">
+             <Settings size={16} />
+            </ToolbarIconButton>
+          </ToolbarGroup>
+          <ToolbarGroup>
+            <ToolbarButton onClick={() => setShowImportModal(true)} title="Import network rows">
+              <span className="flex items-center gap-2">
+                <Upload size={14} />
+                Import
+              </span>
             </ToolbarButton>
-          </>
-        ),
-        filterChips: [
-          ...activeFilterChips,
-          ...(activeFilterChips.length > 0
-            ? [{
-                id: 'clear-all',
-                label: 'Clear All',
-                onRemove: () => {
-                  setSearchTerm('')
-                  setGridFilterModel({})
-            setQuickFilters({ status: [] as string[], farm: [] as string[], type: [] as string[], direction: [] as string[] })
-                  gridRef.current?.api?.setFilterModel({})
-                }
-              }]
-            : []),
-        ],
-      }}
-    >
-
-      {typeof document !== 'undefined' && createPortal(
+            <ToolbarButton
+              active={showFilterBar}
+              onClick={() => setShowFilterBar((current) => !current)}
+              title={showFilterBar ? 'Hide filters' : 'Show filters'}
+            >
+              <span className="flex items-center gap-2">
+                {showFilterBar ? <EyeOff size={14} /> : <Eye size={14} />}
+                Filters
+              </span>
+            </ToolbarButton>
+            <ToolbarButton
+             active={isIntelligenceExpanded}
+             onClick={() => setIsIntelligenceExpanded(!isIntelligenceExpanded)}
+             title={isIntelligenceExpanded ? 'Hide Activity Columns' : 'Show Activity Columns'}
+            >
+             <span className="flex items-center gap-2">
+               {isIntelligenceExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+               Activity
+             </span>
+            </ToolbarButton>
+          </ToolbarGroup>
+        </>
+      )}
+      secondaryToolbar={showFilterBar ? (
+        <div className="grid w-full gap-3 md:grid-cols-4">
+          <AppDropdown
+            multi
+            value={quickFilters.status}
+            onChange={(val) => setQuickFilters((current) => ({ ...current, status: val }))}
+            options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
+            label="Status Filter"
+            placeholder="All statuses"
+          />
+          <AppDropdown
+            multi
+            value={quickFilters.farm}
+            onChange={(val) => setQuickFilters((current) => ({ ...current, farm: val }))}
+            options={Array.from(new Set((items || []).map((item: any) => item.farm).filter(Boolean))).sort().map((value) => ({ value, label: value }))}
+            label="Farm Filter"
+            placeholder="All farms"
+          />
+          <AppDropdown
+            multi
+            value={quickFilters.type}
+            onChange={(val) => setQuickFilters((current) => ({ ...current, type: val }))}
+            options={Array.from(new Set((items || []).map((item: any) => item.type).filter(Boolean))).sort().map((value) => ({ value, label: value }))}
+            label="Type Filter"
+            placeholder="All types"
+          />
+          <AppDropdown
+            multi
+            value={quickFilters.direction}
+            onChange={(val) => setQuickFilters((current) => ({ ...current, direction: val }))}
+            options={Array.from(new Set((items || []).map((item: any) => item.direction).filter(Boolean))).sort().map((value) => ({ value, label: value }))}
+            label="Direction Filter"
+            placeholder="All directions"
+          />
+        </div>
+      ) : null}
+      toolbarActions={(
+        <>
+          {NETWORK_SUPPORTS_COMPARE && (
+            <ToolbarButton
+              onClick={openCompare}
+              disabled={selectedIds.length < 2 || selectedIds.length > 5}
+              active={compareOpen}
+              title="Compare selected connections"
+            >
+              <span className="flex items-center gap-2">
+                <GitCompare size={14} />
+                Compare
+              </span>
+            </ToolbarButton>
+          )}
+          <ToolbarButton
+            onClick={toggleBulkWindow}
+            disabled={selectedIds.length === 0}
+            active={showBulkMenu}
+            title="Bulk actions"
+            className="bulk-menu-trigger"
+            ref={bulkMenuButtonRef as any}
+          >
+            <span className="flex items-center gap-2">
+              <Zap size={14} />
+              Bulk Actions
+            </span>
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => { setEditingItem(null); setIsFormOpen(true); }}
+            variant="primary"
+            className="px-6 py-2"
+          >
+            + Add Connection
+          </ToolbarButton>
+        </>
+      )}
+      filterChips={[
+        ...activeFilterChips,
+        ...(activeFilterChips.length > 0
+          ? [{
+              id: 'clear-all',
+              label: 'Clear All',
+              onRemove: () => {
+                setSearchTerm('')
+                setGridFilterModel({})
+                setQuickFilters({ status: [] as string[], farm: [] as string[], type: [] as string[], direction: [] as string[] })
+                gridRef.current?.api?.setFilterModel({})
+              }
+            }]
+          : []),
+      ]}
+      floatingPanels={
         <>
           <OperationalDisplayPanel
             isOpen={showDisplayMenu}
@@ -2458,7 +2449,7 @@ export default function NetworkReal() {
             onCreateView={createViewFromCurrent}
             onApplySystemDefault={applySystemDefault}
             savedViews={savedViews}
-            defaultViewIds={DEFAULT_MONITORING_VIEW_IDS}
+            defaultViewIds={DEFAULT_NETWORK_VIEW_IDS}
             onApplyView={applySavedView}
             onOverwriteView={saveCurrentToView}
             onDeleteView={deleteView}
@@ -2467,17 +2458,14 @@ export default function NetworkReal() {
               : 'Raw network table'}
           />
 
-	          <AnimatePresence>
-		            {showBulkMenu && !!bulkMenuStyle.top && (
-		            <motion.div
-		            key="bulk-menu"
-		            initial={{ opacity: 0, y: 10 }}
-		            animate={{ opacity: 1, y: 0 }}
-		            exit={{ opacity: 0, y: 10 }}
-		            style={bulkMenuStyle}
-                  className="bulk-menu-container"
-                >
-                  <WorkspaceFloatingPanel kind="context" className="max-h-[560px] overflow-y-auto custom-scrollbar p-3">
+          <OperationalAnchoredPanel
+            isOpen={showBulkMenu && !!bulkMenuStyle.top}
+            panelKey="bulk-menu"
+            style={bulkMenuStyle}
+            className="bulk-menu-container"
+            yOffset={10}
+          >
+            <WorkspaceFloatingPanel kind="context" className="max-h-[560px] overflow-y-auto custom-scrollbar p-3">
                   <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
                     <p className="text-[10px] font-semibold text-slate-400">Bulk actions</p>
                     <p className="pt-1 text-[12px] font-semibold text-slate-100">{selectedIds.length} connections selected</p>
@@ -2581,22 +2569,17 @@ export default function NetworkReal() {
                       )}
                     </p>
                   </button>
-                  </WorkspaceFloatingPanel>
-                </motion.div>
-	            )}
-	          </AnimatePresence>
+            </WorkspaceFloatingPanel>
+          </OperationalAnchoredPanel>
 
-	          <AnimatePresence>
-            {rowActionMenu && (
-              <motion.div
-                key="row-action-menu"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 8 }}
-                style={rowActionMenu.style}
-                className="row-action-menu-container"
-              >
-                <WorkspaceFloatingPanel kind="context" className="overflow-hidden">
+          <OperationalAnchoredPanel
+            isOpen={!!rowActionMenu}
+            panelKey="row-action-menu"
+            style={rowActionMenu?.style ?? { position: 'fixed', top: -9999, left: -9999 }}
+            className="row-action-menu-container"
+          >
+            {rowActionMenu ? (
+              <WorkspaceFloatingPanel kind="context" className="overflow-hidden">
                 <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
                   <div className="min-w-0">
                     <p className="truncate text-[10px] font-semibold text-slate-400">Row actions</p>
@@ -2676,13 +2659,11 @@ export default function NetworkReal() {
                     : (activeTab === 'active' ? 'Delete' : 'Purge')}
                 </button>
                 </div>
-                </WorkspaceFloatingPanel>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </>,
-        document.body
-      )}
+              </WorkspaceFloatingPanel>
+            ) : null}
+          </OperationalAnchoredPanel>
+        </>
+      }>
 
       {groupBy === 'raw' ? (
 	        <OperationalGridSurface
@@ -2707,7 +2688,7 @@ export default function NetworkReal() {
             getRowId={handleRowId}
             onGridReady={handleGridReady}
 	            onSelectionChanged={(e) => handleSelectionChanged(e, 'raw')}
-            onColumnResized={handleMonitoringColumnResized}
+            onColumnResized={handleNetworkColumnResized}
             onColumnMoved={handleColumnMoved}
             onDragStopped={handleDragStopped}
             onColumnPinned={handleColumnPinned}
@@ -2725,57 +2706,51 @@ export default function NetworkReal() {
 
 	        </OperationalGridSurface>
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 custom-scrollbar">
-          <div className="rounded-lg border border-white/5 bg-black/20 px-6 py-4 flex items-center justify-between">
+        <OperationalGroupedGridView
+          summary={(
             <div>
               <p className="text-[10px] font-semibold text-slate-400">Grouped network matrix</p>
               <p className="pt-1 text-[12px] font-semibold text-slate-100">Sorted by {groupOptions.find((option) => option.value === groupBy)?.label || groupBy}</p>
             </div>
-            <div className="flex items-center gap-3">
-               <button 
-                 onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: false }), {}))}
-                 className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
-               >
-                 Expand All
-               </button>
-               <button 
-                 onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: true }), {}))}
-                 className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
-               >
-                 Collapse All
-               </button>
-               <div className="w-px h-6 bg-white/10 mx-1" />
-               <button 
-                 onClick={() => setGroupBy('raw')}
-                 className="px-3 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-[9px] font-semibold text-rose-400 hover:bg-rose-500/20 transition-all flex items-center gap-2"
-               >
-                 <X size={12} />
-                 <span>Cancel</span>
-               </button>
-            </div>
-          </div>
-          {groupedSections.map((section) => {
+          )}
+          actions={(
+            <>
+              <button 
+                onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: false }), {}))}
+                className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+              >
+                Expand All
+              </button>
+              <button 
+                onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: true }), {}))}
+                className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+              >
+                Collapse All
+              </button>
+              <div className="w-px h-6 bg-white/10 mx-1" />
+              <button 
+                onClick={() => setGroupBy('raw')}
+                className="px-3 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-[9px] font-semibold text-rose-400 hover:bg-rose-500/20 transition-all flex items-center gap-2"
+              >
+                <X size={12} />
+                <span>Cancel</span>
+              </button>
+            </>
+          )}
+          sections={groupedSections.map((section) => {
             const isCollapsed = collapsedGroups[section.key]
             const selectedCount = section.items.filter((item: any) => selectedIds.includes(item.id)).length
             return (
-              <section key={section.key} className="glass-panel overflow-hidden rounded-lg border border-white/5">
-                <button
-                  type="button"
-                  onClick={() => setCollapsedGroups((current) => ({ ...current, [section.key]: !current[section.key] }))}
-                  className="flex w-full items-center justify-between gap-4 border-b border-white/5 bg-white/[0.03] px-5 py-4 text-left transition-all hover:bg-white/[0.05]"
-                >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-[9px] font-semibold text-blue-400">{groupOptions.find((option) => option.value === groupBy)?.label}</span>
-                      <h3 className="text-sm font-semibold text-slate-100">{section.label}</h3>
-                    </div>
-                    <p className="pt-1 text-[11px] text-slate-400">{section.items.length} connections{selectedCount ? ` · ${selectedCount} selected` : ''}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                  <span className="rounded-lg border border-white/5 bg-black/30 px-2.5 py-1 text-[9px] font-semibold text-slate-300">{section.items.length}</span>
-                    {isCollapsed ? <ChevronDown size={16} className="text-slate-500" /> : <ChevronUp size={16} className="text-slate-500" />}
-                  </div>
-                </button>
+              <OperationalGroupedGridSection
+                key={section.key}
+                labelMeta={<span className="text-[9px] font-semibold text-blue-400">{groupOptions.find((option) => option.value === groupBy)?.label}</span>}
+                label={section.label}
+                count={section.items.length}
+                countLabel="connections"
+                selectedCount={selectedCount}
+                collapsed={isCollapsed}
+                onToggle={() => setCollapsedGroups((current) => ({ ...current, [section.key]: !current[section.key] }))}
+              >
                 {!isCollapsed && (
                   <OperationalGridSurface
                     className="monitoring-grid-shell monitoring-grid w-full"
@@ -2795,7 +2770,7 @@ export default function NetworkReal() {
                       context={gridContext}
                       getRowId={handleRowId}
                       onSelectionChanged={(e) => handleSelectionChanged(e, section.key)}
-                      onColumnResized={handleMonitoringColumnResized}
+                      onColumnResized={handleNetworkColumnResized}
                       onColumnMoved={handleColumnMoved}
                       onDragStopped={handleDragStopped}
                       onColumnPinned={handleColumnPinned}
@@ -2812,10 +2787,10 @@ export default function NetworkReal() {
                     />
                   </OperationalGridSurface>
                 )}
-              </section>
+              </OperationalGroupedGridSection>
             )
           })}
-        </div>
+        />
       )}
 
       <BulkActionModals
@@ -2855,19 +2830,19 @@ export default function NetworkReal() {
           />
         )}
         {detailItem && (
-          <MonitoringDetailModal
-            key={`monitoring-detail-${detailItem.id}`}
+          <NetworkDetailModal
+            key={`network-detail-${detailItem.id}`}
             item={detailItem}
             onClose={() => closeNetworkDetail()}
-            onEdit={(monitor: any) => { closeNetworkDetail(); setEditingItem(monitor); setIsFormOpen(true); }}
+            onEdit={(connection: any) => { closeNetworkDetail(); setEditingItem(connection); setIsFormOpen(true); }}
             onOpenHistory={() => {}}
             onOpenBkm={() => {}}
-            onDelete={(monitor: any) => {
+            onDelete={(connection: any) => {
               if (!detailDeleteConfirm) {
                 setDetailDeleteConfirm(true)
                 return
               }
-              bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [monitor.id] })
+              bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [connection.id] })
               closeNetworkDetail()
             }}
             onOpenAsset={(deviceId: number) => navigate(`/asset?id=${deviceId}`)}
@@ -2875,19 +2850,8 @@ export default function NetworkReal() {
             deleteConfirm={detailDeleteConfirm}
           />
         )}
-        {historyItem && <MonitoringHistoryModal key={`monitoring-history-${historyItem.id}`} item={historyItem} onClose={() => setHistoryItem(null)} />}
-        {recipientPopup && <RecipientsModal key={`monitoring-recipients-${recipientPopup.method}-${recipientPopup.recipients.join('|')}`} recipients={recipientPopup.recipients} method={recipientPopup.method} onClose={() => setRecipientPopup(null)} />}
-        {bkmPopup && (
-          <BkmListModal 
-            key={`monitoring-bkm-list-${bkmPopup.monitorId ?? 'none'}-${bkmPopup.docs.join('-')}`}
-            docs={bkmPopup.docs} 
-            monitorId={bkmPopup.monitorId}
-            onOpenBkm={setActiveBkm} 
-            onClose={() => setBkmPopup(null)} 
-          />
-        )}
-        {activeBkm && <BkmDetailModal key={`monitoring-bkm-detail-${activeBkm}`} bkmId={activeBkm} onClose={() => setActiveBkm(null)} />}
-        {compareOpen && <CompareMonitorsModal key={`monitoring-compare-${compareItems.map((item) => item.id).join('-') || 'empty'}`} items={compareItems} onClose={() => setCompareOpen(false)} />}
+        {historyItem && <NetworkHistoryModal key={`network-history-${historyItem.id}`} item={historyItem} onClose={() => setHistoryItem(null)} />}
+        {compareOpen && <CompareConnectionsModal key={`network-compare-${compareItems.map((item) => item.id).join('-') || 'empty'}`} items={compareItems} onClose={() => setCompareOpen(false)} />}
         {showBulkEditModal && (
           <BulkEditTableModal
             key={`network-bulk-edit-${selectedItems.map((item) => item.id).join('-') || 'empty'}`}
@@ -2907,14 +2871,14 @@ export default function NetworkReal() {
           />
         )}
         <OperationalImportModal
-          key="monitoring-import-modal"
+          key="network-import-modal"
           isOpen={showImportModal}
           onClose={() => setShowImportModal(false)}
           tableName="port_connections"
           displayName="Network"
         />
         <ConfigRegistryModal
-            key="monitoring-config-registry"
+            key="network-config-registry"
             isOpen={showRegistry}
             onClose={() => setShowRegistry(false)}
             title="Network Connection Enumerations"
@@ -2940,11 +2904,11 @@ export default function NetworkReal() {
           .row-action-trigger { opacity: 1; }
 	        .ag-side-bar { background-color: #24283b !important; border-left: 1px solid rgba(255,255,255,0.05) !important; }
 	      `}</style>
-    </OperationalWorkspaceFrame>
+    </OperationalWorkspaceShell>
   )
 }
 
-function CompareMonitorsModal({ items, onClose }: any) {
+function CompareConnectionsModal({ items, onClose }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
   const [isMaximized, setIsMaximized] = useState(false)
@@ -3282,11 +3246,11 @@ function BulkEditTableModal({ items, teams, operators, linkPurposeOptions, farmO
                   <td className="px-2 py-2"><AppDropdown value={row.link_type} onChange={(value) => updateRow(row.id, 'link_type', value)} options={mergeOptionsWithCurrentValue(linkPurposeOptions, row.link_type)} placeholder="Type" /></td>
                   <td className="px-2 py-2"><AppDropdown value={row.direction} onChange={(value) => updateRow(row.id, 'direction', value)} options={NETWORK_DIRECTIONS.map((value) => ({ value, label: value }))} placeholder="Direction" /></td>
                   <td className="px-2 py-2"><AppDropdown value={row.farm} onChange={(value) => updateRow(row.id, 'farm', value)} options={mergeOptionsWithCurrentValue(farmOptions, row.farm)} placeholder="Farm" /></td>
-                  <td className="px-2 py-2"><input value={row.purpose} onChange={(event) => updateRow(row.id, 'purpose', event.target.value)} placeholder="Purpose" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
-                  <td className="px-2 py-2"><input type="number" value={row.speed_gbps} onChange={(event) => updateRow(row.id, 'speed_gbps', event.target.value)} placeholder="Speed" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] [appearance:textfield]`} /></td>
+                  <td className="px-2 py-2"><input value={row.purpose} onChange={(event) => updateRow(row.id, 'purpose', event.target.value)} placeholder="Purpose" className={`${networkInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+                  <td className="px-2 py-2"><input type="number" value={row.speed_gbps} onChange={(event) => updateRow(row.id, 'speed_gbps', event.target.value)} placeholder="Speed" className={`${networkInputClass()} h-[42px] px-3 py-2 text-[10px] [appearance:textfield]`} /></td>
                   <td className="px-2 py-2"><AppDropdown value={row.unit} onChange={(value) => updateRow(row.id, 'unit', value)} options={NETWORK_UNITS.map((value) => ({ value, label: value }))} placeholder="Unit" /></td>
                   <td className="px-2 py-2"><AppDropdown value={row.cable_type} onChange={(value) => updateRow(row.id, 'cable_type', value)} options={mergeOptionsWithCurrentValue(cableTypeOptions, row.cable_type)} placeholder="Cable type" /></td>
-                  <td className="px-2 py-2"><input value={row.request_link} onChange={(event) => updateRow(row.id, 'request_link', event.target.value)} placeholder="Request link" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+                  <td className="px-2 py-2"><input value={row.request_link} onChange={(event) => updateRow(row.id, 'request_link', event.target.value)} placeholder="Request link" className={`${networkInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
                   <td className="px-4 py-2">
                     <button
                       type="button"
@@ -3306,41 +3270,7 @@ function BulkEditTableModal({ items, teams, operators, linkPurposeOptions, farmO
   )
 }
 
-function RecipientsModal({ recipients, method, onClose }: any) {
-  useEscapeDismiss(onClose)
-  useBodyModalFlag()
-  return (
-    <WorkspaceModal
-      isOpen={true}
-      onClose={onClose}
-      size="compact"
-      title="Recipient matrix"
-      subtitle={`Method: ${method}`}
-      icon={<Users size={20} />}
-      footerRight={
-        <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
-      }
-    >
-      <div className="space-y-2">
-        {recipients.map((r: string, i: number) => (
-          <div key={`${i}-${r}`} className="bg-white/5 border border-white/5 p-3 rounded-lg flex items-center space-x-3 group hover:border-emerald-500/30 transition-all shadow-inner">
-            <Mail size={14} className="text-emerald-500" />
-            <span className="text-[11px] font-bold text-slate-100">{r}</span>
-          </div>
-        ))}
-        {recipients.length === 0 && (
-          <WorkspaceEmptyState compact title="No recipients defined" description="No direct delivery targets found for this connection." />
-        )}
-      </div>
-    </WorkspaceModal>
-  )
-}
-
-// Extracted to BkmListModal.tsx
-
-// Extracted to BkmDetailModal.tsx
-
-function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm, onDelete, onOpenAsset, onOpenKnowledge, deleteConfirm }: any) {
+function NetworkDetailModal({ item, onClose, onEdit, onDelete, onOpenAsset, onOpenKnowledge, deleteConfirm }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
   const [isMaximized, setIsMaximized] = useState(false)
@@ -3628,21 +3558,21 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
 
 // Shared monitoring form constants and types are declared at the top of this module.
 
-const stringifyOwnerUserIds = (owners: MonitoringOwner[] = []) =>
+const stringifyOwnerUserIds = (owners: NetworkOwner[] = []) =>
   owners
     .map((owner) => owner.external_id || owner.name || String(owner.operator_id))
     .filter(Boolean)
     .join(', ')
 
-const isMonitoringFieldRequired = (fieldName: string) => MONITORING_REQUIRED_FIELD_NAMES.has(fieldName)
+const isNetworkFieldRequired = (fieldName: string) => NETWORK_REQUIRED_FIELD_NAMES.has(fieldName)
 
 /*
   const unsafeUrlPattern = /[<>"']|javascript:|data:|vbscript:/i // verified match
 
-  if (isMonitoringFieldRequired('title') && !formData.title?.trim()) errors.title = 'Title is required.'
-  if (isMonitoringFieldRequired('category') && !formData.category) errors.category = 'Category is required.'
-  if (isMonitoringFieldRequired('status') && !formData.status) errors.status = 'Status is required.'
-  if (isMonitoringFieldRequired('severity') && !formData.severity) errors.severity = 'Severity is required.'
+  if (isNetworkFieldRequired('title') && !formData.title?.trim()) errors.title = 'Title is required.'
+  if (isNetworkFieldRequired('category') && !formData.category) errors.category = 'Category is required.'
+  if (isNetworkFieldRequired('status') && !formData.status) errors.status = 'Status is required.'
+  if (isNetworkFieldRequired('severity') && !formData.severity) errors.severity = 'Severity is required.'
 
   if (formData.monitoring_url) {
     try {
@@ -3674,7 +3604,7 @@ const isMonitoringFieldRequired = (fieldName: string) => MONITORING_REQUIRED_FIE
 */
 
 
-const monitoringInputClass = (error?: string) => getWorkspaceInputClass(error)
+const networkInputClass = (error?: string) => getWorkspaceInputClass(error)
 
 function NetworkConnectionForm({ item, devices, onClose, onSuccess, linkPurposeOptions, farmOptions, cableTypeOptions }: any) {
   useEscapeDismiss(onClose)
@@ -3817,7 +3747,7 @@ function NetworkConnectionForm({ item, devices, onClose, onSuccess, linkPurposeO
     mutation.mutate()
   }, [mutation, validateForm])
 
-  const fieldClass = useCallback((field: string) => monitoringInputClass(formErrors[field]), [formErrors])
+  const fieldClass = useCallback((field: string) => networkInputClass(formErrors[field]), [formErrors])
   const formTitle = item?.id ? getNetworkConnectionTitle(item) : 'Create Network Connection'
 
   return (
@@ -4014,7 +3944,7 @@ function NetworkConnectionForm({ item, devices, onClose, onSuccess, linkPurposeO
   )
 }
 
-export function MonitoringAssetField({
+export function NetworkAssetField({
   devices,
   deviceId,
   onChange,
@@ -4076,7 +4006,7 @@ export function MonitoringAssetField({
               className="p-2"
             >
             <div className="grid grid-cols-[140px_minmax(0,1fr)] gap-2">
-              <MonitoringSelectField
+              <NetworkSelectField
                 label="System Filter"
                 value={systemFilter}
                 onChange={(value) => setSystemFilter(value)}
@@ -4130,16 +4060,16 @@ export function MonitoringAssetField({
   )
 }
 
-// Extracted to MonitoringForm.tsx
+// Extracted to NetworkConnectionForm.tsx
 
-function MonitoringHistoryModal({ item, onClose }: any) {
+function NetworkHistoryModal({ item, onClose }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
   const [isMaximized, setIsMaximized] = useState(false)
   const queryClient = useQueryClient()
   const { data: history, isLoading } = useQuery({
-    queryKey: ['monitoring-history', item.id],
-    queryFn: async () => (await apiFetch(`/api/v1/monitoring/${item.id}/history`)).json()
+    queryKey: ['network-history', item.id],
+    queryFn: async () => (await apiFetch(`/api/v1/networks/connections/${item.id}/history`)).json()
   })
 
   const [selectedIndices, setSelectedIndices] = useState<number[]>([0])
@@ -4288,9 +4218,9 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                            <button 
                              onClick={(e) => {
                                e.stopPropagation();
-                               toast.promise(apiFetch(`/api/v1/monitoring/${item.id}/restore/${h.id}`, { method: 'POST' }), {
+                               toast.promise(apiFetch(`/api/v1/networks/connections/${item.id}/restore/${h.id}`, { method: 'POST' }), {
                                    loading: 'Restoring state...',
-                                   success: () => { queryClient.invalidateQueries({ queryKey: ['monitoring-items'] }); queryClient.invalidateQueries({ queryKey: ['monitoring-history', item.id] }); return "Restored successfully"; },
+                                   success: () => { queryClient.invalidateQueries({ queryKey: ['network-connections'] }); queryClient.invalidateQueries({ queryKey: ['network-history', item.id] }); return "Restored successfully"; },
                                    error: "Restore failed"
                                })
                              }}
