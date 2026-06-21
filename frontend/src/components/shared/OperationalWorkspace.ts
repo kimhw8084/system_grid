@@ -226,6 +226,11 @@ export const MONITORING_REGISTRY_WORKSPACE = defineOperationalRegistryWorkspace(
 // Keep this until Vendors gets its own workspace contract.
 export const VENDOR_WORKSPACE_STANDARD: WorkspaceDefinition = MONITORING_WORKSPACE_STANDARD
 
+export const EXTERNAL_WORKSPACE_STANDARD: WorkspaceDefinition = {
+  ...MONITORING_WORKSPACE_STANDARD,
+  workspaceName: 'External',
+}
+
 export const OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX: Record<string, OperationalWorkspaceAdapter> = {
   monitoring: {
     entityLabel: 'Monitor',
@@ -233,6 +238,13 @@ export const OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX: Record<string, Operational
     hasAdvancedEditor: true,
     hasLinkedKnowledge: true,
     hasVersioning: true,
+  },
+  external: {
+    entityLabel: 'External peer',
+    supports: ['savedViews', 'displayControls', 'grouping', 'bulkActions', 'compare'],
+    hasAdvancedEditor: false,
+    hasLinkedKnowledge: false,
+    hasVersioning: false,
   },
   architecture: {
     entityLabel: 'Architecture flow',

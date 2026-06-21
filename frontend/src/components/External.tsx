@@ -20,70 +20,6 @@ import {
   ToolbarSegmented 
 } from './shared/LayoutPrimitives'
 
-// ... (existing code)
-
-const ObservabilityHUD = ({ items }: any) => {
-  const stats = useMemo(() => {
-    if (!items?.length) return null
-    const active = items.filter((i: any) => i.status === 'Active').length
-    const critical = items.filter((i: any) => i.criticality === 'Critical').length
-    const recent = items.filter((i: any) => {
-      const updated = parseAppDate(i.updated_at)
-      return updated ? (new Date().getTime() - updated.getTime() < 3600000) : false // 1 hour
-    }).length
-    return { active, critical, recent }
-  }, [items])
-
-  if (!stats) return null
-
-  return (
-    <div className="grid grid-cols-4 gap-6 mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
-       <div className="bg-black/40 border border-white/5 p-6 rounded-lg backdrop-blur-xl shadow-xl group hover:border-blue-500/20 transition-all">
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-blue-400 transition-colors">Registry Pulse</p>
-          <div className="flex items-center gap-4">
-             <div className="w-12 h-12 bg-blue-600/10 rounded-lg flex items-center justify-center text-blue-400 border border-blue-500/20">
-                <Activity size={24} className="animate-pulse" />
-             </div>
-             <div>
-                <h4 className="text-2xl font-black text-white tracking-tighter">{stats.active} Active Entities</h4>
-                <p className="text-[9px] font-bold text-slate-500 uppercase">Live External Registry</p>
-             </div>
-          </div>
-       </div>
-       <div className="bg-black/40 border border-white/5 p-6 rounded-lg backdrop-blur-xl shadow-xl group hover:border-rose-500/20 transition-all">
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-rose-400 transition-colors">Entity Flux</p>
-          <div className="flex items-center gap-4">
-             <div className="w-12 h-12 bg-rose-600/10 rounded-lg flex items-center justify-center text-rose-500 border border-rose-500/20">
-                <Bell size={24} className={stats.critical > 0 ? 'animate-bounce' : ''} />
-             </div>
-             <div>
-                <h4 className="text-2xl font-black text-white tracking-tighter">{stats.critical} Critical Entities</h4>
-                <p className="text-[9px] font-bold text-slate-500 uppercase">Immediate Intervention Required</p>
-             </div>
-          </div>
-       </div>
-       <div className="bg-black/40 border border-white/5 p-6 rounded-lg backdrop-blur-xl shadow-xl group hover:border-emerald-500/20 transition-all">
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 group-hover:text-emerald-400 transition-colors">Registry Momentum</p>
-          <div className="flex items-center gap-4">
-             <div className="w-12 h-12 bg-emerald-600/10 rounded-lg flex items-center justify-center text-emerald-400 border border-emerald-500/20">
-                <Zap size={24} />
-             </div>
-             <div>
-                <h4 className="text-2xl font-black text-white tracking-tighter">{stats.recent} New Entities</h4>
-                <p className="text-[9px] font-bold text-slate-500 uppercase">Captured in current session</p>
-             </div>
-          </div>
-       </div>
-       <div className="bg-indigo-600/10 border border-indigo-500/20 p-6 rounded-lg backdrop-blur-xl shadow-xl flex items-center justify-between group hover:bg-indigo-600/20 transition-all">
-          <div>
-             <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-1">Registry Stability</p>
-             <h4 className="text-2xl font-black text-white tracking-tighter">{stats.critical === 0 ? 'Optimal' : 'Degraded'}</h4>
-          </div>
-          <Shield size={28} className="text-indigo-500 opacity-20 group-hover:opacity-100 group-hover:scale-110 transition-all" />
-       </div>
-    </div>
-  )
-}
 
 import { AppDropdown } from './shared/AppDropdown'
 import { StyledSelect } from "./shared/StyledSelect"
@@ -96,6 +32,7 @@ import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHa
 import { useWorkspaceAnchoredLayer, WorkspaceEmptyState, useEscapeDismiss, useBodyModalFlag, WorkspaceFloatingPanel, WorkspaceSplitView } from './shared/OperationalWorkspacePrimitives'
 import { OperationalAnchoredPanel, OperationalDisplayPanel, OperationalGridSurface, OperationalGroupedGridSection, OperationalGroupedGridView, OperationalSavedViewsPanel, OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'
 import { OperationalImportModal } from './shared/OperationalImportModal'
+import { EXTERNAL_WORKSPACE_STANDARD } from './shared/OperationalWorkspace'
 import { WorkspaceModal } from './shared/WorkspaceModal'
 import { OperationalGridMatrix } from './shared/OperationalGridMatrix'
 import {
@@ -165,6 +102,7 @@ const EXTERNAL_ACTIVE_VIEW_KEY = 'sysgrid_external_active_view_v1'
 const EXTERNAL_UI_STATE_KEY = 'sysgrid_external_ui_state_v1'
 const EXTERNAL_FAVORITES_STORAGE_KEY = 'sysgrid_external_favorites_v1'
 const EXTERNAL_WATCH_STORAGE_KEY = 'sysgrid_external_watch_v1'
+const EXTERNAL_SUPPORTS_COMPARE = EXTERNAL_WORKSPACE_STANDARD.sharedCapabilities.includes('compare')
 const EXTERNAL_FIXED_WIDTH_COLUMN_IDS = new Set(['select', 'id', 'recent_change', 'favorite', 'watch', 'row_actions'])
 const EXTERNAL_DEFAULT_GROUP_OPTIONS = [
   { value: 'raw', label: 'Raw Registry' },
@@ -2427,17 +2365,19 @@ export default function External() {
       ) : null}
       toolbarActions={(
         <>
-          <ToolbarButton
-            onClick={openCompare}
-            disabled={selectedIds.length < 2 || selectedIds.length > 5}
-            active={compareOpen}
-            title="Compare selected peers"
-          >
-            <span className="flex items-center gap-2">
-              <GitCompare size={14} />
-              Compare
-            </span>
-          </ToolbarButton>
+          {EXTERNAL_SUPPORTS_COMPARE && (
+            <ToolbarButton
+              onClick={openCompare}
+              disabled={selectedIds.length < 2 || selectedIds.length > 5}
+              active={compareOpen}
+              title="Compare selected peers"
+            >
+              <span className="flex items-center gap-2">
+                <GitCompare size={14} />
+                Compare
+              </span>
+            </ToolbarButton>
+          )}
           <ToolbarButton
             onClick={toggleBulkWindow}
             disabled={selectedIds.length === 0}
