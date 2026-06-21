@@ -94,7 +94,7 @@ import { WorkspaceCompareShell } from './shared/WorkspaceModalShells'
 import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shared/WorkspaceFlyout'
 import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers } from './shared/OperationalWorkspaceHooks'
 import { useWorkspaceAnchoredLayer, WorkspaceEmptyState, useEscapeDismiss, useBodyModalFlag, WorkspaceFloatingPanel, WorkspaceSplitView } from './shared/OperationalWorkspacePrimitives'
-import { OperationalAnchoredPanel, OperationalDisplayPanel, OperationalGridSurface, OperationalSavedViewsPanel, OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'
+import { OperationalAnchoredPanel, OperationalDisplayPanel, OperationalGridSurface, OperationalGroupedGridSection, OperationalGroupedGridView, OperationalSavedViewsPanel, OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'
 import { OperationalImportModal } from './shared/OperationalImportModal'
 import { WorkspaceModal } from './shared/WorkspaceModal'
 import { OperationalGridMatrix } from './shared/OperationalGridMatrix'
@@ -2905,69 +2905,63 @@ export default function External() {
           )}
         </OperationalGridSurface>
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 custom-scrollbar">
-          <div className="rounded-lg border border-white/5 bg-black/20 px-6 py-4 flex items-center justify-between">
+        <OperationalGroupedGridView
+          summary={
             <div>
               <p className="text-[10px] font-semibold text-slate-400">Grouped registry matrix</p>
               <p className="pt-1 text-[12px] font-semibold text-slate-100">Sorted by {EXTERNAL_DEFAULT_GROUP_OPTIONS.find((option) => option.value === groupBy)?.label || groupBy}</p>
             </div>
-            <div className="flex items-center gap-3">
-               <button 
-                 onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: false }), {}))}
-                 className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
-               >
-                 Expand All
-               </button>
-               <button 
-                 onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: true }), {}))}
-                 className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
-               >
-                 Collapse All
-               </button>
-               <div className="w-px h-6 bg-white/10 mx-1" />
-               <button 
-                 onClick={() => setGroupBy('raw')}
-                 className="px-3 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-[9px] font-semibold text-rose-400 hover:bg-rose-500/20 transition-all flex items-center gap-2"
-               >
-                 <X size={12} />
-                 <span>Cancel</span>
-               </button>
-            </div>
-          </div>
-          {groupedSections.map((section) => {
+          }
+          actions={
+            <>
+              <button
+                onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: false }), {}))}
+                className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+              >
+                Expand All
+              </button>
+              <button
+                onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: true }), {}))}
+                className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+              >
+                Collapse All
+              </button>
+              <div className="w-px h-6 bg-white/10 mx-1" />
+              <button
+                onClick={() => setGroupBy('raw')}
+                className="px-3 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-[9px] font-semibold text-rose-400 hover:bg-rose-500/20 transition-all flex items-center gap-2"
+              >
+                <X size={12} />
+                <span>Cancel</span>
+              </button>
+            </>
+          }
+          sections={groupedSections.map((section) => {
             const isCollapsed = collapsedGroups[section.key]
             const selectedCount = section.items.filter((item: any) => selectedIds.includes(item.id)).length
             return (
-              <section key={section.key} className="glass-panel overflow-hidden rounded-lg border border-white/5">
-                <button
-                  type="button"
-                  onClick={() => setCollapsedGroups((current) => ({ ...current, [section.key]: !current[section.key] }))}
-                  className="flex w-full items-center justify-between gap-4 border-b border-white/5 bg-white/[0.03] px-5 py-4 text-left transition-all hover:bg-white/[0.05]"
-                >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-[9px] font-semibold text-blue-400">{EXTERNAL_DEFAULT_GROUP_OPTIONS.find((option) => option.value === groupBy)?.label}</span>
-                      <h3 className="text-sm font-semibold text-slate-100">{section.label}</h3>
-                    </div>
-                    <p className="pt-1 text-[11px] text-slate-400">{section.items.length} peers{selectedCount ? ` · ${selectedCount} selected` : ''}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="rounded-lg border border-white/5 bg-black/30 px-2.5 py-1 text-[9px] font-semibold text-slate-300">{section.items.length}</span>
-                    {isCollapsed ? <ChevronDown size={16} className="text-slate-500" /> : <ChevronUp size={16} className="text-slate-500" />}
-                  </div>
-                </button>
+              <OperationalGroupedGridSection
+                key={section.key}
+                labelMeta={<span className="text-[9px] font-semibold text-blue-400">{EXTERNAL_DEFAULT_GROUP_OPTIONS.find((option) => option.value === groupBy)?.label}</span>}
+                label={section.label}
+                count={section.items.length}
+                countLabel="peers"
+                selectedCount={selectedCount}
+                collapsed={isCollapsed}
+                onToggle={() => setCollapsedGroups((current) => ({ ...current, [section.key]: !current[section.key] }))}
+              >
                 {!isCollapsed && (
                   <OperationalGridSurface
                     className="monitoring-grid-shell monitoring-grid w-full"
-                    style={{ 
+                    style={{
                       '--ag-font-size': `${fontSize}px`,
                       '--ag-font-family': "'Inter', sans-serif",
                       height: `${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px`
                     } as React.CSSProperties}
                   >
                     <OperationalGridMatrix
-                      rowData={section.items} 
-                      columnDefs={columnDefs as any} 
+                      rowData={section.items}
+                      columnDefs={columnDefs as any}
                       autoSizeStrategy={autoSizeStrategy}
                       colResizeDefault="normal"
                       fontSize={fontSize}
@@ -3011,10 +3005,10 @@ export default function External() {
                     />
                   </OperationalGridSurface>
                 )}
-              </section>
+              </OperationalGroupedGridSection>
             )
           })}
-        </div>
+        />
       )}
 
       <WorkspaceModal
