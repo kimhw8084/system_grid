@@ -51,6 +51,10 @@ import {
   useEscapeDismiss,
   useBodyModalFlag,
 } from './shared/OperationalWorkspacePrimitives'
+import {
+  useOperationalRowInteractions,
+  useOperationalContextMenu
+} from './shared/OperationalGridInteractions'
 import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shared/WorkspaceFlyout'
 import { StatusPill } from './shared/StatusPill'
 import { parseCommaSeparatedValues } from '../utils/dataParsers'
@@ -676,7 +680,6 @@ export default function MonitoringGrid() {
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'severity' | 'notification' | null>(null)
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
   const [pendingIds, setPendingIds] = useState<number[]>([])
-  const selectionAnchorRef = useRef<number | null>(null)
   const displayMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const viewsMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const bulkMenuButtonRef = useRef<HTMLButtonElement | null>(null)
@@ -875,19 +878,13 @@ export default function MonitoringGrid() {
 
   const handleRowId = useCallback((params: any) => String(params.data.id), [])
 
-  const openRowActionMenuAtPoint = useCallback((item: any, x: number, y: number) => {
-    setRowActionMenu({
-      item,
-      style: getPointFloatingStyle({ x, y, width: 336, height: 432, zIndex: 1115 })
-    })
-  }, [])
-
-  const handleCellContextMenu = useCallback((e: any) => {
-    if (!e?.data) return
-    const mouseEvent = e.event as MouseEvent
-    mouseEvent?.preventDefault?.()
-    openRowActionMenuAtPoint(e.data, mouseEvent.clientX, mouseEvent.clientY)
-  }, [openRowActionMenuAtPoint])
+  const { handleCellContextMenu, openRowActionMenuAtPoint } = useOperationalContextMenu({
+    onOpenRowActionMenu: useCallback((item, style) => {
+      setRowActionMenu({ item, style })
+    }, []),
+    menuWidth: 336,
+    menuHeight: 432
+  })
 
   const handleGridReady = useCallback((event: any) => {
     if (typeof window !== 'undefined') {
@@ -1000,55 +997,12 @@ export default function MonitoringGrid() {
     setCompareOpen(true)
   }
 
-  const shouldIgnoreRowSelection = (target: EventTarget | null) => {
-    const element = target as HTMLElement | null
-    if (!element) return false
-    return Boolean(
-      element.closest('button, a, input, textarea, select, label') ||
-      element.closest('.ag-selection-checkbox') ||
-      element.closest('.ag-checkbox-input-wrapper') ||
-      element.closest('.row-action-menu-container')
-    )
-  }
-
-  const handleRowClicked = useCallback((event: any) => {
-    if (!event?.node || shouldIgnoreRowSelection(event.event?.target)) return
-    if (event.data && pendingIds.includes(event.data.id)) return
-    const mouseEvent = event.event as MouseEvent | undefined
-    const isToggleSelection = Boolean(mouseEvent?.metaKey || mouseEvent?.ctrlKey)
-    const isRangeSelection = Boolean(mouseEvent?.shiftKey)
-
-    if (isRangeSelection && selectionAnchorRef.current !== null) {
-      const currentIndex = event.node.rowIndex
-      if (currentIndex === null || currentIndex === undefined) return
-
-      const start = Math.min(selectionAnchorRef.current, currentIndex)
-      const end = Math.max(selectionAnchorRef.current, currentIndex)
-      event.api.deselectAll()
-      event.api.forEachNodeAfterFilterAndSort((node: any) => {
-        if (node.rowIndex >= start && node.rowIndex <= end && !pendingIds.includes(node.data?.id)) {
-          node.setSelected(true)
-        }
-      })
-      return
-    }
-
-    if (isToggleSelection) {
-      event.node.setSelected(!event.node.isSelected())
-      selectionAnchorRef.current = event.node.rowIndex
-      return
-    }
-
-    event.api.deselectAll()
-    event.node.setSelected(true)
-    selectionAnchorRef.current = event.node.rowIndex
-  }, [pendingIds])
-
-  const handleRowDoubleClicked = useCallback((event: any) => {
-    if (!event?.data || shouldIgnoreRowSelection(event.event?.target)) return
-    if (pendingIds.includes(event.data.id)) return
-    setDetailItem(event.data)
-  }, [pendingIds])
+  const { handleRowClicked, handleRowDoubleClicked, selectionAnchorRef } = useOperationalRowInteractions({
+    onRowDoubleClick: useCallback((item) => {
+      setDetailItem(item)
+    }, []),
+    pendingIds
+  })
 
   const openRecoveryDocuments = (item: any) => {
     const recoveryDocs = item.recovery_docs || []
@@ -1306,18 +1260,7 @@ export default function MonitoringGrid() {
     },
   })
 
-  useEffect(() => {
-    const handleContextMenu = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null
-      if (!target) return
-      if (target.closest('.ag-root-wrapper') || target.closest('.row-action-menu-container')) {
-        event.preventDefault()
-      }
-    }
 
-    document.addEventListener('contextmenu', handleContextMenu)
-    return () => document.removeEventListener('contextmenu', handleContextMenu)
-  }, [])
 
   useEffect(() => {
     const updateMenuPositions = () => {

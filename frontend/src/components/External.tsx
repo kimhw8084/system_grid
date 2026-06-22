@@ -23,7 +23,6 @@ import {
 
 import { AppDropdown } from './shared/AppDropdown'
 import { StyledSelect } from "./shared/StyledSelect"
-import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
 import { WorkspaceCompareShell } from './shared/WorkspaceModalShells'
@@ -1252,7 +1251,6 @@ export default function External() {
   const [showLinkModal, setShowLinkModal] = useState(false)
   const [linkSeedEntityId, setLinkSeedEntityId] = useState<number | null>(null)
   const [isWorkspaceMaximized, setIsWorkspaceMaximized] = useState(false)
-  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, id: null, purge: false, type: 'entity' })
   const [searchTerm, setSearchTerm] = useState(persistedUiState.searchTerm)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
 
@@ -1758,7 +1756,6 @@ export default function External() {
          queryClient.invalidateQueries({ queryKey: ['external-links'] })
          toast.success('Link Severed')
       }
-      setConfirmModal({ isOpen: false, id: null, purge: false, type: 'entity' })
     },
     onError: (e: any) => toast.error(e.message)
   })
@@ -1818,45 +1815,6 @@ export default function External() {
         >
           <Edit2 size={13} />
         </button>
-      )}
-      {activeTab !== 'deleted' && (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            setConfirmModal({ isOpen: true, id: item.id, purge: false, type: 'entity' })
-          }}
-          title="Deactivate external"
-          className="rounded-lg p-1 text-rose-400 transition-all hover:bg-rose-400/10 active:scale-90"
-        >
-          <Trash2 size={13} />
-        </button>
-      )}
-      {activeTab === 'deleted' && (
-        <>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation()
-              restoreMutation.mutate(item.id)
-            }}
-            title="Restore external"
-            className="rounded-lg p-1 text-emerald-400 transition-all hover:bg-emerald-400/10 active:scale-90"
-          >
-            <RefreshCcw size={13} />
-          </button>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation()
-              setConfirmModal({ isOpen: true, id: item.id, purge: true, type: 'entity' })
-            }}
-            title="Purge external"
-            className="rounded-lg p-1 text-rose-400 transition-all hover:bg-rose-400/10 active:scale-90"
-          >
-            <Trash2 size={13} />
-          </button>
-        </>
       )}
       <button
         type="button"
@@ -2723,43 +2681,29 @@ export default function External() {
                     </button>
                   )}
 
-                  {activeTab !== 'deleted' && (
-                    <button
-                      onClick={() => {
-                        const item = rowActionMenu.item
-                        setConfirmModal({ 
-                          isOpen: true, 
-                          id: item.id, 
-                          purge: false, 
-                        type: 'entity'
-                        })
-                        setRowActionMenu(null)
-                      }}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-rose-300 transition-all hover:bg-rose-950/80"
-                    >
-                      <Trash2 size={14} />
-                      Deactivate
-                    </button>
-                  )}
-
-                  {activeTab === 'deleted' && (
-                    <button
-                      onClick={() => {
-                        const item = rowActionMenu.item
-                        setConfirmModal({ 
-                          isOpen: true, 
-                          id: item.id, 
-                          purge: true, 
-                          type: 'entity' 
-                        })
-                        setRowActionMenu(null)
-                      }}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-rose-300 transition-all hover:bg-rose-950/80"
-                    >
-                      <Trash2 size={14} />
-                      Purge Identity
-                    </button>
-                  )}
+                  <button
+                    onClick={() => {
+                      const item = rowActionMenu.item
+                      if (rowDeleteConfirmId !== item.id) {
+                        setRowDeleteConfirmId(item.id)
+                        return
+                      }
+                      deleteMutation.mutate({ id: item.id, purge: activeTab === 'deleted', type: 'entity' })
+                      setRowActionMenu(null)
+                      setRowDeleteConfirmId(null)
+                    }}
+                    onMouseLeave={() => setRowDeleteConfirmId(null)}
+                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] transition-all ${
+                      rowDeleteConfirmId === rowActionMenu.item.id
+                        ? 'bg-rose-600 text-white animate-pulse'
+                        : 'text-rose-300 hover:bg-rose-950/80'
+                    }`}
+                  >
+                    <Trash2 size={14} />
+                    {rowDeleteConfirmId === rowActionMenu.item.id
+                      ? (activeTab === 'active' ? 'Confirm De-activate?' : 'Confirm Purge peer?')
+                      : (activeTab === 'active' ? 'De-activate' : 'Purge')}
+                  </button>
                 </div>
               </WorkspaceFloatingPanel>
             ) : null}
@@ -3070,6 +3014,23 @@ export default function External() {
             >
               Map Link
             </ToolbarButton>
+            <ToolbarButton
+              variant="danger"
+              onClick={() => {
+                if (rowDeleteConfirmId === activeDetails.id) {
+                  deleteMutation.mutate({ id: activeDetails.id, purge: activeTab === 'deleted', type: 'entity' })
+                  setActiveDetails(null)
+                  setRowDeleteConfirmId(null)
+                } else {
+                  setRowDeleteConfirmId(activeDetails.id)
+                }
+              }}
+              className={rowDeleteConfirmId === activeDetails.id ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20 whitespace-nowrap' : 'whitespace-nowrap'}
+            >
+              {rowDeleteConfirmId === activeDetails.id
+                ? (activeTab === 'active' ? 'Confirm De-activate?' : 'Confirm Purge peer?')
+                : (activeTab === 'active' ? 'De-activate' : 'Purge')}
+            </ToolbarButton>
             <ToolbarButton onClick={closeDetails}>Close</ToolbarButton>
           </div>
         ) : undefined}
@@ -3077,16 +3038,6 @@ export default function External() {
         {activeDetails ? <ExternalDetailsView entity={activeDetails} links={links || []} /> : null}
       </WorkspaceModal>
 
-      <ConfirmationModal 
-        isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ isOpen: false, id: null, purge: false, type: 'entity' })}
-        onConfirm={() => deleteMutation.mutate({ id: confirmModal.id, purge: confirmModal.purge, type: confirmModal.type })}
-        title={confirmModal.type === 'link' ? "Sever Link" : confirmModal.purge ? "Purge External Identity" : "Sever External Manifest"}
-        message={confirmModal.type === 'link' ? "Sever this interconnect link?" : confirmModal.purge 
-          ? "This will IRREVOCABLY purge the identity from the global registry. Proceed with final termination?" 
-          : "This will move the authorized identity to the deleted matrix. All downstream forensics will be preserved. Proceed?"}
-        variant="danger"
-      />
       <ConfigRegistryModal
         isOpen={showConfig}
         onClose={() => setShowConfig(false)}
