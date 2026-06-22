@@ -82,6 +82,11 @@ import {
   sanitizeOperationalFilterModel,
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
+import {
+  OPERATIONAL_GRID_CLASSES,
+  OPERATIONAL_GRID_PRIMARY_TEXT_CLASS,
+  OPERATIONAL_GRID_TEXT_CLASS,
+} from './shared/OperationalGridContract'
 
 const MONITORING_VIEW_STORAGE_KEY = 'sysgrid_monitoring_views_v1'
 const MONITORING_ACTIVE_VIEW_KEY = 'sysgrid_monitoring_active_view_v1'
@@ -1715,8 +1720,8 @@ export default function MonitoringGrid() {
       checkboxSelection: true, 
       headerCheckboxSelection: true, 
       pinned: 'left', 
-      cellClass: 'flex items-center justify-center border-r border-white/5', 
-      headerClass: 'flex items-center justify-center border-r border-white/5', 
+      cellClass: OPERATIONAL_GRID_CLASSES.utilityCell,
+      headerClass: OPERATIONAL_GRID_CLASSES.utilityHeader,
       suppressSizeToFit: true,
       sortable: false,
       filter: false,
@@ -1728,8 +1733,8 @@ export default function MonitoringGrid() {
       headerName: "ID", 
       width: 90,
       pinned: 'left',
-      cellClass: 'text-center font-bold text-slate-500 border-r border-white/5 flex items-center justify-center',
-      headerClass: 'text-center border-r border-white/5',
+      cellClass: OPERATIONAL_GRID_CLASSES.idCell,
+      headerClass: OPERATIONAL_GRID_CLASSES.idHeader,
       filter: 'agNumberColumnFilter',
       lockVisible: true
     },
@@ -1742,8 +1747,8 @@ export default function MonitoringGrid() {
       sortable: false,
       filter: false,
       lockVisible: true,
-      cellClass: 'text-center border-r border-white/5 flex items-center justify-center !overflow-visible',
-      headerClass: 'text-center border-r border-white/5',
+      cellClass: OPERATIONAL_GRID_CLASSES.utilityOverflowCell,
+      headerClass: OPERATIONAL_GRID_CLASSES.utilityHeader,
       hide: !isIntelligenceExpanded,
       cellRenderer: (p: any) => {
         if (!p.data || !isRecentChange(p.data)) return null
@@ -1780,8 +1785,8 @@ export default function MonitoringGrid() {
       field: "favorite",
       width: 80,
       pinned: 'left',
-      cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
-      headerClass: 'text-center border-r border-white/5',
+      cellClass: OPERATIONAL_GRID_CLASSES.utilityCell,
+      headerClass: OPERATIONAL_GRID_CLASSES.utilityHeader,
       sortable: true,
       filter: false,
       lockVisible: true,
@@ -1810,8 +1815,8 @@ export default function MonitoringGrid() {
       field: "watch",
       width: 85,
       pinned: 'left',
-      cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
-      headerClass: 'text-center border-r border-white/5',
+      cellClass: OPERATIONAL_GRID_CLASSES.utilityCell,
+      headerClass: OPERATIONAL_GRID_CLASSES.utilityHeader,
       sortable: false,
       filter: false,
       lockVisible: true,
@@ -1839,9 +1844,9 @@ export default function MonitoringGrid() {
       headerName: "Target Asset", 
       width: 160, 
       filter: true,
-      cellClass: "font-bold text-center flex items-center justify-center", 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
+      headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
+      cellRenderer: (p: any) => <span className={OPERATIONAL_GRID_TEXT_CLASS}>{p.value}</span>,
       hide: hiddenColumns.includes("device_name")
     },
     { 
@@ -1849,9 +1854,9 @@ export default function MonitoringGrid() {
       headerName: "Title", 
       width: 280,
       filter: true,
-      cellClass: "font-bold text-left tracking-tight flex items-center", 
-      headerClass: 'text-left',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      cellClass: OPERATIONAL_GRID_CLASSES.primaryCell,
+      headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
+      cellRenderer: (p: any) => <span className={OPERATIONAL_GRID_PRIMARY_TEXT_CLASS}>{p.value}</span>,
       hide: hiddenColumns.includes("title")
     },
     { 
@@ -2003,9 +2008,9 @@ export default function MonitoringGrid() {
       headerName: "Purpose", 
       width: 220,
       filter: true,
-      cellClass: "font-bold text-slate-500 text-left truncate px-4 flex items-center", 
-      headerClass: 'text-left',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>,
+      cellClass: OPERATIONAL_GRID_CLASSES.leftBodyCell,
+      headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
+      cellRenderer: (p: any) => <span className={OPERATIONAL_GRID_TEXT_CLASS}>{p.value}</span>,
       hide: hiddenColumns.includes("purpose")
     },
     { 
@@ -2043,8 +2048,8 @@ export default function MonitoringGrid() {
       headerName: "Action",
       width: 210,
       pinned: 'right',
-      cellClass: 'text-right pr-3 flex items-center justify-end',
-      headerClass: 'text-center',
+      cellClass: OPERATIONAL_GRID_CLASSES.actionCell,
+      headerClass: OPERATIONAL_GRID_CLASSES.actionHeader,
       sortable: false,
       filter: false,
       cellRenderer: (p: any) => p.data ? renderPrimaryRowActions(p.data) : null,
@@ -2840,36 +2845,6 @@ export default function MonitoringGrid() {
         />
       </AnimatePresence>
 
-      <style>{`
-        .ag-theme-alpine-dark {
-          --ag-background-color: #1a1b26;
-          --ag-header-background-color: #24283b;
-          --ag-border-color: rgba(255, 255, 255, 0.05);
-          --ag-foreground-color: #f1f5f9;
-          --ag-header-foreground-color: #3b82f6;
-        }
-        .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label, .ag-header-group-cell-label { 
-            font-weight: 700 !important; 
-            text-transform: uppercase !important; 
-            letter-spacing: 0.1em !important; 
-            font-size: ${fontSize}px !important; 
-            justify-content: center !important; 
-            white-space: nowrap !important;
-        }
-        .ag-cell { 
-            display: flex; 
-            align-items: center; 
-            justify-content: center !important; 
-            font-weight: 700 !important;
-            font-size: ${fontSize}px !important;
-        }
-
-	        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
-	        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
-          .row-action-trigger { opacity: 1; }
-	        .ag-side-bar { background-color: #24283b !important; border-left: 1px solid rgba(255,255,255,0.05) !important; }
-	      `}</style>
     </OperationalWorkspaceShell>
   )
 }

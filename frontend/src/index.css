@@ -263,6 +263,14 @@
   background: transparent !important;
 }
 
+.monitoring-grid-shell.ag-theme-alpine-dark {
+  --ag-background-color: #1a1b26;
+  --ag-header-background-color: #24283b;
+  --ag-border-color: rgba(255, 255, 255, 0.05);
+  --ag-foreground-color: #f1f5f9;
+  --ag-header-foreground-color: #3b82f6;
+}
+
 .monitoring-grid-shell .ag-header {
   background: var(--grid-header-bg) !important;
   border-bottom: 1px solid var(--grid-border) !important;
@@ -280,6 +288,12 @@
 
 .monitoring-grid-shell .ag-header-cell-label,
 .monitoring-grid-shell .ag-header-group-cell-label {
+  font-size: var(--ag-font-size, 11px) !important;
+  font-weight: 700 !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
   padding-right: 10px !important;
 }
 
@@ -295,6 +309,16 @@
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   min-width: 0 !important;
+}
+
+.monitoring-grid-shell .ag-cell {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  font-size: var(--ag-font-size, 11px) !important;
+  font-weight: 700 !important;
 }
 
 .monitoring-grid-shell .ag-header-cell-resize {
@@ -327,8 +351,12 @@
   background: rgba(59, 130, 246, 0.1) !important;
 }
 
-.monitoring-grid-shell .ag-cell {
-  background: transparent !important;
+.monitoring-grid-shell .ag-row-hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.monitoring-grid-shell .ag-row-selected {
+  background-color: rgba(59, 130, 246, 0.2) !important;
 }
 
 .monitoring-grid-shell .ag-center-cols-viewport,
@@ -336,6 +364,87 @@
 .monitoring-grid-shell .ag-body-horizontal-scroll-viewport,
 .monitoring-grid-shell .ag-center-cols-container {
   background: transparent !important;
+}
+
+.monitoring-grid-shell .ag-side-bar {
+  background-color: #24283b !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.monitoring-grid-shell .row-action-trigger {
+  opacity: 1;
+}
+
+.monitoring-grid-shell .operational-grid-utility-cell,
+.monitoring-grid-shell .operational-grid-utility-header,
+.monitoring-grid-shell .operational-grid-id-cell,
+.monitoring-grid-shell .operational-grid-id-header {
+  border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.monitoring-grid-shell .operational-grid-action-cell,
+.monitoring-grid-shell .operational-grid-action-header {
+  border-left: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.monitoring-grid-shell .operational-grid-utility-cell,
+.monitoring-grid-shell .operational-grid-id-cell,
+.monitoring-grid-shell .operational-grid-centered-cell {
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+.monitoring-grid-shell .operational-grid-primary-cell,
+.monitoring-grid-shell .operational-grid-left-body-cell {
+  justify-content: flex-start !important;
+  text-align: left !important;
+}
+
+.monitoring-grid-shell .operational-grid-action-cell {
+  justify-content: flex-end !important;
+  text-align: right !important;
+}
+
+.monitoring-grid-shell .operational-grid-primary-header {
+  text-align: left !important;
+}
+
+.monitoring-grid-shell .operational-grid-centered-header,
+.monitoring-grid-shell .operational-grid-utility-header,
+.monitoring-grid-shell .operational-grid-id-header,
+.monitoring-grid-shell .operational-grid-action-header {
+  text-align: center !important;
+}
+
+.monitoring-grid-shell .operational-grid-overflow-visible {
+  overflow: visible !important;
+}
+
+.monitoring-grid-shell .operational-grid-text {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.monitoring-grid-shell .operational-grid-primary-text,
+.monitoring-grid-shell .operational-grid-primary-button {
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em;
+}
+
+.monitoring-grid-shell .operational-grid-primary-button {
+  width: 100%;
+  background: transparent;
+  text-align: left;
+  transition: color 150ms ease;
+}
+
+.monitoring-grid-shell .operational-grid-primary-button:hover {
+  color: #ffffff !important;
 }
 
 .grouped-monitoring-table th,

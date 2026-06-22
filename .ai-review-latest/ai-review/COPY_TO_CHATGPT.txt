@@ -1,0 +1,21 @@
+========================================
+COPY THIS TO CHATGPT:
+========================================
+Review this commit line by line:
+https://github.com/kimhw8084/system_grid/commit/d8ad42b76af23f109a0545f10d6daf8f0fdc608a
+
+Full diff:
+https://github.com/kimhw8084/system_grid/commit/d8ad42b76af23f109a0545f10d6daf8f0fdc608a.diff
+
+Patch:
+https://github.com/kimhw8084/system_grid/commit/d8ad42b76af23f109a0545f10d6daf8f0fdc608a.patch
+
+Workflow run:
+https://github.com/kimhw8084/system_grid/actions/runs/27951841845
+
+Goal:
+Run 3 External pass against Monitoring golden standard.
+
+Use the commit .diff/.patch and AI Review Packet workflow artifact.
+Read every changed file and every diff hunk. Do not judge by summary.
+========================================
