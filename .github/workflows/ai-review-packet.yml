@@ -1,8 +1,8 @@
 name: AI Review Packet
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       base:
@@ -16,12 +16,10 @@ on:
 
 permissions:
   contents: read
-  issues: write
-  pull-requests: write
   actions: read
 
 concurrency:
-  group: ai-review-packet-${{ github.event.pull_request.number || github.ref }}
+  group: ai-review-packet-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -31,7 +29,7 @@ jobs:
 
     steps:
       - name: Checkout full history
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -46,26 +44,33 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            BASE="${{ github.event.pull_request.base.sha }}"
-            HEAD="${{ github.event.pull_request.head.sha }}"
-            PR_NUMBER="${{ github.event.pull_request.number }}"
-            PR_URL="${{ github.event.pull_request.html_url }}"
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.sha }}"
+
+            if [[ "$BASE" =~ ^0+$ ]]; then
+              BASE="$(git rev-parse "$HEAD~1")"
+            fi
           else
             HEAD="${{ inputs.head }}"
             BASE="${{ inputs.base }}"
-            if [[ -z "$HEAD" ]]; then HEAD="${{ github.sha }}"; fi
-            if [[ -z "$BASE" ]]; then BASE="$(git rev-parse "$HEAD~1")"; fi
-            PR_NUMBER=""
-            PR_URL=""
+
+            if [[ -z "$HEAD" ]]; then
+              HEAD="${{ github.sha }}"
+            fi
+
+            if [[ -z "$BASE" ]]; then
+              BASE="$(git rev-parse "$HEAD~1")"
+            fi
           fi
 
           git fetch --no-tags origin "$BASE" "$HEAD" || true
 
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
           echo "head=$HEAD" >> "$GITHUB_OUTPUT"
-          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-          echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+
+          echo "BASE=$BASE"
+          echo "HEAD=$HEAD"
 
       - name: Generate full diff packet
         id: packet
@@ -75,17 +80,17 @@ jobs:
 
           BASE="${{ steps.refs.outputs.base }}"
           HEAD="${{ steps.refs.outputs.head }}"
-          PR_URL="${{ steps.refs.outputs.pr_url }}"
           REPO="${{ github.repository }}"
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${HEAD}"
 
           mkdir -p ai-review/per-file ai-review/logs ai-review/meta
 
           echo "$BASE" > ai-review/meta/base.txt
           echo "$HEAD" > ai-review/meta/head.txt
           echo "$REPO" > ai-review/meta/repo.txt
-          echo "$PR_URL" > ai-review/meta/pr_url.txt
           echo "$RUN_URL" > ai-review/meta/run_url.txt
+          echo "$COMMIT_URL" > ai-review/meta/commit_url.txt
 
           git diff --name-status "$BASE" "$HEAD" > ai-review/CHANGED_FILES.txt || true
           git diff --numstat "$BASE" "$HEAD" > ai-review/NUMSTAT.txt || true
@@ -152,9 +157,11 @@ jobs:
             echo "## Handoff"
             echo ""
             echo '```text'
-            echo "Review this PR/commit line by line."
+            echo "Review this commit line by line."
             echo "Repo: $REPO"
-            echo "PR: $PR_URL"
+            echo "Commit: $COMMIT_URL"
+            echo "Full diff: ${COMMIT_URL}.diff"
+            echo "Patch: ${COMMIT_URL}.patch"
             echo "Base: $BASE"
             echo "Head: $HEAD"
             echo "Workflow run: $RUN_URL"
@@ -196,6 +203,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           mkdir -p ai-review/logs
 
           run_log() {
@@ -204,10 +212,12 @@ jobs:
             local log="ai-review/logs/${name}.log"
 
             echo "COMMAND: $*" | tee "$log"
+
             set +e
             "$@" 2>&1 | tee -a "$log"
             local status="${PIPESTATUS[0]}"
             set -e
+
             echo "EXIT_STATUS=$status" | tee -a "$log"
             echo "$status" > "ai-review/logs/${name}.status"
           }
@@ -262,6 +272,19 @@ jobs:
             echo "| build | $BUILD |"
             echo "| test | $TEST |"
             echo "| lint | $LINT |"
+            echo ""
+            echo "## Check Logs"
+            echo ""
+            for file in ai-review/logs/*.log; do
+              if [[ -f "$file" ]]; then
+                echo "### $file"
+                echo ""
+                echo '```text'
+                cat "$file"
+                echo '```'
+                echo ""
+              fi
+            done
           } >> ai-review/REVIEW_PACKET.md
 
           echo "install=$INSTALL" >> "$GITHUB_OUTPUT"
@@ -269,6 +292,40 @@ jobs:
           echo "build=$BUILD" >> "$GITHUB_OUTPUT"
           echo "test=$TEST" >> "$GITHUB_OUTPUT"
           echo "lint=$LINT" >> "$GITHUB_OUTPUT"
+
+      - name: Create terminal handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          HEAD="${{ steps.refs.outputs.head }}"
+          REPO="${{ github.repository }}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${HEAD}"
+
+          {
+            echo "========================================"
+            echo "COPY THIS TO CHATGPT:"
+            echo "========================================"
+            echo "Review this commit line by line:"
+            echo "$COMMIT_URL"
+            echo ""
+            echo "Full diff:"
+            echo "${COMMIT_URL}.diff"
+            echo ""
+            echo "Patch:"
+            echo "${COMMIT_URL}.patch"
+            echo ""
+            echo "Workflow run:"
+            echo "$RUN_URL"
+            echo ""
+            echo "Goal:"
+            echo "Run 3 External pass against Monitoring golden standard."
+            echo ""
+            echo "Use the commit .diff/.patch and AI Review Packet workflow artifact."
+            echo "Read every changed file and every diff hunk. Do not judge by summary."
+            echo "========================================"
+          } | tee ai-review/COPY_TO_CHATGPT.txt
 
       - name: Compress review packet
         shell: bash
@@ -283,98 +340,6 @@ jobs:
             ai-review/
             ai-review-packet.tar.gz
           retention-days: 14
-
-      - name: Build PR comment
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          PR_URL="${{ steps.refs.outputs.pr_url }}"
-          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-          {
-            echo "<!-- ai-review-packet:system-grid -->"
-            echo ""
-            echo "## Automated AI Review Packet"
-            echo ""
-            echo "This is not summary-only. The workflow generated:"
-            echo ""
-            echo "- \`ai-review/REVIEW_PACKET.md\`"
-            echo "- \`ai-review/FULL_DIFF.diff\`"
-            echo "- \`ai-review/FULL_DIFF_NUMBERED.diff\`"
-            echo "- \`ai-review/FULL_PATCH.patch\`"
-            echo "- \`ai-review/per-file/*.diff\`"
-            echo "- \`ai-review/logs/*.log\`"
-            echo ""
-            echo "### Direct links"
-            echo ""
-            echo "- PR: $PR_URL"
-            echo "- Full PR diff: ${PR_URL}.diff"
-            echo "- Full PR patch: ${PR_URL}.patch"
-            echo "- Workflow artifact: $RUN_URL"
-            echo ""
-            echo "### Refs"
-            echo ""
-            echo "\`\`\`text"
-            echo "base: ${{ steps.refs.outputs.base }}"
-            echo "head: ${{ steps.refs.outputs.head }}"
-            echo "changed_files: ${{ steps.packet.outputs.changed_count }}"
-            echo "diff_bytes: ${{ steps.packet.outputs.diff_bytes }}"
-            echo "\`\`\`"
-            echo ""
-            echo "### Check results"
-            echo ""
-            echo "| Check | Status |"
-            echo "|---|---:|"
-            echo "| install | ${{ steps.checks.outputs.install }} |"
-            echo "| typecheck | ${{ steps.checks.outputs.typecheck }} |"
-            echo "| build | ${{ steps.checks.outputs.build }} |"
-            echo "| test | ${{ steps.checks.outputs.test }} |"
-            echo "| lint | ${{ steps.checks.outputs.lint }} |"
-            echo ""
-            echo "<details>"
-            echo "<summary>Changed files</summary>"
-            echo ""
-            echo "\`\`\`text"
-            cat ai-review/CHANGED_FILES.txt
-            echo "\`\`\`"
-            echo ""
-            echo "</details>"
-            echo ""
-            echo "### Copy this to ChatGPT"
-            echo ""
-            echo "\`\`\`text"
-            echo "Review this PR line by line:"
-            echo "$PR_URL"
-            echo ""
-            echo "Goal:"
-            echo "Run 3 External pass against Monitoring golden standard."
-            echo ""
-            echo "Use the PR .diff/.patch and Automated AI Review Packet artifact."
-            echo "Read every changed file and every diff hunk. Do not judge by summary."
-            echo "\`\`\`"
-          } > ai-review/PR_COMMENT.md
-
-      - name: Post or update PR comment
-        if: github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          REPO="${{ github.repository }}"
-          PR="${{ steps.refs.outputs.pr_number }}"
-          MARKER="<!-- ai-review-packet:system-grid -->"
-
-          COMMENT_ID="$(gh api "repos/$REPO/issues/$PR/comments" --paginate --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | tail -n 1 || true)"
-
-          if [[ -n "$COMMENT_ID" ]]; then
-            gh api --method PATCH "repos/$REPO/issues/comments/$COMMENT_ID" -f body@"ai-review/PR_COMMENT.md"
-          else
-            gh api --method POST "repos/$REPO/issues/$PR/comments" -f body@"ai-review/PR_COMMENT.md"
-          fi
 
       - name: Fail if build/typecheck failed
         shell: bash
