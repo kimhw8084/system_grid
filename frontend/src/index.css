@@ -401,8 +401,8 @@
 }
 
 .monitoring-grid-shell .operational-grid-action-cell {
-  justify-content: flex-end !important;
-  text-align: right !important;
+  justify-content: center !important;
+  text-align: center !important;
 }
 
 .monitoring-grid-shell .operational-grid-primary-header {
@@ -422,6 +422,7 @@
 
 .monitoring-grid-shell .operational-grid-text {
   display: block;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
@@ -429,11 +430,48 @@
   white-space: nowrap;
 }
 
+.monitoring-grid-shell .operational-grid-plain-value {
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+}
+
+.monitoring-grid-shell .operational-grid-empty-value {
+  color: var(--text-secondary) !important;
+  font-weight: 700 !important;
+}
+
 .monitoring-grid-shell .operational-grid-primary-text,
 .monitoring-grid-shell .operational-grid-primary-button {
   color: var(--text-primary) !important;
   font-weight: 700 !important;
   letter-spacing: -0.01em;
+}
+
+.monitoring-grid-shell .operational-grid-icon-value {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: inherit;
+  gap: 0.5rem;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.monitoring-grid-shell .operational-grid-utility-cell .operational-grid-text,
+.monitoring-grid-shell .operational-grid-id-cell .operational-grid-text,
+.monitoring-grid-shell .operational-grid-centered-cell .operational-grid-text,
+.monitoring-grid-shell .operational-grid-action-cell .operational-grid-text,
+.monitoring-grid-shell .operational-grid-centered-cell .operational-grid-icon-value,
+.monitoring-grid-shell .operational-grid-action-cell .operational-grid-icon-value {
+  text-align: center !important;
+}
+
+.monitoring-grid-shell .operational-grid-primary-cell .operational-grid-text,
+.monitoring-grid-shell .operational-grid-left-body-cell .operational-grid-text,
+.monitoring-grid-shell .operational-grid-primary-cell .operational-grid-icon-value,
+.monitoring-grid-shell .operational-grid-left-body-cell .operational-grid-icon-value {
+  text-align: left !important;
 }
 
 .monitoring-grid-shell .operational-grid-primary-button {

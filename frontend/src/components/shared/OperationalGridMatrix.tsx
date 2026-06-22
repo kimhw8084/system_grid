@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react'
 import { AgGridReact } from 'ag-grid-react'
+import { OPERATIONAL_GRID_CLASSES } from './OperationalGridContract'
 
 export const OperationalGridMatrix = React.memo(({
   gridRef,
@@ -38,6 +39,8 @@ export const OperationalGridMatrix = React.memo(({
     suppressMovable: false,
     wrapText: false,
     autoHeight: false,
+    cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
+    headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
   }), [])
 
   useEffect(() => {

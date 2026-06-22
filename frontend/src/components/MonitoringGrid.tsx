@@ -83,9 +83,14 @@ import {
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
 import {
+  applyOperationalActionColumn,
   OPERATIONAL_GRID_CLASSES,
+  OPERATIONAL_GRID_EMPTY_VALUE_CLASS,
+  OPERATIONAL_GRID_ICON_VALUE_CLASS,
+  OPERATIONAL_GRID_PLAIN_VALUE_CLASS,
   OPERATIONAL_GRID_PRIMARY_TEXT_CLASS,
-  OPERATIONAL_GRID_TEXT_CLASS,
+  OPERATIONAL_GRID_WIDTHS,
+  applyOperationalIdentityColumn,
 } from './shared/OperationalGridContract'
 
 const MONITORING_VIEW_STORAGE_KEY = 'sysgrid_monitoring_views_v1'
@@ -1022,7 +1027,7 @@ export default function MonitoringGrid() {
   const renderPrimaryRowActions = (item: any) => {
     const isPending = pendingIds.includes(item.id)
     return (
-      <div className={`flex items-center justify-end gap-1.5 pr-2 ${isPending ? 'opacity-20 grayscale pointer-events-none' : ''}`}>
+      <div className={`flex items-center justify-center gap-1.5 ${isPending ? 'opacity-20 grayscale pointer-events-none' : ''}`}>
         <button
           type="button"
           onClick={(event) => {
@@ -1839,17 +1844,7 @@ export default function MonitoringGrid() {
         )
       }
     },
-    { 
-      field: "device_name", 
-      headerName: "Target Asset", 
-      width: 160, 
-      filter: true,
-      cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-      cellRenderer: (p: any) => <span className={OPERATIONAL_GRID_TEXT_CLASS}>{p.value}</span>,
-      hide: hiddenColumns.includes("device_name")
-    },
-    { 
+    applyOperationalIdentityColumn({
       field: "title", 
       headerName: "Title", 
       width: 280,
@@ -1858,6 +1853,16 @@ export default function MonitoringGrid() {
       headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
       cellRenderer: (p: any) => <span className={OPERATIONAL_GRID_PRIMARY_TEXT_CLASS}>{p.value}</span>,
       hide: hiddenColumns.includes("title")
+    }),
+    { 
+      field: "device_name", 
+      headerName: "Target Asset", 
+      width: 160, 
+      filter: true,
+      cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
+      headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
+      cellRenderer: (p: any) => <span className={p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>{p.value || 'N/A'}</span>,
+      hide: hiddenColumns.includes("device_name")
     },
     { 
       field: "status", 
@@ -1960,9 +1965,9 @@ export default function MonitoringGrid() {
       field: "platform", 
       headerName: "Platform", 
       filter: true,
-      cellClass: 'text-center font-bold text-slate-300 flex items-center justify-center', 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold">N/A</span>,
+      cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
+      headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
+      cellRenderer: (p: any) => p.value ? <span className={OPERATIONAL_GRID_PLAIN_VALUE_CLASS}>{p.value}</span> : <span className={OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>N/A</span>,
       hide: hiddenColumns.includes("platform")
     },
     { 
@@ -1979,9 +1984,9 @@ export default function MonitoringGrid() {
       field: "check_interval", 
       headerName: "Freq", 
       width: 80, 
-      cellClass: 'text-center font-bold flex items-center justify-center', 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value ? `${p.value}s` : 'N/A'}</span>,
+      cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
+      headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
+      cellRenderer: (p: any) => <span className={p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>{p.value ? `${p.value}s` : 'N/A'}</span>,
       hide: hiddenColumns.includes("check_interval")
     },
     { 
@@ -2010,7 +2015,7 @@ export default function MonitoringGrid() {
       filter: true,
       cellClass: OPERATIONAL_GRID_CLASSES.leftBodyCell,
       headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
-      cellRenderer: (p: any) => <span className={OPERATIONAL_GRID_TEXT_CLASS}>{p.value}</span>,
+      cellRenderer: (p: any) => <span className={p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>{p.value || 'N/A'}</span>,
       hide: hiddenColumns.includes("purpose")
     },
     { 
@@ -2018,14 +2023,14 @@ export default function MonitoringGrid() {
       headerName: "Created", 
       width: 180,
       filter: 'agDateColumnFilter',
-      cellClass: 'text-center font-bold text-slate-500 flex items-center justify-center',
-      headerClass: 'text-center',
+      cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
+      headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
       cellRenderer: (p: any) => p.value ? (
-        <div className="flex items-center gap-2">
+        <div className={OPERATIONAL_GRID_ICON_VALUE_CLASS}>
            <Clock size={12} className="opacity-40" />
-           <span style={{ fontSize: `${fontSize}px` }}>{formatAppDate(p.value)}</span>
+           <span className={OPERATIONAL_GRID_PLAIN_VALUE_CLASS}>{formatAppDate(p.value)}</span>
         </div>
-      ) : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500">N/A</span>,
+      ) : <span className={OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>N/A</span>,
       hide: hiddenColumns.includes("created_at")
     },
     { 
@@ -2033,28 +2038,26 @@ export default function MonitoringGrid() {
       headerName: "Updated", 
       width: 180,
       filter: 'agDateColumnFilter',
-      cellClass: 'text-center font-bold text-slate-500 flex items-center justify-center',
-      headerClass: 'text-center',
+      cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
+      headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
       cellRenderer: (p: any) => p.value ? (
-        <div className="flex items-center gap-2">
+        <div className={OPERATIONAL_GRID_ICON_VALUE_CLASS}>
            <Clock size={12} className="opacity-40" />
-           <span style={{ fontSize: `${fontSize}px` }}>{formatAppDate(p.value)}</span>
+           <span className={OPERATIONAL_GRID_PLAIN_VALUE_CLASS}>{formatAppDate(p.value)}</span>
         </div>
-      ) : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500">N/A</span>,
+      ) : <span className={OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>N/A</span>,
       hide: hiddenColumns.includes("updated_at")
     },
-    {
+    applyOperationalActionColumn({
       colId: "row_actions",
       headerName: "Action",
-      width: 210,
-      pinned: 'right',
       cellClass: OPERATIONAL_GRID_CLASSES.actionCell,
       headerClass: OPERATIONAL_GRID_CLASSES.actionHeader,
       sortable: false,
       filter: false,
       cellRenderer: (p: any) => p.data ? renderPrimaryRowActions(p.data) : null,
       lockVisible: true
-    }
+    }, OPERATIONAL_GRID_WIDTHS.standardAction)
   ]
   
   // Inject saved layout state (widths, pinned, sort) into definitions before first render

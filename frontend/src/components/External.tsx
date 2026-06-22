@@ -43,10 +43,14 @@ import {
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
 import {
+  applyOperationalActionColumn,
+  applyOperationalIdentityColumn,
   OPERATIONAL_GRID_CLASSES,
+  OPERATIONAL_GRID_EMPTY_VALUE_CLASS,
+  OPERATIONAL_GRID_PLAIN_VALUE_CLASS,
   OPERATIONAL_GRID_PRIMARY_BUTTON_CLASS,
   OPERATIONAL_GRID_PRIMARY_TEXT_CLASS,
-  OPERATIONAL_GRID_TEXT_CLASS,
+  OPERATIONAL_GRID_WIDTHS,
 } from './shared/OperationalGridContract'
 import {
   useOperationalRowInteractions,
@@ -1878,6 +1882,14 @@ export default function External() {
     setSelectedIds(selectedNodes.map((n: any) => n.data?.id).filter(Boolean))
   }, [])
 
+  const handleColumnMoved = useCallback((event: any) => {
+    if (!event.source.includes('drag')) syncColumnLayoutState(event.api, true)
+  }, [syncColumnLayoutState])
+
+  const handleDragStopped = useCallback((event: any) => syncColumnLayoutState(event.api, true), [syncColumnLayoutState])
+  const handleColumnPinned = useCallback((event: any) => syncColumnLayoutState(event.api, true), [syncColumnLayoutState])
+  const handleColumnVisible = useCallback((event: any) => syncColumnLayoutState(event.api, true), [syncColumnLayoutState])
+
   const getRowClass = useCallback((params: any) => {
     return params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd'
   }, [])
@@ -1885,7 +1897,7 @@ export default function External() {
   const getExternalRowId = (params: any) => String(params.data?.id ?? '')
 
   const renderPrimaryRowActions = (item: any) => (
-    <div className="flex items-center justify-end gap-1.5 pr-2">
+    <div className="flex items-center justify-center gap-1.5">
       <button
         type="button"
         onClick={(event) => {
@@ -2085,11 +2097,10 @@ export default function External() {
       hide: !isIntelligenceExpanded
     }
     ] : []),
-    { 
+    applyOperationalIdentityColumn({
       colId: activeTab === 'links' ? "external_entity_name" : "name",
       field: activeTab === 'links' ? "external_entity_name" : "name", 
       headerName: activeTab === 'links' ? "External Peer" : "Name", 
-      pinned: 'left',
       flex: 2,
       minWidth: 200,
       filter: true,
@@ -2114,7 +2125,7 @@ export default function External() {
         )
       ),
       hide: hiddenColumns.includes("name")
-    },
+    }),
     ...(activeTab === 'links' ? [
       {
         colId: "direction",
@@ -2139,7 +2150,7 @@ export default function External() {
          width: 160, 
          cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
          headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-         cellRenderer: (p: any) => <span className={OPERATIONAL_GRID_TEXT_CLASS}>{p.value || 'N/A'}</span>,
+         cellRenderer: (p: any) => <span className={p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>{p.value || 'N/A'}</span>,
          hide: hiddenColumns.includes("device_name")
       },
       {
@@ -2149,7 +2160,7 @@ export default function External() {
          width: 160, 
          cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
          headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-         cellRenderer: (p: any) => <span className={OPERATIONAL_GRID_TEXT_CLASS}>{p.value || 'N/A'}</span>,
+         cellRenderer: (p: any) => <span className={p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>{p.value || 'N/A'}</span>,
          hide: hiddenColumns.includes("service_name")
       },
       {
@@ -2159,11 +2170,11 @@ export default function External() {
          flex: 1.5, 
          headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
          cellClass: OPERATIONAL_GRID_CLASSES.leftBodyCell,
-         cellRenderer: (p: any) => <span className={OPERATIONAL_GRID_TEXT_CLASS}>{p.value || 'N/A'}</span>,
+         cellRenderer: (p: any) => <span className={p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>{p.value || 'N/A'}</span>,
          hide: hiddenColumns.includes("purpose")
       },
-      { colId: "protocol", field: "protocol", headerName: "Prot", width: 80, cellClass: "text-center font-mono font-bold uppercase flex items-center justify-center", headerClass: 'text-center', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>, hide: hiddenColumns.includes("protocol") },
-      { colId: "port", field: "port", headerName: "Port", width: 80, cellClass: "text-center font-mono font-bold uppercase flex items-center justify-center", headerClass: 'text-center', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>, hide: hiddenColumns.includes("port") },
+      { colId: "protocol", field: "protocol", headerName: "Prot", width: 80, cellClass: OPERATIONAL_GRID_CLASSES.centeredCell, headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader, cellRenderer: (p: any) => <span className={p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>{p.value || 'N/A'}</span>, hide: hiddenColumns.includes("protocol") },
+      { colId: "port", field: "port", headerName: "Port", width: 80, cellClass: OPERATIONAL_GRID_CLASSES.centeredCell, headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader, cellRenderer: (p: any) => <span className={p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>{p.value || 'N/A'}</span>, hide: hiddenColumns.includes("port") },
     ] : [
       { 
         colId: "type",
@@ -2194,9 +2205,9 @@ export default function External() {
          headerName: "Owner", 
          width: 140, 
          filter: true,
-         cellClass: 'text-center font-bold text-slate-400 flex items-center justify-center', 
-         headerClass: 'text-center', 
-         cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold">N/A</span>, 
+         cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
+         headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
+         cellRenderer: (p: any) => p.value ? <span className={OPERATIONAL_GRID_PLAIN_VALUE_CLASS}>{p.value}</span> : <span className={OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>N/A</span>,
          hide: hiddenColumns.includes("internal_owner") 
        },
       { 
@@ -2236,9 +2247,9 @@ export default function External() {
          headerName: "Env", 
          width: 110, 
          filter: true,
-         cellClass: 'text-center font-bold text-slate-400 uppercase flex items-center justify-center', 
-         headerClass: 'text-center',
-         cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
+         cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
+         headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
+         cellRenderer: (p: any) => p.value ? <span className={OPERATIONAL_GRID_PLAIN_VALUE_CLASS}>{p.value}</span> : <span className={OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>N/A</span>,
          hide: hiddenColumns.includes("environment")
        },
       {
@@ -2249,7 +2260,7 @@ export default function External() {
         minWidth: 150,
         headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
         cellClass: OPERATIONAL_GRID_CLASSES.leftBodyCell,
-        cellRenderer: (p: any) => <span className={OPERATIONAL_GRID_TEXT_CLASS}>{p.value || 'N/A'}</span>,
+        cellRenderer: (p: any) => <span className={p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>{p.value || 'N/A'}</span>,
         hide: hiddenColumns.includes("business_purpose")
       },
       {
@@ -2262,18 +2273,16 @@ export default function External() {
          hide: hiddenColumns.includes("link_count")
        },
     ]),
-    { 
+    applyOperationalActionColumn({
       colId: "row_actions",
       headerName: "Action",
-      width: 210,
-      pinned: 'right',
       cellClass: OPERATIONAL_GRID_CLASSES.actionCell,
       headerClass: OPERATIONAL_GRID_CLASSES.actionHeader,
       sortable: false,
       filter: false,
       cellRenderer: (p: any) => p.data ? renderPrimaryRowActions(p.data) : null,
       lockVisible: true
-    }
+    }, OPERATIONAL_GRID_WIDTHS.compactAction)
   ]
 
     return baseColumns.map((column: any) => {
@@ -2283,7 +2292,10 @@ export default function External() {
     })
   }, [fontSize, hiddenColumns, activeTab, columnLayoutState, isRecentChange, preserveExplicitColumnWidths]) as any
 
-  const autoSizeStrategy = OPERATIONAL_GRID_AUTO_SIZE_STRATEGY
+  const autoSizeStrategy = useMemo(
+    () => (preserveExplicitColumnWidths ? undefined : OPERATIONAL_GRID_AUTO_SIZE_STRATEGY),
+    [preserveExplicitColumnWidths]
+  )
   const gridContext = useMemo(() => ({ activeTab, favoriteIds: normalizedFavoriteIds, watchIds: normalizedWatchIds }), [activeTab, normalizedFavoriteIds, normalizedWatchIds])
 
   useEffect(() => {
@@ -2918,10 +2930,10 @@ export default function External() {
             }}
             onSelectionChanged={handleExternalSelectionChanged}
             onColumnResized={handleColumnResized}
-            onColumnMoved={(event) => syncColumnLayoutState(event.api, true)}
-            onDragStopped={(event) => syncColumnLayoutState(event.api, true)}
-            onColumnPinned={(event) => syncColumnLayoutState(event.api, true)}
-            onColumnVisible={(event) => syncColumnLayoutState(event.api, true)}
+            onColumnMoved={handleColumnMoved}
+            onDragStopped={handleDragStopped}
+            onColumnPinned={handleColumnPinned}
+            onColumnVisible={handleColumnVisible}
             onFilterChanged={(event) => {
               setGridFilterModel(sanitizeOperationalFilterModel(event.api.getFilterModel(), EXTERNAL_PERSISTED_COLUMN_IDS))
             }}
@@ -3028,10 +3040,10 @@ export default function External() {
                       }}
                       onSelectionChanged={handleExternalSelectionChanged}
                       onColumnResized={handleColumnResized}
-                      onColumnMoved={(event) => syncColumnLayoutState(event.api, true)}
-                      onDragStopped={(event) => syncColumnLayoutState(event.api, true)}
-                      onColumnPinned={(event) => syncColumnLayoutState(event.api, true)}
-                      onColumnVisible={(event) => syncColumnLayoutState(event.api, true)}
+                      onColumnMoved={handleColumnMoved}
+                      onDragStopped={handleDragStopped}
+                      onColumnPinned={handleColumnPinned}
+                      onColumnVisible={handleColumnVisible}
                       onFilterChanged={(event) => {
                         setGridFilterModel(sanitizeOperationalFilterModel(event.api.getFilterModel(), EXTERNAL_PERSISTED_COLUMN_IDS))
                       }}
