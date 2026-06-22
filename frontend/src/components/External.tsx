@@ -43,15 +43,19 @@ import {
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
 import {
-  applyOperationalActionColumn,
-  applyOperationalIdentityColumn,
   OPERATIONAL_GRID_CLASSES,
   OPERATIONAL_GRID_EMPTY_VALUE_CLASS,
   OPERATIONAL_GRID_PLAIN_VALUE_CLASS,
-  OPERATIONAL_GRID_PRIMARY_BUTTON_CLASS,
-  OPERATIONAL_GRID_PRIMARY_TEXT_CLASS,
   OPERATIONAL_GRID_WIDTHS,
 } from './shared/OperationalGridContract'
+import {
+  createOperationalActionColumnDefinition,
+  createOperationalIdentityColumnDefinition,
+  createOperationalUtilityColumns,
+  renderOperationalActionButtons,
+  renderOperationalMappedBadgeCell,
+  useOperationalColumnSyncHandlers,
+} from './shared/OperationalGridStandard'
 import {
   useOperationalRowInteractions,
   useOperationalContextMenu,
@@ -1895,13 +1899,12 @@ export default function External() {
     setSelectedIds(selectedNodes.map((n: any) => n.data?.id).filter(Boolean))
   }, [])
 
-  const handleColumnMoved = useCallback((event: any) => {
-    if (!event.source.includes('drag')) syncColumnLayoutState(event.api, true)
-  }, [syncColumnLayoutState])
-
-  const handleDragStopped = useCallback((event: any) => syncColumnLayoutState(event.api, true), [syncColumnLayoutState])
-  const handleColumnPinned = useCallback((event: any) => syncColumnLayoutState(event.api, true), [syncColumnLayoutState])
-  const handleColumnVisible = useCallback((event: any) => syncColumnLayoutState(event.api, true), [syncColumnLayoutState])
+  const {
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
+  } = useOperationalColumnSyncHandlers(syncColumnLayoutState, true)
 
   const getRowClass = useCallback((params: any) => {
     return params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd'
@@ -1909,8 +1912,9 @@ export default function External() {
 
   const getExternalRowId = (params: any) => String(params.data?.id ?? '')
 
-  const renderPrimaryRowActions = (item: any) => (
-    <div className="flex items-center justify-center gap-1.5">
+  const renderPrimaryRowActions = useCallback((item: any) => (
+    renderOperationalActionButtons(
+      <>
       <button
         type="button"
         onClick={(event) => {
@@ -1965,8 +1969,9 @@ export default function External() {
       >
         <MoreVertical size={13} />
       </button>
-    </div>
-  )
+      </>
+    )
+  ), [activeTab, allEntities])
 
   const columnDefs = useMemo(() => {
     const layoutById = new Map(columnLayoutState.map((column: any) => [column.colId, column]))
@@ -1986,157 +1991,26 @@ export default function External() {
     }
 
     const baseColumns = [
-    { 
-      colId: "select",
-      headerName: "", 
-      width: 48,
-      checkboxSelection: true, 
-      headerCheckboxSelection: true, 
-      pinned: 'left', 
-      cellClass: OPERATIONAL_GRID_CLASSES.utilityCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.utilityHeader,
-      suppressSizeToFit: true,
-      sortable: false,
-      filter: false,
-      lockVisible: true
-    },
-    { 
-      colId: "id",
-      field: "id", 
-      headerName: "ID", 
-      width: 90, 
-      pinned: 'left',
-      cellClass: OPERATIONAL_GRID_CLASSES.idCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.idHeader,
-      filter: 'agNumberColumnFilter',
-      lockVisible: true
-    },
-    ...(activeTab !== 'links' ? [
-    {
-      colId: "recent_change",
-      headerName: "Chg",
-      field: "recent_change",
-      width: 80,
-      pinned: 'left',
-      sortable: false,
-      filter: false,
-      lockVisible: true,
-      cellClass: OPERATIONAL_GRID_CLASSES.utilityOverflowCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.utilityHeader,
-      hide: !isIntelligenceExpanded,
-      cellRenderer: (p: any) => {
-        if (!p.data || !isRecentChange(p.data)) return null
-        const dateStr = formatAppDate(p.data.updated_at || p.data.created_at)
-        const author = p.data.created_by_user_id || 'System'
-        return (
-          <div className="group relative flex items-center justify-center h-full w-full">
-            <div className="absolute h-10 w-10 rounded-lg bg-[radial-gradient(circle,_rgba(251,191,36,0.2)_0%,_transparent_70%)] blur-md animate-pulse" />
-            <span className="relative z-[1] block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
-            <div className="invisible group-hover:visible absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-[2000] w-52 p-3 rounded-lg border border-white/10 bg-slate-950/90 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl pointer-events-none transition-all duration-300 transform scale-95 group-hover:scale-100 opacity-0 group-hover:opacity-100">
-               <div className="flex items-center gap-2 mb-2">
-                 <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-400">Recent Activity</p>
-               </div>
-               <div className="space-y-1">
-                 <p className="text-[11px] text-slate-100 font-bold leading-tight">{dateStr}</p>
-                 <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/5">
-                    <User size={10} className="text-slate-500" />
-                    <p className="text-[9px] text-slate-500 font-bold tracking-widest">@{author}</p>
-                 </div>
-               </div>
-               <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-950/90" />
-            </div>
-          </div>
-        )
-      }
-    },
-    { 
-      colId: "favorite",
-      headerName: "Fav",
-      field: "favorite",
-      width: 80,
-      pinned: 'left',
-      cellClass: OPERATIONAL_GRID_CLASSES.utilityCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.utilityHeader,
-      valueGetter: (p: any) => p.context?.favoriteIds?.includes(Number(p.data?.id)) ? 1 : 0,
-      cellRenderer: (p: any) => {
-        const isFavorite = p.context?.favoriteIds?.includes(Number(p.data?.id))
-        return (
-          <div className="flex h-full w-full items-center justify-center">
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                toggleFavorite(p.data.id)
-              }}
-              title={isFavorite ? 'Unpin peer' : 'Pin peer'}
-              className={`rounded-lg p-1 transition-all flex items-center justify-center ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
-            >
-              <Star size={15} className={isFavorite ? 'fill-current' : ''} />
-            </button>
-          </div>
-        )
-      },
-      sortable: true,
-      filter: false,
-      lockVisible: true
-    },
-    { 
-      colId: "watch",
-      headerName: "Watch",
-      field: "watch",
-      width: 85,
-      pinned: 'left',
-      cellClass: OPERATIONAL_GRID_CLASSES.utilityCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.utilityHeader,
-      cellRenderer: (p: any) => {
-        const isWatched = p.context?.watchIds?.includes(Number(p.data?.id))
-        return (
-          <div className="flex h-full w-full items-center justify-center">
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                toggleWatch(p.data.id)
-              }}
-              title={isWatched ? 'Unfollow peer' : 'Follow peer'}
-              className={`rounded-lg p-1 transition-all flex items-center justify-center ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
-            >
-              <Eye size={15} className={isWatched ? 'fill-current' : ''} />
-            </button>
-          </div>
-        )
-      },
-      sortable: false,
-      filter: false,
-      hide: !isIntelligenceExpanded
-    }
-    ] : []),
-    applyOperationalIdentityColumn({
-      colId: activeTab === 'links' ? "external_entity_name" : "name",
-      field: activeTab === 'links' ? "external_entity_name" : "name", 
-      headerName: activeTab === 'links' ? "External Peer" : "Name", 
-      filter: true,
-      cellClass: OPERATIONAL_GRID_CLASSES.primaryCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
-      cellRenderer: (p: any) => (
-        activeTab === 'links' ? (
-          <span className={OPERATIONAL_GRID_PRIMARY_TEXT_CLASS}>{p.value}</span>
-        ) : (
-          <button
-            type="button"
-            title="View Details"
-            onMouseDown={(event) => event.stopPropagation()}
-            onClick={(event) => {
-              event.stopPropagation()
-              setActiveDetails(p.data)
-            }}
-            className={OPERATIONAL_GRID_PRIMARY_BUTTON_CLASS}
-          >
-            {p.value}
-          </button>
-        )
-      ),
-      hide: hiddenColumns.includes("name")
-    }, { width: activeTab === 'links' ? 220 : 210, minWidth: 150, maxWidth: 320 }),
+    ...createOperationalUtilityColumns({
+      includeRecentChange: activeTab !== 'links',
+      includeFavorite: activeTab !== 'links',
+      includeWatch: activeTab !== 'links',
+      isIntelligenceExpanded,
+      isRecentChange,
+      onToggleFavorite: toggleFavorite,
+      onToggleWatch: toggleWatch,
+      itemLabel: 'peer',
+    }),
+    createOperationalIdentityColumnDefinition({
+      colId: activeTab === 'links' ? 'external_entity_name' : 'name',
+      field: activeTab === 'links' ? 'external_entity_name' : 'name',
+      headerName: activeTab === 'links' ? 'External Peer' : 'Name',
+      hide: hiddenColumns.includes(activeTab === 'links' ? 'external_entity_name' : 'name'),
+      width: activeTab === 'links' ? 220 : 210,
+      minWidth: 150,
+      maxWidth: 320,
+      onActivate: activeTab === 'links' ? undefined : (row) => setActiveDetails(row),
+    }),
     ...(activeTab === 'links' ? [
       {
         colId: "direction",
@@ -2145,13 +2019,15 @@ export default function External() {
          width: 120, 
          cellClass: "text-center flex items-center justify-center",
          headerClass: "text-center",
-         cellRenderer: (p: any) => (
-           <div className="flex items-center justify-center h-full">
-             <div style={{ fontSize: `${fontSize}px` }} className={`px-2 py-0.5 rounded-lg font-bold uppercase inline-block border ${p.value === 'Inbound' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : p.value === 'Bidirectional' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border-amber-500/30'}`}>
-               {p.value}
-             </div>
-           </div>
-         ),
+         cellRenderer: (p: any) => renderOperationalMappedBadgeCell({
+           value: p.value,
+           fontSize,
+           colorMap: {
+             Inbound: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
+             Bidirectional: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+             Outbound: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+           },
+         }),
          hide: hiddenColumns.includes("direction")
       },
       {
@@ -2229,8 +2105,10 @@ export default function External() {
          filter: true,
          cellClass: 'text-center flex items-center justify-center',
          headerClass: 'text-center',
-         cellRenderer: (p: any) => {
-           const colors: any = {
+         cellRenderer: (p: any) => renderOperationalMappedBadgeCell({
+           value: p.value || 'Planned',
+           fontSize,
+           colorMap: {
              Active: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
              Maintenance: 'text-amber-400 border-amber-500/40 bg-amber-500/20',
              Decommissioned: 'text-rose-400 border-rose-500/40 bg-rose-500/20',
@@ -2238,18 +2116,9 @@ export default function External() {
              Standby: 'text-sky-400 border-sky-500/40 bg-sky-500/20',
              Failed: 'text-rose-500 border-rose-600/40 bg-rose-600/20',
              Provisioning: 'text-indigo-400 border-indigo-500/40 bg-indigo-500/20',
-             Reserved: 'text-purple-400 border-purple-500/40 bg-purple-500/20'
-           }
-           return (
-             <div className="flex items-center justify-center h-full w-full">
-               <div className={`flex items-center justify-center px-3 h-5 rounded-lg border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
-                 <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">
-                   {p.value || 'Planned'}
-                 </span>
-               </div>
-             </div>
-           )
-         },
+             Reserved: 'text-purple-400 border-purple-500/40 bg-purple-500/20',
+           },
+         }),
          hide: hiddenColumns.includes("status")
        },
       { 
@@ -2284,16 +2153,10 @@ export default function External() {
          hide: hiddenColumns.includes("link_count")
        },
     ]),
-    applyOperationalActionColumn({
-      colId: "row_actions",
-      headerName: "Action",
-      cellClass: OPERATIONAL_GRID_CLASSES.actionCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.actionHeader,
-      sortable: false,
-      filter: false,
-      cellRenderer: (p: any) => p.data ? renderPrimaryRowActions(p.data) : null,
-      lockVisible: true
-    }, OPERATIONAL_GRID_WIDTHS.compactAction)
+    createOperationalActionColumnDefinition({
+      width: OPERATIONAL_GRID_WIDTHS.compactAction,
+      renderActions: renderPrimaryRowActions,
+    })
   ]
 
     return baseColumns.map((column: any) => {
@@ -2301,7 +2164,18 @@ export default function External() {
       const layout = layoutById.get(colId)
       return lockFixedUtilityWidth(applyOperationalColumnSizing(column, layout, preserveExplicitColumnWidths), layout)
     })
-  }, [fontSize, hiddenColumns, activeTab, columnLayoutState, isRecentChange, preserveExplicitColumnWidths]) as any
+  }, [
+    activeTab,
+    columnLayoutState,
+    fontSize,
+    hiddenColumns,
+    isIntelligenceExpanded,
+    isRecentChange,
+    preserveExplicitColumnWidths,
+    renderPrimaryRowActions,
+    toggleFavorite,
+    toggleWatch,
+  ]) as any
 
   const autoSizeStrategy = useMemo(
     () => (preserveExplicitColumnWidths ? undefined : OPERATIONAL_GRID_AUTO_SIZE_STRATEGY),

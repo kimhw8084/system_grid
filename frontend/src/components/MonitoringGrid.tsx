@@ -6,7 +6,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import CodeMirror from '@uiw/react-codemirror'
 import { sql } from '@codemirror/lang-sql'
 import { javascript } from '@codemirror/lang-javascript'
-import { AgGridReact } from "ag-grid-react"
 import {
   Activity, Plus, Search, Filter, ExternalLink,
   Trash2, Edit2, Shield, Cpu, Database, Network, 
@@ -32,7 +31,6 @@ import {
   WorkspaceFieldError as FieldError,
   WorkspaceFieldLabel as FieldLabel,
   WorkspaceFloatingPanel,
-  WorkspaceHoverPreview as HoverPreview,
   WorkspaceInfoTooltip,
   WorkspaceSectionBadge,
   WorkspaceModalFooter,
@@ -62,6 +60,7 @@ import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, Tool
 import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
 import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } from './shared/WorkspaceModalShells'
 import { OperationalImportModal } from './shared/OperationalImportModal'
+import { OperationalGridMatrix } from './shared/OperationalGridMatrix'
 import {
   OperationalAnchoredPanel,
   OperationalDisplayPanel,
@@ -83,15 +82,15 @@ import {
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
 import {
-  applyOperationalActionColumn,
-  OPERATIONAL_GRID_CLASSES,
-  OPERATIONAL_GRID_EMPTY_VALUE_CLASS,
-  OPERATIONAL_GRID_ICON_VALUE_CLASS,
-  OPERATIONAL_GRID_PLAIN_VALUE_CLASS,
-  OPERATIONAL_GRID_PRIMARY_TEXT_CLASS,
+  type OperationalColumnConfig,
   OPERATIONAL_GRID_WIDTHS,
-  applyOperationalIdentityColumn,
 } from './shared/OperationalGridContract'
+import {
+  buildOperationalColumnDefinitions,
+  createOperationalUtilityColumns,
+  renderOperationalActionButtons,
+  useOperationalColumnSyncHandlers,
+} from './shared/OperationalGridStandard'
 
 const MONITORING_VIEW_STORAGE_KEY = 'sysgrid_monitoring_views_v1'
 const MONITORING_ACTIVE_VIEW_KEY = 'sysgrid_monitoring_active_view_v1'
@@ -177,6 +176,14 @@ const MONITORING_OWNER_ROLES = [
   { value: 'Escalation', label: 'Escalation' },
   { value: 'Observer', label: 'Observer' }
 ]
+
+const MONITORING_CATEGORY_COLORS: Record<string, string> = {
+  Hardware: 'text-amber-500',
+  Network: 'text-blue-500',
+  OS: 'text-purple-500',
+  Application: 'text-emerald-500',
+  Database: 'text-rose-500',
+}
 
 const MONITORING_REQUIRED_FIELD_NAMES = new Set(['title', 'category', 'status', 'severity'])
 
@@ -356,147 +363,6 @@ const getAnchoredFloatingStyle = ({
     zIndex
   }
 }
-
-const getPointFloatingStyle = ({
-  x,
-  y,
-  width,
-  height,
-  zIndex,
-  offset = 0
-}: {
-  x: number
-  y: number
-  width: number
-  height: number
-  zIndex: number
-  offset?: number
-}) => {
-  const vW = window.innerWidth
-  const vH = window.innerHeight
-
-  const style: any = {
-    position: 'fixed' as const,
-    width,
-    maxHeight: `calc(100vh - ${FLOATING_PANEL_EDGE * 2}px)`,
-    zIndex
-  }
-
-  // Horizontal positioning
-  if (x + width > vW - FLOATING_PANEL_EDGE) {
-    style.right = vW - x
-  } else {
-    style.left = Math.max(FLOATING_PANEL_EDGE, x)
-  }
-
-  // Vertical positioning
-  if (y + height > vH - FLOATING_PANEL_EDGE) {
-    style.bottom = vH - y
-  } else {
-    style.top = Math.max(FLOATING_PANEL_EDGE, y)
-  }
-
-  return style
-}
-
-// Isolated component to prevent UI state changes (menus) from triggering AgGrid recalculations
-const GridMatrix = React.memo(({ 
-  gridRef, 
-  rowData, 
-  columnDefs, 
-  autoSizeStrategy,
-  colResizeDefault,
-  fontSize, 
-  rowDensity, 
-  context,
-  getRowId,
-  onGridReady,
-  onSelectionChanged,
-  onColumnResized,
-  onColumnMoved,
-  onDragStopped,
-  onColumnPinned,
-  onColumnVisible,
-  onFilterChanged,
-  onSortChanged,
-  onRowClicked,
-  onRowDoubleClicked,
-  onCellContextMenu,
-  getRowClass,
-  onFirstDataRendered,
-  onRowDataUpdated
-}: any) => {
-  const apiRef = useRef<any>(null)
-
-  const defaultColDef = useMemo(() => ({
-    sortable: true,
-    resizable: true,
-    filter: true,
-    suppressMovable: false
-  }), [])
-
-  useEffect(() => {
-    if (apiRef.current) {
-      apiRef.current.refreshCells({ columns: ['favorite', 'watch'], force: true })
-    }
-  }, [context])
-
-  return (
-    <AgGridReact
-      ref={(ref) => {
-        apiRef.current = ref?.api
-        if (gridRef) {
-          if (typeof gridRef === 'function') gridRef(ref)
-          else gridRef.current = ref
-        }
-      }}
-      rowData={rowData}
-      columnDefs={columnDefs}
-      autoSizeStrategy={autoSizeStrategy}
-      colResizeDefault={colResizeDefault}
-      defaultColDef={defaultColDef}
-      getRowId={getRowId}
-      rowSelection="multiple"
-      animateRows={false}
-      headerHeight={fontSize + rowDensity + 10}
-      rowHeight={fontSize + rowDensity + 4}
-      rowBuffer={6}
-      valueCache={true}
-      context={context}
-      onGridReady={onGridReady}
-      onSelectionChanged={onSelectionChanged}
-      onColumnResized={onColumnResized}
-      onColumnMoved={onColumnMoved}
-      onDragStopped={onDragStopped}
-      onColumnPinned={onColumnPinned}
-      onColumnVisible={onColumnVisible}
-      onFilterChanged={onFilterChanged}
-      onSortChanged={onSortChanged}
-      onRowClicked={onRowClicked}
-      onRowDoubleClicked={onRowDoubleClicked}
-      onCellContextMenu={onCellContextMenu}
-      getRowClass={getRowClass}
-      onFirstDataRendered={onFirstDataRendered}
-      onRowDataUpdated={onRowDataUpdated}
-      suppressScrollOnNewData={true}
-      suppressCellFocus={true}
-      suppressRowClickSelection={true}
-      enableCellTextSelection={true}
-      suppressMovableColumns={false}
-      ensureDomOrder={false}
-      overlayNoRowsTemplate="<span class='text-slate-500 font-semibold text-[10px]'>No monitoring data found</span>"
-    />
-  )
-}, (prev, next) => {
-  return prev.rowData === next.rowData && 
-         prev.columnDefs === next.columnDefs && 
-         prev.fontSize === next.fontSize && 
-         prev.rowDensity === next.rowDensity &&
-         prev.context?.favoriteIds === next.context?.favoriteIds &&
-         prev.context?.watchIds === next.context?.watchIds
-})
-GridMatrix.displayName = 'GridMatrix'
-
 
 const getMonitorGroupValue = (item: any, field: string) => {
   if (field === 'notification_method') return item.notification_method || 'No notification path'
@@ -857,13 +723,12 @@ export default function MonitoringGrid() {
     setSelectedIds(allSelected)
   }, [])
 
-  const handleColumnMoved = useCallback((event: any) => {
-    if (!event.source.includes('drag')) syncColumnLayoutState(event.api)
-  }, [syncColumnLayoutState])
-
-  const handleDragStopped = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
-  const handleColumnPinned = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
-  const handleColumnVisible = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
+  const {
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
+  } = useOperationalColumnSyncHandlers(syncColumnLayoutState, false)
   const handleFilterChanged = useCallback((e: any) => setGridFilterModel(e.api.getFilterModel() || {}), [])
   const handleMonitoringColumnResized = useCallback((event: any) => {
     const source = event?.source || ''
@@ -1014,7 +879,7 @@ export default function MonitoringGrid() {
     pendingIds
   })
 
-  const openRecoveryDocuments = (item: any) => {
+  const openRecoveryDocuments = useCallback((item: any) => {
     const recoveryDocs = item.recovery_docs || []
     setBkmPopup({
       docs: recoveryDocs,
@@ -1022,12 +887,14 @@ export default function MonitoringGrid() {
       titles: item.recovery_doc_titles || [],
       monitorId: item.id
     })
-  }
+  }, [])
 
-  const renderPrimaryRowActions = (item: any) => {
+  const renderPrimaryRowActions = useCallback((item: any) => {
     const isPending = pendingIds.includes(item.id)
     return (
-      <div className={`flex items-center justify-center gap-1.5 ${isPending ? 'opacity-20 grayscale pointer-events-none' : ''}`}>
+      <div className={isPending ? 'opacity-20 grayscale pointer-events-none' : ''}>
+        {renderOperationalActionButtons(
+          <>
         <button
           type="button"
           onClick={(event) => {
@@ -1081,9 +948,11 @@ export default function MonitoringGrid() {
         >
           <MoreVertical size={13} />
         </button>
+          </>
+        )}
       </div>
     )
-  }
+  }, [openRecoveryDocuments, pendingIds])
 
   const handleExportCSV = () => {
     if (gridRef.current?.api) {
@@ -1717,346 +1586,145 @@ export default function MonitoringGrid() {
       }
     }
     
-    const defs = [
-    { 
-      colId: "select",
-      headerName: "", 
-      width: 48,
-      checkboxSelection: true, 
-      headerCheckboxSelection: true, 
-      pinned: 'left', 
-      cellClass: OPERATIONAL_GRID_CLASSES.utilityCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.utilityHeader,
-      suppressSizeToFit: true,
-      sortable: false,
-      filter: false,
-      lockVisible: true
-    },
-    { 
-      colId: "id",
-      field: "id", 
-      headerName: "ID", 
-      width: 90,
-      pinned: 'left',
-      cellClass: OPERATIONAL_GRID_CLASSES.idCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.idHeader,
-      filter: 'agNumberColumnFilter',
-      lockVisible: true
+  const columnConfigs: OperationalColumnConfig[] = [
+    {
+      kind: 'identity',
+      field: 'title',
+      headerName: 'Title',
+      hide: hiddenColumns.includes('title'),
+      width: 240,
+      minWidth: 170,
+      maxWidth: 340,
     },
     {
-      colId: "recent_change",
-      headerName: "Chg",
-      field: "recent_change",
-      width: 80,
-      pinned: 'left',
-      sortable: false,
-      filter: false,
-      lockVisible: true,
-      cellClass: OPERATIONAL_GRID_CLASSES.utilityOverflowCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.utilityHeader,
-      hide: !isIntelligenceExpanded,
-      cellRenderer: (p: any) => {
-        if (!p.data || !isRecentChange(p.data)) return null
-        const dateStr = formatAppDate(p.data.updated_at || p.data.created_at)
-        const author = p.data.created_by_user_id || 'System'
-        return (
-          <div className="group relative flex items-center justify-center h-full w-full">
-            <div className="absolute h-10 w-10 rounded-lg bg-[radial-gradient(circle,_rgba(251,191,36,0.2)_0%,_transparent_70%)] blur-md animate-pulse" />
-            <span className="relative z-[1] block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
-            
-            {/* Hover Peek Activity */}
-            <div className="invisible group-hover:visible absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-[2000] w-52 p-3 rounded-lg border border-white/10 bg-slate-950/90 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl pointer-events-none transition-all duration-300 transform scale-95 group-hover:scale-100 opacity-0 group-hover:opacity-100">
-               <div className="flex items-center gap-2 mb-2">
-                 <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-400">Recent Activity</p>
-               </div>
-               <div className="space-y-1">
-                 <p className="text-[11px] text-slate-100 font-bold leading-tight">{dateStr}</p>
-                 <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/5">
-                    <User size={10} className="text-slate-500" />
-                    <p className="text-[9px] text-slate-500 font-bold tracking-widest">@{author}</p>
-                 </div>
-               </div>
-               {/* Arrow */}
-               <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-950/90" />
-            </div>
-          </div>
-        )
-      }
+      kind: 'plain',
+      field: 'device_name',
+      headerName: 'Target Asset',
+      width: 160,
+      hide: hiddenColumns.includes('device_name'),
     },
     {
-      colId: "favorite",
-      headerName: "Fav",
-      field: "favorite",
-      width: 80,
-      pinned: 'left',
-      cellClass: OPERATIONAL_GRID_CLASSES.utilityCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.utilityHeader,
-      sortable: true,
-      filter: false,
-      lockVisible: true,
-      valueGetter: (p: any) => p.context?.favoriteIds?.includes(p.data?.id) ? 1 : 0,
-      cellRenderer: (p: any) => {
-        const isFavorite = p.context?.favoriteIds?.includes(p.data?.id)
-        return (
-          <div className="flex h-full w-full items-center justify-center">
-            <button
-              onClick={(event) => {
-                event.stopPropagation()
-                toggleFavorite(p.data.id)
-              }}
-              title={isFavorite ? 'Unpin monitor' : 'Pin monitor'}
-              className={`rounded-lg p-1 transition-all flex items-center justify-center ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
-            >
-              <Star size={15} className={isFavorite ? 'fill-current' : ''} />
-            </button>
-          </div>
-        )
-      }
-    },
-    {
-      colId: "watch",
-      headerName: "Watch",
-      field: "watch",
-      width: 85,
-      pinned: 'left',
-      cellClass: OPERATIONAL_GRID_CLASSES.utilityCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.utilityHeader,
-      sortable: false,
-      filter: false,
-      lockVisible: true,
-      hide: !isIntelligenceExpanded,
-      cellRenderer: (p: any) => {
-        const isWatched = p.context?.watchIds?.includes(p.data?.id)
-        return (
-          <div className="flex h-full w-full items-center justify-center">
-            <button
-              onClick={(event) => {
-                event.stopPropagation()
-                toggleWatch(p.data.id)
-              }}
-              title={isWatched ? 'Unfollow monitor' : 'Follow monitor'}
-              className={`rounded-lg p-1 transition-all flex items-center justify-center ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
-            >
-              <Eye size={15} className={isWatched ? 'fill-current' : ''} />
-            </button>
-          </div>
-        )
-      }
-    },
-    applyOperationalIdentityColumn({
-      field: "title", 
-      headerName: "Title", 
-      filter: true,
-      cellClass: OPERATIONAL_GRID_CLASSES.primaryCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
-      cellRenderer: (p: any) => <span className={OPERATIONAL_GRID_PRIMARY_TEXT_CLASS}>{p.value}</span>,
-      hide: hiddenColumns.includes("title")
-    }, { width: 240, minWidth: 170, maxWidth: 340 }),
-    { 
-      field: "device_name", 
-      headerName: "Target Asset", 
-      width: 160, 
-      filter: true,
-      cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-      cellRenderer: (p: any) => <span className={p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>{p.value || 'N/A'}</span>,
-      hide: hiddenColumns.includes("device_name")
-    },
-    { 
-      field: "status", 
-      headerName: "Status", 
+      kind: 'badge',
+      field: 'status',
+      headerName: 'Status',
       width: 130,
-      filter: true,
-      cellClass: 'text-center flex items-center justify-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => <StatusPill value={p.value || 'Unknown'} fontSize={fontSize} />,
-      hide: hiddenColumns.includes("status")
+      fontSize,
+      emptyValue: 'Unknown',
+      hide: hiddenColumns.includes('status'),
     },
-    { 
-      field: "owners",
-      headerName: "Owners",
+    {
+      kind: 'hoverSummary',
+      field: 'owners',
+      headerName: 'Owners',
       width: 140,
-      filter: true,
-      cellClass: "text-center font-bold flex items-center justify-center",
-      headerClass: 'text-center',
-      valueFormatter: (p: any) => p.value?.map((o: any) => o.name).join(', ') || 'N/A',
-      cellRenderer: (p: any) => {
-        const owners = p.value || []
-        const count = owners.length
-        if (count === 0) return <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500">N/A</span>
-        const summary = count > 1 ? `${owners[0].name} +${count - 1}` : owners[0].name
-        const tooltip = owners
-          .map((owner: any) => `${owner.name}${owner.role ? ` (${owner.role})` : ''}${owner.external_id ? ` - ${owner.external_id}` : ''}`)
-          .join('\n')
-        return (
-          <HoverPreview summary={summary} tooltip={tooltip} fontSize={fontSize} />
-        )
-      },
-      hide: hiddenColumns.includes("owners")
+      fontSize,
+      getItems: (p) => p.value || [],
+      getSummary: (owners: any[]) => owners.length > 1 ? `${owners[0].name} +${owners.length - 1}` : owners[0].name,
+      getTooltip: (owners: any[]) => owners
+        .map((owner: any) => `${owner.name}${owner.role ? ` (${owner.role})` : ''}${owner.external_id ? ` - ${owner.external_id}` : ''}`)
+        .join('\n'),
+      hide: hiddenColumns.includes('owners'),
     },
-    { 
-      field: "category", 
-      headerName: "Category", 
+    {
+      kind: 'mappedText',
+      field: 'category',
+      headerName: 'Category',
       width: 140,
-      filter: true,
-      cellClass: 'text-center flex items-center justify-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        const colors: any = {
-          'Hardware': 'text-amber-500',
-          'Network': 'text-blue-500',
-          'OS': 'text-purple-500',
-          'Application': 'text-emerald-500',
-          'Database': 'text-rose-500'
-        }
-        return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold ${colors[p.value] || 'text-slate-400'}`}>{p.value || 'N/A'}</span>
-      },
-      hide: hiddenColumns.includes("category")
+      fontSize,
+      colorMap: MONITORING_CATEGORY_COLORS,
+      hide: hiddenColumns.includes('category'),
     },
-    { 
-      field: "is_active", 
-      headerName: "Existing", 
+    {
+      kind: 'activeDot',
+      field: 'is_active',
+      headerName: 'Existing',
       width: 70,
-      cellClass: OPERATIONAL_GRID_CLASSES.centeredOverflowCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-      cellRenderer: (p: any) => {
-        const isActive = p.value
-        const isDeleted = p.data?.is_deleted || p.data?.status === 'Deleted'
-        return (
-          <div className="flex items-center justify-center h-full">
-            <div className="relative">
-              <div className={`w-2 h-2 rounded-full ${isDeleted ? 'bg-slate-700' : isActive ? 'bg-emerald-500' : 'bg-rose-500/50'}`} />
-              {(isActive && !isDeleted) && (
-                <div className="absolute -inset-1 rounded-lg bg-emerald-500 animate-pulse opacity-40 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
-              )}
-            </div>
-          </div>
-        )
-      },      hide: hiddenColumns.includes("is_active")
+      getIsDeleted: (p) => p.data?.is_deleted || p.data?.status === 'Deleted',
+      hide: hiddenColumns.includes('is_active'),
     },
-    { 
-      field: "monitored_service_names", 
-      headerName: "Services", 
-      width: 110, 
-      valueFormatter: (p: any) => p.value?.join(', ') || 'N/A',
-      cellClass: "text-center flex items-center justify-center", 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => {
-        const names = p.value || []
-        const count = names.length
-        if (count === 0) return <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold">N/A</span>
-        const summary = count > 1 ? `${names[0]} +${count - 1}` : names[0]
-        return (
-          <div className="flex items-center justify-center h-full">
-            <HoverPreview
-              summary={summary}
-              tooltip={names.join('\n')}
-              tone="blue"
-              fontSize={fontSize}
-            />
-          </div>
-        )
-      },
-      hide: hiddenColumns.includes("monitored_service_names")
+    {
+      kind: 'hoverSummary',
+      field: 'monitored_service_names',
+      headerName: 'Services',
+      width: 110,
+      fontSize,
+      tone: 'blue',
+      getItems: (p) => p.value || [],
+      getSummary: (names: any[]) => names.length > 1 ? `${names[0]} +${names.length - 1}` : names[0],
+      getTooltip: (names: any[]) => names.join('\n'),
+      hide: hiddenColumns.includes('monitored_service_names'),
     },
-    { 
-      field: "platform", 
-      headerName: "Platform", 
-      filter: true,
-      cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-      cellRenderer: (p: any) => p.value ? <span className={OPERATIONAL_GRID_PLAIN_VALUE_CLASS}>{p.value}</span> : <span className={OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>N/A</span>,
-      hide: hiddenColumns.includes("platform")
+    {
+      kind: 'plain',
+      field: 'platform',
+      headerName: 'Platform',
+      hide: hiddenColumns.includes('platform'),
     },
-    { 
-      field: "severity", 
-      headerName: "Severity", 
+    {
+      kind: 'badge',
+      field: 'severity',
+      headerName: 'Severity',
       width: 130,
-      filter: true,
-      cellClass: 'text-center flex items-center justify-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => <StatusPill value={p.value || 'N/A'} fontSize={fontSize} />,
-      hide: hiddenColumns.includes("severity")
+      fontSize,
+      hide: hiddenColumns.includes('severity'),
     },
-    { 
-      field: "check_interval", 
-      headerName: "Freq", 
-      width: 80, 
-      cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-      cellRenderer: (p: any) => <span className={p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>{p.value ? `${p.value}s` : 'N/A'}</span>,
-      hide: hiddenColumns.includes("check_interval")
+    {
+      kind: 'plain',
+      field: 'check_interval',
+      headerName: 'Freq',
+      width: 80,
+      formatValue: (value) => value ? `${value}s` : null,
+      hide: hiddenColumns.includes('check_interval'),
     },
-    { 
-      field: "notification_method", 
-      headerName: "Notify", 
-      width: 130, 
-      filter: true,
-      cellClass: 'text-center flex items-center justify-center', 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center h-full">
-           <button 
-             onClick={() => setRecipientPopup({ recipients: p.data.notification_recipients || [], method: p.value })}
-             className="flex items-center space-x-1 hover:text-blue-400 transition-colors"
-           >
-              <span style={{ fontSize: `${fontSize}px` }} className="font-bold text-slate-300 border-b border-dashed border-slate-700">{p.value || 'N/A'}</span>
-           </button>
-        </div>
-      ),
-      hide: hiddenColumns.includes("notification_method")
+    {
+      kind: 'actionLink',
+      field: 'notification_method',
+      headerName: 'Notify',
+      width: 130,
+      fontSize,
+      onActivate: (p) => setRecipientPopup({ recipients: p.data.notification_recipients || [], method: p.value }),
+      hide: hiddenColumns.includes('notification_method'),
     },
-    { 
-      field: "purpose", 
-      headerName: "Purpose", 
+    {
+      kind: 'prose',
+      field: 'purpose',
+      headerName: 'Purpose',
       width: 220,
-      filter: true,
-      cellClass: OPERATIONAL_GRID_CLASSES.leftBodyCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
-      cellRenderer: (p: any) => <span className={p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>{p.value || 'N/A'}</span>,
-      hide: hiddenColumns.includes("purpose")
+      hide: hiddenColumns.includes('purpose'),
     },
-    { 
-      field: "created_at", 
-      headerName: "Created", 
+    {
+      kind: 'date',
+      field: 'created_at',
+      headerName: 'Created',
       width: 180,
-      filter: 'agDateColumnFilter',
-      cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-      cellRenderer: (p: any) => p.value ? (
-        <div className={OPERATIONAL_GRID_ICON_VALUE_CLASS}>
-           <Clock size={12} className="opacity-40" />
-           <span className={OPERATIONAL_GRID_PLAIN_VALUE_CLASS}>{formatAppDate(p.value)}</span>
-        </div>
-      ) : <span className={OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>N/A</span>,
-      hide: hiddenColumns.includes("created_at")
+      hide: hiddenColumns.includes('created_at'),
     },
-    { 
-      field: "updated_at", 
-      headerName: "Updated", 
+    {
+      kind: 'date',
+      field: 'updated_at',
+      headerName: 'Updated',
       width: 180,
-      filter: 'agDateColumnFilter',
-      cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-      cellRenderer: (p: any) => p.value ? (
-        <div className={OPERATIONAL_GRID_ICON_VALUE_CLASS}>
-           <Clock size={12} className="opacity-40" />
-           <span className={OPERATIONAL_GRID_PLAIN_VALUE_CLASS}>{formatAppDate(p.value)}</span>
-        </div>
-      ) : <span className={OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>N/A</span>,
-      hide: hiddenColumns.includes("updated_at")
+      hide: hiddenColumns.includes('updated_at'),
     },
-    applyOperationalActionColumn({
-      colId: "row_actions",
-      headerName: "Action",
-      cellClass: OPERATIONAL_GRID_CLASSES.actionCell,
-      headerClass: OPERATIONAL_GRID_CLASSES.actionHeader,
-      sortable: false,
-      filter: false,
-      cellRenderer: (p: any) => p.data ? renderPrimaryRowActions(p.data) : null,
-      lockVisible: true
-    }, OPERATIONAL_GRID_WIDTHS.standardAction)
+    {
+      kind: 'action',
+      width: OPERATIONAL_GRID_WIDTHS.standardAction,
+      renderActions: renderPrimaryRowActions,
+    },
+  ]
+
+  const defs = [
+    ...createOperationalUtilityColumns({
+      includeRecentChange: true,
+      includeFavorite: true,
+      includeWatch: true,
+      isIntelligenceExpanded,
+      isRecentChange,
+      onToggleFavorite: toggleFavorite,
+      onToggleWatch: toggleWatch,
+      itemLabel: 'monitor',
+    }),
+    ...buildOperationalColumnDefinitions(columnConfigs),
   ]
   
   // Inject saved layout state (widths, pinned, sort) into definitions before first render
@@ -2087,7 +1755,17 @@ export default function MonitoringGrid() {
   }
 
   return mergedDefs
-}, [fontSize, hiddenColumns, columnLayoutState, isIntelligenceExpanded, preserveExplicitColumnWidths]) as any
+}, [
+  columnLayoutState,
+  fontSize,
+  hiddenColumns,
+  isIntelligenceExpanded,
+  isRecentChange,
+  preserveExplicitColumnWidths,
+  renderPrimaryRowActions,
+  toggleFavorite,
+  toggleWatch,
+]) as any
 
   const gridContext = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
   const autoSizeStrategy = useMemo(
@@ -2614,7 +2292,7 @@ export default function MonitoringGrid() {
             loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
             loadingLabel={<p className="text-[10px] font-semibold text-blue-400">Scanning monitoring matrix...</p>}
           >
-	          <GridMatrix
+	          <OperationalGridMatrix
             gridRef={gridRef}
 	            rowData={displayedItemsInOrder || []} 
 	            columnDefs={columnDefs} 
@@ -2639,6 +2317,7 @@ export default function MonitoringGrid() {
             getRowClass={getRowClass}
             onFirstDataRendered={handleGridDataUpdated}
             onRowDataUpdated={handleGridDataUpdated}
+            noRowsLabel="No monitoring data found"
 	          />
 
 	        </OperationalGridSurface>
@@ -2697,7 +2376,7 @@ export default function MonitoringGrid() {
                       height: `${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px`
                     } as React.CSSProperties}
                   >
-	                    <GridMatrix
+	                    <OperationalGridMatrix
                       rowData={section.items} 
                       columnDefs={columnDefs} 
                       autoSizeStrategy={autoSizeStrategy}
@@ -2720,6 +2399,7 @@ export default function MonitoringGrid() {
                       getRowClass={getRowClass}
 	                      onFirstDataRendered={handleGridDataUpdated}
 	                      onRowDataUpdated={handleGridDataUpdated}
+                      noRowsLabel="No monitoring data found"
                     />
                   </OperationalGridSurface>
                 )}
