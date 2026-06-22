@@ -1,0 +1,399 @@
+name: AI Review Packet
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      base:
+        description: "Base SHA/ref"
+        required: false
+        default: ""
+      head:
+        description: "Head SHA/ref"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  actions: read
+
+concurrency:
+  group: ai-review-packet-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review-packet:
+    name: Generate line-level AI review packet
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Resolve base/head
+        id: refs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+            PR_URL="${{ github.event.pull_request.html_url }}"
+          else
+            HEAD="${{ inputs.head }}"
+            BASE="${{ inputs.base }}"
+            if [[ -z "$HEAD" ]]; then HEAD="${{ github.sha }}"; fi
+            if [[ -z "$BASE" ]]; then BASE="$(git rev-parse "$HEAD~1")"; fi
+            PR_NUMBER=""
+            PR_URL=""
+          fi
+
+          git fetch --no-tags origin "$BASE" "$HEAD" || true
+
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "head=$HEAD" >> "$GITHUB_OUTPUT"
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Generate full diff packet
+        id: packet
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BASE="${{ steps.refs.outputs.base }}"
+          HEAD="${{ steps.refs.outputs.head }}"
+          PR_URL="${{ steps.refs.outputs.pr_url }}"
+          REPO="${{ github.repository }}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          mkdir -p ai-review/per-file ai-review/logs ai-review/meta
+
+          echo "$BASE" > ai-review/meta/base.txt
+          echo "$HEAD" > ai-review/meta/head.txt
+          echo "$REPO" > ai-review/meta/repo.txt
+          echo "$PR_URL" > ai-review/meta/pr_url.txt
+          echo "$RUN_URL" > ai-review/meta/run_url.txt
+
+          git diff --name-status "$BASE" "$HEAD" > ai-review/CHANGED_FILES.txt || true
+          git diff --numstat "$BASE" "$HEAD" > ai-review/NUMSTAT.txt || true
+          git diff --stat "$BASE" "$HEAD" > ai-review/DIFF_STAT.txt || true
+
+          git diff \
+            --find-renames \
+            --find-copies \
+            --unified=80 \
+            --src-prefix=a/ \
+            --dst-prefix=b/ \
+            "$BASE" "$HEAD" > ai-review/FULL_DIFF.diff || true
+
+          git format-patch \
+            --stdout \
+            --find-renames \
+            --find-copies \
+            "$BASE..$HEAD" > ai-review/FULL_PATCH.patch || true
+
+          nl -ba ai-review/FULL_DIFF.diff > ai-review/FULL_DIFF_NUMBERED.diff || true
+
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path("ai-review")
+          out = root / "per-file"
+          out.mkdir(parents=True, exist_ok=True)
+
+          text = (root / "FULL_DIFF.diff").read_text(errors="replace")
+          chunks = []
+          cur = []
+
+          for line in text.splitlines(keepends=True):
+              if line.startswith("diff --git ") and cur:
+                  chunks.append("".join(cur))
+                  cur = [line]
+              else:
+                  cur.append(line)
+
+          if cur:
+              chunks.append("".join(cur))
+
+          index = []
+
+          if not chunks or not text.strip():
+              (out / "000_NO_DIFF.diff").write_text("No diff found.\n")
+          else:
+              for i, chunk in enumerate(chunks, start=1):
+                  first = chunk.splitlines()[0] if chunk.splitlines() else f"file_{i}"
+                  m = re.search(r" b/(.+)$", first)
+                  path = m.group(1) if m else f"file_{i}"
+                  safe = re.sub(r"[^A-Za-z0-9._-]+", "_", path).strip("_")
+                  name = f"{i:03d}_{safe[:140]}.diff"
+                  (out / name).write_text(chunk, errors="replace")
+                  index.append(f"{i:03d} {path} -> ai-review/per-file/{name}")
+
+          (root / "PER_FILE_INDEX.txt").write_text("\n".join(index) + "\n")
+          PY
+
+          {
+            echo "# AI Review Packet"
+            echo ""
+            echo "## Handoff"
+            echo ""
+            echo '```text'
+            echo "Review this PR/commit line by line."
+            echo "Repo: $REPO"
+            echo "PR: $PR_URL"
+            echo "Base: $BASE"
+            echo "Head: $HEAD"
+            echo "Workflow run: $RUN_URL"
+            echo ""
+            echo "Review requirement:"
+            echo "Read every changed file and every diff hunk. Do not judge by changed-file count or summary."
+            echo '```'
+            echo ""
+            echo "## Changed Files"
+            echo ""
+            echo '```text'
+            cat ai-review/CHANGED_FILES.txt
+            echo '```'
+            echo ""
+            echo "## Diff Stat"
+            echo ""
+            echo '```text'
+            cat ai-review/DIFF_STAT.txt
+            echo '```'
+            echo ""
+            echo "## Per-file Diff Index"
+            echo ""
+            echo '```text'
+            cat ai-review/PER_FILE_INDEX.txt
+            echo '```'
+            echo ""
+            echo "## Full Unified Diff"
+            echo ""
+            echo '```diff'
+            cat ai-review/FULL_DIFF.diff
+            echo '```'
+          } > ai-review/REVIEW_PACKET.md
+
+          echo "changed_count=$(wc -l < ai-review/CHANGED_FILES.txt | tr -d ' ')" >> "$GITHUB_OUTPUT"
+          echo "diff_bytes=$(wc -c < ai-review/FULL_DIFF.diff | tr -d ' ')" >> "$GITHUB_OUTPUT"
+
+      - name: Run install/typecheck/build/test/lint if available
+        id: checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ai-review/logs
+
+          run_log() {
+            local name="$1"
+            shift
+            local log="ai-review/logs/${name}.log"
+
+            echo "COMMAND: $*" | tee "$log"
+            set +e
+            "$@" 2>&1 | tee -a "$log"
+            local status="${PIPESTATUS[0]}"
+            set -e
+            echo "EXIT_STATUS=$status" | tee -a "$log"
+            echo "$status" > "ai-review/logs/${name}.status"
+          }
+
+          has_script() {
+            node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts['$1'] ? 0 : 1)"
+          }
+
+          INSTALL="SKIPPED"
+          TYPECHECK="SKIPPED"
+          BUILD="SKIPPED"
+          TEST="SKIPPED"
+          LINT="SKIPPED"
+
+          if [[ -f package.json ]]; then
+            if [[ -f package-lock.json || -f npm-shrinkwrap.json ]]; then
+              run_log install npm ci --no-audit --no-fund
+            else
+              run_log install npm install --no-audit --no-fund
+            fi
+            INSTALL="$(cat ai-review/logs/install.status)"
+
+            if has_script typecheck; then
+              run_log typecheck npm run typecheck
+              TYPECHECK="$(cat ai-review/logs/typecheck.status)"
+            fi
+
+            if has_script build; then
+              run_log build npm run build
+              BUILD="$(cat ai-review/logs/build.status)"
+            fi
+
+            if has_script test; then
+              run_log test npm test -- --run
+              TEST="$(cat ai-review/logs/test.status)"
+            fi
+
+            if has_script lint; then
+              run_log lint npm run lint
+              LINT="$(cat ai-review/logs/lint.status)"
+            fi
+          fi
+
+          {
+            echo ""
+            echo "## Check Results"
+            echo ""
+            echo "| Check | Status |"
+            echo "|---|---:|"
+            echo "| install | $INSTALL |"
+            echo "| typecheck | $TYPECHECK |"
+            echo "| build | $BUILD |"
+            echo "| test | $TEST |"
+            echo "| lint | $LINT |"
+          } >> ai-review/REVIEW_PACKET.md
+
+          echo "install=$INSTALL" >> "$GITHUB_OUTPUT"
+          echo "typecheck=$TYPECHECK" >> "$GITHUB_OUTPUT"
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+          echo "test=$TEST" >> "$GITHUB_OUTPUT"
+          echo "lint=$LINT" >> "$GITHUB_OUTPUT"
+
+      - name: Compress review packet
+        shell: bash
+        run: |
+          tar -czf ai-review-packet.tar.gz ai-review
+
+      - name: Upload full review packet artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-review-packet-${{ steps.refs.outputs.head }}
+          path: |
+            ai-review/
+            ai-review-packet.tar.gz
+          retention-days: 14
+
+      - name: Build PR comment
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PR_URL="${{ steps.refs.outputs.pr_url }}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          {
+            echo "<!-- ai-review-packet:system-grid -->"
+            echo ""
+            echo "## Automated AI Review Packet"
+            echo ""
+            echo "This is not summary-only. The workflow generated:"
+            echo ""
+            echo "- \`ai-review/REVIEW_PACKET.md\`"
+            echo "- \`ai-review/FULL_DIFF.diff\`"
+            echo "- \`ai-review/FULL_DIFF_NUMBERED.diff\`"
+            echo "- \`ai-review/FULL_PATCH.patch\`"
+            echo "- \`ai-review/per-file/*.diff\`"
+            echo "- \`ai-review/logs/*.log\`"
+            echo ""
+            echo "### Direct links"
+            echo ""
+            echo "- PR: $PR_URL"
+            echo "- Full PR diff: ${PR_URL}.diff"
+            echo "- Full PR patch: ${PR_URL}.patch"
+            echo "- Workflow artifact: $RUN_URL"
+            echo ""
+            echo "### Refs"
+            echo ""
+            echo "\`\`\`text"
+            echo "base: ${{ steps.refs.outputs.base }}"
+            echo "head: ${{ steps.refs.outputs.head }}"
+            echo "changed_files: ${{ steps.packet.outputs.changed_count }}"
+            echo "diff_bytes: ${{ steps.packet.outputs.diff_bytes }}"
+            echo "\`\`\`"
+            echo ""
+            echo "### Check results"
+            echo ""
+            echo "| Check | Status |"
+            echo "|---|---:|"
+            echo "| install | ${{ steps.checks.outputs.install }} |"
+            echo "| typecheck | ${{ steps.checks.outputs.typecheck }} |"
+            echo "| build | ${{ steps.checks.outputs.build }} |"
+            echo "| test | ${{ steps.checks.outputs.test }} |"
+            echo "| lint | ${{ steps.checks.outputs.lint }} |"
+            echo ""
+            echo "<details>"
+            echo "<summary>Changed files</summary>"
+            echo ""
+            echo "\`\`\`text"
+            cat ai-review/CHANGED_FILES.txt
+            echo "\`\`\`"
+            echo ""
+            echo "</details>"
+            echo ""
+            echo "### Copy this to ChatGPT"
+            echo ""
+            echo "\`\`\`text"
+            echo "Review this PR line by line:"
+            echo "$PR_URL"
+            echo ""
+            echo "Goal:"
+            echo "Run 3 External pass against Monitoring golden standard."
+            echo ""
+            echo "Use the PR .diff/.patch and Automated AI Review Packet artifact."
+            echo "Read every changed file and every diff hunk. Do not judge by summary."
+            echo "\`\`\`"
+          } > ai-review/PR_COMMENT.md
+
+      - name: Post or update PR comment
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          REPO="${{ github.repository }}"
+          PR="${{ steps.refs.outputs.pr_number }}"
+          MARKER="<!-- ai-review-packet:system-grid -->"
+
+          COMMENT_ID="$(gh api "repos/$REPO/issues/$PR/comments" --paginate --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | tail -n 1 || true)"
+
+          if [[ -n "$COMMENT_ID" ]]; then
+            gh api --method PATCH "repos/$REPO/issues/comments/$COMMENT_ID" -f body@"ai-review/PR_COMMENT.md"
+          else
+            gh api --method POST "repos/$REPO/issues/$PR/comments" -f body@"ai-review/PR_COMMENT.md"
+          fi
+
+      - name: Fail if build/typecheck failed
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          FAIL=0
+
+          TYPECHECK="${{ steps.checks.outputs.typecheck }}"
+          BUILD="${{ steps.checks.outputs.build }}"
+
+          if [[ "$TYPECHECK" != "0" && "$TYPECHECK" != "SKIPPED" ]]; then
+            echo "Typecheck failed: $TYPECHECK"
+            FAIL=1
+          fi
+
+          if [[ "$BUILD" != "0" && "$BUILD" != "SKIPPED" ]]; then
+            echo "Build failed: $BUILD"
+            FAIL=1
+          fi
+
+          exit "$FAIL"
