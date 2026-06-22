@@ -43,6 +43,11 @@ import {
   sanitizeOperationalFilterModel,
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
+import {
+  useOperationalRowInteractions,
+  useOperationalContextMenu,
+  useOperationalDismissController
+} from './shared/OperationalGridInteractions'
 
 // --- Sub-components ---
 
@@ -1352,31 +1357,28 @@ export default function External() {
     setRowActionMenu(null)
   }, [])
 
-  useWorkspaceDismissHandlers({
+  useOperationalDismissController({
     active: showBulkMenu || showDisplayMenu || showViewsMenu || !!rowActionMenu,
     onDismiss: dismissWorkspaceMenus,
-    shouldDismiss: (target) => {
-      if (target.closest('[data-workspace-panel]')) return false
-      if (showBulkMenu && !bulkMenuButtonRef.current?.contains(target) && !bulkMenuPanelRef.current?.contains(target)) return true
-      if (showDisplayMenu && !displayMenuButtonRef.current?.contains(target) && !displayMenuPanelRef.current?.contains(target)) return true
-      if (showViewsMenu && !viewsMenuButtonRef.current?.contains(target) && !viewsMenuPanelRef.current?.contains(target)) return true
-      if (rowActionMenu && !target.closest('.row-action-menu-container')) return true
-      return false
-    },
+    bulkMenuButtonRef,
+    bulkMenuPanelRef,
+    displayMenuButtonRef,
+    displayMenuPanelRef,
+    viewsMenuButtonRef,
+    viewsMenuPanelRef,
+    showBulkMenu,
+    showDisplayMenu,
+    showViewsMenu,
+    hasRowActionMenu: !!rowActionMenu
   })
 
-  useEffect(() => {
-    const handleContextMenu = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null
-      if (!target) return
-      if (target.closest('.ag-root-wrapper') || target.closest('.row-action-menu-container')) {
-        event.preventDefault()
-      }
-    }
-
-    document.addEventListener('contextmenu', handleContextMenu)
-    return () => document.removeEventListener('contextmenu', handleContextMenu)
-  }, [])
+  const { handleCellContextMenu, openRowActionMenuAtPoint } = useOperationalContextMenu({
+    onOpenRowActionMenu: useCallback((item, style) => {
+      setRowActionMenu({ item, style })
+    }, []),
+    menuWidth: 280,
+    menuHeight: 360
+  })
 
   const entities = useMemo(() => {
     if (!allEntities) return []
@@ -1774,28 +1776,11 @@ export default function External() {
     onError: (e: any) => toast.error(e.message)
   })
 
-  const shouldIgnoreRowSelection = useCallback((target: EventTarget | null) => {
-    const element = target as HTMLElement | null
-    if (!element) return false
-    return Boolean(
-      element.closest('button, a, input, textarea, select, label') ||
-      element.closest('.ag-selection-checkbox') ||
-      element.closest('.ag-checkbox-input-wrapper') ||
-      element.closest('.row-action-menu-container')
-    )
-  }, [])
-
-  const handleExternalRowClick = useCallback((event: any) => {
-    if (!event?.node || !event?.data || shouldIgnoreRowSelection(event.event?.target)) return
-    const mouseEvent = event.event as MouseEvent | undefined
-    const isToggleSelection = Boolean(mouseEvent?.metaKey || mouseEvent?.ctrlKey)
-    if (isToggleSelection) {
-      event.node.setSelected(!event.node.isSelected())
-    } else {
-      event.api.deselectAll()
-      event.node.setSelected(true)
-    }
-  }, [shouldIgnoreRowSelection])
+  const { handleRowClicked, handleRowDoubleClicked } = useOperationalRowInteractions({
+    onRowDoubleClick: useCallback((item) => {
+      setActiveDetails(item)
+    }, [])
+  })
 
   const handleExternalSelectionChanged = useCallback((e: any) => {
     const selectedNodes = e?.api?.getSelectedNodes?.() || []
@@ -1805,33 +1790,6 @@ export default function External() {
   const getRowClass = useCallback((params: any) => {
     return params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd'
   }, [])
-
-  const openRowActionMenuAtPoint = useCallback((item: any, x: number, y: number) => {
-    const vW = window.innerWidth
-    const vH = window.innerHeight
-    const width = 280
-    const height = 360
-    const edge = 16
-    let left = x
-    let top = y + 4
-    if (left + width > vW - edge) left = x - width
-    if (top + height > vH - edge) top = y - height - 4
-    left = Math.max(edge, Math.min(left, vW - width - edge))
-    top = Math.max(edge, Math.min(top, vH - height - edge))
-    setRowActionMenu({ item, style: { position: 'fixed', top, left, width, zIndex: 1115 } })
-  }, [])
-
-  const handleCellContextMenu = useCallback((e: any) => {
-    if (!e?.data || shouldIgnoreRowSelection(e.event?.target)) return
-    const mouseEvent = e.event as MouseEvent
-    mouseEvent?.preventDefault?.()
-    openRowActionMenuAtPoint(e.data, mouseEvent.clientX, mouseEvent.clientY)
-  }, [openRowActionMenuAtPoint, shouldIgnoreRowSelection])
-
-  const handleExternalRowDoubleClick = useCallback((event: any) => {
-    if (!event?.data || shouldIgnoreRowSelection(event.event?.target)) return
-    setActiveDetails(event.data)
-  }, [shouldIgnoreRowSelection])
 
   const getExternalRowId = (params: any) => String(params.data?.id ?? '')
 
@@ -2864,8 +2822,8 @@ export default function External() {
               setGridSortModel(sanitizeOperationalSortModel(nextSortModel, EXTERNAL_PERSISTED_COLUMN_IDS))
               syncColumnLayoutState(event.api, true)
             }}
-            onRowClicked={handleExternalRowClick}
-            onRowDoubleClicked={handleExternalRowDoubleClick}
+            onRowClicked={handleRowClicked}
+            onRowDoubleClicked={handleRowDoubleClicked}
             onCellContextMenu={handleCellContextMenu}
             noRowsLabel="No external registry data found"
           />
@@ -2974,8 +2932,8 @@ export default function External() {
                         setGridSortModel(sanitizeOperationalSortModel(nextSortModel, EXTERNAL_PERSISTED_COLUMN_IDS))
                         syncColumnLayoutState(event.api, true)
                       }}
-                      onRowClicked={handleExternalRowClick}
-                      onRowDoubleClicked={handleExternalRowDoubleClick}
+                      onRowClicked={handleRowClicked}
+                      onRowDoubleClicked={handleRowDoubleClicked}
                       onCellContextMenu={handleCellContextMenu}
                       noRowsLabel="No external registry data found"
                     />
