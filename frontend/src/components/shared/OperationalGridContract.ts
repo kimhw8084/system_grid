@@ -42,6 +42,7 @@ export type OperationalPlainColumnConfig = OperationalColumnCommonConfig & {
   kind: 'plain'
   emptyValue?: string
   formatValue?: (value: any, params: any) => ReactNode
+  valueClassName?: string
 }
 
 export type OperationalIdentityColumnConfig = OperationalColumnCommonConfig & {

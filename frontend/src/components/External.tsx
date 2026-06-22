@@ -43,17 +43,13 @@ import {
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
 import {
-  OPERATIONAL_GRID_CLASSES,
-  OPERATIONAL_GRID_EMPTY_VALUE_CLASS,
-  OPERATIONAL_GRID_PLAIN_VALUE_CLASS,
+  type OperationalColumnConfig,
   OPERATIONAL_GRID_WIDTHS,
 } from './shared/OperationalGridContract'
 import {
-  createOperationalActionColumnDefinition,
-  createOperationalIdentityColumnDefinition,
+  buildOperationalColumnDefinitions,
   createOperationalUtilityColumns,
   renderOperationalActionButtons,
-  renderOperationalMappedBadgeCell,
   useOperationalColumnSyncHandlers,
 } from './shared/OperationalGridStandard'
 import {
@@ -95,6 +91,34 @@ const LINK_DIRECTION_OPTIONS = ['Inbound', 'Outbound', 'Bidirectional']
 const LINK_PROTOCOL_OPTIONS = ['HTTPS', 'HTTP', 'TCP', 'UDP', 'SFTP', 'SSH', 'Database', 'Other']
 const LINK_NETWORK_ZONE_OPTIONS = ['Internet', 'DMZ', 'Partner', 'Internal', 'Restricted']
 const LINK_TRANSPORT_SECURITY_OPTIONS = ['TLS', 'mTLS', 'VPN', 'None', 'Other']
+
+const EXTERNAL_LINK_DIRECTION_COLORS: Record<string, string> = {
+  Inbound: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
+  Bidirectional: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+  Outbound: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+}
+
+const EXTERNAL_TYPE_COLORS: Record<string, string> = {
+  Equipment: 'text-indigo-400',
+  'Physical Server': 'text-blue-400',
+  'Virtual Server': 'text-sky-400',
+  Switch: 'text-rose-400',
+  Storage: 'text-amber-400',
+  DB: 'text-emerald-400',
+  API: 'text-fuchsia-400',
+  Script: 'text-orange-400',
+}
+
+const EXTERNAL_STATUS_COLORS: Record<string, string> = {
+  Active: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
+  Maintenance: 'text-amber-400 border-amber-500/40 bg-amber-500/20',
+  Decommissioned: 'text-rose-400 border-rose-500/40 bg-rose-500/20',
+  Planned: 'text-blue-400 border-blue-500/40 bg-blue-500/20',
+  Standby: 'text-sky-400 border-sky-500/40 bg-sky-500/20',
+  Failed: 'text-rose-500 border-rose-600/40 bg-rose-600/20',
+  Provisioning: 'text-indigo-400 border-indigo-500/40 bg-indigo-500/20',
+  Reserved: 'text-purple-400 border-purple-500/40 bg-purple-500/20',
+}
 
 const extensionMetadataKeysByType: Record<string, string[]> = {
   Equipment: ['manufacturer', 'model', 'serial_number'],
@@ -1990,174 +2014,137 @@ export default function External() {
       }
     }
 
-    const baseColumns = [
-    ...createOperationalUtilityColumns({
-      includeRecentChange: activeTab !== 'links',
-      includeFavorite: activeTab !== 'links',
-      includeWatch: activeTab !== 'links',
-      isIntelligenceExpanded,
-      isRecentChange,
-      onToggleFavorite: toggleFavorite,
-      onToggleWatch: toggleWatch,
-      itemLabel: 'peer',
-    }),
-    createOperationalIdentityColumnDefinition({
-      colId: activeTab === 'links' ? 'external_entity_name' : 'name',
-      field: activeTab === 'links' ? 'external_entity_name' : 'name',
-      headerName: activeTab === 'links' ? 'External Peer' : 'Name',
-      hide: hiddenColumns.includes(activeTab === 'links' ? 'external_entity_name' : 'name'),
-      width: activeTab === 'links' ? 220 : 210,
-      minWidth: 150,
-      maxWidth: 320,
-      onActivate: activeTab === 'links' ? undefined : (row) => setActiveDetails(row),
-    }),
-    ...(activeTab === 'links' ? [
+    const tabColumnConfigs: OperationalColumnConfig[] = activeTab === 'links'
+      ? [
+          {
+            kind: 'mappedBadge',
+            field: 'direction',
+            headerName: 'Flow',
+            width: 120,
+            fontSize,
+            colorMap: EXTERNAL_LINK_DIRECTION_COLORS,
+            hide: hiddenColumns.includes('direction'),
+          },
+          {
+            kind: 'plain',
+            field: 'device_name',
+            headerName: 'Internal Asset',
+            width: 160,
+            hide: hiddenColumns.includes('device_name'),
+          },
+          {
+            kind: 'plain',
+            field: 'service_name',
+            headerName: 'Logical Service',
+            width: 160,
+            hide: hiddenColumns.includes('service_name'),
+          },
+          {
+            kind: 'prose',
+            field: 'purpose',
+            headerName: 'Interconnect Purpose',
+            width: 220,
+            hide: hiddenColumns.includes('purpose'),
+          },
+          {
+            kind: 'plain',
+            field: 'protocol',
+            headerName: 'Prot',
+            width: 80,
+            hide: hiddenColumns.includes('protocol'),
+          },
+          {
+            kind: 'plain',
+            field: 'port',
+            headerName: 'Port',
+            width: 80,
+            hide: hiddenColumns.includes('port'),
+          },
+        ]
+      : [
+          {
+            kind: 'mappedText',
+            field: 'type',
+            headerName: 'Type',
+            width: 140,
+            fontSize,
+            colorMap: EXTERNAL_TYPE_COLORS,
+            hide: hiddenColumns.includes('type'),
+          },
+          {
+            kind: 'plain',
+            field: 'internal_owner',
+            headerName: 'Owner',
+            width: 140,
+            hide: hiddenColumns.includes('internal_owner'),
+          },
+          {
+            kind: 'mappedBadge',
+            field: 'status',
+            headerName: 'Status',
+            width: 130,
+            fontSize,
+            emptyValue: 'Planned',
+            colorMap: EXTERNAL_STATUS_COLORS,
+            hide: hiddenColumns.includes('status'),
+          },
+          {
+            kind: 'plain',
+            field: 'environment',
+            headerName: 'Env',
+            width: 110,
+            hide: hiddenColumns.includes('environment'),
+          },
+          {
+            kind: 'prose',
+            field: 'business_purpose',
+            headerName: 'Business Purpose',
+            width: 220,
+            minWidth: 150,
+            hide: hiddenColumns.includes('business_purpose'),
+          },
+          {
+            kind: 'plain',
+            field: 'link_count',
+            headerName: 'Links',
+            width: 85,
+            valueClassName: 'text-center font-bold text-blue-400',
+            hide: hiddenColumns.includes('link_count'),
+          },
+        ]
+
+    const columnConfigs: OperationalColumnConfig[] = [
       {
-        colId: "direction",
-        field: "direction",
-         headerName: "Flow", 
-         width: 120, 
-         cellClass: "text-center flex items-center justify-center",
-         headerClass: "text-center",
-         cellRenderer: (p: any) => renderOperationalMappedBadgeCell({
-           value: p.value,
-           fontSize,
-           colorMap: {
-             Inbound: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
-             Bidirectional: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-             Outbound: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-           },
-         }),
-         hide: hiddenColumns.includes("direction")
-      },
-      {
-        colId: "device_name",
-        field: "device_name",
-         headerName: "Internal Asset", 
-         width: 160, 
-         cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
-         headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-         cellRenderer: (p: any) => <span className={p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>{p.value || 'N/A'}</span>,
-         hide: hiddenColumns.includes("device_name")
-      },
-      {
-        colId: "service_name",
-        field: "service_name",
-         headerName: "Logical Service", 
-         width: 160, 
-         cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
-         headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-         cellRenderer: (p: any) => <span className={p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>{p.value || 'N/A'}</span>,
-         hide: hiddenColumns.includes("service_name")
-      },
-      {
-        colId: "purpose",
-        field: "purpose",
-         headerName: "Interconnect Purpose", 
-         flex: 1.5, 
-         headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
-         cellClass: OPERATIONAL_GRID_CLASSES.leftBodyCell,
-         cellRenderer: (p: any) => <span className={p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>{p.value || 'N/A'}</span>,
-         hide: hiddenColumns.includes("purpose")
-      },
-      { colId: "protocol", field: "protocol", headerName: "Prot", width: 80, cellClass: OPERATIONAL_GRID_CLASSES.centeredCell, headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader, cellRenderer: (p: any) => <span className={p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>{p.value || 'N/A'}</span>, hide: hiddenColumns.includes("protocol") },
-      { colId: "port", field: "port", headerName: "Port", width: 80, cellClass: OPERATIONAL_GRID_CLASSES.centeredCell, headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader, cellRenderer: (p: any) => <span className={p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>{p.value || 'N/A'}</span>, hide: hiddenColumns.includes("port") },
-    ] : [
-      { 
-        colId: "type",
-        field: "type", 
-         headerName: "Type", 
-         width: 140, 
-         filter: true,
-         cellClass: 'text-center flex items-center justify-center', 
-         headerClass: 'text-center',
-         cellRenderer: (p: any) => {
-           const colors: any = {
-             'Equipment': 'text-indigo-400',
-             'Physical Server': 'text-blue-400',
-             'Virtual Server': 'text-sky-400',
-             'Switch': 'text-rose-400',
-             'Storage': 'text-amber-400',
-             'DB': 'text-emerald-400',
-             'API': 'text-fuchsia-400',
-             'Script': 'text-orange-400'
-           }
-           return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${colors[p.value] || 'text-slate-500'}`}>{p.value || 'N/A'}</span>
-         },
-         hide: hiddenColumns.includes("type")
-       },
-      { 
-        colId: "internal_owner",
-        field: "internal_owner", 
-         headerName: "Owner", 
-         width: 140, 
-         filter: true,
-         cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
-         headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-         cellRenderer: (p: any) => p.value ? <span className={OPERATIONAL_GRID_PLAIN_VALUE_CLASS}>{p.value}</span> : <span className={OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>N/A</span>,
-         hide: hiddenColumns.includes("internal_owner") 
-       },
-      { 
-        colId: "status",
-        field: "status", 
-         headerName: "Status", 
-         width: 130, 
-         filter: true,
-         cellClass: 'text-center flex items-center justify-center',
-         headerClass: 'text-center',
-         cellRenderer: (p: any) => renderOperationalMappedBadgeCell({
-           value: p.value || 'Planned',
-           fontSize,
-           colorMap: {
-             Active: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
-             Maintenance: 'text-amber-400 border-amber-500/40 bg-amber-500/20',
-             Decommissioned: 'text-rose-400 border-rose-500/40 bg-rose-500/20',
-             Planned: 'text-blue-400 border-blue-500/40 bg-blue-500/20',
-             Standby: 'text-sky-400 border-sky-500/40 bg-sky-500/20',
-             Failed: 'text-rose-500 border-rose-600/40 bg-rose-600/20',
-             Provisioning: 'text-indigo-400 border-indigo-500/40 bg-indigo-500/20',
-             Reserved: 'text-purple-400 border-purple-500/40 bg-purple-500/20',
-           },
-         }),
-         hide: hiddenColumns.includes("status")
-       },
-      { 
-        colId: "environment",
-        field: "environment", 
-         headerName: "Env", 
-         width: 110, 
-         filter: true,
-         cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
-         headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-         cellRenderer: (p: any) => p.value ? <span className={OPERATIONAL_GRID_PLAIN_VALUE_CLASS}>{p.value}</span> : <span className={OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>N/A</span>,
-         hide: hiddenColumns.includes("environment")
-       },
-      {
-        colId: "business_purpose",
-        field: "business_purpose",
-        headerName: "Business Purpose",
-        flex: 1.5,
+        kind: 'identity',
+        field: activeTab === 'links' ? 'external_entity_name' : 'name',
+        headerName: activeTab === 'links' ? 'External Peer' : 'Name',
+        hide: hiddenColumns.includes(activeTab === 'links' ? 'external_entity_name' : 'name'),
+        width: activeTab === 'links' ? 220 : 210,
         minWidth: 150,
-        headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
-        cellClass: OPERATIONAL_GRID_CLASSES.leftBodyCell,
-        cellRenderer: (p: any) => <span className={p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>{p.value || 'N/A'}</span>,
-        hide: hiddenColumns.includes("business_purpose")
+        maxWidth: 320,
+        onActivate: activeTab === 'links' ? undefined : (row) => setActiveDetails(row),
       },
+      ...tabColumnConfigs,
       {
-        colId: "link_count",
-        field: "link_count",
-         headerName: "Links",
-         width: 85,
-         cellClass: 'text-center font-bold text-blue-400 flex items-center justify-center',
-         headerClass: 'text-center',
-         hide: hiddenColumns.includes("link_count")
-       },
-    ]),
-    createOperationalActionColumnDefinition({
-      width: OPERATIONAL_GRID_WIDTHS.compactAction,
-      renderActions: renderPrimaryRowActions,
-    })
-  ]
+        kind: 'action',
+        width: OPERATIONAL_GRID_WIDTHS.compactAction,
+        renderActions: renderPrimaryRowActions,
+      },
+    ]
+
+    const baseColumns = [
+      ...createOperationalUtilityColumns({
+        includeRecentChange: activeTab !== 'links',
+        includeFavorite: activeTab !== 'links',
+        includeWatch: activeTab !== 'links',
+        isIntelligenceExpanded,
+        isRecentChange,
+        onToggleFavorite: toggleFavorite,
+        onToggleWatch: toggleWatch,
+        itemLabel: 'peer',
+      }),
+      ...buildOperationalColumnDefinitions(columnConfigs),
+    ]
 
     return baseColumns.map((column: any) => {
       const colId = column.colId || column.field

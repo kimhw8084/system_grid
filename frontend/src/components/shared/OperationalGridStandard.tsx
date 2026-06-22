@@ -177,6 +177,7 @@ export function createOperationalPlainValueColumn({
   filter = true,
   emptyValue = 'N/A',
   formatValue,
+  valueClassName,
 }: Omit<OperationalPlainColumnConfig, 'kind'>) {
   return {
     field,
@@ -190,7 +191,7 @@ export function createOperationalPlainValueColumn({
     cellRenderer: (p: any) => {
       const resolvedValue = formatValue ? formatValue(p.value, p) : p.value
       return resolvedValue
-        ? <span className={OPERATIONAL_GRID_PLAIN_VALUE_CLASS}>{resolvedValue}</span>
+        ? <span className={valueClassName || OPERATIONAL_GRID_PLAIN_VALUE_CLASS}>{resolvedValue}</span>
         : <span className={OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>{emptyValue}</span>
     },
     hide,
