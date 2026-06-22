@@ -1256,6 +1256,8 @@ export default function External() {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
   const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>(externalFavoritesKey, [])
   const [watchIds, setWatchIds] = usePersistentJsonState<number[]>(externalWatchKey, [])
+  const normalizedFavoriteIds = useMemo(() => favoriteIds.map(Number), [favoriteIds])
+  const normalizedWatchIds = useMemo(() => watchIds.map(Number), [watchIds])
   const [compareOpen, setCompareOpen] = useState(false)
   const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
@@ -1343,32 +1345,38 @@ export default function External() {
     queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) 
   })
 
-  useWorkspaceDismissHandlers({
-    active: showDisplayMenu,
-    onDismiss: () => setShowDisplayMenu(false),
-    shouldDismiss: (target) => !(
-      displayMenuButtonRef.current?.contains(target) ||
-      displayMenuPanelRef.current?.contains(target)
-    ),
-  })
+  const dismissWorkspaceMenus = useCallback(() => {
+    setShowBulkMenu(false)
+    setShowDisplayMenu(false)
+    setShowViewsMenu(false)
+    setRowActionMenu(null)
+  }, [])
 
   useWorkspaceDismissHandlers({
-    active: showViewsMenu,
-    onDismiss: () => setShowViewsMenu(false),
-    shouldDismiss: (target) => !(
-      viewsMenuButtonRef.current?.contains(target) ||
-      viewsMenuPanelRef.current?.contains(target)
-    ),
+    active: showBulkMenu || showDisplayMenu || showViewsMenu || !!rowActionMenu,
+    onDismiss: dismissWorkspaceMenus,
+    shouldDismiss: (target) => {
+      if (target.closest('[data-workspace-panel]')) return false
+      if (showBulkMenu && !bulkMenuButtonRef.current?.contains(target) && !bulkMenuPanelRef.current?.contains(target)) return true
+      if (showDisplayMenu && !displayMenuButtonRef.current?.contains(target) && !displayMenuPanelRef.current?.contains(target)) return true
+      if (showViewsMenu && !viewsMenuButtonRef.current?.contains(target) && !viewsMenuPanelRef.current?.contains(target)) return true
+      if (rowActionMenu && !target.closest('.row-action-menu-container')) return true
+      return false
+    },
   })
 
-  useWorkspaceDismissHandlers({
-    active: showBulkMenu,
-    onDismiss: () => setShowBulkMenu(false),
-    shouldDismiss: (target) => !(
-      bulkMenuButtonRef.current?.contains(target) ||
-      bulkMenuPanelRef.current?.contains(target)
-    ),
-  })
+  useEffect(() => {
+    const handleContextMenu = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null
+      if (!target) return
+      if (target.closest('.ag-root-wrapper') || target.closest('.row-action-menu-container')) {
+        event.preventDefault()
+      }
+    }
+
+    document.addEventListener('contextmenu', handleContextMenu)
+    return () => document.removeEventListener('contextmenu', handleContextMenu)
+  }, [])
 
   const entities = useMemo(() => {
     if (!allEntities) return []
@@ -1388,15 +1396,15 @@ export default function External() {
   const sortedEntities = useMemo(() => {
     const sorted = [...entities].sort((a, b) => {
       // Pin favorites to top
-      const aFav = favoriteIds.includes(a.id) ? 1 : 0
-      const bFav = favoriteIds.includes(b.id) ? 1 : 0
+      const aFav = normalizedFavoriteIds.includes(Number(a.id)) ? 1 : 0
+      const bFav = normalizedFavoriteIds.includes(Number(b.id)) ? 1 : 0
       if (aFav !== bFav) return bFav - aFav
       
       // Secondary fallback
       return a.id - b.id
     })
     return sorted
-  }, [entities, favoriteIds])
+  }, [entities, normalizedFavoriteIds])
 
   const registryCounts = useMemo(() => ({
     active: allEntities?.filter((entity: any) => !entity.is_deleted).length || 0,
@@ -1626,12 +1634,18 @@ export default function External() {
 
   const toggleFavorite = useCallback((entityId: number) => {
     const id = Number(entityId)
-    setFavoriteIds((current) => current.includes(id) ? current.filter((i) => i !== id) : [...current, id])
+    setFavoriteIds((current) => {
+      const currentNums = current.map(Number)
+      return currentNums.includes(id) ? currentNums.filter((i) => i !== id) : [...currentNums, id]
+    })
   }, [setFavoriteIds])
 
   const toggleWatch = useCallback((entityId: number) => {
     const id = Number(entityId)
-    setWatchIds((current) => current.includes(id) ? current.filter((i) => i !== id) : [...current, id])
+    setWatchIds((current) => {
+      const currentNums = current.map(Number)
+      return currentNums.includes(id) ? currentNums.filter((i) => i !== id) : [...currentNums, id]
+    })
   }, [setWatchIds])
 
   const openCompare = () => {
@@ -1760,10 +1774,19 @@ export default function External() {
     onError: (e: any) => toast.error(e.message)
   })
 
+  const shouldIgnoreRowSelection = useCallback((target: EventTarget | null) => {
+    const element = target as HTMLElement | null
+    if (!element) return false
+    return Boolean(
+      element.closest('button, a, input, textarea, select, label') ||
+      element.closest('.ag-selection-checkbox') ||
+      element.closest('.ag-checkbox-input-wrapper') ||
+      element.closest('.row-action-menu-container')
+    )
+  }, [])
+
   const handleExternalRowClick = useCallback((event: any) => {
-    if (!event?.node || !event?.data) return
-    const target = event.event?.target as HTMLElement | null
-    if (target?.closest('button') || target?.closest('a') || target?.closest('input') || target?.closest('.ag-selection-checkbox') || target?.closest('.ag-checkbox-input-wrapper')) return
+    if (!event?.node || !event?.data || shouldIgnoreRowSelection(event.event?.target)) return
     const mouseEvent = event.event as MouseEvent | undefined
     const isToggleSelection = Boolean(mouseEvent?.metaKey || mouseEvent?.ctrlKey)
     if (isToggleSelection) {
@@ -1772,7 +1795,7 @@ export default function External() {
       event.api.deselectAll()
       event.node.setSelected(true)
     }
-  }, [])
+  }, [shouldIgnoreRowSelection])
 
   const handleExternalSelectionChanged = useCallback((e: any) => {
     const selectedNodes = e?.api?.getSelectedNodes?.() || []
@@ -1799,18 +1822,16 @@ export default function External() {
   }, [])
 
   const handleCellContextMenu = useCallback((e: any) => {
-    if (!e?.data) return
+    if (!e?.data || shouldIgnoreRowSelection(e.event?.target)) return
     const mouseEvent = e.event as MouseEvent
     mouseEvent?.preventDefault?.()
     openRowActionMenuAtPoint(e.data, mouseEvent.clientX, mouseEvent.clientY)
-  }, [openRowActionMenuAtPoint])
+  }, [openRowActionMenuAtPoint, shouldIgnoreRowSelection])
 
-  const handleExternalRowDoubleClick = (event: any) => {
-    if (!event?.data) return
-    const target = event.event?.target as HTMLElement | null
-    if (target?.closest('button') || target?.closest('a') || target?.closest('input')) return
+  const handleExternalRowDoubleClick = useCallback((event: any) => {
+    if (!event?.data || shouldIgnoreRowSelection(event.event?.target)) return
     setActiveDetails(event.data)
-  }
+  }, [shouldIgnoreRowSelection])
 
   const getExternalRowId = (params: any) => String(params.data?.id ?? '')
 
@@ -1983,9 +2004,9 @@ export default function External() {
       pinned: 'left',
       cellClass: 'text-center flex items-center justify-center',
       headerClass: 'text-center',
-      valueGetter: (p: any) => p.context?.favoriteIds?.includes(p.data?.id) ? 1 : 0,
+      valueGetter: (p: any) => p.context?.favoriteIds?.includes(Number(p.data?.id)) ? 1 : 0,
       cellRenderer: (p: any) => {
-        const isFavorite = p.context?.favoriteIds?.includes(p.data?.id)
+        const isFavorite = p.context?.favoriteIds?.includes(Number(p.data?.id))
         return (
           <div className="flex h-full w-full items-center justify-center">
             <button
@@ -2014,7 +2035,7 @@ export default function External() {
       cellClass: 'text-center flex items-center justify-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
-        const isWatched = p.context?.watchIds?.includes(p.data?.id)
+        const isWatched = p.context?.watchIds?.includes(Number(p.data?.id))
         return (
           <div className="flex h-full w-full items-center justify-center">
             <button
@@ -2040,7 +2061,8 @@ export default function External() {
       field: activeTab === 'links' ? "external_entity_name" : "name", 
       headerName: activeTab === 'links' ? "External Peer" : "Name", 
       pinned: 'left',
-      width: 200,
+      flex: 2,
+      minWidth: 200,
       filter: true,
       cellClass: 'font-bold text-left flex items-center',
       headerClass: 'text-left',
@@ -2056,7 +2078,7 @@ export default function External() {
               event.stopPropagation()
               setActiveDetails(p.data)
             }}
-            className="w-full truncate bg-transparent text-left font-bold text-blue-400 uppercase tracking-tight transition-colors hover:text-blue-200"
+            className="w-full truncate bg-transparent text-left font-bold text-blue-400 uppercase tracking-tight transition-colors hover:text-blue-200 whitespace-nowrap"
             style={{ fontSize: `${fontSize}px` }}
           >
             {p.value}
@@ -2192,6 +2214,17 @@ export default function External() {
          hide: hiddenColumns.includes("environment")
        },
       {
+        colId: "business_purpose",
+        field: "business_purpose",
+        headerName: "Business Purpose",
+        flex: 1.5,
+        minWidth: 150,
+        headerClass: 'text-left',
+        cellClass: 'font-bold text-slate-500 text-left truncate px-4 flex items-center',
+        cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'N/A'}</span>,
+        hide: hiddenColumns.includes("business_purpose")
+      },
+      {
         colId: "link_count",
         field: "link_count",
          headerName: "Links",
@@ -2223,13 +2256,13 @@ export default function External() {
   }, [fontSize, hiddenColumns, activeTab, columnLayoutState, isRecentChange, preserveExplicitColumnWidths]) as any
 
   const autoSizeStrategy = OPERATIONAL_GRID_AUTO_SIZE_STRATEGY
-  const gridContext = useMemo(() => ({ activeTab, favoriteIds, watchIds }), [activeTab, favoriteIds, watchIds])
+  const gridContext = useMemo(() => ({ activeTab, favoriteIds: normalizedFavoriteIds, watchIds: normalizedWatchIds }), [activeTab, normalizedFavoriteIds, normalizedWatchIds])
 
   useEffect(() => {
     if (gridRef.current?.api) {
       gridRef.current.api.refreshCells({ columns: ['favorite', 'watch'], force: true })
     }
-  }, [favoriteIds, watchIds])
+  }, [normalizedFavoriteIds, normalizedWatchIds])
 
   return (
     <OperationalWorkspaceShell
@@ -2685,7 +2718,7 @@ export default function External() {
                       }}
                       className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
                     >
-                      {watchIds.includes(rowActionMenu.item.id) ? (
+                      {normalizedWatchIds.includes(Number(rowActionMenu.item.id)) ? (
                         <>
                           <EyeOff size={12} className="text-slate-400" />
                           Unwatch
@@ -2703,7 +2736,7 @@ export default function External() {
                       }}
                       className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
                     >
-                      {favoriteIds.includes(rowActionMenu.item.id) ? (
+                      {normalizedFavoriteIds.includes(Number(rowActionMenu.item.id)) ? (
                         <>
                           <Star size={12} className="fill-amber-400 text-amber-400" />
                           Unpin
@@ -3037,6 +3070,7 @@ export default function External() {
         }
         subtitle={activeDetails ? `${activeDetails.type || externalViewLabel} · ${activeDetails.environment || 'Unspecified'} · ${activeDetails.owner_organization || 'Unassigned organization'}` : undefined}
         icon={<Eye size={20} />}
+        forensicLineage={activeDetails ? { createdAt: activeDetails.created_at, updatedAt: activeDetails.updated_at } : undefined}
         status={activeDetails ? (
           <div className="flex items-center gap-2">
             <span className={`rounded-lg border px-2.5 py-1 text-[9px] font-semibold uppercase tracking-widest ${

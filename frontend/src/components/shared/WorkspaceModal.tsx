@@ -7,6 +7,7 @@ import {
   WorkspaceModalFooter,
   WorkspaceModalSize,
   getWorkspaceModalShellClass,
+  useEscapeDismiss,
 } from './OperationalWorkspacePrimitives'
 import { OPERATIONAL_WORKSPACE_VISUALS } from './OperationalWorkspace'
 
@@ -28,6 +29,7 @@ interface WorkspaceModalProps {
   activeTab?: string
   onTabChange?: (id: string) => void
   className?: string
+  hideCloseButton?: boolean
 }
 
 export function WorkspaceModal({
@@ -48,7 +50,10 @@ export function WorkspaceModal({
   activeTab,
   onTabChange,
   className = '',
+  hideCloseButton = false,
 }: WorkspaceModalProps) {
+  useEscapeDismiss(onClose, isOpen)
+
   if (!isOpen) return null
 
   const modal = (
@@ -68,16 +73,20 @@ export function WorkspaceModal({
             status={status}
             forensicLineage={forensicLineage}
             closeControl={
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="group flex h-3 w-3 items-center justify-center rounded-full bg-[#ff5f57] transition-all hover:bg-[#ff5f57]/80"
-                  title="Close"
-                >
-                  <X size={8} strokeWidth={4} className="text-[#4c0000] opacity-0 transition-opacity group-hover:opacity-100" />
-                </button>
-              </div>
+              hideCloseButton ? (
+                <div className="w-3 h-3" />
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="group flex h-3 w-3 items-center justify-center rounded-full bg-[#ff5f57] transition-all hover:bg-[#ff5f57]/80"
+                    title="Close"
+                  >
+                    <X size={8} strokeWidth={4} className="text-[#4c0000] opacity-0 transition-opacity group-hover:opacity-100" />
+                  </button>
+                </div>
+              )
             }
             maximizeControl={
               onMaximizeToggle && (

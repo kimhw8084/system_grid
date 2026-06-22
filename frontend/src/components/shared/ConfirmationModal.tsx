@@ -49,6 +49,7 @@ export const ConfirmationModal = ({
       title={title}
       subtitle={message}
       icon={getVariantIcon()}
+      hideCloseButton={true}
       footerRight={(
         <>
           <button 

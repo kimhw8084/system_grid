@@ -137,14 +137,15 @@ export function useWorkspaceAnchoredLayer(isOpen: boolean, options?: { offset?: 
   return { triggerRef, panelRef, panelStyle }
 }
 
-export const useEscapeDismiss = (onClose: () => void) => {
+export const useEscapeDismiss = (onClose: () => void, active: boolean = true) => {
   useEffect(() => {
+    if (!active) return
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  }, [onClose, active])
 }
 
 export const useBodyModalFlag = () => {
