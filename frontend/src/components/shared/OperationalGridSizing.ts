@@ -90,14 +90,7 @@ export const applyOperationalColumnSizing = (
   }
 
   if (preserveExplicitWidths) {
-    const layoutWidth = layout.width ?? nextColumn.width
-    if (typeof layoutWidth === 'number') {
-      const minWidth = typeof nextColumn.minWidth === 'number' ? nextColumn.minWidth : layoutWidth
-      const maxWidth = typeof nextColumn.maxWidth === 'number' ? nextColumn.maxWidth : layoutWidth
-      nextColumn.width = Math.min(Math.max(layoutWidth, minWidth), maxWidth)
-    } else {
-      nextColumn.width = layoutWidth
-    }
+    nextColumn.width = layout.width ?? nextColumn.width
     nextColumn.flex = layout.flex ?? nextColumn.flex
   }
 

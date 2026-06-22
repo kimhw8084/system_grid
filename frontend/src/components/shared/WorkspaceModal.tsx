@@ -32,8 +32,6 @@ interface WorkspaceModalProps {
   className?: string
   hideCloseButton?: boolean
   hideFooterClose?: boolean
-  isDirty?: boolean
-  closeConfirmationMessage?: string
 }
 
 export function WorkspaceModal({
@@ -56,36 +54,15 @@ export function WorkspaceModal({
   className = '',
   hideCloseButton = false,
   hideFooterClose = false,
-  isDirty = false,
-  closeConfirmationMessage = 'You have unsaved changes. Close without saving?',
 }: WorkspaceModalProps) {
-  const requestClose = React.useCallback(() => {
-    if (isDirty && typeof window !== 'undefined' && !window.confirm(closeConfirmationMessage)) {
-      return
-    }
-    onClose()
-  }, [closeConfirmationMessage, isDirty, onClose])
-
-  useEscapeDismiss(requestClose, isOpen)
-
-  React.useEffect(() => {
-    if (!isOpen || !isDirty || typeof window === 'undefined') return
-
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault()
-      event.returnValue = ''
-    }
-
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [isDirty, isOpen])
+  useEscapeDismiss(onClose, isOpen)
 
   if (!isOpen) return null
 
   const resolvedFooterRight = (
-    <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-3 shrink-0">
       {!hideFooterClose ? (
-        <ToolbarButton onClick={requestClose} className="whitespace-nowrap">
+        <ToolbarButton onClick={onClose} className="whitespace-nowrap">
           Close
         </ToolbarButton>
       ) : null}
@@ -116,7 +93,7 @@ export function WorkspaceModal({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={requestClose}
+                    onClick={onClose}
                     className="group flex h-3 w-3 items-center justify-center rounded-full bg-[#ff5f57] transition-all hover:bg-[#ff5f57]/80"
                     title="Close"
                   >
