@@ -10,4 +10,4 @@ else
   git commit -m "$MSG"
 fi
 
-./scripts/review-pr.sh
+./scripts/review-main.sh
