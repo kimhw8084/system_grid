@@ -10,6 +10,7 @@ import {
   useEscapeDismiss,
 } from './OperationalWorkspacePrimitives'
 import { OPERATIONAL_WORKSPACE_VISUALS } from './OperationalWorkspace'
+import { ToolbarButton } from './LayoutPrimitives'
 
 interface WorkspaceModalProps {
   isOpen: boolean
@@ -55,6 +56,13 @@ export function WorkspaceModal({
   useEscapeDismiss(onClose, isOpen)
 
   if (!isOpen) return null
+
+  const resolvedFooterLeft = (
+    <div className="flex items-center gap-3">
+      <ToolbarButton onClick={onClose}>Close</ToolbarButton>
+      {footerLeft}
+    </div>
+  )
 
   const modal = (
     <AnimatePresence>
@@ -113,12 +121,10 @@ export function WorkspaceModal({
             {children}
           </div>
 
-          {(footerLeft || footerRight) && (
-            <WorkspaceModalFooter
-              left={footerLeft}
-              right={footerRight}
-            />
-          )}
+          <WorkspaceModalFooter
+            left={resolvedFooterLeft}
+            right={footerRight}
+          />
         </motion.div>
       </div>
     </AnimatePresence>

@@ -1847,13 +1847,12 @@ export default function MonitoringGrid() {
     applyOperationalIdentityColumn({
       field: "title", 
       headerName: "Title", 
-      width: 280,
       filter: true,
       cellClass: OPERATIONAL_GRID_CLASSES.primaryCell,
       headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
       cellRenderer: (p: any) => <span className={OPERATIONAL_GRID_PRIMARY_TEXT_CLASS}>{p.value}</span>,
       hide: hiddenColumns.includes("title")
-    }),
+    }, { width: 240, minWidth: 170, maxWidth: 340 }),
     { 
       field: "device_name", 
       headerName: "Target Asset", 
@@ -1919,8 +1918,8 @@ export default function MonitoringGrid() {
       field: "is_active", 
       headerName: "Existing", 
       width: 70,
-      cellClass: 'text-center flex items-center justify-center',
-      headerClass: 'text-center',
+      cellClass: OPERATIONAL_GRID_CLASSES.centeredOverflowCell,
+      headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
       cellRenderer: (p: any) => {
         const isActive = p.value
         const isDeleted = p.data?.is_deleted || p.data?.status === 'Deleted'

@@ -1293,6 +1293,7 @@ export default function External() {
   const [gridSortModel, setGridSortModel] = useState<Array<{ colId: string; sort: string }>>(persistedUiState.sortModel || [])
   const [newViewName, setNewViewName] = useState('')
   const [pendingGridRestore, setPendingGridRestore] = useState<any | null>(null)
+  const pendingRestoreTimeoutRef = useRef<number | null>(null)
 
   const { triggerRef: displayMenuButtonRef, panelRef: displayMenuPanelRef, panelStyle: displayMenuStyle } = useWorkspaceAnchoredLayer(showDisplayMenu, { minWidth: 320 })
   const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
@@ -1673,22 +1674,34 @@ export default function External() {
   }
 
   useEffect(() => {
-    const api = gridRef.current?.api
-    if (!api) return
-    if (pendingGridRestore) {
-      window.setTimeout(() => {
-        applyGridState(pendingGridRestore)
-        setPendingGridRestore(null)
-      }, 0)
-      return
+    if (!pendingGridRestore) return
+    if (pendingRestoreTimeoutRef.current !== null) {
+      window.clearTimeout(pendingRestoreTimeoutRef.current)
     }
-    if (!preserveExplicitColumnWidths) {
-      autoSizeOperationalColumns({
-        api,
-        skipColumnIds: Array.from(EXTERNAL_FIXED_WIDTH_COLUMN_IDS),
-      })
+    pendingRestoreTimeoutRef.current = window.setTimeout(() => {
+      applyGridState(pendingGridRestore)
+      setPendingGridRestore(null)
+      pendingRestoreTimeoutRef.current = null
+    }, 0)
+    return () => {
+      if (pendingRestoreTimeoutRef.current !== null) {
+        window.clearTimeout(pendingRestoreTimeoutRef.current)
+        pendingRestoreTimeoutRef.current = null
+      }
     }
-  }, [fontSize, rowDensity, entities, links, activeTab, pendingGridRestore, preserveExplicitColumnWidths, columnLayoutState])
+  }, [pendingGridRestore])
+
+  const handleGridDataUpdated = useCallback(() => {
+    if (!gridRef.current?.api || preserveExplicitColumnWidths) return
+    autoSizeOperationalColumns({
+      api: gridRef.current.api,
+      skipColumnIds: Array.from(EXTERNAL_FIXED_WIDTH_COLUMN_IDS),
+      onSized: () => {
+        if (!gridRef.current?.api || preserveExplicitColumnWidths) return
+        syncColumnLayoutState(gridRef.current.api, true)
+      },
+    })
+  }, [preserveExplicitColumnWidths, syncColumnLayoutState])
 
   const handleExportCSV = () => {
     if (gridRef.current?.api) {
@@ -2101,8 +2114,6 @@ export default function External() {
       colId: activeTab === 'links' ? "external_entity_name" : "name",
       field: activeTab === 'links' ? "external_entity_name" : "name", 
       headerName: activeTab === 'links' ? "External Peer" : "Name", 
-      flex: 2,
-      minWidth: 200,
       filter: true,
       cellClass: OPERATIONAL_GRID_CLASSES.primaryCell,
       headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
@@ -2125,7 +2136,7 @@ export default function External() {
         )
       ),
       hide: hiddenColumns.includes("name")
-    }),
+    }, { width: activeTab === 'links' ? 220 : 210, minWidth: 150, maxWidth: 320 }),
     ...(activeTab === 'links' ? [
       {
         colId: "direction",
@@ -2947,6 +2958,8 @@ export default function External() {
             onRowClicked={handleRowClicked}
             onRowDoubleClicked={handleRowDoubleClicked}
             onCellContextMenu={handleCellContextMenu}
+            onFirstDataRendered={handleGridDataUpdated}
+            onRowDataUpdated={handleGridDataUpdated}
             noRowsLabel="No external registry data found"
           />
           {!isLoading && !linkLoading && !filteredEntities.length && (
@@ -3057,6 +3070,8 @@ export default function External() {
                       onRowClicked={handleRowClicked}
                       onRowDoubleClicked={handleRowDoubleClicked}
                       onCellContextMenu={handleCellContextMenu}
+                      onFirstDataRendered={handleGridDataUpdated}
+                      onRowDataUpdated={handleGridDataUpdated}
                       noRowsLabel="No external registry data found"
                     />
                   </OperationalGridSurface>

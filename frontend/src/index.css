@@ -394,7 +394,11 @@
   text-align: center !important;
 }
 
-.monitoring-grid-shell .operational-grid-primary-cell,
+.monitoring-grid-shell .operational-grid-primary-cell {
+  justify-content: center !important;
+  text-align: center !important;
+}
+
 .monitoring-grid-shell .operational-grid-left-body-cell {
   justify-content: flex-start !important;
   text-align: left !important;
@@ -406,7 +410,7 @@
 }
 
 .monitoring-grid-shell .operational-grid-primary-header {
-  text-align: left !important;
+  text-align: center !important;
 }
 
 .monitoring-grid-shell .operational-grid-centered-header,
@@ -417,6 +421,10 @@
 }
 
 .monitoring-grid-shell .operational-grid-overflow-visible {
+  overflow: visible !important;
+}
+
+.monitoring-grid-shell .operational-grid-overflow-visible > * {
   overflow: visible !important;
 }
 
@@ -458,6 +466,15 @@
   white-space: nowrap;
 }
 
+.monitoring-grid-shell .ag-cell:not(.operational-grid-overflow-visible) > *,
+.monitoring-grid-shell .ag-cell-value:not(.operational-grid-overflow-visible) > * {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
 .monitoring-grid-shell .operational-grid-utility-cell .operational-grid-text,
 .monitoring-grid-shell .operational-grid-id-cell .operational-grid-text,
 .monitoring-grid-shell .operational-grid-centered-cell .operational-grid-text,
@@ -468,8 +485,13 @@
 }
 
 .monitoring-grid-shell .operational-grid-primary-cell .operational-grid-text,
-.monitoring-grid-shell .operational-grid-left-body-cell .operational-grid-text,
 .monitoring-grid-shell .operational-grid-primary-cell .operational-grid-icon-value,
+.monitoring-grid-shell .operational-grid-left-body-cell .operational-grid-text,
+.monitoring-grid-shell .operational-grid-left-body-cell .operational-grid-icon-value {
+  text-align: center !important;
+}
+
+.monitoring-grid-shell .operational-grid-left-body-cell .operational-grid-text,
 .monitoring-grid-shell .operational-grid-left-body-cell .operational-grid-icon-value {
   text-align: left !important;
 }
@@ -477,7 +499,7 @@
 .monitoring-grid-shell .operational-grid-primary-button {
   width: 100%;
   background: transparent;
-  text-align: left;
+  text-align: center;
   transition: color 150ms ease;
 }
 
