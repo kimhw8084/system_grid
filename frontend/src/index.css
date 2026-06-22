@@ -428,6 +428,21 @@
   overflow: visible !important;
 }
 
+.monitoring-grid-shell .ag-cell-wrapper,
+.monitoring-grid-shell .ag-cell-value {
+  width: 100%;
+  min-width: 0 !important;
+  max-width: 100%;
+  height: 100%;
+  align-items: center;
+}
+
+.monitoring-grid-shell .ag-cell-value {
+  display: flex;
+  justify-content: inherit;
+  overflow: hidden;
+}
+
 .monitoring-grid-shell .operational-grid-text {
   display: block;
   width: 100%;
@@ -468,6 +483,15 @@
 
 .monitoring-grid-shell .ag-cell:not(.operational-grid-overflow-visible) > *,
 .monitoring-grid-shell .ag-cell-value:not(.operational-grid-overflow-visible) > * {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.monitoring-grid-shell .ag-cell:not(.operational-grid-overflow-visible) *,
+.monitoring-grid-shell .ag-cell-value:not(.operational-grid-overflow-visible) * {
   min-width: 0 !important;
   max-width: 100% !important;
   overflow: hidden !important;

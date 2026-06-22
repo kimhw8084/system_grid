@@ -3,7 +3,6 @@ import { WorkspaceModal } from '../shared/WorkspaceModal'
 import { 
   WorkspaceSplitView, 
   WorkspaceEmptyState,
-  useEscapeDismiss, 
   useBodyModalFlag,
   WorkspaceFieldLabel as FieldLabel,
   WorkspaceFieldError as FieldError,
@@ -49,8 +48,22 @@ import { buildMonitoringFormErrors, getMonitoringTabErrorCounts } from '../../ut
 import * as React from 'react'
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 
+const normalizeMonitoringDraft = (
+  draft: Record<string, any>,
+  ownershipMode: 'team' | 'individual',
+  isExistingItem: boolean
+) => ({
+  ...draft,
+  owner_team: ownershipMode === 'team' ? draft.owner_team || '' : '',
+  owners: ownershipMode === 'individual' ? (draft.owners || []) : [],
+  notification_recipients: [...(draft.notification_recipients || [])],
+  monitored_services: [...(draft.monitored_services || [])],
+  recovery_docs: [...(draft.recovery_docs || [])],
+  logic_json: [...(draft.logic_json || [])],
+  is_active: isExistingItem ? Boolean(draft.is_active) : draft.status === 'Existing',
+})
+
 export function MonitoringForm({ item, devices, categories, severities, platforms, teams, operators, notificationMethods, ownerRoles, onClose, onSuccess }: any) {
-  useEscapeDismiss(onClose)
   useBodyModalFlag()
   const [activeTab, setActiveTab] = useState<'context' | 'logic' | 'alerting'>('context')
   const [recoverySearch, setRecoverySearch] = useState('')
@@ -143,6 +156,39 @@ export function MonitoringForm({ item, devices, categories, severities, platform
   }, [operators, selectedTeams])
 
   const tabErrors = useMemo(() => getMonitoringTabErrorCounts(formErrors), [formErrors])
+  const initialDraftRef = useRef(
+    JSON.stringify(
+      normalizeMonitoringDraft({
+        category: 'Infrastructure',
+        status: 'Planned',
+        title: '',
+        spec: '',
+        platform: platforms?.[0]?.value || '',
+        monitoring_url: '',
+        purpose: '',
+        impact: '',
+        notification_method: 'Email',
+        notification_recipients: [],
+        logic: '',
+        device_id: null,
+        monitored_services: [],
+        owner_team: '',
+        check_interval: 60,
+        alert_duration: 0,
+        notification_throttle: 3600,
+        severity: 'Warning',
+        is_active: true,
+        recovery_docs: [],
+        owners: [],
+        ...initialItemFields,
+        logic_json: initialLogicJson as MonitoringLogicEntry[],
+      }, initialItemFields?.owner_team ? 'team' : (initialItemFields?.owners?.length ? 'individual' : 'team'), Boolean(item))
+    )
+  )
+  const isDirty = useMemo(
+    () => JSON.stringify(normalizeMonitoringDraft(formData, ownershipMode, Boolean(item))) !== initialDraftRef.current,
+    [formData, item, ownershipMode]
+  )
 
   const setOwnershipModeAndNormalize = (mode: 'team' | 'individual') => {
     setOwnershipMode(mode)
@@ -413,6 +459,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
         { id: 'logic', label: 'Logic', badgeCount: tabErrors.logic },
         { id: 'alerting', label: 'Alerting', badgeCount: tabErrors.alerting },
       ]}
+      isDirty={isDirty}
       footerLeft={
           <button 
             onClick={() => {
@@ -433,7 +480,6 @@ export function MonitoringForm({ item, devices, categories, severities, platform
       }
       footerRight={
         <div className="flex items-center gap-3 flex-nowrap shrink-0">
-          <ToolbarButton onClick={onClose} className="whitespace-nowrap">Close</ToolbarButton>
           <ToolbarButton
             onClick={handleSave}
             disabled={mutation.isPending}

@@ -567,7 +567,6 @@ export function OperationalImportModal({
       )}
       footerRight={(
         <div className="flex items-center gap-3 shrink-0">
-          <ToolbarButton onClick={onClose} className="!whitespace-nowrap">Cancel</ToolbarButton>
           <ToolbarButton
             onClick={() => executeMutation.mutate()}
             disabled={!preview || selectedImportCount === 0 || executeMutation.isPending}

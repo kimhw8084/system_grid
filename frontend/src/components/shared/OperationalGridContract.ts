@@ -22,8 +22,8 @@ export const OPERATIONAL_GRID_ICON_VALUE_CLASS = 'operational-grid-icon-value'
 export const OPERATIONAL_GRID_EMPTY_VALUE_CLASS = 'operational-grid-text operational-grid-empty-value'
 
 export const OPERATIONAL_GRID_WIDTHS = {
-  compactAction: 108,
-  standardAction: 176,
+  compactAction: 88,
+  standardAction: 144,
 } as const
 
 export const applyOperationalIdentityColumn = <T extends Record<string, any>>(
@@ -36,10 +36,11 @@ export const applyOperationalIdentityColumn = <T extends Record<string, any>>(
     pinned: 'left',
     lockPinned: true,
     width,
-    minWidth: options?.minWidth ?? column.minWidth ?? Math.min(width, 160),
-    maxWidth: options?.maxWidth ?? column.maxWidth ?? 360,
+    minWidth: options?.minWidth ?? column.minWidth ?? Math.min(width, 140),
+    maxWidth: options?.maxWidth ?? column.maxWidth ?? 320,
     flex: undefined,
     initialFlex: undefined,
+    operationalSkipAutoSize: true,
   }
 }
 
@@ -51,4 +52,5 @@ export const applyOperationalActionColumn = <T extends Record<string, any>>(colu
   minWidth: width,
   maxWidth: width,
   suppressSizeToFit: true,
+  operationalSkipAutoSize: true,
 })

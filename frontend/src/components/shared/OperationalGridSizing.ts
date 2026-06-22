@@ -39,7 +39,7 @@ export const autoSizeOperationalColumns = ({
   onSized,
 }: {
   api: {
-    getAllDisplayedColumns?: () => Array<{ getColId: () => string }>
+    getAllDisplayedColumns?: () => Array<{ getColId: () => string; getColDef?: () => Record<string, any> }>
     autoSizeColumns?: (keys: string[], skipHeader?: boolean) => void
   } | null | undefined
   skipColumnIds?: string[]
@@ -48,6 +48,7 @@ export const autoSizeOperationalColumns = ({
   if (!api?.getAllDisplayedColumns || !api.autoSizeColumns) return
   const columnIds = api
     .getAllDisplayedColumns()
+    .filter((column) => !column.getColDef?.()?.operationalSkipAutoSize)
     .map((column) => column.getColId())
     .filter((colId) => !skipColumnIds.includes(colId))
 
@@ -89,7 +90,14 @@ export const applyOperationalColumnSizing = (
   }
 
   if (preserveExplicitWidths) {
-    nextColumn.width = layout.width ?? nextColumn.width
+    const layoutWidth = layout.width ?? nextColumn.width
+    if (typeof layoutWidth === 'number') {
+      const minWidth = typeof nextColumn.minWidth === 'number' ? nextColumn.minWidth : layoutWidth
+      const maxWidth = typeof nextColumn.maxWidth === 'number' ? nextColumn.maxWidth : layoutWidth
+      nextColumn.width = Math.min(Math.max(layoutWidth, minWidth), maxWidth)
+    } else {
+      nextColumn.width = layoutWidth
+    }
     nextColumn.flex = layout.flex ?? nextColumn.flex
   }
 

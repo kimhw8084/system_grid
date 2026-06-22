@@ -1,6 +1,22 @@
 import { useCallback, useEffect, useState } from 'react'
 import { applyOperationalColumnState, getOperationalColumnLayoutSnapshot } from './OperationalGridSizing'
 
+const layoutsEqual = (left: any[], right: any[]) => {
+  if (left === right) return true
+  if (left.length !== right.length) return false
+
+  return left.every((column, index) => {
+    const other = right[index]
+    return column?.colId === other?.colId &&
+      column?.hide === other?.hide &&
+      column?.pinned === other?.pinned &&
+      column?.sort === other?.sort &&
+      column?.sortIndex === other?.sortIndex &&
+      column?.width === other?.width &&
+      column?.flex === other?.flex
+  })
+}
+
 export function usePersistentJsonState<T>(
   storageKey: string,
   fallback: T | (() => T)
@@ -85,10 +101,10 @@ export function useOperationalGridLayout(
 
   const preserveExplicitColumnWidths = Boolean((hasSavedViewWidths || hasManualColumnWidths) && columnLayoutState.length)
 
-  const syncColumnLayoutState = useCallback((api: any, _preserveWidths: boolean = preserveExplicitColumnWidths) => {
-    const nextLayout = getOperationalColumnLayoutSnapshot(api, true)
+  const syncColumnLayoutState = useCallback((api: any, preserveWidths: boolean = preserveExplicitColumnWidths) => {
+    const nextLayout = getOperationalColumnLayoutSnapshot(api, preserveWidths)
     if (!nextLayout.length) return
-    setColumnLayoutState(nextLayout)
+    setColumnLayoutState((current) => (layoutsEqual(current, nextLayout) ? current : nextLayout))
   }, [preserveExplicitColumnWidths])
 
   const applyColumnLayoutState = useCallback((

@@ -22,12 +22,6 @@ export const ConnectionForensicsModal: React.FC<ConnectionForensicsModalProps> =
       icon={<Network size={24} />}
       footerRight={(
         <>
-          <button 
-            onClick={onClose} 
-            className="rounded-lg border border-white/10 bg-black/20 px-4 py-2 text-[10px] font-black uppercase text-slate-300 transition-colors hover:text-white"
-          >
-            Close
-          </button>
           {onEdit && (
             <button 
               onClick={() => onEdit(connection)} 

@@ -9,7 +9,6 @@ interface ConfirmationModalProps {
   title: string
   message: string
   confirmText?: string
-  cancelText?: string
   variant?: 'danger' | 'info' | 'warning' | 'success'
 }
 
@@ -20,7 +19,6 @@ export const ConfirmationModal = ({
   title, 
   message, 
   confirmText = 'Confirm Action', 
-  cancelText = 'Cancel',
   variant = 'info'
 }: ConfirmationModalProps) => {
   const getVariantIcon = () => {
@@ -50,6 +48,7 @@ export const ConfirmationModal = ({
       subtitle={message}
       icon={getVariantIcon()}
       hideCloseButton={true}
+      hideFooterClose={true}
       footerRight={(
         <>
           <button 
@@ -57,7 +56,7 @@ export const ConfirmationModal = ({
             onClick={onClose} 
             className="rounded-lg border border-white/10 bg-black/20 px-4 py-2 text-[10px] font-black uppercase text-slate-500 transition-all hover:text-white"
           >
-            {cancelText}
+            Close
           </button>
           <button
             type="button"

@@ -1852,7 +1852,7 @@ export default function MonitoringGrid() {
       headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
       cellRenderer: (p: any) => <span className={OPERATIONAL_GRID_PRIMARY_TEXT_CLASS}>{p.value}</span>,
       hide: hiddenColumns.includes("title")
-    }, { width: 240, minWidth: 170, maxWidth: 340 }),
+    }, { width: 220, minWidth: 150, maxWidth: 300 }),
     { 
       field: "device_name", 
       headerName: "Target Asset", 
@@ -1924,11 +1924,11 @@ export default function MonitoringGrid() {
         const isActive = p.value
         const isDeleted = p.data?.is_deleted || p.data?.status === 'Deleted'
         return (
-          <div className="flex items-center justify-center h-full">
-            <div className="relative">
-              <div className={`w-2 h-2 rounded-full ${isDeleted ? 'bg-slate-700' : isActive ? 'bg-emerald-500' : 'bg-rose-500/50'}`} />
+          <div className="flex h-full w-full items-center justify-center">
+            <div className="relative flex h-3 w-3 items-center justify-center">
+              <div className={`h-2.5 w-2.5 rounded-full ${isDeleted ? 'bg-slate-700' : isActive ? 'bg-emerald-500' : 'bg-rose-500/50'}`} />
               {(isActive && !isDeleted) && (
-                <div className="absolute -inset-1 rounded-lg bg-emerald-500 animate-pulse opacity-40 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+                <div className="absolute inset-[-3px] rounded-full bg-emerald-500/35 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
               )}
             </div>
           </div>
@@ -2892,9 +2892,6 @@ function CompareMonitorsModal({ items, onClose }: any) {
       title="Compare Monitors"
       subtitle={`Temporal Variance Analysis · Comparing ${items.length} monitoring states for semantic drift`}
       icon={<GitCompare size={20} />}
-      footerRight={
-        <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
-      }
     >
       <WorkspaceCompareShell
         body={
@@ -2961,7 +2958,6 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     const [val, setVal] = useState('')
     
     useEffect(() => { setVal(''); }, [isStatusOpen, isSeverityOpen, isNotifyOpen]);
-    useEscapeDismiss(onClose)
     useBodyModalFlag()
 
     if (isStatusOpen) {
@@ -2973,9 +2969,9 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
             title="Update Status"
             subtitle="Apply a global status change to selection."
             icon={<Tag size={20} />}
+            isDirty={Boolean(val)}
             footerRight={
               <div className="flex items-center gap-3">
-                <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
                 <ToolbarButton 
                   disabled={!val} 
                   onClick={() => onApply('status', val)} 
@@ -3008,9 +3004,9 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
             title="Update Severity"
             subtitle="Recalibrate alert priorities for selection."
             icon={<Shield size={20} />}
+            isDirty={Boolean(val)}
             footerRight={
               <div className="flex items-center gap-3">
-                <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
                 <ToolbarButton 
                   disabled={!val} 
                   onClick={() => onApply('severity', val)} 
@@ -3043,9 +3039,9 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
             title="Update Notification"
             subtitle="Reroute notification paths for selection."
             icon={<Bell size={20} />}
+            isDirty={Boolean(val)}
             footerRight={
               <div className="flex items-center gap-3">
-                <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
                 <ToolbarButton 
                   disabled={!val} 
                   onClick={() => onApply('notification_method', val)} 
@@ -3073,7 +3069,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
 }
 
 function BulkEditTableModal({ items, teams, operators, severities, notificationMethods, onClose, onSuccess }: any) {
-  const [rows, setRows] = useState(() => items.map((item: any) => ({
+  const buildRows = React.useCallback(() => items.map((item: any) => ({
     id: item.id,
     title: item.title,
     status: item.status || '',
@@ -3085,10 +3081,11 @@ function BulkEditTableModal({ items, teams, operators, severities, notificationM
     alert_duration: item.alert_duration ?? '',
     notification_throttle: item.notification_throttle ?? '',
     is_active: item.is_active !== false,
-  })))
+  })), [items])
+  const [rows, setRows] = useState(buildRows)
   const [isMaximized, setIsMaximized] = useState(false)
-
-  useEscapeDismiss(onClose)
+  const initialRowsRef = useRef(JSON.stringify(buildRows()))
+  const isDirty = useMemo(() => JSON.stringify(rows) !== initialRowsRef.current, [rows])
 
   const updateRow = (rowId: number, field: string, value: any) => {
     setRows((current: any[]) => current.map((row: any) => row.id === rowId ? { ...row, [field]: value } : row))
@@ -3132,12 +3129,12 @@ function BulkEditTableModal({ items, teams, operators, severities, notificationM
       size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+      isDirty={isDirty}
       title="Bulk Edit Monitoring"
       subtitle="Safe table-based edits for selected monitors."
       icon={<Edit2 size={20} />}
       footerRight={
         <div className="flex items-center gap-3">
-          <ToolbarButton onClick={onClose}>Close</ToolbarButton>
           <ToolbarButton 
             onClick={() => mutation.mutate()} 
             disabled={mutation.isPending} 
@@ -3242,9 +3239,6 @@ function RecipientsModal({ recipients, method, onClose }: any) {
       title="Recipient matrix"
       subtitle={`Method: ${method}`}
       icon={<Users size={20} />}
-      footerRight={
-        <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
-      }
     >
       <div className="space-y-2">
         {recipients.map((r: string, i: number) => (
@@ -3565,7 +3559,6 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
             icon={<Shield size={20} className="text-amber-500" />}
             footerRight={
                <div className="flex items-center gap-3">
-                  <ToolbarButton onClick={() => setInterventionDoc(null)}>Cancel</ToolbarButton>
                   <ToolbarButton 
                     variant="primary" 
                     onClick={() => {
@@ -3859,9 +3852,6 @@ function MonitoringHistoryModal({ item, onClose }: any) {
             {indexedVersions?.length || 0} Snapshot(s)
           </p>
         </div>
-      }
-      footerRight={
-        <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
       }
     >
       <WorkspaceHistoryShell

@@ -653,7 +653,16 @@ const ExternalForm = ({
   operators,
   formId = 'external-entity-form',
   renderActions = true,
+  onDirtyChange,
 }: any) => {
+  const buildNormalizedDraft = React.useCallback((draft: Record<string, any>, metadataKeys: string[]) => ({
+    ...draft,
+    aliases_json: [...(draft.aliases_json || [])],
+    contacts_json: [...(draft.contacts_json || [])],
+    metadata_json: Object.fromEntries(
+      metadataKeys.map((key) => [key, draft.metadata_json?.[key] ?? ''])
+    ),
+  }), [])
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formData, setFormData] = useState(() => {
@@ -690,6 +699,11 @@ const ExternalForm = ({
   const envOptions = ensureCurrentOption(getOptions('Environment'), formData.environment)
   const selectedTypeOption = types.find((type: any) => type.value === formData.type)
   const allowedMetadataKeys = (selectedTypeOption as any)?.metadata_keys || (extensionMetadataKeysByType as any)[formData.type] || []
+  const initialDraftRef = useRef('')
+
+  if (!initialDraftRef.current) {
+    initialDraftRef.current = JSON.stringify(buildNormalizedDraft(formData, allowedMetadataKeys))
+  }
 
   useEffect(() => {
     if (!allowedMetadataKeys.length) return
@@ -707,6 +721,10 @@ const ExternalForm = ({
       return changed ? { ...prev, metadata_json: filteredMeta } : prev
     })
   }, [formData.type])
+
+  useEffect(() => {
+    onDirtyChange?.(JSON.stringify(buildNormalizedDraft(formData, allowedMetadataKeys)) !== initialDraftRef.current)
+  }, [allowedMetadataKeys, buildNormalizedDraft, formData, onDirtyChange])
 
   const updateField = (key: string, value: any) => {
     setFormData((prev: any) => ({ ...prev, [key]: value }))
@@ -1256,6 +1274,7 @@ export default function External() {
   const [activeModal, setActiveModal] = useState<any>(null)
   const [activeDetails, setActiveDetails] = useState<any>(null)
   const [showLinkModal, setShowLinkModal] = useState(false)
+  const [isActiveModalDirty, setIsActiveModalDirty] = useState(false)
   const [linkSeedEntityId, setLinkSeedEntityId] = useState<number | null>(null)
   const [editingLink, setEditingLink] = useState<any>(null)
   const [isWorkspaceMaximized, setIsWorkspaceMaximized] = useState(false)
@@ -2136,7 +2155,7 @@ export default function External() {
         )
       ),
       hide: hiddenColumns.includes("name")
-    }, { width: activeTab === 'links' ? 220 : 210, minWidth: 150, maxWidth: 320 }),
+    }, { width: activeTab === 'links' ? 200 : 190, minWidth: 140, maxWidth: 280 }),
     ...(activeTab === 'links' ? [
       {
         colId: "direction",
@@ -3088,6 +3107,7 @@ export default function External() {
         size="workspace"
         isMaximized={isWorkspaceMaximized}
         onMaximizeToggle={() => setIsWorkspaceMaximized((current) => !current)}
+        isDirty={isActiveModalDirty}
         title={activeModal?.id ? `Modify ${externalViewLabel} Identity` : `Add ${externalViewLabel} Identity`}
         subtitle={activeModal?.id ? `Updating ${activeModal.name || 'external registry record'}` : `Register ${externalViewLabel.toLowerCase()} entities, ownership, and dependency context.`}
         icon={activeModal?.id ? <Edit2 size={20} /> : <Plus size={20} />}
@@ -3116,6 +3136,7 @@ export default function External() {
         )}
       >
         <ExternalForm
+          key={activeModal?.id ?? 'new'}
           formId="external-entity-form"
           renderActions={false}
           initialData={activeModal}
@@ -3124,6 +3145,7 @@ export default function External() {
           options={options}
           teams={teams || []}
           operators={operators || []}
+          onDirtyChange={setIsActiveModalDirty}
         />
       </WorkspaceModal>
 
@@ -3281,6 +3303,8 @@ function LinkForm({ entities, devices, onClose, onSave, isPending, initialExtern
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isMaximized, setIsMaximized] = useState(false)
+  const initialDraftRef = useRef(JSON.stringify(formData))
+  const isDirty = useMemo(() => JSON.stringify(formData) !== initialDraftRef.current, [formData])
 
   const { data: services } = useQuery({
     queryKey: ['device-services', formData.device_id],
@@ -3298,6 +3322,7 @@ function LinkForm({ entities, devices, onClose, onSave, isPending, initialExtern
       size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized((current) => !current)}
+      isDirty={isDirty}
       title="Establish External Link"
       subtitle="Map topology and credentials between the external registry and internal assets."
       icon={<LinkIcon size={20} />}

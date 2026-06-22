@@ -31,6 +31,9 @@ interface WorkspaceModalProps {
   onTabChange?: (id: string) => void
   className?: string
   hideCloseButton?: boolean
+  hideFooterClose?: boolean
+  isDirty?: boolean
+  closeConfirmationMessage?: string
 }
 
 export function WorkspaceModal({
@@ -52,15 +55,41 @@ export function WorkspaceModal({
   onTabChange,
   className = '',
   hideCloseButton = false,
+  hideFooterClose = false,
+  isDirty = false,
+  closeConfirmationMessage = 'You have unsaved changes. Close without saving?',
 }: WorkspaceModalProps) {
-  useEscapeDismiss(onClose, isOpen)
+  const requestClose = React.useCallback(() => {
+    if (isDirty && typeof window !== 'undefined' && !window.confirm(closeConfirmationMessage)) {
+      return
+    }
+    onClose()
+  }, [closeConfirmationMessage, isDirty, onClose])
+
+  useEscapeDismiss(requestClose, isOpen)
+
+  React.useEffect(() => {
+    if (!isOpen || !isDirty || typeof window === 'undefined') return
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isDirty, isOpen])
 
   if (!isOpen) return null
 
-  const resolvedFooterLeft = (
-    <div className="flex items-center gap-3">
-      <ToolbarButton onClick={onClose}>Close</ToolbarButton>
-      {footerLeft}
+  const resolvedFooterRight = (
+    <div className="flex items-center gap-3 shrink-0">
+      {!hideFooterClose ? (
+        <ToolbarButton onClick={requestClose} className="whitespace-nowrap">
+          Close
+        </ToolbarButton>
+      ) : null}
+      {footerRight}
     </div>
   )
 
@@ -87,7 +116,7 @@ export function WorkspaceModal({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={onClose}
+                    onClick={requestClose}
                     className="group flex h-3 w-3 items-center justify-center rounded-full bg-[#ff5f57] transition-all hover:bg-[#ff5f57]/80"
                     title="Close"
                   >
@@ -122,8 +151,8 @@ export function WorkspaceModal({
           </div>
 
           <WorkspaceModalFooter
-            left={resolvedFooterLeft}
-            right={footerRight}
+            left={footerLeft}
+            right={resolvedFooterRight}
           />
         </motion.div>
       </div>

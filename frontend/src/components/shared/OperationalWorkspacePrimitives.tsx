@@ -327,7 +327,7 @@ export function WorkspaceHoverPreview({
     <span
       title={tooltip}
       style={fontSize ? { fontSize: `${fontSize}px` } : undefined}
-      className={`cursor-help border-b border-dashed ${tone === 'blue' ? 'border-blue-500/30 text-blue-300 hover:text-blue-200' : 'border-slate-700 text-slate-200 hover:text-white'} transition-colors`}
+      className={`inline-block max-w-full truncate whitespace-nowrap cursor-help border-b border-dashed ${tone === 'blue' ? 'border-blue-500/30 text-blue-300 hover:text-blue-200' : 'border-slate-700 text-slate-200 hover:text-white'} transition-colors`}
     >
       {summary}
     </span>
