@@ -1165,9 +1165,6 @@ function CompareExternalModal({ items, onClose }: { items: any[]; onClose: () =>
       title="Compare External Identities"
       subtitle={`Temporal Variance Analysis · Comparing ${items.length} external states for semantic drift`}
       icon={<GitCompare size={20} />}
-      footerRight={
-        <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
-      }
     >
       <WorkspaceCompareShell
         body={
@@ -1250,6 +1247,7 @@ export default function External() {
   const [activeDetails, setActiveDetails] = useState<any>(null)
   const [showLinkModal, setShowLinkModal] = useState(false)
   const [linkSeedEntityId, setLinkSeedEntityId] = useState<number | null>(null)
+  const [editingLink, setEditingLink] = useState<any>(null)
   const [isWorkspaceMaximized, setIsWorkspaceMaximized] = useState(false)
   const [searchTerm, setSearchTerm] = useState(persistedUiState.searchTerm)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
@@ -1409,7 +1407,8 @@ export default function External() {
   const registryCounts = useMemo(() => ({
     active: allEntities?.filter((entity: any) => !entity.is_deleted).length || 0,
     archived: allEntities?.filter((entity: any) => entity.is_deleted).length || 0,
-  }), [allEntities])
+    links: links?.length || 0,
+  }), [allEntities, links])
 
   const toFilterOptions = (values: any[]) => Array.from(new Set(values.filter((value) => typeof value === 'string' && value.trim().length > 0)))
     .sort()
@@ -1422,15 +1421,82 @@ export default function External() {
     owner: toFilterOptions(entities.map((entity: any) => entity.internal_owner)),
   }), [entities])
 
+  const linkFilterOptions = useMemo(() => {
+    if (!links) return { direction: [], protocol: [] }
+    return {
+      direction: toFilterOptions(links.map((l: any) => l.direction)),
+      protocol: toFilterOptions(links.map((l: any) => l.protocol)),
+    }
+  }, [links])
+
   const filteredEntities = useMemo(() => sortedEntities.filter((entity: any) => {
+    if (searchTerm.trim()) {
+      const query = searchTerm.trim().toLowerCase()
+      const metadata = parseMetadataObject(entity.metadata_json)
+      const contacts = normalizeLegacyContacts(entity)
+      const haystack = [
+        String(entity.id || ''),
+        entity.name,
+        entity.vendor_name || entity.vendor,
+        entity.type,
+        entity.status,
+        entity.environment,
+        entity.internal_owner,
+        entity.category,
+        entity.primary_endpoint_url,
+        entity.owner_organization,
+        entity.owner_team,
+        entity.criticality,
+        entity.risk_rating,
+        entity.business_purpose,
+        entity.third_party_assessment_status,
+        ...(Array.isArray(entity.tags) ? entity.tags : []),
+        ...contacts.map((c: any) => `${c.full_name} ${c.email} ${c.phone}`),
+        ...Object.entries(metadata).map(([k, v]) => `${k} ${v}`),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      if (!haystack.includes(query)) return false
+    }
     if (quickFilters.status.length && !quickFilters.status.includes(entity.status)) return false
     if (quickFilters.type.length && !quickFilters.type.includes(entity.type)) return false
     if (quickFilters.environment.length && !quickFilters.environment.includes(entity.environment)) return false
     if (quickFilters.owner.length && !quickFilters.owner.includes(entity.internal_owner)) return false
     return true
-  }), [sortedEntities, quickFilters])
+  }), [sortedEntities, quickFilters, searchTerm])
 
-  const filteredLinks: any[] = []
+  const filteredLinks = useMemo(() => {
+    if (!links) return []
+    return links.filter((link: any) => {
+      if (searchTerm.trim()) {
+        const query = searchTerm.trim().toLowerCase()
+        const haystack = [
+          String(link.id || ''),
+          link.external_entity_name,
+          link.device_name,
+          link.service_name,
+          link.direction,
+          link.purpose,
+          link.protocol,
+          String(link.port || ''),
+          link.host_or_fqdn,
+          link.path_or_resource,
+          link.network_zone,
+          link.transport_security,
+          link.link_status,
+          link.credential_reference
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+        if (!haystack.includes(query)) return false
+      }
+      if (quickFilters.direction?.length && !quickFilters.direction.includes(link.direction)) return false
+      if (quickFilters.protocol?.length && !quickFilters.protocol.includes(link.protocol)) return false
+      return true
+    })
+  }, [links, searchTerm, quickFilters])
 
   const getEntityGroupValue = (item: any, field: string) => {
     if (field === 'owner') return item.internal_owner || 'Unassigned'
@@ -1439,8 +1505,11 @@ export default function External() {
 
   const groupedSections = useMemo(() => {
     if (groupBy === 'raw') return []
-    const sections = filteredEntities.reduce((acc: Array<{ key: string; label: string; items: any[] }>, item: any) => {
-      const val = getEntityGroupValue(item, groupBy)
+    const items = activeTab === 'links' ? filteredLinks : filteredEntities
+    const sections = items.reduce((acc: Array<{ key: string; label: string; items: any[] }>, item: any) => {
+      const val = activeTab === 'links' 
+        ? (groupBy === 'owner' ? 'Unassigned' : (item[groupBy] || 'Unspecified'))
+        : getEntityGroupValue(item, groupBy)
       const label = String(val)
       const existing = acc.find((section) => section.key === label)
       if (existing) {
@@ -1451,7 +1520,7 @@ export default function External() {
       return acc
     }, [])
     return sections.sort((a, b) => a.label.localeCompare(b.label))
-  }, [filteredEntities, groupBy])
+  }, [filteredEntities, filteredLinks, groupBy, activeTab])
 
   useEffect(() => {
     if (groupBy === 'raw') return
@@ -1504,10 +1573,12 @@ export default function External() {
     groupBy,
     activeTab,
     searchTerm,
+    showFilterBar,
+    quickFilters,
     columnLayoutState,
     filterModel: gridFilterModel,
     sortModel: gridSortModel,
-  }), [fontSize, rowDensity, hiddenColumns, groupBy, activeTab, searchTerm, columnLayoutState, gridFilterModel, gridSortModel])
+  }), [fontSize, rowDensity, hiddenColumns, groupBy, activeTab, searchTerm, showFilterBar, quickFilters, columnLayoutState, gridFilterModel, gridSortModel])
 
   useEffect(() => {
     setPersistedUiState(currentWorkspaceConfig)
@@ -1533,6 +1604,8 @@ export default function External() {
     setHiddenColumns(sanitized.hiddenColumns)
     setActiveTab(sanitized.activeTab)
     setSearchTerm(sanitized.searchTerm)
+    setQuickFilters(sanitized.quickFilters)
+    setShowFilterBar(sanitized.showFilterBar)
     setGridFilterModel(sanitized.filterModel)
     setGridSortModel(sanitized.sortModel)
     setColumnLayoutState(sanitized.columnLayoutState)
@@ -1730,13 +1803,23 @@ export default function External() {
 
   const linkMutation = useMutation({
     mutationFn: async (data: any) => {
-      return (await apiFetch('/api/v1/intelligence/links', { method: 'POST', body: JSON.stringify(data) })).json()
+      const isEdit = Boolean(data.id)
+      const url = isEdit ? `/api/v1/intelligence/links/${data.id}` : '/api/v1/intelligence/links/'
+      const res = await apiFetch(url, {
+        method: isEdit ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      if (!res.ok) throw new Error(await res.text())
+      return res.json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['external-links'] })
-      toast.success('Interconnect Established')
+      queryClient.invalidateQueries({ queryKey: ['external-entities'] })
       setShowLinkModal(false)
       setLinkSeedEntityId(null)
+      setEditingLink(null)
+      toast.success('Interconnect Established')
     },
     onError: (e: any) => toast.error(e.message || 'Interconnect establishment failed')
   })
@@ -1775,8 +1858,13 @@ export default function External() {
 
   const { handleRowClicked, handleRowDoubleClicked } = useOperationalRowInteractions({
     onRowDoubleClick: useCallback((item) => {
-      setActiveDetails(item)
-    }, [])
+      if (activeTab === 'links') {
+        const ent = allEntities?.find((e: any) => e.id === item.external_entity_id)
+        if (ent) setActiveDetails(ent)
+      } else {
+        setActiveDetails(item)
+      }
+    }, [activeTab, allEntities])
   })
 
   const handleExternalSelectionChanged = useCallback((e: any) => {
@@ -1796,7 +1884,12 @@ export default function External() {
         type="button"
         onClick={(event) => {
           event.stopPropagation()
-          setActiveDetails(item)
+          if (activeTab === 'links') {
+            const ent = allEntities?.find((e: any) => e.id === item.external_entity_id)
+            if (ent) setActiveDetails(ent)
+          } else {
+            setActiveDetails(item)
+          }
         }}
         title="Open details"
         className="rounded-lg p-1 text-blue-400 transition-all hover:bg-blue-400/10 active:scale-90"
@@ -1811,6 +1904,20 @@ export default function External() {
             setActiveModal(item)
           }}
           title="Edit configuration"
+          className="rounded-lg p-1 text-emerald-400 transition-all hover:bg-emerald-400/10 active:scale-90"
+        >
+          <Edit2 size={13} />
+        </button>
+      )}
+      {activeTab === 'links' && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            setEditingLink(item)
+            setShowLinkModal(true)
+          }}
+          title="Edit link"
           className="rounded-lg p-1 text-emerald-400 transition-all hover:bg-emerald-400/10 active:scale-90"
         >
           <Edit2 size={13} />
@@ -2194,15 +2301,16 @@ export default function External() {
         actions: (
           <HeaderScopeSwitch
             label="Registry Scope"
-            summary={`${registryCounts.active} active · ${registryCounts.archived} archived`}
+            summary={`${registryCounts.active} active · ${registryCounts.archived} archived · ${registryCounts.links} links`}
             value={activeTab}
             onChange={(value) => {
-              setActiveTab(value as 'active' | 'deleted')
+              setActiveTab(value as 'active' | 'deleted' | 'links')
               setSelectedIds([])
             }}
             options={[
               { label: 'Active', value: 'active' },
-              { label: 'Archived', value: 'deleted' }
+              { label: 'Archived', value: 'deleted' },
+              { label: 'Links', value: 'links' }
             ]}
           />
         ),
@@ -2278,38 +2386,61 @@ export default function External() {
       )}
       secondaryToolbar={showFilterBar ? (
         <div className="grid w-full gap-3 md:grid-cols-4">
-          <AppDropdown
-            multi
-            value={quickFilters.status}
-            onChange={(value) => setQuickFilters((current) => ({ ...current, status: value }))}
-            options={entityFilterOptions.status}
-            label="Status Filter"
-            placeholder="All statuses"
-          />
-          <AppDropdown
-            multi
-            value={quickFilters.type}
-            onChange={(value) => setQuickFilters((current) => ({ ...current, type: value }))}
-            options={entityFilterOptions.type}
-            label="Type Filter"
-            placeholder="All types"
-          />
-          <AppDropdown
-            multi
-            value={quickFilters.environment}
-            onChange={(value) => setQuickFilters((current) => ({ ...current, environment: value }))}
-            options={entityFilterOptions.environment}
-            label="Environment Filter"
-            placeholder="All environments"
-          />
-          <AppDropdown
-            multi
-            value={quickFilters.owner}
-            onChange={(value) => setQuickFilters((current) => ({ ...current, owner: value }))}
-            options={entityFilterOptions.owner}
-            label="Owner Filter"
-            placeholder="All owners"
-          />
+          {activeTab === 'links' ? (
+            <>
+              <AppDropdown
+                multi
+                value={quickFilters.direction || []}
+                onChange={(value) => setQuickFilters((current) => ({ ...current, direction: value }))}
+                options={linkFilterOptions.direction}
+                label="Flow Direction"
+                placeholder="All directions"
+              />
+              <AppDropdown
+                multi
+                value={quickFilters.protocol || []}
+                onChange={(value) => setQuickFilters((current) => ({ ...current, protocol: value }))}
+                options={linkFilterOptions.protocol}
+                label="Protocol"
+                placeholder="All protocols"
+              />
+            </>
+          ) : (
+            <>
+              <AppDropdown
+                multi
+                value={quickFilters.status}
+                onChange={(value) => setQuickFilters((current) => ({ ...current, status: value }))}
+                options={entityFilterOptions.status}
+                label="Status Filter"
+                placeholder="All statuses"
+              />
+              <AppDropdown
+                multi
+                value={quickFilters.type}
+                onChange={(value) => setQuickFilters((current) => ({ ...current, type: value }))}
+                options={entityFilterOptions.type}
+                label="Type Filter"
+                placeholder="All types"
+              />
+              <AppDropdown
+                multi
+                value={quickFilters.environment}
+                onChange={(value) => setQuickFilters((current) => ({ ...current, environment: value }))}
+                options={entityFilterOptions.environment}
+                label="Environment Filter"
+                placeholder="All environments"
+              />
+              <AppDropdown
+                multi
+                value={quickFilters.owner}
+                onChange={(value) => setQuickFilters((current) => ({ ...current, owner: value }))}
+                options={entityFilterOptions.owner}
+                label="Owner Filter"
+                placeholder="All owners"
+              />
+            </>
+          )}
         </div>
       ) : null}
       toolbarActions={(
@@ -2355,19 +2486,26 @@ export default function External() {
             label: `Search: ${searchTerm}`,
             onRemove: () => setSearchTerm(''),
           }] : []),
-          ...Object.entries({
-                status: quickFilters.status,
-                type: quickFilters.type,
-                environment: quickFilters.environment,
-                owner: quickFilters.owner,
-              }).flatMap(([key, values]) => values.map((value) => ({
-                id: `${key}-${value}`,
-                label: `${key}: ${value}`,
-                onRemove: () => setQuickFilters((current) => ({
-                  ...current,
-                  [key]: (current as any)[key].filter((entry: string) => entry !== value),
-                })),
-              }))),
+          ...Object.entries(
+            activeTab === 'links'
+              ? {
+                  direction: quickFilters.direction || [],
+                  protocol: quickFilters.protocol || [],
+                }
+              : {
+                  status: quickFilters.status,
+                  type: quickFilters.type,
+                  environment: quickFilters.environment,
+                  owner: quickFilters.owner,
+                }
+          ).flatMap(([key, values]) => values.map((value) => ({
+            id: `${key}-${value}`,
+            label: `${key}: ${value}`,
+            onRemove: () => setQuickFilters((current) => ({
+              ...current,
+              [key]: (current as any)[key].filter((entry: string) => entry !== value),
+            })),
+          }))),
           ...(searchTerm || Object.values(quickFilters).some(v => v.length)
             ? [{
                 id: 'clear-all',
@@ -2582,9 +2720,9 @@ export default function External() {
                 <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
                   <div className="min-w-0">
                     <p className="truncate text-[10px] font-semibold text-slate-400">Row actions</p>
-                    <p className="pt-1 text-[11px] font-semibold text-slate-100">ID {rowActionMenu.item.id} · {rowActionMenu.item.name}</p>
+                    <p className="pt-1 text-[11px] font-semibold text-slate-100">ID {rowActionMenu.item.id} · {activeTab === 'links' ? rowActionMenu.item.external_entity_name : rowActionMenu.item.name}</p>
                     <p className="truncate pt-1 text-[12px] text-slate-300">
-                      {rowActionMenu.item.type || 'External Peer'}
+                      {activeTab === 'links' ? `Link · ${rowActionMenu.item.protocol} Port ${rowActionMenu.item.port}` : (rowActionMenu.item.type || 'External Peer')}
                     </p>
                   </div>
                   <button
@@ -2602,7 +2740,12 @@ export default function External() {
                   <div className="grid grid-cols-2 gap-2 px-2 pb-3 border-b border-slate-800 mb-2">
                     <button
                       onClick={() => {
-                        setActiveDetails(rowActionMenu.item)
+                        if (activeTab === 'links') {
+                          const ent = allEntities?.find((e: any) => e.id === rowActionMenu.item.external_entity_id)
+                          if (ent) setActiveDetails(ent)
+                        } else {
+                          setActiveDetails(rowActionMenu.item)
+                        }
                         setRowActionMenu(null)
                       }}
                       className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-blue-400 transition-all hover:border-blue-500/30 hover:bg-blue-600/10 active:scale-95"
@@ -2610,10 +2753,15 @@ export default function External() {
                       <Maximize2 size={14} />
                       Details
                     </button>
-                    {activeTab === 'active' && (
+                    {(activeTab === 'active' || activeTab === 'links') && (
                       <button
                         onClick={() => {
-                          setActiveModal(rowActionMenu.item)
+                          if (activeTab === 'links') {
+                            setEditingLink(rowActionMenu.item)
+                            setShowLinkModal(true)
+                          } else {
+                            setActiveModal(rowActionMenu.item)
+                          }
                           setRowActionMenu(null)
                         }}
                         className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-emerald-400 transition-all hover:border-emerald-500/30 hover:bg-emerald-600/10 active:scale-95"
@@ -2624,49 +2772,52 @@ export default function External() {
                     )}
                   </div>
 
-                  <div className="px-3 py-1">
-                    <p className="text-[10px] font-semibold text-slate-400">Follow options</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 px-2 pb-1">
-                    <button
-                      onClick={() => {
-                        toggleWatch(rowActionMenu.item.id)
-                      }}
-                      className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
-                    >
-                      {normalizedWatchIds.includes(Number(rowActionMenu.item.id)) ? (
-                        <>
-                          <EyeOff size={12} className="text-slate-400" />
-                          Unwatch
-                        </>
-                      ) : (
-                        <>
-                          <Eye size={12} className="text-sky-400" />
-                          Watch
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => {
-                        toggleFavorite(rowActionMenu.item.id)
-                      }}
-                      className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
-                    >
-                      {normalizedFavoriteIds.includes(Number(rowActionMenu.item.id)) ? (
-                        <>
-                          <Star size={12} className="fill-amber-400 text-amber-400" />
-                          Unpin
-                        </>
-                      ) : (
-                        <>
-                          <Star size={12} className="text-amber-400" />
-                          Pin
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  
-                  <div className="mx-2 my-2 h-px bg-slate-800" />
+                  {activeTab !== 'links' && (
+                    <>
+                      <div className="px-3 py-1">
+                        <p className="text-[10px] font-semibold text-slate-400">Follow options</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 px-2 pb-1">
+                        <button
+                          onClick={() => {
+                            toggleWatch(rowActionMenu.item.id)
+                          }}
+                          className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
+                        >
+                          {normalizedWatchIds.includes(Number(rowActionMenu.item.id)) ? (
+                            <>
+                              <EyeOff size={12} className="text-slate-400" />
+                              Unwatch
+                            </>
+                          ) : (
+                            <>
+                              <Eye size={12} className="text-sky-400" />
+                              Watch
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => {
+                            toggleFavorite(rowActionMenu.item.id)
+                          }}
+                          className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
+                        >
+                          {normalizedFavoriteIds.includes(Number(rowActionMenu.item.id)) ? (
+                            <>
+                              <Star size={12} className="fill-amber-400 text-amber-400" />
+                              Unpin
+                            </>
+                          ) : (
+                            <>
+                              <Star size={12} className="text-amber-400" />
+                              Pin
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <div className="mx-2 my-2 h-px bg-slate-800" />
+                    </>
+                  )}
                   
                   {activeTab === 'deleted' && (
                     <button
@@ -2684,13 +2835,23 @@ export default function External() {
                   <button
                     onClick={() => {
                       const item = rowActionMenu.item
-                      if (rowDeleteConfirmId !== item.id) {
-                        setRowDeleteConfirmId(item.id)
-                        return
+                      if (activeTab === 'links') {
+                        if (rowDeleteConfirmId !== item.id) {
+                          setRowDeleteConfirmId(item.id)
+                          return
+                        }
+                        deleteMutation.mutate({ id: item.id, purge: false, type: 'link' })
+                        setRowActionMenu(null)
+                        setRowDeleteConfirmId(null)
+                      } else {
+                        if (rowDeleteConfirmId !== item.id) {
+                          setRowDeleteConfirmId(item.id)
+                          return
+                        }
+                        deleteMutation.mutate({ id: item.id, purge: activeTab === 'deleted', type: 'entity' })
+                        setRowActionMenu(null)
+                        setRowDeleteConfirmId(null)
                       }
-                      deleteMutation.mutate({ id: item.id, purge: activeTab === 'deleted', type: 'entity' })
-                      setRowActionMenu(null)
-                      setRowDeleteConfirmId(null)
                     }}
                     onMouseLeave={() => setRowDeleteConfirmId(null)}
                     className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] transition-all ${
@@ -2701,8 +2862,8 @@ export default function External() {
                   >
                     <Trash2 size={14} />
                     {rowDeleteConfirmId === rowActionMenu.item.id
-                      ? (activeTab === 'active' ? 'Confirm De-activate?' : 'Confirm Purge peer?')
-                      : (activeTab === 'active' ? 'De-activate' : 'Purge')}
+                      ? (activeTab === 'links' ? 'Confirm Sever Link?' : (activeTab === 'active' ? 'Confirm De-activate?' : 'Confirm Purge peer?'))
+                      : (activeTab === 'links' ? 'Sever Link' : (activeTab === 'active' ? 'De-activate' : 'Purge'))}
                   </button>
                 </div>
               </WorkspaceFloatingPanel>
@@ -2725,7 +2886,7 @@ export default function External() {
         >
           <OperationalGridMatrix
             gridRef={gridRef}
-            rowData={filteredEntities}
+            rowData={activeTab === 'links' ? filteredLinks : filteredEntities}
             columnDefs={columnDefs as any} 
             autoSizeStrategy={autoSizeStrategy}
             colResizeDefault="normal"
@@ -2910,7 +3071,6 @@ export default function External() {
         ) : undefined}
         footerRight={(
           <div className="flex items-center gap-3 shrink-0">
-            <ToolbarButton onClick={() => setActiveModal(null)}>Close</ToolbarButton>
             <ToolbarButton
               onClick={() => (document.getElementById('external-entity-form') as HTMLFormElement | null)?.requestSubmit()}
               disabled={mutation.isPending}
@@ -2942,10 +3102,12 @@ export default function External() {
             onClose={() => {
               setShowLinkModal(false)
               setLinkSeedEntityId(null)
+              setEditingLink(null)
             }}
             onSave={(data: any) => linkMutation.mutate(data)}
             isPending={linkMutation.isPending}
             initialExternalEntityId={linkSeedEntityId}
+            initialData={editingLink}
          />
       )}
 
@@ -3031,7 +3193,6 @@ export default function External() {
                 ? (activeTab === 'active' ? 'Confirm De-activate?' : 'Confirm Purge peer?')
                 : (activeTab === 'active' ? 'De-activate' : 'Purge')}
             </ToolbarButton>
-            <ToolbarButton onClick={closeDetails}>Close</ToolbarButton>
           </div>
         ) : undefined}
       >
@@ -3089,11 +3250,32 @@ export default function External() {
   )
 }
 
-function LinkForm({ entities, devices, onClose, onSave, isPending, initialExternalEntityId }: any) {
-  const [formData, setFormData] = useState({
-    external_entity_id: initialExternalEntityId ? String(initialExternalEntityId) : '', device_id: '', service_id: '', direction: 'Outbound', purpose: '', protocol: 'TCP', port: '',
-    host_or_fqdn: '', path_or_resource: '', network_zone: '', transport_security: '', link_status: 'Active', credential_reference: '',
-    credentials: { username: '', vault_path: '', note: '' }
+function LinkForm({ entities, devices, onClose, onSave, isPending, initialExternalEntityId, initialData }: any) {
+  const [formData, setFormData] = useState(() => {
+    if (initialData) {
+      return {
+        id: initialData.id,
+        external_entity_id: String(initialData.external_entity_id || ''),
+        device_id: String(initialData.device_id || ''),
+        service_id: String(initialData.service_id || ''),
+        direction: initialData.direction || 'Outbound',
+        purpose: initialData.purpose || '',
+        protocol: initialData.protocol || 'TCP',
+        port: initialData.port ? String(initialData.port) : '',
+        host_or_fqdn: initialData.host_or_fqdn || '',
+        path_or_resource: initialData.path_or_resource || '',
+        network_zone: initialData.network_zone || '',
+        transport_security: initialData.transport_security || '',
+        link_status: initialData.link_status || 'Active',
+        credential_reference: initialData.credential_reference || '',
+        credentials: initialData.credentials || { username: '', vault_path: '', note: '' }
+      }
+    }
+    return {
+      external_entity_id: initialExternalEntityId ? String(initialExternalEntityId) : '', device_id: '', service_id: '', direction: 'Outbound', purpose: '', protocol: 'TCP', port: '',
+      host_or_fqdn: '', path_or_resource: '', network_zone: '', transport_security: '', link_status: 'Active', credential_reference: '',
+      credentials: { username: '', vault_path: '', note: '' }
+    }
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isMaximized, setIsMaximized] = useState(false)
@@ -3129,7 +3311,6 @@ function LinkForm({ entities, devices, onClose, onSave, isPending, initialExtern
       )}
       footerRight={(
         <div className="flex items-center gap-3 shrink-0">
-          <ToolbarButton onClick={onClose}>Close</ToolbarButton>
           <ToolbarButton 
             onClick={() => {
               const nextErrors: Record<string, string> = {}

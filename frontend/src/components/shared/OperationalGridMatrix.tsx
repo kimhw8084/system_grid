@@ -98,7 +98,8 @@ export const OperationalGridMatrix = React.memo(({
     prev.columnDefs === next.columnDefs &&
     prev.fontSize === next.fontSize &&
     prev.rowDensity === next.rowDensity &&
-    prev.context === next.context
+    prev.context === next.context &&
+    prev.quickFilterText === next.quickFilterText
 })
 
 OperationalGridMatrix.displayName = 'OperationalGridMatrix'
