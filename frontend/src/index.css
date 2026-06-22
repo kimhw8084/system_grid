@@ -420,6 +420,19 @@
   text-align: center !important;
 }
 
+.monitoring-grid-shell .operational-grid-utility-header .ag-header-cell-label {
+  padding-right: 0 !important;
+}
+
+.monitoring-grid-shell .operational-grid-utility-cell .ag-selection-checkbox,
+.monitoring-grid-shell .operational-grid-utility-header .ag-header-select-all,
+.monitoring-grid-shell .operational-grid-utility-header .ag-selection-checkbox,
+.monitoring-grid-shell .operational-grid-utility-cell .ag-checkbox-input-wrapper,
+.monitoring-grid-shell .operational-grid-utility-header .ag-checkbox-input-wrapper {
+  margin-right: 0 !important;
+  overflow: visible !important;
+}
+
 .monitoring-grid-shell .operational-grid-overflow-visible {
   overflow: visible !important;
 }
