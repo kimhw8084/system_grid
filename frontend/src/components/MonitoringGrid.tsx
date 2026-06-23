@@ -2849,9 +2849,8 @@ function BulkEditTableModal({ items, teams, operators, severities, notificationM
             onClick={() => mutation.mutate()} 
             disabled={mutation.isPending} 
             variant="primary"
-            className="px-8 whitespace-nowrap"
           >
-            {mutation.isPending ? <Clock className="animate-spin mr-2" size={14} /> : <Check className="mr-2" size={14} />}
+            {mutation.isPending ? <Clock className="animate-spin" size={14} /> : <Check size={14} />}
             <span>Save Bulk Edit</span>
           </ToolbarButton>
         </div>

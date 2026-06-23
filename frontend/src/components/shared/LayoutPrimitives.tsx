@@ -144,7 +144,7 @@ export const ToolbarButton = React.forwardRef<HTMLButtonElement, {
       disabled={disabled}
       title={title}
       className={join(
-        `${TOOLBAR_CONTROL_HEIGHT} rounded-lg px-3 py-0 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40`,
+        `${TOOLBAR_CONTROL_HEIGHT} inline-flex items-center justify-center gap-2 rounded-lg px-3 py-0 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap shrink-0 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40`,
         variantClass,
         className
       )}

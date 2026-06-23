@@ -2731,8 +2731,8 @@ function BulkEditTableModal({ items, linkPurposeOptions, cableTypeOptions, onClo
     is_active: item.is_active !== false,
   })))
   const [isMaximized, setIsMaximized] = useState(false)
-
-  useEscapeDismiss(onClose)
+  const initialDirtySnapshot = useMemo(() => JSON.stringify(rows), [])
+  const isDirty = useMemo(() => JSON.stringify(rows) !== initialDirtySnapshot, [rows, initialDirtySnapshot])
 
   const mergeOptionsWithCurrentValue = useCallback((options: Array<{ value: string; label: string }>, value: string) => {
     const current = value ? [{ value, label: value }] : []
@@ -2777,17 +2777,18 @@ function BulkEditTableModal({ items, linkPurposeOptions, cableTypeOptions, onClo
       size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+      isDirty={isDirty}
+      dirtyConfirmTitle="Discard Bulk Service Changes?"
+      dirtyConfirmMessage="You have unsaved bulk service changes. Close this window and discard them?"
       title="Bulk Edit Services"
       subtitle="Safe table-based edits for selected services."
       icon={<Edit2 size={20} />}
       footerRight={
         <div className="flex items-center gap-3">
-          <ToolbarButton onClick={onClose}>Close</ToolbarButton>
           <ToolbarButton 
             onClick={() => mutation.mutate()} 
             disabled={mutation.isPending} 
             variant="primary"
-            className="px-8 whitespace-nowrap"
           >
             {mutation.isPending ? <Clock className="animate-spin mr-2" size={14} /> : <Check className="mr-2" size={14} />}
             <span>Save Bulk Edit</span>
