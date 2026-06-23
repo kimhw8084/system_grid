@@ -48,7 +48,7 @@ import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shar
 import { StatusPill } from './shared/StatusPill'
 import { parseCommaSeparatedValues } from '../utils/dataParsers'
 import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
-import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue, useOperationalDetailRoute } from './shared/OperationalWorkspaceHooks'
+import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
 import {
   useOperationalRowInteractions,
   useOperationalContextMenu,
