@@ -26,6 +26,7 @@ import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
 import { WorkspaceCompareShell } from './shared/WorkspaceModalShells'
 import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shared/WorkspaceFlyout'
 import { showWorkspaceRevertToast, showWorkspaceToast } from './shared/WorkspaceToast'
+import { parseOperationalApiValidationError } from './shared/OperationalFieldValidation'
 import {
   OPERATIONAL_GRID_LAYOUT_POLICIES,
   useOperationalGridRuntime,
@@ -2129,9 +2130,6 @@ export default function External() {
       setActiveModal(null)
       detailRoute.finishTransition()
     },
-import { parseOperationalApiValidationError } from './shared/OperationalFieldValidation'
-// ... (imports remain)
-// ...
     onError: (e: any) => {
       const { fieldErrors, generalError } = parseOperationalApiValidationError(e)
       setFormErrors(fieldErrors)

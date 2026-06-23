@@ -13,6 +13,7 @@ import {
   BookOpen, Eye, EyeOff, FileText, Users, Mail, MessageSquare, Monitor, MoreVertical,
   Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, GitCompare, Undo2, List, LayoutGrid, Upload, Terminal, History as HistoryIcon, Edit2 as EditIcon, Star
 } from 'lucide-react'
+import { parseOperationalApiValidationError } from './shared/OperationalFieldValidation'
 import { AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { showWorkspaceToast } from './shared/WorkspaceToast'
@@ -2885,9 +2886,6 @@ function ServiceRecordForm({ item, devices, options, onClose, onSuccess }: any) 
       await queryClient.invalidateQueries({ queryKey: ['logical-services'] })
       onSuccess?.()
     },
-import { parseOperationalApiValidationError } from './shared/OperationalFieldValidation'
-// ... (imports remain)
-// ...
     onError: (e: any) => {
       const { fieldErrors, generalError } = parseOperationalApiValidationError(e)
       // Assuming ServicesReal has a way to set errors. Based on reading, it seems ServicesReal does not have a field-level error state defined in the same way as MonitoringForm. 
