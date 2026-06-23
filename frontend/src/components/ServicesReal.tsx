@@ -2120,7 +2120,7 @@ export default function ServicesReal() {
                 title={rowMenuItem.title}
                 onClose={() => setRowActionMenu(null)}
               >
-                <OperationalRowActionSection title="Quick access" layout="tile">
+                <OperationalRowActionSection title="Quick access" layout="tile" columns={2}>
                   <OperationalRowActionButton
                     layout="tile"
                     onClick={() => {
@@ -2150,7 +2150,7 @@ export default function ServicesReal() {
 
                 <OperationalRowActionDivider />
 
-                <OperationalRowActionSection title="Follow options" layout="inline">
+                <OperationalRowActionSection title="Follow options" layout="inline" columns={2}>
                   <OperationalRowActionButton
                     layout="inline"
                     onClick={() => {

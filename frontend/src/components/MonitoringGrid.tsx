@@ -2161,7 +2161,7 @@ export default function MonitoringGrid() {
                 title={rowActionMenu.item.title}
                 onClose={() => setRowActionMenu(null)}
               >
-                <OperationalRowActionSection title="Quick access" layout="tile">
+                <OperationalRowActionSection title="Quick access" layout="tile" columns={3}>
                   <OperationalRowActionButton
                     layout="tile"
                     onClick={() => {
@@ -2200,7 +2200,7 @@ export default function MonitoringGrid() {
 
                 <OperationalRowActionDivider />
 
-                <OperationalRowActionSection title="Related destinations" layout="inline">
+                <OperationalRowActionSection title="Related destinations" layout="inline" columns={4}>
                   <OperationalRowActionButton
                     layout="inline"
                     onClick={() => {
