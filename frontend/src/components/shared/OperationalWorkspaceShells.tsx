@@ -10,6 +10,17 @@ import { WorkspaceFloatingPanel } from './OperationalWorkspacePrimitives'
 const join = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ')
 type WorkspaceFilterChip = { id: string; label: string; onRemove: () => void }
 
+export const OPERATIONAL_GRID_COMPAT_CLASS_NAME = 'monitoring-grid-shell monitoring-grid'
+
+export const getOperationalGridSurfaceStyle = (
+  fontSize: number,
+  height?: string
+): React.CSSProperties => ({
+  '--ag-font-size': `${fontSize}px`,
+  '--ag-font-family': "'Inter', sans-serif",
+  ...(height ? { height } : {}),
+} as React.CSSProperties)
+
 export function OperationalWorkspaceFrame({
   header,
   commandBar,
@@ -89,7 +100,10 @@ export function OperationalGridSurface({
   loadingLabel?: React.ReactNode
 }) {
   return (
-    <div className={join('flex-1 w-full min-h-0 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative', className)} style={style}>
+    <div className={join(
+      'operational-grid-shell operational-grid flex-1 w-full min-h-0 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative',
+      className
+    )} style={style}>
       {loading ? (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
           {loadingIcon}

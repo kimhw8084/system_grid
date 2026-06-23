@@ -1,5 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
-import { applyOperationalColumnState, getOperationalColumnLayoutSnapshot } from './OperationalGridSizing'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  applyOperationalColumnState,
+  getOperationalColumnLayoutSnapshot,
+  isOperationalAutoResizeSource,
+} from './OperationalGridSizing'
 
 export function usePersistentJsonState<T>(
   storageKey: string,
@@ -111,11 +115,7 @@ export function useOperationalGridLayout(
     const previousWidths = new Map(previousState.map((column: any) => [column.colId, column.width]))
     const changedColumns = nextState.filter((column: any) => previousWidths.get(column.colId) !== column.width)
     const widthChanged = changedColumns.length > 0
-    const isAutoResizeSource =
-      source === 'autosizeColumns' ||
-      source === 'sizeColumnsToFit' ||
-      source === 'api' ||
-      source === 'flex'
+    const isAutoResizeSource = isOperationalAutoResizeSource(source)
 
     if (!isAutoResizeSource) {
       const isAccidentalResize = !widthChanged || changedColumns.length !== 1 || changedColumns.some((column: any) => {
@@ -146,5 +146,285 @@ export function useOperationalGridLayout(
     syncColumnLayoutState,
     applyColumnLayoutState,
     handleColumnResized,
+  }
+}
+
+export function useOperationalColumnSyncHandlers(
+  syncColumnLayoutState: (api: any, preserveWidths?: boolean) => void,
+  preserveWidths: boolean
+) {
+  const handleColumnMoved = useCallback((event: any) => {
+    if (!event?.source?.includes?.('drag')) syncColumnLayoutState(event.api, preserveWidths)
+  }, [preserveWidths, syncColumnLayoutState])
+
+  const handleDragStopped = useCallback((event: any) => {
+    syncColumnLayoutState(event.api, preserveWidths)
+  }, [preserveWidths, syncColumnLayoutState])
+
+  const handleColumnPinned = useCallback((event: any) => {
+    syncColumnLayoutState(event.api, preserveWidths)
+  }, [preserveWidths, syncColumnLayoutState])
+
+  const handleColumnVisible = useCallback((event: any) => {
+    syncColumnLayoutState(event.api, preserveWidths)
+  }, [preserveWidths, syncColumnLayoutState])
+
+  return {
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
+  }
+}
+
+export const OPERATIONAL_GRID_LAYOUT_POLICIES = {
+  standard: {
+    syncSortPreserveWidths: false,
+    preserveMovedWidths: false,
+  },
+} as const
+
+export type OperationalGridLayoutPolicy = typeof OPERATIONAL_GRID_LAYOUT_POLICIES[keyof typeof OPERATIONAL_GRID_LAYOUT_POLICIES]
+
+export function useOperationalGridController({
+  pendingGridRestore,
+  applyGridState,
+  columnLayoutState,
+  preserveExplicitColumnWidths,
+  applyColumnLayoutState,
+  initialFilterModel,
+  initialSortModel,
+  setGridFilterModel,
+  setGridSortModel,
+  sanitizeFilterModel,
+  sanitizeSortModel,
+  syncColumnLayoutState,
+  syncSortPreserveWidths = true,
+  onGridApiReady,
+}: {
+  pendingGridRestore?: any | null
+  applyGridState: (config: any) => void
+  columnLayoutState: any[]
+  preserveExplicitColumnWidths: boolean
+  applyColumnLayoutState: (api: any, layout?: any[], preserveWidths?: boolean) => void
+  initialFilterModel?: Record<string, any>
+  initialSortModel?: Array<{ colId?: string; sort?: string }>
+  setGridFilterModel: (value: any) => void
+  setGridSortModel: (value: any) => void
+  sanitizeFilterModel?: (model: any) => any
+  sanitizeSortModel?: (model: any) => any
+  syncColumnLayoutState: (api: any, preserveWidths?: boolean) => void
+  syncSortPreserveWidths?: boolean
+  onGridApiReady?: (params: any) => void
+}) {
+  const handleGridReady = useCallback((params: any) => {
+    onGridApiReady?.(params)
+    if (pendingGridRestore) {
+      applyGridState(pendingGridRestore)
+      return
+    }
+    if (!columnLayoutState.length) return
+    applyColumnLayoutState(params.api, columnLayoutState, preserveExplicitColumnWidths)
+    params.api.setFilterModel(initialFilterModel || {})
+    params.api.applyColumnState({
+      state: (initialSortModel || []).map((entry) => ({ colId: entry.colId, sort: entry.sort as 'asc' | 'desc' })),
+      defaultState: { sort: null },
+      applyOrder: false,
+    })
+  }, [
+    applyColumnLayoutState,
+    applyGridState,
+    columnLayoutState,
+    initialFilterModel,
+    initialSortModel,
+    onGridApiReady,
+    pendingGridRestore,
+    preserveExplicitColumnWidths,
+  ])
+
+  const handleFilterChanged = useCallback((event: any) => {
+    const nextModel = event.api.getFilterModel() || {}
+    setGridFilterModel(sanitizeFilterModel ? sanitizeFilterModel(nextModel) : nextModel)
+  }, [sanitizeFilterModel, setGridFilterModel])
+
+  const handleSortChanged = useCallback((event: any) => {
+    const nextSortModel = event.columnApi.getColumnState()
+      .filter((column: any) => column.sort === 'asc' || column.sort === 'desc')
+      .map((column: any) => ({ colId: column.colId, sort: column.sort }))
+    setGridSortModel(sanitizeSortModel ? sanitizeSortModel(nextSortModel) : nextSortModel)
+    syncColumnLayoutState(event.api, syncSortPreserveWidths)
+  }, [sanitizeSortModel, setGridSortModel, syncColumnLayoutState, syncSortPreserveWidths])
+
+  return {
+    handleGridReady,
+    handleFilterChanged,
+    handleSortChanged,
+  }
+}
+
+export function useOperationalGridRuntime({
+  initialColumnLayoutState,
+  hasSavedViewWidths,
+  pendingGridRestore,
+  applyGridState,
+  initialFilterModel,
+  initialSortModel,
+  setGridFilterModel,
+  setGridSortModel,
+  sanitizeFilterModel,
+  sanitizeSortModel,
+  layoutPolicy = OPERATIONAL_GRID_LAYOUT_POLICIES.standard,
+  onGridApiReady,
+  onBeforeManualResize,
+}: {
+  initialColumnLayoutState: any[]
+  hasSavedViewWidths: boolean
+  pendingGridRestore?: any | null
+  applyGridState: (config: any) => void
+  initialFilterModel?: Record<string, any>
+  initialSortModel?: Array<{ colId?: string; sort?: string }>
+  setGridFilterModel: (value: any) => void
+  setGridSortModel: (value: any) => void
+  sanitizeFilterModel?: (model: any) => any
+  sanitizeSortModel?: (model: any) => any
+  layoutPolicy?: OperationalGridLayoutPolicy
+  onGridApiReady?: (params: any) => void
+  onBeforeManualResize?: (event: any) => void
+}) {
+  const {
+    columnLayoutState,
+    setColumnLayoutState,
+    hasManualColumnWidths,
+    setTransientManualColumnWidths,
+    preserveExplicitColumnWidths,
+    syncColumnLayoutState,
+    applyColumnLayoutState,
+    handleColumnResized: handleBaseColumnResized,
+  } = useOperationalGridLayout(initialColumnLayoutState, hasSavedViewWidths)
+
+  const {
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
+  } = useOperationalColumnSyncHandlers(syncColumnLayoutState, layoutPolicy.preserveMovedWidths)
+
+  const handleColumnResized = useCallback((event: any) => {
+    if (!event?.finished) return
+    if (!isOperationalAutoResizeSource(event?.source || '')) {
+      onBeforeManualResize?.(event)
+    }
+    handleBaseColumnResized(event)
+  }, [handleBaseColumnResized, onBeforeManualResize])
+
+  const {
+    handleGridReady,
+    handleFilterChanged,
+    handleSortChanged,
+  } = useOperationalGridController({
+    pendingGridRestore,
+    applyGridState,
+    columnLayoutState,
+    preserveExplicitColumnWidths,
+    applyColumnLayoutState,
+    initialFilterModel,
+    initialSortModel,
+    setGridFilterModel,
+    setGridSortModel,
+    sanitizeFilterModel,
+    sanitizeSortModel,
+    syncColumnLayoutState,
+    syncSortPreserveWidths: layoutPolicy.syncSortPreserveWidths,
+    onGridApiReady,
+  })
+
+  return {
+    columnLayoutState,
+    setColumnLayoutState,
+    hasManualColumnWidths,
+    setTransientManualColumnWidths,
+    preserveExplicitColumnWidths,
+    syncColumnLayoutState,
+    applyColumnLayoutState,
+    handleColumnResized,
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
+    handleGridReady,
+    handleFilterChanged,
+    handleSortChanged,
+  }
+}
+
+export function useOperationalDirtyGuard({
+  active,
+  isDirty,
+  onDiscard,
+}: {
+  active: boolean
+  isDirty: boolean
+  onDiscard: () => void
+}) {
+  const pendingActionRef = useRef<(() => void) | null>(null)
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false)
+
+  const requestDiscard = useCallback((action?: () => void) => {
+    if (!active) return
+    const nextAction = action || onDiscard
+    if (!isDirty) {
+      nextAction()
+      return
+    }
+    pendingActionRef.current = nextAction
+    setIsConfirmOpen(true)
+  }, [active, isDirty, onDiscard])
+
+  const confirmDiscard = useCallback(() => {
+    const action = pendingActionRef.current || onDiscard
+    pendingActionRef.current = null
+    setIsConfirmOpen(false)
+    action()
+  }, [onDiscard])
+
+  const cancelDiscard = useCallback(() => {
+    pendingActionRef.current = null
+    setIsConfirmOpen(false)
+  }, [])
+
+  useEffect(() => {
+    if (!(active && isDirty)) return
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [active, isDirty])
+
+  useEffect(() => {
+    if (!(active && isDirty)) return
+    const handleDocumentClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null
+      const anchor = target?.closest?.('a[href]') as HTMLAnchorElement | null
+      if (!anchor) return
+      if (anchor.target === '_blank' || anchor.hasAttribute('download')) return
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      const href = anchor.href
+      if (!href || href === window.location.href) return
+      event.preventDefault()
+      requestDiscard(() => {
+        window.location.assign(href)
+      })
+    }
+    document.addEventListener('click', handleDocumentClick, true)
+    return () => document.removeEventListener('click', handleDocumentClick, true)
+  }, [active, isDirty, requestDiscard])
+
+  return {
+    requestDiscard,
+    isConfirmOpen,
+    confirmDiscard,
+    cancelDiscard,
   }
 }

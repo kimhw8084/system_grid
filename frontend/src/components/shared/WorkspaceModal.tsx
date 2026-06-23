@@ -7,10 +7,10 @@ import {
   WorkspaceModalFooter,
   WorkspaceModalSize,
   getWorkspaceModalShellClass,
-  useEscapeDismiss,
 } from './OperationalWorkspacePrimitives'
 import { OPERATIONAL_WORKSPACE_VISUALS } from './OperationalWorkspace'
 import { ToolbarButton } from './LayoutPrimitives'
+import { useOperationalDirtyGuard } from './OperationalWorkspaceHooks'
 
 interface WorkspaceModalProps {
   isOpen: boolean
@@ -32,6 +32,10 @@ interface WorkspaceModalProps {
   className?: string
   hideCloseButton?: boolean
   hideFooterClose?: boolean
+  isDirty?: boolean
+  dirtyConfirmTitle?: string
+  dirtyConfirmMessage?: string
+  dirtyConfirmText?: string
 }
 
 export function WorkspaceModal({
@@ -54,15 +58,37 @@ export function WorkspaceModal({
   className = '',
   hideCloseButton = false,
   hideFooterClose = false,
+  isDirty = false,
+  dirtyConfirmTitle = 'Unsaved Changes',
+  dirtyConfirmMessage = 'You have unsaved changes. Close this window and discard them?',
+  dirtyConfirmText = 'Discard Changes',
 }: WorkspaceModalProps) {
-  useEscapeDismiss(onClose, isOpen)
+  const {
+    requestDiscard,
+    isConfirmOpen,
+    confirmDiscard,
+    cancelDiscard,
+  } = useOperationalDirtyGuard({
+    active: isOpen,
+    isDirty,
+    onDiscard: onClose,
+  })
+
+  React.useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') requestDiscard()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, requestDiscard])
 
   if (!isOpen) return null
 
   const resolvedFooterRight = (
       <div className="flex items-center gap-3 shrink-0">
       {!hideFooterClose ? (
-        <ToolbarButton onClick={onClose} className="whitespace-nowrap">
+        <ToolbarButton onClick={() => requestDiscard()} className="whitespace-nowrap">
           Close
         </ToolbarButton>
       ) : null}
@@ -72,7 +98,14 @@ export function WorkspaceModal({
 
   const modal = (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[3500] flex items-center justify-center bg-[#020617]/80 p-4 backdrop-blur-sm sm:p-6 lg:p-8" role="dialog" aria-modal="true">
+      <div
+        className="fixed inset-0 z-[3500] flex items-center justify-center bg-[#020617]/80 p-4 backdrop-blur-sm sm:p-6 lg:p-8"
+        role="dialog"
+        aria-modal="true"
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) requestDiscard()
+        }}
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -93,7 +126,7 @@ export function WorkspaceModal({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={onClose}
+                    onClick={() => requestDiscard()}
                     className="group flex h-3 w-3 items-center justify-center rounded-full bg-[#ff5f57] transition-all hover:bg-[#ff5f57]/80"
                     title="Close"
                   >
@@ -132,6 +165,37 @@ export function WorkspaceModal({
             right={resolvedFooterRight}
           />
         </motion.div>
+
+        <AnimatePresence>
+          {isConfirmOpen ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[3600] flex items-center justify-center bg-[#020617]/82 p-4 backdrop-blur-sm"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 12 }}
+                className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#0b1222] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.62)]"
+              >
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-slate-100">{dirtyConfirmTitle}</h3>
+                  <p className="text-sm text-slate-400">{dirtyConfirmMessage}</p>
+                </div>
+                <div className="mt-6 flex items-center justify-end gap-3">
+                  <ToolbarButton onClick={cancelDiscard} className="whitespace-nowrap">
+                    Close
+                  </ToolbarButton>
+                  <ToolbarButton onClick={confirmDiscard} variant="primary" className="whitespace-nowrap">
+                    {dirtyConfirmText}
+                  </ToolbarButton>
+                </div>
+              </motion.div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
     </AnimatePresence>
   )

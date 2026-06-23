@@ -8,7 +8,6 @@ import {
   Clock, DollarSign, Target, ChevronRight, Layers, Box, Cpu, Zap, FileJson, MoreVertical, Eye, EyeOff, Key, Upload, Check, Maximize2,
   Star, GitCompare, Minimize2, ChevronUp, ChevronDown, Bell, Undo2
 } from 'lucide-react'
-import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
 import { parseAppDate, formatAppDate } from '../utils/dateUtils'
 import { 
@@ -27,17 +26,21 @@ import { ConfigRegistryModal } from "./ConfigRegistry"
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
 import { WorkspaceCompareShell } from './shared/WorkspaceModalShells'
 import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shared/WorkspaceFlyout'
-import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers } from './shared/OperationalWorkspaceHooks'
+import { showWorkspaceRevertToast, showWorkspaceToast } from './shared/WorkspaceToast'
+import {
+  OPERATIONAL_GRID_LAYOUT_POLICIES,
+  useOperationalGridRuntime,
+  usePersistentJsonState,
+  useWorkspaceDismissHandlers,
+} from './shared/OperationalWorkspaceHooks'
 import { useWorkspaceAnchoredLayer, WorkspaceEmptyState, useEscapeDismiss, useBodyModalFlag, WorkspaceFloatingPanel, WorkspaceSplitView } from './shared/OperationalWorkspacePrimitives'
-import { OperationalAnchoredPanel, OperationalDisplayPanel, OperationalGridSurface, OperationalGroupedGridSection, OperationalGroupedGridView, OperationalSavedViewsPanel, OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'
+import { OperationalAnchoredPanel, OperationalDisplayPanel, OperationalGroupedGridSection, OperationalGroupedGridView, OperationalSavedViewsPanel, OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'
 import { OperationalImportModal } from './shared/OperationalImportModal'
 import { EXTERNAL_WORKSPACE_STANDARD } from './shared/OperationalWorkspace'
 import { WorkspaceModal } from './shared/WorkspaceModal'
-import { OperationalGridMatrix } from './shared/OperationalGridMatrix'
+import { OperationalDataGrid } from './shared/OperationalDataGrid'
 import {
-  applyOperationalColumnSizing,
   autoSizeOperationalColumns,
-  OPERATIONAL_GRID_AUTO_SIZE_STRATEGY,
   sanitizeOperationalColumnLayout,
   sanitizeOperationalFilterModel,
   sanitizeOperationalSortModel,
@@ -47,10 +50,8 @@ import {
   OPERATIONAL_GRID_WIDTHS,
 } from './shared/OperationalGridContract'
 import {
-  buildOperationalColumnDefinitions,
-  createOperationalUtilityColumns,
+  buildOperationalGridColumnDefinitions,
   renderOperationalActionButtons,
-  useOperationalColumnSyncHandlers,
 } from './shared/OperationalGridStandard'
 import {
   useOperationalRowInteractions,
@@ -145,7 +146,6 @@ const EXTERNAL_UI_STATE_KEY = 'sysgrid_external_ui_state_v1'
 const EXTERNAL_FAVORITES_STORAGE_KEY = 'sysgrid_external_favorites_v1'
 const EXTERNAL_WATCH_STORAGE_KEY = 'sysgrid_external_watch_v1'
 const EXTERNAL_SUPPORTS_COMPARE = EXTERNAL_WORKSPACE_STANDARD.sharedCapabilities.includes('compare')
-const EXTERNAL_FIXED_WIDTH_COLUMN_IDS = new Set(['select', 'id', 'recent_change', 'favorite', 'watch', 'row_actions'])
 const EXTERNAL_DEFAULT_GROUP_OPTIONS = [
   { value: 'raw', label: 'Raw Registry' },
   { value: 'type', label: 'Type' },
@@ -555,7 +555,7 @@ const ExternalSecretsTab = ({ entityId }: { entityId: number }) => {
       queryClient.invalidateQueries({ queryKey: ['external-entities'] })
       setNewSecret({ secret_label: '', secret_type: 'VaultReference', username: '', vault_provider: '', vault_path: '', note: '', credential_status: 'Active', rotation_frequency_days: '' })
       setError('')
-      toast.success('Credential Added') 
+      showWorkspaceToast('Credential Added')
     }
   })
 
@@ -563,7 +563,7 @@ const ExternalSecretsTab = ({ entityId }: { entityId: number }) => {
     mutationFn: async (secretId: number) => apiFetch(`/api/v1/intelligence/entities/${entityId}/secrets/${secretId}`, { method: 'DELETE' }),
     onSuccess: () => { 
       queryClient.invalidateQueries({ queryKey: ['external-entities'] })
-      toast.success('Credential Revoked') 
+      showWorkspaceToast('Credential Revoked')
     }
   })
 
@@ -681,6 +681,7 @@ const ExternalForm = ({
   operators,
   formId = 'external-entity-form',
   renderActions = true,
+  onDirtyChange,
 }: any) => {
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -718,6 +719,12 @@ const ExternalForm = ({
   const envOptions = ensureCurrentOption(getOptions('Environment'), formData.environment)
   const selectedTypeOption = types.find((type: any) => type.value === formData.type)
   const allowedMetadataKeys = (selectedTypeOption as any)?.metadata_keys || (extensionMetadataKeysByType as any)[formData.type] || []
+  const normalizeExternalFormSnapshot = useCallback((value: any) => ({
+    ...value,
+    metadata_json: Object.fromEntries(
+      Object.entries(parseMetadataObject(value.metadata_json)).filter(([key]) => allowedMetadataKeys.length === 0 || allowedMetadataKeys.includes(key))
+    ),
+  }), [allowedMetadataKeys])
 
   useEffect(() => {
     if (!allowedMetadataKeys.length) return
@@ -764,6 +771,36 @@ const ExternalForm = ({
       internal_operator_id: formData.ownership_mode === 'individual' && formData.internal_operator_id ? parseInt(formData.internal_operator_id, 10) : null,
     })
   }
+
+  const initialDirtySnapshot = useMemo(
+    () => JSON.stringify(normalizeExternalFormSnapshot({
+      name: initialData.name || '',
+      aliases_json: initialData.aliases_json || [],
+      type: initialData.type || 'API',
+      owner_organization: initialData.owner_organization || '',
+      owner_team: initialData.owner_team || '',
+      ownership_mode: initialData.ownership_mode || 'team',
+      internal_team_id: initialData.internal_team_id ? String(initialData.internal_team_id) : '',
+      internal_operator_id: initialData.internal_operator_id ? String(initialData.internal_operator_id) : '',
+      status: initialData.status || 'Planned',
+      environment: initialData.environment || 'Production',
+      description: initialData.description || '',
+      notes: initialData.notes || '',
+      contacts_json: normalizeLegacyContacts(initialData),
+      business_purpose: initialData.business_purpose || '',
+      metadata_json: parseMetadataObject(initialData.metadata_json),
+    })),
+    [initialData, normalizeExternalFormSnapshot]
+  )
+
+  const isDirty = useMemo(
+    () => JSON.stringify(normalizeExternalFormSnapshot(formData)) !== initialDirtySnapshot,
+    [formData, initialDirtySnapshot, normalizeExternalFormSnapshot]
+  )
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
 
   return (
     <form
@@ -1282,6 +1319,7 @@ export default function External() {
   const [showConfig, setShowConfig] = useState(false)
   const [activeTab, setActiveTab] = useState<'active' | 'deleted' | 'links'>(persistedUiState.activeTab === 'deleted' ? 'deleted' : 'active')
   const [activeModal, setActiveModal] = useState<any>(null)
+  const [isActiveModalDirty, setIsActiveModalDirty] = useState(false)
   const [activeDetails, setActiveDetails] = useState<any>(null)
   const [showLinkModal, setShowLinkModal] = useState(false)
   const [linkSeedEntityId, setLinkSeedEntityId] = useState<number | null>(null)
@@ -1322,10 +1360,15 @@ export default function External() {
   const [newViewName, setNewViewName] = useState('')
   const [pendingGridRestore, setPendingGridRestore] = useState<any | null>(null)
   const pendingRestoreTimeoutRef = useRef<number | null>(null)
+  const externalUndoRef = useRef<any>(null)
 
   const { triggerRef: displayMenuButtonRef, panelRef: displayMenuPanelRef, panelStyle: displayMenuStyle } = useWorkspaceAnchoredLayer(showDisplayMenu, { minWidth: 320 })
   const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
   const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
+
+  useEffect(() => {
+    if (!activeModal) setIsActiveModalDirty(false)
+  }, [activeModal])
 
   const {
     columnLayoutState,
@@ -1334,7 +1377,40 @@ export default function External() {
     applyColumnLayoutState,
     syncColumnLayoutState,
     handleColumnResized,
-  } = useOperationalGridLayout(persistedUiState.columnLayoutState ?? [], Boolean(activeViewId))
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
+    handleGridReady,
+    handleFilterChanged,
+    handleSortChanged,
+  } = useOperationalGridRuntime({
+    initialColumnLayoutState: persistedUiState.columnLayoutState ?? [],
+    hasSavedViewWidths: Boolean(activeViewId),
+    pendingGridRestore,
+    applyGridState: (config) => {
+      const api = gridRef.current?.api
+      if (!api) return
+      applyColumnLayoutState(api, config.columnLayoutState, true)
+      api.setFilterModel(config.filterModel || {})
+      api.applyColumnState({
+        state: (config.sortModel || []).map((entry: any) => ({ colId: entry.colId, sort: entry.sort as 'asc' | 'desc' })),
+        defaultState: { sort: null },
+        applyOrder: false,
+      })
+    },
+    initialFilterModel: gridFilterModel,
+    initialSortModel: gridSortModel,
+    setGridFilterModel,
+    setGridSortModel,
+    sanitizeFilterModel: (model) => sanitizeOperationalFilterModel(model, EXTERNAL_PERSISTED_COLUMN_IDS),
+    sanitizeSortModel: (model) => sanitizeOperationalSortModel(model, EXTERNAL_PERSISTED_COLUMN_IDS),
+    layoutPolicy: OPERATIONAL_GRID_LAYOUT_POLICIES.standard,
+    onGridApiReady: (params) => {
+      setGridApi(params.api)
+      setGridColumnApi(params.columnApi)
+    },
+  })
   const { data: options } = useQuery({ 
     queryKey: ['settings-options'], 
     queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) 
@@ -1662,7 +1738,7 @@ export default function External() {
   const createViewFromCurrent = () => {
     const trimmedName = newViewName.trim()
     if (!trimmedName) {
-      toast.error('Name the view before saving it')
+      showWorkspaceToast('Name the view before saving it', { type: 'error' })
       return
     }
     const nextView = {
@@ -1674,24 +1750,33 @@ export default function External() {
     setActiveViewId(nextView.id)
     setNewViewName('')
     setShowViewsMenu(false)
-    toast.success('External workspace view saved')
+    showWorkspaceToast('External workspace view saved')
   }
 
   const saveCurrentToView = (viewId: string) => {
-    setSavedViews(normalizedSavedViews.map((view: any) => (
+    const previousViews = normalizedSavedViews
+    const nextViews = normalizedSavedViews.map((view: any) => (
       view.id === viewId
         ? { ...view, config: currentWorkspaceConfig }
         : view
-    )))
+    ))
+    setSavedViews(nextViews)
     setActiveViewId(viewId)
-    toast.success('External workspace view updated')
+    showWorkspaceRevertToast('External workspace view updated', () => {
+      setSavedViews(previousViews)
+      setActiveViewId(viewId)
+    })
   }
 
   const deleteView = (viewId: string) => {
+    const previousViews = normalizedSavedViews
     setSavedViews(normalizedSavedViews.filter((view: any) => view.id !== viewId))
     if (activeViewId === viewId) setActiveViewId(null)
     setShowViewsMenu(false)
-    toast.success('External workspace view removed')
+    showWorkspaceRevertToast('External workspace view removed', () => {
+      setSavedViews(previousViews)
+      setActiveViewId(activeViewId)
+    })
   }
 
   const applySavedView = (viewId: string) => {
@@ -1723,13 +1808,34 @@ export default function External() {
     if (!gridRef.current?.api || preserveExplicitColumnWidths) return
     autoSizeOperationalColumns({
       api: gridRef.current.api,
-      skipColumnIds: Array.from(EXTERNAL_FIXED_WIDTH_COLUMN_IDS),
       onSized: () => {
         if (!gridRef.current?.api || preserveExplicitColumnWidths) return
         syncColumnLayoutState(gridRef.current.api, true)
       },
     })
   }, [preserveExplicitColumnWidths, syncColumnLayoutState])
+
+  const externalGridRuntime = useMemo(() => ({
+    preserveExplicitColumnWidths,
+    handleGridReady,
+    handleColumnResized,
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
+    handleFilterChanged,
+    handleSortChanged,
+  }), [
+    preserveExplicitColumnWidths,
+    handleGridReady,
+    handleColumnResized,
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
+    handleFilterChanged,
+    handleSortChanged,
+  ])
 
   const handleExportCSV = () => {
     if (gridRef.current?.api) {
@@ -1750,8 +1856,8 @@ export default function External() {
       })
       if (csvData) {
         navigator.clipboard.writeText(csvData)
-          .then(() => toast.success("Data copied to secure clipboard"))
-          .catch(() => toast.error("Clipboard authorization failed"))
+          .then(() => showWorkspaceToast('Data copied to secure clipboard'))
+          .catch(() => showWorkspaceToast('Clipboard authorization failed', { type: 'error' }))
       }
     }
   }
@@ -1786,6 +1892,9 @@ export default function External() {
   const bulkMutation = useMutation({
     mutationFn: async ({ action, payload = {}, ids: overrideIds }: any) => {
       const idsToUse = overrideIds ?? selectedIds
+      const previousSnapshots = idsToUse
+        .map((id: number) => allEntities?.find((entity: any) => entity.id === id))
+        .filter(Boolean)
       const promises = idsToUse.map(async (id: number) => {
         if (action === 'update') {
           const original = allEntities.find((e: any) => e.id === id)
@@ -1820,19 +1929,51 @@ export default function External() {
         }
       })
       await Promise.all(promises)
-      return { action, idsToUse }
+      return { action, idsToUse, payload, previousSnapshots }
     },
-    onSuccess: ({ action, idsToUse }) => {
+    onSuccess: ({ action, idsToUse, payload, previousSnapshots }) => {
       queryClient.invalidateQueries({ queryKey: ['external-entities'] })
       queryClient.invalidateQueries({ queryKey: ['external-links'] })
       setSelectedIds([])
       setShowBulkMenu(false)
       setBulkDraft({ status: '', environment: '', criticality: '', risk_rating: '' })
       setExpandedBulkSection(null)
-      toast.success(`Bulk ${action} succeeded on ${idsToUse.length} items.`)
+
+      if (action === 'delete') externalUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
+      else if (action === 'restore') externalUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
+      else if (action === 'update') externalUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
+      else externalUndoRef.current = null
+
+      if (externalUndoRef.current && action !== 'purge') {
+        showWorkspaceRevertToast(`Bulk ${action} succeeded on ${idsToUse.length} items.`, async () => {
+          const undo = externalUndoRef.current
+          externalUndoRef.current = null
+          if (!undo) return
+          if (undo.mode === 'bulk') {
+            await bulkMutation.mutateAsync({ action: undo.action, ids: undo.ids })
+            return
+          }
+          if (undo.mode === 'restore_snapshots') {
+            await Promise.all((undo.snapshots || []).map(async (snapshot: any) => {
+              if (!snapshot?.id) return
+              const { id, created_at, updated_at, created_by_user_id, secrets, internal_team_name, internal_operator_name, internal_operator_external_id, ...payloadToRestore } = snapshot
+              const res = await apiFetch(`/api/v1/intelligence/entities/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify(payloadToRestore),
+              })
+              if (!res.ok) throw new Error(await res.text())
+            }))
+            queryClient.invalidateQueries({ queryKey: ['external-entities'] })
+            queryClient.invalidateQueries({ queryKey: ['external-links'] })
+          }
+        })
+        return
+      }
+
+      showWorkspaceToast(`Bulk ${action} succeeded on ${idsToUse.length} items.`)
     },
     onError: (e: any) => {
-      toast.error(`Bulk operation failed: ${e.message}`)
+      showWorkspaceToast(`Bulk operation failed: ${e.message}`, { type: 'error' })
     }
   })
 
@@ -1846,10 +1987,10 @@ export default function External() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['external-entities'] })
-      toast.success('External Manifest Synchronized')
+      showWorkspaceToast('External Manifest Synchronized')
       setActiveModal(null)
     },
-    onError: (e: any) => toast.error(e.message)
+    onError: (e: any) => showWorkspaceToast(e.message, { type: 'error' })
   })
 
   const linkMutation = useMutation({
@@ -1870,9 +2011,9 @@ export default function External() {
       setShowLinkModal(false)
       setLinkSeedEntityId(null)
       setEditingLink(null)
-      toast.success('Interconnect Established')
+      showWorkspaceToast('Interconnect Established')
     },
-    onError: (e: any) => toast.error(e.message || 'Interconnect establishment failed')
+    onError: (e: any) => showWorkspaceToast(e.message || 'Interconnect establishment failed', { type: 'error' })
   })
 
   const deleteMutation = useMutation({
@@ -1885,13 +2026,19 @@ export default function External() {
     onSuccess: (_, variables) => {
       if (variables.type === 'entity') {
          queryClient.invalidateQueries({ queryKey: ['external-entities'] })
-         toast.success(variables.purge ? 'Entity Purged from Global Registry' : 'Entity Moved to Deleted Matrix')
+         if (variables.purge) {
+           showWorkspaceToast('Entity Purged from Global Registry')
+         } else {
+           showWorkspaceRevertToast('Entity Moved to Deleted Matrix', () => {
+             restoreMutation.mutate(variables.id)
+           })
+         }
       } else {
          queryClient.invalidateQueries({ queryKey: ['external-links'] })
-         toast.success('Link Severed')
+         showWorkspaceToast('Link Severed')
       }
     },
-    onError: (e: any) => toast.error(e.message)
+    onError: (e: any) => showWorkspaceToast(e.message, { type: 'error' })
   })
 
   const restoreMutation = useMutation({
@@ -1900,11 +2047,13 @@ export default function External() {
       if (!res.ok) throw new Error(await res.text())
       return res.json()
     },
-    onSuccess: () => {
+    onSuccess: (_, restoredId) => {
       queryClient.invalidateQueries({ queryKey: ['external-entities'] })
-      toast.success('Entity Restored to Active Registry')
+      showWorkspaceRevertToast('Entity Restored to Active Registry', () => {
+        deleteMutation.mutate({ id: restoredId, purge: false, type: 'entity' })
+      })
     },
-    onError: (e: any) => toast.error(e.message)
+    onError: (e: any) => showWorkspaceToast(e.message, { type: 'error' })
   })
 
   const { handleRowClicked, handleRowDoubleClicked } = useOperationalRowInteractions({
@@ -1918,17 +2067,19 @@ export default function External() {
     }, [activeTab, allEntities])
   })
 
+  const externalRowInteractions = useMemo(() => ({
+    handleRowClicked,
+    handleRowDoubleClicked,
+  }), [handleRowClicked, handleRowDoubleClicked])
+
+  const externalContextMenu = useMemo(() => ({
+    handleCellContextMenu,
+  }), [handleCellContextMenu])
+
   const handleExternalSelectionChanged = useCallback((e: any) => {
     const selectedNodes = e?.api?.getSelectedNodes?.() || []
     setSelectedIds(selectedNodes.map((n: any) => n.data?.id).filter(Boolean))
   }, [])
-
-  const {
-    handleColumnMoved,
-    handleDragStopped,
-    handleColumnPinned,
-    handleColumnVisible,
-  } = useOperationalColumnSyncHandlers(syncColumnLayoutState, true)
 
   const getRowClass = useCallback((params: any) => {
     return params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd'
@@ -1998,31 +2149,15 @@ export default function External() {
   ), [activeTab, allEntities])
 
   const columnDefs = useMemo(() => {
-    const layoutById = new Map(columnLayoutState.map((column: any) => [column.colId, column]))
-    const lockFixedUtilityWidth = (column: any, layout?: any) => {
-      const colId = column.colId || column.field
-      const lockedWidth = layout?.width ?? column.width ?? column.initialWidth
-      if (!EXTERNAL_FIXED_WIDTH_COLUMN_IDS.has(colId) || lockedWidth == null) return column
-      return {
-        ...column,
-        width: lockedWidth,
-        initialWidth: lockedWidth,
-        minWidth: lockedWidth,
-        maxWidth: lockedWidth,
-        flex: undefined,
-        initialFlex: undefined,
-      }
-    }
-
     const tabColumnConfigs: OperationalColumnConfig[] = activeTab === 'links'
       ? [
           {
             kind: 'mappedBadge',
             field: 'direction',
             headerName: 'Flow',
-            width: 120,
             fontSize,
             colorMap: EXTERNAL_LINK_DIRECTION_COLORS,
+            knownValues: Object.keys(EXTERNAL_LINK_DIRECTION_COLORS),
             hide: hiddenColumns.includes('direction'),
           },
           {
@@ -2044,6 +2179,7 @@ export default function External() {
             field: 'purpose',
             headerName: 'Interconnect Purpose',
             width: 220,
+            proseMode: 'compact',
             hide: hiddenColumns.includes('purpose'),
           },
           {
@@ -2063,6 +2199,7 @@ export default function External() {
         ]
       : [
           {
+            // External type remains mappedText: it is a taxonomy label, not a status/severity pill.
             kind: 'mappedText',
             field: 'type',
             headerName: 'Type',
@@ -2082,10 +2219,10 @@ export default function External() {
             kind: 'mappedBadge',
             field: 'status',
             headerName: 'Status',
-            width: 130,
             fontSize,
             emptyValue: 'Planned',
             colorMap: EXTERNAL_STATUS_COLORS,
+            knownValues: Object.keys(EXTERNAL_STATUS_COLORS),
             hide: hiddenColumns.includes('status'),
           },
           {
@@ -2101,6 +2238,7 @@ export default function External() {
             headerName: 'Business Purpose',
             width: 220,
             minWidth: 150,
+            proseMode: 'compact',
             hide: hiddenColumns.includes('business_purpose'),
           },
           {
@@ -2122,7 +2260,6 @@ export default function External() {
         width: activeTab === 'links' ? 220 : 210,
         minWidth: 150,
         maxWidth: 320,
-        onActivate: activeTab === 'links' ? undefined : (row) => setActiveDetails(row),
       },
       ...tabColumnConfigs,
       {
@@ -2132,8 +2269,8 @@ export default function External() {
       },
     ]
 
-    const baseColumns = [
-      ...createOperationalUtilityColumns({
+    return buildOperationalGridColumnDefinitions({
+      utilityColumnsConfig: {
         includeRecentChange: activeTab !== 'links',
         includeFavorite: activeTab !== 'links',
         includeWatch: activeTab !== 'links',
@@ -2142,14 +2279,10 @@ export default function External() {
         onToggleFavorite: toggleFavorite,
         onToggleWatch: toggleWatch,
         itemLabel: 'peer',
-      }),
-      ...buildOperationalColumnDefinitions(columnConfigs),
-    ]
-
-    return baseColumns.map((column: any) => {
-      const colId = column.colId || column.field
-      const layout = layoutById.get(colId)
-      return lockFixedUtilityWidth(applyOperationalColumnSizing(column, layout, preserveExplicitColumnWidths), layout)
+      },
+      columnConfigs,
+      columnLayoutState,
+      preserveExplicitColumnWidths,
     })
   }, [
     activeTab,
@@ -2164,10 +2297,6 @@ export default function External() {
     toggleWatch,
   ]) as any
 
-  const autoSizeStrategy = useMemo(
-    () => (preserveExplicitColumnWidths ? undefined : OPERATIONAL_GRID_AUTO_SIZE_STRATEGY),
-    [preserveExplicitColumnWidths]
-  )
   const gridContext = useMemo(() => ({ activeTab, favoriteIds: normalizedFavoriteIds, watchIds: normalizedWatchIds }), [activeTab, normalizedFavoriteIds, normalizedWatchIds])
 
   useEffect(() => {
@@ -2763,67 +2892,28 @@ export default function External() {
     >
 
       {groupBy === 'raw' ? (
-        <OperationalGridSurface
-          className="monitoring-grid-shell monitoring-grid"
-          style={{
-            '--ag-font-size': `${fontSize}px`,
-            '--ag-font-family': "'Inter', sans-serif",
-          } as React.CSSProperties}
+        <OperationalDataGrid
+          gridRef={gridRef}
+          rows={activeTab === 'links' ? filteredLinks : filteredEntities}
+          columnDefs={columnDefs as any}
+          runtime={externalGridRuntime}
+          rowInteractions={externalRowInteractions}
+          contextMenu={externalContextMenu}
+          onSelectionChanged={handleExternalSelectionChanged}
+          onFirstDataRendered={handleGridDataUpdated}
+          onRowDataUpdated={handleGridDataUpdated}
+          context={gridContext}
+          quickFilterText={searchTerm}
+          getRowId={getExternalRowId}
+          getRowClass={getRowClass}
+          fontSize={fontSize}
+          rowDensity={rowDensity}
+          noRowsLabel="No external registry data found"
           loading={isLoading || linkLoading}
           loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
           loadingLabel={<p className="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-400">Synchronizing Intelligence Matrix...</p>}
-        >
-          <OperationalGridMatrix
-            gridRef={gridRef}
-            rowData={activeTab === 'links' ? filteredLinks : filteredEntities}
-            columnDefs={columnDefs as any} 
-            autoSizeStrategy={autoSizeStrategy}
-            colResizeDefault="normal"
-            fontSize={fontSize}
-            rowDensity={rowDensity}
-            context={gridContext}
-            quickFilterText={searchTerm}
-            getRowId={getExternalRowId}
-            getRowClass={getRowClass}
-            onGridReady={(params) => {
-              setGridApi(params.api)
-              setGridColumnApi(params.columnApi)
-              if (pendingGridRestore) {
-                applyGridState(pendingGridRestore)
-              } else if (columnLayoutState.length) {
-                applyColumnLayoutState(params.api, columnLayoutState, preserveExplicitColumnWidths)
-                params.api.setFilterModel(gridFilterModel)
-                params.api.applyColumnState({
-                  state: gridSortModel.map((entry) => ({ colId: entry.colId, sort: entry.sort as 'asc' | 'desc' })),
-                  defaultState: { sort: null },
-                  applyOrder: false,
-                })
-              }
-            }}
-            onSelectionChanged={handleExternalSelectionChanged}
-            onColumnResized={handleColumnResized}
-            onColumnMoved={handleColumnMoved}
-            onDragStopped={handleDragStopped}
-            onColumnPinned={handleColumnPinned}
-            onColumnVisible={handleColumnVisible}
-            onFilterChanged={(event) => {
-              setGridFilterModel(sanitizeOperationalFilterModel(event.api.getFilterModel(), EXTERNAL_PERSISTED_COLUMN_IDS))
-            }}
-            onSortChanged={(event) => {
-              const nextSortModel = event.columnApi.getColumnState()
-                .filter((column: any) => column.sort === 'asc' || column.sort === 'desc')
-                .map((column: any) => ({ colId: column.colId, sort: column.sort }))
-              setGridSortModel(sanitizeOperationalSortModel(nextSortModel, EXTERNAL_PERSISTED_COLUMN_IDS))
-              syncColumnLayoutState(event.api, true)
-            }}
-            onRowClicked={handleRowClicked}
-            onRowDoubleClicked={handleRowDoubleClicked}
-            onCellContextMenu={handleCellContextMenu}
-            onFirstDataRendered={handleGridDataUpdated}
-            onRowDataUpdated={handleGridDataUpdated}
-            noRowsLabel="No external registry data found"
-          />
-          {!isLoading && !linkLoading && !filteredEntities.length && (
+          showEmptyOverlay={!isLoading && !linkLoading && activeTab !== 'links' && !filteredEntities.length}
+          emptyOverlay={(
             <div className="absolute inset-0 flex items-center justify-center bg-[#020617]/40">
               <div className="w-full max-w-lg px-6">
                 <WorkspaceEmptyState
@@ -2833,7 +2923,7 @@ export default function External() {
               </div>
             </div>
           )}
-        </OperationalGridSurface>
+        />
       ) : (
         <OperationalGroupedGridView
           summary={
@@ -2881,61 +2971,24 @@ export default function External() {
                 onToggle={() => setCollapsedGroups((current) => ({ ...current, [section.key]: !current[section.key] }))}
               >
                 {!isCollapsed && (
-                  <OperationalGridSurface
-                    className="monitoring-grid-shell monitoring-grid w-full"
-                    style={{
-                      '--ag-font-size': `${fontSize}px`,
-                      '--ag-font-family': "'Inter', sans-serif",
-                      height: `${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px`
-                    } as React.CSSProperties}
-                  >
-                    <OperationalGridMatrix
-                      rowData={section.items}
-                      columnDefs={columnDefs as any}
-                      autoSizeStrategy={autoSizeStrategy}
-                      colResizeDefault="normal"
-                      fontSize={fontSize}
-                      rowDensity={rowDensity}
-                      context={gridContext}
-                      getRowId={getExternalRowId}
-                      getRowClass={getRowClass}
-                      onGridReady={(params) => {
-                        if (pendingGridRestore) {
-                          applyGridState(pendingGridRestore)
-                        } else if (columnLayoutState.length) {
-                          applyColumnLayoutState(params.api, columnLayoutState, preserveExplicitColumnWidths)
-                          params.api.setFilterModel(gridFilterModel)
-                          params.api.applyColumnState({
-                            state: gridSortModel.map((entry) => ({ colId: entry.colId, sort: entry.sort as 'asc' | 'desc' })),
-                            defaultState: { sort: null },
-                            applyOrder: false,
-                          })
-                        }
-                      }}
-                      onSelectionChanged={handleExternalSelectionChanged}
-                      onColumnResized={handleColumnResized}
-                      onColumnMoved={handleColumnMoved}
-                      onDragStopped={handleDragStopped}
-                      onColumnPinned={handleColumnPinned}
-                      onColumnVisible={handleColumnVisible}
-                      onFilterChanged={(event) => {
-                        setGridFilterModel(sanitizeOperationalFilterModel(event.api.getFilterModel(), EXTERNAL_PERSISTED_COLUMN_IDS))
-                      }}
-                      onSortChanged={(event) => {
-                        const nextSortModel = event.columnApi.getColumnState()
-                          .filter((column: any) => column.sort === 'asc' || column.sort === 'desc')
-                          .map((column: any) => ({ colId: column.colId, sort: column.sort }))
-                        setGridSortModel(sanitizeOperationalSortModel(nextSortModel, EXTERNAL_PERSISTED_COLUMN_IDS))
-                        syncColumnLayoutState(event.api, true)
-                      }}
-                      onRowClicked={handleRowClicked}
-                      onRowDoubleClicked={handleRowDoubleClicked}
-                      onCellContextMenu={handleCellContextMenu}
-                      onFirstDataRendered={handleGridDataUpdated}
-                      onRowDataUpdated={handleGridDataUpdated}
-                      noRowsLabel="No external registry data found"
-                    />
-                  </OperationalGridSurface>
+                  <OperationalDataGrid
+                    rows={section.items}
+                    columnDefs={columnDefs as any}
+                    runtime={externalGridRuntime}
+                    rowInteractions={externalRowInteractions}
+                    contextMenu={externalContextMenu}
+                    onSelectionChanged={handleExternalSelectionChanged}
+                    onFirstDataRendered={handleGridDataUpdated}
+                    onRowDataUpdated={handleGridDataUpdated}
+                    context={gridContext}
+                    getRowId={getExternalRowId}
+                    getRowClass={getRowClass}
+                    fontSize={fontSize}
+                    rowDensity={rowDensity}
+                    noRowsLabel="No external registry data found"
+                    className="w-full"
+                    height={`${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px`}
+                  />
                 )}
               </OperationalGroupedGridSection>
             )
@@ -2946,6 +2999,7 @@ export default function External() {
       <WorkspaceModal
         isOpen={!!activeModal}
         onClose={() => setActiveModal(null)}
+        isDirty={isActiveModalDirty}
         size="workspace"
         isMaximized={isWorkspaceMaximized}
         onMaximizeToggle={() => setIsWorkspaceMaximized((current) => !current)}
@@ -2985,6 +3039,7 @@ export default function External() {
           options={options}
           teams={teams || []}
           operators={operators || []}
+          onDirtyChange={setIsActiveModalDirty}
         />
       </WorkspaceModal>
 
@@ -3142,6 +3197,7 @@ function LinkForm({ entities, devices, onClose, onSave, isPending, initialExtern
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isMaximized, setIsMaximized] = useState(false)
+  const initialDirtySnapshotRef = useRef(JSON.stringify(formData))
 
   const { data: services } = useQuery({
     queryKey: ['device-services', formData.device_id],
@@ -3156,6 +3212,7 @@ function LinkForm({ entities, devices, onClose, onSave, isPending, initialExtern
     <WorkspaceModal
       isOpen={true}
       onClose={onClose}
+      isDirty={JSON.stringify(formData) !== initialDirtySnapshotRef.current}
       size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized((current) => !current)}

@@ -2,6 +2,31 @@ export const OPERATIONAL_GRID_AUTO_SIZE_STRATEGY = {
   type: 'fitCellContents' as const,
 }
 
+export const isOperationalAutoResizeSource = (source: string) => (
+  source === 'autosizeColumns' ||
+  source === 'sizeColumnsToFit' ||
+  source === 'api' ||
+  source === 'flex'
+)
+
+// Source of truth: protected sizing / resize behavior for fixed-width operational columns.
+export const lockOperationalColumnWidth = (
+  column: Record<string, any>,
+  layout?: Record<string, any>
+) => {
+  const lockedWidth = layout?.width ?? column.width ?? column.initialWidth
+  if (!column.operationalLockWidth || lockedWidth == null) return column
+  return {
+    ...column,
+    width: lockedWidth,
+    initialWidth: lockedWidth,
+    minWidth: lockedWidth,
+    maxWidth: lockedWidth,
+    flex: undefined,
+    initialFlex: undefined,
+  }
+}
+
 export const normalizeOperationalColumnLayout = (layout: any[], preserveWidths: boolean) =>
   (layout || []).map((column: any) => ({
     colId: column.colId,
@@ -95,6 +120,28 @@ export const applyOperationalColumnSizing = (
   }
 
   return nextColumn
+}
+
+export const finalizeOperationalColumnDefinition = (
+  column: Record<string, any>,
+  layout: Record<string, any> | undefined,
+  preserveExplicitWidths: boolean
+) => lockOperationalColumnWidth(
+  applyOperationalColumnSizing(column, layout, preserveExplicitWidths),
+  layout
+)
+
+export const orderOperationalColumnDefinitions = (
+  columns: Record<string, any>[],
+  layout: Array<{ colId?: string }> | undefined
+) => {
+  if (!layout?.length) return columns
+  const orderMap = new Map(layout.map((column, index) => [column.colId, index]))
+  return [...columns].sort((a, b) => {
+    const aId = a.colId || a.field
+    const bId = b.colId || b.field
+    return (orderMap.get(aId) ?? 1000) - (orderMap.get(bId) ?? 1000)
+  })
 }
 
 export const sanitizeOperationalColumnLayout = (

@@ -9,6 +9,11 @@ interface WorkspaceToastProps {
   type?: 'success' | 'error' | 'loading'
 }
 
+type WorkspaceToastOptions = {
+  onRevert?: () => void
+  type?: 'success' | 'error' | 'loading'
+}
+
 export const WorkspaceToast = ({ t, message, onRevert, type = 'success' }: WorkspaceToastProps) => {
   const [isConfirmingRevert, setIsConfirmingRevert] = useState(false)
   const [progress, setProgress] = useState(100)
@@ -104,7 +109,8 @@ export const WorkspaceToast = ({ t, message, onRevert, type = 'success' }: Works
   )
 }
 
-export const showWorkspaceToast = (message: string, options?: { onRevert?: () => void, type?: 'success' | 'error' | 'loading' }) => {
+export const showWorkspaceToast = (message: string, options?: WorkspaceToastOptions) => {
+  // Source of truth: operational workspace toast behavior.
   // Use message as ID to ensure uniqueness for this specific message
   toast.dismiss(message);
   
@@ -121,3 +127,7 @@ export const showWorkspaceToast = (message: string, options?: { onRevert?: () =>
     id: message 
   })
 }
+
+export const showWorkspaceRevertToast = (message: string, onRevert: () => void) => (
+  showWorkspaceToast(message, { onRevert, type: 'success' })
+)

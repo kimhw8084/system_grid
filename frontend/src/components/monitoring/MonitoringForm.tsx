@@ -56,6 +56,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
   const [isMaximized, setIsMaximized] = useState(false)
   const initialItemPayload = sanitizeMonitoringPayload(item)
   const { logic_json: initialLogicJson = [], ...initialItemFields } = initialItemPayload || {}
+  const initialDirtySnapshotRef = useRef(JSON.stringify(initialItemPayload))
 
   const [formData, setFormData] = useState<{
     category: string
@@ -382,10 +383,16 @@ export function MonitoringForm({ item, devices, categories, severities, platform
     })
   }
 
+  const isDirty = useMemo(
+    () => JSON.stringify(sanitizeMonitoringPayload(formData)) !== initialDirtySnapshotRef.current,
+    [formData]
+  )
+
   return (
     <WorkspaceModal
       isOpen={true}
       onClose={onClose}
+      isDirty={isDirty}
       size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(prev => !prev)}

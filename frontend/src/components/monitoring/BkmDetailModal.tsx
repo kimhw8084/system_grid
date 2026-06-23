@@ -8,7 +8,6 @@ import {
   useEscapeDismiss, 
   useBodyModalFlag 
 } from '../shared/OperationalWorkspacePrimitives'
-import { ToolbarButton } from '../shared/LayoutPrimitives'
 import { StatusPill } from '../shared/StatusPill'
 import { apiFetch } from '../../api/apiClient'
 import { useQuery } from '@tanstack/react-query'
@@ -34,9 +33,6 @@ export function BkmDetailModal({ bkmId, onClose }: any) {
       title={bkm?.title || 'Loading Document...'}
       subtitle={`BKM ID: KB-${bkmId}`}
       icon={<BookOpen size={20} />}
-      footerRight={
-        <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
-      }
     >
       <div className="space-y-6">
         {isLoading ? (

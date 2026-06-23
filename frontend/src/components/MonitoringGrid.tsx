@@ -15,8 +15,7 @@ import {
   Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, Star, GitCompare, Undo2, List, LayoutGrid, Upload, Terminal, History as HistoryIcon, Edit2 as EditIcon
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import toast from 'react-hot-toast'
-import { showWorkspaceToast } from './shared/WorkspaceToast'
+import { showWorkspaceRevertToast, showWorkspaceToast } from './shared/WorkspaceToast'
 import { apiFetch } from '../api/apiClient'
 import { buildMonitoringFormErrors, getMonitoringTabErrorCounts } from '../utils/monitoringValidation'
 import { formatAppDate, formatAppTime, formatAppDay, parseAppDate } from '../utils/dateUtils'
@@ -57,26 +56,29 @@ import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shar
 import { StatusPill } from './shared/StatusPill'
 import { parseCommaSeparatedValues } from '../utils/dataParsers'
 import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
-import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
+import {
+  OPERATIONAL_GRID_LAYOUT_POLICIES,
+  useOperationalGridRuntime,
+  usePersistentJsonState,
+  useWorkspaceDismissHandlers,
+  useWorkspaceSessionValue,
+} from './shared/OperationalWorkspaceHooks'
 import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } from './shared/WorkspaceModalShells'
 import { OperationalImportModal } from './shared/OperationalImportModal'
-import { OperationalGridMatrix } from './shared/OperationalGridMatrix'
+import { OperationalDataGrid } from './shared/OperationalDataGrid'
 import {
   OperationalAnchoredPanel,
   OperationalDisplayPanel,
-  OperationalGridSurface,
   OperationalGroupedGridSection,
   OperationalGroupedGridView,
   OperationalSavedViewsPanel,
   OperationalWorkspaceShell
 } from './shared/OperationalWorkspaceShells'
 import {
-  applyOperationalColumnSizing,
   applyOperationalColumnState,
   autoSizeOperationalColumns,
   getOperationalColumnLayoutSnapshot,
   normalizeOperationalColumnLayout,
-  OPERATIONAL_GRID_AUTO_SIZE_STRATEGY,
   sanitizeOperationalColumnLayout,
   sanitizeOperationalFilterModel,
   sanitizeOperationalSortModel,
@@ -86,10 +88,8 @@ import {
   OPERATIONAL_GRID_WIDTHS,
 } from './shared/OperationalGridContract'
 import {
-  buildOperationalColumnDefinitions,
-  createOperationalUtilityColumns,
+  buildOperationalGridColumnDefinitions,
   renderOperationalActionButtons,
-  useOperationalColumnSyncHandlers,
 } from './shared/OperationalGridStandard'
 
 const MONITORING_VIEW_STORAGE_KEY = 'sysgrid_monitoring_views_v1'
@@ -100,17 +100,6 @@ const MONITORING_WATCH_STORAGE_KEY = 'sysgrid_monitoring_watch_v1'
 const MONITORING_WORKSPACE_PREFERENCE_KEY = 'monitoring_workspace_state_v2'
 const MONITORING_WORKSPACE_PREFERENCE_VERSION = 2
 const BULK_MENU_MAX_HEIGHT = 560
-const MONITORING_FIXED_WIDTH_COLUMN_IDS = new Set([
-  'select',
-  'id',
-  'recent_change',
-  'favorite',
-  'watch',
-  'is_active',
-  'check_interval',
-  'row_actions',
-])
-
 export const STATUSES = [
   { value: 'Existing', label: 'Existing', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
   { value: 'Planned', label: 'Planned', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
@@ -118,6 +107,10 @@ export const STATUSES = [
   { value: 'Decommissioned', label: 'Decommissioned', color: 'bg-slate-500/20 text-slate-400 border-white/20' },
   { value: 'Deleted', label: 'Deleted', color: 'bg-slate-800 text-slate-500 border-white/5' }
 ]
+
+const MONITORING_STATUS_COLORS: Record<string, string> = Object.fromEntries(
+  STATUSES.map((status) => [status.label, status.color])
+)
 
 export const LOGIC_TYPES = ['Threshold', 'Anomaly', 'Availability']
 export const CHECK_INTERVAL_MIN = 30
@@ -170,6 +163,10 @@ const MONITORING_SEVERITIES = [
   { value: 'Warning', label: 'Warning', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
   { value: 'Info', label: 'Info', color: 'bg-sky-500/20 text-sky-400 border-sky-500/30' }
 ]
+
+const MONITORING_SEVERITY_COLORS: Record<string, string> = Object.fromEntries(
+  MONITORING_SEVERITIES.map((severity) => [severity.label, severity.color])
+)
 
 const MONITORING_OWNER_ROLES = [
   { value: 'Primary Support', label: 'Primary Support' },
@@ -572,22 +569,6 @@ export default function MonitoringGrid() {
   const monitoringPreferenceSyncRef = useRef<string | null>(null)
   const monitoringPreferenceSyncTimeoutRef = useRef<number | null>(null)
   const preserveExplicitColumnWidthsRef = useRef(false)
-  const {
-    columnLayoutState,
-    setColumnLayoutState,
-    setTransientManualColumnWidths,
-    preserveExplicitColumnWidths,
-    syncColumnLayoutState,
-    applyColumnLayoutState,
-    handleColumnResized,
-  } = useOperationalGridLayout(persistedUiState?.columnLayoutState ?? [], Boolean(activeViewId))
-
-  const groupSelectionsRef = useRef<Record<string, number[]>>({})
-
-  useEffect(() => {
-    preserveExplicitColumnWidthsRef.current = preserveExplicitColumnWidths
-  }, [preserveExplicitColumnWidths])
-
   const clearPendingAutoSize = useCallback(() => {
     if (autoSizeFrameRef.current !== null) {
       window.cancelAnimationFrame(autoSizeFrameRef.current)
@@ -598,6 +579,57 @@ export default function MonitoringGrid() {
       autoSizeTimeoutRef.current = null
     }
   }, [])
+
+  const {
+    columnLayoutState,
+    setColumnLayoutState,
+    setTransientManualColumnWidths,
+    preserveExplicitColumnWidths,
+    syncColumnLayoutState,
+    applyColumnLayoutState,
+    handleColumnResized: handleMonitoringColumnResized,
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
+    handleGridReady,
+    handleFilterChanged,
+    handleSortChanged,
+  } = useOperationalGridRuntime({
+    initialColumnLayoutState: persistedUiState?.columnLayoutState ?? [],
+    hasSavedViewWidths: Boolean(activeViewId),
+    applyGridState: (config) => {
+      const api = gridRef.current?.api
+      if (!api) return
+      applyOperationalColumnState(api, config.columnLayoutState, preserveExplicitColumnWidths)
+      api.setFilterModel(config.filterModel || {})
+      api.applyColumnState({
+        state: (config.sortModel || []).map((entry: any) => ({ colId: entry.colId, sort: entry.sort as 'asc' | 'desc' })),
+        defaultState: { sort: null },
+        applyOrder: false,
+      })
+    },
+    initialFilterModel: gridFilterModel,
+    initialSortModel: gridSortModel,
+    setGridFilterModel,
+    setGridSortModel,
+    layoutPolicy: OPERATIONAL_GRID_LAYOUT_POLICIES.standard,
+    onBeforeManualResize: () => {
+      clearPendingAutoSize()
+      setTransientManualColumnWidths(true)
+    },
+    onGridApiReady: (event) => {
+      if (typeof window !== 'undefined') {
+        ;(window as any).__DEBUG_MONITORING_GRID_API__ = event.api
+      }
+    },
+  })
+
+  const groupSelectionsRef = useRef<Record<string, number[]>>({})
+
+  useEffect(() => {
+    preserveExplicitColumnWidthsRef.current = preserveExplicitColumnWidths
+  }, [preserveExplicitColumnWidths])
 
   const buildMonitoringWorkspacePreferencePayload = useCallback(() => normalizeMonitoringWorkspaceState({
     version: MONITORING_WORKSPACE_PREFERENCE_VERSION,
@@ -723,34 +755,6 @@ export default function MonitoringGrid() {
     setSelectedIds(allSelected)
   }, [])
 
-  const {
-    handleColumnMoved,
-    handleDragStopped,
-    handleColumnPinned,
-    handleColumnVisible,
-  } = useOperationalColumnSyncHandlers(syncColumnLayoutState, false)
-  const handleFilterChanged = useCallback((e: any) => setGridFilterModel(e.api.getFilterModel() || {}), [])
-  const handleMonitoringColumnResized = useCallback((event: any) => {
-    const source = event?.source || ''
-    const isAutoResizeSource =
-      source === 'autosizeColumns' ||
-      source === 'sizeColumnsToFit' ||
-      source === 'api' ||
-      source === 'flex'
-
-    if (!isAutoResizeSource) {
-      clearPendingAutoSize()
-      setTransientManualColumnWidths(true)
-    }
-
-    handleColumnResized(event)
-  }, [clearPendingAutoSize, handleColumnResized, setTransientManualColumnWidths])
-  
-  const handleSortChanged = useCallback((e: any) => {
-    const nextSortModel = e.api.getColumnState().filter((col: any) => col.sort).map((col: any) => ({ colId: col.colId, sort: col.sort }))
-    setGridSortModel(nextSortModel)
-  }, [])
-
   const handleRowId = useCallback((params: any) => String(params.data.id), [])
 
   const { handleCellContextMenu, openRowActionMenuAtPoint } = useOperationalContextMenu({
@@ -761,16 +765,6 @@ export default function MonitoringGrid() {
     menuHeight: 432
   })
 
-  const handleGridReady = useCallback((event: any) => {
-    if (typeof window !== 'undefined') {
-      ;(window as any).__DEBUG_MONITORING_GRID_API__ = event.api
-    }
-    // Immediately apply layout if we have it to prevent squish
-    if (columnLayoutState.length > 0) {
-      applyOperationalColumnState(event.api, columnLayoutState, preserveExplicitColumnWidths)
-    }
-  }, [columnLayoutState, preserveExplicitColumnWidths])
-
   const autoSizeMonitoringColumns = useCallback(() => {
     if (!gridRef.current?.api || preserveExplicitColumnWidthsRef.current) return
     clearPendingAutoSize()
@@ -778,7 +772,6 @@ export default function MonitoringGrid() {
       if (!gridRef.current?.api || preserveExplicitColumnWidthsRef.current) return
       autoSizeOperationalColumns({
         api: gridRef.current.api,
-        skipColumnIds: Array.from(MONITORING_FIXED_WIDTH_COLUMN_IDS),
         onSized: () => {
           if (!gridRef.current?.api || preserveExplicitColumnWidthsRef.current) return
           syncColumnLayoutState(gridRef.current.api, false)
@@ -798,6 +791,28 @@ export default function MonitoringGrid() {
   const handleGridDataUpdated = useCallback(() => {
     autoSizeMonitoringColumns()
   }, [autoSizeMonitoringColumns])
+
+  const monitoringGridRuntime = useMemo(() => ({
+    preserveExplicitColumnWidths,
+    handleGridReady,
+    handleColumnResized: handleMonitoringColumnResized,
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
+    handleFilterChanged,
+    handleSortChanged,
+  }), [
+    preserveExplicitColumnWidths,
+    handleGridReady,
+    handleMonitoringColumnResized,
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
+    handleFilterChanged,
+    handleSortChanged,
+  ])
 
   const getRowClass = useCallback((params: any) => {
     let classes = params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd'
@@ -878,6 +893,15 @@ export default function MonitoringGrid() {
     }, []),
     pendingIds
   })
+
+  const monitoringRowInteractions = useMemo(() => ({
+    handleRowClicked,
+    handleRowDoubleClicked,
+  }), [handleRowClicked, handleRowDoubleClicked])
+
+  const monitoringContextMenu = useMemo(() => ({
+    handleCellContextMenu,
+  }), [handleCellContextMenu])
 
   const openRecoveryDocuments = useCallback((item: any) => {
     const recoveryDocs = item.recovery_docs || []
@@ -1027,6 +1051,7 @@ export default function MonitoringGrid() {
   }
 
   const saveCurrentToView = (viewId: string) => {
+    const previousViews = savedViews
     const nextViews = savedViews.map((view) => (
       view.id === viewId
         ? { ...view, config: buildCurrentViewConfig() }
@@ -1038,7 +1063,14 @@ export default function MonitoringGrid() {
       window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
       window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, viewId)
     }
-    showWorkspaceToast(`Saved current table to ${nextViews.find((view) => view.id === viewId)?.name}`)
+    showWorkspaceRevertToast(`Saved current table to ${nextViews.find((view) => view.id === viewId)?.name}`, () => {
+      setSavedViews(previousViews)
+      setActiveViewId(viewId)
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(previousViews))
+        window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, viewId)
+      }
+    })
   }
 
   const createViewFromCurrent = () => {
@@ -1112,7 +1144,14 @@ export default function MonitoringGrid() {
         if (typeof window !== 'undefined') {
           window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
         }
-        showWorkspaceToast(`Deleted view ${view.name}`)
+        showWorkspaceRevertToast(`Deleted view ${view.name}`, () => {
+          setSavedViews(savedViews)
+          setActiveViewId(activeViewId)
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(savedViews))
+            if (activeViewId) window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, activeViewId)
+          }
+        })
       }
     )
   }
@@ -1554,14 +1593,12 @@ export default function MonitoringGrid() {
       else lastUndoRef.current = null
 
       if (lastUndoRef.current) {
-        showWorkspaceToast(result?.summary || 'Updated monitoring state', {
-          onRevert: async () => {
-            try {
-              await runUndo()
-              showWorkspaceToast('Reverted monitoring operation', { type: 'success' })
-            } catch (error: any) {
-              showWorkspaceToast(error.message || 'Undo failed', { type: 'error' })
-            }
+        showWorkspaceRevertToast(result?.summary || 'Updated monitoring state', async () => {
+          try {
+            await runUndo()
+            showWorkspaceToast('Reverted monitoring operation', { type: 'success' })
+          } catch (error: any) {
+            showWorkspaceToast(error.message || 'Undo failed', { type: 'error' })
           }
         })
       }
@@ -1570,22 +1607,6 @@ export default function MonitoringGrid() {
   })
 
   const columnDefs = useMemo(() => {
-    const layoutById = new Map(columnLayoutState.map((column: any) => [column.colId, column]))
-    const lockFixedUtilityWidth = (column: any, layout?: any) => {
-      const colId = column.colId || column.field
-      const lockedWidth = layout?.width ?? column.width ?? column.initialWidth
-      if (!MONITORING_FIXED_WIDTH_COLUMN_IDS.has(colId) || lockedWidth == null) return column
-      return {
-        ...column,
-        width: lockedWidth,
-        initialWidth: lockedWidth,
-        minWidth: lockedWidth,
-        maxWidth: lockedWidth,
-        flex: undefined,
-        initialFlex: undefined,
-      }
-    }
-    
   const columnConfigs: OperationalColumnConfig[] = [
     {
       kind: 'identity',
@@ -1604,12 +1625,13 @@ export default function MonitoringGrid() {
       hide: hiddenColumns.includes('device_name'),
     },
     {
-      kind: 'badge',
+      kind: 'mappedBadge',
       field: 'status',
       headerName: 'Status',
-      width: 130,
       fontSize,
       emptyValue: 'Unknown',
+      colorMap: MONITORING_STATUS_COLORS,
+      knownValues: STATUSES.map((entry) => entry.label),
       hide: hiddenColumns.includes('status'),
     },
     {
@@ -1638,7 +1660,6 @@ export default function MonitoringGrid() {
       kind: 'activeDot',
       field: 'is_active',
       headerName: 'Existing',
-      width: 70,
       getIsDeleted: (p) => p.data?.is_deleted || p.data?.status === 'Deleted',
       hide: hiddenColumns.includes('is_active'),
     },
@@ -1661,11 +1682,12 @@ export default function MonitoringGrid() {
       hide: hiddenColumns.includes('platform'),
     },
     {
-      kind: 'badge',
+      kind: 'mappedBadge',
       field: 'severity',
       headerName: 'Severity',
-      width: 130,
       fontSize,
+      colorMap: MONITORING_SEVERITY_COLORS,
+      knownValues: MONITORING_SEVERITIES.map((entry) => entry.label),
       hide: hiddenColumns.includes('severity'),
     },
     {
@@ -1690,6 +1712,7 @@ export default function MonitoringGrid() {
       field: 'purpose',
       headerName: 'Purpose',
       width: 220,
+      proseMode: 'compact',
       hide: hiddenColumns.includes('purpose'),
     },
     {
@@ -1713,8 +1736,8 @@ export default function MonitoringGrid() {
     },
   ]
 
-  const defs = [
-    ...createOperationalUtilityColumns({
+  return buildOperationalGridColumnDefinitions({
+    utilityColumnsConfig: {
       includeRecentChange: true,
       includeFavorite: true,
       includeWatch: true,
@@ -1723,38 +1746,11 @@ export default function MonitoringGrid() {
       onToggleFavorite: toggleFavorite,
       onToggleWatch: toggleWatch,
       itemLabel: 'monitor',
-    }),
-    ...buildOperationalColumnDefinitions(columnConfigs),
-  ]
-  
-  // Inject saved layout state (widths, pinned, sort) into definitions before first render
-  const mergedDefs = defs.map((col: any) => {
-    if (col.children) {
-      return {
-        ...col,
-        children: col.children.map((child: any) => {
-          const colId = child.colId || child.field
-          const layout = layoutById.get(colId)
-          return lockFixedUtilityWidth(applyOperationalColumnSizing(child, layout, preserveExplicitColumnWidths), layout)
-        })
-      }
-    }
-    const colId = col.colId || col.field
-    const layout = layoutById.get(colId)
-    return lockFixedUtilityWidth(applyOperationalColumnSizing(col, layout, preserveExplicitColumnWidths), layout)
+    },
+    columnConfigs,
+    columnLayoutState,
+    preserveExplicitColumnWidths,
   })
-
-  // Ensure column order is maintained from state to prevent "jumping" during re-renders
-  if (columnLayoutState.length > 0) {
-    const orderMap = new Map(columnLayoutState.map((col: any, index: number) => [col.colId, index]))
-    return [...mergedDefs].sort((a: any, b: any) => {
-      const aId = a.colId || a.field
-      const bId = b.colId || b.field
-      return (orderMap.get(aId) ?? 1000) - (orderMap.get(bId) ?? 1000)
-    })
-  }
-
-  return mergedDefs
 }, [
   columnLayoutState,
   fontSize,
@@ -1768,11 +1764,6 @@ export default function MonitoringGrid() {
 ]) as any
 
   const gridContext = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
-  const autoSizeStrategy = useMemo(
-    () => (preserveExplicitColumnWidths ? undefined : OPERATIONAL_GRID_AUTO_SIZE_STRATEGY),
-    [preserveExplicitColumnWidths]
-  )
-
   return (
    <OperationalWorkspaceShell
       header={{
@@ -2282,45 +2273,26 @@ export default function MonitoringGrid() {
     >
 
       {groupBy === 'raw' ? (
-	        <OperationalGridSurface
-            className="monitoring-grid-shell monitoring-grid"
-            style={{ 
-              '--ag-font-size': `${fontSize}px`,
-              '--ag-font-family': "'Inter', sans-serif",
-            } as React.CSSProperties}
-            loading={isLoading}
-            loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
-            loadingLabel={<p className="text-[10px] font-semibold text-blue-400">Scanning monitoring matrix...</p>}
-          >
-	          <OperationalGridMatrix
-            gridRef={gridRef}
-	            rowData={displayedItemsInOrder || []} 
-	            columnDefs={columnDefs} 
-            autoSizeStrategy={autoSizeStrategy}
-            colResizeDefault="normal"
-            fontSize={fontSize}
-            rowDensity={rowDensity}
-            context={gridContext}
-            getRowId={handleRowId}
-            onGridReady={handleGridReady}
-	            onSelectionChanged={(e) => handleSelectionChanged(e, 'raw')}
-            onColumnResized={handleMonitoringColumnResized}
-            onColumnMoved={handleColumnMoved}
-            onDragStopped={handleDragStopped}
-            onColumnPinned={handleColumnPinned}
-            onColumnVisible={handleColumnVisible}
-            onFilterChanged={handleFilterChanged}
-	            onSortChanged={handleSortChanged}
-            onCellContextMenu={handleCellContextMenu}
-	            onRowClicked={handleRowClicked}
-            onRowDoubleClicked={handleRowDoubleClicked}
-            getRowClass={getRowClass}
-            onFirstDataRendered={handleGridDataUpdated}
-            onRowDataUpdated={handleGridDataUpdated}
-            noRowsLabel="No monitoring data found"
-	          />
-
-	        </OperationalGridSurface>
+        <OperationalDataGrid
+          gridRef={gridRef}
+          rows={displayedItemsInOrder || []}
+          columnDefs={columnDefs}
+          runtime={monitoringGridRuntime}
+          rowInteractions={monitoringRowInteractions}
+          contextMenu={monitoringContextMenu}
+          onSelectionChanged={(e) => handleSelectionChanged(e, 'raw')}
+          onFirstDataRendered={handleGridDataUpdated}
+          onRowDataUpdated={handleGridDataUpdated}
+          context={gridContext}
+          getRowId={handleRowId}
+          getRowClass={getRowClass}
+          fontSize={fontSize}
+          rowDensity={rowDensity}
+          noRowsLabel="No monitoring data found"
+          loading={isLoading}
+          loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
+          loadingLabel={<p className="text-[10px] font-semibold text-blue-400">Scanning monitoring matrix...</p>}
+        />
       ) : (
         <OperationalGroupedGridView
           summary={
@@ -2368,40 +2340,24 @@ export default function MonitoringGrid() {
                 onToggle={() => setCollapsedGroups((current) => ({ ...current, [section.key]: !current[section.key] }))}
               >
                 {!isCollapsed && (
-                  <OperationalGridSurface
-                    className="monitoring-grid-shell monitoring-grid w-full"
-                    style={{ 
-                      '--ag-font-size': `${fontSize}px`,
-                      '--ag-font-family': "'Inter', sans-serif",
-                      height: `${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px`
-                    } as React.CSSProperties}
-                  >
-	                    <OperationalGridMatrix
-                      rowData={section.items} 
-                      columnDefs={columnDefs} 
-                      autoSizeStrategy={autoSizeStrategy}
-                      colResizeDefault="normal"
-                      fontSize={fontSize}
-                      rowDensity={rowDensity}
-                      context={gridContext}
-                      getRowId={handleRowId}
-                      onSelectionChanged={(e) => handleSelectionChanged(e, section.key)}
-                      onColumnResized={handleMonitoringColumnResized}
-                      onColumnMoved={handleColumnMoved}
-                      onDragStopped={handleDragStopped}
-                      onColumnPinned={handleColumnPinned}
-                      onColumnVisible={handleColumnVisible}
-                      onFilterChanged={handleFilterChanged}
-                      onSortChanged={handleSortChanged}
-                      onCellContextMenu={handleCellContextMenu}
-                      onRowClicked={handleRowClicked}
-                      onRowDoubleClicked={handleRowDoubleClicked}
-                      getRowClass={getRowClass}
-	                      onFirstDataRendered={handleGridDataUpdated}
-	                      onRowDataUpdated={handleGridDataUpdated}
-                      noRowsLabel="No monitoring data found"
-                    />
-                  </OperationalGridSurface>
+                  <OperationalDataGrid
+                    rows={section.items}
+                    columnDefs={columnDefs}
+                    runtime={monitoringGridRuntime}
+                    rowInteractions={monitoringRowInteractions}
+                    contextMenu={monitoringContextMenu}
+                    onSelectionChanged={(e) => handleSelectionChanged(e, section.key)}
+                    onFirstDataRendered={handleGridDataUpdated}
+                    onRowDataUpdated={handleGridDataUpdated}
+                    context={gridContext}
+                    getRowId={handleRowId}
+                    getRowClass={getRowClass}
+                    fontSize={fontSize}
+                    rowDensity={rowDensity}
+                    noRowsLabel="No monitoring data found"
+                    className="w-full"
+                    height={`${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px`}
+                  />
                 )}
               </OperationalGroupedGridSection>
             )
@@ -3591,13 +3547,18 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                              </span>
                            </div>
                            <button 
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               toast.promise(apiFetch(`/api/v1/monitoring/${item.id}/restore/${h.id}`, { method: 'POST' }), {
-                                   loading: 'Restoring state...',
-                                   success: () => { queryClient.invalidateQueries({ queryKey: ['monitoring-items'] }); queryClient.invalidateQueries({ queryKey: ['monitoring-history', item.id] }); return "Restored successfully"; },
-                                   error: "Restore failed"
-                               })
+                             onClick={async (e) => {
+                               e.stopPropagation()
+                               showWorkspaceToast('Restoring state...', { type: 'loading' })
+                               try {
+                                 const response: any = await apiFetch(`/api/v1/monitoring/${item.id}/restore/${h.id}`, { method: 'POST' })
+                                 if (response?.ok === false) throw new Error(await response.text())
+                                 queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
+                                 queryClient.invalidateQueries({ queryKey: ['monitoring-history', item.id] })
+                                 showWorkspaceToast('Restored successfully', { type: 'success' })
+                               } catch {
+                                 showWorkspaceToast('Restore failed', { type: 'error' })
+                               }
                              }}
                              className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${isSelected ? 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/40' : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'}`}
                            >

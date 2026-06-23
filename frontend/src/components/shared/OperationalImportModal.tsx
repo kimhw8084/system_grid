@@ -23,7 +23,6 @@ import {
   WorkspaceCollapsibleHeader,
   WorkspaceValidationBanner,
   getWorkspaceInputClass,
-  useEscapeDismiss,
   useBodyModalFlag,
 } from './OperationalWorkspacePrimitives'
 
@@ -173,7 +172,6 @@ export function OperationalImportModal({
   tableName,
   displayName,
 }: OperationalImportModalProps) {
-  useEscapeDismiss(onClose)
   useBodyModalFlag()
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -190,6 +188,13 @@ export function OperationalImportModal({
   const [isTemplateCollapsed, setIsTemplateCollapsed] = useState(false)
   const [isValidationPopoutOpen, setIsValidationPopoutOpen] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
+  const isDirty = Boolean(
+    file ||
+    pasteText.trim().length > 0 ||
+    preview ||
+    selectedPreviewRows.length > 0 ||
+    draftRows.some((row) => isMeaningfulRow(row, Object.keys(row)))
+  )
 
   const { triggerRef: validationTriggerRef, panelRef: validationPanelRef, panelStyle: validationPanelStyle } = useWorkspaceAnchoredLayer(isValidationPopoutOpen, { minWidth: 360, offset: 12 })
 
@@ -543,6 +548,7 @@ export function OperationalImportModal({
     <WorkspaceModal
       isOpen={isOpen}
       onClose={onClose}
+      isDirty={isDirty}
       size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}

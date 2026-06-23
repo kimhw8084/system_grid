@@ -107,16 +107,13 @@ export function BkmListModal({ docs, monitorId, onOpenBkm, onClose }: { docs: an
       subtitle="Knowledge-base linkage and operational guidance."
       icon={<BookOpen size={20} />}
       footerRight={
-        <div className="flex items-center gap-3">
-           <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
-           <ToolbarButton 
-             variant="primary" 
-             disabled={!isDirty || mutation.isPending}
-             onClick={() => mutation.mutate(linkedDocs)}
-           >
-              {mutation.isPending ? 'Synchronizing...' : 'Synchronize Procedures'}
-           </ToolbarButton>
-        </div>
+        <ToolbarButton 
+          variant="primary" 
+          disabled={!isDirty || mutation.isPending}
+          onClick={() => mutation.mutate(linkedDocs)}
+        >
+           {mutation.isPending ? 'Synchronizing...' : 'Synchronize Procedures'}
+        </ToolbarButton>
       }
     >
       <div className="space-y-8 pt-4 pb-4">
