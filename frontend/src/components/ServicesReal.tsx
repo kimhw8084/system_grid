@@ -48,7 +48,12 @@ import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shar
 import { StatusPill } from './shared/StatusPill'
 import { parseCommaSeparatedValues } from '../utils/dataParsers'
 import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
-import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
+import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue, useOperationalDetailRoute } from './shared/OperationalWorkspaceHooks'
+import {
+  useOperationalRowInteractions,
+  useOperationalContextMenu,
+  useOperationalDismissController
+} from './shared/OperationalGridInteractions'
 import { WorkspaceCompareShell, WorkspaceDossierShell } from './shared/WorkspaceModalShells'
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
 import { OperationalImportModal } from './shared/OperationalImportModal'
@@ -814,9 +819,11 @@ export default function ServicesReal() {
   const openNetworkDetail = useCallback((item: any, replace: boolean = false) => {
     if (!item?.id) return
     setDetailItem(item)
-    const nextParams = new URLSearchParams(searchParams)
-    nextParams.set('id', String(item.id))
-    navigate({ search: `?${nextParams.toString()}` }, { replace })
+    requestAnimationFrame(() => {
+        const nextParams = new URLSearchParams(searchParams)
+        nextParams.set('id', String(item.id))
+        navigate({ search: `?${nextParams.toString()}` }, { replace })
+    })
   }, [navigate, searchParams])
   const closeNetworkDetail = useCallback((replace: boolean = true) => {
     setDetailItem(null)

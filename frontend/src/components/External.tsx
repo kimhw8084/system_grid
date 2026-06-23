@@ -778,23 +778,19 @@ const ExternalForm = ({
     })
   }
 
-  const initialDirtySnapshot = useMemo(
-    () => normalizeExternalFormSnapshot(initialFormState),
-    [initialFormState, normalizeExternalFormSnapshot]
-  )
+  const initialDirtySnapshotRef = useRef(normalizeExternalFormSnapshot(initialFormState))
+
+  useEffect(() => {
+    // Ensure the snapshot is captured after initial normalization
+    initialDirtySnapshotRef.current = normalizeExternalFormSnapshot(initialFormState)
+  }, [normalizeExternalFormSnapshot, initialFormState])
 
   const isDirty = useMemo(
     () => {
       const current = normalizeExternalFormSnapshot(formData)
-      const dirty = !isDeepEqual(current, initialDirtySnapshot)
-      if (dirty) {
-        console.log('ExternalForm isDirty:', dirty)
-        console.log('Snapshot:', initialDirtySnapshot)
-        console.log('Current:', JSON.stringify(current))
-      }
-      return dirty
+      return !isDeepEqual(current, initialDirtySnapshotRef.current)
     },
-    [formData, initialDirtySnapshot, normalizeExternalFormSnapshot]
+    [formData, normalizeExternalFormSnapshot]
   )
 
   useEffect(() => {

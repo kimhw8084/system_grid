@@ -86,6 +86,11 @@ export function MonitoringForm({ item, devices, categories, severities, platform
   const [formData, setFormData] = useState(initialFormState)
   const initialDirtySnapshotRef = useRef(sanitizeMonitoringPayload(initialFormState))
 
+  useEffect(() => {
+    // Ensure the snapshot is captured after initial normalization
+    initialDirtySnapshotRef.current = sanitizeMonitoringPayload(initialFormState)
+  }, [])
+
   const [ownershipMode, setOwnershipMode] = useState<'team' | 'individual'>(
     initialItemFields?.owner_team ? 'team' : (initialItemFields?.owners?.length ? 'individual' : 'team')
   )
@@ -327,7 +332,6 @@ export function MonitoringForm({ item, devices, categories, severities, platform
   }, [formErrors])
 
   const addRecipient = () => {
-    console.log("DEBUG: addRecipient executing")
     if (recipientInput && !formData.notification_recipients.includes(recipientInput)) {
       setFormData({ ...formData, notification_recipients: [...formData.notification_recipients, recipientInput] })
       setRecipientInput('')
@@ -365,13 +369,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
   const isDirty = useMemo(
     () => {
       const current = sanitizeMonitoringPayload(formData)
-      const dirty = !isDeepEqual(current, initialDirtySnapshotRef.current)
-      if (dirty) {
-        console.log('MonitoringForm isDirty:', dirty)
-        console.log('Snapshot:', initialDirtySnapshotRef.current)
-        console.log('Current:', current)
-      }
-      return dirty
+      return !isDeepEqual(current, initialDirtySnapshotRef.current)
     },
     [formData]
   )
