@@ -99,9 +99,7 @@ export function useOperationalFormDirty<T>(
     syncDirtyState(valueRef.current)
   }, [syncDirtyState])
 
-  const resolveIsDirty = useCallback(() => (
-    syncDirtyState(valueRef.current)
-  ), [syncDirtyState])
+  const resolveIsDirty = useCallback(() => dirtyRef.current, [])
 
   useEffect(() => {
     const normalizedInitialValue = normalizeRef.current(initialValue)

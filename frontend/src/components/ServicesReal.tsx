@@ -57,6 +57,13 @@ import { WorkspaceCompareShell, WorkspaceDossierShell } from './shared/Workspace
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
 import { OperationalImportModal } from './shared/OperationalImportModal'
 import { OperationalDataGrid } from './shared/OperationalDataGrid'
+import { OPERATIONAL_ACTION_LABELS } from './shared/OperationalActionLabels'
+import {
+  OperationalRowActionButton,
+  OperationalRowActionDivider,
+  OperationalRowActionMenu,
+  OperationalRowActionSection,
+} from './shared/OperationalRowActionMenu'
 import {
   OperationalAnchoredPanel,
   OperationalDisplayPanel,
@@ -2088,8 +2095,8 @@ export default function ServicesReal() {
                 <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
                   {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
                     bulkDeleteConfirm
-                      ? (activeTab === 'deleted' ? 'Confirm Permanent Purge?' : 'Confirm De-activation?')
-                      : (activeTab === 'deleted' ? 'Purge Selection' : 'De-activate Selection')
+                      ? (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purgeSelectionConfirm : OPERATIONAL_ACTION_LABELS.archiveSelectionConfirm)
+                      : (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purgeSelection : OPERATIONAL_ACTION_LABELS.archiveSelection)
                   )}
                 </p>
               </button>
@@ -2103,109 +2110,96 @@ export default function ServicesReal() {
             className="row-action-menu-container"
           >
             {rowActionMenu && rowMenuItem ? (
-            <WorkspaceFloatingPanel kind="context" className="overflow-hidden">
-                <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-[10px] font-semibold text-slate-400">Row actions</p>
-                    <p className="pt-1 text-[11px] font-semibold text-slate-100">ID {rowMenuItem.id} · {rowMenuItem.device_name || 'No host linked'}</p>
-                    <p className="truncate pt-1 text-[12px] text-slate-300">{rowMenuItem.title}</p>
-                  </div>
-                  <button
-                    onClick={() => setRowActionMenu(null)}
-                    className="ml-3 flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-slate-400 transition-all hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
-                    aria-label="Close row actions"
+              <OperationalRowActionMenu
+                meta={`ID ${rowMenuItem.id} · ${rowMenuItem.device_name || 'No host linked'}`}
+                title={rowMenuItem.title}
+                onClose={() => setRowActionMenu(null)}
+              >
+                <OperationalRowActionSection title="Quick access">
+                  <OperationalRowActionButton
+                    onClick={() => {
+                      if (!rowMenuItem?.id) return
+                      detailRoute.openDetail(rowMenuItem, { replace: false })
+                      setRowActionMenu(null)
+                    }}
+                    className="border border-slate-800 bg-slate-950 text-blue-400 hover:border-blue-500/30 hover:bg-blue-600/10"
                   >
-                    <X size={13} />
-                  </button>
-                </div>
-                <div className="max-h-[calc(100vh-180px)] overflow-y-auto p-2.5 custom-scrollbar">
-                  <div className="px-3 py-1">
-                    <p className="text-[10px] font-semibold text-slate-400">Quick access</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 px-2 pb-3 border-b border-slate-800 mb-2">
-                    <button
-                      onClick={() => {
-                        if (!rowMenuItem?.id) return
-                        detailRoute.openDetail(rowMenuItem, { replace: false })
-                        setRowActionMenu(null)
-                      }}
-                      className="flex w-full flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-blue-400 transition-all hover:border-blue-500/30 hover:bg-blue-600/10 active:scale-95"
-                    >
-                      <Maximize2 size={14} />
-                      Details
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (!rowMenuItem?.id) return
-                        setEditingItem(rowMenuItem)
-                        setIsFormOpen(true)
-                        setRowActionMenu(null)
-                      }}
-                      className="flex w-full flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-emerald-400 transition-all hover:border-emerald-500/30 hover:bg-emerald-600/10 active:scale-95"
-                    >
-                      <Edit2 size={14} />
-                      Edit
-                    </button>
-                  </div>
+                    <Maximize2 size={14} />
+                    Details
+                  </OperationalRowActionButton>
+                  <OperationalRowActionButton
+                    onClick={() => {
+                      if (!rowMenuItem?.id) return
+                      setEditingItem(rowMenuItem)
+                      setIsFormOpen(true)
+                      setRowActionMenu(null)
+                    }}
+                    className="border border-slate-800 bg-slate-950 text-emerald-400 hover:border-emerald-500/30 hover:bg-emerald-600/10"
+                  >
+                    <Edit2 size={14} />
+                    Edit
+                  </OperationalRowActionButton>
+                </OperationalRowActionSection>
 
-                  <div className="px-3 py-1">
-                    <p className="text-[10px] font-semibold text-slate-400">Follow options</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 px-2 pb-1">
-                    <button
-                      onClick={() => {
-                        if (!rowMenuItem?.id) return
-                        toggleWatch(rowMenuItem.id)
-                      }}
-                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
-                    >
-                      {watchIds.includes(rowMenuItem.id) ? (
-                        <>
-                          <EyeOff size={12} className="text-slate-400" />
-                          Unwatch
-                        </>
-                      ) : (
-                        <>
-                          <Eye size={12} className="text-sky-400" />
-                          Watch
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (!rowMenuItem?.id) return
-                        toggleFavorite(rowMenuItem.id)
-                      }}
-                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
-                    >
-                      {favoriteIds.includes(rowMenuItem.id) ? (
-                        <>
-                          <Star size={12} className="fill-amber-400 text-amber-400" />
-                          Unpin
-                        </>
-                      ) : (
-                        <>
-                          <Star size={12} className="text-amber-400" />
-                          Pin
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  <div className="mx-2 my-2 h-px bg-slate-800" />
+                <OperationalRowActionDivider />
+
+                <OperationalRowActionSection title="Follow options">
+                  <OperationalRowActionButton
+                    onClick={() => {
+                      if (!rowMenuItem?.id) return
+                      toggleWatch(rowMenuItem.id)
+                    }}
+                    className="border border-slate-800 bg-slate-950 text-slate-200 hover:border-slate-700 hover:bg-slate-900"
+                  >
+                    {watchIds.includes(rowMenuItem.id) ? (
+                      <>
+                        <EyeOff size={12} className="text-slate-400" />
+                        Unwatch
+                      </>
+                    ) : (
+                      <>
+                        <Eye size={12} className="text-sky-400" />
+                        Watch
+                      </>
+                    )}
+                  </OperationalRowActionButton>
+                  <OperationalRowActionButton
+                    onClick={() => {
+                      if (!rowMenuItem?.id) return
+                      toggleFavorite(rowMenuItem.id)
+                    }}
+                    className="border border-slate-800 bg-slate-950 text-slate-200 hover:border-slate-700 hover:bg-slate-900"
+                  >
+                    {favoriteIds.includes(rowMenuItem.id) ? (
+                      <>
+                        <Star size={12} className="fill-amber-400 text-amber-400" />
+                        Unpin
+                      </>
+                    ) : (
+                      <>
+                        <Star size={12} className="text-amber-400" />
+                        Pin
+                      </>
+                    )}
+                  </OperationalRowActionButton>
+                </OperationalRowActionSection>
+
+                <OperationalRowActionDivider />
+
                 {activeTab === 'deleted' && (
-                  <button
+                  <OperationalRowActionButton
                     onClick={() => {
                       if (!rowMenuItem?.id) return
                       bulkMutation.mutate({ action: 'restore', ids: [rowMenuItem.id] })
                       setRowActionMenu(null)
                     }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300 transition-all hover:bg-emerald-950/80"
+                    className="text-emerald-300 hover:bg-emerald-950/80"
                   >
                     <Undo2 size={14} />
                     Restore Service
-                  </button>
+                  </OperationalRowActionButton>
                 )}
-                <button
+                <OperationalRowActionButton
                   onClick={() => {
                     if (!rowMenuItem?.id) return
                     if (rowDeleteConfirmId !== rowMenuItem.id) {
@@ -2217,19 +2211,16 @@ export default function ServicesReal() {
                     setRowDeleteConfirmId(null)
                   }}
                   onMouseLeave={() => setRowDeleteConfirmId(null)}
-                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] transition-all ${
-                    rowDeleteConfirmId === rowMenuItem.id
-                      ? 'bg-rose-600 text-white animate-pulse'
-                      : 'text-rose-300 hover:bg-rose-950/80'
-                  }`}
+                  className={rowDeleteConfirmId === rowMenuItem.id
+                    ? 'bg-rose-600 text-white animate-pulse'
+                    : 'text-rose-300 hover:bg-rose-950/80'}
                 >
                   <Trash2 size={14} />
-                    {rowDeleteConfirmId === rowMenuItem.id
-                    ? (activeTab === 'active' ? 'Confirm Archive?' : 'Confirm Purge?')
-                    : (activeTab === 'active' ? 'Archive' : 'Purge')}
-                </button>
-                </div>
-            </WorkspaceFloatingPanel>
+                  {rowDeleteConfirmId === rowMenuItem.id
+                    ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm)
+                    : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge)}
+                </OperationalRowActionButton>
+              </OperationalRowActionMenu>
             ) : null}
           </OperationalAnchoredPanel>
         </>

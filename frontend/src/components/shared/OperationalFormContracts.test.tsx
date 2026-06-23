@@ -87,4 +87,25 @@ describe('useOperationalFormDirty', () => {
     expect(result.current.isDirty).toBe(false)
     expect(result.current.value).toEqual({ name: 'Gamma', count: 3 })
   })
+
+  it('keeps resolveIsDirty pure and read-only', () => {
+    const onDirtyChange = vi.fn()
+    const { result } = renderHook(() => useOperationalFormDirty(
+      { name: 'Alpha' },
+      (value) => value,
+      onDirtyChange,
+    ))
+
+    expect(result.current.resolveIsDirty()).toBe(false)
+    expect(onDirtyChange).not.toHaveBeenCalled()
+
+    act(() => {
+      result.current.patchValue({ name: 'Beta' })
+    })
+
+    expect(onDirtyChange).toHaveBeenCalledTimes(1)
+    expect(onDirtyChange).toHaveBeenLastCalledWith(true)
+    expect(result.current.resolveIsDirty()).toBe(true)
+    expect(onDirtyChange).toHaveBeenCalledTimes(1)
+  })
 })

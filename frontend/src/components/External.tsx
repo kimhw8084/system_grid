@@ -41,6 +41,7 @@ import { WorkspaceModal } from './shared/WorkspaceModal'
 import { OperationalFormProps, useOperationalFormDirty } from './shared/OperationalFormContracts'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { OperationalDataGrid } from './shared/OperationalDataGrid'
+import { OPERATIONAL_ACTION_LABELS } from './shared/OperationalActionLabels'
 import {
   autoSizeOperationalColumns,
   sanitizeOperationalColumnLayout,
@@ -2880,9 +2881,9 @@ export default function External() {
                   >
                     <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
                       {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
-                        bulkDeleteConfirm 
-                          ? (activeTab === 'deleted' ? 'Confirm Permanent Purge?' : 'Confirm Deactivation?') 
-                          : (activeTab === 'deleted' ? 'Purge Selection' : 'Deactivate Selection')
+                        bulkDeleteConfirm
+                          ? (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purgeSelectionConfirm : OPERATIONAL_ACTION_LABELS.archiveSelectionConfirm)
+                          : (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purgeSelection : OPERATIONAL_ACTION_LABELS.archiveSelection)
                       )}
                     </p>
                   </button>
@@ -3042,8 +3043,8 @@ export default function External() {
                   >
                     <Trash2 size={14} />
                     {rowDeleteConfirmId === rowActionMenu.item.id
-                      ? (activeTab === 'links' ? 'Confirm Sever Link?' : (activeTab === 'active' ? 'Confirm De-activate?' : 'Confirm Purge peer?'))
-                      : (activeTab === 'links' ? 'Sever Link' : (activeTab === 'active' ? 'De-activate' : 'Purge'))}
+                      ? (activeTab === 'links' ? 'Confirm Sever Link?' : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : 'Confirm Purge peer?'))
+                      : (activeTab === 'links' ? 'Sever Link' : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge))}
                   </button>
                 </div>
               </WorkspaceFloatingPanel>
@@ -3306,8 +3307,8 @@ export default function External() {
               className={rowDeleteConfirmId === activeDetails.id ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20 whitespace-nowrap' : 'whitespace-nowrap'}
             >
               {rowDeleteConfirmId === activeDetails.id
-                ? (activeTab === 'active' ? 'Confirm De-activate?' : 'Confirm Purge peer?')
-                : (activeTab === 'active' ? 'De-activate' : 'Purge')}
+                ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : 'Confirm Purge peer?')
+                : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge)}
             </ToolbarButton>
           </div>
         ) : undefined}

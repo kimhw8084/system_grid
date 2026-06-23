@@ -67,6 +67,13 @@ import {
 import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } from './shared/WorkspaceModalShells'
 import { OperationalImportModal } from './shared/OperationalImportModal'
 import { OperationalDataGrid } from './shared/OperationalDataGrid'
+import { OPERATIONAL_ACTION_LABELS } from './shared/OperationalActionLabels'
+import {
+  OperationalRowActionButton,
+  OperationalRowActionDivider,
+  OperationalRowActionMenu,
+  OperationalRowActionSection,
+} from './shared/OperationalRowActionMenu'
 import {
   OperationalAnchoredPanel,
   OperationalDisplayPanel,
@@ -2127,9 +2134,9 @@ export default function MonitoringGrid() {
                   >
                     <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
                       {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
-                        bulkDeleteConfirm 
-                          ? (activeTab === 'deleted' ? 'Confirm Permanent Purge?' : 'Confirm De-activation?') 
-                          : (activeTab === 'deleted' ? 'Purge Selection' : 'De-activate Selection')
+                        bulkDeleteConfirm
+                          ? (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purgeSelectionConfirm : OPERATIONAL_ACTION_LABELS.archiveSelectionConfirm)
+                          : (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purgeSelection : OPERATIONAL_ACTION_LABELS.archiveSelection)
                       )}
                     </p>
                   </button>
@@ -2143,137 +2150,124 @@ export default function MonitoringGrid() {
             className="row-action-menu-container"
           >
             {rowActionMenu ? (
-              <WorkspaceFloatingPanel kind="context" className="overflow-hidden">
-                <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-[10px] font-semibold text-slate-400">Row actions</p>
-                    <p className="pt-1 text-[11px] font-semibold text-slate-100">ID {rowActionMenu.item.id} · {rowActionMenu.item.device_name || 'No target asset linked'}</p>
-                    <p className="truncate pt-1 text-[12px] text-slate-300">{rowActionMenu.item.title}</p>
-                  </div>
-                  <button
-                    onClick={() => setRowActionMenu(null)}
-                    className="ml-3 flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-slate-400 transition-all hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
-                    aria-label="Close row actions"
+              <OperationalRowActionMenu
+                meta={`ID ${rowActionMenu.item.id} · ${rowActionMenu.item.device_name || 'No target asset linked'}`}
+                title={rowActionMenu.item.title}
+                onClose={() => setRowActionMenu(null)}
+              >
+                <OperationalRowActionSection title="Quick access">
+                  <OperationalRowActionButton
+                    onClick={() => {
+                      detailRoute.openDetail(rowActionMenu.item)
+                      setRowActionMenu(null)
+                    }}
+                    className="border border-slate-800 bg-slate-950 text-blue-400 hover:border-blue-500/30 hover:bg-blue-600/10"
                   >
-                    <X size={13} />
-                  </button>
-                </div>
-                <div className="max-h-[calc(100vh-180px)] overflow-y-auto p-2.5 custom-scrollbar">
-                  <div className="px-3 py-1">
-                    <p className="text-[10px] font-semibold text-slate-400">Quick access</p>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 px-2 pb-3 border-b border-slate-800 mb-2">
-                    <button
-                      onClick={() => {
-                        detailRoute.openDetail(rowActionMenu.item)
-                        setRowActionMenu(null)
-                      }}
-                      className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-blue-400 transition-all hover:border-blue-500/30 hover:bg-blue-600/10 active:scale-95"
-                    >
-                      <Maximize2 size={14} />
-                      Details
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEditingItem(rowActionMenu.item)
-                        setIsFormOpen(true)
-                        setRowActionMenu(null)
-                      }}
-                      className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-emerald-400 transition-all hover:border-emerald-500/30 hover:bg-emerald-600/10 active:scale-95"
-                    >
-                      <Edit2 size={14} />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => {
-                        setHistoryItem(rowActionMenu.item)
-                        setRowActionMenu(null)
-                      }}
-                      className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-amber-400 transition-all hover:border-amber-500/30 hover:bg-amber-600/10 active:scale-95"
-                    >
-                      <Clock size={14} />
-                      History
-                    </button>
-                  </div>
+                    <Maximize2 size={14} />
+                    Details
+                  </OperationalRowActionButton>
+                  <OperationalRowActionButton
+                    onClick={() => {
+                      setEditingItem(rowActionMenu.item)
+                      setIsFormOpen(true)
+                      setRowActionMenu(null)
+                    }}
+                    className="border border-slate-800 bg-slate-950 text-emerald-400 hover:border-emerald-500/30 hover:bg-emerald-600/10"
+                  >
+                    <Edit2 size={14} />
+                    Edit
+                  </OperationalRowActionButton>
+                  <OperationalRowActionButton
+                    onClick={() => {
+                      setHistoryItem(rowActionMenu.item)
+                      setRowActionMenu(null)
+                    }}
+                    className="border border-slate-800 bg-slate-950 text-amber-400 hover:border-amber-500/30 hover:bg-amber-600/10"
+                  >
+                    <Clock size={14} />
+                    History
+                  </OperationalRowActionButton>
+                </OperationalRowActionSection>
 
-                  <div className="px-3 py-1">
-                    <p className="text-[10px] font-semibold text-slate-400">Related destinations</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 px-2 pb-1">
-                    <button
-                      onClick={() => {
-                        if (rowActionMenu.item.device_id) navigate(`/asset?id=${rowActionMenu.item.device_id}`)
-                        setRowActionMenu(null)
-                      }}
-                      className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
-                    >
-                      <Monitor size={12} className="text-blue-400" />
-                      Asset
-                    </button>
-                    <button
-                      onClick={() => {
-                        const firstDoc = rowActionMenu.item.recovery_docs?.[0]
-                        const docId = typeof firstDoc === 'object' ? firstDoc?.id : firstDoc
-                        if (docId) navigate(`/knowledge?id=${docId}`)
-                        setRowActionMenu(null)
-                      }}
-                      disabled={!rowActionMenu.item.recovery_docs?.[0]}
-                      className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900 disabled:cursor-not-allowed disabled:text-slate-600"
-                    >
-                      <BookOpen size={12} className="text-emerald-400" />
-                      Knowledge
-                    </button>
-                    <button
-                      onClick={() => {
-                        toggleWatch(rowActionMenu.item.id)
-                      }}
-                      className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
-                    >
-                      {watchIds.includes(rowActionMenu.item.id) ? (
-                        <>
-                          <EyeOff size={12} className="text-slate-400" />
-                          Unwatch
-                        </>
-                      ) : (
-                        <>
-                          <Eye size={12} className="text-sky-400" />
-                          Watch
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => {
-                        toggleFavorite(rowActionMenu.item.id)
-                      }}
-                      className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
-                    >
-                      {favoriteIds.includes(rowActionMenu.item.id) ? (
-                        <>
-                          <Star size={12} className="fill-amber-400 text-amber-400" />
-                          Unpin
-                        </>
-                      ) : (
-                        <>
-                          <Star size={12} className="text-amber-400" />
-                          Pin
-                        </>
-                      )}
-                    </button>
-                  </div>
-		                <div className="mx-2 my-2 h-px bg-slate-800" />
+                <OperationalRowActionDivider />
+
+                <OperationalRowActionSection title="Related destinations">
+                  <OperationalRowActionButton
+                    onClick={() => {
+                      if (rowActionMenu.item.device_id) navigate(`/asset?id=${rowActionMenu.item.device_id}`)
+                      setRowActionMenu(null)
+                    }}
+                    className="border border-slate-800 bg-slate-950 text-slate-200 hover:border-slate-700 hover:bg-slate-900"
+                  >
+                    <Monitor size={12} className="text-blue-400" />
+                    Asset
+                  </OperationalRowActionButton>
+                  <OperationalRowActionButton
+                    onClick={() => {
+                      const firstDoc = rowActionMenu.item.recovery_docs?.[0]
+                      const docId = typeof firstDoc === 'object' ? firstDoc?.id : firstDoc
+                      if (docId) navigate(`/knowledge?id=${docId}`)
+                      setRowActionMenu(null)
+                    }}
+                    disabled={!rowActionMenu.item.recovery_docs?.[0]}
+                    className="border border-slate-800 bg-slate-950 text-slate-200 hover:border-slate-700 hover:bg-slate-900 disabled:text-slate-600"
+                  >
+                    <BookOpen size={12} className="text-emerald-400" />
+                    Knowledge
+                  </OperationalRowActionButton>
+                  <OperationalRowActionButton
+                    onClick={() => {
+                      toggleWatch(rowActionMenu.item.id)
+                    }}
+                    className="border border-slate-800 bg-slate-950 text-slate-200 hover:border-slate-700 hover:bg-slate-900"
+                  >
+                    {watchIds.includes(rowActionMenu.item.id) ? (
+                      <>
+                        <EyeOff size={12} className="text-slate-400" />
+                        Unwatch
+                      </>
+                    ) : (
+                      <>
+                        <Eye size={12} className="text-sky-400" />
+                        Watch
+                      </>
+                    )}
+                  </OperationalRowActionButton>
+                  <OperationalRowActionButton
+                    onClick={() => {
+                      toggleFavorite(rowActionMenu.item.id)
+                    }}
+                    className="border border-slate-800 bg-slate-950 text-slate-200 hover:border-slate-700 hover:bg-slate-900"
+                  >
+                    {favoriteIds.includes(rowActionMenu.item.id) ? (
+                      <>
+                        <Star size={12} className="fill-amber-400 text-amber-400" />
+                        Unpin
+                      </>
+                    ) : (
+                      <>
+                        <Star size={12} className="text-amber-400" />
+                        Pin
+                      </>
+                    )}
+                  </OperationalRowActionButton>
+                </OperationalRowActionSection>
+
+                <OperationalRowActionDivider />
+
                 {activeTab === 'deleted' && (
-                  <button
+                  <OperationalRowActionButton
                     onClick={() => {
                       bulkMutation.mutate({ action: 'restore', ids: [rowActionMenu.item.id] })
                       setRowActionMenu(null)
                     }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300 transition-all hover:bg-emerald-950/80"
+                    className="text-emerald-300 hover:bg-emerald-950/80"
                   >
                     <Undo2 size={14} />
                     Restore Monitor
-                  </button>
+                  </OperationalRowActionButton>
                 )}
-                <button
+                <OperationalRowActionButton
                   onClick={() => {
                     const item = rowActionMenu.item
                     if (rowDeleteConfirmId !== item.id) {
@@ -2285,19 +2279,16 @@ export default function MonitoringGrid() {
                     setRowDeleteConfirmId(null)
                   }}
                   onMouseLeave={() => setRowDeleteConfirmId(null)}
-                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] transition-all ${
-                    rowDeleteConfirmId === rowActionMenu.item.id
-                      ? 'bg-rose-600 text-white animate-pulse'
-                      : 'text-rose-300 hover:bg-rose-950/80'
-                  }`}
+                  className={rowDeleteConfirmId === rowActionMenu.item.id
+                    ? 'bg-rose-600 text-white animate-pulse'
+                    : 'text-rose-300 hover:bg-rose-950/80'}
                 >
                   <Trash2 size={14} />
                   {rowDeleteConfirmId === rowActionMenu.item.id
-                    ? (activeTab === 'active' ? 'Confirm De-activate?' : 'Confirm Purge?')
-                    : (activeTab === 'active' ? 'De-activate' : 'Purge')}
-                </button>
-                </div>
-              </WorkspaceFloatingPanel>
+                    ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm)
+                    : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge)}
+                </OperationalRowActionButton>
+              </OperationalRowActionMenu>
             ) : null}
           </OperationalAnchoredPanel>
         </>
