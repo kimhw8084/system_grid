@@ -793,7 +793,10 @@ export default function ServicesReal() {
     setGridSortModel(nextSortModel)
   }, [])
 
-  const handleRowId = useCallback((params: any) => String(params.data.id), [])
+  const handleRowId = useCallback((params: any) => {
+    if (params?.data?.id != null) return String(params.data.id)
+    return String(params?.node?.id ?? 'unknown-row')
+  }, [])
   const openNetworkDetail = useCallback((item: any, replace: boolean = false) => {
     if (!item?.id) return
     setDetailItem(item)
@@ -862,8 +865,9 @@ export default function ServicesReal() {
   }, [autoSizeServiceColumns])
 
   const getRowClass = useCallback((params: any) => {
-    let classes = params.node.rowIndex % 2 === 0 ? 'operational-grid-row-even' : 'operational-grid-row-odd'
-    if (params.data && pendingIds.includes(params.data.id)) {
+    const rowIndex = typeof params?.node?.rowIndex === 'number' ? params.node.rowIndex : 0
+    let classes = rowIndex % 2 === 0 ? 'operational-grid-row-even' : 'operational-grid-row-odd'
+    if (params?.data && pendingIds.includes(params.data.id)) {
       classes += ' row-ghost opacity-40 grayscale pointer-events-none'
     }
     return classes
@@ -2064,6 +2068,7 @@ export default function ServicesReal() {
   const serviceContextMenu = useMemo(() => ({
     handleCellContextMenu,
   }), [handleCellContextMenu])
+  const rowMenuItem = rowActionMenu?.item ?? null
 
   return (
    <OperationalWorkspaceShell
@@ -2407,17 +2412,18 @@ export default function ServicesReal() {
           </OperationalAnchoredPanel>
 
           <OperationalAnchoredPanel
-            isOpen={Boolean(rowActionMenu)}
+            isOpen={Boolean(rowActionMenu && rowMenuItem)}
             panelKey="row-action-menu"
             style={rowActionMenu?.style || {}}
             className="row-action-menu-container"
           >
+            {rowActionMenu && rowMenuItem ? (
             <WorkspaceFloatingPanel kind="context" className="overflow-hidden">
                 <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
                   <div className="min-w-0">
                     <p className="truncate text-[10px] font-semibold text-slate-400">Row actions</p>
-                    <p className="pt-1 text-[11px] font-semibold text-slate-100">ID {rowActionMenu?.item.id} · {rowActionMenu?.item.device_name || 'No host linked'}</p>
-                    <p className="truncate pt-1 text-[12px] text-slate-300">{rowActionMenu?.item.title}</p>
+                    <p className="pt-1 text-[11px] font-semibold text-slate-100">ID {rowMenuItem.id} · {rowMenuItem.device_name || 'No host linked'}</p>
+                    <p className="truncate pt-1 text-[12px] text-slate-300">{rowMenuItem.title}</p>
                   </div>
                   <button
                     onClick={() => setRowActionMenu(null)}
@@ -2434,7 +2440,8 @@ export default function ServicesReal() {
                   <div className="grid grid-cols-3 gap-2 px-2 pb-3 border-b border-slate-800 mb-2">
                     <button
                       onClick={() => {
-                        openNetworkDetail(rowActionMenu?.item)
+                        if (!rowMenuItem?.id) return
+                        openNetworkDetail(rowMenuItem)
                         setRowActionMenu(null)
                       }}
                       className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-blue-400 transition-all hover:border-blue-500/30 hover:bg-blue-600/10 active:scale-95"
@@ -2444,7 +2451,8 @@ export default function ServicesReal() {
                     </button>
                     <button
                       onClick={() => {
-                        setEditingItem(rowActionMenu?.item)
+                        if (!rowMenuItem?.id) return
+                        setEditingItem(rowMenuItem)
                         setIsFormOpen(true)
                         setRowActionMenu(null)
                       }}
@@ -2459,8 +2467,8 @@ export default function ServicesReal() {
                 {activeTab === 'deleted' && (
                   <button
                     onClick={() => {
-                      if (!rowActionMenu?.item?.id) return
-                      bulkMutation.mutate({ action: 'restore', ids: [rowActionMenu.item.id] })
+                      if (!rowMenuItem?.id) return
+                      bulkMutation.mutate({ action: 'restore', ids: [rowMenuItem.id] })
                       setRowActionMenu(null)
                     }}
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300 transition-all hover:bg-emerald-950/80"
@@ -2471,30 +2479,30 @@ export default function ServicesReal() {
                 )}
                 <button
                   onClick={() => {
-                    const item = rowActionMenu?.item
-                    if (!item) return
-                    if (rowDeleteConfirmId !== item.id) {
-                      setRowDeleteConfirmId(item.id)
+                    if (!rowMenuItem?.id) return
+                    if (rowDeleteConfirmId !== rowMenuItem.id) {
+                      setRowDeleteConfirmId(rowMenuItem.id)
                       return
                     }
-                    bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [item.id] })
+                    bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [rowMenuItem.id] })
                     setRowActionMenu(null)
                     setRowDeleteConfirmId(null)
                   }}
                   onMouseLeave={() => setRowDeleteConfirmId(null)}
                   className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] transition-all ${
-                    rowDeleteConfirmId === rowActionMenu.item.id
+                    rowDeleteConfirmId === rowMenuItem.id
                       ? 'bg-rose-600 text-white animate-pulse'
                       : 'text-rose-300 hover:bg-rose-950/80'
                   }`}
                 >
                   <Trash2 size={14} />
-                    {rowDeleteConfirmId === rowActionMenu?.item.id
+                    {rowDeleteConfirmId === rowMenuItem.id
                     ? (activeTab === 'active' ? 'Confirm Delete?' : 'Confirm Purge?')
                     : (activeTab === 'active' ? 'Delete' : 'Purge')}
                 </button>
                 </div>
             </WorkspaceFloatingPanel>
+            ) : null}
           </OperationalAnchoredPanel>
         </>
       }
@@ -3077,6 +3085,7 @@ function ServiceRecordDetailModal({ item, onClose, onEdit, onDelete, onOpenAsset
   useEscapeDismiss(onClose)
   useBodyModalFlag()
   const [isMaximized, setIsMaximized] = useState(false)
+  if (!item) return null
   const detailTitle = getServiceTitle(item)
 
   return (
