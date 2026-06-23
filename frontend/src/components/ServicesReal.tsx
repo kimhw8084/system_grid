@@ -72,6 +72,7 @@ import {
   sanitizeOperationalFilterModel,
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
+import { OPERATIONAL_GRID_CLASSES } from './shared/OperationalGridContract'
 import { renderOperationalActionButtons } from './shared/OperationalGridStandard'
 
 const SERVICE_VIEW_STORAGE_KEY = 'sysgrid_services_views_v1'
@@ -993,6 +994,7 @@ export default function ServicesReal() {
   }, [openNetworkDetail, pendingIds])
 
   const renderPrimaryRowActions = (item: any) => {
+    if (!item?.id) return null
     const isPending = pendingIds.includes(item.id)
     return (
       <div className={isPending ? 'opacity-20 grayscale pointer-events-none' : ''}>
@@ -1711,8 +1713,8 @@ export default function ServicesReal() {
         checkboxSelection: true,
         headerCheckboxSelection: true,
         pinned: 'left',
-        cellClass: 'flex items-center justify-center border-r border-white/5',
-        headerClass: 'flex items-center justify-center border-r border-white/5',
+        cellClass: OPERATIONAL_GRID_CLASSES.selectCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.selectHeader,
         suppressSizeToFit: true,
         sortable: false,
         filter: false,
@@ -1724,8 +1726,8 @@ export default function ServicesReal() {
         headerName: 'ID',
         width: 90,
         pinned: 'left',
-        cellClass: 'text-center font-bold text-slate-500 border-r border-white/5 flex items-center justify-center',
-        headerClass: 'text-center border-r border-white/5',
+        cellClass: OPERATIONAL_GRID_CLASSES.idCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.idHeader,
         filter: 'agNumberColumnFilter',
         lockVisible: true,
       },
@@ -1738,8 +1740,8 @@ export default function ServicesReal() {
         sortable: false,
         filter: false,
         lockVisible: true,
-        cellClass: 'text-center border-r border-white/5 flex items-center justify-center !overflow-visible',
-        headerClass: 'text-center border-r border-white/5',
+        cellClass: OPERATIONAL_GRID_CLASSES.recentChangeCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.recentChangeHeader,
         hide: !isIntelligenceExpanded,
         cellRenderer: (p: any) => {
           if (!p.data || !isRecentChange(p.data)) return null
@@ -1773,13 +1775,14 @@ export default function ServicesReal() {
         field: 'favorite',
         width: 80,
         pinned: 'left',
-        cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
-        headerClass: 'text-center border-r border-white/5',
+        cellClass: OPERATIONAL_GRID_CLASSES.favoriteCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.favoriteHeader,
         sortable: true,
         filter: false,
         lockVisible: true,
         valueGetter: (p: any) => p.context?.favoriteIds?.includes(p.data?.id) ? 1 : 0,
         cellRenderer: (p: any) => {
+          const dataId = p.data?.id
           const isFavorite = p.context?.favoriteIds?.includes(p.data?.id)
           return (
             <div className="flex h-full w-full items-center justify-center">
@@ -1788,7 +1791,8 @@ export default function ServicesReal() {
                 onClick={(event) => {
                   event.preventDefault()
                   event.stopPropagation()
-                  toggleFavorite(p.data.id)
+                  if (!dataId) return
+                  toggleFavorite(dataId)
                 }}
                 title={isFavorite ? 'Unpin service' : 'Pin service'}
                 className={`rounded-lg p-1 transition-all flex items-center justify-center ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
@@ -1805,13 +1809,14 @@ export default function ServicesReal() {
         field: 'watch',
         width: 85,
         pinned: 'left',
-        cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
-        headerClass: 'text-center border-r border-white/5',
+        cellClass: OPERATIONAL_GRID_CLASSES.watchCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.watchHeader,
         sortable: false,
         filter: false,
         lockVisible: true,
         hide: !isIntelligenceExpanded,
         cellRenderer: (p: any) => {
+          const dataId = p.data?.id
           const isWatched = p.context?.watchIds?.includes(p.data?.id)
           return (
             <div className="flex h-full w-full items-center justify-center">
@@ -1820,7 +1825,8 @@ export default function ServicesReal() {
                 onClick={(event) => {
                   event.preventDefault()
                   event.stopPropagation()
-                  toggleWatch(p.data.id)
+                  if (!dataId) return
+                  toggleWatch(dataId)
                 }}
                 title={isWatched ? 'Unfollow service' : 'Follow service'}
                 className={`rounded-lg p-1 transition-all flex items-center justify-center ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
@@ -1837,8 +1843,8 @@ export default function ServicesReal() {
         headerName: 'Host',
         width: 180,
         filter: true,
-        cellClass: 'text-left flex items-center justify-start',
-        headerClass: 'text-left',
+        cellClass: OPERATIONAL_GRID_CLASSES.leftBodyCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
         cellRenderer: (p: any) => renderText(p.value, 'text-slate-200'),
       },
       {
@@ -1847,8 +1853,8 @@ export default function ServicesReal() {
         headerName: 'Name',
         width: 220,
         filter: true,
-        cellClass: 'text-left flex items-center justify-start',
-        headerClass: 'text-left',
+        cellClass: OPERATIONAL_GRID_CLASSES.primaryCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
         cellRenderer: (p: any) => renderText(p.value, 'text-slate-200'),
       },
       {
@@ -1857,8 +1863,8 @@ export default function ServicesReal() {
         headerName: 'Type',
         width: 140,
         filter: true,
-        cellClass: 'text-center flex items-center justify-center',
-        headerClass: 'text-center',
+        cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
         cellRenderer: (p: any) => renderText(p.value, 'text-blue-300 font-semibold'),
       },
       {
@@ -1867,8 +1873,8 @@ export default function ServicesReal() {
         headerName: 'Environment',
         width: 140,
         filter: true,
-        cellClass: 'text-center flex items-center justify-center',
-        headerClass: 'text-center',
+        cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
         cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
       },
       {
@@ -1877,8 +1883,8 @@ export default function ServicesReal() {
         headerName: 'Version',
         width: 120,
         filter: true,
-        cellClass: 'text-left flex items-center justify-start',
-        headerClass: 'text-left',
+        cellClass: OPERATIONAL_GRID_CLASSES.leftBodyCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
         cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
       },
       {
@@ -1887,8 +1893,8 @@ export default function ServicesReal() {
         headerName: 'Status',
         width: 120,
         filter: true,
-        cellClass: 'text-center flex items-center justify-center',
-        headerClass: 'text-center',
+        cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
         cellRenderer: (p: any) => <StatusPill value={p.value || 'Active'} fontSize={fontSize} />,
       },
       {
@@ -1897,8 +1903,8 @@ export default function ServicesReal() {
         headerName: 'Purpose',
         width: 240,
         filter: true,
-        cellClass: 'text-left flex items-center justify-start',
-        headerClass: 'text-left',
+        cellClass: OPERATIONAL_GRID_CLASSES.leftBodyWrapCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
         cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
       },
       {
@@ -1907,8 +1913,8 @@ export default function ServicesReal() {
         headerName: 'Manufacturer',
         width: 160,
         filter: true,
-        cellClass: 'text-left flex items-center justify-start',
-        headerClass: 'text-left',
+        cellClass: OPERATIONAL_GRID_CLASSES.leftBodyCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
         cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
       },
       {
@@ -1917,8 +1923,8 @@ export default function ServicesReal() {
         headerName: 'Supplier',
         width: 160,
         filter: true,
-        cellClass: 'text-left flex items-center justify-start',
-        headerClass: 'text-left',
+        cellClass: OPERATIONAL_GRID_CLASSES.leftBodyCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
         cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
       },
       {
@@ -1927,8 +1933,8 @@ export default function ServicesReal() {
         headerName: 'License Type',
         width: 150,
         filter: true,
-        cellClass: 'text-center flex items-center justify-center',
-        headerClass: 'text-center',
+        cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
         cellRenderer: (p: any) => renderText(p.value, 'text-amber-300'),
       },
       {
@@ -1937,8 +1943,8 @@ export default function ServicesReal() {
         headerName: 'Cost',
         width: 120,
         filter: true,
-        cellClass: 'text-right flex items-center justify-end pr-3',
-        headerClass: 'text-center',
+        cellClass: OPERATIONAL_GRID_CLASSES.leftBodyCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
         cellRenderer: (p: any) => renderText(p.value != null ? `${p.data?.currency || 'USD'} ${p.value}` : 'N/A', 'text-slate-300'),
       },
       {
@@ -1947,8 +1953,8 @@ export default function ServicesReal() {
         headerName: 'Secrets',
         width: 100,
         filter: true,
-        cellClass: 'text-center flex items-center justify-center',
-        headerClass: 'text-center',
+        cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
         cellRenderer: (p: any) => renderText(String(p.value ?? 0), 'text-emerald-300'),
       },
       {
@@ -1957,8 +1963,8 @@ export default function ServicesReal() {
         headerName: 'Deployed',
         width: 160,
         filter: 'agDateColumnFilter',
-        cellClass: 'text-center flex items-center justify-center',
-        headerClass: 'text-center',
+        cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
         cellRenderer: (p: any) => p.value ? (
           <div className="flex min-w-0 items-center gap-2">
             <Clock size={12} className="opacity-40" />
@@ -1972,8 +1978,8 @@ export default function ServicesReal() {
         headerName: 'Created',
         width: 180,
         filter: 'agDateColumnFilter',
-        cellClass: 'text-center flex items-center justify-center',
-        headerClass: 'text-center',
+        cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
         cellRenderer: (p: any) => p.value ? (
           <div className="flex min-w-0 items-center gap-2">
             <Clock size={12} className="opacity-40" />
@@ -1987,8 +1993,8 @@ export default function ServicesReal() {
         headerName: 'Updated',
         width: 180,
         filter: 'agDateColumnFilter',
-        cellClass: 'text-center flex items-center justify-center',
-        headerClass: 'text-center',
+        cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
         cellRenderer: (p: any) => p.value ? (
           <div className="flex min-w-0 items-center gap-2">
             <Clock size={12} className="opacity-40" />
@@ -2001,8 +2007,8 @@ export default function ServicesReal() {
         headerName: 'Action',
         width: 210,
         pinned: 'right',
-        cellClass: 'text-right pr-3 flex items-center justify-end',
-        headerClass: 'text-center',
+        cellClass: OPERATIONAL_GRID_CLASSES.actionCell,
+        headerClass: OPERATIONAL_GRID_CLASSES.actionHeader,
         sortable: false,
         filter: false,
         cellRenderer: (p: any) => p.data ? renderPrimaryRowActions(p.data) : null,
@@ -2667,10 +2673,10 @@ export default function ServicesReal() {
             devices={devices || []}
           />
         )}
-        {compareOpen && <CompareServicesModal key={`services-compare-${compareItems.map((item) => item.id).join('-') || 'empty'}`} items={compareItems} onClose={() => setCompareOpen(false)} />}
+        {compareOpen && <CompareServicesModal key={`services-compare-${compareItems.filter(Boolean).map((item) => item.id).join('-') || 'empty'}`} items={compareItems} onClose={() => setCompareOpen(false)} />}
         {showBulkEditModal && (
           <BulkEditTableModal
-            key={`services-bulk-edit-${selectedItems.map((item) => item.id).join('-') || 'empty'}`}
+            key={`services-bulk-edit-${selectedItems.filter(Boolean).map((item) => item.id).join('-') || 'empty'}`}
             items={selectedItems}
             linkPurposeOptions={serviceTypeOptions}
             cableTypeOptions={purchaseTypeOptions}
