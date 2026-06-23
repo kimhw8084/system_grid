@@ -45,10 +45,17 @@ zip -r "$ZIP_NAME" frontend \
      "frontend/.turbo/*" \
      "frontend/.cache/*" \
      "frontend/.git/*" \
+     "frontend/.env" \
+     "frontend/.env.local" \
+     "frontend/*.log" \
+     "frontend/errors.txt" \
+     "frontend/tsc.txt" \
      "frontend/.DS_Store" \
+     "frontend//.DS_Store" \
      "frontend/**/.DS_Store" \
+     "frontend//.map" \
      "frontend/**/*.map" \
-     "frontend/**/*.log"
+     "frontend/**/.log"
 
 echo
 echo "Done."

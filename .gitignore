@@ -22,6 +22,8 @@ playwright-report/
 frontend/test-results/
 frontend/playwright-report/
 frontend/venv/
+frontend/.env
+frontend/.env.local
 frontend/*.log
 frontend/errors.txt
 frontend/tsc.txt

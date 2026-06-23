@@ -6,7 +6,8 @@ const path = require('path')
 const repoRoot = path.resolve(__dirname, '..')
 const cliTargets = process.argv.slice(2)
 const knownDefaultTargets = [
-  'src/components/AssetReal.tsx',
+  // AssetReal remains legacy/deferred until its dedicated migration run.
+  // Keep it out of the default sweep, but still allow explicit CLI scans.
   'src/components/ServicesReal.tsx',
   'src/components/NetworkReal.tsx',
   'src/components/VendorsReal.tsx',
