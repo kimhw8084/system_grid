@@ -740,44 +740,44 @@ export default function ServiceRegistry() {
     { field: "id", headerName: "ID", width: 80, cellClass: 'text-center font-bold text-slate-500', headerClass: 'text-center', filter: 'agNumberColumnFilter' },
     { field: "name", headerName: "Instance Identifier", pinned: 'left', flex: 1.2, filter: true, cellClass: 'text-left font-bold uppercase text-blue-400', headerClass: 'text-left', hide: hiddenColumns.includes("name") },
     { 
-      field: "service_type", 
-      headerName: "Matrix Type", 
-      width: 120, filter: true, cellClass: 'text-center', headerClass: 'text-center',
-      cellRenderer: (p: any) => <span className={`font-bold uppercase ${p.value === 'Database' ? 'text-amber-400' : p.value === 'OS' ? 'text-rose-400' : 'text-blue-400'}`}>{p.value || 'N/A'}</span>,
-      hide: hiddenColumns.includes("service_type")
+    field: "service_type", 
+    headerName: "Matrix Type", 
+    width: 120, filter: true, cellClass: 'text-center', headerClass: 'text-center',
+    cellRenderer: (p: any) => p.data ? <span className={`font-bold uppercase ${p.value === 'Database' ? 'text-amber-400' : p.value === 'OS' ? 'text-rose-400' : 'text-blue-400'}`}>{p.value || 'N/A'}</span> : null,
+    hide: hiddenColumns.includes("service_type")
     },
     { 
-      field: "status", 
-      headerName: "Runtime State", 
-      width: 130, filter: true, cellClass: 'text-center', headerClass: 'text-center',
-      cellRenderer: (p: any) => <div className="flex items-center justify-center h-full"><div className={`flex items-center justify-center w-24 h-6 rounded-lg border shadow-sm font-bold uppercase tracking-tighter ${p.value === 'Active' ? 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20' : 'text-slate-400 border-white/20 bg-white/10'}`}>{p.value || 'Unknown'}</div></div>,
-      hide: hiddenColumns.includes("status")
+    field: "status", 
+    headerName: "Runtime State", 
+    width: 130, filter: true, cellClass: 'text-center', headerClass: 'text-center',
+    cellRenderer: (p: any) => p.data ? <div className="flex items-center justify-center h-full"><div className={`flex items-center justify-center w-24 h-6 rounded-lg border shadow-sm font-bold uppercase tracking-tighter ${p.value === 'Active' ? 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20' : 'text-slate-400 border-white/20 bg-white/10'}`}>{p.value || 'Unknown'}</div></div> : null,
+    hide: hiddenColumns.includes("status")
     },
     { field: "device_name", headerName: "Host Node", width: 140, filter: true, cellClass: "font-bold text-center uppercase text-indigo-400", headerClass: 'text-center', hide: hiddenColumns.includes("device_name") },
     { field: "environment", headerName: "Env", width: 90, filter: true, cellClass: 'text-center font-bold uppercase text-slate-500', headerClass: 'text-center', hide: hiddenColumns.includes("environment") },
     { field: "version", headerName: "Version", width: 80, filter: true, cellClass: "font-bold text-center text-slate-400", headerClass: 'text-center', hide: hiddenColumns.includes("version") },
-    { field: "cost", headerName: "Procurement", width: 110, filter: true, cellClass: 'text-center font-bold text-white', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? `${p.data.currency === 'KRW' ? '₩' : '$'}${p.value.toLocaleString()}` : <span className="text-slate-700">---</span>, hide: hiddenColumns.includes("cost") },
+    { field: "cost", headerName: "Procurement", width: 110, filter: true, cellClass: 'text-center font-bold text-white', headerClass: 'text-center', cellRenderer: (p: any) => p.data && p.value ? `${p.data.currency === 'KRW' ? '₩' : '$'}${p.value.toLocaleString()}` : <span className="text-slate-700">---</span>, hide: hiddenColumns.includes("cost") },
     {
-      headerName: "Ops", width: 140, pinned: 'right', cellClass: 'text-center', headerClass: 'text-center',
-      cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center space-x-1 h-full">
-           <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
-               <button onClick={() => {
-                 const nextParams = new URLSearchParams(searchParams)
-                 nextParams.set('id', String(p.data.id))
-                 setSearchParams(nextParams, { replace: true })
-                 setActiveDetails(p.data)
-               }} title="View Detail Matrix" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
-               <button onClick={() => setActiveModal(p.data)} title="Modify Config" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
-               <button onClick={() => openConfirm(
-                 activeTab === 'active' ? 'Purge Registry' : 'Purge Marker',
-                 activeTab === 'active' ? 'Terminate this service instance?' : 'This service is already purged. No additional purge action is available.',
-                 () => activeTab === 'active' ? bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }) : setConfirmModal((prev: any) => ({ ...prev, isOpen: false })),
-                 activeTab === 'active' ? 'danger' : 'info'
-               )} title="Terminate" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
-           </div>
-        </div>
-      )
+    headerName: "Ops", width: 140, pinned: 'right', cellClass: 'text-center', headerClass: 'text-center',
+    cellRenderer: (p: any) => p.data ? (
+      <div className="flex items-center justify-center space-x-1 h-full">
+         <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
+             <button onClick={() => {
+               const nextParams = new URLSearchParams(searchParams)
+               nextParams.set('id', String(p.data.id))
+               setSearchParams(nextParams, { replace: true })
+               setActiveDetails(p.data)
+             }} title="View Detail Matrix" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
+             <button onClick={() => setActiveModal(p.data)} title="Modify Config" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
+             <button onClick={() => openConfirm(
+               activeTab === 'active' ? 'Purge Registry' : 'Purge Marker',
+               activeTab === 'active' ? 'Terminate this service instance?' : 'This service is already purged. No additional purge action is available.',
+               () => activeTab === 'active' ? bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }) : setConfirmModal((prev: any) => ({ ...prev, isOpen: false })),
+               activeTab === 'active' ? 'danger' : 'info'
+             )} title="Terminate" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+         </div>
+      </div>
+    ) : null
     }
   ], [selectedIds, activeTab, fontSize, hiddenColumns]) as any
 
