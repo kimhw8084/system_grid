@@ -39,6 +39,7 @@ import { OperationalAnchoredPanel, OperationalDisplayPanel, OperationalGroupedGr
 import { OperationalImportModal } from './shared/OperationalImportModal'
 import { EXTERNAL_WORKSPACE_STANDARD } from './shared/OperationalWorkspace'
 import { WorkspaceModal } from './shared/WorkspaceModal'
+import { OperationalFormProps } from './shared/OperationalFormContracts'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { OperationalDataGrid } from './shared/OperationalDataGrid'
 import {
@@ -683,8 +684,18 @@ const ExternalForm = ({
   operators,
   formId = 'external-entity-form',
   renderActions = true,
-  onDirtyChange,
-}: any) => {
+  ...formProps
+}: {
+  initialData: any
+  onSave: (data: any) => void
+  isSaving: boolean
+  options: any
+  teams: any
+  operators: any
+  formId?: string
+  renderActions?: boolean
+} & OperationalFormProps) => {
+  const { onDirtyChange, isDirty } = formProps
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const initialFormState = useMemo(() => {
@@ -788,7 +799,7 @@ const ExternalForm = ({
     hasUserEditedRef.current = false
   }, [normalizeExternalFormSnapshot, initialFormState])
 
-  const isDirty = useMemo(
+  const calculatedIsDirty = useMemo(
     () => {
       if (!hasUserEditedRef.current) return false
       const current = normalizeExternalFormSnapshot(formData)
@@ -798,8 +809,8 @@ const ExternalForm = ({
   )
 
   useEffect(() => {
-    onDirtyChange?.(isDirty)
-  }, [isDirty, onDirtyChange])
+    onDirtyChange?.(calculatedIsDirty)
+  }, [calculatedIsDirty, onDirtyChange])
 
   return (
     <form
@@ -3202,6 +3213,7 @@ export default function External() {
           teams={teams || []}
           operators={operators || []}
           onDirtyChange={setIsActiveModalDirty}
+          isDirty={isActiveModalDirty}
         />
       </WorkspaceModal>
 
