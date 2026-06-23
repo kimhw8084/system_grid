@@ -2120,8 +2120,9 @@ export default function ServicesReal() {
                 title={rowMenuItem.title}
                 onClose={() => setRowActionMenu(null)}
               >
-                <OperationalRowActionSection title="Quick access">
+                <OperationalRowActionSection title="Quick access" layout="tile">
                   <OperationalRowActionButton
+                    layout="tile"
                     onClick={() => {
                       if (!rowMenuItem?.id) return
                       detailRoute.openDetail(rowMenuItem, { replace: false })
@@ -2133,6 +2134,7 @@ export default function ServicesReal() {
                     Details
                   </OperationalRowActionButton>
                   <OperationalRowActionButton
+                    layout="tile"
                     onClick={() => {
                       if (!rowMenuItem?.id) return
                       setEditingItem(rowMenuItem)
@@ -2148,8 +2150,9 @@ export default function ServicesReal() {
 
                 <OperationalRowActionDivider />
 
-                <OperationalRowActionSection title="Follow options">
+                <OperationalRowActionSection title="Follow options" layout="inline">
                   <OperationalRowActionButton
+                    layout="inline"
                     onClick={() => {
                       if (!rowMenuItem?.id) return
                       toggleWatch(rowMenuItem.id)
@@ -2169,6 +2172,7 @@ export default function ServicesReal() {
                     )}
                   </OperationalRowActionButton>
                   <OperationalRowActionButton
+                    layout="inline"
                     onClick={() => {
                       if (!rowMenuItem?.id) return
                       toggleFavorite(rowMenuItem.id)

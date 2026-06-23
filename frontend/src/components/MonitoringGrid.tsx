@@ -2161,8 +2161,9 @@ export default function MonitoringGrid() {
                 title={rowActionMenu.item.title}
                 onClose={() => setRowActionMenu(null)}
               >
-                <OperationalRowActionSection title="Quick access">
+                <OperationalRowActionSection title="Quick access" layout="tile">
                   <OperationalRowActionButton
+                    layout="tile"
                     onClick={() => {
                       detailRoute.openDetail(rowActionMenu.item)
                       setRowActionMenu(null)
@@ -2173,6 +2174,7 @@ export default function MonitoringGrid() {
                     Details
                   </OperationalRowActionButton>
                   <OperationalRowActionButton
+                    layout="tile"
                     onClick={() => {
                       setEditingItem(rowActionMenu.item)
                       setIsFormOpen(true)
@@ -2184,6 +2186,7 @@ export default function MonitoringGrid() {
                     Edit
                   </OperationalRowActionButton>
                   <OperationalRowActionButton
+                    layout="tile"
                     onClick={() => {
                       setHistoryItem(rowActionMenu.item)
                       setRowActionMenu(null)
@@ -2197,8 +2200,9 @@ export default function MonitoringGrid() {
 
                 <OperationalRowActionDivider />
 
-                <OperationalRowActionSection title="Related destinations">
+                <OperationalRowActionSection title="Related destinations" layout="inline">
                   <OperationalRowActionButton
+                    layout="inline"
                     onClick={() => {
                       if (rowActionMenu.item.device_id) navigate(`/asset?id=${rowActionMenu.item.device_id}`)
                       setRowActionMenu(null)
@@ -2209,6 +2213,7 @@ export default function MonitoringGrid() {
                     Asset
                   </OperationalRowActionButton>
                   <OperationalRowActionButton
+                    layout="inline"
                     onClick={() => {
                       const firstDoc = rowActionMenu.item.recovery_docs?.[0]
                       const docId = typeof firstDoc === 'object' ? firstDoc?.id : firstDoc
@@ -2222,6 +2227,7 @@ export default function MonitoringGrid() {
                     Knowledge
                   </OperationalRowActionButton>
                   <OperationalRowActionButton
+                    layout="inline"
                     onClick={() => {
                       toggleWatch(rowActionMenu.item.id)
                     }}
@@ -2240,6 +2246,7 @@ export default function MonitoringGrid() {
                     )}
                   </OperationalRowActionButton>
                   <OperationalRowActionButton
+                    layout="inline"
                     onClick={() => {
                       toggleFavorite(rowActionMenu.item.id)
                     }}

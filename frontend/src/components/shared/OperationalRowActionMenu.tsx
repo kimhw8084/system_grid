@@ -15,7 +15,7 @@ export function OperationalRowActionMenu({
   children: React.ReactNode
 }) {
   return (
-    <WorkspaceFloatingPanel kind="context" className="min-w-[240px] max-w-[calc(100vw-24px)] overflow-hidden">
+    <WorkspaceFloatingPanel kind="context" className="max-w-[calc(100vw-24px)] overflow-hidden">
       <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
         <div className="min-w-0">
           <p className="truncate text-[10px] font-semibold text-slate-400">Row actions</p>
@@ -41,18 +41,18 @@ export function OperationalRowActionMenu({
 export function OperationalRowActionSection({
   title,
   children,
-  grid = true,
+  layout = 'tile',
 }: {
   title: string
   children: React.ReactNode
-  grid?: boolean
+  layout?: 'tile' | 'inline'
 }) {
   return (
     <>
       <div className="px-3 py-1">
         <p className="text-[10px] font-semibold text-slate-400">{title}</p>
       </div>
-      <div className={grid ? "grid grid-cols-2 gap-2 px-2 pb-3" : "flex flex-col gap-1 px-2 pb-3"}>
+      <div className={`grid ${layout === 'tile' ? 'grid-cols-2' : 'grid-cols-2'} gap-2 px-2 pb-3`}>
         {children}
       </div>
     </>
@@ -66,17 +66,17 @@ export function OperationalRowActionDivider() {
 export function OperationalRowActionButton({
   children,
   className = '',
-  grid = true,
+  layout = 'tile',
   ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { grid?: boolean }) {
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { layout?: 'tile' | 'inline' }) {
   return (
     <button
       type="button"
       {...props}
       className={`flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950 transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 justify-center ${
-        grid
+        layout === 'tile'
           ? 'flex-col py-3 text-[9px] font-black uppercase tracking-[0.1em]'
-          : 'px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.16em]'
+          : 'px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em]'
       } ${className}`}
     >
       {children}
