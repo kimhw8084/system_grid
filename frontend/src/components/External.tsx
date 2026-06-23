@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { apiFetch } from "../api/apiClient"
 import { parseAppDate, formatAppDate } from '../utils/dateUtils'
+import { isDeepEqual } from '../utils/dataParsers'
 import { 
   HeaderScopeSwitch,
   ToolbarGroup, 
@@ -776,28 +777,28 @@ const ExternalForm = ({
   }
 
   const initialDirtySnapshot = useMemo(
-    () => JSON.stringify(normalizeExternalFormSnapshot({
-      name: initialData.name || '',
-      aliases_json: initialData.aliases_json || [],
-      type: initialData.type || 'API',
-      owner_organization: initialData.owner_organization || '',
-      owner_team: initialData.owner_team || '',
-      ownership_mode: initialData.ownership_mode || 'team',
-      internal_team_id: initialData.internal_team_id ? String(initialData.internal_team_id) : '',
-      internal_operator_id: initialData.internal_operator_id ? String(initialData.internal_operator_id) : '',
-      status: initialData.status || 'Planned',
-      environment: initialData.environment || 'Production',
-      description: initialData.description || '',
-      notes: initialData.notes || '',
-      contacts_json: normalizeLegacyContacts(initialData),
-      business_purpose: initialData.business_purpose || '',
-      metadata_json: parseMetadataObject(initialData.metadata_json),
-    })),
+    () => normalizeExternalFormSnapshot({
+      name: initialData?.name || '',
+      aliases_json: initialData?.aliases_json || [],
+      type: initialData?.type || 'API',
+      owner_organization: initialData?.owner_organization || '',
+      owner_team: initialData?.owner_team || '',
+      ownership_mode: initialData?.ownership_mode || 'team',
+      internal_team_id: initialData?.internal_team_id ? String(initialData.internal_team_id) : '',
+      internal_operator_id: initialData?.internal_operator_id ? String(initialData.internal_operator_id) : '',
+      status: initialData?.status || 'Planned',
+      environment: initialData?.environment || 'Production',
+      description: initialData?.description || '',
+      notes: initialData?.notes || '',
+      contacts_json: normalizeLegacyContacts(initialData || {}),
+      business_purpose: initialData?.business_purpose || '',
+      metadata_json: parseMetadataObject(initialData?.metadata_json),
+    }),
     [initialData, normalizeExternalFormSnapshot]
   )
 
   const isDirty = useMemo(
-    () => JSON.stringify(normalizeExternalFormSnapshot(formData)) !== initialDirtySnapshot,
+    () => !isDeepEqual(normalizeExternalFormSnapshot(formData), initialDirtySnapshot),
     [formData, initialDirtySnapshot, normalizeExternalFormSnapshot]
   )
 

@@ -42,7 +42,7 @@ import {
 import { apiFetch } from '../../api/apiClient'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { sanitizeMonitoringPayload } from '../../utils/monitoring'
-import { parseCommaSeparatedValues } from '../../utils/dataParsers'
+import { parseCommaSeparatedValues, isDeepEqual } from '../../utils/dataParsers'
 
 import { buildMonitoringFormErrors, getMonitoringTabErrorCounts } from '../../utils/monitoringValidation'
 import * as React from 'react'
@@ -56,32 +56,8 @@ export function MonitoringForm({ item, devices, categories, severities, platform
   const [isMaximized, setIsMaximized] = useState(false)
   const initialItemPayload = sanitizeMonitoringPayload(item)
   const { logic_json: initialLogicJson = [], ...initialItemFields } = initialItemPayload || {}
-  const initialDirtySnapshotRef = useRef(JSON.stringify(initialItemPayload))
 
-  const [formData, setFormData] = useState<{
-    category: string
-    status: string
-    title: string
-    spec: string
-    platform: string
-    monitoring_url: string
-    purpose: string
-    impact: string
-    notification_method: string
-    notification_recipients: string[]
-    logic: string
-    logic_json: MonitoringLogicEntry[]
-    device_id: number | null
-    monitored_services: number[]
-    owner_team: string
-    check_interval: number
-    alert_duration: number
-    notification_throttle: number
-    severity: string
-    is_active: boolean
-    recovery_docs: Array<{id: number, note: string}>
-    owners: MonitoringOwner[]
-  }>({
+  const initialFormState = useMemo(() => ({
     category: 'Infrastructure',
     status: 'Planned',
     title: '',
@@ -105,7 +81,10 @@ export function MonitoringForm({ item, devices, categories, severities, platform
     owners: [],
     ...initialItemFields,
     logic_json: initialLogicJson as MonitoringLogicEntry[]
-  })
+  }), [initialItemFields, initialLogicJson, platforms])
+
+  const [formData, setFormData] = useState(initialFormState)
+  const initialDirtySnapshotRef = useRef(sanitizeMonitoringPayload(initialFormState))
 
   const [ownershipMode, setOwnershipMode] = useState<'team' | 'individual'>(
     initialItemFields?.owner_team ? 'team' : (initialItemFields?.owners?.length ? 'individual' : 'team')
@@ -384,7 +363,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
   }
 
   const isDirty = useMemo(
-    () => JSON.stringify(sanitizeMonitoringPayload(formData)) !== initialDirtySnapshotRef.current,
+    () => !isDeepEqual(sanitizeMonitoringPayload(formData), initialDirtySnapshotRef.current),
     [formData]
   )
 
