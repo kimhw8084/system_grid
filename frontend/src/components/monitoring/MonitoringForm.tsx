@@ -18,6 +18,7 @@ import {
 } from '../shared/OperationalWorkspacePrimitives'
 import { StatusPill } from '../shared/StatusPill'
 import { ToolbarButton } from '../shared/LayoutPrimitives'
+import { useOperationalFormDirty } from '../shared/OperationalFormContracts'
 import CodeMirror from '@uiw/react-codemirror'
 import { MonitoringAssetField } from '../MonitoringGrid'
 import { showWorkspaceToast } from '../shared/WorkspaceToast'
@@ -42,11 +43,11 @@ import {
 import { apiFetch } from '../../api/apiClient'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { sanitizeMonitoringPayload } from '../../utils/monitoring'
-import { parseCommaSeparatedValues, isDeepEqual } from '../../utils/dataParsers'
+import { parseCommaSeparatedValues } from '../../utils/dataParsers'
 
 import { buildMonitoringFormErrors, getMonitoringTabErrorCounts } from '../../utils/monitoringValidation'
 import * as React from 'react'
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 
 export function MonitoringForm({ item, devices, categories, severities, platforms, teams, operators, notificationMethods, ownerRoles, onClose, onSuccess, onDirtyChange }: any) {
   useBodyModalFlag()
@@ -76,27 +77,33 @@ export function MonitoringForm({ item, devices, categories, severities, platform
     alert_duration: 0,
     notification_throttle: 3600,
     severity: 'Warning',
-    is_active: true,
+    is_active: item ? true : false,
     recovery_docs: [],
     owners: [],
     ...initialItemFields,
     logic_json: initialLogicJson as MonitoringLogicEntry[]
-  }), [initialItemFields, initialLogicJson, platforms])
+  }), [initialItemFields, initialLogicJson, item, platforms])
 
-  const [formData, setFormData] = useState(initialFormState)
-  const hasUserEditedRef = useRef(false)
-  const initialDirtySnapshotRef = useRef(sanitizeMonitoringPayload(initialFormState))
+  const normalizeMonitoringFormState = useCallback((value: typeof initialFormState) => {
+    const normalized = sanitizeMonitoringPayload(value)
+    if (!item) {
+      normalized.is_active = normalized.status === 'Existing'
+    }
+    return normalized
+  }, [item])
+
+  const {
+    value: formData,
+    isDirty,
+    setValue: setFormData,
+    patchValue,
+    updateValue,
+    resetDirty,
+  } = useOperationalFormDirty(initialFormState, normalizeMonitoringFormState, onDirtyChange)
 
   const updateFormData = useCallback((newData: any) => {
-      hasUserEditedRef.current = true
-      setFormData(newData)
-  }, [])
-
-  useEffect(() => {
-    // Ensure the snapshot is captured after initial normalization
-    initialDirtySnapshotRef.current = sanitizeMonitoringPayload(initialFormState)
-    hasUserEditedRef.current = false
-  }, [])
+    setFormData(newData)
+  }, [setFormData])
 
   const [ownershipMode, setOwnershipMode] = useState<'team' | 'individual'>(
     initialItemFields?.owner_team ? 'team' : (initialItemFields?.owners?.length ? 'individual' : 'team')
@@ -188,17 +195,6 @@ export function MonitoringForm({ item, devices, categories, severities, platform
     updateFormData({ ...formData, owners: next })
   }
 
-  // Sync is_active with status
-  useEffect(() => {
-    if (!item) { // Only for new items or when status explicitly changes
-       if (formData.status === 'Existing') {
-         setFormData(prev => ({ ...prev, is_active: true }))
-       } else {
-         setFormData(prev => ({ ...prev, is_active: false }))
-       }
-    }
-  }, [formData.status, item])
-
   // Initialize activeLogicId if entries exist
   useEffect(() => {
     if (formData.logic_json?.length > 0 && activeLogicId === null) {
@@ -250,6 +246,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
       setGeneralError('')
       const action = item ? 'Synchronized' : 'Deployed';
       const detail = item ? 'Changes propagated' : 'New monitor live';
+      resetDirty(data ? { ...formData, ...data } : formData)
       showWorkspaceToast(`${action} ${data.title || formData.title}`, {
         type: 'success'
       })
@@ -373,19 +370,6 @@ export function MonitoringForm({ item, devices, categories, severities, platform
     })
   }
 
-  const isDirty = useMemo(
-    () => {
-      if (!hasUserEditedRef.current) return false
-      const current = sanitizeMonitoringPayload(formData)
-      return !isDeepEqual(current, initialDirtySnapshotRef.current)
-    },
-    [formData]
-  )
-
-  useEffect(() => {
-    onDirtyChange?.(isDirty)
-  }, [isDirty, onDirtyChange])
-
   return (
     <WorkspaceModal
       isOpen={true}
@@ -420,7 +404,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
           <button 
             onClick={() => {
               if (formData.status === 'Existing') {
-                updateFormData({...formData, is_active: !formData.is_active})
+                patchValue({ is_active: !formData.is_active })
               }
             }}
             disabled={formData.status !== 'Existing'}
@@ -466,7 +450,11 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                   label="Status"
                   required={isMonitoringFieldRequired('status')}
                   value={formData.status}
-                  onChange={(value) => updateFormData({ ...formData, status: value })}
+                  onChange={(value) => updateValue((current) => ({
+                    ...current,
+                    status: value,
+                    ...(!item ? { is_active: value === 'Existing' } : {}),
+                  }))}
                   options={STATUSES.map(s => ({ value: s.value, label: s.value }))}
                   error={formErrors.status}
                 />

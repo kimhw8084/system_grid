@@ -9,7 +9,6 @@ import {
 } from 'lucide-react'
 import { apiFetch } from "../api/apiClient"
 import { parseAppDate, formatAppDate } from '../utils/dateUtils'
-import { isDeepEqual } from '../utils/dataParsers'
 import { 
   HeaderScopeSwitch,
   ToolbarGroup, 
@@ -39,7 +38,7 @@ import { OperationalAnchoredPanel, OperationalDisplayPanel, OperationalGroupedGr
 import { OperationalImportModal } from './shared/OperationalImportModal'
 import { EXTERNAL_WORKSPACE_STANDARD } from './shared/OperationalWorkspace'
 import { WorkspaceModal } from './shared/WorkspaceModal'
-import { OperationalFormProps } from './shared/OperationalFormContracts'
+import { OperationalFormProps, useOperationalFormDirty } from './shared/OperationalFormContracts'
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { OperationalDataGrid } from './shared/OperationalDataGrid'
 import {
@@ -695,7 +694,7 @@ const ExternalForm = ({
   formId?: string
   renderActions?: boolean
 } & OperationalFormProps) => {
-  const { onDirtyChange, isDirty } = formProps
+  const { onDirtyChange } = formProps
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const initialFormState = useMemo(() => {
@@ -719,9 +718,6 @@ const ExternalForm = ({
     }
   }, [initialData])
 
-  const [formData, setFormData] = useState(initialFormState)
-  const hasUserEditedRef = useRef(false)
-
   const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
   const ensureCurrentOption = (entries: Array<{ value: string; label: string }>, currentValue: string) => {
     if (!currentValue) return entries
@@ -729,39 +725,55 @@ const ExternalForm = ({
       ? entries
       : [{ value: currentValue, label: currentValue }, ...entries]
   }
+  const resolveAllowedMetadataKeys = useCallback((typeValue: string) => {
+    const availableTypeOptions = getOptions('ExternalType')
+    const resolvedTypeOptions = availableTypeOptions.length ? availableTypeOptions : FALLBACK_EXTERNAL_TYPE_OPTIONS
+    const selectedOption = resolvedTypeOptions.find((type: any) => type.value === typeValue)
+    return (selectedOption as any)?.metadata_keys || (extensionMetadataKeysByType as any)[typeValue] || []
+  }, [options])
+
+  const normalizeExternalFormSnapshot = useCallback((value: any) => {
+    const allowedKeys = resolveAllowedMetadataKeys(value.type)
+    return {
+      ...value,
+      metadata_json: Object.fromEntries(
+        Object.entries(parseMetadataObject(value.metadata_json)).filter(([key]) => allowedKeys.length === 0 || allowedKeys.includes(key))
+      ),
+    }
+  }, [resolveAllowedMetadataKeys])
+
+  const {
+    value: formData,
+    patchValue,
+    normalize,
+  } = useOperationalFormDirty(initialFormState, normalizeExternalFormSnapshot, onDirtyChange)
+
   const externalTypeOptions = getOptions('ExternalType')
   const types = ensureCurrentOption(externalTypeOptions.length ? externalTypeOptions : FALLBACK_EXTERNAL_TYPE_OPTIONS, formData.type)
   const statusOptions = ensureCurrentOption(getOptions('Status'), formData.status)
   const envOptions = ensureCurrentOption(getOptions('Environment'), formData.environment)
   const selectedTypeOption = types.find((type: any) => type.value === formData.type)
   const allowedMetadataKeys = (selectedTypeOption as any)?.metadata_keys || (extensionMetadataKeysByType as any)[formData.type] || []
-  const normalizeExternalFormSnapshot = useCallback((value: any) => ({
-    ...value,
-    metadata_json: Object.fromEntries(
-      Object.entries(parseMetadataObject(value.metadata_json)).filter(([key]) => allowedMetadataKeys.length === 0 || allowedMetadataKeys.includes(key))
-    ),
-  }), [allowedMetadataKeys])
 
   useEffect(() => {
     if (!allowedMetadataKeys.length) return
-    setFormData((prev: any) => {
-      const nextMeta = { ...prev.metadata_json }
-      let changed = false
-      for (const key of allowedMetadataKeys) {
-        if (!(key in nextMeta)) {
-          nextMeta[key] = ''
-          changed = true
-        }
+    const nextMeta = { ...parseMetadataObject(formData.metadata_json) }
+    let changed = false
+    for (const key of allowedMetadataKeys) {
+      if (!(key in nextMeta)) {
+        nextMeta[key] = ''
+        changed = true
       }
-      const filteredMeta = Object.fromEntries(Object.entries(nextMeta).filter(([key]) => allowedMetadataKeys.includes(key)))
-      if (JSON.stringify(filteredMeta) !== JSON.stringify(prev.metadata_json)) changed = true
-      return changed ? { ...prev, metadata_json: filteredMeta } : prev
-    })
-  }, [formData.type])
+    }
+    const filteredMeta = Object.fromEntries(Object.entries(nextMeta).filter(([key]) => allowedMetadataKeys.includes(key)))
+    if (JSON.stringify(filteredMeta) !== JSON.stringify(formData.metadata_json)) changed = true
+    if (changed) {
+      normalize({ ...formData, metadata_json: filteredMeta })
+    }
+  }, [allowedMetadataKeys, formData, normalize])
 
   const updateField = (key: string, value: any) => {
-    hasUserEditedRef.current = true
-    setFormData((prev: any) => ({ ...prev, [key]: value }))
+    patchValue({ [key]: value } as Partial<typeof formData>)
     setErrors((prev) => ({ ...prev, [key]: '' }))
   }
 
@@ -790,27 +802,6 @@ const ExternalForm = ({
       internal_operator_id: formData.ownership_mode === 'individual' && formData.internal_operator_id ? parseInt(formData.internal_operator_id, 10) : null,
     })
   }
-
-  const initialDirtySnapshotRef = useRef(normalizeExternalFormSnapshot(initialFormState))
-
-  useEffect(() => {
-    // Ensure the snapshot is captured after initial normalization
-    initialDirtySnapshotRef.current = normalizeExternalFormSnapshot(initialFormState)
-    hasUserEditedRef.current = false
-  }, [normalizeExternalFormSnapshot, initialFormState])
-
-  const calculatedIsDirty = useMemo(
-    () => {
-      if (!hasUserEditedRef.current) return false
-      const current = normalizeExternalFormSnapshot(formData)
-      return !isDeepEqual(current, initialDirtySnapshotRef.current)
-    },
-    [formData, normalizeExternalFormSnapshot]
-  )
-
-  useEffect(() => {
-    onDirtyChange?.(calculatedIsDirty)
-  }, [calculatedIsDirty, onDirtyChange])
 
   return (
     <form
@@ -2132,6 +2123,7 @@ export default function External() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['external-entities'] })
       showWorkspaceToast('External Manifest Synchronized')
+      setIsActiveModalDirty(false)
       setActiveModal(null)
       detailRoute.finishTransition()
     },

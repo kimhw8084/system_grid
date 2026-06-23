@@ -1,39 +1,129 @@
-import { useState, useCallback, useRef, useMemo } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { isDeepEqual } from '../../utils/dataParsers'
 
 export interface OperationalFormProps {
-  isDirty: boolean
-  resolveIsDirty?: () => boolean
   onDirtyChange?: (isDirty: boolean) => void
-  dirtyConfirmTitle?: string
-  dirtyConfirmMessage?: string
-  dirtyConfirmText?: string
+  isDirty?: boolean
 }
+
+type ValueUpdater<T> = T | ((current: T) => T)
+
+const resolveNextValue = <T,>(updater: ValueUpdater<T>, current: T) => (
+  typeof updater === 'function'
+    ? (updater as (value: T) => T)(current)
+    : updater
+)
 
 export function useOperationalFormDirty<T>(
   initialValue: T,
-  normalize: (value: T) => T,
-  onDirtyChange?: (isDirty: boolean) => void
+  normalizeValue: (value: T) => T = (value) => value,
+  onDirtyChange?: (isDirty: boolean) => void,
 ) {
-  const [value, setValue] = useState(initialValue)
-  const [isDirty, setIsDirty] = useState(false)
-  const initialRef = useRef(normalize(initialValue))
+  const normalizeRef = useRef(normalizeValue)
+  normalizeRef.current = normalizeValue
+
+  const [value, setValueState] = useState<T>(initialValue)
+  const [isDirty, setIsDirtyState] = useState(false)
+  const valueRef = useRef(value)
+  valueRef.current = value
+
+  const baselineRef = useRef<T>(normalizeValue(initialValue))
+  const incomingBaselineRef = useRef<T>(baselineRef.current)
   const hasUserEditedRef = useRef(false)
+  const forcedDirtyRef = useRef(false)
+  const lastDirtyRef = useRef(false)
+  const dirtyRef = useRef(false)
 
-  const updateValue = useCallback((newValue: T) => {
-    setValue(newValue)
+  const computeDirty = useCallback((nextValue: T) => {
+    const normalized = normalizeRef.current(nextValue)
+    return forcedDirtyRef.current || (
+      hasUserEditedRef.current &&
+      !isDeepEqual(normalized, baselineRef.current)
+    )
+  }, [])
+
+  const syncDirtyState = useCallback((nextValue: T) => {
+    const nextDirty = computeDirty(nextValue)
+    dirtyRef.current = nextDirty
+    setIsDirtyState(nextDirty)
+    if (lastDirtyRef.current !== nextDirty) {
+      lastDirtyRef.current = nextDirty
+      onDirtyChange?.(nextDirty)
+    }
+    return nextDirty
+  }, [computeDirty, onDirtyChange])
+
+  const updateValue = useCallback((updater: (current: T) => T) => {
+    const currentValue = valueRef.current
+    const nextValue = updater(currentValue)
     hasUserEditedRef.current = true
-    const normalized = normalize(newValue)
-    const dirty = JSON.stringify(normalized) !== JSON.stringify(initialRef.current)
-    setIsDirty(dirty)
-    onDirtyChange?.(dirty)
-  }, [normalize, onDirtyChange])
+    forcedDirtyRef.current = false
+    valueRef.current = nextValue
+    setValueState(nextValue)
+    syncDirtyState(nextValue)
+    return nextValue
+  }, [syncDirtyState])
 
-  const resetDirty = useCallback((newInitialValue: T) => {
-    initialRef.current = normalize(newInitialValue)
+  const setValue = useCallback((nextValue: T) => (
+    updateValue(() => nextValue)
+  ), [updateValue])
+
+  const patchValue = useCallback((partial: Partial<T>) => (
+    updateValue((current) => ({ ...current, ...partial }))
+  ), [updateValue])
+
+  const normalize = useCallback((nextValue: ValueUpdater<T>) => {
+    const resolvedValue = resolveNextValue(nextValue, valueRef.current)
+    valueRef.current = resolvedValue
+    setValueState(resolvedValue)
+    syncDirtyState(resolvedValue)
+    return resolvedValue
+  }, [syncDirtyState])
+
+  const resetDirty = useCallback((nextBaseline?: T) => {
+    const resolvedBaseline = normalizeRef.current(nextBaseline ?? valueRef.current)
+    baselineRef.current = resolvedBaseline
+    incomingBaselineRef.current = resolvedBaseline
     hasUserEditedRef.current = false
-    setIsDirty(false)
-    onDirtyChange?.(false)
-  }, [normalize, onDirtyChange])
+    forcedDirtyRef.current = false
+    const nextValue = nextBaseline ?? valueRef.current
+    valueRef.current = nextValue
+    setValueState(nextValue)
+    syncDirtyState(nextValue)
+    return nextValue
+  }, [syncDirtyState])
 
-  return { value, isDirty, updateValue, resetDirty }
+  const markDirty = useCallback(() => {
+    hasUserEditedRef.current = true
+    forcedDirtyRef.current = true
+    syncDirtyState(valueRef.current)
+  }, [syncDirtyState])
+
+  const resolveIsDirty = useCallback(() => (
+    syncDirtyState(valueRef.current)
+  ), [syncDirtyState])
+
+  useEffect(() => {
+    const normalizedInitialValue = normalizeRef.current(initialValue)
+    if (isDeepEqual(normalizedInitialValue, incomingBaselineRef.current)) return
+    incomingBaselineRef.current = normalizedInitialValue
+    baselineRef.current = normalizedInitialValue
+    hasUserEditedRef.current = false
+    forcedDirtyRef.current = false
+    valueRef.current = initialValue
+    setValueState(initialValue)
+    syncDirtyState(initialValue)
+  }, [initialValue, syncDirtyState])
+
+  return {
+    value,
+    isDirty,
+    setValue,
+    patchValue,
+    updateValue,
+    normalize,
+    resetDirty,
+    resolveIsDirty,
+    markDirty,
+  }
 }

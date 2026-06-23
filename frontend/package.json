@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "check:operational-registry-drift": "node scripts/check-operational-registry-drift.cjs",
+    "check:form-contracts": "node scripts/check-form-contracts.cjs",
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",
     "test:coverage": "vitest run --coverage",

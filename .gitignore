@@ -21,6 +21,10 @@ blob-report/
 playwright-report/
 frontend/test-results/
 frontend/playwright-report/
+frontend/venv/
+frontend/*.log
+frontend/errors.txt
+frontend/tsc.txt
 check_load_error.mjs
 
 frontend/coverage/
