@@ -2155,8 +2155,9 @@ export default function MonitoringGrid() {
                 title={rowActionMenu.item.title}
                 onClose={() => setRowActionMenu(null)}
               >
-                <OperationalRowActionGrid>
+                <OperationalRowActionSection title="Quick access" grid={true}>
                   <OperationalRowActionButton
+                    grid={true}
                     onClick={() => {
                       detailRoute.openDetail(rowActionMenu.item)
                       setRowActionMenu(null)
@@ -2167,6 +2168,7 @@ export default function MonitoringGrid() {
                     Details
                   </OperationalRowActionButton>
                   <OperationalRowActionButton
+                    grid={true}
                     onClick={() => {
                       setEditingItem(rowActionMenu.item)
                       setIsFormOpen(true)
@@ -2178,6 +2180,7 @@ export default function MonitoringGrid() {
                     Edit
                   </OperationalRowActionButton>
                   <OperationalRowActionButton
+                    grid={true}
                     onClick={() => {
                       setHistoryItem(rowActionMenu.item)
                       setRowActionMenu(null)
@@ -2187,7 +2190,9 @@ export default function MonitoringGrid() {
                     <Clock size={14} />
                     History
                   </OperationalRowActionButton>
-                </OperationalRowActionGrid>
+                </OperationalRowActionSection>
+
+                <OperationalRowActionDivider />
 
                 <OperationalRowActionSection title="Related destinations">
                   <OperationalRowActionButton

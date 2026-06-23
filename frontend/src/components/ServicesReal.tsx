@@ -1535,7 +1535,7 @@ export default function ServicesReal() {
       } else if (action === 'purge') {
         res = await apiFetch('/api/v1/logical-services/bulk-action', {
           method: 'POST',
-          body: JSON.stringify({ ids: idsToUse, action: 'delete' })
+          body: JSON.stringify({ ids: idsToUse, action: 'purge' })
         })
       } else {
         res = await apiFetch('/api/v1/logical-services/bulk-action', {
@@ -2115,8 +2115,9 @@ export default function ServicesReal() {
                 title={rowMenuItem.title}
                 onClose={() => setRowActionMenu(null)}
               >
-                <OperationalRowActionGrid>
+                <OperationalRowActionSection title="Quick access" grid={true}>
                   <OperationalRowActionButton
+                    grid={true}
                     onClick={() => {
                       if (!rowMenuItem?.id) return
                       detailRoute.openDetail(rowMenuItem, { replace: false })
@@ -2128,6 +2129,7 @@ export default function ServicesReal() {
                     Details
                   </OperationalRowActionButton>
                   <OperationalRowActionButton
+                    grid={true}
                     onClick={() => {
                       if (!rowMenuItem?.id) return
                       setEditingItem(rowMenuItem)
@@ -2139,7 +2141,7 @@ export default function ServicesReal() {
                     <Edit2 size={14} />
                     Edit
                   </OperationalRowActionButton>
-                </OperationalRowActionGrid>
+                </OperationalRowActionSection>
 
                 <OperationalRowActionDivider />
 

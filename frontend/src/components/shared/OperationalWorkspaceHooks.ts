@@ -422,17 +422,6 @@ export function useOperationalDirtyGuard({
 
   useEffect(() => {
     if (!effectiveDirty) return
-    const handlePopState = (event: PopStateEvent) => {
-      event.preventDefault()
-      history.pushState(null, '', window.location.href)
-      requestDiscard()
-    }
-    window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
-  }, [effectiveDirty, requestDiscard])
-
-  useEffect(() => {
-    if (!effectiveDirty) return
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault()
       event.returnValue = ''
