@@ -3,6 +3,18 @@ import { X } from 'lucide-react'
 
 import { WorkspaceFloatingPanel } from './OperationalWorkspacePrimitives'
 
+export function OperationalRowActionGrid({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2 px-2 pb-3 border-b border-slate-800 mb-2">
+      {children}
+    </div>
+  )
+}
+
 export function OperationalRowActionMenu({
   meta,
   title,
@@ -70,7 +82,7 @@ export function OperationalRowActionButton({
     <button
       type="button"
       {...props}
-      className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] transition-all disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      className={`flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
     >
       {children}
     </button>

@@ -2115,7 +2115,7 @@ export default function ServicesReal() {
                 title={rowMenuItem.title}
                 onClose={() => setRowActionMenu(null)}
               >
-                <OperationalRowActionSection title="Quick access">
+                <OperationalRowActionGrid>
                   <OperationalRowActionButton
                     onClick={() => {
                       if (!rowMenuItem?.id) return
@@ -2139,7 +2139,7 @@ export default function ServicesReal() {
                     <Edit2 size={14} />
                     Edit
                   </OperationalRowActionButton>
-                </OperationalRowActionSection>
+                </OperationalRowActionGrid>
 
                 <OperationalRowActionDivider />
 
