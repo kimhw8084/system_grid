@@ -313,7 +313,7 @@ export function createOperationalProseColumn({
     cellClass: proseMode === 'wrap' ? OPERATIONAL_GRID_CLASSES.leftBodyWrapCell : OPERATIONAL_GRID_CLASSES.leftBodyCell,
     headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
     cellRenderer: (p: any) => (
-      <span className={p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS}>
+      <span className={`${p.value ? OPERATIONAL_GRID_PLAIN_VALUE_CLASS : OPERATIONAL_GRID_EMPTY_VALUE_CLASS} truncate`}>
         {p.value || emptyValue}
       </span>
     ),

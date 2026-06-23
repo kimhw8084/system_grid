@@ -23,6 +23,9 @@ export const SERVICE_STATUS_DEFINITIONS = [
   { value: "Cancelled", label: "Cancelled", color: "bg-rose-500/20 text-rose-400 border-rose-500/30" },
   { value: "Decommissioned", label: "Decommissioned", color: "bg-slate-500/20 text-slate-400 border-white/20" },
   { value: "Deleted", label: "Deleted", color: "bg-slate-800 text-slate-500 border-white/5" },
+  { value: "Inactive", label: "Inactive", color: "bg-amber-500/20 text-amber-400 border-amber-500/30" },
+  { value: "Deprecated", label: "Deprecated", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
+  { value: "Maintenance", label: "Maintenance", color: "bg-orange-500/20 text-orange-400 border-orange-500/30" },
 ]
 export const SERVICE_STATUS_OPTIONS = SERVICE_STATUS_DEFINITIONS
   .filter((status) => status.value !== "Deleted")
@@ -380,7 +383,8 @@ export const ServiceForm = ({
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [formData, setFormData] = useState(() => buildInitialFormData(initialData))
-  const initialDirtySnapshotRef = useRef(JSON.stringify(buildInitialFormData(initialData)))
+  const initialDataNormalized = useMemo(() => buildInitialFormData(initialData), [initialData])
+  const initialDirtySnapshotRef = useRef(JSON.stringify(initialDataNormalized))
 
   const getOptions = (category: string) => Array.isArray(options) ? options.filter((entry: any) => entry.category === category) : []
   const ensureCurrentOption = (entries: Array<{ value: string; label: string }>, currentValue: string) => {
@@ -481,8 +485,8 @@ export const ServiceForm = ({
   }
 
   const isDirty = useMemo(
-    () => JSON.stringify(formData) !== initialDirtySnapshotRef.current,
-    [formData]
+    () => JSON.stringify(formData) !== JSON.stringify(initialDataNormalized),
+    [formData, initialDataNormalized]
   )
   if (dirtyRef) {
     dirtyRef.current = isDirty

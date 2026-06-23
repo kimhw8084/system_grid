@@ -95,6 +95,8 @@ export const applyOperationalColumnSizing = (
   layout: Record<string, any> | undefined,
   preserveExplicitWidths: boolean
 ) => {
+  if (column.operationalLockWidth) return column
+
   const nextColumn: Record<string, any> = { ...column }
 
   if (nextColumn.width !== undefined) {
