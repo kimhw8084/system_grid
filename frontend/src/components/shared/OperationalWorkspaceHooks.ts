@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   applyOperationalColumnState,
   getOperationalColumnLayoutSnapshot,
@@ -426,5 +427,143 @@ export function useOperationalDirtyGuard({
     isConfirmOpen,
     confirmDiscard,
     cancelDiscard,
+  }
+}
+
+export function useOperationalDetailRoute({
+  allItems,
+  detailItem,
+  setDetailItem,
+  setActiveTab,
+  isEditOpen = false,
+  isHistoryOpen = false,
+  isLinkOpen = false,
+}: {
+  allItems: any[] | undefined
+  detailItem: any
+  setDetailItem: (item: any) => void
+  setActiveTab?: (tab: any) => void
+  isEditOpen?: boolean
+  isHistoryOpen?: boolean
+  isLinkOpen?: boolean
+}) {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const idParam = searchParams.get('id')
+  const isTransitioningRef = useRef(false)
+
+  const clearDetailRoute = useCallback(() => {
+    const nextParams = new URLSearchParams(window.location.search)
+    if (nextParams.has('id')) {
+      nextParams.delete('id')
+      setSearchParams(nextParams, { replace: true })
+    }
+  }, [setSearchParams])
+
+  const openDetail = useCallback((item: any) => {
+    isTransitioningRef.current = false
+    setDetailItem(item)
+    if (item) {
+      const nextParams = new URLSearchParams(window.location.search)
+      nextParams.set('id', String(item.id))
+      setSearchParams(nextParams, { replace: true })
+    }
+  }, [setDetailItem, setSearchParams])
+
+  const closeDetail = useCallback(() => {
+    isTransitioningRef.current = false
+    setDetailItem(null)
+    clearDetailRoute()
+  }, [setDetailItem, clearDetailRoute])
+
+  const openEditFromDetail = useCallback((item: any, callback?: () => void) => {
+    isTransitioningRef.current = true
+    setDetailItem(null)
+    clearDetailRoute()
+    if (callback) callback()
+  }, [setDetailItem, clearDetailRoute])
+
+  const openHistoryFromDetail = useCallback((item: any, callback?: () => void) => {
+    isTransitioningRef.current = true
+    setDetailItem(null)
+    clearDetailRoute()
+    if (callback) callback()
+  }, [setDetailItem, clearDetailRoute])
+
+  const openLinkFromDetail = useCallback((item: any, callback?: () => void) => {
+    isTransitioningRef.current = true
+    setDetailItem(null)
+    clearDetailRoute()
+    if (callback) callback()
+  }, [setDetailItem, clearDetailRoute])
+
+  // 1. URL -> State sync (Deep linking)
+  useEffect(() => {
+    if (!Array.isArray(allItems)) return
+
+    // If we are currently transitioning or a modal is open, don't sync from URL
+    if (isTransitioningRef.current || isEditOpen || isHistoryOpen || isLinkOpen) return
+
+    if (!idParam) {
+      if (detailItem) {
+        setDetailItem(null)
+      }
+      return
+    }
+
+    const target = allItems.find((item: any) => String(item.id) === idParam)
+    if (!target) {
+      clearDetailRoute()
+      if (detailItem) {
+        setDetailItem(null)
+      }
+      return
+    }
+
+    if (setActiveTab) {
+      const isDeleted = target.is_deleted || target.status === 'Deleted' || target.status === 'Archived'
+      setActiveTab(isDeleted ? 'deleted' : 'active')
+    }
+
+    if (!detailItem || String(detailItem.id) !== idParam) {
+      setDetailItem(target)
+    }
+  }, [allItems, idParam, setSearchParams, detailItem, clearDetailRoute, setActiveTab, isEditOpen, isHistoryOpen, isLinkOpen])
+
+  // 2. State -> URL sync (handles direct closing from ESC or backdrop click)
+  useEffect(() => {
+    if (isTransitioningRef.current || isEditOpen || isHistoryOpen || isLinkOpen) return
+
+    const nextParams = new URLSearchParams(window.location.search)
+    if (detailItem) {
+      if (nextParams.get('id') !== String(detailItem.id)) {
+        nextParams.set('id', String(detailItem.id))
+        setSearchParams(nextParams, { replace: true })
+      }
+    } else {
+      if (nextParams.has('id')) {
+        nextParams.delete('id')
+        setSearchParams(nextParams, { replace: true })
+      }
+    }
+  }, [detailItem, setSearchParams, isEditOpen, isHistoryOpen, isLinkOpen])
+
+  const finishTransition = useCallback(() => {
+    isTransitioningRef.current = false
+  }, [])
+
+  useEffect(() => {
+    if (!isEditOpen && !isHistoryOpen && !isLinkOpen) {
+      isTransitioningRef.current = false
+    }
+  }, [isEditOpen, isHistoryOpen, isLinkOpen])
+
+  return {
+    openDetail,
+    closeDetail,
+    clearDetailRoute,
+    openEditFromDetail,
+    openHistoryFromDetail,
+    openLinkFromDetail,
+    finishTransition,
   }
 }

@@ -286,6 +286,14 @@ async def update_entity(entity_id: int, data: schemas.ExternalEntityUpdate, requ
         _normalize_external_payload(data, team),
         exclude=IMMUTABLE_EXTERNAL_ENTITY_FIELDS,
     )
+    try:
+        body_json = await request.json()
+        sent_keys = set(body_json.keys())
+    except Exception:
+        sent_keys = set()
+    if "ownership_mode" in sent_keys or "internal_team_id" in sent_keys or "internal_operator_id" in sent_keys:
+        sent_keys.update(["owner_team", "internal_team_id", "internal_operator_id"])
+    clean_data = {k: v for k, v in clean_data.items() if k in sent_keys}
     for k, v in clean_data.items():
         setattr(obj, k, v)
     

@@ -1,4 +1,3 @@
-import { useSearchParams } from 'react-router-dom'
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
@@ -32,12 +31,14 @@ import {
   useOperationalGridRuntime,
   usePersistentJsonState,
   useWorkspaceDismissHandlers,
+  useOperationalDetailRoute,
 } from './shared/OperationalWorkspaceHooks'
 import { useWorkspaceAnchoredLayer, WorkspaceEmptyState, useEscapeDismiss, useBodyModalFlag, WorkspaceFloatingPanel, WorkspaceSplitView } from './shared/OperationalWorkspacePrimitives'
 import { OperationalAnchoredPanel, OperationalDisplayPanel, OperationalGroupedGridSection, OperationalGroupedGridView, OperationalSavedViewsPanel, OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'
 import { OperationalImportModal } from './shared/OperationalImportModal'
 import { EXTERNAL_WORKSPACE_STANDARD } from './shared/OperationalWorkspace'
 import { WorkspaceModal } from './shared/WorkspaceModal'
+import { ConfirmationModal } from './shared/ConfirmationModal'
 import { OperationalDataGrid } from './shared/OperationalDataGrid'
 import {
   autoSizeOperationalColumns,
@@ -753,8 +754,9 @@ const ExternalForm = ({
   const validate = () => {
     const nextErrors: Record<string, string> = {}
     if (!formData.name.trim()) nextErrors.name = 'Name is required'
-    if (formData.ownership_mode === 'team' && !formData.internal_team_id) nextErrors.internal_team_id = 'Accountable team is required'
-    if (formData.ownership_mode === 'individual' && !formData.internal_operator_id) nextErrors.internal_operator_id = 'Accountable operator is required'
+    // Optional on frontend, backend guides final validation
+    // if (formData.ownership_mode === 'team' && !formData.internal_team_id) nextErrors.internal_team_id = 'Accountable team is required'
+    // if (formData.ownership_mode === 'individual' && !formData.internal_operator_id) nextErrors.internal_operator_id = 'Accountable operator is required'
     if (!formData.business_purpose.trim()) nextErrors.business_purpose = 'Business purpose is required'
     if (!formData.contacts_json.length) nextErrors.contacts_json = 'At least one contact is required'
     if (formData.contacts_json.filter((contact: any) => contact.is_primary).length > 1) nextErrors.contacts_json = 'Only one primary contact is allowed'
@@ -767,6 +769,7 @@ const ExternalForm = ({
     if (!validate()) return
     onSave({
       ...formData,
+      id: initialData?.id || undefined,
       internal_team_id: formData.ownership_mode === 'team' && formData.internal_team_id ? parseInt(formData.internal_team_id, 10) : null,
       internal_operator_id: formData.ownership_mode === 'individual' && formData.internal_operator_id ? parseInt(formData.internal_operator_id, 10) : null,
     })
@@ -840,7 +843,7 @@ const ExternalForm = ({
             <StyledSelect label="Accountable Owner Mode" value={formData.ownership_mode} onChange={e => updateField('ownership_mode', e.target.value)} options={ACCOUNTABLE_OWNER_OPTIONS} />
             {formData.ownership_mode === 'team' ? (
               <StyledSelect
-                label="Accountable Team *"
+                label="Accountable Team"
                 value={formData.internal_team_id}
                 onChange={e => updateField('internal_team_id', e.target.value)}
                 options={(teams || []).filter((team: any) => !team.is_archived).map((team: any) => ({ value: String(team.id), label: team.name }))}
@@ -849,7 +852,7 @@ const ExternalForm = ({
               />
             ) : (
               <StyledSelect
-                label="Accountable Operator *"
+                label="Accountable Operator"
                 value={formData.internal_operator_id}
                 onChange={e => updateField('internal_operator_id', e.target.value)}
                 options={(operators || []).map((operator: any) => ({ value: String(operator.id), label: operator.full_name || operator.username || operator.external_id }))}
@@ -858,6 +861,7 @@ const ExternalForm = ({
               />
             )}
           </div>
+          <p className="px-1 text-[9px] text-slate-500 italic">Optional internal accountability mapping for SysGrid operations.</p>
           {(errors.internal_team_id || errors.internal_operator_id) && (
             <p className="px-1 text-[9px] font-bold text-rose-400">{errors.internal_team_id || errors.internal_operator_id}</p>
           )}
@@ -1283,9 +1287,33 @@ function CompareExternalModal({ items, onClose }: { items: any[]; onClose: () =>
   )
 }
 
+const getFriendlyRestoreError = (msg: string): string => {
+  let messageText = msg
+  try {
+    const parsed = JSON.parse(msg)
+    if (parsed && typeof parsed === 'object') {
+      messageText = parsed.detail || parsed.message || parsed.error || msg
+    }
+  } catch (e) {
+    // Not JSON, use as-is
+  }
+
+  if (messageText.includes("cannot be restored without an accountable operator") || messageText.includes("accountable operator is missing")) {
+    return "This archived entity cannot be restored because its accountable operator is missing. Please edit the entity first to assign an active operator."
+  }
+  if (messageText.includes("cannot be restored without an accountable team") || messageText.includes("accountable team is missing") || messageText.includes("without an accountable internal team")) {
+    return "This archived entity cannot be restored because its accountable team is missing or archived. Please edit the entity first to assign an active team."
+  }
+  if (messageText.includes("Internal accountable team is required")) {
+    return "An internal accountable team is required under Team ownership mode. Please assign a valid active team."
+  }
+  if (messageText.includes("Internal accountable operator is required")) {
+    return "An internal accountable operator is required under Individual ownership mode. Please assign a valid active operator."
+  }
+  return messageText
+}
+
 export default function External() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const entityIdFromUrl = searchParams.get('id')
   const externalStorageNamespace = 'sysgrid_external'
   const externalViewStorageKey = `${externalStorageNamespace}_views_v1`
   const externalActiveViewKey = `${externalStorageNamespace}_active_view_v1`
@@ -1362,6 +1390,34 @@ export default function External() {
   const pendingRestoreTimeoutRef = useRef<number | null>(null)
   const externalUndoRef = useRef<any>(null)
 
+  const [isLinkFormDirty, setIsLinkFormDirty] = useState(false)
+  const [isConfigDirty, setIsConfigDirty] = useState(false)
+
+  const isWorkspaceDirty = useMemo(() => {
+    return isActiveModalDirty || isLinkFormDirty || isConfigDirty || (showViewsMenu && newViewName.trim() !== '')
+  }, [isActiveModalDirty, isLinkFormDirty, isConfigDirty, showViewsMenu, newViewName])
+
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    confirmText?: string
+    onConfirm?: () => void
+    onClose?: () => void
+    variant?: 'danger' | 'info' | 'warning' | 'success'
+  }>({ isOpen: false, title: '', message: '' })
+
+
+  useEffect(() => {
+    if (!isWorkspaceDirty) return
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isWorkspaceDirty])
+
   const { triggerRef: displayMenuButtonRef, panelRef: displayMenuPanelRef, panelStyle: displayMenuStyle } = useWorkspaceAnchoredLayer(showDisplayMenu, { minWidth: 320 })
   const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
   const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
@@ -1429,25 +1485,18 @@ export default function External() {
     queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities?include_deleted=true')).json())
   })
 
-  // Deep linking: Open modal if ID is in URL
-  useEffect(() => {
-    if (allEntities && entityIdFromUrl && !activeDetails) {
-      const entity = allEntities.find((e: any) => String(e.id) === entityIdFromUrl)
-      if (entity) setActiveDetails(entity)
-    }
-  }, [allEntities, entityIdFromUrl, activeDetails])
-
-  useEffect(() => {
-    if (activeDetails) {
-      setSearchParams({ id: String(activeDetails.id) })
-    }
-  }, [activeDetails, setSearchParams])
+  const detailRoute = useOperationalDetailRoute({
+    allItems: allEntities,
+    detailItem: activeDetails,
+    setDetailItem: setActiveDetails,
+    isEditOpen: !!activeModal,
+    isHistoryOpen: false,
+    isLinkOpen: showLinkModal,
+    setActiveTab,
+  })
 
   const closeDetails = () => {
-    setActiveDetails(null)
-    if (searchParams.has('id')) {
-      setSearchParams({})
-    }
+    detailRoute.closeDetail()
   }
 
 
@@ -1462,11 +1511,25 @@ export default function External() {
   })
 
   const dismissWorkspaceMenus = useCallback(() => {
+    if (showViewsMenu && newViewName.trim() !== '') {
+      setConfirmModal({
+        isOpen: true,
+        title: 'Unsaved View Name',
+        message: 'You have typed a new view name. Discard it and close the menu?',
+        confirmText: 'Discard & Close',
+        variant: 'warning',
+        onConfirm: () => {
+          setNewViewName('')
+          setShowViewsMenu(false)
+        }
+      })
+      return
+    }
     setShowBulkMenu(false)
     setShowDisplayMenu(false)
     setShowViewsMenu(false)
     setRowActionMenu(null)
-  }, [])
+  }, [showViewsMenu, newViewName])
 
   useOperationalDismissController({
     active: showBulkMenu || showDisplayMenu || showViewsMenu || !!rowActionMenu,
@@ -1889,49 +1952,107 @@ export default function External() {
     })
   }
 
+  // Backend currently uses PUT for entity updates; this helper sends required stable fields plus intended changed fields while avoiding unrelated legacy invalid enum values.
+  const buildExternalSafeBulkPutPayload = (original: any, payload: any) => {
+    const nextPayload: any = {
+      name: original.name,
+      type: original.type,
+      business_purpose: original.business_purpose || '',
+      contacts_json: original.contacts_json || [],
+      ownership_mode: original.ownership_mode || 'team',
+    }
+
+    if (nextPayload.ownership_mode === 'team') {
+      nextPayload.internal_team_id = original.internal_team_id
+      nextPayload.internal_operator_id = null
+    } else {
+      nextPayload.internal_operator_id = original.internal_operator_id
+      nextPayload.internal_team_id = null
+    }
+
+    Object.keys(payload).forEach((key) => {
+      nextPayload[key] = payload[key]
+    })
+
+    return nextPayload
+  }
+
   const bulkMutation = useMutation({
     mutationFn: async ({ action, payload = {}, ids: overrideIds }: any) => {
       const idsToUse = overrideIds ?? selectedIds
-      const previousSnapshots = idsToUse
-        .map((id: number) => allEntities?.find((entity: any) => entity.id === id))
-        .filter(Boolean)
-      const promises = idsToUse.map(async (id: number) => {
-        if (action === 'update') {
-          const original = allEntities.find((e: any) => e.id === id)
-          if (!original) return
-          const updatePayload = {
-            ...original,
-            ...payload
-          }
-          delete updatePayload.id
-          delete updatePayload.created_at
-          delete updatePayload.updated_at
-          delete updatePayload.created_by_user_id
-          delete updatePayload.secrets
-          delete updatePayload.internal_team_name
-          delete updatePayload.internal_operator_name
-          delete updatePayload.internal_operator_external_id
 
-          const res = await apiFetch(`/api/v1/intelligence/entities/${id}`, {
-            method: 'PUT',
-            body: JSON.stringify(updatePayload)
-          })
-          if (!res.ok) throw new Error(await res.text())
-        } else if (action === 'delete') {
-          const res = await apiFetch(`/api/v1/intelligence/entities/${id}`, { method: 'DELETE' })
-          if (!res.ok) throw new Error(await res.text())
-        } else if (action === 'purge') {
-          const res = await apiFetch(`/api/v1/intelligence/entities/${id}?purge=true`, { method: 'DELETE' })
-          if (!res.ok) throw new Error(await res.text())
-        } else if (action === 'restore') {
-          const res = await apiFetch(`/api/v1/intelligence/entities/${id}/restore`, { method: 'POST' })
-          if (!res.ok) throw new Error(await res.text())
+      const results = await Promise.all(
+        idsToUse.map(async (id: number) => {
+          const original = allEntities?.find((e: any) => e.id === id)
+          if (!original) {
+            return { id, status: 'failed', error: 'Entity not found in local cache' }
+          }
+
+          try {
+            if (action === 'update') {
+              const keys = Object.keys(payload)
+              const alreadyMatches = keys.every((key) => original[key] === payload[key])
+              if (alreadyMatches) {
+                return { id, status: 'skipped', previous: original }
+              }
+
+              const updatePayload = buildExternalSafeBulkPutPayload(original, payload)
+
+              const res = await apiFetch(`/api/v1/intelligence/entities/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatePayload),
+              })
+              if (!res.ok) {
+                throw new Error(await res.text())
+              }
+              return { id, status: 'updated', previous: original }
+            } else if (action === 'delete') {
+              const res = await apiFetch(`/api/v1/intelligence/entities/${id}`, { method: 'DELETE' })
+              if (!res.ok) throw new Error(await res.text())
+              return { id, status: 'updated', previous: original }
+            } else if (action === 'purge') {
+              const res = await apiFetch(`/api/v1/intelligence/entities/${id}?purge=true`, { method: 'DELETE' })
+              if (!res.ok) throw new Error(await res.text())
+              return { id, status: 'updated' }
+            } else if (action === 'restore') {
+              const res = await apiFetch(`/api/v1/intelligence/entities/${id}/restore`, { method: 'POST' })
+              if (!res.ok) throw new Error(await res.text())
+              return { id, status: 'updated', previous: original }
+            }
+            return { id, status: 'skipped' }
+          } catch (e: any) {
+            const friendlyErr = getFriendlyRestoreError(e.message || String(e))
+            return { id, status: 'failed', error: friendlyErr, name: original.name }
+          }
+        })
+      )
+
+      let updated = 0
+      let skipped = 0
+      let failed = 0
+      const previousSnapshots: any[] = []
+      const errors: string[] = []
+
+      for (const res of results) {
+        if (res.status === 'updated') {
+          updated++
+          if (res.previous) previousSnapshots.push(res.previous)
+        } else if (res.status === 'skipped') {
+          skipped++
+        } else if (res.status === 'failed') {
+          failed++
+          if (res.name) {
+            errors.push(`ID ${res.id} (${res.name}): ${res.error}`)
+          } else {
+            errors.push(`ID ${res.id}: ${res.error}`)
+          }
         }
-      })
-      await Promise.all(promises)
-      return { action, idsToUse, payload, previousSnapshots }
+      }
+
+      return { action, idsToUse, payload, previousSnapshots, updated, skipped, failed, errors }
     },
-    onSuccess: ({ action, idsToUse, payload, previousSnapshots }) => {
+    onSuccess: ({ action, idsToUse, payload, previousSnapshots, updated, skipped, failed, errors }) => {
       queryClient.invalidateQueries({ queryKey: ['external-entities'] })
       queryClient.invalidateQueries({ queryKey: ['external-links'] })
       setSelectedIds([])
@@ -1939,38 +2060,54 @@ export default function External() {
       setBulkDraft({ status: '', environment: '', criticality: '', risk_rating: '' })
       setExpandedBulkSection(null)
 
-      if (action === 'delete') externalUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
-      else if (action === 'restore') externalUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
-      else if (action === 'update') externalUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
-      else externalUndoRef.current = null
+      let summaryMessage = `Bulk ${action} completed: `
+      if (updated > 0) summaryMessage += `${updated} updated. `
+      if (skipped > 0) summaryMessage += `${skipped} skipped. `
+      if (failed > 0) summaryMessage += `${failed} failed.`
 
-      if (externalUndoRef.current && action !== 'purge') {
-        showWorkspaceRevertToast(`Bulk ${action} succeeded on ${idsToUse.length} items.`, async () => {
-          const undo = externalUndoRef.current
-          externalUndoRef.current = null
-          if (!undo) return
-          if (undo.mode === 'bulk') {
-            await bulkMutation.mutateAsync({ action: undo.action, ids: undo.ids })
-            return
-          }
-          if (undo.mode === 'restore_snapshots') {
-            await Promise.all((undo.snapshots || []).map(async (snapshot: any) => {
-              if (!snapshot?.id) return
-              const { id, created_at, updated_at, created_by_user_id, secrets, internal_team_name, internal_operator_name, internal_operator_external_id, ...payloadToRestore } = snapshot
-              const res = await apiFetch(`/api/v1/intelligence/entities/${id}`, {
-                method: 'PUT',
-                body: JSON.stringify(payloadToRestore),
-              })
-              if (!res.ok) throw new Error(await res.text())
-            }))
-            queryClient.invalidateQueries({ queryKey: ['external-entities'] })
-            queryClient.invalidateQueries({ queryKey: ['external-links'] })
-          }
-        })
-        return
+      if (failed > 0) {
+        showWorkspaceToast(`${summaryMessage} Errors: ${errors.join('; ')}`, { type: 'error' })
+      } else {
+        showWorkspaceToast(summaryMessage, { type: 'success' })
       }
 
-      showWorkspaceToast(`Bulk ${action} succeeded on ${idsToUse.length} items.`)
+      if (updated > 0 && action !== 'purge') {
+        if (action === 'delete') {
+          externalUndoRef.current = { mode: 'bulk', ids: previousSnapshots.map(s => s.id), action: 'restore' }
+        } else if (action === 'restore') {
+          externalUndoRef.current = { mode: 'bulk', ids: previousSnapshots.map(s => s.id), action: 'delete' }
+        } else if (action === 'update') {
+          externalUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
+        }
+
+        if (externalUndoRef.current) {
+          showWorkspaceRevertToast(`Revert last bulk ${action} (${updated} rows)?`, async () => {
+            const undo = externalUndoRef.current
+            externalUndoRef.current = null
+            if (!undo) return
+            if (undo.mode === 'bulk') {
+              await bulkMutation.mutateAsync({ action: undo.action, ids: undo.ids })
+            } else if (undo.mode === 'restore_snapshots') {
+              await Promise.all((undo.snapshots || []).map(async (snapshot: any) => {
+                if (!snapshot?.id) return
+                const restoreFields: any = {}
+                Object.keys(payload).forEach((key) => {
+                  restoreFields[key] = snapshot[key]
+                })
+                const payloadToRestore = buildExternalSafeBulkPutPayload(snapshot, restoreFields)
+                const res = await apiFetch(`/api/v1/intelligence/entities/${snapshot.id}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payloadToRestore),
+                })
+                if (!res.ok) throw new Error(await res.text())
+              }))
+              queryClient.invalidateQueries({ queryKey: ['external-entities'] })
+              queryClient.invalidateQueries({ queryKey: ['external-links'] })
+            }
+          })
+        }
+      }
     },
     onError: (e: any) => {
       showWorkspaceToast(`Bulk operation failed: ${e.message}`, { type: 'error' })
@@ -1989,8 +2126,12 @@ export default function External() {
       queryClient.invalidateQueries({ queryKey: ['external-entities'] })
       showWorkspaceToast('External Manifest Synchronized')
       setActiveModal(null)
+      detailRoute.finishTransition()
     },
-    onError: (e: any) => showWorkspaceToast(e.message, { type: 'error' })
+    onError: (e: any) => {
+      showWorkspaceToast(getFriendlyRestoreError(e.message || String(e)), { type: 'error' })
+      detailRoute.finishTransition()
+    }
   })
 
   const linkMutation = useMutation({
@@ -2011,9 +2152,13 @@ export default function External() {
       setShowLinkModal(false)
       setLinkSeedEntityId(null)
       setEditingLink(null)
+      detailRoute.finishTransition()
       showWorkspaceToast('Interconnect Established')
     },
-    onError: (e: any) => showWorkspaceToast(e.message || 'Interconnect establishment failed', { type: 'error' })
+    onError: (e: any) => {
+      showWorkspaceToast(e.message || 'Interconnect establishment failed', { type: 'error' })
+      detailRoute.finishTransition()
+    }
   })
 
   const deleteMutation = useMutation({
@@ -2038,7 +2183,7 @@ export default function External() {
          showWorkspaceToast('Link Severed')
       }
     },
-    onError: (e: any) => showWorkspaceToast(e.message, { type: 'error' })
+    onError: (e: any) => showWorkspaceToast(getFriendlyRestoreError(e.message || String(e)), { type: 'error' })
   })
 
   const restoreMutation = useMutation({
@@ -2053,18 +2198,18 @@ export default function External() {
         deleteMutation.mutate({ id: restoredId, purge: false, type: 'entity' })
       })
     },
-    onError: (e: any) => showWorkspaceToast(e.message, { type: 'error' })
+    onError: (e: any) => showWorkspaceToast(getFriendlyRestoreError(e.message || String(e)), { type: 'error' })
   })
 
   const { handleRowClicked, handleRowDoubleClicked } = useOperationalRowInteractions({
     onRowDoubleClick: useCallback((item) => {
       if (activeTab === 'links') {
         const ent = allEntities?.find((e: any) => e.id === item.external_entity_id)
-        if (ent) setActiveDetails(ent)
+        if (ent) detailRoute.openDetail(ent)
       } else {
-        setActiveDetails(item)
+        detailRoute.openDetail(item)
       }
-    }, [activeTab, allEntities])
+    }, [activeTab, allEntities, detailRoute])
   })
 
   const externalRowInteractions = useMemo(() => ({
@@ -2082,7 +2227,7 @@ export default function External() {
   }, [])
 
   const getRowClass = useCallback((params: any) => {
-    return params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd'
+    return params.node.rowIndex % 2 === 0 ? 'operational-grid-row-even' : 'operational-grid-row-odd'
   }, [])
 
   const getExternalRowId = (params: any) => String(params.data?.id ?? '')
@@ -2096,9 +2241,9 @@ export default function External() {
           event.stopPropagation()
           if (activeTab === 'links') {
             const ent = allEntities?.find((e: any) => e.id === item.external_entity_id)
-            if (ent) setActiveDetails(ent)
+            if (ent) detailRoute.openDetail(ent)
           } else {
-            setActiveDetails(item)
+            detailRoute.openDetail(item)
           }
         }}
         title="Open details"
@@ -2573,7 +2718,7 @@ export default function External() {
             panelStyle={viewsMenuStyle}
             panelRef={viewsMenuPanelRef}
             entityLabel={externalViewLabel}
-            onClose={() => setShowViewsMenu(false)}
+            onClose={dismissWorkspaceMenus}
             activeViewId={activeViewId}
             currentViewName={activeViewId ? normalizedSavedViews.find((view: any) => view.id === activeViewId)?.name || 'Unsaved working view' : 'Unsaved working view'}
             newViewName={newViewName}
@@ -2629,7 +2774,16 @@ export default function External() {
                         <WorkspaceFlyoutDropdownEditor
                           value={bulkDraft.status}
                           onChange={(value) => setBulkDraft((current) => ({ ...current, status: value }))}
-                          options={entityFilterOptions.status}
+                          options={[
+                            { value: 'Active', label: 'Active' },
+                            { value: 'Maintenance', label: 'Maintenance' },
+                            { value: 'Decommissioned', label: 'Decommissioned' },
+                            { value: 'Planned', label: 'Planned' },
+                            { value: 'Standby', label: 'Standby' },
+                            { value: 'Failed', label: 'Failed' },
+                            { value: 'Provisioning', label: 'Provisioning' },
+                            { value: 'Reserved', label: 'Reserved' },
+                          ]}
                           placeholder="Choose status"
                           actionLabel="Apply Status"
                           onApply={() => bulkMutation.mutate({ action: 'update', payload: { status: bulkDraft.status } })}
@@ -2646,7 +2800,15 @@ export default function External() {
                         <WorkspaceFlyoutDropdownEditor
                           value={bulkDraft.environment}
                           onChange={(value) => setBulkDraft((current) => ({ ...current, environment: value }))}
-                          options={entityFilterOptions.environment}
+                          options={[
+                            { value: 'Production', label: 'Production' },
+                            { value: 'Staging', label: 'Staging' },
+                            { value: 'Development', label: 'Development' },
+                            { value: 'Test', label: 'Test' },
+                            { value: 'Sandbox', label: 'Sandbox' },
+                            { value: 'DR', label: 'DR' },
+                            { value: 'Lab', label: 'Lab' },
+                          ]}
                           placeholder="Choose environment"
                           actionLabel="Apply Environment"
                           onApply={() => bulkMutation.mutate({ action: 'update', payload: { environment: bulkDraft.environment } })}
@@ -2689,6 +2851,7 @@ export default function External() {
                             { value: 'Low', label: 'Low' },
                             { value: 'Medium', label: 'Medium' },
                             { value: 'High', label: 'High' },
+                            { value: 'Critical', label: 'Critical' },
                           ]}
                           placeholder="Choose risk rating"
                           actionLabel="Apply Risk Rating"
@@ -2760,9 +2923,9 @@ export default function External() {
                       onClick={() => {
                         if (activeTab === 'links') {
                           const ent = allEntities?.find((e: any) => e.id === rowActionMenu.item.external_entity_id)
-                          if (ent) setActiveDetails(ent)
+                          if (ent) detailRoute.openDetail(ent)
                         } else {
-                          setActiveDetails(rowActionMenu.item)
+                          detailRoute.openDetail(rowActionMenu.item)
                         }
                         setRowActionMenu(null)
                       }}
@@ -2998,7 +3161,10 @@ export default function External() {
 
       <WorkspaceModal
         isOpen={!!activeModal}
-        onClose={() => setActiveModal(null)}
+        onClose={() => {
+          setActiveModal(null)
+          detailRoute.finishTransition()
+        }}
         isDirty={isActiveModalDirty}
         size="workspace"
         isMaximized={isWorkspaceMaximized}
@@ -3051,11 +3217,13 @@ export default function External() {
               setShowLinkModal(false)
               setLinkSeedEntityId(null)
               setEditingLink(null)
+              detailRoute.finishTransition()
             }}
             onSave={(data: any) => linkMutation.mutate(data)}
             isPending={linkMutation.isPending}
             initialExternalEntityId={linkSeedEntityId}
             initialData={editingLink}
+            onDirtyChange={setIsLinkFormDirty}
          />
       )}
 
@@ -3095,8 +3263,7 @@ export default function External() {
             <button
               type="button"
               onClick={() => {
-                setActiveModal(activeDetails)
-                setActiveDetails(null)
+                detailRoute.openEditFromDetail(activeDetails, () => setActiveModal(activeDetails))
               }}
               className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-widest text-emerald-300 transition-colors hover:bg-emerald-500/20"
               title="Edit external identity"
@@ -3110,16 +3277,17 @@ export default function External() {
           <div className="flex items-center gap-3 shrink-0">
             <ToolbarButton
               onClick={() => {
-                setActiveModal(activeDetails)
-                setActiveDetails(null)
+                detailRoute.openEditFromDetail(activeDetails, () => setActiveModal(activeDetails))
               }}
             >
               Edit
             </ToolbarButton>
             <ToolbarButton
               onClick={() => {
-                setLinkSeedEntityId(activeDetails.id)
-                setShowLinkModal(true)
+                detailRoute.openLinkFromDetail(activeDetails, () => {
+                  setLinkSeedEntityId(activeDetails.id)
+                  setShowLinkModal(true)
+                })
               }}
             >
               Map Link
@@ -3129,7 +3297,7 @@ export default function External() {
               onClick={() => {
                 if (rowDeleteConfirmId === activeDetails.id) {
                   deleteMutation.mutate({ id: activeDetails.id, purge: activeTab === 'deleted', type: 'entity' })
-                  setActiveDetails(null)
+                  detailRoute.closeDetail()
                   setRowDeleteConfirmId(null)
                 } else {
                   setRowDeleteConfirmId(activeDetails.id)
@@ -3156,6 +3324,7 @@ export default function External() {
             { title: "Status Options", category: "Status", icon: RefreshCcw },
             { title: "Environments", category: "Environment", icon: Globe }
         ]}
+        onDirtyChange={setIsConfigDirty}
       />
       <OperationalImportModal
         isOpen={showImportModal}
@@ -3164,11 +3333,29 @@ export default function External() {
         displayName={externalRegistryLabel}
       />
 
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => {
+          if (confirmModal.onClose) {
+            confirmModal.onClose()
+          } else {
+            setConfirmModal(prev => ({ ...prev, isOpen: false }))
+          }
+        }}
+        onConfirm={() => {
+          if (confirmModal.onConfirm) confirmModal.onConfirm()
+          setConfirmModal(prev => ({ ...prev, isOpen: false }))
+        }}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        variant={confirmModal.variant}
+      />
+
     </OperationalWorkspaceShell>
   )
 }
 
-function LinkForm({ entities, devices, onClose, onSave, isPending, initialExternalEntityId, initialData }: any) {
+function LinkForm({ entities, devices, onClose, onSave, isPending, initialExternalEntityId, initialData, onDirtyChange }: any) {
   const [formData, setFormData] = useState(() => {
     if (initialData) {
       return {
@@ -3199,6 +3386,11 @@ function LinkForm({ entities, devices, onClose, onSave, isPending, initialExtern
   const [isMaximized, setIsMaximized] = useState(false)
   const initialDirtySnapshotRef = useRef(JSON.stringify(formData))
 
+  const isDirty = JSON.stringify(formData) !== initialDirtySnapshotRef.current
+  useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
+
   const { data: services } = useQuery({
     queryKey: ['device-services', formData.device_id],
     queryFn: async () => {
@@ -3212,7 +3404,7 @@ function LinkForm({ entities, devices, onClose, onSave, isPending, initialExtern
     <WorkspaceModal
       isOpen={true}
       onClose={onClose}
-      isDirty={JSON.stringify(formData) !== initialDirtySnapshotRef.current}
+      isDirty={isDirty}
       size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized((current) => !current)}

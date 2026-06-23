@@ -2,7 +2,6 @@ import React, { useMemo } from 'react'
 import { OperationalGridMatrix } from './OperationalGridMatrix'
 import {
   getOperationalGridSurfaceStyle,
-  OPERATIONAL_GRID_COMPAT_CLASS_NAME,
   OperationalGridSurface,
 } from './OperationalWorkspaceShells'
 import { OPERATIONAL_GRID_AUTO_SIZE_STRATEGY } from './OperationalGridSizing'
@@ -29,8 +28,8 @@ type OperationalContextMenuLike = {
 }
 
 interface OperationalDataGridProps {
-  gridRef?: any
-  rows: any[]
+  gridRef?: React.RefObject<any>
+  rows: any[] | undefined
   columnDefs: any[]
   runtime: OperationalGridRuntimeLike
   rowInteractions?: OperationalRowInteractionsLike
@@ -42,8 +41,8 @@ interface OperationalDataGridProps {
   getRowClass?: (params: any) => string
   context?: any
   quickFilterText?: string
-  fontSize: number
-  rowDensity: number
+  fontSize?: number
+  rowDensity?: number
   noRowsLabel?: string
   loading?: boolean
   loadingIcon?: React.ReactNode
@@ -68,10 +67,10 @@ export function OperationalDataGrid({
   getRowClass,
   context,
   quickFilterText,
-  fontSize,
-  rowDensity,
+  fontSize = 11,
+  rowDensity = 24,
   noRowsLabel = 'No data found',
-  loading,
+  loading = false,
   loadingIcon,
   loadingLabel,
   emptyOverlay,
@@ -86,7 +85,7 @@ export function OperationalDataGrid({
 
   return (
     <OperationalGridSurface
-      className={[OPERATIONAL_GRID_COMPAT_CLASS_NAME, className].filter(Boolean).join(' ')}
+      className={className}
       style={getOperationalGridSurfaceStyle(fontSize, height)}
       loading={loading}
       loadingIcon={loadingIcon}

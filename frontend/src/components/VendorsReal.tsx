@@ -1260,7 +1260,7 @@ export default function VendorsReal() {
         </div>
       )}
 
-      <ConfirmationModal isOpen={confirmModal.isOpen} onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })} onConfirm={confirmModal.onConfirm} title={confirmModal.title} message={confirmModal.message} variant={confirmModal.variant} />
+      <ConfirmationModal isOpen={confirmModal.isOpen} onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })} onConfirm={() => { confirmModal.onConfirm?.(); setConfirmModal((prev: any) => ({ ...prev, isOpen: false })); }} title={confirmModal.title} message={confirmModal.message} variant={confirmModal.variant} />
 
       <AnimatePresence>
         {isFormOpen && (

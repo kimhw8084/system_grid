@@ -10,8 +10,6 @@ import { WorkspaceFloatingPanel } from './OperationalWorkspacePrimitives'
 const join = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ')
 type WorkspaceFilterChip = { id: string; label: string; onRemove: () => void }
 
-export const OPERATIONAL_GRID_COMPAT_CLASS_NAME = 'monitoring-grid-shell monitoring-grid'
-
 export const getOperationalGridSurfaceStyle = (
   fontSize: number,
   height?: string

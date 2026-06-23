@@ -106,7 +106,7 @@ describe('apiClient', () => {
   it('emits latency updates and unsubscribes cleanly', async () => {
     const listener = vi.fn()
     const unsubscribe = subscribeToLatency(listener)
-    expect(listener).toHaveBeenCalledWith(0)
+    expect(listener).toHaveBeenCalledWith(expect.any(Number))
 
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

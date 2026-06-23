@@ -1,7 +1,7 @@
 import { BkmListModal, BkmDetailModal, MonitoringForm } from './monitoring/Modals'
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import CodeMirror from '@uiw/react-codemirror'
 import { sql } from '@codemirror/lang-sql'
@@ -62,6 +62,7 @@ import {
   usePersistentJsonState,
   useWorkspaceDismissHandlers,
   useWorkspaceSessionValue,
+  useOperationalDetailRoute,
 } from './shared/OperationalWorkspaceHooks'
 import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } from './shared/WorkspaceModalShells'
 import { OperationalImportModal } from './shared/OperationalImportModal'
@@ -485,9 +486,7 @@ const ObservabilityHUD = ({ items }: any) => {
 }
 
 export default function MonitoringGrid() {
-  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const idParam = searchParams.get('id')
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
   const { data: userSettings, isSuccess: hasUserSettings } = useQuery({
@@ -522,6 +521,9 @@ export default function MonitoringGrid() {
   const [activeBkm, setActiveBkm] = useState<any>(null)
   const [compareOpen, setCompareOpen] = useState(false)
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
+  const [isFormDirty, setIsFormDirty] = useState(false)
+  const [isBulkEditDirty, setIsBulkEditDirty] = useState(false)
+  const [isConfigDirty, setIsConfigDirty] = useState(false)
   
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
@@ -553,6 +555,23 @@ export default function MonitoringGrid() {
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'severity' | 'notification' | null>(null)
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
   const [pendingIds, setPendingIds] = useState<number[]>([])
+
+  const { data: allItems, isLoading } = useQuery({
+    queryKey: ['monitoring-items'],
+    queryFn: async () => (await apiFetch('/api/v1/monitoring?include_deleted=true')).json()
+  })
+
+  const detailRoute = useOperationalDetailRoute({
+    allItems,
+    detailItem,
+    setDetailItem,
+    isEditOpen: isFormOpen,
+    isHistoryOpen: !!historyItem,
+    isLinkOpen: false,
+    setActiveTab,
+  })
+
+  // allItems query and detailRoute hook moved to top of component to be in scope for callbacks
   const displayMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const viewsMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const bulkMenuButtonRef = useRef<HTMLButtonElement | null>(null)
@@ -561,6 +580,34 @@ export default function MonitoringGrid() {
   const [bulkMenuStyle, setBulkMenuStyle] = useState<React.CSSProperties>({})
   const lastUndoRef = useRef<any>(null)
   const [newViewName, setNewViewName] = useState('')
+
+  const isWorkspaceDirty = useMemo(() => {
+    return isFormDirty || isBulkEditDirty || isConfigDirty || (showViewsMenu && newViewName.trim() !== '')
+  }, [isFormDirty, isBulkEditDirty, isConfigDirty, showViewsMenu, newViewName])
+
+
+
+  useEffect(() => {
+    if (!isWorkspaceDirty) return
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isWorkspaceDirty])
+
+  useEffect(() => {
+    if (!isFormOpen) setIsFormDirty(false)
+  }, [isFormOpen])
+
+  useEffect(() => {
+    if (!showBulkEditModal) setIsBulkEditDirty(false)
+  }, [showBulkEditModal])
+
+  useEffect(() => {
+    if (!showRegistry) setIsConfigDirty(false)
+  }, [showRegistry])
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
   const autoSizeFrameRef = useRef<number | null>(null)
   const autoSizeTimeoutRef = useRef<number | null>(null)
@@ -815,7 +862,7 @@ export default function MonitoringGrid() {
   ])
 
   const getRowClass = useCallback((params: any) => {
-    let classes = params.node.rowIndex % 2 === 0 ? 'monitoring-grid-row-even' : 'monitoring-grid-row-odd'
+    let classes = params.node.rowIndex % 2 === 0 ? 'operational-grid-row-even' : 'operational-grid-row-odd'
     if (params.data && pendingIds.includes(params.data.id)) {
       classes += ' row-ghost opacity-40 grayscale pointer-events-none'
     }
@@ -889,8 +936,8 @@ export default function MonitoringGrid() {
 
   const { handleRowClicked, handleRowDoubleClicked, selectionAnchorRef } = useOperationalRowInteractions({
     onRowDoubleClick: useCallback((item) => {
-      setDetailItem(item)
-    }, []),
+      detailRoute.openDetail(item)
+    }, [detailRoute]),
     pendingIds
   })
 
@@ -923,7 +970,7 @@ export default function MonitoringGrid() {
           type="button"
           onClick={(event) => {
             event.stopPropagation()
-            setDetailItem(item)
+            detailRoute.openDetail(item)
           }}
           title="Open details"
           className="rounded-lg p-1 text-blue-400 transition-all hover:bg-blue-400/10 active:scale-90"
@@ -1219,10 +1266,7 @@ export default function MonitoringGrid() {
     }
   }, [showBulkMenu, showDisplayMenu, showViewsMenu])
 
-  const { data: allItems, isLoading } = useQuery({
-    queryKey: ['monitoring-items'],
-    queryFn: async () => (await apiFetch('/api/v1/monitoring?include_deleted=true')).json()
-  })
+
 
   const lifecycleCounts = useMemo(() => {
     if (!Array.isArray(allItems)) return { existing: 0, archived: 0 }
@@ -1401,19 +1445,7 @@ export default function MonitoringGrid() {
     }
   }, [bulkDraft, expandedBulkSection, selectedItems])
 
-  useEffect(() => {
-    if (!idParam || !Array.isArray(allItems)) return
-    const target = allItems.find((item: any) => String(item.id) === idParam)
-    if (!target) {
-      setDetailItem((current: any) => (current && String(current.id) === idParam ? null : current))
-      const nextParams = new URLSearchParams(searchParams)
-      nextParams.delete('id')
-      navigate({ search: nextParams.toString() ? `?${nextParams.toString()}` : '' }, { replace: true })
-      return
-    }
-    setActiveTab(target.is_deleted ? 'deleted' : 'active')
-    setDetailItem(target)
-  }, [allItems, idParam, navigate, searchParams])
+
 
   useEffect(() => {
     selectionAnchorRef.current = null
@@ -1973,7 +2005,7 @@ export default function MonitoringGrid() {
             isOpen={showViewsMenu}
             panelStyle={viewsMenuStyle}
             entityLabel="Monitoring"
-            onClose={() => setShowViewsMenu(false)}
+            onClose={dismissWorkspaceMenus}
             activeViewId={activeViewId}
             currentViewName={activeViewId ? savedViews.find((view) => view.id === activeViewId)?.name || 'Unsaved working view' : 'Unsaved working view'}
             newViewName={newViewName}
@@ -2133,7 +2165,7 @@ export default function MonitoringGrid() {
                   <div className="grid grid-cols-3 gap-2 px-2 pb-3 border-b border-slate-800 mb-2">
                     <button
                       onClick={() => {
-                        setDetailItem(rowActionMenu.item)
+                        detailRoute.openDetail(rowActionMenu.item)
                         setRowActionMenu(null)
                       }}
                       className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-blue-400 transition-all hover:border-blue-500/30 hover:bg-blue-600/10 active:scale-95"
@@ -2378,8 +2410,17 @@ export default function MonitoringGrid() {
 
       <ConfirmationModal 
         isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-        onConfirm={confirmModal.onConfirm}
+        onClose={() => {
+          if (confirmModal.onClose) {
+            confirmModal.onClose()
+          } else {
+            setConfirmModal((prev: any) => ({ ...prev, isOpen: false }))
+          }
+        }}
+        onConfirm={() => {
+          if (confirmModal.onConfirm) confirmModal.onConfirm()
+          setConfirmModal((prev: any) => ({ ...prev, isOpen: false }))
+        }}
         title={confirmModal.title}
         message={confirmModal.message}
         variant={confirmModal.variant}
@@ -2398,28 +2439,45 @@ export default function MonitoringGrid() {
             operators={operators || []}
             notificationMethods={notificationMethods}
             ownerRoles={ownerRoles}
-            onClose={() => setIsFormOpen(false)} 
+            onClose={() => {
+              setIsFormOpen(false)
+              detailRoute.finishTransition()
+            }} 
             onSuccess={() => {
               queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
               if (editingItem?.id) {
                 queryClient.invalidateQueries({ queryKey: ['monitoring-history', editingItem.id] })
               }
               setIsFormOpen(false)
+              detailRoute.finishTransition()
             }}
+            onDirtyChange={setIsFormDirty}
           />
         )}
         {detailItem && (
           <MonitoringDetailModal
             key={`monitoring-detail-${detailItem.id}`}
             item={detailItem}
-            onClose={() => { setDetailItem(null); setDetailDeleteConfirm(false); }}
-            onEdit={(monitor: any) => { setDetailItem(null); setEditingItem(monitor); setIsFormOpen(true); setDetailDeleteConfirm(false); }}
-            onOpenHistory={(monitor: any) => { setDetailItem(null); setHistoryItem(monitor); setDetailDeleteConfirm(false); }}
+            onClose={() => { detailRoute.closeDetail(); setDetailDeleteConfirm(false); }}
+            onEdit={(monitor: any) => {
+              detailRoute.openEditFromDetail(monitor, () => {
+                setEditingItem(monitor);
+                setIsFormOpen(true);
+                setDetailDeleteConfirm(false);
+              })
+            }}
+            onOpenHistory={(monitor: any) => {
+              detailRoute.openHistoryFromDetail(monitor, () => {
+                setHistoryItem(monitor);
+                setDetailDeleteConfirm(false);
+              })
+            }}
             onOpenBkm={(monitor: any) => {
               const recoveryDocs = monitor.recovery_docs || []
-              setDetailItem(null)
-              setBkmPopup({ docs: recoveryDocs, ids: recoveryDocs, titles: monitor.recovery_doc_titles || [], monitorId: monitor.id })
-              setDetailDeleteConfirm(false)
+              detailRoute.openEditFromDetail(monitor, () => {
+                setBkmPopup({ docs: recoveryDocs, ids: recoveryDocs, titles: monitor.recovery_doc_titles || [], monitorId: monitor.id })
+                setDetailDeleteConfirm(false)
+              })
             }}
             onDelete={(monitor: any) => {
               if (!detailDeleteConfirm) {
@@ -2427,7 +2485,7 @@ export default function MonitoringGrid() {
                 return
               }
               bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [monitor.id] })
-              setDetailItem(null)
+              detailRoute.closeDetail()
               setDetailDeleteConfirm(false)
             }}
             onOpenAsset={(deviceId: number) => navigate(`/asset?id=${deviceId}`)}
@@ -2435,7 +2493,7 @@ export default function MonitoringGrid() {
             deleteConfirm={detailDeleteConfirm}
           />
         )}
-        {historyItem && <MonitoringHistoryModal key={`monitoring-history-${historyItem.id}`} item={historyItem} onClose={() => setHistoryItem(null)} />}
+        {historyItem && <MonitoringHistoryModal key={`monitoring-history-${historyItem.id}`} item={historyItem} onClose={() => { setHistoryItem(null); detailRoute.finishTransition(); }} />}
         {recipientPopup && <RecipientsModal key={`monitoring-recipients-${recipientPopup.method}-${recipientPopup.recipients.join('|')}`} recipients={recipientPopup.recipients} method={recipientPopup.method} onClose={() => setRecipientPopup(null)} />}
         {bkmPopup && (
           <BkmListModal 
@@ -2443,10 +2501,10 @@ export default function MonitoringGrid() {
             docs={bkmPopup.docs} 
             monitorId={bkmPopup.monitorId}
             onOpenBkm={setActiveBkm} 
-            onClose={() => setBkmPopup(null)} 
+            onClose={() => { setBkmPopup(null); detailRoute.finishTransition(); }} 
           />
         )}
-        {activeBkm && <BkmDetailModal key={`monitoring-bkm-detail-${activeBkm}`} bkmId={activeBkm} onClose={() => setActiveBkm(null)} />}
+        {activeBkm && <BkmDetailModal key={`monitoring-bkm-detail-${activeBkm}`} bkmId={activeBkm} onClose={() => { setActiveBkm(null); detailRoute.finishTransition(); }} />}
         {compareOpen && <CompareMonitorsModal key={`monitoring-compare-${compareItems.map((item) => item.id).join('-') || 'empty'}`} items={compareItems} onClose={() => setCompareOpen(false)} />}
         {showBulkEditModal && (
           <BulkEditTableModal
@@ -2461,6 +2519,7 @@ export default function MonitoringGrid() {
               queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
               setShowBulkEditModal(false)
             }}
+            onDirtyChange={setIsBulkEditDirty}
           />
         )}
         <OperationalImportModal
@@ -2480,6 +2539,7 @@ export default function MonitoringGrid() {
                 { title: "Platforms", category: "MonitoringPlatform", icon: Globe },
                 { title: "Notification Methods", category: "NotificationMethod", icon: Bell },
             ]}
+            onDirtyChange={setIsConfigDirty}
         />
       </AnimatePresence>
 
@@ -2701,7 +2761,7 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     return null;
 }
 
-function BulkEditTableModal({ items, teams, operators, severities, notificationMethods, onClose, onSuccess }: any) {
+function BulkEditTableModal({ items, teams, operators, severities, notificationMethods, onClose, onSuccess, onDirtyChange }: any) {
   const [rows, setRows] = useState(() => items.map((item: any) => ({
     id: item.id,
     title: item.title,
@@ -2716,6 +2776,26 @@ function BulkEditTableModal({ items, teams, operators, severities, notificationM
     is_active: item.is_active !== false,
   })))
   const [isMaximized, setIsMaximized] = useState(false)
+
+  const initialDirtySnapshot = useMemo(() => JSON.stringify(items.map((item: any) => ({
+    id: item.id,
+    title: item.title,
+    status: item.status || '',
+    severity: item.severity || '',
+    notification_method: item.notification_method || '',
+    owner_team: item.owner_team || '',
+    owner_user_ids: stringifyOwnerUserIds(item.owners || []),
+    check_interval: item.check_interval ?? '',
+    alert_duration: item.alert_duration ?? '',
+    notification_throttle: item.notification_throttle ?? '',
+    is_active: item.is_active !== false,
+  }))), [items])
+
+  const isDirty = useMemo(() => JSON.stringify(rows) !== initialDirtySnapshot, [rows, initialDirtySnapshot])
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
 
   const updateRow = (rowId: number, field: string, value: any) => {
     setRows((current: any[]) => current.map((row: any) => row.id === rowId ? { ...row, [field]: value } : row))
@@ -2759,6 +2839,7 @@ function BulkEditTableModal({ items, teams, operators, severities, notificationM
       size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+      isDirty={isDirty}
       title="Bulk Edit Monitoring"
       subtitle="Safe table-based edits for selected monitors."
       icon={<Edit2 size={20} />}

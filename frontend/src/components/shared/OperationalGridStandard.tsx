@@ -460,7 +460,7 @@ export function createOperationalActiveDotColumn({
     resizable: true,
     operationalSkipAutoSize: true,
     cellClass: OPERATIONAL_GRID_CLASSES.activeDotCell,
-    headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
+    headerClass: OPERATIONAL_GRID_CLASSES.activeDotHeader,
     cellRenderer: (p: any) => renderOperationalActiveDotCell({
       value: Boolean(p.value),
       isDeleted: getIsDeleted?.(p) ?? false,

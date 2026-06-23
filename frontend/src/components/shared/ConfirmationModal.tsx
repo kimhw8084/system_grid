@@ -60,7 +60,7 @@ export const ConfirmationModal = ({
           </button>
           <button
             type="button"
-            onClick={() => { onConfirm(); onClose(); }}
+            onClick={onConfirm}
             className={`rounded-lg px-6 py-2 ${getVariantColor()} text-[10px] font-black uppercase text-white shadow-lg transition-all active:scale-95`}
           >
             {confirmText}

@@ -258,12 +258,12 @@
   word-wrap: normal !important;
 }
 
-.monitoring-grid-shell .ag-root-wrapper {
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-root-wrapper {
   border: 0 !important;
   background: transparent !important;
 }
 
-.monitoring-grid-shell.ag-theme-alpine-dark {
+:is(.operational-grid-shell, .monitoring-grid-shell).ag-theme-alpine-dark {
   --ag-background-color: #1a1b26;
   --ag-header-background-color: #24283b;
   --ag-border-color: rgba(255, 255, 255, 0.05);
@@ -271,13 +271,13 @@
   --ag-header-foreground-color: #3b82f6;
 }
 
-.monitoring-grid-shell .ag-header {
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-header {
   background: var(--grid-header-bg) !important;
   border-bottom: 1px solid var(--grid-border) !important;
 }
 
-.monitoring-grid-shell .ag-header-cell,
-.monitoring-grid-shell .ag-header-group-cell {
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-header-cell,
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-header-group-cell {
   background: transparent !important;
   border-color: rgba(255, 255, 255, 0.05) !important;
   font-size: 9px !important;
@@ -286,8 +286,8 @@
   text-transform: uppercase !important;
 }
 
-.monitoring-grid-shell .ag-header-cell-label,
-.monitoring-grid-shell .ag-header-group-cell-label {
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-header-cell-label,
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-header-group-cell-label {
   font-size: var(--ag-font-size, 11px) !important;
   font-weight: 700 !important;
   justify-content: center !important;
@@ -297,12 +297,12 @@
   padding-right: 10px !important;
 }
 
-.monitoring-grid-shell .ag-cell,
-.monitoring-grid-shell .ag-cell-value,
-.monitoring-grid-shell .ag-header-cell-label,
-.monitoring-grid-shell .ag-header-cell-text,
-.monitoring-grid-shell .ag-header-group-cell-label,
-.monitoring-grid-shell .ag-header-group-cell-text {
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-cell,
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-cell-value,
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-header-cell-label,
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-header-cell-text,
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-header-group-cell-label,
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-header-group-cell-text {
   white-space: nowrap !important;
   word-break: normal !important;
   overflow-wrap: normal !important;
@@ -311,7 +311,7 @@
   min-width: 0 !important;
 }
 
-.monitoring-grid-shell .ag-cell {
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-cell {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -321,7 +321,7 @@
   font-weight: 700 !important;
 }
 
-.monitoring-grid-shell .ag-header-cell-resize {
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-header-cell-resize {
   width: 10px !important;
   right: 0 !important;
   cursor: col-resize !important;
@@ -329,124 +329,124 @@
   z-index: 6 !important;
 }
 
-.monitoring-grid-shell .ag-row {
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-row {
   border-color: rgba(255, 255, 255, 0.05) !important;
 }
 
-.monitoring-grid-shell .monitoring-grid-row-even {
+:is(.operational-grid-shell, .monitoring-grid-shell) :is(.operational-grid-row-even, .monitoring-grid-row-even) {
   background: rgba(255, 255, 255, 0.02) !important;
 }
 
-.monitoring-grid-shell .monitoring-grid-row-odd {
+:is(.operational-grid-shell, .monitoring-grid-shell) :is(.operational-grid-row-odd, .monitoring-grid-row-odd) {
   background: transparent !important;
 }
 
-.monitoring-grid-shell .ag-row-hover.monitoring-grid-row-even,
-.monitoring-grid-shell .ag-row-hover.monitoring-grid-row-odd {
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-row-hover:is(.operational-grid-row-even, .monitoring-grid-row-even),
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-row-hover:is(.operational-grid-row-odd, .monitoring-grid-row-odd) {
   background: rgba(255, 255, 255, 0.05) !important;
 }
 
-.monitoring-grid-shell .ag-row-selected.monitoring-grid-row-even,
-.monitoring-grid-shell .ag-row-selected.monitoring-grid-row-odd {
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-row-selected:is(.operational-grid-row-even, .monitoring-grid-row-even),
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-row-selected:is(.operational-grid-row-odd, .monitoring-grid-row-odd) {
   background: rgba(59, 130, 246, 0.1) !important;
 }
 
-.monitoring-grid-shell .ag-row-hover {
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-row-hover {
   background-color: rgba(255, 255, 255, 0.05) !important;
 }
 
-.monitoring-grid-shell .ag-row-selected {
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-row-selected {
   background-color: rgba(59, 130, 246, 0.2) !important;
 }
 
-.monitoring-grid-shell .ag-center-cols-viewport,
-.monitoring-grid-shell .ag-body-viewport,
-.monitoring-grid-shell .ag-body-horizontal-scroll-viewport,
-.monitoring-grid-shell .ag-center-cols-container {
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-center-cols-viewport,
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-body-viewport,
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-body-horizontal-scroll-viewport,
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-center-cols-container {
   background: transparent !important;
 }
 
-.monitoring-grid-shell .ag-side-bar {
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-side-bar {
   background-color: #24283b !important;
   border-left: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
 
-.monitoring-grid-shell .row-action-trigger {
+:is(.operational-grid-shell, .monitoring-grid-shell) .row-action-trigger {
   opacity: 1;
 }
 
-.monitoring-grid-shell .operational-grid-utility-cell,
-.monitoring-grid-shell .operational-grid-utility-header,
-.monitoring-grid-shell .operational-grid-id-cell,
-.monitoring-grid-shell .operational-grid-id-header {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-utility-cell,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-utility-header,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-id-cell,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-id-header {
   border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
 
-.monitoring-grid-shell .operational-grid-action-cell,
-.monitoring-grid-shell .operational-grid-action-header {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-action-cell,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-action-header {
   border-left: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
 
-.monitoring-grid-shell .operational-grid-utility-cell,
-.monitoring-grid-shell .operational-grid-id-cell,
-.monitoring-grid-shell .operational-grid-centered-cell {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-utility-cell,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-id-cell,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-centered-cell {
   justify-content: center !important;
   text-align: center !important;
 }
 
-.monitoring-grid-shell .operational-grid-primary-cell {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-primary-cell {
   justify-content: center !important;
   text-align: center !important;
 }
 
-.monitoring-grid-shell .operational-grid-left-body-cell {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-left-body-cell {
   justify-content: flex-start !important;
   text-align: left !important;
 }
 
-.monitoring-grid-shell .operational-grid-left-body-wrap-cell {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-left-body-wrap-cell {
   justify-content: flex-start !important;
   text-align: left !important;
 }
 
-.monitoring-grid-shell .operational-grid-action-cell {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-action-cell {
   justify-content: center !important;
   text-align: center !important;
 }
 
-.monitoring-grid-shell .operational-grid-primary-header {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-primary-header {
   text-align: center !important;
 }
 
-.monitoring-grid-shell .operational-grid-centered-header,
-.monitoring-grid-shell .operational-grid-utility-header,
-.monitoring-grid-shell .operational-grid-id-header,
-.monitoring-grid-shell .operational-grid-action-header {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-centered-header,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-utility-header,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-id-header,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-action-header {
   text-align: center !important;
 }
 
-.monitoring-grid-shell .operational-grid-utility-header .ag-header-cell-label {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-utility-header .ag-header-cell-label {
   padding-right: 0 !important;
 }
 
-.monitoring-grid-shell .operational-grid-utility-cell .ag-selection-checkbox,
-.monitoring-grid-shell .operational-grid-utility-header .ag-header-select-all,
-.monitoring-grid-shell .operational-grid-utility-header .ag-selection-checkbox,
-.monitoring-grid-shell .operational-grid-utility-cell .ag-checkbox-input-wrapper,
-.monitoring-grid-shell .operational-grid-utility-header .ag-checkbox-input-wrapper {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-utility-cell .ag-selection-checkbox,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-utility-header .ag-header-select-all,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-utility-header .ag-selection-checkbox,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-utility-cell .ag-checkbox-input-wrapper,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-utility-header .ag-checkbox-input-wrapper {
   margin-right: 0 !important;
   overflow: visible !important;
 }
 
-.monitoring-grid-shell .operational-grid-overflow-visible {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-overflow-visible {
   overflow: visible !important;
 }
 
-.monitoring-grid-shell .operational-grid-overflow-visible > * {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-overflow-visible > * {
   overflow: visible !important;
 }
 
-.monitoring-grid-shell .operational-grid-text {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-text {
   display: block;
   width: 100%;
   min-width: 0;
@@ -456,24 +456,24 @@
   white-space: nowrap;
 }
 
-.monitoring-grid-shell .operational-grid-plain-value {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-plain-value {
   color: var(--text-primary) !important;
   font-weight: 700 !important;
 }
 
-.monitoring-grid-shell .operational-grid-empty-value {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-empty-value {
   color: var(--text-secondary) !important;
   font-weight: 700 !important;
 }
 
-.monitoring-grid-shell .operational-grid-primary-text,
-.monitoring-grid-shell .operational-grid-primary-button {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-primary-text,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-primary-button {
   color: var(--text-primary) !important;
   font-weight: 700 !important;
   letter-spacing: -0.01em;
 }
 
-.monitoring-grid-shell .operational-grid-icon-value {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-icon-value {
   display: flex;
   width: 100%;
   min-width: 0;
@@ -484,8 +484,8 @@
   white-space: nowrap;
 }
 
-.monitoring-grid-shell .ag-cell:not(.operational-grid-overflow-visible) > *,
-.monitoring-grid-shell .ag-cell-value:not(.operational-grid-overflow-visible) > * {
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-cell:not(.operational-grid-overflow-visible) > *,
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-cell-value:not(.operational-grid-overflow-visible) > * {
   min-width: 0 !important;
   max-width: 100% !important;
   overflow: hidden !important;
@@ -493,92 +493,75 @@
   white-space: nowrap !important;
 }
 
-.monitoring-grid-shell .operational-grid-utility-cell .operational-grid-text,
-.monitoring-grid-shell .operational-grid-id-cell .operational-grid-text,
-.monitoring-grid-shell .operational-grid-centered-cell .operational-grid-text,
-.monitoring-grid-shell .operational-grid-action-cell .operational-grid-text,
-.monitoring-grid-shell .operational-grid-centered-cell .operational-grid-icon-value,
-.monitoring-grid-shell .operational-grid-action-cell .operational-grid-icon-value {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-utility-cell .operational-grid-text,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-id-cell .operational-grid-text,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-centered-cell .operational-grid-text,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-action-cell .operational-grid-text,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-centered-cell .operational-grid-icon-value,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-action-cell .operational-grid-icon-value {
   text-align: center !important;
 }
 
-.monitoring-grid-shell .operational-grid-primary-cell .operational-grid-text,
-.monitoring-grid-shell .operational-grid-primary-cell .operational-grid-icon-value,
-.monitoring-grid-shell .operational-grid-left-body-cell .operational-grid-text,
-.monitoring-grid-shell .operational-grid-left-body-cell .operational-grid-icon-value,
-.monitoring-grid-shell .operational-grid-left-body-wrap-cell .operational-grid-text,
-.monitoring-grid-shell .operational-grid-left-body-wrap-cell .operational-grid-icon-value {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-primary-cell .operational-grid-text,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-primary-cell .operational-grid-icon-value,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-left-body-cell .operational-grid-text,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-left-body-cell .operational-grid-icon-value,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-left-body-wrap-cell .operational-grid-text,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-left-body-wrap-cell .operational-grid-icon-value {
   text-align: center !important;
 }
 
-.monitoring-grid-shell .operational-grid-left-body-cell .operational-grid-text,
-.monitoring-grid-shell .operational-grid-left-body-cell .operational-grid-icon-value,
-.monitoring-grid-shell .operational-grid-left-body-wrap-cell .operational-grid-text,
-.monitoring-grid-shell .operational-grid-left-body-wrap-cell .operational-grid-icon-value {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-left-body-cell .operational-grid-text,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-left-body-cell .operational-grid-icon-value,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-left-body-wrap-cell .operational-grid-text,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-left-body-wrap-cell .operational-grid-icon-value {
   text-align: left !important;
 }
 
-.monitoring-grid-shell .operational-grid-primary-button {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-primary-button {
   width: 100%;
   background: transparent;
   text-align: center;
   transition: color 150ms ease;
 }
 
-.monitoring-grid-shell .operational-grid-primary-button:hover {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-primary-button:hover {
   color: #ffffff !important;
 }
 
-/* Source of truth: scoped operational grid CSS hardening. */
-:is(.monitoring-grid-shell, .operational-grid-shell) .ag-root-wrapper {
-  border: 0 !important;
-  background: transparent !important;
-}
-
-:is(.monitoring-grid-shell, .operational-grid-shell) .ag-cell,
-:is(.monitoring-grid-shell, .operational-grid-shell) .ag-cell-value,
-:is(.monitoring-grid-shell, .operational-grid-shell) .ag-header-cell-label,
-:is(.monitoring-grid-shell, .operational-grid-shell) .ag-header-cell-text,
-:is(.monitoring-grid-shell, .operational-grid-shell) .ag-header-group-cell-label,
-:is(.monitoring-grid-shell, .operational-grid-shell) .ag-header-group-cell-text {
-  white-space: nowrap !important;
-  word-break: normal !important;
-  overflow-wrap: normal !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  min-width: 0 !important;
-}
-
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-utility-cell,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-utility-header,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-select-cell,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-select-header,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-favorite-cell,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-favorite-header,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-watch-cell,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-watch-header,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-recent-change-cell,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-recent-change-header,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-id-cell,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-id-header,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-active-dot-cell,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-active-dot-header,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-action-cell,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-action-header {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-utility-cell,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-utility-header,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-select-cell,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-select-header,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-favorite-cell,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-favorite-header,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-watch-cell,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-watch-header,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-recent-change-cell,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-recent-change-header,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-id-cell,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-id-header,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-active-dot-header,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-action-cell,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-action-header {
   overflow: visible !important;
 }
 
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-utility-cell,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-utility-header {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-active-dot-cell {
+  overflow: hidden !important;
+}
+
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-utility-cell,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-utility-header {
   padding-left: 6px !important;
   padding-right: 6px !important;
 }
 
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-select-cell .ag-selection-checkbox,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-select-header .ag-header-select-all,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-select-header .ag-selection-checkbox,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-select-cell .ag-checkbox-input-wrapper,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-select-header .ag-checkbox-input-wrapper {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-select-cell .ag-selection-checkbox,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-select-header .ag-header-select-all,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-select-header .ag-selection-checkbox,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-select-cell .ag-checkbox-input-wrapper,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-select-header .ag-checkbox-input-wrapper {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -587,13 +570,13 @@
   overflow: visible !important;
 }
 
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-text,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-icon-value {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-text,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-icon-value {
   min-width: 0 !important;
 }
 
-:is(.monitoring-grid-shell, .operational-grid-shell) .ag-cell:not(.operational-grid-overflow-visible) > *,
-:is(.monitoring-grid-shell, .operational-grid-shell) .ag-cell-value:not(.operational-grid-overflow-visible) > * {
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-cell:not(.operational-grid-overflow-visible) > *,
+:is(.operational-grid-shell, .monitoring-grid-shell) .ag-cell-value:not(.operational-grid-overflow-visible) > * {
   min-width: 0 !important;
   max-width: 100% !important;
   overflow: hidden !important;
@@ -601,25 +584,25 @@
   white-space: nowrap !important;
 }
 
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-utility-cell .operational-grid-text,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-id-cell .operational-grid-text,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-centered-cell .operational-grid-text,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-action-cell .operational-grid-text,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-centered-cell .operational-grid-icon-value,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-action-cell .operational-grid-icon-value {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-utility-cell .operational-grid-text,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-id-cell .operational-grid-text,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-centered-cell .operational-grid-text,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-action-cell .operational-grid-text,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-centered-cell .operational-grid-icon-value,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-action-cell .operational-grid-icon-value {
   text-align: center !important;
 }
 
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-left-body-wrap-cell .operational-grid-text,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-left-body-wrap-cell .operational-grid-icon-value {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-left-body-wrap-cell .operational-grid-text,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-left-body-wrap-cell .operational-grid-icon-value {
   white-space: normal !important;
   overflow: visible !important;
   text-overflow: clip !important;
 }
 
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-action-cell .row-action-trigger,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-action-cell button,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-action-button {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-action-cell .row-action-trigger,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-action-cell button,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-action-button {
   min-width: 28px !important;
   min-height: 28px !important;
   display: inline-flex !important;
@@ -629,13 +612,13 @@
   border-radius: 0.5rem !important;
 }
 
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-action-cell button svg,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-action-button svg {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-action-cell button svg,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-action-button svg {
   width: 14px !important;
   height: 14px !important;
 }
 
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-badge {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-badge {
   display: inline-flex !important;
   max-width: 100% !important;
   min-width: 0 !important;
@@ -651,7 +634,7 @@
   line-height: 1 !important;
 }
 
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-badge-text {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-badge-text {
   display: block !important;
   max-width: 100% !important;
   min-width: 0 !important;
@@ -661,7 +644,7 @@
   line-height: 1 !important;
 }
 
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-action-link {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-action-link {
   display: inline-flex !important;
   max-width: 100% !important;
   min-width: 0 !important;
@@ -670,40 +653,38 @@
   overflow: hidden !important;
 }
 
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-action-link .operational-grid-text {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-action-link .operational-grid-text {
   width: auto !important;
   max-width: 100% !important;
 }
 
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-active-dot-wrap,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-active-dot-frame,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-active-dot-cell .ag-cell-value,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-active-dot-cell > div {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-active-dot-wrap,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-active-dot-frame {
   overflow: visible !important;
 }
 
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-active-dot-frame {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-active-dot-frame {
   width: 12px !important;
   height: 12px !important;
 }
 
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-active-dot,
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-active-dot-pulse {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-active-dot,
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-active-dot-pulse {
   border-radius: 9999px !important;
 }
 
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-active-dot {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-active-dot {
   width: 8px !important;
   height: 8px !important;
   box-shadow: none !important;
 }
 
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-active-dot-pulse {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-active-dot-pulse {
   animation: operational-grid-dot-pulse 1.55s ease-out infinite;
 }
 
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-action-cell [class*='rounded-lg border'],
-:is(.monitoring-grid-shell, .operational-grid-shell) .operational-grid-centered-cell [class*='rounded-lg border'] {
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-action-cell [class*='rounded-lg border'],
+:is(.operational-grid-shell, .monitoring-grid-shell) .operational-grid-centered-cell [class*='rounded-lg border'] {
   min-height: 20px !important;
   border-radius: 0.5rem !important;
 }
@@ -714,7 +695,7 @@
     opacity: 0.62;
   }
   100% {
-    transform: scale(1.32);
+    transform: scale(1.22);
     opacity: 0;
   }
 }

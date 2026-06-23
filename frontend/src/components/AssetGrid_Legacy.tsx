@@ -1442,7 +1442,7 @@ export default function AssetGrid() {
       <ConfirmationModal 
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-        onConfirm={confirmModal.onConfirm}
+        onConfirm={() => { confirmModal.onConfirm?.(); setConfirmModal((prev: any) => ({ ...prev, isOpen: false })); }}
         title={confirmModal.title}
         message={confirmModal.message}
         variant={confirmModal.variant}
@@ -1762,7 +1762,7 @@ const HWTable = ({ deviceId }: { deviceId: number }) => {
       <ConfirmationModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({...confirmModal, isOpen: false})}
-        onConfirm={confirmModal.onConfirm}
+        onConfirm={() => { confirmModal.onConfirm?.(); setConfirmModal((prev: any) => ({ ...prev, isOpen: false })); }}
         title={confirmModal.title}
         message={confirmModal.message}
         variant="danger"
@@ -1924,7 +1924,7 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
       <ConfirmationModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({...confirmModal, isOpen: false})}
-        onConfirm={confirmModal.onConfirm}
+        onConfirm={() => { confirmModal.onConfirm?.(); setConfirmModal((prev: any) => ({ ...prev, isOpen: false })); }}
         title={confirmModal.title}
         message={confirmModal.message}
         variant="danger"
@@ -2197,7 +2197,7 @@ const RelationsTable = ({ deviceId }: { deviceId: number }) => {
       <ConfirmationModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({...confirmModal, isOpen: false})}
-        onConfirm={confirmModal.onConfirm}
+        onConfirm={() => { confirmModal.onConfirm?.(); setConfirmModal((prev: any) => ({ ...prev, isOpen: false })); }}
         title={confirmModal.title}
         message={confirmModal.message}
         variant="danger"

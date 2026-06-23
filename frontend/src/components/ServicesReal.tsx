@@ -52,11 +52,10 @@ import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHa
 import { WorkspaceCompareShell, WorkspaceDossierShell } from './shared/WorkspaceModalShells'
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
 import { OperationalImportModal } from './shared/OperationalImportModal'
-import { OperationalGridMatrix } from './shared/OperationalGridMatrix'
+import { OperationalDataGrid } from './shared/OperationalDataGrid'
 import {
   OperationalAnchoredPanel,
   OperationalDisplayPanel,
-  OperationalGridSurface,
   OperationalGroupedGridSection,
   OperationalGroupedGridView,
   OperationalSavedViewsPanel,
@@ -69,7 +68,6 @@ import {
   autoSizeOperationalColumns,
   getOperationalColumnLayoutSnapshot,
   normalizeOperationalColumnLayout,
-  OPERATIONAL_GRID_AUTO_SIZE_STRATEGY,
   sanitizeOperationalColumnLayout,
   sanitizeOperationalFilterModel,
   sanitizeOperationalSortModel,
@@ -864,7 +862,7 @@ export default function ServicesReal() {
   }, [autoSizeServiceColumns])
 
   const getRowClass = useCallback((params: any) => {
-    let classes = params.node.rowIndex % 2 === 0 ? 'service-grid-row-even' : 'service-grid-row-odd'
+    let classes = params.node.rowIndex % 2 === 0 ? 'operational-grid-row-even' : 'operational-grid-row-odd'
     if (params.data && pendingIds.includes(params.data.id)) {
       classes += ' row-ghost opacity-40 grayscale pointer-events-none'
     }
@@ -2038,10 +2036,34 @@ export default function ServicesReal() {
 }, [fontSize, hiddenColumns, columnLayoutState, isIntelligenceExpanded, preserveExplicitColumnWidths]) as any
 
   const gridContext = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
-  const autoSizeStrategy = useMemo(
-    () => (preserveExplicitColumnWidths ? undefined : OPERATIONAL_GRID_AUTO_SIZE_STRATEGY),
-    [preserveExplicitColumnWidths]
-  )
+  const serviceGridRuntime = useMemo(() => ({
+    preserveExplicitColumnWidths,
+    handleGridReady,
+    handleColumnResized: handleServiceColumnResized,
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
+    handleFilterChanged,
+    handleSortChanged,
+  }), [
+    preserveExplicitColumnWidths,
+    handleGridReady,
+    handleServiceColumnResized,
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
+    handleFilterChanged,
+    handleSortChanged,
+  ])
+  const serviceRowInteractions = useMemo(() => ({
+    handleRowClicked,
+    handleRowDoubleClicked,
+  }), [handleRowClicked, handleRowDoubleClicked])
+  const serviceContextMenu = useMemo(() => ({
+    handleCellContextMenu,
+  }), [handleCellContextMenu])
 
   return (
    <OperationalWorkspaceShell
@@ -2479,45 +2501,26 @@ export default function ServicesReal() {
     >
 
       {groupBy === 'raw' ? (
-	        <OperationalGridSurface
-            className="service-grid-shell service-grid"
-            style={{ 
-              '--ag-font-size': `${fontSize}px`,
-              '--ag-font-family': "'Inter', sans-serif",
-            } as React.CSSProperties}
-            loading={isLoading}
-            loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
-            loadingLabel={<p className="text-[10px] font-semibold text-blue-400">Scanning service registry...</p>}
-          >
-	          <OperationalGridMatrix
+	        <OperationalDataGrid
             gridRef={gridRef}
-	            rowData={displayedItemsInOrder || []} 
-	            columnDefs={columnDefs} 
-            autoSizeStrategy={autoSizeStrategy}
-            colResizeDefault="normal"
+            rows={displayedItemsInOrder || []}
+            columnDefs={columnDefs}
+            runtime={serviceGridRuntime}
+            rowInteractions={serviceRowInteractions}
+            contextMenu={serviceContextMenu}
             fontSize={fontSize}
             rowDensity={rowDensity}
             context={gridContext}
             getRowId={handleRowId}
-            onGridReady={handleGridReady}
-	            onSelectionChanged={(e) => handleSelectionChanged(e, 'raw')}
-            onColumnResized={handleServiceColumnResized}
-            onColumnMoved={handleColumnMoved}
-            onDragStopped={handleDragStopped}
-            onColumnPinned={handleColumnPinned}
-            onColumnVisible={handleColumnVisible}
-            onFilterChanged={handleFilterChanged}
-	            onSortChanged={handleSortChanged}
-            onCellContextMenu={handleCellContextMenu}
-	            onRowClicked={handleRowClicked}
-            onRowDoubleClicked={handleRowDoubleClicked}
+            onSelectionChanged={(e) => handleSelectionChanged(e, 'raw')}
             getRowClass={getRowClass}
             onFirstDataRendered={handleGridDataUpdated}
             onRowDataUpdated={handleGridDataUpdated}
             noRowsLabel="No service data found"
-	          />
-
-	        </OperationalGridSurface>
+            loading={isLoading}
+            loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
+            loadingLabel={<p className="text-[10px] font-semibold text-blue-400">Scanning service registry...</p>}
+          />
       ) : (
         <OperationalGroupedGridView
           summary={(
@@ -2567,40 +2570,23 @@ export default function ServicesReal() {
                 onToggle={() => setCollapsedGroups((current) => ({ ...current, [section.key]: !current[section.key] }))}
               >
                 {!isCollapsed ? (
-                  <OperationalGridSurface
-                    className="service-grid-shell service-grid w-full"
-                    style={{ 
-                      '--ag-font-size': `${fontSize}px`,
-                      '--ag-font-family': "'Inter', sans-serif",
-                      height: `${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px`
-                    } as React.CSSProperties}
-                  >
-                    <OperationalGridMatrix
-                      rowData={section.items} 
-                      columnDefs={columnDefs} 
-                      autoSizeStrategy={autoSizeStrategy}
-                      colResizeDefault="normal"
+                  <OperationalDataGrid
+                      rows={section.items}
+                      columnDefs={columnDefs}
+                      runtime={serviceGridRuntime}
+                      rowInteractions={serviceRowInteractions}
+                      contextMenu={serviceContextMenu}
                       fontSize={fontSize}
                       rowDensity={rowDensity}
                       context={gridContext}
                       getRowId={handleRowId}
                       onSelectionChanged={(e) => handleSelectionChanged(e, section.key)}
-                      onColumnResized={handleServiceColumnResized}
-                      onColumnMoved={handleColumnMoved}
-                      onDragStopped={handleDragStopped}
-                      onColumnPinned={handleColumnPinned}
-                      onColumnVisible={handleColumnVisible}
-                      onFilterChanged={handleFilterChanged}
-                      onSortChanged={handleSortChanged}
-                      onCellContextMenu={handleCellContextMenu}
-                      onRowClicked={handleRowClicked}
-                      onRowDoubleClicked={handleRowDoubleClicked}
                       getRowClass={getRowClass}
                       onFirstDataRendered={handleGridDataUpdated}
                       onRowDataUpdated={handleGridDataUpdated}
                       noRowsLabel="No service data found"
+                      height={`${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px`}
                     />
-                  </OperationalGridSurface>
                 ) : null}
               </OperationalGroupedGridSection>
             )
@@ -2621,7 +2607,7 @@ export default function ServicesReal() {
       <ConfirmationModal 
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-        onConfirm={confirmModal.onConfirm}
+        onConfirm={() => { confirmModal.onConfirm?.(); setConfirmModal((prev: any) => ({ ...prev, isOpen: false })); }}
         title={confirmModal.title}
         message={confirmModal.message}
         variant={confirmModal.variant}
@@ -2694,21 +2680,6 @@ export default function ServicesReal() {
             ]}
         />
       </AnimatePresence>
-
-      <style>{`
-        .ag-theme-alpine-dark {
-          --ag-background-color: #1a1b26;
-          --ag-header-background-color: #24283b;
-          --ag-border-color: rgba(255, 255, 255, 0.05);
-          --ag-foreground-color: #f1f5f9;
-          --ag-header-foreground-color: #3b82f6;
-        }
-        .ag-root-wrapper { border: none !important; }
-	        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
-	        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
-          .row-action-trigger { opacity: 1; }
-	        .ag-side-bar { background-color: #24283b !important; border-left: 1px solid rgba(255,255,255,0.05) !important; }
-	      `}</style>
     </OperationalWorkspaceShell>
   )
 }

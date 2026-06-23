@@ -744,7 +744,7 @@ export default function Knowledge() {
       <ConfirmationModal 
         isOpen={confirmModal.isOpen} 
         onClose={() => setConfirmModal({ isOpen: false, id: null })} 
-        onConfirm={() => deleteMutation.mutate(confirmModal.id)} 
+        onConfirm={() => { deleteMutation.mutate(confirmModal.id); setConfirmModal({ isOpen: false, id: null }); }} 
         title="Expunge Intelligence" 
         message="Permanently remove this knowledge node from the collective matrix? This action is irreversible." 
       />

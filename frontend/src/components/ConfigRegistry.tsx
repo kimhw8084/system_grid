@@ -6,7 +6,7 @@ import { apiFetch } from "../api/apiClient"
 import { showWorkspaceToast } from "./shared/WorkspaceToast"
 import { WorkspaceModal } from "./shared/WorkspaceModal"
 import { ToolbarButton } from "./shared/LayoutPrimitives"
-import { useEscapeDismiss, useBodyModalFlag } from "./shared/OperationalWorkspacePrimitives"
+import { useBodyModalFlag } from "./shared/OperationalWorkspacePrimitives"
 
 type RegistrySectionProps = {
   title: string
@@ -17,7 +17,7 @@ type RegistrySectionProps = {
   description?: string
 }
 
-export const ConfigSection = ({ title, category, options, icon: Icon, usageTargets = [], description }: RegistrySectionProps) => {
+export const ConfigSection = ({ title, category, options, icon: Icon, usageTargets = [], description, onDirtyChange }: RegistrySectionProps & { onDirtyChange?: (dirty: boolean) => void }) => {
   const queryClient = useQueryClient()
   const isTeamCategory = category === "MonitoringTeam"
   const records = Array.isArray(options) ? options : []
@@ -28,6 +28,11 @@ export const ConfigSection = ({ title, category, options, icon: Icon, usageTarge
   const [editValue, setEditValue] = useState("")
   const [editDescription, setEditDescription] = useState("")
   const [editMetadata, setEditMetadata] = useState("")
+
+  const isDirty = newValue.trim() !== "" || newDescription.trim() !== "" || editingId !== null
+  React.useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
 
   const hasMetadataSupport = useMemo(() => {
     if (isTeamCategory) return true
@@ -371,10 +376,16 @@ export const ConfigSection = ({ title, category, options, icon: Icon, usageTarge
   )
 }
 
-export const ConfigRegistryModal = ({ isOpen, onClose, sections, title }: any) => {
-  useEscapeDismiss(onClose)
+export const ConfigRegistryModal = ({ isOpen, onClose, sections, title, onDirtyChange }: any) => {
   useBodyModalFlag()
   const [isMaximized, setIsMaximized] = useState(false)
+  const [dirtyStates, setDirtyStates] = useState<Record<string, boolean>>({})
+  const isDirty = useMemo(() => Object.values(dirtyStates).some(Boolean), [dirtyStates])
+
+  React.useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
+
   const { data: options } = useQuery({
     queryKey: ["settings-options"],
     queryFn: async () => (await (await apiFetch("/api/v1/settings/options")).json()),
@@ -389,13 +400,13 @@ export const ConfigRegistryModal = ({ isOpen, onClose, sections, title }: any) =
     <WorkspaceModal
       isOpen={isOpen}
       onClose={onClose}
+      isDirty={isDirty}
       size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
       title={title || "Registry Configuration"}
       subtitle="Global System Parameters & Enumerations"
       icon={<Layout size={20} />}
-      footerRight={<ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>}
     >
       <div className="flex items-center gap-4 px-6 pt-6">
         <div className="h-px flex-1 bg-white/5" />
@@ -410,6 +421,7 @@ export const ConfigRegistryModal = ({ isOpen, onClose, sections, title }: any) =
             title={section.title}
             category={section.category}
             icon={section.icon}
+            onDirtyChange={(dirty) => setDirtyStates(prev => ({ ...prev, [section.category]: dirty }))}
             options={
               section.category === "MonitoringTeam"
                 ? (Array.isArray(teams) ? teams : [])

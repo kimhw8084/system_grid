@@ -904,7 +904,7 @@ export default function FAR() {
         )}
       </AnimatePresence>
 
-      <ConfirmationModal isOpen={confirmModal.show} onClose={() => setConfirmModal({ ...confirmModal, show: false })} onConfirm={confirmModal.onConfirm} title={confirmModal.title} message={confirmModal.message} />
+      <ConfirmationModal isOpen={confirmModal.show} onClose={() => setConfirmModal({ ...confirmModal, show: false })} onConfirm={() => { confirmModal.onConfirm?.(); setConfirmModal((prev: any) => ({ ...prev, show: false })); }} title={confirmModal.title} message={confirmModal.message} />
       
       <AnimatePresence>
         {bkmGuidanceModal.show && bkmGuidanceModal.cause && (

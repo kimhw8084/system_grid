@@ -48,7 +48,7 @@ import { buildMonitoringFormErrors, getMonitoringTabErrorCounts } from '../../ut
 import * as React from 'react'
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 
-export function MonitoringForm({ item, devices, categories, severities, platforms, teams, operators, notificationMethods, ownerRoles, onClose, onSuccess }: any) {
+export function MonitoringForm({ item, devices, categories, severities, platforms, teams, operators, notificationMethods, ownerRoles, onClose, onSuccess, onDirtyChange }: any) {
   useBodyModalFlag()
   const [activeTab, setActiveTab] = useState<'context' | 'logic' | 'alerting'>('context')
   const [recoverySearch, setRecoverySearch] = useState('')
@@ -387,6 +387,10 @@ export function MonitoringForm({ item, devices, categories, severities, platform
     () => JSON.stringify(sanitizeMonitoringPayload(formData)) !== initialDirtySnapshotRef.current,
     [formData]
   )
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
 
   return (
     <WorkspaceModal
