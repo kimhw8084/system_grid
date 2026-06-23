@@ -11,6 +11,17 @@ router = APIRouter(prefix="/logical-services", tags=["Logical Services"])
 IMMUTABLE_SERVICE_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id"}
 
 
+def canonicalize_service_status(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    if not normalized:
+        return None
+    if normalized.lower() == "active":
+        return "Existing"
+    return normalized
+
+
 def serialize_service_secret(secret: models.ServiceSecret, *, include_secret_values: bool = False):
     return {
         "id": secret.id,
@@ -27,7 +38,7 @@ def serialize_service(service: models.LogicalService, device_name: str, *, inclu
         "id": service.id,
         "name": service.name,
         "service_type": service.service_type,
-        "status": service.status,
+        "status": canonicalize_service_status(service.status),
         "version": service.version,
         "environment": service.environment,
         "device_id": service.device_id,
@@ -60,7 +71,7 @@ def summarize_service(service: models.LogicalService, device_name: str):
         "id": service.id,
         "name": service.name,
         "service_type": service.service_type,
-        "status": service.status,
+        "status": canonicalize_service_status(service.status),
         "version": service.version,
         "environment": service.environment,
         "device_id": service.device_id,
@@ -74,6 +85,8 @@ def summarize_service(service: models.LogicalService, device_name: str):
 
 def normalize_service_payload(data: dict) -> dict:
     clean_data = filter_valid_columns(models.LogicalService, data, exclude=IMMUTABLE_SERVICE_FIELDS)
+    if "status" in clean_data:
+        clean_data["status"] = canonicalize_service_status(clean_data.get("status")) or "Existing"
     clean_data["config_json"] = normalize_json_object(clean_data.get("config_json"))
     clean_data["custom_attributes"] = normalize_json_object(clean_data.get("custom_attributes"))
     clean_data["logic_json"] = normalize_json_list(clean_data.get("logic_json"))
