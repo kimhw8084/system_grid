@@ -663,12 +663,14 @@ export function createOperationalUtilityColumns({
       valueGetter: (p: any) => hasOperationalId(p.context?.favoriteIds, p.data?.id) ? 1 : 0,
       cellRenderer: (p: any) => {
         const isFavorite = hasOperationalId(p.context?.favoriteIds, p.data?.id)
+        const dataId = p.data?.id
         return (
           <div className="flex h-full w-full items-center justify-center">
             <button
               onClick={(event) => {
                 event.stopPropagation()
-                onToggleFavorite(p.data.id)
+                if (dataId == null) return
+                onToggleFavorite(dataId)
               }}
               title={isFavorite ? `Unpin ${itemLabel}` : `Pin ${itemLabel}`}
               className={`rounded-lg p-1 transition-all flex items-center justify-center ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
@@ -700,12 +702,14 @@ export function createOperationalUtilityColumns({
       headerCheckboxSelection: false,
       cellRenderer: (p: any) => {
         const isWatched = hasOperationalId(p.context?.watchIds, p.data?.id)
+        const dataId = p.data?.id
         return (
           <div className="flex h-full w-full items-center justify-center">
             <button
               onClick={(event) => {
                 event.stopPropagation()
-                onToggleWatch(p.data.id)
+                if (dataId == null) return
+                onToggleWatch(dataId)
               }}
               title={isWatched ? `Unfollow ${itemLabel}` : `Follow ${itemLabel}`}
               className={`rounded-lg p-1 transition-all flex items-center justify-center ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}

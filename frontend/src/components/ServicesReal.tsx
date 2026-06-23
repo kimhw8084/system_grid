@@ -10,8 +10,8 @@ import {
   Trash2, Edit2, Shield, Cpu, Database, Network, 
   Globe, Bell, Info, ChevronRight, X, Check, Save,
   AlertCircle, Clock, Zap, Settings, ArrowRightLeft, Briefcase, UserCheck, Code,
-  BookOpen, Eye, EyeOff, FileText, User, Users, Mail, MessageSquare, Monitor, MoreVertical,
-  Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, Star, GitCompare, Undo2, List, LayoutGrid, Upload, Terminal, History as HistoryIcon, Edit2 as EditIcon
+  BookOpen, Eye, EyeOff, FileText, Users, Mail, MessageSquare, Monitor, MoreVertical,
+  Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, GitCompare, Undo2, List, LayoutGrid, Upload, Terminal, History as HistoryIcon, Edit2 as EditIcon
 } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
@@ -63,7 +63,6 @@ import {
 } from './shared/OperationalWorkspaceShells'
 import { ServiceDetailsView, ServiceForm } from './ServiceRegistry'
 import {
-  applyOperationalColumnSizing,
   applyOperationalColumnState,
   autoSizeOperationalColumns,
   getOperationalColumnLayoutSnapshot,
@@ -72,8 +71,14 @@ import {
   sanitizeOperationalFilterModel,
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
-import { OPERATIONAL_GRID_CLASSES } from './shared/OperationalGridContract'
-import { renderOperationalActionButtons } from './shared/OperationalGridStandard'
+import {
+  type OperationalColumnConfig,
+  OPERATIONAL_GRID_WIDTHS,
+} from './shared/OperationalGridContract'
+import {
+  buildOperationalGridColumnDefinitions,
+  renderOperationalActionButtons,
+} from './shared/OperationalGridStandard'
 
 const SERVICE_VIEW_STORAGE_KEY = 'sysgrid_services_views_v1'
 const SERVICE_ACTIVE_VIEW_KEY = 'sysgrid_services_active_view_v1'
@@ -1679,377 +1684,160 @@ export default function ServicesReal() {
   })
 
   const columnDefs = useMemo(() => {
-    const layoutById = new Map(columnLayoutState.map((column: any) => [column.colId, column]))
-    const lockFixedUtilityWidth = (column: any, layout?: any) => {
-      const colId = column.colId || column.field
-      const lockedWidth = layout?.width ?? column.width ?? column.initialWidth
-      if (!SERVICE_FIXED_WIDTH_COLUMN_IDS.has(colId) || lockedWidth == null) return column
-      return {
-        ...column,
-        width: lockedWidth,
-        initialWidth: lockedWidth,
-        minWidth: lockedWidth,
-        maxWidth: lockedWidth,
-        flex: undefined,
-        initialFlex: undefined,
-      }
-    }
-    
-    const renderText = (value: any, className = '') => (
-      <span
-        title={value == null ? '' : String(value)}
-        style={{ fontSize: `${fontSize}px` }}
-        className={`block w-full min-w-0 truncate whitespace-nowrap overflow-hidden text-ellipsis ${className}`}
-      >
-        {value ?? 'N/A'}
-      </span>
-    )
-
-    const defs = [
+    const columnConfigs: OperationalColumnConfig[] = [
       {
-        colId: 'select',
-        headerName: '',
-        width: 48,
-        checkboxSelection: true,
-        headerCheckboxSelection: true,
-        pinned: 'left',
-        cellClass: OPERATIONAL_GRID_CLASSES.selectCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.selectHeader,
-        suppressSizeToFit: true,
-        sortable: false,
-        filter: false,
-        lockVisible: true,
-      },
-      {
-        colId: 'id',
-        field: 'id',
-        headerName: 'ID',
-        width: 90,
-        pinned: 'left',
-        cellClass: OPERATIONAL_GRID_CLASSES.idCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.idHeader,
-        filter: 'agNumberColumnFilter',
-        lockVisible: true,
-      },
-      {
-        colId: 'recent_change',
-        headerName: 'Chg',
-        field: 'recent_change',
-        width: 80,
-        pinned: 'left',
-        sortable: false,
-        filter: false,
-        lockVisible: true,
-        cellClass: OPERATIONAL_GRID_CLASSES.recentChangeCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.recentChangeHeader,
-        hide: !isIntelligenceExpanded,
-        cellRenderer: (p: any) => {
-          if (!p.data || !isRecentChange(p.data)) return null
-          const dateStr = formatAppDate(p.data.updated_at || p.data.created_at)
-          const author = p.data.created_by_user_id || 'System'
-          return (
-            <div className="group relative flex items-center justify-center h-full w-full">
-              <div className="absolute h-10 w-10 rounded-lg bg-[radial-gradient(circle,_rgba(251,191,36,0.2)_0%,_transparent_70%)] blur-md animate-pulse" />
-              <span className="relative z-[1] block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
-              <div className="invisible group-hover:visible absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-[2000] w-52 p-3 rounded-lg border border-white/10 bg-slate-950/90 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl pointer-events-none transition-all duration-300 transform scale-95 group-hover:scale-100 opacity-0 group-hover:opacity-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-400">Recent Activity</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[11px] text-slate-100 font-bold leading-tight">{dateStr}</p>
-                  <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/5">
-                    <User size={10} className="text-slate-500" />
-                    <p className="text-[9px] text-slate-500 font-bold tracking-widest">@{author}</p>
-                  </div>
-                </div>
-                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-950/90" />
-              </div>
-            </div>
-          )
-        },
-      },
-      {
-        colId: 'favorite',
-        headerName: 'Fav',
-        field: 'favorite',
-        width: 80,
-        pinned: 'left',
-        cellClass: OPERATIONAL_GRID_CLASSES.favoriteCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.favoriteHeader,
-        sortable: true,
-        filter: false,
-        lockVisible: true,
-        valueGetter: (p: any) => p.context?.favoriteIds?.includes(p.data?.id) ? 1 : 0,
-        cellRenderer: (p: any) => {
-          const dataId = p.data?.id
-          const isFavorite = p.context?.favoriteIds?.includes(p.data?.id)
-          return (
-            <div className="flex h-full w-full items-center justify-center">
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  if (!dataId) return
-                  toggleFavorite(dataId)
-                }}
-                title={isFavorite ? 'Unpin service' : 'Pin service'}
-                className={`rounded-lg p-1 transition-all flex items-center justify-center ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
-              >
-                <Star size={15} className={isFavorite ? 'fill-current' : ''} />
-              </button>
-            </div>
-          )
-        },
-      },
-      {
-        colId: 'watch',
-        headerName: 'Watch',
-        field: 'watch',
-        width: 85,
-        pinned: 'left',
-        cellClass: OPERATIONAL_GRID_CLASSES.watchCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.watchHeader,
-        sortable: false,
-        filter: false,
-        lockVisible: true,
-        hide: !isIntelligenceExpanded,
-        cellRenderer: (p: any) => {
-          const dataId = p.data?.id
-          const isWatched = p.context?.watchIds?.includes(p.data?.id)
-          return (
-            <div className="flex h-full w-full items-center justify-center">
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  if (!dataId) return
-                  toggleWatch(dataId)
-                }}
-                title={isWatched ? 'Unfollow service' : 'Follow service'}
-                className={`rounded-lg p-1 transition-all flex items-center justify-center ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
-              >
-                <Eye size={15} className={isWatched ? 'fill-current' : ''} />
-              </button>
-            </div>
-          )
-        },
-      },
-      {
+        kind: 'plain',
         field: 'device_name',
-        colId: 'device_name',
         headerName: 'Host',
         width: 180,
-        filter: true,
-        cellClass: OPERATIONAL_GRID_CLASSES.leftBodyCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
-        cellRenderer: (p: any) => renderText(p.value, 'text-slate-200'),
+        valueClassName: 'text-slate-200',
+        hide: hiddenColumns.includes('device_name'),
       },
       {
+        kind: 'identity',
         field: 'name',
-        colId: 'name',
         headerName: 'Name',
         width: 220,
-        filter: true,
-        cellClass: OPERATIONAL_GRID_CLASSES.primaryCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
-        cellRenderer: (p: any) => renderText(p.value, 'text-slate-200'),
+        hide: hiddenColumns.includes('name'),
       },
       {
+        kind: 'plain',
         field: 'service_type',
-        colId: 'service_type',
         headerName: 'Type',
         width: 140,
-        filter: true,
-        cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-        cellRenderer: (p: any) => renderText(p.value, 'text-blue-300 font-semibold'),
+        valueClassName: 'text-blue-300 font-semibold',
+        hide: hiddenColumns.includes('service_type'),
       },
       {
+        kind: 'plain',
         field: 'environment',
-        colId: 'environment',
         headerName: 'Environment',
         width: 140,
-        filter: true,
-        cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+        valueClassName: 'text-slate-300',
+        hide: hiddenColumns.includes('environment'),
       },
       {
+        kind: 'plain',
         field: 'version',
-        colId: 'version',
         headerName: 'Version',
         width: 120,
-        filter: true,
-        cellClass: OPERATIONAL_GRID_CLASSES.leftBodyCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
-        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+        valueClassName: 'text-slate-300',
+        hide: hiddenColumns.includes('version'),
       },
       {
+        kind: 'mappedBadge',
         field: 'status',
-        colId: 'status',
         headerName: 'Status',
         width: 120,
-        filter: true,
-        cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-        cellRenderer: (p: any) => <StatusPill value={p.value || 'Active'} fontSize={fontSize} />,
+        fontSize,
+        hide: hiddenColumns.includes('status'),
+        knownValues: STATUSES.map((status) => status.label),
+        colorMap: Object.fromEntries(STATUSES.map((status) => [status.label, status.color])),
       },
       {
+        kind: 'prose',
         field: 'purpose',
-        colId: 'purpose',
         headerName: 'Purpose',
         width: 240,
-        filter: true,
-        cellClass: OPERATIONAL_GRID_CLASSES.leftBodyWrapCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
-        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+        proseMode: 'wrap',
+        hide: hiddenColumns.includes('purpose'),
       },
       {
+        kind: 'plain',
         field: 'manufacturer',
-        colId: 'manufacturer',
         headerName: 'Manufacturer',
         width: 160,
-        filter: true,
-        cellClass: OPERATIONAL_GRID_CLASSES.leftBodyCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
-        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+        valueClassName: 'text-slate-300',
+        hide: hiddenColumns.includes('manufacturer'),
       },
       {
+        kind: 'plain',
         field: 'supplier',
-        colId: 'supplier',
         headerName: 'Supplier',
         width: 160,
-        filter: true,
-        cellClass: OPERATIONAL_GRID_CLASSES.leftBodyCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.primaryHeader,
-        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+        valueClassName: 'text-slate-300',
+        hide: hiddenColumns.includes('supplier'),
       },
       {
+        kind: 'plain',
         field: 'purchase_type',
-        colId: 'purchase_type',
         headerName: 'License Type',
         width: 150,
-        filter: true,
-        cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-        cellRenderer: (p: any) => renderText(p.value, 'text-amber-300'),
+        valueClassName: 'text-slate-300',
+        hide: hiddenColumns.includes('purchase_type'),
       },
       {
+        kind: 'plain',
         field: 'cost',
-        colId: 'cost',
         headerName: 'Cost',
         width: 120,
-        filter: true,
-        cellClass: OPERATIONAL_GRID_CLASSES.leftBodyCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-        cellRenderer: (p: any) => renderText(p.value != null ? `${p.data?.currency || 'USD'} ${p.value}` : 'N/A', 'text-slate-300'),
+        valueClassName: 'text-slate-300',
+        formatValue: (value, params) => value != null ? `${params.data?.currency || 'USD'} ${value}` : 'N/A',
+        hide: hiddenColumns.includes('cost'),
       },
       {
+        kind: 'plain',
         field: 'secret_count',
-        colId: 'secret_count',
         headerName: 'Secrets',
         width: 100,
-        filter: true,
-        cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-        cellRenderer: (p: any) => renderText(String(p.value ?? 0), 'text-emerald-300'),
+        valueClassName: 'text-emerald-300',
+        formatValue: (value) => String(value ?? 0),
+        hide: hiddenColumns.includes('secret_count'),
       },
       {
+        kind: 'date',
         field: 'installation_date',
-        colId: 'installation_date',
         headerName: 'Deployed',
         width: 160,
-        filter: 'agDateColumnFilter',
-        cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-        cellRenderer: (p: any) => p.value ? (
-          <div className="flex min-w-0 items-center gap-2">
-            <Clock size={12} className="opacity-40" />
-            <span style={{ fontSize: `${fontSize}px` }} className="block min-w-0 truncate whitespace-nowrap overflow-hidden text-ellipsis">{formatAppDate(p.value)}</span>
-          </div>
-        ) : renderText('N/A'),
+        hide: hiddenColumns.includes('installation_date'),
       },
       {
+        kind: 'date',
         field: 'created_at',
-        colId: 'created_at',
         headerName: 'Created',
-        width: 180,
-        filter: 'agDateColumnFilter',
-        cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-        cellRenderer: (p: any) => p.value ? (
-          <div className="flex min-w-0 items-center gap-2">
-            <Clock size={12} className="opacity-40" />
-            <span style={{ fontSize: `${fontSize}px` }} className="block min-w-0 truncate whitespace-nowrap overflow-hidden text-ellipsis">{formatAppDate(p.value)}</span>
-          </div>
-        ) : renderText('N/A'),
+        width: OPERATIONAL_GRID_WIDTHS.date,
+        hide: hiddenColumns.includes('created_at'),
       },
       {
+        kind: 'date',
         field: 'updated_at',
-        colId: 'updated_at',
         headerName: 'Updated',
-        width: 180,
-        filter: 'agDateColumnFilter',
-        cellClass: OPERATIONAL_GRID_CLASSES.centeredCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.centeredHeader,
-        cellRenderer: (p: any) => p.value ? (
-          <div className="flex min-w-0 items-center gap-2">
-            <Clock size={12} className="opacity-40" />
-            <span style={{ fontSize: `${fontSize}px` }} className="block min-w-0 truncate whitespace-nowrap overflow-hidden text-ellipsis">{formatAppDate(p.value)}</span>
-          </div>
-        ) : renderText('N/A'),
+        width: OPERATIONAL_GRID_WIDTHS.date,
+        hide: hiddenColumns.includes('updated_at'),
       },
       {
-        colId: 'row_actions',
-        headerName: 'Action',
-        width: 210,
-        pinned: 'right',
-        cellClass: OPERATIONAL_GRID_CLASSES.actionCell,
-        headerClass: OPERATIONAL_GRID_CLASSES.actionHeader,
-        sortable: false,
-        filter: false,
-        cellRenderer: (p: any) => p.data ? renderPrimaryRowActions(p.data) : null,
-        lockVisible: true,
+        kind: 'action',
+        width: OPERATIONAL_GRID_WIDTHS.standardAction,
+        renderActions: renderPrimaryRowActions,
       },
     ]
-  
-  // Inject saved layout state (widths, pinned, sort) into definitions before first render
-  const mergedDefs = defs.map((col: any) => {
-    if (col.children) {
-      return {
-        ...col,
-        children: col.children.map((child: any) => {
-          const colId = child.colId || child.field
-          const layout = layoutById.get(colId)
-          return lockFixedUtilityWidth(applyOperationalColumnSizing(child, layout, preserveExplicitColumnWidths), layout)
-        })
-      }
-    }
-    const colId = col.colId || col.field
-    const layout = layoutById.get(colId)
-    const sizedColumn = lockFixedUtilityWidth(applyOperationalColumnSizing(col, layout, preserveExplicitColumnWidths), layout)
-    if (sizedColumn.lockVisible) return sizedColumn
-    return {
-      ...sizedColumn,
-      hide: hiddenColumns.includes(colId),
-    }
-  })
 
-  // Ensure column order is maintained from state to prevent "jumping" during re-renders
-  if (columnLayoutState.length > 0) {
-    const orderMap = new Map(columnLayoutState.map((col: any, index: number) => [col.colId, index]))
-    return [...mergedDefs].sort((a: any, b: any) => {
-      const aId = a.colId || a.field
-      const bId = b.colId || b.field
-      return (orderMap.get(aId) ?? 1000) - (orderMap.get(bId) ?? 1000)
+    return buildOperationalGridColumnDefinitions({
+      utilityColumnsConfig: {
+        includeRecentChange: true,
+        includeFavorite: true,
+        includeWatch: true,
+        isIntelligenceExpanded,
+        isRecentChange,
+        onToggleFavorite: toggleFavorite,
+        onToggleWatch: toggleWatch,
+        itemLabel: 'service',
+      },
+      columnConfigs,
+      columnLayoutState,
+      preserveExplicitColumnWidths,
     })
-  }
-
-  return mergedDefs
-}, [fontSize, hiddenColumns, columnLayoutState, isIntelligenceExpanded, preserveExplicitColumnWidths]) as any
+  }, [
+    columnLayoutState,
+    fontSize,
+    hiddenColumns,
+    isIntelligenceExpanded,
+    isRecentChange,
+    preserveExplicitColumnWidths,
+    renderPrimaryRowActions,
+    toggleFavorite,
+    toggleWatch,
+  ]) as any
 
   const gridContext = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
   const serviceGridRuntime = useMemo(() => ({
