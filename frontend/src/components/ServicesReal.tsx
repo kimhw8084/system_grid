@@ -819,12 +819,11 @@ export default function ServicesReal() {
   const openNetworkDetail = useCallback((item: any, replace: boolean = false) => {
     if (!item?.id) return
     setDetailItem(item)
-    requestAnimationFrame(() => {
-        const nextParams = new URLSearchParams(searchParams)
-        nextParams.set('id', String(item.id))
-        navigate({ search: `?${nextParams.toString()}` }, { replace })
-    })
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.set('id', String(item.id))
+    navigate({ search: `?${nextParams.toString()}` }, { replace })
   }, [navigate, searchParams])
+  
   const closeNetworkDetail = useCallback((replace: boolean = true) => {
     setDetailItem(null)
     setDetailDeleteConfirm(false)

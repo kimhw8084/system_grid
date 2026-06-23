@@ -160,7 +160,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
     const operatorId = Number(newOwner.operator_id)
     const selectedOperator = teamOperators.find((operator) => operator.id === operatorId) || (operators as OperatorRecord[]).find((operator) => operator.id === operatorId)
     if (selectedOperator && !formData.owners.some((owner) => owner.operator_id === operatorId)) {
-       setFormData({
+       updateFormData({
          ...formData,
          owners: [
            ...formData.owners,
@@ -185,7 +185,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
   const removeOwner = (idx: number) => {
     const next = [...formData.owners]
     next.splice(idx, 1)
-    setFormData({ ...formData, owners: next })
+    updateFormData({ ...formData, owners: next })
   }
 
   // Sync is_active with status
@@ -273,7 +273,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
     } else {
       current.push(id)
     }
-    setFormData({ ...formData, monitored_services: current })
+    updateFormData({ ...formData, monitored_services: current })
   }
 
   const toggleRecoveryDoc = (id: number) => {
@@ -284,19 +284,19 @@ export function MonitoringForm({ item, devices, categories, severities, platform
     } else {
       current.push({ id, note: '' })
     }
-    setFormData({ ...formData, recovery_docs: current })
+    updateFormData({ ...formData, recovery_docs: current })
   }
 
   const addLogicEntry = () => {
     const id = Date.now()
     const newEntries: MonitoringLogicEntry[] = [...(formData.logic_json || []), { type: 'Threshold', description: '', logic_info: '', id }]
-    setFormData({ ...formData, logic_json: newEntries })
+    updateFormData({ ...formData, logic_json: newEntries })
     setActiveLogicId(id)
   }
 
   const removeLogicEntry = (id: number) => {
     const filtered = formData.logic_json.filter((e: MonitoringLogicEntry) => e.id !== id)
-    setFormData({ ...formData, logic_json: filtered })
+    updateFormData({ ...formData, logic_json: filtered })
     if (activeLogicId === id) {
       setActiveLogicId(filtered.length > 0 ? filtered[0].id : null)
     }
@@ -304,7 +304,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
 
   const updateLogicEntry = (id: number, field: keyof MonitoringLogicEntry, value: string) => {
     const newEntries = formData.logic_json.map((e: MonitoringLogicEntry) => e.id === id ? { ...e, [field]: value } : e)
-    setFormData({ ...formData, logic_json: newEntries })
+    updateFormData({ ...formData, logic_json: newEntries })
   }
 
   const activeLogicEntry = formData.logic_json?.find((e: MonitoringLogicEntry) => e.id === activeLogicId)
@@ -340,13 +340,13 @@ export function MonitoringForm({ item, devices, categories, severities, platform
 
   const addRecipient = () => {
     if (recipientInput && !formData.notification_recipients.includes(recipientInput)) {
-      setFormData({ ...formData, notification_recipients: [...formData.notification_recipients, recipientInput] })
+      updateFormData({ ...formData, notification_recipients: [...formData.notification_recipients, recipientInput] })
       setRecipientInput('')
     }
   }
 
   const removeRecipient = (r: string) => {
-    setFormData({ ...formData, notification_recipients: formData.notification_recipients.filter((item: string) => item !== r) })
+    updateFormData({ ...formData, notification_recipients: formData.notification_recipients.filter((item: string) => item !== r) })
   }
 
   const handleSave = () => {
@@ -476,35 +476,35 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                   label="Severity"
                   required={isMonitoringFieldRequired('severity')}
                   value={formData.severity}
-                  onChange={(value) => setFormData({ ...formData, severity: value })}
+                  onChange={(value) => updateFormData({ ...formData, severity: value })}
                   options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
                   error={formErrors.severity}
                 />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-12 gap-6">
-              <div className="col-span-12 sm:col-span-6 lg:col-span-3 space-y-2">
+                </div>
+                </div>
+
+                <div className="grid grid-cols-12 gap-6">
+                <div className="col-span-12 sm:col-span-6 lg:col-span-3 space-y-2">
                 <MonitoringSelectField
                   label="Logic Category"
                   required={isMonitoringFieldRequired('category')}
                   value={formData.category}
-                  onChange={(value) => setFormData({ ...formData, category: value })}
+                  onChange={(value) => updateFormData({ ...formData, category: value })}
                   options={categories.map((c: any) => ({ value: c.value, label: c.label }))}
                   error={formErrors.category}
                 />
-              </div>
-              <div className="col-span-12 sm:col-span-6 lg:col-span-3 space-y-2">
+                </div>
+                <div className="col-span-12 sm:col-span-6 lg:col-span-3 space-y-2">
                 <MonitoringSelectField
                   label="Target Platform"
                   value={formData.platform}
-                  onChange={(value) => setFormData({ ...formData, platform: value })}
+                  onChange={(value) => updateFormData({ ...formData, platform: value })}
                   options={(platforms || []).map((platform: any) => ({ value: platform.value, label: platform.label }))}
                   placeholder="Select platform"
                   error={formErrors.platform}
                   searchable
                 />
-              </div>
+                </div>
             </div>
           </div>
           <WorkspaceValidationBanner message={generalError} />
@@ -539,7 +539,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                               <MonitoringAssetField
                                 devices={devices || []}
                                 deviceId={formData.device_id}
-                                onChange={(deviceId) => setFormData({ ...formData, device_id: deviceId, monitored_services: [] })}
+                                onChange={(deviceId) => updateFormData({ ...formData, device_id: deviceId, monitored_services: [] })}
                               />
 
                               {formData.device_id ? (
@@ -550,7 +550,16 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                       <button
                                         key={svc.id}
                                         type="button"
-                                        onClick={() => toggleService(svc.id)}
+                                        onClick={() => {
+                                            const current = [...(formData.monitored_services || [])]
+                                            const idx = current.indexOf(svc.id)
+                                            if (idx > -1) {
+                                              current.splice(idx, 1)
+                                            } else {
+                                              current.push(svc.id)
+                                            }
+                                            updateFormData({ ...formData, monitored_services: current })
+                                        }}
                                         className={`rounded-lg border px-2.5 py-1.5 text-[9px] font-black transition-all ${
                                           formData.monitored_services?.includes(svc.id)
                                             ? 'border-blue-500/40 bg-blue-500/12 text-blue-200'
@@ -579,7 +588,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                 <Globe size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" />
                                 <input
                                   value={formData.monitoring_url}
-                                  onChange={e => setFormData({ ...formData, monitoring_url: e.target.value })}
+                                  onChange={e => updateFormData({ ...formData, monitoring_url: e.target.value })}
                                   placeholder="https://console.internal/..."
                                   className={`${monitoringInputClass(formErrors.monitoring_url)} pl-9 text-blue-300`}
                                 />
@@ -617,7 +626,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                           <FieldLabel label="Purpose" />
                           <textarea
                             value={formData.purpose}
-                            onChange={e => setFormData({ ...formData, purpose: e.target.value })}
+                            onChange={e => updateFormData({ ...formData, purpose: e.target.value })}
                             placeholder="Why are we monitoring this?"
                             rows={5}
                             className={`${monitoringInputClass()} resize-none text-[11px] font-bold`}
@@ -627,7 +636,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                           <FieldLabel label="Impact" />
                           <textarea
                             value={formData.impact}
-                            onChange={e => setFormData({ ...formData, impact: e.target.value })}
+                            onChange={e => updateFormData({ ...formData, impact: e.target.value })}
                             placeholder="What happens when this monitor triggers?"
                             rows={5}
                             className={`${monitoringInputClass()} resize-none text-[11px] font-bold`}
@@ -670,7 +679,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                 <FieldLabel label="Owner Team(s)" />
                                 <input
                                   value={formData.owner_team}
-                                  onChange={(event) => setFormData({ ...formData, owner_team: event.target.value })}
+                                  onChange={(event) => updateFormData({ ...formData, owner_team: event.target.value })}
                                   placeholder="Comma-separated team names"
                                   className={monitoringInputClass(formErrors.owner_team)}
                                 />
@@ -833,7 +842,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                 value={formData.check_interval}
                                 min={CHECK_INTERVAL_MIN}
                                 max={CHECK_INTERVAL_MAX}
-                                onChange={e => setFormData({ ...formData, check_interval: Number(e.target.value) })}
+                                onChange={e => updateFormData({ ...formData, check_interval: Number(e.target.value) })}
                                 className={`${monitoringInputClass(formErrors.check_interval)} pl-9 font-bold`}
                               />
                             </div>
@@ -851,7 +860,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                 value={formData.alert_duration}
                                 min={ALERT_DURATION_MIN}
                                 max={ALERT_DURATION_MAX}
-                                onChange={e => setFormData({ ...formData, alert_duration: Number(e.target.value) })}
+                                onChange={e => updateFormData({ ...formData, alert_duration: Number(e.target.value) })}
                                 className={`${monitoringInputClass(formErrors.alert_duration)} pl-9 font-bold`}
                               />
                             </div>
@@ -867,7 +876,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                               value={formData.notification_throttle}
                               min={NOTIFICATION_THROTTLE_MIN}
                               max={NOTIFICATION_THROTTLE_MAX}
-                              onChange={e => setFormData({ ...formData, notification_throttle: Number(e.target.value) })}
+                              onChange={e => updateFormData({ ...formData, notification_throttle: Number(e.target.value) })}
                               className={`${monitoringInputClass(formErrors.notification_throttle)} font-bold`}
                             />
                             <FieldError message={formErrors.notification_throttle} />
@@ -946,7 +955,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                           <MonitoringSelectField
                             label="Notification Method"
                             value={formData.notification_method}
-                            onChange={(value) => setFormData({ ...formData, notification_method: value })}
+                            onChange={(value) => updateFormData({ ...formData, notification_method: value })}
                             options={notificationMethods.map((m:any) => ({ value: m.value, label: m.label }))}
                             error={formErrors.notification_method}
                           />
@@ -1081,7 +1090,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                                               onChange={e => {
                                                  const next = [...formData.recovery_docs];
                                                  next[idx] = { id: did, note: e.target.value };
-                                                 setFormData({ ...formData, recovery_docs: next });
+                                                 updateFormData({ ...formData, recovery_docs: next });
                                               }}
                                               placeholder="Operational guidance note shown to operator before BKM access..."
                                               className="w-full bg-white/5 border border-white/5 rounded-lg p-3 text-[10px] font-bold text-slate-200 outline-none focus:border-blue-500/40 transition-all min-h-[60px] resize-none leading-relaxed"
