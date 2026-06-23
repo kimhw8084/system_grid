@@ -1,5 +1,6 @@
 
 import { WorkspaceModal } from '../shared/WorkspaceModal'
+import { parseOperationalApiValidationError } from '../shared/OperationalFieldValidation'
 import { 
   WorkspaceSplitView, 
   WorkspaceEmptyState,
@@ -253,7 +254,9 @@ export function MonitoringForm({ item, devices, categories, severities, platform
       onSuccess()
     },
     onError: (e: any) => {
-      const message = e.message || 'Failed to save monitoring item'
+      const { fieldErrors, generalError } = parseOperationalApiValidationError(e)
+      setFormErrors(fieldErrors)
+      const message = generalError || e.message || 'Failed to save monitoring item'
       setGeneralError(message)
       showWorkspaceToast(message, { type: 'error' })
       if (message.toLowerCase().includes('recovery')) setActiveTab('alerting')

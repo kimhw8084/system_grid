@@ -47,8 +47,6 @@ interface OperationalDataGridProps {
   loading?: boolean
   loadingIcon?: React.ReactNode
   loadingLabel?: React.ReactNode
-  emptyOverlay?: React.ReactNode
-  showEmptyOverlay?: boolean
   className?: string
   height?: string
 }
@@ -73,8 +71,6 @@ export function OperationalDataGrid({
   loading = false,
   loadingIcon,
   loadingLabel,
-  emptyOverlay,
-  showEmptyOverlay = false,
   className = '',
   height,
 }: OperationalDataGridProps) {
@@ -119,7 +115,6 @@ export function OperationalDataGrid({
         onRowDataUpdated={onRowDataUpdated}
         noRowsLabel={noRowsLabel}
       />
-      {showEmptyOverlay ? emptyOverlay : null}
     </OperationalGridSurface>
   )
 }

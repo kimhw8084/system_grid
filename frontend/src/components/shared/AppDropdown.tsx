@@ -4,6 +4,18 @@ import { ChevronDown, Check } from 'lucide-react'
 import { OPERATIONAL_WORKSPACE_VISUALS } from './OperationalWorkspace'
 import { getWorkspaceFloatingPanelClass, useWorkspaceAnchoredLayer } from './OperationalWorkspacePrimitives'
 
+const WorkspaceFieldError = ({ message }: { message: string }) => (
+  <p className="px-1 pt-1 text-[9px] font-bold uppercase tracking-wider text-rose-400">
+    {message}
+  </p>
+)
+
+const WorkspaceFieldHint = ({ message }: { message: string }) => (
+  <p className="px-1 pt-1 text-[9px] font-semibold text-slate-500">
+    {message}
+  </p>
+)
+
 interface Option {
   value: string | number
   label: string
@@ -19,6 +31,8 @@ interface AppDropdownProps {
   className?: string
   disabled?: boolean
   multi?: boolean
+  error?: string
+  hint?: string
 }
 
 export const AppDropdown = ({
@@ -30,7 +44,9 @@ export const AppDropdown = ({
   placeholder,
   className = '',
   disabled = false,
-  multi = false
+  multi = false,
+  error,
+  hint,
 }: AppDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -90,6 +106,8 @@ export const AppDropdown = ({
     return selectedOption ? selectedOption.label : placeholder || 'Select...'
   }
 
+  const errorId = error ? 'dropdown-error' : undefined
+
   return (
     <div className={`space-y-1 ${className} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}>
       {label && (
@@ -107,17 +125,23 @@ export const AppDropdown = ({
           }}
           type="button"
           onClick={() => !disabled && setIsOpen(!isOpen)}
+          aria-invalid={!!error}
+          aria-describedby={errorId}
           className={`
             w-full flex items-center justify-between
             ${OPERATIONAL_WORKSPACE_VISUALS.controlSurface}
             px-4 py-2.5 text-[11px] font-semibold outline-none focus:border-blue-500/50
             transition-all ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'} 
             ${(!value || (Array.isArray(value) && value.length === 0)) ? 'text-slate-500' : 'text-slate-200'}
+            ${error ? 'border-rose-500/50 ring-1 ring-rose-500/20' : ''}
           `}
         >
           <span className="truncate">{getLabel()}</span>
           <ChevronDown size={14} className={`text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
+
+        {error && <div id={errorId}><WorkspaceFieldError message={error} /></div>}
+        {hint && !error && <WorkspaceFieldHint message={hint} />}
 
         {isOpen && typeof document !== 'undefined' && createPortal(
           <div

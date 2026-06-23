@@ -2129,8 +2129,14 @@ export default function External() {
       setActiveModal(null)
       detailRoute.finishTransition()
     },
+import { parseOperationalApiValidationError } from './shared/OperationalFieldValidation'
+// ... (imports remain)
+// ...
     onError: (e: any) => {
-      showWorkspaceToast(getFriendlyRestoreError(e.message || String(e)), { type: 'error' })
+      const { fieldErrors, generalError } = parseOperationalApiValidationError(e)
+      setFormErrors(fieldErrors)
+      const message = generalError || e.message || 'Failed to save entity'
+      showWorkspaceToast(message, { type: 'error' })
       detailRoute.finishTransition()
     }
   })
@@ -3076,17 +3082,6 @@ export default function External() {
           loading={isLoading || linkLoading}
           loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
           loadingLabel={<p className="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-400">Synchronizing Intelligence Matrix...</p>}
-          showEmptyOverlay={!isLoading && !linkLoading && activeTab !== 'links' && !filteredEntities.length}
-          emptyOverlay={(
-            <div className="absolute inset-0 flex items-center justify-center bg-[#020617]/40">
-              <div className="w-full max-w-lg px-6">
-                <WorkspaceEmptyState
-                  title="No external identities found"
-                  description="Adjust the current view or admit new external entities to populate the registry."
-                />
-              </div>
-            </div>
-          )}
         />
       ) : (
         <OperationalGroupedGridView

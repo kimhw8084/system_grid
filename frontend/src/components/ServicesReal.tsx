@@ -2885,8 +2885,15 @@ function ServiceRecordForm({ item, devices, options, onClose, onSuccess }: any) 
       await queryClient.invalidateQueries({ queryKey: ['logical-services'] })
       onSuccess?.()
     },
-    onError: (error: any) => {
-      showWorkspaceToast(error?.message || 'Failed to save service record', { type: 'error' })
+import { parseOperationalApiValidationError } from './shared/OperationalFieldValidation'
+// ... (imports remain)
+// ...
+    onError: (e: any) => {
+      const { fieldErrors, generalError } = parseOperationalApiValidationError(e)
+      // Assuming ServicesReal has a way to set errors. Based on reading, it seems ServicesReal does not have a field-level error state defined in the same way as MonitoringForm. 
+      // I will only show the toast if I cannot find a field error state.
+      const message = generalError || e.message || 'Failed to save service record'
+      showWorkspaceToast(message, { type: 'error' })
     },
   })
   const formTitle = item?.id ? getServiceTitle(item) : 'Create Service'
