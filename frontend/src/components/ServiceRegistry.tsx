@@ -17,7 +17,7 @@ import { AppDropdown } from "./shared/AppDropdown"
 
 const SERVICE_LICENSE_OPTIONS = ["One-time", "Subscription", "OEM", "Free"]
 const SERVICE_CURRENCY_OPTIONS = ["USD", "EUR", "KRW", "JPY", "GBP"]
-const SERVICE_STATUS_FALLBACKS = ["Active", "Inactive", "Deprecated", "Maintenance", "Planned"]
+const SERVICE_STATUS_OPTIONS = ["Existing", "Planned", "Cancelled", "Decommissioned"]
 const SERVICE_ENVIRONMENT_FALLBACKS = ["Production", "Stage", "Development", "Lab"]
 
 const serviceFieldClass = (invalid?: boolean) =>
@@ -339,7 +339,7 @@ export const ServiceForm = ({
   const [formData, setFormData] = useState({
     name: "",
     service_type: "Database",
-    status: "Active",
+    status: "Existing",
     environment: "Production",
     version: "",
     device_id: null,
@@ -362,7 +362,7 @@ export const ServiceForm = ({
   const initialDirtySnapshotRef = useRef(JSON.stringify({
     name: "",
     service_type: "Database",
-    status: "Active",
+    status: "Existing",
     environment: "Production",
     version: "",
     device_id: null,
@@ -389,10 +389,10 @@ export const ServiceForm = ({
     return entries.some((entry) => entry.value === currentValue) ? entries : [{ value: currentValue, label: currentValue }, ...entries]
   }
   const statusOptions = ensureCurrentOption(
-    (getOptions('Status').map((entry: any) => ({ value: entry.value, label: entry.label })) || []),
+    SERVICE_STATUS_OPTIONS.map((value) => ({ value, label: value })),
     formData.status
   )
-  const resolvedStatusOptions = statusOptions.length > 0 ? statusOptions : SERVICE_STATUS_FALLBACKS.map((value) => ({ value, label: value }))
+  const resolvedStatusOptions = statusOptions
   const environmentOptions = ensureCurrentOption(
     (getOptions('Environment').map((entry: any) => ({ value: entry.value, label: entry.label })) || []),
     formData.environment

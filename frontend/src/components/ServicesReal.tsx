@@ -398,7 +398,14 @@ const readServiceUiState = () => {
   return readServiceWorkspaceStateFromLocalStorage()?.uiState ?? null
 }
 
-const SERVICE_STATUSES = ['Active', 'Inactive', 'Deprecated', 'Maintenance', 'Planned', 'Deleted']
+const canonicalizeServiceStatus = (value: any) => {
+  const normalized = String(value || '').trim()
+  if (!normalized) return 'Existing'
+  if (normalized.toLowerCase() === 'active') return 'Existing'
+  return normalized
+}
+
+const SERVICE_STATUSES = [...STATUSES.map((status) => status.value), 'Deleted']
 const SERVICE_PURCHASE_TYPES = ['One-time', 'Subscription', 'OEM', 'Free']
 const getServiceTitle = (service: any) => service?.name || `Service ${service?.id ?? 'Unknown'}`
 const NETWORK_STATUSES = SERVICE_STATUSES
@@ -407,7 +414,7 @@ const NETWORK_DIRECTIONS = ['Production', 'Stage', 'Development', 'Lab']
 const NETWORK_UNITS = ['USD', 'EUR', 'KRW', 'JPY', 'GBP']
 
 const normalizeServiceRecord = (service: any) => {
-  const status = service?.status || 'Active'
+  const status = canonicalizeServiceStatus(service?.status)
   const serviceType = service?.service_type || 'Service'
   const environment = service?.environment || 'Production'
   const title = getServiceTitle(service)
@@ -438,7 +445,7 @@ const normalizeServiceRecord = (service: any) => {
 const sanitizeServicePayload = (item: any) => ({
   name: String(item?.name || item?.title || '').trim(),
   service_type: String(item?.service_type || item?.type || item?.category || 'Service').trim(),
-  status: String(item?.status || 'Active').trim(),
+  status: canonicalizeServiceStatus(item?.status),
   version: item?.version ? String(item.version).trim() : null,
   environment: item?.environment ? String(item.environment).trim() : 'Production',
   device_id: item?.device_id === '' || item?.device_id == null ? null : Number(item.device_id),
@@ -1744,7 +1751,7 @@ export default function ServicesReal() {
         field: 'purpose',
         headerName: 'Purpose',
         width: 240,
-        proseMode: 'wrap',
+        proseMode: 'compact',
         hide: hiddenColumns.includes('purpose'),
       },
       {
@@ -2974,7 +2981,7 @@ function ServiceRecordForm({ item, devices, options, onClose, onSuccess }: any) 
       icon={<Database size={20} />}
       status={
         <div className="flex items-center gap-2">
-          <StatusPill value={item?.status || 'Active'} />
+          <StatusPill value={canonicalizeServiceStatus(item?.status)} />
           <StatusPill value={item?.service_type || 'Service'} />
           <StatusPill value={item?.environment || 'Production'} />
         </div>
