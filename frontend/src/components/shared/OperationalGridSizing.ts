@@ -14,7 +14,7 @@ export const lockOperationalColumnWidth = (
   column: Record<string, any>,
   layout?: Record<string, any>
 ) => {
-  const lockedWidth = layout?.width ?? column.width ?? column.initialWidth
+  const lockedWidth = column.width ?? column.initialWidth
   if (!column.operationalLockWidth || lockedWidth == null) return column
   return {
     ...column,

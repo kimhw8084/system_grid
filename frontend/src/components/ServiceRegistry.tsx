@@ -17,8 +17,24 @@ import { AppDropdown } from "./shared/AppDropdown"
 
 const SERVICE_LICENSE_OPTIONS = ["One-time", "Subscription", "OEM", "Free"]
 const SERVICE_CURRENCY_OPTIONS = ["USD", "EUR", "KRW", "JPY", "GBP"]
-const SERVICE_STATUS_OPTIONS = ["Existing", "Planned", "Cancelled", "Decommissioned"]
+export const SERVICE_STATUS_DEFINITIONS = [
+  { value: "Existing", label: "Existing", color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" },
+  { value: "Planned", label: "Planned", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
+  { value: "Cancelled", label: "Cancelled", color: "bg-rose-500/20 text-rose-400 border-rose-500/30" },
+  { value: "Decommissioned", label: "Decommissioned", color: "bg-slate-500/20 text-slate-400 border-white/20" },
+  { value: "Deleted", label: "Deleted", color: "bg-slate-800 text-slate-500 border-white/5" },
+]
+export const SERVICE_STATUS_OPTIONS = SERVICE_STATUS_DEFINITIONS
+  .filter((status) => status.value !== "Deleted")
+  .map((status) => status.value)
 const SERVICE_ENVIRONMENT_FALLBACKS = ["Production", "Stage", "Development", "Lab"]
+
+export const canonicalizeServiceStatus = (value: any) => {
+  const normalized = String(value || "").trim()
+  if (!normalized) return "Existing"
+  if (normalized.toLowerCase() === "active") return "Existing"
+  return normalized
+}
 
 const serviceFieldClass = (invalid?: boolean) =>
   `w-full rounded-lg border px-3 py-2 text-[10px] font-bold outline-none transition-all ${
@@ -245,7 +261,7 @@ export const ServiceDetailsView = ({ service, options, devices }: { service: any
       { label: 'Type', value: service.service_type || 'N/A' },
       { label: 'Environment', value: service.environment || 'N/A' },
       { label: 'Version', value: service.version || 'N/A' },
-      { label: 'Status', value: service.status || 'N/A' },
+      { label: 'Status', value: canonicalizeServiceStatus(service.status) || 'N/A' },
       { label: 'Deployment Date', value: service.installation_date ? String(service.installation_date).split('T')[0] : 'N/A' },
       { label: 'Manufacturer', value: service.manufacturer || 'N/A' },
       { label: 'Supplier', value: service.supplier || 'N/A' },
@@ -334,54 +350,37 @@ export const ServiceForm = ({
   dirtyRef,
   renderActions = true,
 }: any) => {
+  const buildInitialFormData = (initialData: any = {}) => {
+    const nextData = {
+      name: "",
+      service_type: "Database",
+      status: "Existing",
+      environment: "Production",
+      version: "",
+      device_id: null,
+      config_json: {},
+      custom_attributes: {},
+      logic_json: [],
+      license_key: "",
+      purchase_type: "One-time",
+      purchase_date: "",
+      expiry_date: "",
+      installation_date: "",
+      purpose: "",
+      documentation_link: "",
+      cost: 0,
+      currency: "USD",
+      manufacturer: "",
+      supplier: "",
+      ...initialData,
+    }
+    nextData.status = canonicalizeServiceStatus(nextData.status)
+    return nextData
+  }
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
-  const [formData, setFormData] = useState({
-    name: "",
-    service_type: "Database",
-    status: "Existing",
-    environment: "Production",
-    version: "",
-    device_id: null,
-    config_json: {},
-    custom_attributes: {},
-    logic_json: [],
-    license_key: "",
-    purchase_type: "One-time",
-    purchase_date: "",
-    expiry_date: "",
-    installation_date: "",
-    purpose: "",
-    documentation_link: "",
-    cost: 0,
-    currency: "USD",
-    manufacturer: "",
-    supplier: "",
-    ...initialData,
-  })
-  const initialDirtySnapshotRef = useRef(JSON.stringify({
-    name: "",
-    service_type: "Database",
-    status: "Existing",
-    environment: "Production",
-    version: "",
-    device_id: null,
-    config_json: {},
-    custom_attributes: {},
-    logic_json: [],
-    license_key: "",
-    purchase_type: "One-time",
-    purchase_date: "",
-    expiry_date: "",
-    installation_date: "",
-    purpose: "",
-    documentation_link: "",
-    cost: 0,
-    currency: "USD",
-    manufacturer: "",
-    supplier: "",
-    ...initialData,
-  }))
+  const [formData, setFormData] = useState(() => buildInitialFormData(initialData))
+  const initialDirtySnapshotRef = useRef(JSON.stringify(buildInitialFormData(initialData)))
 
   const getOptions = (category: string) => Array.isArray(options) ? options.filter((entry: any) => entry.category === category) : []
   const ensureCurrentOption = (entries: Array<{ value: string; label: string }>, currentValue: string) => {
@@ -466,7 +465,7 @@ export const ServiceForm = ({
       ...formData,
       name: String(formData.name || '').trim(),
       service_type: String(formData.service_type || '').trim(),
-      status: String(formData.status || '').trim(),
+      status: canonicalizeServiceStatus(formData.status),
       environment: String(formData.environment || '').trim(),
       version: formData.version ? String(formData.version).trim() : '',
       purpose: formData.purpose ? String(formData.purpose).trim() : '',

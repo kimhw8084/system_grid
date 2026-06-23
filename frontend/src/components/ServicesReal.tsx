@@ -61,7 +61,12 @@ import {
   OperationalSavedViewsPanel,
   OperationalWorkspaceShell,
 } from './shared/OperationalWorkspaceShells'
-import { ServiceDetailsView, ServiceForm } from './ServiceRegistry'
+import {
+  canonicalizeServiceStatus,
+  ServiceDetailsView,
+  ServiceForm,
+  SERVICE_STATUS_DEFINITIONS as STATUSES,
+} from './ServiceRegistry'
 import {
   applyOperationalColumnState,
   autoSizeOperationalColumns,
@@ -114,14 +119,6 @@ const sanitizeServiceColumnLayout = (layout: any[], preserveWidths: boolean) => 
     return aIndex - bIndex
   })
 }
-
-export const STATUSES = [
-  { value: 'Existing', label: 'Existing', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
-  { value: 'Planned', label: 'Planned', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  { value: 'Cancelled', label: 'Cancelled', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
-  { value: 'Decommissioned', label: 'Decommissioned', color: 'bg-slate-500/20 text-slate-400 border-white/20' },
-  { value: 'Deleted', label: 'Deleted', color: 'bg-slate-800 text-slate-500 border-white/5' }
-]
 
 export const LOGIC_TYPES = ['Threshold', 'Anomaly', 'Availability']
 export const CHECK_INTERVAL_MIN = 30
@@ -398,14 +395,7 @@ const readServiceUiState = () => {
   return readServiceWorkspaceStateFromLocalStorage()?.uiState ?? null
 }
 
-const canonicalizeServiceStatus = (value: any) => {
-  const normalized = String(value || '').trim()
-  if (!normalized) return 'Existing'
-  if (normalized.toLowerCase() === 'active') return 'Existing'
-  return normalized
-}
-
-const SERVICE_STATUSES = [...STATUSES.map((status) => status.value), 'Deleted']
+const SERVICE_STATUSES = STATUSES.map((status) => status.value)
 const SERVICE_PURCHASE_TYPES = ['One-time', 'Subscription', 'OEM', 'Free']
 const getServiceTitle = (service: any) => service?.name || `Service ${service?.id ?? 'Unknown'}`
 const NETWORK_STATUSES = SERVICE_STATUSES
@@ -1488,7 +1478,7 @@ export default function ServicesReal() {
       return
     }
     setActiveTab(target.is_deleted ? 'deleted' : 'active')
-    setDetailItem(target)
+    setDetailItem(normalizeServiceRecord(target))
   }, [allItems, idParam, navigate, searchParams])
 
   useEffect(() => {
@@ -2914,7 +2904,7 @@ function ServiceRecordDetailModal({ item, onClose, onEdit, onDelete, onOpenAsset
       forensicLineage={{ createdAt: item.created_at, updatedAt: item.updated_at }}
       status={
         <div className="flex items-center gap-2">
-          <StatusPill value={item.status} />
+          <StatusPill value={canonicalizeServiceStatus(item?.status)} />
           <StatusPill value={item.service_type || 'Service'} />
           <StatusPill value={item.environment || 'Production'} />
         </div>
