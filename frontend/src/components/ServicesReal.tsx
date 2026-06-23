@@ -1005,11 +1005,10 @@ export default function ServicesReal() {
     selectionAnchorRef.current = event.node.rowIndex
   }, [pendingIds])
 
-  const handleRowDoubleClicked = useCallback((event: any) => {
-    if (!event?.data || shouldIgnoreRowSelection(event.event?.target)) return
-    if (pendingIds.includes(event.data.id)) return
-    openNetworkDetail(event.data)
-  }, [openNetworkDetail, pendingIds])
+  const { handleRowDoubleClicked } = useOperationalRowInteractions({
+    onRowDoubleClick: (item: any) => openNetworkDetail(item),
+    pendingIds
+  })
 
   const renderPrimaryRowActions = (item: any) => {
     if (!item?.id) return null

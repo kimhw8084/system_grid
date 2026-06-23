@@ -709,6 +709,7 @@ const ExternalForm = ({
   }, [initialData])
 
   const [formData, setFormData] = useState(initialFormState)
+  const hasUserEditedRef = useRef(false)
 
   const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
   const ensureCurrentOption = (entries: Array<{ value: string; label: string }>, currentValue: string) => {
@@ -748,6 +749,7 @@ const ExternalForm = ({
   }, [formData.type])
 
   const updateField = (key: string, value: any) => {
+    hasUserEditedRef.current = true
     setFormData((prev: any) => ({ ...prev, [key]: value }))
     setErrors((prev) => ({ ...prev, [key]: '' }))
   }
@@ -783,10 +785,12 @@ const ExternalForm = ({
   useEffect(() => {
     // Ensure the snapshot is captured after initial normalization
     initialDirtySnapshotRef.current = normalizeExternalFormSnapshot(initialFormState)
+    hasUserEditedRef.current = false
   }, [normalizeExternalFormSnapshot, initialFormState])
 
   const isDirty = useMemo(
     () => {
+      if (!hasUserEditedRef.current) return false
       const current = normalizeExternalFormSnapshot(formData)
       return !isDeepEqual(current, initialDirtySnapshotRef.current)
     },

@@ -84,11 +84,18 @@ export function MonitoringForm({ item, devices, categories, severities, platform
   }), [initialItemFields, initialLogicJson, platforms])
 
   const [formData, setFormData] = useState(initialFormState)
+  const hasUserEditedRef = useRef(false)
   const initialDirtySnapshotRef = useRef(sanitizeMonitoringPayload(initialFormState))
+
+  const updateFormData = useCallback((newData: any) => {
+      hasUserEditedRef.current = true
+      setFormData(newData)
+  }, [])
 
   useEffect(() => {
     // Ensure the snapshot is captured after initial normalization
     initialDirtySnapshotRef.current = sanitizeMonitoringPayload(initialFormState)
+    hasUserEditedRef.current = false
   }, [])
 
   const [ownershipMode, setOwnershipMode] = useState<'team' | 'individual'>(
@@ -368,6 +375,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
 
   const isDirty = useMemo(
     () => {
+      if (!hasUserEditedRef.current) return false
       const current = sanitizeMonitoringPayload(formData)
       return !isDeepEqual(current, initialDirtySnapshotRef.current)
     },
@@ -412,7 +420,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
           <button 
             onClick={() => {
               if (formData.status === 'Existing') {
-                setFormData({...formData, is_active: !formData.is_active})
+                updateFormData({...formData, is_active: !formData.is_active})
               }
             }}
             disabled={formData.status !== 'Existing'}
@@ -447,7 +455,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                 <FieldLabel label="Monitoring Item Title" required />
                 <input
                   value={formData.title}
-                  onChange={e => setFormData({ ...formData, title: e.target.value })}
+                  onChange={e => updateFormData({ ...formData, title: e.target.value })}
                   placeholder="e.g. CORE-DB: High CPU Load Alert"
                   className={monitoringInputClass(formErrors.title)}
                 />
@@ -458,7 +466,7 @@ export function MonitoringForm({ item, devices, categories, severities, platform
                   label="Status"
                   required={isMonitoringFieldRequired('status')}
                   value={formData.status}
-                  onChange={(value) => setFormData({ ...formData, status: value })}
+                  onChange={(value) => updateFormData({ ...formData, status: value })}
                   options={STATUSES.map(s => ({ value: s.value, label: s.value }))}
                   error={formErrors.status}
                 />
