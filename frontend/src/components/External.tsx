@@ -687,23 +687,23 @@ const ExternalForm = ({
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formData, setFormData] = useState(() => {
-    const normalizedContacts = normalizeLegacyContacts(initialData)
+    const normalizedContacts = normalizeLegacyContacts(initialData || {})
     return {
-      name: initialData.name || '',
-      aliases_json: initialData.aliases_json || [],
-      type: initialData.type || 'API',
-      owner_organization: initialData.owner_organization || '',
-      owner_team: initialData.owner_team || '',
-      ownership_mode: initialData.ownership_mode || 'team',
-      internal_team_id: initialData.internal_team_id ? String(initialData.internal_team_id) : '',
-      internal_operator_id: initialData.internal_operator_id ? String(initialData.internal_operator_id) : '',
-      status: initialData.status || 'Planned',
-      environment: initialData.environment || 'Production',
-      description: initialData.description || '',
-      notes: initialData.notes || '',
+      name: initialData?.name || '',
+      aliases_json: initialData?.aliases_json || [],
+      type: initialData?.type || 'API',
+      owner_organization: initialData?.owner_organization || '',
+      owner_team: initialData?.owner_team || '',
+      ownership_mode: initialData?.ownership_mode || 'team',
+      internal_team_id: initialData?.internal_team_id ? String(initialData.internal_team_id) : '',
+      internal_operator_id: initialData?.internal_operator_id ? String(initialData.internal_operator_id) : '',
+      status: initialData?.status || 'Planned',
+      environment: initialData?.environment || 'Production',
+      description: initialData?.description || '',
+      notes: initialData?.notes || '',
       contacts_json: normalizedContacts,
-      business_purpose: initialData.business_purpose || '',
-      metadata_json: parseMetadataObject(initialData.metadata_json),
+      business_purpose: initialData?.business_purpose || '',
+      metadata_json: parseMetadataObject(initialData?.metadata_json),
     }
   })
 
