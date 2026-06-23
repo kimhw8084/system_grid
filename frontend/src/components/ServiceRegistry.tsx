@@ -331,6 +331,7 @@ export const ServiceForm = ({
   devices,
   formId,
   onDirtyChange,
+  dirtyRef,
   renderActions = true,
 }: any) => {
   const [metadataError, setMetadataError] = useState<string | null>(null)
@@ -484,6 +485,9 @@ export const ServiceForm = ({
     () => JSON.stringify(formData) !== initialDirtySnapshotRef.current,
     [formData]
   )
+  if (dirtyRef) {
+    dirtyRef.current = isDirty
+  }
 
   useEffect(() => {
     onDirtyChange?.(isDirty)

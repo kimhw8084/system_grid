@@ -33,6 +33,7 @@ interface WorkspaceModalProps {
   hideCloseButton?: boolean
   hideFooterClose?: boolean
   isDirty?: boolean
+  resolveIsDirty?: () => boolean
   dirtyConfirmTitle?: string
   dirtyConfirmMessage?: string
   dirtyConfirmText?: string
@@ -59,6 +60,7 @@ export function WorkspaceModal({
   hideCloseButton = false,
   hideFooterClose = false,
   isDirty = false,
+  resolveIsDirty,
   dirtyConfirmTitle = 'Unsaved Changes',
   dirtyConfirmMessage = 'You have unsaved changes. Close this window and discard them?',
   dirtyConfirmText = 'Discard Changes',
@@ -71,6 +73,7 @@ export function WorkspaceModal({
   } = useOperationalDirtyGuard({
     active: isOpen,
     isDirty,
+    resolveIsDirty,
     onDiscard: onClose,
   })
 

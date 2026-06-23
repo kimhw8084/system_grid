@@ -97,6 +97,24 @@ const SERVICE_FIXED_WIDTH_COLUMN_IDS = new Set([
   'row_actions',
 ])
 
+const sanitizeServiceColumnLayout = (layout: any[], preserveWidths: boolean) => {
+  const sanitized = sanitizeOperationalColumnLayout(layout, SERVICE_PERSISTED_COLUMN_IDS, preserveWidths).map((column: any) => (
+    preserveWidths && SERVICE_FIXED_WIDTH_COLUMN_IDS.has(column?.colId)
+      ? {
+          ...column,
+          width: undefined,
+          flex: undefined,
+        }
+      : column
+  ))
+
+  return [...sanitized].sort((a: any, b: any) => {
+    const aIndex = SERVICE_DEFAULT_COLUMN_ORDER_MAP.get(a?.colId) ?? 1000
+    const bIndex = SERVICE_DEFAULT_COLUMN_ORDER_MAP.get(b?.colId) ?? 1000
+    return aIndex - bIndex
+  })
+}
+
 export const STATUSES = [
   { value: 'Existing', label: 'Existing', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
   { value: 'Planned', label: 'Planned', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
@@ -231,14 +249,6 @@ const normalizeServiceSavedViews = (value: any) => {
 
 const sanitizeServiceViewConfig = (config: any) => {
   const safeConfig = config && typeof config === 'object' ? config : {}
-  const sanitizeNetworkLayout = (layout: any[], preserveWidths: boolean) => {
-    const sanitized = sanitizeOperationalColumnLayout(layout, SERVICE_PERSISTED_COLUMN_IDS, preserveWidths)
-    return [...sanitized].sort((a: any, b: any) => {
-      const aIndex = SERVICE_DEFAULT_COLUMN_ORDER_MAP.get(a?.colId) ?? 1000
-      const bIndex = SERVICE_DEFAULT_COLUMN_ORDER_MAP.get(b?.colId) ?? 1000
-      return aIndex - bIndex
-    })
-  }
   return {
     fontSize: Number.isFinite(safeConfig.fontSize) ? safeConfig.fontSize : 11,
     rowDensity: Number.isFinite(safeConfig.rowDensity) ? safeConfig.rowDensity : 8,
@@ -247,7 +257,7 @@ const sanitizeServiceViewConfig = (config: any) => {
       : [],
     groupBy: typeof safeConfig.groupBy === 'string' && SERVICE_VALID_GROUP_BY.has(safeConfig.groupBy) ? safeConfig.groupBy : 'raw',
     showFilterBar: safeConfig.showFilterBar !== false,
-    columnLayoutState: sanitizeNetworkLayout(Array.isArray(safeConfig.columnLayoutState) ? safeConfig.columnLayoutState : [], true),
+    columnLayoutState: sanitizeServiceColumnLayout(Array.isArray(safeConfig.columnLayoutState) ? safeConfig.columnLayoutState : [], true),
     quickFilter: typeof safeConfig.quickFilter === 'string' ? safeConfig.quickFilter : '',
     quickFilters: normalizeServiceQuickFilters(safeConfig.quickFilters),
     filterModel: sanitizeOperationalFilterModel(safeConfig.filterModel, SERVICE_PERSISTED_COLUMN_IDS),
@@ -274,7 +284,7 @@ const normalizeServiceWorkspaceState = (value: any) => {
       quickFilters: normalizeServiceQuickFilters(uiState.quickFilters),
       groupBy: typeof uiState.groupBy === 'string' && SERVICE_VALID_GROUP_BY.has(uiState.groupBy) ? uiState.groupBy : 'raw',
       showFilterBar: uiState.showFilterBar !== false,
-      columnLayoutState: sanitizeServiceViewConfig({ columnLayoutState: Array.isArray(uiState.columnLayoutState) ? uiState.columnLayoutState : [] }).columnLayoutState,
+      columnLayoutState: sanitizeServiceColumnLayout(Array.isArray(uiState.columnLayoutState) ? uiState.columnLayoutState : [], false),
       lastVisitedAt: Number.isFinite(uiState.lastVisitedAt) ? uiState.lastVisitedAt : 0,
       searchTerm: typeof uiState.searchTerm === 'string' ? uiState.searchTerm : '',
     }
@@ -567,7 +577,6 @@ export default function ServicesReal() {
   const [showImportModal, setShowImportModal] = useState(false)
   const [compareOpen, setCompareOpen] = useState(false)
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
-  const [isServiceFormDirty, setIsServiceFormDirty] = useState(false)
   
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
@@ -1690,7 +1699,6 @@ export default function ServicesReal() {
         field: 'device_name',
         headerName: 'Host',
         width: 180,
-        valueClassName: 'text-slate-200',
         hide: hiddenColumns.includes('device_name'),
       },
       {
@@ -1705,7 +1713,6 @@ export default function ServicesReal() {
         field: 'service_type',
         headerName: 'Type',
         width: 140,
-        valueClassName: 'text-blue-300 font-semibold',
         hide: hiddenColumns.includes('service_type'),
       },
       {
@@ -1713,7 +1720,6 @@ export default function ServicesReal() {
         field: 'environment',
         headerName: 'Environment',
         width: 140,
-        valueClassName: 'text-slate-300',
         hide: hiddenColumns.includes('environment'),
       },
       {
@@ -1721,7 +1727,6 @@ export default function ServicesReal() {
         field: 'version',
         headerName: 'Version',
         width: 120,
-        valueClassName: 'text-slate-300',
         hide: hiddenColumns.includes('version'),
       },
       {
@@ -1747,7 +1752,6 @@ export default function ServicesReal() {
         field: 'manufacturer',
         headerName: 'Manufacturer',
         width: 160,
-        valueClassName: 'text-slate-300',
         hide: hiddenColumns.includes('manufacturer'),
       },
       {
@@ -1755,7 +1759,6 @@ export default function ServicesReal() {
         field: 'supplier',
         headerName: 'Supplier',
         width: 160,
-        valueClassName: 'text-slate-300',
         hide: hiddenColumns.includes('supplier'),
       },
       {
@@ -1763,7 +1766,6 @@ export default function ServicesReal() {
         field: 'purchase_type',
         headerName: 'License Type',
         width: 150,
-        valueClassName: 'text-slate-300',
         hide: hiddenColumns.includes('purchase_type'),
       },
       {
@@ -1771,7 +1773,6 @@ export default function ServicesReal() {
         field: 'cost',
         headerName: 'Cost',
         width: 120,
-        valueClassName: 'text-slate-300',
         formatValue: (value, params) => value != null ? `${params.data?.currency || 'USD'} ${value}` : 'N/A',
         hide: hiddenColumns.includes('cost'),
       },
@@ -1780,7 +1781,6 @@ export default function ServicesReal() {
         field: 'secret_count',
         headerName: 'Secrets',
         width: 100,
-        valueClassName: 'text-emerald-300',
         formatValue: (value) => String(value ?? 0),
         hide: hiddenColumns.includes('secret_count'),
       },
@@ -2430,15 +2430,11 @@ export default function ServicesReal() {
             options={settingsOptions || []}
             onClose={() => {
               setIsFormOpen(false)
-              setIsServiceFormDirty(false)
             }}
             onSuccess={() => {
               queryClient.invalidateQueries({ queryKey: ['logical-services'] })
               setIsFormOpen(false)
-              setIsServiceFormDirty(false)
             }}
-            isDirty={isServiceFormDirty}
-            onDirtyChange={setIsServiceFormDirty}
           />
         )}
         {detailItem && (
@@ -2932,10 +2928,12 @@ function ServiceRecordDetailModal({ item, onClose, onEdit, onDelete, onOpenAsset
 }
 
 const serviceInputClass = (error?: string) => getWorkspaceInputClass(error)
-function ServiceRecordForm({ item, devices, options, onClose, onSuccess, isDirty, onDirtyChange }: any) {
+function ServiceRecordForm({ item, devices, options, onClose, onSuccess }: any) {
   useBodyModalFlag()
   const queryClient = useQueryClient()
   const [isMaximized, setIsMaximized] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
+  const dirtyRef = useRef(false)
   const mutation = useMutation({
     mutationFn: async (payload: any) => {
       const sanitized = sanitizeServicePayload(payload)
@@ -2963,6 +2961,7 @@ function ServiceRecordForm({ item, devices, options, onClose, onSuccess, isDirty
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
       isDirty={isDirty}
+      resolveIsDirty={() => dirtyRef.current}
       dirtyConfirmTitle="Discard Service Changes?"
       dirtyConfirmMessage="You have unsaved service changes. Close this window and discard them?"
       title={
@@ -3001,7 +3000,8 @@ function ServiceRecordForm({ item, devices, options, onClose, onSuccess, isDirty
             isPending={mutation.isPending}
             options={options}
             devices={devices}
-            onDirtyChange={onDirtyChange}
+            dirtyRef={dirtyRef}
+            onDirtyChange={setIsDirty}
             renderActions={false}
           />
         }

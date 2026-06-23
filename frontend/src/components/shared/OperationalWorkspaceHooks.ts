@@ -361,10 +361,12 @@ export function useOperationalGridRuntime({
 export function useOperationalDirtyGuard({
   active,
   isDirty,
+  resolveIsDirty,
   onDiscard,
 }: {
   active: boolean
   isDirty: boolean
+  resolveIsDirty?: () => boolean
   onDiscard: () => void
 }) {
   const pendingActionRef = useRef<(() => void) | null>(null)
@@ -373,13 +375,14 @@ export function useOperationalDirtyGuard({
   const requestDiscard = useCallback((action?: () => void) => {
     if (!active) return
     const nextAction = action || onDiscard
-    if (!isDirty) {
+    const effectiveDirty = resolveIsDirty ? resolveIsDirty() : isDirty
+    if (!effectiveDirty) {
       nextAction()
       return
     }
     pendingActionRef.current = nextAction
     setIsConfirmOpen(true)
-  }, [active, isDirty, onDiscard])
+  }, [active, isDirty, onDiscard, resolveIsDirty])
 
   const confirmDiscard = useCallback(() => {
     const action = pendingActionRef.current || onDiscard
