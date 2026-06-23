@@ -11,7 +11,7 @@ import {
   Globe, Bell, Info, ChevronRight, X, Check, Save,
   AlertCircle, Clock, Zap, Settings, ArrowRightLeft, Briefcase, UserCheck, Code,
   BookOpen, Eye, EyeOff, FileText, Users, Mail, MessageSquare, Monitor, MoreVertical,
-  Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, GitCompare, Undo2, List, LayoutGrid, Upload, Terminal, History as HistoryIcon, Edit2 as EditIcon
+  Download, Copy, ChevronDown, ChevronUp, Layers, RefreshCcw, Tag, Sliders, Clipboard, Lightbulb, Maximize2, Minimize2, GitCompare, Undo2, List, LayoutGrid, Upload, Terminal, History as HistoryIcon, Edit2 as EditIcon, Star
 } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
@@ -52,7 +52,6 @@ import { useOperationalDetailRoute, useOperationalGridLayout, usePersistentJsonS
 import {
   useOperationalRowInteractions,
   useOperationalContextMenu,
-  useOperationalDismissController
 } from './shared/OperationalGridInteractions'
 import { WorkspaceCompareShell, WorkspaceDossierShell } from './shared/WorkspaceModalShells'
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
@@ -2098,9 +2097,9 @@ export default function ServicesReal() {
           </OperationalAnchoredPanel>
 
           <OperationalAnchoredPanel
-            isOpen={Boolean(rowActionMenu && rowMenuItem)}
+            isOpen={!!rowActionMenu}
             panelKey="row-action-menu"
-            style={rowActionMenu?.style || {}}
+            style={rowActionMenu?.style ?? { position: 'fixed', top: -9999, left: -9999 }}
             className="row-action-menu-container"
           >
             {rowActionMenu && rowMenuItem ? (
@@ -2123,14 +2122,14 @@ export default function ServicesReal() {
                   <div className="px-3 py-1">
                     <p className="text-[10px] font-semibold text-slate-400">Quick access</p>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 px-2 pb-3 border-b border-slate-800 mb-2">
+                  <div className="grid grid-cols-2 gap-2 px-2 pb-3 border-b border-slate-800 mb-2">
                     <button
                       onClick={() => {
                         if (!rowMenuItem?.id) return
                         detailRoute.openDetail(rowMenuItem, { replace: false })
                         setRowActionMenu(null)
                       }}
-                      className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-blue-400 transition-all hover:border-blue-500/30 hover:bg-blue-600/10 active:scale-95"
+                      className="flex w-full flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-blue-400 transition-all hover:border-blue-500/30 hover:bg-blue-600/10 active:scale-95"
                     >
                       <Maximize2 size={14} />
                       Details
@@ -2142,13 +2141,56 @@ export default function ServicesReal() {
                         setIsFormOpen(true)
                         setRowActionMenu(null)
                       }}
-                      className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-emerald-400 transition-all hover:border-emerald-500/30 hover:bg-emerald-600/10 active:scale-95"
+                      className="flex w-full flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-emerald-400 transition-all hover:border-emerald-500/30 hover:bg-emerald-600/10 active:scale-95"
                     >
                       <Edit2 size={14} />
                       Edit
                     </button>
                   </div>
 
+                  <div className="px-3 py-1">
+                    <p className="text-[10px] font-semibold text-slate-400">Follow options</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 px-2 pb-1">
+                    <button
+                      onClick={() => {
+                        if (!rowMenuItem?.id) return
+                        toggleWatch(rowMenuItem.id)
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
+                    >
+                      {watchIds.includes(rowMenuItem.id) ? (
+                        <>
+                          <EyeOff size={12} className="text-slate-400" />
+                          Unwatch
+                        </>
+                      ) : (
+                        <>
+                          <Eye size={12} className="text-sky-400" />
+                          Watch
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!rowMenuItem?.id) return
+                        toggleFavorite(rowMenuItem.id)
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
+                    >
+                      {favoriteIds.includes(rowMenuItem.id) ? (
+                        <>
+                          <Star size={12} className="fill-amber-400 text-amber-400" />
+                          Unpin
+                        </>
+                      ) : (
+                        <>
+                          <Star size={12} className="text-amber-400" />
+                          Pin
+                        </>
+                      )}
+                    </button>
+                  </div>
                   <div className="mx-2 my-2 h-px bg-slate-800" />
                 {activeTab === 'deleted' && (
                   <button
@@ -2183,8 +2225,8 @@ export default function ServicesReal() {
                 >
                   <Trash2 size={14} />
                     {rowDeleteConfirmId === rowMenuItem.id
-                    ? (activeTab === 'active' ? 'Confirm Delete?' : 'Confirm Purge?')
-                    : (activeTab === 'active' ? 'Delete' : 'Purge')}
+                    ? (activeTab === 'active' ? 'Confirm Archive?' : 'Confirm Purge?')
+                    : (activeTab === 'active' ? 'Archive' : 'Purge')}
                 </button>
                 </div>
             </WorkspaceFloatingPanel>
@@ -2687,7 +2729,7 @@ function BulkEditTableModal({ items, linkPurposeOptions, cableTypeOptions, onClo
             disabled={mutation.isPending} 
             variant="primary"
           >
-            {mutation.isPending ? <Clock className="animate-spin mr-2" size={14} /> : <Check className="mr-2" size={14} />}
+            {mutation.isPending ? <Clock className="animate-spin" size={14} /> : <Check size={14} />}
             <span>Save Bulk Edit</span>
           </ToolbarButton>
         </div>

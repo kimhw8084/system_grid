@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useBlocker, useSearchParams } from 'react-router-dom'
 import {
   applyOperationalColumnState,
   getOperationalColumnLayoutSnapshot,
@@ -371,43 +371,67 @@ export function useOperationalDirtyGuard({
 }) {
   const pendingActionRef = useRef<(() => void) | null>(null)
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
+  const blockedLocationRef = useRef<string | null>(null)
+  const effectiveDirty = useMemo(
+    () => active && (resolveIsDirty ? resolveIsDirty() : isDirty),
+    [active, isDirty, resolveIsDirty]
+  )
+  const blocker = useBlocker(effectiveDirty)
 
   const requestDiscard = useCallback((action?: () => void) => {
     if (!active) return
     const nextAction = action || onDiscard
-    const effectiveDirty = resolveIsDirty ? resolveIsDirty() : isDirty
     if (!effectiveDirty) {
       nextAction()
       return
     }
     pendingActionRef.current = nextAction
     setIsConfirmOpen(true)
-  }, [active, isDirty, onDiscard, resolveIsDirty])
+  }, [active, effectiveDirty, onDiscard])
 
   const confirmDiscard = useCallback(() => {
     const action = pendingActionRef.current || onDiscard
     pendingActionRef.current = null
+    blockedLocationRef.current = null
     setIsConfirmOpen(false)
     action()
   }, [onDiscard])
 
   const cancelDiscard = useCallback(() => {
+    if (blocker.state === 'blocked') {
+      blocker.reset()
+    }
     pendingActionRef.current = null
+    blockedLocationRef.current = null
     setIsConfirmOpen(false)
-  }, [])
+  }, [blocker])
 
   useEffect(() => {
-    if (!(active && isDirty)) return
+    if (blocker.state !== 'blocked') {
+      blockedLocationRef.current = null
+      return
+    }
+
+    const nextLocationKey = `${blocker.location.pathname}${blocker.location.search}${blocker.location.hash}`
+    if (blockedLocationRef.current === nextLocationKey && isConfirmOpen) return
+
+    blockedLocationRef.current = nextLocationKey
+    pendingActionRef.current = () => blocker.proceed()
+    setIsConfirmOpen(true)
+  }, [blocker, isConfirmOpen])
+
+  useEffect(() => {
+    if (!effectiveDirty) return
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault()
       event.returnValue = ''
     }
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [active, isDirty])
+  }, [effectiveDirty])
 
   useEffect(() => {
-    if (!(active && isDirty)) return
+    if (!effectiveDirty) return
     const handleDocumentClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null
       const anchor = target?.closest?.('a[href]') as HTMLAnchorElement | null
@@ -416,6 +440,8 @@ export function useOperationalDirtyGuard({
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
       const href = anchor.href
       if (!href || href === window.location.href) return
+      const hrefUrl = new URL(href, window.location.href)
+      if (hrefUrl.origin === window.location.origin) return
       event.preventDefault()
       requestDiscard(() => {
         window.location.assign(href)
@@ -423,7 +449,7 @@ export function useOperationalDirtyGuard({
     }
     document.addEventListener('click', handleDocumentClick, true)
     return () => document.removeEventListener('click', handleDocumentClick, true)
-  }, [active, isDirty, requestDiscard])
+  }, [effectiveDirty, requestDiscard])
 
   return {
     requestDiscard,
@@ -453,6 +479,7 @@ export function useOperationalDetailRoute({
   const [searchParams, setSearchParams] = useSearchParams()
   const idParam = searchParams.get('id')
   const isTransitioningRef = useRef(false)
+  const skipStateToUrlSyncRef = useRef(false)
 
   const clearDetailRoute = useCallback((options?: { replace?: boolean }) => {
     const replace = options?.replace ?? true
@@ -510,6 +537,7 @@ export function useOperationalDetailRoute({
 
     if (!idParam) {
       if (detailItem) {
+        skipStateToUrlSyncRef.current = true
         setDetailItem(null)
       }
       return
@@ -519,6 +547,7 @@ export function useOperationalDetailRoute({
     if (!target) {
       clearDetailRoute()
       if (detailItem) {
+        skipStateToUrlSyncRef.current = true
         setDetailItem(null)
       }
       return
@@ -530,6 +559,7 @@ export function useOperationalDetailRoute({
     }
 
     if (!detailItem || String(detailItem.id) !== idParam) {
+      skipStateToUrlSyncRef.current = true
       setDetailItem(target)
     }
   }, [allItems, idParam, setSearchParams, detailItem, clearDetailRoute, setActiveTab, isEditOpen, isHistoryOpen, isLinkOpen])
@@ -537,6 +567,10 @@ export function useOperationalDetailRoute({
   // 2. State -> URL sync (handles direct closing from ESC or backdrop click)
   useEffect(() => {
     if (isTransitioningRef.current || isEditOpen || isHistoryOpen || isLinkOpen) return
+    if (skipStateToUrlSyncRef.current) {
+      skipStateToUrlSyncRef.current = false
+      return
+    }
 
     const nextParams = new URLSearchParams(window.location.search)
     if (detailItem) {
