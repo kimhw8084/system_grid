@@ -1,6 +1,6 @@
 import React from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { createMemoryRouter, Link, RouterProvider } from 'react-router-dom'
+import { Link, createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 
 import { useOperationalDetailRoute } from './OperationalWorkspaceHooks'
@@ -115,6 +115,7 @@ describe('useOperationalDirtyGuard navigation protection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Discard Changes' }))
 
     expect(await screen.findByText('Other page')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/prev')
   })
 })
 

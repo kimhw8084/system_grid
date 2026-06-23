@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from "react"
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query"
-import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from "react-router-dom"
+import { Routes, Route, Link, useLocation, useNavigate, Navigate, RouterProvider, createBrowserRouter } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { LayoutDashboard, Server, Network, Shield, Settings, Search, ServerCrash, Terminal, Layers, Menu, X, ChevronRight, Zap, Info, Star, AlertOctagon, RefreshCcw, Activity, Grid3X3, Clock, AlertTriangle, Upload, Workflow, Package, Globe, Target, BookOpen, FileText, Briefcase, Share2, Bug, Check, ShieldAlert, Bell } from "lucide-react"
 import { Toaster, toast } from "react-hot-toast"
@@ -91,6 +91,13 @@ const queryClient = new QueryClient({
     }
   })
 })
+
+const appRouter = createBrowserRouter([
+  {
+    path: '*',
+    element: <MainLayout />,
+  },
+])
 
 class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: any, showDetails: boolean}> {
   constructor(props: any) { super(props); this.state = { hasError: false, error: null, showDetails: true }; }
@@ -761,11 +768,9 @@ import { ErrorSentinel } from './components/shared/ErrorSentinel'
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <ErrorSentinel>
-          <MainLayout />
-        </ErrorSentinel>
-      </BrowserRouter>
+      <ErrorSentinel>
+        <RouterProvider router={appRouter} />
+      </ErrorSentinel>
     </QueryClientProvider>
   )
 }
