@@ -1484,6 +1484,7 @@ export default function External() {
     queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities?include_deleted=true')).json())
   })
 
+
   const detailRoute = useOperationalDetailRoute({
     allItems: allEntities,
     detailItem: activeDetails,

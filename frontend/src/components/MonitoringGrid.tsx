@@ -568,6 +568,7 @@ export default function MonitoringGrid() {
     queryFn: async () => (await apiFetch('/api/v1/monitoring?include_deleted=true')).json()
   })
 
+
   const detailRoute = useOperationalDetailRoute({
     allItems,
     detailItem,

@@ -1187,6 +1187,7 @@ export default function ServicesReal() {
     queryFn: async () => (await apiFetch('/api/v1/logical-services/?include_deleted=true')).json()
   })
 
+
   const detailRouteItems = useMemo(
     () => Array.isArray(allItems) ? allItems.map((item: any) => normalizeServiceRecord(item)) : undefined,
     [allItems]
