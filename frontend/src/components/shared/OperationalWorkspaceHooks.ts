@@ -454,48 +454,50 @@ export function useOperationalDetailRoute({
   const idParam = searchParams.get('id')
   const isTransitioningRef = useRef(false)
 
-  const clearDetailRoute = useCallback(() => {
+  const clearDetailRoute = useCallback((options?: { replace?: boolean }) => {
+    const replace = options?.replace ?? true
     const nextParams = new URLSearchParams(window.location.search)
     if (nextParams.has('id')) {
       nextParams.delete('id')
-      setSearchParams(nextParams, { replace: true })
+      setSearchParams(nextParams, { replace })
     }
   }, [setSearchParams])
 
-  const openDetail = useCallback((item: any) => {
+  const openDetail = useCallback((item: any, options?: { replace?: boolean }) => {
+    const replace = options?.replace ?? true
     isTransitioningRef.current = false
     setDetailItem(item)
     if (item) {
       const nextParams = new URLSearchParams(window.location.search)
       nextParams.set('id', String(item.id))
-      setSearchParams(nextParams, { replace: true })
+      setSearchParams(nextParams, { replace })
     }
   }, [setDetailItem, setSearchParams])
 
-  const closeDetail = useCallback(() => {
+  const closeDetail = useCallback((options?: { replace?: boolean }) => {
     isTransitioningRef.current = false
     setDetailItem(null)
-    clearDetailRoute()
+    clearDetailRoute(options)
   }, [setDetailItem, clearDetailRoute])
 
-  const openEditFromDetail = useCallback((item: any, callback?: () => void) => {
+  const openEditFromDetail = useCallback((item: any, callback?: () => void, options?: { replace?: boolean }) => {
     isTransitioningRef.current = true
     setDetailItem(null)
-    clearDetailRoute()
+    clearDetailRoute(options)
     if (callback) callback()
   }, [setDetailItem, clearDetailRoute])
 
-  const openHistoryFromDetail = useCallback((item: any, callback?: () => void) => {
+  const openHistoryFromDetail = useCallback((item: any, callback?: () => void, options?: { replace?: boolean }) => {
     isTransitioningRef.current = true
     setDetailItem(null)
-    clearDetailRoute()
+    clearDetailRoute(options)
     if (callback) callback()
   }, [setDetailItem, clearDetailRoute])
 
-  const openLinkFromDetail = useCallback((item: any, callback?: () => void) => {
+  const openLinkFromDetail = useCallback((item: any, callback?: () => void, options?: { replace?: boolean }) => {
     isTransitioningRef.current = true
     setDetailItem(null)
-    clearDetailRoute()
+    clearDetailRoute(options)
     if (callback) callback()
   }, [setDetailItem, clearDetailRoute])
 

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import CodeMirror from '@uiw/react-codemirror'
 import { sql } from '@codemirror/lang-sql'
@@ -48,7 +48,7 @@ import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shar
 import { StatusPill } from './shared/StatusPill'
 import { parseCommaSeparatedValues } from '../utils/dataParsers'
 import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
-import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
+import { useOperationalDetailRoute, useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
 import {
   useOperationalRowInteractions,
   useOperationalContextMenu,
@@ -348,48 +348,6 @@ const getAnchoredFloatingStyle = ({
   }
 }
 
-const getPointFloatingStyle = ({
-  x,
-  y,
-  width,
-  height,
-  zIndex,
-  offset = 0
-}: {
-  x: number
-  y: number
-  width: number
-  height: number
-  zIndex: number
-  offset?: number
-}) => {
-  const vW = window.innerWidth
-  const vH = window.innerHeight
-
-  const style: any = {
-    position: 'fixed' as const,
-    width,
-    maxHeight: `calc(100vh - ${FLOATING_PANEL_EDGE * 2}px)`,
-    zIndex
-  }
-
-  // Horizontal positioning
-  if (x + width > vW - FLOATING_PANEL_EDGE) {
-    style.right = vW - x
-  } else {
-    style.left = Math.max(FLOATING_PANEL_EDGE, x)
-  }
-
-  // Vertical positioning
-  if (y + height > vH - FLOATING_PANEL_EDGE) {
-    style.bottom = vH - y
-  } else {
-    style.top = Math.max(FLOATING_PANEL_EDGE, y)
-  }
-
-  return style
-}
-
 // Isolated component to prevent UI state changes (menus) from triggering AgGrid recalculations
 const getMonitorGroupValue = (item: any, field: string) => {
   if (field === 'notification_method') return item.notification_method || 'No notification path'
@@ -523,9 +481,7 @@ const ObservabilityHUD = ({ items }: any) => {
 }
 
 export default function ServicesReal() {
-  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const idParam = searchParams.get('id')
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
   const { data: userSettings, isSuccess: hasUserSettings } = useQuery({
@@ -610,7 +566,6 @@ export default function ServicesReal() {
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'service_type' | 'environment' | null>(null)
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
   const [pendingIds, setPendingIds] = useState<number[]>([])
-  const selectionAnchorRef = useRef<number | null>(null)
   const displayMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const viewsMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const bulkMenuButtonRef = useRef<HTMLButtonElement | null>(null)
@@ -816,35 +771,13 @@ export default function ServicesReal() {
     if (params?.data?.id != null) return String(params.data.id)
     return String(params?.node?.id ?? 'unknown-row')
   }, [])
-  const openNetworkDetail = useCallback((item: any, replace: boolean = false) => {
-    if (!item?.id) return
-    setDetailItem(item)
-    const nextParams = new URLSearchParams(searchParams)
-    nextParams.set('id', String(item.id))
-    navigate({ search: `?${nextParams.toString()}` }, { replace })
-  }, [navigate, searchParams])
-  
-  const closeNetworkDetail = useCallback((replace: boolean = true) => {
-    setDetailItem(null)
-    setDetailDeleteConfirm(false)
-    const nextParams = new URLSearchParams(searchParams)
-    nextParams.delete('id')
-    navigate({ search: nextParams.toString() ? `?${nextParams.toString()}` : '' }, { replace })
-  }, [navigate, searchParams])
-
-  const openRowActionMenuAtPoint = useCallback((item: any, x: number, y: number) => {
-    setRowActionMenu({
-      item,
-      style: getPointFloatingStyle({ x, y, width: 336, height: 432, zIndex: 1115 })
-    })
-  }, [])
-
-  const handleCellContextMenu = useCallback((e: any) => {
-    if (!e?.data) return
-    const mouseEvent = e.event as MouseEvent
-    mouseEvent?.preventDefault?.()
-    openRowActionMenuAtPoint(e.data, mouseEvent.clientX, mouseEvent.clientY)
-  }, [openRowActionMenuAtPoint])
+  const { handleCellContextMenu, openRowActionMenuAtPoint } = useOperationalContextMenu({
+    onOpenRowActionMenu: useCallback((item, style) => {
+      setRowActionMenu({ item, style })
+    }, []),
+    menuWidth: 336,
+    menuHeight: 432,
+  })
 
   const handleGridReady = useCallback((event: any) => {
     if (typeof window !== 'undefined') {
@@ -960,52 +893,8 @@ export default function ServicesReal() {
     setCompareOpen(true)
   }
 
-  const shouldIgnoreRowSelection = (target: EventTarget | null) => {
-    const element = target as HTMLElement | null
-    if (!element) return false
-    return Boolean(
-      element.closest('button, a, input, textarea, select, label') ||
-      element.closest('.ag-selection-checkbox') ||
-      element.closest('.ag-checkbox-input-wrapper') ||
-      element.closest('.row-action-menu-container')
-    )
-  }
-
-  const handleRowClicked = useCallback((event: any) => {
-    if (!event?.node || shouldIgnoreRowSelection(event.event?.target)) return
-    if (event.data && pendingIds.includes(event.data.id)) return
-    const mouseEvent = event.event as MouseEvent | undefined
-    const isToggleSelection = Boolean(mouseEvent?.metaKey || mouseEvent?.ctrlKey)
-    const isRangeSelection = Boolean(mouseEvent?.shiftKey)
-
-    if (isRangeSelection && selectionAnchorRef.current !== null) {
-      const currentIndex = event.node.rowIndex
-      if (currentIndex === null || currentIndex === undefined) return
-
-      const start = Math.min(selectionAnchorRef.current, currentIndex)
-      const end = Math.max(selectionAnchorRef.current, currentIndex)
-      event.api.deselectAll()
-      event.api.forEachNodeAfterFilterAndSort((node: any) => {
-        if (node.rowIndex >= start && node.rowIndex <= end && !pendingIds.includes(node.data?.id)) {
-          node.setSelected(true)
-        }
-      })
-      return
-    }
-
-    if (isToggleSelection) {
-      event.node.setSelected(!event.node.isSelected())
-      selectionAnchorRef.current = event.node.rowIndex
-      return
-    }
-
-    event.api.deselectAll()
-    event.node.setSelected(true)
-    selectionAnchorRef.current = event.node.rowIndex
-  }, [pendingIds])
-
-  const { handleRowDoubleClicked } = useOperationalRowInteractions({
-    onRowDoubleClick: (item: any) => openNetworkDetail(item),
+  const { handleRowClicked, handleRowDoubleClicked } = useOperationalRowInteractions({
+    onRowDoubleClick: (item: any) => detailRoute.openDetail(item, { replace: false }),
     pendingIds
   })
 
@@ -1020,7 +909,7 @@ export default function ServicesReal() {
               type="button"
               onClick={(event) => {
                 event.stopPropagation()
-                openNetworkDetail(item)
+                detailRoute.openDetail(item, { replace: false })
               }}
               title="Open details"
               className="text-blue-400 hover:bg-blue-400/10"
@@ -1292,6 +1181,19 @@ export default function ServicesReal() {
     queryFn: async () => (await apiFetch('/api/v1/logical-services/?include_deleted=true')).json()
   })
 
+  const detailRouteItems = useMemo(
+    () => Array.isArray(allItems) ? allItems.map((item: any) => normalizeServiceRecord(item)) : undefined,
+    [allItems]
+  )
+
+  const detailRoute = useOperationalDetailRoute({
+    allItems: detailRouteItems,
+    detailItem,
+    setDetailItem,
+    isEditOpen: isFormOpen,
+    setActiveTab,
+  })
+
   const lifecycleCounts = useMemo(() => {
     if (!Array.isArray(allItems)) return { existing: 0, archived: 0 }
     return {
@@ -1471,24 +1373,6 @@ export default function ServicesReal() {
       currentCounts: Object.entries(currentCounts)
     }
   }, [bulkDraft, expandedBulkSection, selectedItems])
-
-  useEffect(() => {
-    if (!idParam || !Array.isArray(allItems)) return
-    const target = allItems.find((item: any) => String(item.id) === idParam)
-    if (!target) {
-      setDetailItem((current: any) => (current && String(current.id) === idParam ? null : current))
-      const nextParams = new URLSearchParams(searchParams)
-      nextParams.delete('id')
-      navigate({ search: nextParams.toString() ? `?${nextParams.toString()}` : '' }, { replace: true })
-      return
-    }
-    setActiveTab(target.is_deleted ? 'deleted' : 'active')
-    setDetailItem(normalizeServiceRecord(target))
-  }, [allItems, idParam, navigate, searchParams])
-
-  useEffect(() => {
-    selectionAnchorRef.current = null
-  }, [activeTab, items])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -2243,7 +2127,7 @@ export default function ServicesReal() {
                     <button
                       onClick={() => {
                         if (!rowMenuItem?.id) return
-                        openNetworkDetail(rowMenuItem)
+                        detailRoute.openDetail(rowMenuItem, { replace: false })
                         setRowActionMenu(null)
                       }}
                       className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-blue-400 transition-all hover:border-blue-500/30 hover:bg-blue-600/10 active:scale-95"
@@ -2432,10 +2316,12 @@ export default function ServicesReal() {
             options={settingsOptions || []}
             onClose={() => {
               setIsFormOpen(false)
+              detailRoute.finishTransition()
             }}
             onSuccess={() => {
               queryClient.invalidateQueries({ queryKey: ['logical-services'] })
               setIsFormOpen(false)
+              detailRoute.finishTransition()
             }}
           />
         )}
@@ -2443,15 +2329,21 @@ export default function ServicesReal() {
           <ServiceRecordDetailModal
             key={`service-detail-${detailItem.id}`}
             item={detailItem}
-            onClose={() => closeNetworkDetail()}
-            onEdit={(monitor: any) => { closeNetworkDetail(); setEditingItem(monitor); setIsFormOpen(true); }}
+            onClose={() => { detailRoute.closeDetail(); setDetailDeleteConfirm(false); }}
+            onEdit={(monitor: any) => {
+              detailRoute.openEditFromDetail(monitor, () => {
+                setEditingItem(monitor)
+                setIsFormOpen(true)
+                setDetailDeleteConfirm(false)
+              })
+            }}
             onDelete={(monitor: any) => {
               if (!detailDeleteConfirm) {
                 setDetailDeleteConfirm(true)
                 return
               }
               bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [monitor.id] })
-              closeNetworkDetail()
+              detailRoute.closeDetail()
             }}
             onOpenAsset={(deviceId: number) => navigate(`/asset?id=${deviceId}`)}
             deleteConfirm={detailDeleteConfirm}

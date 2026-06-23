@@ -9,6 +9,10 @@ fi
 COMMIT_MSG="$*"
 ZIP_NAME="../frontend-debug-lean.zip"
 
+echo "== Repo root =="
+pwd
+
+echo
 echo "== Git status before commit =="
 git status --short
 
@@ -45,19 +49,31 @@ zip -r "$ZIP_NAME" frontend \
      "frontend/.turbo/*" \
      "frontend/.cache/*" \
      "frontend/.git/*" \
+     "frontend/.DS_Store" \
+     "frontend/**/.DS_Store" \
      "frontend/.env" \
      "frontend/.env.local" \
      "frontend/*.log" \
+     "frontend/**/*.log" \
+     "frontend/*errors*.txt" \
+     "frontend/*ts_errors*.txt" \
+     "frontend/*tsc*.txt" \
+     "frontend/all_ts_errors.txt" \
      "frontend/errors.txt" \
-     "frontend/tsc.txt" \
-     "frontend/.DS_Store" \
-     "frontend//.DS_Store" \
-     "frontend/**/.DS_Store" \
-     "frontend//.map" \
-     "frontend/**/*.map" \
-     "frontend/**/.log"
+     "frontend/full_errors.txt" \
+     "frontend/full_tsc_report.txt" \
+     "frontend/target_errors.txt" \
+     "frontend/ts_errors.txt" \
+     "frontend/**/*.map"
+
+echo
+echo "== Zip created =="
+ls -lh "$ZIP_NAME"
+
+echo
+echo "== Zip content sanity check: should show nothing for junk files =="
+unzip -l "$ZIP_NAME" | grep -E 'test-results|venv/|playwright-report|\.env|\.env.local|errors\.txt|ts_errors|tsc|\.log|\.DS_Store' || true
 
 echo
 echo "Done."
 echo "Created: $ZIP_NAME"
-ls -lh "$ZIP_NAME"
