@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react"
+import React, { useState, useMemo, useEffect, useRef } from "react"
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Layers, X, Search, Edit2, Trash2, RefreshCcw, AlertCircle, Plus, LayoutGrid, Monitor, Database, Globe, Box, Settings, MoreVertical, FileJson, List, Sliders, Tag, Check, ExternalLink, Shield, Package, Workflow, Cpu, Activity, Zap, Clipboard, FileText, Eye, Upload } from "lucide-react"
@@ -323,7 +323,16 @@ export const ServiceDetailsView = ({ service, options, devices }: { service: any
     )
 }
 
-export const ServiceForm = ({ initialData, onSave, isPending, options, devices }: any) => {
+export const ServiceForm = ({
+  initialData,
+  onSave,
+  isPending,
+  options,
+  devices,
+  formId,
+  onDirtyChange,
+  renderActions = true,
+}: any) => {
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [formData, setFormData] = useState({
@@ -349,6 +358,29 @@ export const ServiceForm = ({ initialData, onSave, isPending, options, devices }
     supplier: "",
     ...initialData,
   })
+  const initialDirtySnapshotRef = useRef(JSON.stringify({
+    name: "",
+    service_type: "Database",
+    status: "Active",
+    environment: "Production",
+    version: "",
+    device_id: null,
+    config_json: {},
+    custom_attributes: {},
+    logic_json: [],
+    license_key: "",
+    purchase_type: "One-time",
+    purchase_date: "",
+    expiry_date: "",
+    installation_date: "",
+    purpose: "",
+    documentation_link: "",
+    cost: 0,
+    currency: "USD",
+    manufacturer: "",
+    supplier: "",
+    ...initialData,
+  }))
 
   const getOptions = (category: string) => Array.isArray(options) ? options.filter((entry: any) => entry.category === category) : []
   const ensureCurrentOption = (entries: Array<{ value: string; label: string }>, currentValue: string) => {
@@ -448,8 +480,24 @@ export const ServiceForm = ({ initialData, onSave, isPending, options, devices }
     })
   }
 
+  const isDirty = useMemo(
+    () => JSON.stringify(formData) !== initialDirtySnapshotRef.current,
+    [formData]
+  )
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
+
   return (
-    <div className="space-y-6 py-2">
+    <form
+      id={formId}
+      onSubmit={(event) => {
+        event.preventDefault()
+        handleSave()
+      }}
+      className="space-y-6 py-2"
+    >
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
         <section className="space-y-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5 shadow-inner">
           <div>
@@ -574,15 +622,17 @@ export const ServiceForm = ({ initialData, onSave, isPending, options, devices }
         {validationErrors.config_json && <p className="px-1 text-[9px] font-bold text-rose-400">{validationErrors.config_json}</p>}
       </section>
 
-      <button
-        onClick={handleSave}
-        disabled={!!metadataError || isPending}
-        data-testid="service-commit-btn"
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-4 text-[11px] font-bold uppercase tracking-[0.3em] text-white shadow-xl shadow-blue-500/20 transition-all active:scale-95 disabled:opacity-30"
-      >
-        {isPending ? <Activity size={14} className="animate-spin" /> : 'Save Service'}
-      </button>
-    </div>
+      {renderActions ? (
+        <button
+          type="submit"
+          disabled={!!metadataError || isPending}
+          data-testid="service-commit-btn"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-4 text-[11px] font-bold uppercase tracking-[0.3em] text-white shadow-xl shadow-blue-500/20 transition-all active:scale-95 disabled:opacity-30"
+        >
+          {isPending ? <Activity size={14} className="animate-spin" /> : 'Save Service'}
+        </button>
+      ) : null}
+    </form>
   )
 }
 

@@ -72,6 +72,7 @@ import {
   sanitizeOperationalFilterModel,
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
+import { renderOperationalActionButtons } from './shared/OperationalGridStandard'
 
 const SERVICE_VIEW_STORAGE_KEY = 'sysgrid_services_views_v1'
 const SERVICE_ACTIVE_VIEW_KEY = 'sysgrid_services_active_view_v1'
@@ -560,6 +561,7 @@ export default function ServicesReal() {
   const [showImportModal, setShowImportModal] = useState(false)
   const [compareOpen, setCompareOpen] = useState(false)
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
+  const [isServiceFormDirty, setIsServiceFormDirty] = useState(false)
   
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
@@ -993,38 +995,42 @@ export default function ServicesReal() {
   const renderPrimaryRowActions = (item: any) => {
     const isPending = pendingIds.includes(item.id)
     return (
-      <div className={`flex items-center justify-end gap-1.5 pr-2 ${isPending ? 'opacity-20 grayscale pointer-events-none' : ''}`}>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            openNetworkDetail(item)
-          }}
-          title="Open details"
-          className="rounded-lg p-1 text-blue-400 transition-all hover:bg-blue-400/10 active:scale-90"
-        >
-          <Maximize2 size={13} />
-        </button>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            setEditingItem(item)
-            setIsFormOpen(true)
-          }}
-          title="Edit configuration"
-          className="rounded-lg p-1 text-emerald-400 transition-all hover:bg-emerald-400/10 active:scale-90"
-        >
-          <Edit2 size={13} />
-        </button>
-        <button
-          type="button"
-          onClick={(event: any) => openRowActionMenu(event, item)}
-          title="More actions"
-          className="row-action-trigger row-action-menu-container rounded-lg p-1 text-slate-400 transition-all hover:bg-slate-400/10 hover:text-white active:scale-90"
-        >
-          <MoreVertical size={13} />
-        </button>
+      <div className={isPending ? 'opacity-20 grayscale pointer-events-none' : ''}>
+        {renderOperationalActionButtons(
+          <>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                openNetworkDetail(item)
+              }}
+              title="Open details"
+              className="text-blue-400 hover:bg-blue-400/10"
+            >
+              <Maximize2 size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                setEditingItem(item)
+                setIsFormOpen(true)
+              }}
+              title="Edit configuration"
+              className="text-emerald-400 hover:bg-emerald-400/10"
+            >
+              <Edit2 size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={(event: any) => openRowActionMenu(event, item)}
+              title="More actions"
+              className="row-action-trigger row-action-menu-container text-slate-400 hover:bg-slate-400/10 hover:text-white"
+            >
+              <MoreVertical size={13} />
+            </button>
+          </>
+        )}
       </div>
     )
   }
@@ -2628,11 +2634,17 @@ export default function ServicesReal() {
             item={editingItem}
             devices={devices}
             options={settingsOptions || []}
-            onClose={() => setIsFormOpen(false)}
+            onClose={() => {
+              setIsFormOpen(false)
+              setIsServiceFormDirty(false)
+            }}
             onSuccess={() => {
               queryClient.invalidateQueries({ queryKey: ['logical-services'] })
               setIsFormOpen(false)
+              setIsServiceFormDirty(false)
             }}
+            isDirty={isServiceFormDirty}
+            onDirtyChange={setIsServiceFormDirty}
           />
         )}
         {detailItem && (
@@ -3082,7 +3094,6 @@ function RecipientsModal({ recipients, method, onClose }: any) {
 }
 
 function ServiceRecordDetailModal({ item, onClose, onEdit, onDelete, onOpenAsset, deleteConfirm, options, devices }: any) {
-  useEscapeDismiss(onClose)
   useBodyModalFlag()
   const [isMaximized, setIsMaximized] = useState(false)
   if (!item) return null
@@ -3127,8 +3138,7 @@ function ServiceRecordDetailModal({ item, onClose, onEdit, onDelete, onOpenAsset
 }
 
 const serviceInputClass = (error?: string) => getWorkspaceInputClass(error)
-function ServiceRecordForm({ item, devices, options, onClose, onSuccess }: any) {
-  useEscapeDismiss(onClose)
+function ServiceRecordForm({ item, devices, options, onClose, onSuccess, isDirty, onDirtyChange }: any) {
   useBodyModalFlag()
   const queryClient = useQueryClient()
   const [isMaximized, setIsMaximized] = useState(false)
@@ -3158,6 +3168,9 @@ function ServiceRecordForm({ item, devices, options, onClose, onSuccess }: any) 
       size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+      isDirty={isDirty}
+      dirtyConfirmTitle="Discard Service Changes?"
+      dirtyConfirmMessage="You have unsaved service changes. Close this window and discard them?"
       title={
         <div className="flex items-center gap-3">
           <span>{item?.id ? 'Edit Service' : 'Create Service'}</span>
@@ -3173,16 +3186,29 @@ function ServiceRecordForm({ item, devices, options, onClose, onSuccess }: any) 
           <StatusPill value={item?.environment || 'Production'} />
         </div>
       }
-      footerRight={<div className="flex items-center gap-3"><ToolbarButton onClick={onClose}>Cancel</ToolbarButton></div>}
+      footerRight={
+        <ToolbarButton
+          onClick={() => (document.getElementById('service-record-form') as HTMLFormElement | null)?.requestSubmit()}
+          disabled={mutation.isPending}
+          variant="primary"
+          className="px-8 whitespace-nowrap inline-flex items-center"
+        >
+          {mutation.isPending ? <RefreshCcw className="animate-spin mr-2" size={14} /> : <Check className="mr-2" size={14} />}
+          <span>{item?.id ? 'Save Service' : 'Add Service'}</span>
+        </ToolbarButton>
+      }
     >
       <WorkspaceDossierShell
         body={
           <ServiceForm
+            formId="service-record-form"
             initialData={item || {}}
             onSave={(payload: any) => mutation.mutate(payload)}
             isPending={mutation.isPending}
             options={options}
             devices={devices}
+            onDirtyChange={onDirtyChange}
+            renderActions={false}
           />
         }
       />
