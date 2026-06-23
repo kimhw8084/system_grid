@@ -1559,6 +1559,11 @@ export default function ServicesReal() {
       const changedCount = Number(result?.changed ?? idsToUse.length)
       if (changedCount <= 0) {
         lastUndoRef.current = null
+        if (action === 'purge') {
+          showWorkspaceToast('Purge did not change any services', { type: 'error' })
+        } else {
+          showWorkspaceToast(result?.summary || 'No semantic change', { type: 'success' })
+        }
         return
       }
 
@@ -2115,9 +2120,8 @@ export default function ServicesReal() {
                 title={rowMenuItem.title}
                 onClose={() => setRowActionMenu(null)}
               >
-                <OperationalRowActionSection title="Quick access" grid={true}>
+                <OperationalRowActionSection title="Quick access">
                   <OperationalRowActionButton
-                    grid={true}
                     onClick={() => {
                       if (!rowMenuItem?.id) return
                       detailRoute.openDetail(rowMenuItem, { replace: false })
@@ -2129,7 +2133,6 @@ export default function ServicesReal() {
                     Details
                   </OperationalRowActionButton>
                   <OperationalRowActionButton
-                    grid={true}
                     onClick={() => {
                       if (!rowMenuItem?.id) return
                       setEditingItem(rowMenuItem)

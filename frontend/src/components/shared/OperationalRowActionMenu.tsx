@@ -41,7 +41,7 @@ export function OperationalRowActionMenu({
 export function OperationalRowActionSection({
   title,
   children,
-  grid = false,
+  grid = true,
 }: {
   title: string
   children: React.ReactNode
@@ -66,17 +66,17 @@ export function OperationalRowActionDivider() {
 export function OperationalRowActionButton({
   children,
   className = '',
-  grid = false,
+  grid = true,
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { grid?: boolean }) {
   return (
     <button
       type="button"
       {...props}
-      className={`flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950 transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${
+      className={`flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950 transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 justify-center ${
         grid
-          ? 'flex-col justify-center py-3 text-[9px] font-black uppercase tracking-[0.1em]'
-          : 'px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em]'
+          ? 'flex-col py-3 text-[9px] font-black uppercase tracking-[0.1em]'
+          : 'px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.16em]'
       } ${className}`}
     >
       {children}

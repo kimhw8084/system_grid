@@ -1622,7 +1622,11 @@ export default function MonitoringGrid() {
       const changedCount = Number(result?.changed ?? idsToUse.length)
       if (changedCount <= 0) {
         lastUndoRef.current = null
-        showWorkspaceToast(result?.summary || 'No semantic change', { type: 'success' })
+        if (action === 'purge') {
+          showWorkspaceToast('Purge did not change any records', { type: 'error' })
+        } else {
+          showWorkspaceToast(result?.summary || 'No semantic change', { type: 'success' })
+        }
         return
       }
 
@@ -1640,6 +1644,8 @@ export default function MonitoringGrid() {
             showWorkspaceToast(error.message || 'Undo failed', { type: 'error' })
           }
         })
+      } else {
+        showWorkspaceToast(result?.summary || 'Updated monitoring state', { type: 'success' })
       }
     },
     onError: (e: any) => showWorkspaceToast(`Operation failed: ${e.message}`, { type: 'error' })
@@ -2155,9 +2161,8 @@ export default function MonitoringGrid() {
                 title={rowActionMenu.item.title}
                 onClose={() => setRowActionMenu(null)}
               >
-                <OperationalRowActionSection title="Quick access" grid={true}>
+                <OperationalRowActionSection title="Quick access">
                   <OperationalRowActionButton
-                    grid={true}
                     onClick={() => {
                       detailRoute.openDetail(rowActionMenu.item)
                       setRowActionMenu(null)
@@ -2168,7 +2173,6 @@ export default function MonitoringGrid() {
                     Details
                   </OperationalRowActionButton>
                   <OperationalRowActionButton
-                    grid={true}
                     onClick={() => {
                       setEditingItem(rowActionMenu.item)
                       setIsFormOpen(true)
@@ -2180,7 +2184,6 @@ export default function MonitoringGrid() {
                     Edit
                   </OperationalRowActionButton>
                   <OperationalRowActionButton
-                    grid={true}
                     onClick={() => {
                       setHistoryItem(rowActionMenu.item)
                       setRowActionMenu(null)
