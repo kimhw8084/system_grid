@@ -687,7 +687,7 @@ const ExternalForm = ({
 }: any) => {
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [formData, setFormData] = useState(() => {
+  const initialFormState = useMemo(() => {
     const normalizedContacts = normalizeLegacyContacts(initialData || {})
     return {
       name: initialData?.name || '',
@@ -706,7 +706,9 @@ const ExternalForm = ({
       business_purpose: initialData?.business_purpose || '',
       metadata_json: parseMetadataObject(initialData?.metadata_json),
     }
-  })
+  }, [initialData])
+
+  const [formData, setFormData] = useState(initialFormState)
 
   const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
   const ensureCurrentOption = (entries: Array<{ value: string; label: string }>, currentValue: string) => {
@@ -777,28 +779,21 @@ const ExternalForm = ({
   }
 
   const initialDirtySnapshot = useMemo(
-    () => normalizeExternalFormSnapshot({
-      name: initialData?.name || '',
-      aliases_json: initialData?.aliases_json || [],
-      type: initialData?.type || 'API',
-      owner_organization: initialData?.owner_organization || '',
-      owner_team: initialData?.owner_team || '',
-      ownership_mode: initialData?.ownership_mode || 'team',
-      internal_team_id: initialData?.internal_team_id ? String(initialData.internal_team_id) : '',
-      internal_operator_id: initialData?.internal_operator_id ? String(initialData.internal_operator_id) : '',
-      status: initialData?.status || 'Planned',
-      environment: initialData?.environment || 'Production',
-      description: initialData?.description || '',
-      notes: initialData?.notes || '',
-      contacts_json: normalizeLegacyContacts(initialData || {}),
-      business_purpose: initialData?.business_purpose || '',
-      metadata_json: parseMetadataObject(initialData?.metadata_json),
-    }),
-    [initialData, normalizeExternalFormSnapshot]
+    () => normalizeExternalFormSnapshot(initialFormState),
+    [initialFormState, normalizeExternalFormSnapshot]
   )
 
   const isDirty = useMemo(
-    () => !isDeepEqual(normalizeExternalFormSnapshot(formData), initialDirtySnapshot),
+    () => {
+      const current = normalizeExternalFormSnapshot(formData)
+      const dirty = !isDeepEqual(current, initialDirtySnapshot)
+      if (dirty) {
+        console.log('ExternalForm isDirty:', dirty)
+        console.log('Snapshot:', initialDirtySnapshot)
+        console.log('Current:', JSON.stringify(current))
+      }
+      return dirty
+    },
     [formData, initialDirtySnapshot, normalizeExternalFormSnapshot]
   )
 

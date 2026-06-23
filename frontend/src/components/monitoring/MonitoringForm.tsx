@@ -363,7 +363,16 @@ export function MonitoringForm({ item, devices, categories, severities, platform
   }
 
   const isDirty = useMemo(
-    () => !isDeepEqual(sanitizeMonitoringPayload(formData), initialDirtySnapshotRef.current),
+    () => {
+      const current = sanitizeMonitoringPayload(formData)
+      const dirty = !isDeepEqual(current, initialDirtySnapshotRef.current)
+      if (dirty) {
+        console.log('MonitoringForm isDirty:', dirty)
+        console.log('Snapshot:', initialDirtySnapshotRef.current)
+        console.log('Current:', current)
+      }
+      return dirty
+    },
     [formData]
   )
 
