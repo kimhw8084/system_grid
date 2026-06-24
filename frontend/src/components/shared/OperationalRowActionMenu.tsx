@@ -146,12 +146,9 @@ export function OperationalRowActionMenu({
                       type="button"
                       onClick={item.onClick}
                       disabled={item.disabled}
-                      className={`flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950 transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 justify-center min-w-0 ${(item.variant || 'tile') === 'tile'
-                        ? 'flex-col py-3 text-[9px] font-black uppercase tracking-[0.1em]'
-                        : 'px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em]'
-                        } ${item.confirming ? 'bg-rose-600 animate-pulse' : ''}`}
+                      className={`flex flex-row items-center gap-2 rounded-lg border border-slate-800 bg-slate-950 transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 justify-start px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] min-w-0 w-full ${item.confirming ? 'bg-rose-600 animate-pulse' : ''}`}
                     >
-                      <item.icon size={14} className={TONE_ICON_CLASS[item.tone ?? 'neutral']} />
+                      <item.icon size={14} className={`flex-shrink-0 ${TONE_ICON_CLASS[item.tone ?? 'neutral']}`} />
                       <span className="min-w-0 max-w-full truncate block text-slate-300">
                         {item.confirming ? (item.confirmLabel || 'Confirm?') : item.label}
                       </span>

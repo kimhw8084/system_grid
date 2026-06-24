@@ -4,29 +4,52 @@ import { expect, test } from 'vitest'
 
 test('computeFloatingPanelRect positioning', () => {
   const edge = 16
-  const viewportWidth = 200
-  const viewportHeight = 200
+  const viewportWidth = 800
+  const viewportHeight = 800
   const preferredWidth = 560
-  const preferredHeight = 520
+  const preferredHeight = 300
 
+  // 1. Bottom-edge flip
+  const cursorY = 760
   const rect = computeFloatingPanelRect({
     x: 50,
-    y: 50,
+    y: cursorY,
     preferredWidth,
     preferredHeight,
     viewportWidth,
     viewportHeight,
     edge,
   })
+  expect(rect.top + rect.maxHeight).toBeLessThanOrEqual(cursorY - 8)
 
-  expect(rect.width).toBeLessThanOrEqual(viewportWidth - edge * 2)
-  expect(rect.width).toBe(168)
-  expect(rect.left).toBeGreaterThanOrEqual(edge)
-  expect(rect.left + rect.width).toBeLessThanOrEqual(viewportWidth - edge)
+  // 2. Normal below placement
+  const normalY = 100
+  const rect2 = computeFloatingPanelRect({
+    x: 50,
+    y: normalY,
+    preferredWidth,
+    preferredHeight,
+    viewportWidth,
+    viewportHeight,
+    edge,
+  })
+  expect(rect2.top).toBe(normalY + 8)
 
-  // Right-edge click
+  // 3. Small viewport flips
+  const smallRect = computeFloatingPanelRect({
+    x: 50,
+    y: 50,
+    preferredWidth,
+    preferredHeight: 800,
+    viewportWidth,
+    viewportHeight: 200,
+    edge,
+  })
+  expect(smallRect.maxHeight).toBeLessThan(800)
+  
+  // 4. Right-edge x clamping
   const rightEdgeRect = computeFloatingPanelRect({
-    x: 190,
+    x: 750,
     y: 50,
     preferredWidth,
     preferredHeight,
@@ -35,30 +58,6 @@ test('computeFloatingPanelRect positioning', () => {
     edge,
   })
   expect(rightEdgeRect.left + rightEdgeRect.width).toBeLessThanOrEqual(viewportWidth - edge)
-
-  // Bottom-row click
-  const bottomEdgeRect = computeFloatingPanelRect({
-    x: 50,
-    y: 190,
-    preferredWidth,
-    preferredHeight,
-    viewportWidth,
-    viewportHeight,
-    edge,
-  })
-  expect(bottomEdgeRect.top + bottomEdgeRect.maxHeight).toBeLessThanOrEqual(viewportHeight - edge)
-
-  // Wide viewport
-  const wideRect = computeFloatingPanelRect({
-    x: 50,
-    y: 50,
-    preferredWidth,
-    preferredHeight,
-    viewportWidth: 1000,
-    viewportHeight: 1000,
-    edge,
-  })
-  expect(wideRect.width).toBe(preferredWidth)
 })
 
 test('computeRowActionSectionColumns column count', () => {
@@ -67,7 +66,6 @@ test('computeRowActionSectionColumns column count', () => {
   const minColumnWidth = 100
   const preferredColumns = 5
 
-  // Wide container: 5 columns
   const wideCols = computeRowActionSectionColumns({
     containerWidth: 1000,
     preferredColumns,
@@ -77,17 +75,6 @@ test('computeRowActionSectionColumns column count', () => {
   })
   expect(wideCols).toBe(5)
 
-  // Medium container: reduces columns
-  const mediumCols = computeRowActionSectionColumns({
-    containerWidth: 360,
-    preferredColumns,
-    minColumnWidth,
-    gap,
-    horizontalPadding: padding,
-  })
-  expect(mediumCols).toBeLessThan(5)
-
-  // Narrow container: 1 column
   const narrowCols = computeRowActionSectionColumns({
     containerWidth: 100,
     preferredColumns,

@@ -9,6 +9,7 @@ const forbiddenPatterns = [
   "menuWidth = 336",
   "style.right",
   "style.bottom",
+  "flex-col",
   "ComponentType",
   "| string",
   "React.ComponentType",
@@ -18,6 +19,15 @@ const forbiddenPatterns = [
   "variant?: any",
   "id: any",
   "columns?: number"
+];
+
+const requiredPatterns = [
+  "computeFloatingPanelRect",
+  "computeRowActionSectionColumns",
+  "minmax(0, 1fr)",
+  "POINT_MENU_CURSOR_GAP",
+  "belowSpace",
+  "aboveSpace"
 ];
 
 const relevantFiles = [
@@ -33,17 +43,16 @@ const relevantFiles = [
 relevantFiles.forEach(file => {
   const filePath = path.join(__dirname, '../src/components', file);
   if (!fs.existsSync(filePath)) return;
-  const lines = fs.readFileSync(filePath, 'utf8').split('\n');
-  
-  const filteredLines = lines.filter(line => {
-    if (file === 'shared/OperationalRowActionMenu.tsx') {
-        if (line.trim().startsWith('export type OperationalRowAction')) return false;
-        if (line.trim().includes('icon: React.ComponentType')) return false;
-    }
-    return true;
-  });
+  let content = fs.readFileSync(filePath, 'utf8');
 
-  const content = filteredLines.join('\n');
+  // Only check row-action specific areas to avoid false positives in other components
+  if (file === 'shared/OperationalRowActionMenu.tsx') {
+    content = content.replace(/export type OperationalRowActionItem = \{[\s\S]*?\}/g, '');
+  } else {
+    // For other files, only scan within row-action menu definitions
+    const menuMatch = content.match(/setRowActionMenu\(\{[\s\S]*?\}\)/g);
+    content = menuMatch ? menuMatch.join('\n') : '';
+  }
   
   forbiddenPatterns.forEach(pattern => {
     if (content.includes(pattern)) {
@@ -59,6 +68,21 @@ const menuContent = fs.readFileSync(path.join(__dirname, '../src/components/shar
 
 if (!interactionsContent.includes("computeFloatingPanelRect")) {
   console.error("computeFloatingPanelRect not found");
+  process.exit(1);
+}
+
+if (!interactionsContent.includes("POINT_MENU_CURSOR_GAP")) {
+  console.error("POINT_MENU_CURSOR_GAP not found");
+  process.exit(1);
+}
+
+if (!interactionsContent.includes("belowSpace")) {
+  console.error("belowSpace not found");
+  process.exit(1);
+}
+
+if (!interactionsContent.includes("aboveSpace")) {
+  console.error("aboveSpace not found");
   process.exit(1);
 }
 

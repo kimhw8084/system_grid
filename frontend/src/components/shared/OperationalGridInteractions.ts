@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState, CSSProperties } from '
 import { useWorkspaceDismissHandlers } from './OperationalWorkspaceHooks'
 
 export const FLOATING_PANEL_EDGE = 16
+export const POINT_MENU_CURSOR_GAP = 8
 
 export function computeFloatingPanelRect({
   x,
@@ -26,13 +27,30 @@ export function computeFloatingPanelRect({
   maxHeight: number
 } {
   const viewportSafeWidth = Math.max(0, viewportWidth - edge * 2)
-  const viewportSafeHeight = Math.max(0, viewportHeight - edge * 2)
   const width = Math.min(preferredWidth, viewportSafeWidth)
-  const maxHeight = Math.min(preferredHeight, viewportSafeHeight)
   const left = Math.min(Math.max(x, edge), Math.max(edge, viewportWidth - width - edge))
-  const top = Math.min(Math.max(y, edge), Math.max(edge, viewportHeight - maxHeight - edge))
 
-  return { left, top, width, maxHeight }
+  const belowSpace = viewportHeight - edge - (y + POINT_MENU_CURSOR_GAP)
+  const aboveSpace = y - POINT_MENU_CURSOR_GAP - edge
+
+  let maxHeight = preferredHeight
+  let top = y + POINT_MENU_CURSOR_GAP
+
+  if (belowSpace >= preferredHeight) {
+    maxHeight = preferredHeight
+    top = y + POINT_MENU_CURSOR_GAP
+  } else if (aboveSpace >= preferredHeight) {
+    maxHeight = preferredHeight
+    top = y - POINT_MENU_CURSOR_GAP - preferredHeight
+  } else if (aboveSpace > belowSpace) {
+    maxHeight = Math.max(0, aboveSpace)
+    top = edge
+  } else {
+    maxHeight = Math.max(0, belowSpace)
+    top = y + POINT_MENU_CURSOR_GAP
+  }
+
+  return { left, top, width, maxHeight: Math.min(maxHeight, viewportHeight - edge * 2) }
 }
 
 export function shouldIgnoreRowSelection(target: EventTarget | null) {
