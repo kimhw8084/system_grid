@@ -167,7 +167,7 @@ export function OperationalRowActionMenu({
     <div ref={panelRef} className="h-full">
       <WorkspaceFloatingPanel
         kind="context"
-        className="max-w-[calc(100vw-32px)] flex overflow-hidden"
+        className="max-w-[calc(100vw-32px)] flex flex-col overflow-hidden"
         style={{
           width: '100%',
           height: '100%',

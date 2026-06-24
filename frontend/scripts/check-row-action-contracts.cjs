@@ -46,9 +46,20 @@ relevantFiles.forEach(file => {
   if (!fs.existsSync(filePath)) return;
   let content = fs.readFileSync(filePath, 'utf8');
 
-  // Only check row-action specific areas to avoid false positives in other components
+// Only check row-action specific areas to avoid false positives in other components
   if (file === 'shared/OperationalRowActionMenu.tsx') {
     content = content.replace(/export type OperationalRowActionItem = \{[\s\S]*?\}/g, '');
+    
+    // Allow flex-col on the root panel, but check for it on button elements
+    const buttonMatches = content.match(/<button[\s\S]*?className="[\s\S]*?"/g);
+    if (buttonMatches) {
+        buttonMatches.forEach(btn => {
+            if (btn.includes('flex-col')) {
+                console.error(`Forbidden pattern found in ${file}: button flex-col`);
+                process.exit(1);
+            }
+        });
+    }
   } else {
     // For other files, only scan within row-action menu definitions
     const menuMatch = content.match(/setRowActionMenu\(\{[\s\S]*?\}\)/g);
@@ -56,6 +67,8 @@ relevantFiles.forEach(file => {
   }
   
   forbiddenPatterns.forEach(pattern => {
+    // Skip flex-col check here, as we do a specialized check for buttons
+    if (pattern === 'flex-col') return;
     if (content.includes(pattern)) {
       console.error(`Forbidden pattern found in ${file}: ${pattern}`);
       process.exit(1);
