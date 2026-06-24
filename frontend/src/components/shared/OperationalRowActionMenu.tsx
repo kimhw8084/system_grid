@@ -58,7 +58,8 @@ export function OperationalRowActionMenu({
   cursorX: number;
   cursorY: number;
 }) {
-  const panelRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
 
   const geometry = computeRowActionGeometry({
@@ -71,20 +72,13 @@ export function OperationalRowActionMenu({
   });
 
   useLayoutEffect(() => {
-    if (panelRef.current) {
-        // Measurement target: header (border-b) + body (overflow-y-auto)
-        const header = panelRef.current.querySelector(".border-b");
-        const body = panelRef.current.querySelector(".overflow-y-auto");
-        if (header && body) {
-            setMeasuredHeight(header.offsetHeight + body.scrollHeight);
-        }
+    if (headerRef.current && bodyRef.current) {
+        setMeasuredHeight(headerRef.current.offsetHeight + bodyRef.current.scrollHeight);
     }
-  }, [sections]);
-
+  }, [sections, meta, title]);
 
   const menuContent = (
     <div 
-        ref={panelRef} 
         className="row-action-menu-container"
         style={{ 
             position: "fixed", 
@@ -102,7 +96,7 @@ export function OperationalRowActionMenu({
           boxSizing: "border-box",
         }}
       >
-        <div className="flex-shrink-0 flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3 rounded-t-xl">
+        <div ref={headerRef} className="flex-shrink-0 flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3 rounded-t-xl">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold text-slate-400">Row actions</p>
             <p className="pt-1 text-[11px] font-semibold text-slate-100">{meta}</p>
@@ -117,7 +111,7 @@ export function OperationalRowActionMenu({
             <X size={13} />
           </button>
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto p-3 custom-scrollbar">
+        <div ref={bodyRef} className="flex-1 min-h-0 overflow-y-auto p-3 custom-scrollbar">
           {geometry.sections.map((section, sectionIdx) => (
             <React.Fragment key={section.id}>
               {section.showTitle && (
