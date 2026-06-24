@@ -1,5 +1,12 @@
 const fs = require("fs");
 const menuFile = fs.readFileSync("src/components/shared/OperationalRowActionMenu.tsx", "utf8");
-["row-action-menu-container", "rounded-xl", "overflow-hidden", "rounded-t-xl", "createPortal"].forEach(p => {
+
+// Forbidden
+["rounded-xl", "rounded-t-xl", "rounded-b-xl"].forEach(p => {
+    if (menuFile.includes(p)) throw new Error(`Forbidden pattern found: ${p}`);
+});
+
+// Required
+["row-action-menu-container", "overflow-hidden", "createPortal"].forEach(p => {
     if (!menuFile.includes(p)) throw new Error(`Missing required pattern: ${p}`);
 });
