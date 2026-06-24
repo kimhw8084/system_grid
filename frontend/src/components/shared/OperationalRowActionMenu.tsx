@@ -1,9 +1,8 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { WorkspaceFloatingPanel } from "./OperationalWorkspacePrimitives";
 import { computeRowActionGeometry } from "./OperationalRowActionGeometry";
-import { OPERATIONAL_WORKSPACE_VISUALS } from "./OperationalWorkspace";
 
 const SECTION_HORIZONTAL_PADDING = 12;
 
@@ -60,6 +59,7 @@ export function OperationalRowActionMenu({
   cursorY: number;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
 
   const geometry = computeRowActionGeometry({
     sections,
@@ -67,13 +67,25 @@ export function OperationalRowActionMenu({
     viewportHeight: typeof window !== "undefined" ? window.innerHeight : 1000,
     cursorX,
     cursorY,
+    measuredHeight
   });
+
+  useLayoutEffect(() => {
+    if (panelRef.current) {
+        setMeasuredHeight(panelRef.current.offsetHeight);
+    }
+  }, []);
 
   const menuContent = (
     <div 
         ref={panelRef} 
         className="row-action-menu-container"
-        style={{ position: "fixed", zIndex: 1115, ...geometry.style }}
+        style={{ 
+            position: "fixed", 
+            zIndex: 1115, 
+            visibility: measuredHeight === null ? "hidden" : "visible",
+            ...geometry.style 
+        }}
     >
       <WorkspaceFloatingPanel
         kind="context"

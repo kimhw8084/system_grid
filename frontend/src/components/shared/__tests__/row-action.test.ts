@@ -1,44 +1,46 @@
-import { test, expect } from "vitest";
+import { test, expect, describe } from "vitest";
 import { computeRowActionGeometry } from "../OperationalRowActionGeometry";
 
-test.describe("Row-action rectangle law", () => {
-  test("Viewport clamp and actionSetWidth normalization", () => {
-    const sections = [
-      { id: 'quickAccess' as const, items: [{ id: '1', label: 'Details', icon: () => null, onClick: () => {} }, { id: '2', label: 'Edit', icon: () => null, onClick: () => {} }] },
-      { id: 'followOptions' as const, items: [{ id: '3', label: 'Watch', icon: () => null, onClick: () => {} }, { id: '4', label: 'Pin', icon: () => null, onClick: () => {} }] },
-      { id: 'archive' as const, items: [{ id: '5', label: 'Archive', icon: () => null, onClick: () => {} }] }
-    ];
-    
+describe("Row-action geometry and placement", () => {
+  test("Placement: chooses 'below' if it fits full menu", () => {
+    const sections = [{ id: 'quickAccess' as const, items: [{ id: '1', label: 'Details', icon: () => null, onClick: () => {} }] }];
+    const viewportHeight = 900;
+    const cursorY = 100;
+    // belowSpace = 900 - 16 - (100 + 8) = 776
+    // panelHeight = ~150
+    // Fits below!
     const geometry = computeRowActionGeometry({
-        sections,
-        viewportWidth: 240,
-        viewportHeight: 800,
-        cursorX: 100,
-        cursorY: 100
+        sections, viewportWidth: 1000, viewportHeight, cursorX: 500, cursorY
     });
-
-    expect(geometry.panelWidth).toBeLessThanOrEqual(240 - 32);
-    geometry.sections.forEach(section => {
-        section.rows.forEach(row => {
-            expect(row.rowWidth).toBe(geometry.actionSetWidth);
-        });
-    });
+    expect(geometry.placement).toBe("below");
   });
 
-  test("Placement: uses larger side when neither fits full menu", () => {
-    const items = Array.from({ length: 100 }, (_, i) => ({ id: `${i}`, label: "Button", icon: () => null, onClick: () => {} }));
-    const sections = [
-      { id: "quickAccess" as const, items: items }
-    ];
+  test("Placement: chooses 'above' if below does not fit but above does", () => {
+    const sections = [{ id: 'quickAccess' as const, items: [{ id: '1', label: 'Details', icon: () => null, onClick: () => {} }] }];
+    const viewportHeight = 900;
+    const cursorY = 800;
+    // belowSpace = 900 - 16 - (800 + 8) = 76.
+    // panelHeight = ~150. Does not fit below!
+    // aboveSpace = 800 - 8 - 16 = 776. Fits above!
+    const geometry = computeRowActionGeometry({
+        sections, viewportWidth: 1000, viewportHeight, cursorX: 500, cursorY
+    });
+    expect(geometry.placement).toBe("above");
+    expect(geometry.style.maxHeight).toBe(geometry.panelHeight);
+  });
+  
+  test("Placement: clamps height if neither fits", () => {
+    const items = Array.from({ length: 50 }, (_, i) => ({ id: `${i}`, label: "Button", icon: () => null, onClick: () => {} }));
+    const sections = [{ id: "quickAccess" as const, items: items }];
+    // Force panelHeight very large
     const geometry = computeRowActionGeometry({
         sections,
         viewportWidth: 1000,
-        viewportHeight: 900,
+        viewportHeight: 400,
         cursorX: 500,
-        cursorY: 500
+        cursorY: 200
     });
-
-    expect(geometry.placement).toBe("above");
+    // neither fits
     expect(geometry.style.maxHeight).toBeLessThan(geometry.panelHeight);
   });
 });

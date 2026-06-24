@@ -26,6 +26,7 @@ export function computeRowActionGeometry({
   edge = 16,
   gap = SECTION_GAP,
   panelPadding = SECTION_HORIZONTAL_PADDING,
+  measuredHeight
 }: {
   sections: OperationalRowActionSectionModel[];
   viewportWidth: number;
@@ -35,6 +36,7 @@ export function computeRowActionGeometry({
   edge?: number;
   gap?: number;
   panelPadding?: number;
+  measuredHeight?: number | null;
 }) {
   const POINT_MENU_CURSOR_GAP = 8;
   const viewportSafeWidth = Math.max(0, viewportWidth - edge * 2);
@@ -117,6 +119,9 @@ export function computeRowActionGeometry({
       panelHeight += section.rows.length * BUTTON_HEIGHT + (section.rows.length - 1) * gap;
       if (idx < processedSections.length - 1) panelHeight += SECTION_GAP + DIVIDER_HEIGHT;
   });
+  
+  // Use measured height if available
+  const finalPanelHeight = measuredHeight ?? panelHeight;
 
   // 4. Vertical placement logic
   const belowSpace = viewportHeight - edge - (cursorY + POINT_MENU_CURSOR_GAP);
@@ -127,14 +132,14 @@ export function computeRowActionGeometry({
   let bottom: number | undefined;
   let maxHeight: number;
 
-  if (panelHeight <= belowSpace) {
+  if (finalPanelHeight <= belowSpace) {
       placement = "below";
       top = cursorY + POINT_MENU_CURSOR_GAP;
-      maxHeight = panelHeight;
-  } else if (panelHeight <= aboveSpace) {
+      maxHeight = finalPanelHeight;
+  } else if (finalPanelHeight <= aboveSpace) {
       placement = "above";
       bottom = viewportHeight - cursorY + POINT_MENU_CURSOR_GAP;
-      maxHeight = panelHeight;
+      maxHeight = finalPanelHeight;
   } else if (belowSpace >= aboveSpace) {
       placement = "below";
       top = cursorY + POINT_MENU_CURSOR_GAP;
@@ -147,7 +152,7 @@ export function computeRowActionGeometry({
 
   return {
     panelWidth,
-    panelHeight,
+    panelHeight: finalPanelHeight,
     placement,
     style: {
       left: Math.max(edge, Math.min(cursorX, viewportWidth - panelWidth - edge)),
