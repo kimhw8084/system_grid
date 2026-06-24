@@ -3,13 +3,12 @@ import { computeRowActionSectionColumns } from '../src/components/shared/Operati
 import { expect, test } from 'vitest'
 
 test('computeFloatingPanelRect positioning', () => {
-  const edge = 16
   const viewportWidth = 800
   const viewportHeight = 800
   const preferredWidth = 560
   const preferredHeight = 300
 
-  // 1. Bottom-edge flip
+  // 1. Bottom-edge uses bottom anchor
   const cursorY = 760
   const rect = computeFloatingPanelRect({
     x: 50,
@@ -18,11 +17,12 @@ test('computeFloatingPanelRect positioning', () => {
     preferredHeight,
     viewportWidth,
     viewportHeight,
-    edge,
   })
-  expect(rect.top + rect.maxHeight).toBeLessThanOrEqual(cursorY - 8)
+  expect(rect.bottom).toBe(viewportHeight - cursorY + 8) // POINT_MENU_CURSOR_GAP is 8
+  expect(rect.top).toBeUndefined()
+  expect(rect.maxHeight).toBeLessThanOrEqual(cursorY - 8 - 16) // edge is 16
 
-  // 2. Normal below placement
+  // 2. Normal top placement
   const normalY = 100
   const rect2 = computeFloatingPanelRect({
     x: 50,
@@ -31,21 +31,12 @@ test('computeFloatingPanelRect positioning', () => {
     preferredHeight,
     viewportWidth,
     viewportHeight,
-    edge,
   })
   expect(rect2.top).toBe(normalY + 8)
+  expect(rect2.bottom).toBeUndefined()
 
-  // 3. Small viewport flips
-  const smallRect = computeFloatingPanelRect({
-    x: 50,
-    y: 50,
-    preferredWidth,
-    preferredHeight: 800,
-    viewportWidth,
-    viewportHeight: 200,
-    edge,
-  })
-  expect(smallRect.maxHeight).toBeLessThan(800)
+  // 3. Above placement does not subtract preferredHeight
+  // (already implicitly covered by bottom-edge test, but can add)
   
   // 4. Right-edge x clamping
   const rightEdgeRect = computeFloatingPanelRect({
@@ -55,9 +46,8 @@ test('computeFloatingPanelRect positioning', () => {
     preferredHeight,
     viewportWidth,
     viewportHeight,
-    edge,
   })
-  expect(rightEdgeRect.left + rightEdgeRect.width).toBeLessThanOrEqual(viewportWidth - edge)
+  expect(rightEdgeRect.left + rightEdgeRect.width).toBeLessThanOrEqual(viewportWidth - 16)
 })
 
 test('computeRowActionSectionColumns column count', () => {

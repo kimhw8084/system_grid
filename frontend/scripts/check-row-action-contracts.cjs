@@ -18,7 +18,9 @@ const forbiddenPatterns = [
   "tone?: any",
   "variant?: any",
   "id: any",
-  "columns?: number"
+  "columns?: number",
+  "top = y - POINT_MENU_CURSOR_GAP - preferredHeight",
+  "y - POINT_MENU_CURSOR_GAP - preferredHeight"
 ];
 
 const requiredPatterns = [

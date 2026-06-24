@@ -96,15 +96,16 @@ export function OperationalRowActionMenu({
     <div ref={panelRef}>
       <WorkspaceFloatingPanel
         kind="context"
-        className="max-w-[calc(100vw-32px)] overflow-hidden"
+        className="max-w-[calc(100vw-32px)] flex overflow-hidden"
         style={{
           width: '100%',
-          maxWidth: '100%',
+          height: '100%',
+          maxHeight: '100%',
           boxSizing: 'border-box',
           minWidth: 0,
         }}
       >
-        <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
+        <div className="flex-shrink-0 flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
           <div className="min-w-0">
             <p className="truncate text-[10px] font-semibold text-slate-400">Row actions</p>
             <p className="pt-1 text-[11px] font-semibold text-slate-100">{meta}</p>
@@ -119,7 +120,7 @@ export function OperationalRowActionMenu({
             <X size={13} />
           </button>
         </div>
-        <div className="max-h-[calc(100vh-180px)] overflow-y-auto p-2.5 custom-scrollbar">
+        <div className="flex-1 min-h-0 overflow-y-auto p-2.5 custom-scrollbar">
           {sections.map((section, idx) => {
             const actualColumns = computeRowActionSectionColumns({
               containerWidth,

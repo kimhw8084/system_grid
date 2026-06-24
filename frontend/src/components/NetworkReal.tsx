@@ -395,7 +395,6 @@ const getPointFloatingStyle = ({
     preferredHeight: height,
     viewportWidth: window.innerWidth,
     viewportHeight: window.innerHeight,
-    edge: FLOATING_PANEL_EDGE,
   })
 
   return {

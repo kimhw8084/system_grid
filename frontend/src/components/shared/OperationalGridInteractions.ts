@@ -3,6 +3,7 @@ import { useWorkspaceDismissHandlers } from './OperationalWorkspaceHooks'
 
 export const FLOATING_PANEL_EDGE = 16
 export const POINT_MENU_CURSOR_GAP = 8
+export const MIN_USABLE_MENU_HEIGHT = 200
 
 export function computeFloatingPanelRect({
   x,
@@ -11,7 +12,6 @@ export function computeFloatingPanelRect({
   preferredHeight,
   viewportWidth,
   viewportHeight,
-  edge,
 }: {
   x: number
   y: number
@@ -19,13 +19,14 @@ export function computeFloatingPanelRect({
   preferredHeight: number
   viewportWidth: number
   viewportHeight: number
-  edge: number
 }): {
   left: number
-  top: number
   width: number
   maxHeight: number
+  top?: number
+  bottom?: number
 } {
+  const edge = FLOATING_PANEL_EDGE
   const viewportSafeWidth = Math.max(0, viewportWidth - edge * 2)
   const width = Math.min(preferredWidth, viewportSafeWidth)
   const left = Math.min(Math.max(x, edge), Math.max(edge, viewportWidth - width - edge))
@@ -33,24 +34,21 @@ export function computeFloatingPanelRect({
   const belowSpace = viewportHeight - edge - (y + POINT_MENU_CURSOR_GAP)
   const aboveSpace = y - POINT_MENU_CURSOR_GAP - edge
 
-  let maxHeight = preferredHeight
-  let top = y + POINT_MENU_CURSOR_GAP
-
-  if (belowSpace >= preferredHeight) {
-    maxHeight = preferredHeight
-    top = y + POINT_MENU_CURSOR_GAP
-  } else if (aboveSpace >= preferredHeight) {
-    maxHeight = preferredHeight
-    top = y - POINT_MENU_CURSOR_GAP - preferredHeight
-  } else if (aboveSpace > belowSpace) {
-    maxHeight = Math.max(0, aboveSpace)
-    top = edge
+  if (belowSpace >= MIN_USABLE_MENU_HEIGHT || belowSpace >= aboveSpace) {
+    return {
+      left,
+      width,
+      maxHeight: Math.min(preferredHeight, Math.max(0, belowSpace)),
+      top: y + POINT_MENU_CURSOR_GAP
+    }
   } else {
-    maxHeight = Math.max(0, belowSpace)
-    top = y + POINT_MENU_CURSOR_GAP
+    return {
+      left,
+      width,
+      maxHeight: Math.min(preferredHeight, Math.max(0, aboveSpace)),
+      bottom: viewportHeight - y + POINT_MENU_CURSOR_GAP
+    }
   }
-
-  return { left, top, width, maxHeight: Math.min(maxHeight, viewportHeight - edge * 2) }
 }
 
 export function shouldIgnoreRowSelection(target: EventTarget | null) {
@@ -121,17 +119,23 @@ export const getPointFloatingStyle = ({
     preferredHeight: height,
     viewportWidth: window.innerWidth,
     viewportHeight: window.innerHeight,
-    edge: FLOATING_PANEL_EDGE,
   })
 
-  return {
-    position: 'fixed' as const,
+  const style: React.CSSProperties = {
+    position: 'fixed',
     left: rect.left,
-    top: rect.top,
     width: rect.width,
     maxHeight: rect.maxHeight,
     zIndex,
   }
+
+  if (rect.top !== undefined) {
+    style.top = rect.top
+  } else if (rect.bottom !== undefined) {
+    style.bottom = rect.bottom
+  }
+
+  return style
 }
 
 export function useOperationalRowInteractions({
