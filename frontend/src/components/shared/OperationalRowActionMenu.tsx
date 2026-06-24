@@ -3,6 +3,9 @@ import { X } from 'lucide-react'
 
 import { WorkspaceFloatingPanel } from './OperationalWorkspacePrimitives'
 
+const MIN_PANEL_WIDTH = 240
+const VIEWPORT_PADDING = 12
+
 export function OperationalRowActionMenu({
   meta,
   title,
@@ -22,14 +25,32 @@ export function OperationalRowActionMenu({
     const buttons = menuRef.current.querySelectorAll('button[data-row-action-button="true"]')
     let max = 0
     buttons.forEach((btn) => {
-        const width = (btn as HTMLElement).getBoundingClientRect().width
+        // Measure intrinsic content width. We need to measure before constraints,
+        // so we temporarily remove width constraints for measurement if possible.
+        // For buttons, measuring scrollWidth often gives the intrinsic content width
+        // when overflow is hidden but width is not yet constrained.
+        const width = (btn as HTMLElement).scrollWidth
         if (width > max) max = width
     })
-    if (max > 0) setMinButtonWidth(max)
+    
+    // Add padding/icon/gap/safety buffer based on button styles
+    const safetyBuffer = 20
+    if (max > 0) setMinButtonWidth(max + safetyBuffer)
   }, [children])
 
+  const viewportSafeWidth = typeof window !== 'undefined' ? window.innerWidth - VIEWPORT_PADDING * 2 : 500
+  const finalPanelWidth = Math.min(Math.max(minButtonWidth * 2 + 30, MIN_PANEL_WIDTH), viewportSafeWidth)
+
   return (
-    <WorkspaceFloatingPanel kind="context" className="max-w-[calc(100vw-24px)] overflow-hidden" style={{ '--row-action-button-min-width': `${minButtonWidth}px` } as React.CSSProperties}>
+    <WorkspaceFloatingPanel 
+        kind="context" 
+        className="max-w-[calc(100vw-24px)] overflow-hidden" 
+        style={{ 
+            '--row-action-button-min-width': `${minButtonWidth}px`,
+            width: `${finalPanelWidth}px`,
+            maxWidth: `${viewportSafeWidth}px`
+        } as React.CSSProperties}
+    >
       <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
         <div className="min-w-0">
           <p className="truncate text-[10px] font-semibold text-slate-400">Row actions</p>
