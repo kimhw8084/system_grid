@@ -403,7 +403,7 @@ export default function VendorsReal() {
   const [showBulkMenu,       setShowBulkMenu]       = useState(false)
   const [bulkDeleteConfirm,  setBulkDeleteConfirm]  = useState(false)
   const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<number | null>(null)
-  const [rowActionMenu,      setRowActionMenu]      = useState<{ item: any; style: React.CSSProperties } | null>(null)
+  const [rowActionMenu,      setRowActionMenu]      = useState<{ item: any; point: { x: number; y: number } } | null>(null)
   const [pendingIds,         setPendingIds]         = useState<number[]>([])
   const selectionAnchorRef    = useRef<number | null>(null)
 

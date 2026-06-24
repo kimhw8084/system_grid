@@ -2630,7 +2630,6 @@ export default function AssetReal() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
-                style={rowActionMenu.style}
                 className="row-action-menu-container"
               >
                 <WorkspaceFloatingPanel kind="context" className="overflow-hidden">

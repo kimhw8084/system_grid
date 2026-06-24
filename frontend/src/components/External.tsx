@@ -1394,7 +1394,7 @@ export default function External() {
   const [bulkDraft, setBulkDraft] = useState({ status: '', environment: '', criticality: '', risk_rating: '' })
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'environment' | 'criticality' | 'risk_rating' | null>(null)
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
-  const [rowActionMenu, setRowActionMenu] = useState<{ item: any; style: React.CSSProperties } | null>(null)
+  const [rowActionMenu, setRowActionMenu] = useState<{ item: any; point: { x: number; y: number } } | null>(null)
   const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<number | null>(null)
 
   const [quickFilters, setQuickFilters] = useState(persistedUiState.quickFilters || {
@@ -2956,12 +2956,6 @@ export default function External() {
             </WorkspaceFloatingPanel>
           </OperationalAnchoredPanel>
 
-          <OperationalAnchoredPanel
-            isOpen={!!rowActionMenu}
-            panelKey="row-action-menu"
-            style={rowActionMenu?.style ?? { position: 'fixed', top: -9999, left: -9999 }}
-            className="row-action-menu-container"
-          >
             {rowActionMenu && (() => {
               const item = rowActionMenu.item
               const sections: OperationalRowActionSectionModel[] = [

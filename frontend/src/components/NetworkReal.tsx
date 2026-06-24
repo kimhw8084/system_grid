@@ -712,7 +712,7 @@ export default function NetworkReal() {
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [detailDeleteConfirm, setDetailDeleteConfirm] = useState(false)
   const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<number | null>(null)
-  const [rowActionMenu, setRowActionMenu] = useState<{ item: any; style: React.CSSProperties } | null>(null)
+  const [rowActionMenu, setRowActionMenu] = useState<{ item: any; point: { x: number; y: number } } | null>(null)
   const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
   const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
   const [gridSortModel, setGridSortModel] = useState<any[]>([{ colId: 'favorite', sort: 'desc' }])

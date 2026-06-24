@@ -39,24 +39,41 @@ export function computeRowActionGeometry({
 }) {
   const POINT_MENU_CURSOR_GAP = 8
   
-  // 1. Calculate natural widths
+  // 1. Calculate natural widths and layout
   const processedSections = sections.map(section => {
     const buttonWidths = section.items.map(item => 
       estimateRowActionButtonWidth(item.label, item.confirmLabel, item.confirming)
     )
     
-    const naturalRowWidth = buttonWidths.reduce((sum, w) => sum + w + gap, -gap)
-    
+    // Simple wrapping logic
+    const rows: { buttonWidths: number[], rowWidth: number }[] = []
+    let currentRow: number[] = []
+    let currentRowWidth = 0
+    const maxRowWidth = viewportWidth - edge * 2 - panelPadding * 2
+
+    buttonWidths.forEach((w, i) => {
+        if (currentRowWidth + w + (currentRow.length > 0 ? gap : 0) > maxRowWidth) {
+            rows.push({ buttonWidths: currentRow, rowWidth: currentRowWidth })
+            currentRow = [w]
+            currentRowWidth = w
+        } else {
+            currentRow.push(w)
+            currentRowWidth += w + (currentRow.length > 1 ? gap : 0)
+        }
+    })
+    if (currentRow.length > 0) {
+        rows.push({ buttonWidths: currentRow, rowWidth: currentRowWidth })
+    }
+
     return {
       id: section.id,
+      showTitle: section.id !== 'archive',
       items: section.items,
-      buttonWidths,
-      naturalRowWidth,
-      columns: section.columns ?? 1
+      rows
     }
   })
 
-  const actionSetWidth = Math.max(...processedSections.map(m => m.naturalRowWidth))
+  const actionSetWidth = Math.max(...processedSections.map(s => Math.max(...s.rows.map(r => r.rowWidth))))
 
   // 2. Panel size
   const panelWidth = Math.min(actionSetWidth + panelPadding * 2, viewportWidth - edge * 2)
@@ -64,11 +81,10 @@ export function computeRowActionGeometry({
   // 3. Panel height calculation
   let totalHeight = HEADER_HEIGHT + BODY_PADDING * 2
   processedSections.forEach((section, idx) => {
-    const rowCount = Math.ceil(section.items.length / section.columns)
-    if (section.id !== 'archive') {
+    if (section.showTitle) {
         totalHeight += SECTION_TITLE_HEIGHT
     }
-    totalHeight += rowCount * BUTTON_HEIGHT + (rowCount - 1) * gap
+    totalHeight += section.rows.length * BUTTON_HEIGHT + (section.rows.length - 1) * gap
     if (idx < processedSections.length - 1) {
         totalHeight += SECTION_GAP + DIVIDER_HEIGHT
     }

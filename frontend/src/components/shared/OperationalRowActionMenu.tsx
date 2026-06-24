@@ -96,41 +96,47 @@ export function OperationalRowActionMenu({
           </button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto p-3 custom-scrollbar">
-          {geometry.sections.map((section, idx) => (
-            <React.Fragment key={section.id}>
-              {section.id !== 'archive' && (
-                <div className="px-1 py-1.5">
-                  <p className="text-[10px] font-semibold text-slate-400">{SECTION_TITLE_MAP[section.id]}</p>
-                </div>
-              )}
-              <div
-                className="grid gap-2"
-                style={{
-                  gridTemplateColumns: section.buttonWidths.map(w => `${w}px`).join(' '),
-                  width: 'fit-content'
-                }}
-              >
-                {section.items.map((item, itemIdx) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={item.onClick}
-                    disabled={item.disabled}
-                    className={`flex flex-row items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${item.confirming ? 'bg-rose-600 animate-pulse' : ''}`}
-                    style={{
-                      width: `${section.buttonWidths[itemIdx]}px`,
-                    }}
-                  >
-                    {React.createElement(item.icon, { size: 14, className: `flex-shrink-0 ${TONE_ICON_CLASS[item.tone ?? 'neutral']}` })}
-                    <span className="whitespace-nowrap text-slate-300">
-                      {item.confirming ? (item.confirmLabel || 'Confirm?') : item.label}
-                    </span>
-                  </button>
-                ))}
-              </div>
-              {idx < geometry.sections.length - 1 && <div className="my-3 h-px bg-slate-800" />}
-            </React.Fragment>
-          ))}
+          {geometry.sections.map((section, idx) => {
+              let itemIndex = 0;
+              return (
+                <React.Fragment key={section.id}>
+                  {section.showTitle && (
+                    <div className="px-1 py-1.5">
+                      <p className="text-[10px] font-semibold text-slate-400">{SECTION_TITLE_MAP[section.id]}</p>
+                    </div>
+                  )}
+                  {section.rows.map((row, rowIdx) => (
+                    <div
+                      key={rowIdx}
+                      className="grid gap-2 mb-2"
+                      style={{
+                        gridTemplateColumns: row.buttonWidths.map(w => `${w}px`).join(' '),
+                      }}
+                    >
+                      {row.buttonWidths.map((width, bIdx) => {
+                        const item = section.items[itemIndex++];
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={item.onClick}
+                            disabled={item.disabled}
+                            className={`flex flex-row items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${item.confirming ? 'bg-rose-600 animate-pulse' : ''}`}
+                            style={{ width: `${width}px` }}
+                          >
+                            {React.createElement(item.icon, { size: 14, className: `flex-shrink-0 ${TONE_ICON_CLASS[item.tone ?? 'neutral']}` })}
+                            <span className="whitespace-nowrap text-slate-300">
+                              {item.confirming ? (item.confirmLabel || 'Confirm?') : item.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                  {idx < geometry.sections.length - 1 && <div className="my-3 h-px bg-slate-800" />}
+                </React.Fragment>
+              )
+          })}
         </div>
       </WorkspaceFloatingPanel>
     </div>
