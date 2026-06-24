@@ -5,6 +5,9 @@ import { WorkspaceFloatingPanel } from './OperationalWorkspacePrimitives'
 
 const MIN_PANEL_WIDTH = 240
 const VIEWPORT_PADDING = 12
+const SECTION_HORIZONTAL_PADDING = 10
+const SECTION_GAP = 8
+const BUTTON_SAFETY_BUFFER = 20
 
 export function OperationalRowActionMenu({
   meta,
@@ -19,27 +22,36 @@ export function OperationalRowActionMenu({
 }) {
   const menuRef = useRef<HTMLDivElement>(null)
   const [minButtonWidth, setMinButtonWidth] = useState(0)
+  const [finalPanelWidth, setFinalPanelWidth] = useState(MIN_PANEL_WIDTH)
 
   useLayoutEffect(() => {
     if (!menuRef.current) return
-    const buttons = menuRef.current.querySelectorAll('button[data-row-action-button="true"]')
-    let max = 0
-    buttons.forEach((btn) => {
-        // Measure intrinsic content width. We need to measure before constraints,
-        // so we temporarily remove width constraints for measurement if possible.
-        // For buttons, measuring scrollWidth often gives the intrinsic content width
-        // when overflow is hidden but width is not yet constrained.
-        const width = (btn as HTMLElement).scrollWidth
-        if (width > max) max = width
-    })
     
-    // Add padding/icon/gap/safety buffer based on button styles
-    const safetyBuffer = 20
-    if (max > 0) setMinButtonWidth(max + safetyBuffer)
-  }, [children])
+    // 1. Compute buttonMinWidth
+    const buttons = menuRef.current.querySelectorAll('button[data-row-action-button="true"]')
+    let maxButtonWidth = 0
+    buttons.forEach((btn) => {
+        const width = (btn as HTMLElement).scrollWidth
+        if (width > maxButtonWidth) maxButtonWidth = width
+    })
+    const buttonMinWidth = Math.max(100, maxButtonWidth + BUTTON_SAFETY_BUFFER)
+    setMinButtonWidth(buttonMinWidth)
 
-  const viewportSafeWidth = typeof window !== 'undefined' ? window.innerWidth - VIEWPORT_PADDING * 2 : 500
-  const finalPanelWidth = Math.min(Math.max(minButtonWidth * 2 + 30, MIN_PANEL_WIDTH), viewportSafeWidth)
+    // 2. Compute menuRequiredWidth based on sections
+    const sections = menuRef.current.querySelectorAll('div[data-row-action-section="true"]')
+    let maxSectionWidth = 0
+    sections.forEach((sec) => {
+        const cols = parseInt((sec as HTMLElement).dataset.rowActionColumns || '2')
+        const sectionWidth = (SECTION_HORIZONTAL_PADDING * 2) + (cols * buttonMinWidth) + ((cols - 1) * SECTION_GAP)
+        if (sectionWidth > maxSectionWidth) maxSectionWidth = sectionWidth
+    })
+
+    // 3. Compute finalPanelWidth
+    const viewportSafeWidth = typeof window !== 'undefined' ? window.innerWidth - VIEWPORT_PADDING * 2 : 500
+    const calculatedWidth = Math.max(maxSectionWidth, MIN_PANEL_WIDTH)
+    setFinalPanelWidth(Math.min(calculatedWidth, viewportSafeWidth))
+
+  }, [children])
 
   return (
     <WorkspaceFloatingPanel 
@@ -48,7 +60,7 @@ export function OperationalRowActionMenu({
         style={{ 
             '--row-action-button-min-width': `${minButtonWidth}px`,
             width: `${finalPanelWidth}px`,
-            maxWidth: `${viewportSafeWidth}px`
+            maxWidth: `${typeof window !== 'undefined' ? window.innerWidth - VIEWPORT_PADDING * 2 : 500}px`
         } as React.CSSProperties}
     >
       <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
@@ -88,6 +100,8 @@ export function OperationalRowActionSection({
         <p className="text-[10px] font-semibold text-slate-400">{title}</p>
       </div>
       <div
+        data-row-action-section="true"
+        data-row-action-columns={columns}
         className="grid gap-2 px-2 pb-3"
         style={{
             gridTemplateColumns: `repeat(${columns}, minmax(var(--row-action-button-min-width), 1fr))`
