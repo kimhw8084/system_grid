@@ -25,21 +25,20 @@ test.describe("Row-action rectangle law", () => {
     });
   });
 
-  test("Placement: prefers above when it fits and below does not (bottom position)", () => {
+  test("Placement: uses larger side when neither fits full menu", () => {
+    const items = Array.from({ length: 100 }, (_, i) => ({ id: `${i}`, label: "Button", icon: () => null, onClick: () => {} }));
     const sections = [
-      { id: "quickAccess" as const, items: [{ id: "1", label: "Details", icon: () => null, onClick: () => {} }] }
+      { id: "quickAccess" as const, items: items }
     ];
     const geometry = computeRowActionGeometry({
         sections,
         viewportWidth: 1000,
         viewportHeight: 900,
         cursorX: 500,
-        cursorY: 800
+        cursorY: 500
     });
 
     expect(geometry.placement).toBe("above");
-    expect(geometry.style.bottom).toBeDefined();
-    expect(geometry.style.top).toBeUndefined();
-    expect(geometry.style.maxHeight).toBe(geometry.panelHeight);
+    expect(geometry.style.maxHeight).toBeLessThan(geometry.panelHeight);
   });
 });

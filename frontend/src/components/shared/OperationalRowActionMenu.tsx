@@ -1,7 +1,9 @@
 import React, { useRef } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { WorkspaceFloatingPanel } from "./OperationalWorkspacePrimitives";
 import { computeRowActionGeometry } from "./OperationalRowActionGeometry";
+import { OPERATIONAL_WORKSPACE_VISUALS } from "./OperationalWorkspace";
 
 const SECTION_HORIZONTAL_PADDING = 12;
 
@@ -67,8 +69,12 @@ export function OperationalRowActionMenu({
     cursorY,
   });
 
-  return (
-    <div ref={panelRef} className="row-action-menu-container" style={{ position: "fixed", zIndex: 1115, ...geometry.style }}>
+  const menuContent = (
+    <div 
+        ref={panelRef} 
+        className="row-action-menu-container"
+        style={{ position: "fixed", zIndex: 1115, ...geometry.style }}
+    >
       <WorkspaceFloatingPanel
         kind="context"
         className="flex flex-col rounded-xl overflow-hidden"
@@ -133,4 +139,6 @@ export function OperationalRowActionMenu({
       </WorkspaceFloatingPanel>
     </div>
   );
+
+  return createPortal(menuContent, document.body);
 }
