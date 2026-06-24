@@ -1,4 +1,5 @@
 import { BkmListModal, BkmDetailModal, MonitoringForm } from './monitoring/Modals'
+import { DataStatusPill, DataDiagnosticModal } from './shared/OperationalDataStatus'
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
@@ -497,6 +498,7 @@ export default function MonitoringGrid() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const gridRef = React.useRef<any>(null)
+  const [showMonitoringDataDiagnostic, setShowMonitoringDataDiagnostic] = useState(false)
   const { data: userSettings, isSuccess: hasUserSettings } = useQuery({
     queryKey: ['user-settings'],
     queryFn: async () => (await (await apiFetch('/api/v1/settings/user/settings')).json()),
@@ -568,6 +570,23 @@ export default function MonitoringGrid() {
     queryKey: ['monitoring-items'],
     queryFn: async () => (await apiFetch('/api/v1/monitoring?include_deleted=true')).json()
   })
+
+  useEffect(() => {
+    if (isError) {
+        const err = error as any;
+        (window as any).__SYSGRID_DATA_DIAGNOSTICS__ = {
+            ...((window as any).__SYSGRID_DATA_DIAGNOSTICS__ || {}),
+            monitoring: {
+                classification: 'http_error',
+                status: err.status,
+                endpoint: '/api/v1/monitoring?include_deleted=true',
+                rawBodyExcerpt: err.rawBody,
+                userId: localStorage.getItem('SYSGRID_USER_ID') || 'admin_root',
+                tenantId: localStorage.getItem('SYSGRID_TENANT_ID') || '1'
+            }
+        };
+    }
+  }, [isError, error]);
 
 
   const detailRoute = useOperationalDetailRoute({
@@ -1842,19 +1861,40 @@ export default function MonitoringGrid() {
         ),
         subtitle: "Centralized monitoring configuration and operational status",
         actions: (
-          <HeaderScopeSwitch
-            label="Registry Scope"
-            summary={`${lifecycleCounts.existing} existing · ${lifecycleCounts.archived} archived`}
-            value={activeTab}
-            onChange={(next) => {
-              setActiveTab(next as 'active' | 'deleted')
-              setSelectedIds([])
-            }}
-            options={[
-              { label: 'Existing', value: 'active' },
-              { label: 'Archived', value: 'deleted' }
-            ]}
-          />
+          <>
+            <HeaderScopeSwitch
+              label="Registry Scope"
+              summary={`${lifecycleCounts.existing} existing · ${lifecycleCounts.archived} archived`}
+              value={activeTab}
+              onChange={(next) => {
+                setActiveTab(next as 'active' | 'deleted')
+                setSelectedIds([])
+              }}
+              options={[
+                { label: 'Existing', value: 'active' },
+                { label: 'Archived', value: 'deleted' }
+              ]}
+            />
+            {isError && (
+              <>
+                <DataStatusPill 
+                    status="error" 
+                    errorDetail={{ status: (error as any)?.status }} 
+                    onClose={() => setShowMonitoringDataDiagnostic(true)} 
+                />
+                <DataDiagnosticModal 
+                    isOpen={showMonitoringDataDiagnostic} 
+                    onClose={() => setShowMonitoringDataDiagnostic(false)} 
+                    errorDetail={{
+                        status: (error as any)?.status,
+                        url: (error as any)?.url,
+                        message: (error as any)?.message,
+                        rawBody: (error as any)?.rawBody
+                    }} 
+                />
+              </>
+            )}
+          </>
         ),
       }}
       toolbarSearch={(
