@@ -85,7 +85,7 @@ export function OperationalRowActionButton({
         layout === 'tile'
           ? 'flex-col py-3 text-[9px] font-black uppercase tracking-[0.1em]'
           : 'px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em]'
-      } ${className}`}
+      } [&>span]:text-slate-300 ${className}`}
     >
       {children}
     </button>

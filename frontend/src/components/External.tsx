@@ -2980,8 +2980,8 @@ export default function External() {
                           setRowActionMenu(null)
                         }}
                     >
-                      <Maximize2 size={14} />
-                      Details
+                      <Maximize2 size={14} className="text-blue-400" />
+                      <span>Details</span>
                     </OperationalRowActionButton>
                     {(activeTab === 'active' || activeTab === 'links') && (
                       <OperationalRowActionButton
@@ -2995,8 +2995,8 @@ export default function External() {
                           setRowActionMenu(null)
                         }}
                       >
-                        <Edit2 size={14} />
-                        Edit
+                        <Edit2 size={14} className="text-emerald-400" />
+                        <span>Edit</span>
                       </OperationalRowActionButton>
                     )}
                 </OperationalRowActionSection>
@@ -3010,12 +3010,12 @@ export default function External() {
                                 {normalizedWatchIds.includes(Number(rowActionMenu.item.id)) ? (
                                     <>
                                         <EyeOff size={14} className="text-slate-400" />
-                                        Unwatch
+                                        <span>Unwatch</span>
                                     </>
                                 ) : (
                                     <>
                                         <Eye size={14} className="text-sky-400" />
-                                        Watch
+                                        <span>Watch</span>
                                     </>
                                 )}
                             </OperationalRowActionButton>
@@ -3025,12 +3025,12 @@ export default function External() {
                                 {normalizedFavoriteIds.includes(Number(rowActionMenu.item.id)) ? (
                                     <>
                                         <Star size={14} className="fill-amber-400 text-amber-400" />
-                                        Unpin
+                                        <span>Unpin</span>
                                     </>
                                 ) : (
                                     <>
                                         <Star size={14} className="text-amber-400" />
-                                        Pin
+                                        <span>Pin</span>
                                     </>
                                 )}
                             </OperationalRowActionButton>
@@ -3043,20 +3043,20 @@ export default function External() {
                     {activeTab === 'deleted' && (
                         <OperationalRowActionButton
                             layout="inline"
-                            className="text-emerald-300 hover:bg-emerald-950/80"
+                            className="hover:bg-emerald-950/80"
                             onClick={() => {
                                 restoreMutation.mutate(rowActionMenu.item.id)
                                 setRowActionMenu(null)
                             }}
                         >
-                            <Undo2 size={14} />
-                            Restore Entity
+                            <Undo2 size={14} className="text-emerald-300" />
+                            <span className="text-emerald-300">Restore</span>
                         </OperationalRowActionButton>
                     )}
 
                     <OperationalRowActionButton
                         layout="inline"
-                        className={`text-rose-300 hover:bg-rose-950/80 ${rowDeleteConfirmId === rowActionMenu.item.id ? 'bg-rose-600 text-white animate-pulse' : ''}`}
+                        className={`hover:bg-rose-950/80 ${rowDeleteConfirmId === rowActionMenu.item.id ? 'bg-rose-600 animate-pulse' : ''}`}
                         onMouseLeave={() => setRowDeleteConfirmId(null)}
                         onClick={() => {
                             const item = rowActionMenu.item
@@ -3079,10 +3079,10 @@ export default function External() {
                             }
                         }}
                     >
-                        <Trash2 size={14} />
-                        {rowDeleteConfirmId === rowActionMenu.item.id
+                        <Trash2 size={14} className="text-rose-300" />
+                        <span className="text-rose-300">{rowDeleteConfirmId === rowActionMenu.item.id
                             ? (activeTab === 'links' ? 'Confirm Sever Link?' : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm))
-                            : (activeTab === 'links' ? 'Sever Link' : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge))}
+                            : (activeTab === 'links' ? 'Sever Link' : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge))}</span>
                     </OperationalRowActionButton>
                 </OperationalRowActionSection>
               </OperationalRowActionMenu>
