@@ -3039,50 +3039,52 @@ export default function External() {
                     </>
                 )}
 
-                {activeTab === 'deleted' && (
+                <OperationalRowActionSection title="Archive" columns={1}>
+                    {activeTab === 'deleted' && (
+                        <OperationalRowActionButton
+                            layout="inline"
+                            className="text-emerald-300 hover:bg-emerald-950/80"
+                            onClick={() => {
+                                restoreMutation.mutate(rowActionMenu.item.id)
+                                setRowActionMenu(null)
+                            }}
+                        >
+                            <Undo2 size={14} />
+                            Restore Entity
+                        </OperationalRowActionButton>
+                    )}
+
                     <OperationalRowActionButton
                         layout="inline"
-                        className="text-emerald-300 hover:bg-emerald-950/80"
+                        className={`text-rose-300 hover:bg-rose-950/80 ${rowDeleteConfirmId === rowActionMenu.item.id ? 'bg-rose-600 text-white animate-pulse' : ''}`}
+                        onMouseLeave={() => setRowDeleteConfirmId(null)}
                         onClick={() => {
-                            restoreMutation.mutate(rowActionMenu.item.id)
-                            setRowActionMenu(null)
+                            const item = rowActionMenu.item
+                            if (activeTab === 'links') {
+                                if (rowDeleteConfirmId !== item.id) {
+                                    setRowDeleteConfirmId(item.id)
+                                    return
+                                }
+                                deleteMutation.mutate({ id: item.id, purge: false, type: 'link' })
+                                setRowActionMenu(null)
+                                setRowDeleteConfirmId(null)
+                            } else {
+                                if (rowDeleteConfirmId !== item.id) {
+                                    setRowDeleteConfirmId(item.id)
+                                    return
+                                }
+                                deleteMutation.mutate({ id: item.id, purge: activeTab === 'deleted', type: 'entity' })
+                                setRowActionMenu(null)
+                                setRowDeleteConfirmId(null)
+                            }
                         }}
                     >
-                        <Undo2 size={14} />
-                        Restore Entity
+                        <Trash2 size={14} />
+                        {rowDeleteConfirmId === rowActionMenu.item.id
+                            ? (activeTab === 'links' ? 'Confirm Sever Link?' : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm))
+                            : (activeTab === 'links' ? 'Sever Link' : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge))}
                     </OperationalRowActionButton>
-                )}
-
-                <OperationalRowActionButton
-                    layout="inline"
-                    className={`text-rose-300 hover:bg-rose-950/80 ${rowDeleteConfirmId === rowActionMenu.item.id ? 'bg-rose-600 text-white animate-pulse' : ''}`}
-                    onMouseLeave={() => setRowDeleteConfirmId(null)}
-                    onClick={() => {
-                        const item = rowActionMenu.item
-                        if (activeTab === 'links') {
-                            if (rowDeleteConfirmId !== item.id) {
-                                setRowDeleteConfirmId(item.id)
-                                return
-                            }
-                            deleteMutation.mutate({ id: item.id, purge: false, type: 'link' })
-                            setRowActionMenu(null)
-                            setRowDeleteConfirmId(null)
-                        } else {
-                            if (rowDeleteConfirmId !== item.id) {
-                                setRowDeleteConfirmId(item.id)
-                                return
-                            }
-                            deleteMutation.mutate({ id: item.id, purge: activeTab === 'deleted', type: 'entity' })
-                            setRowActionMenu(null)
-                            setRowDeleteConfirmId(null)
-                        }
-                    }}
-                >
-                    <Trash2 size={14} />
-                    {rowDeleteConfirmId === rowActionMenu.item.id
-                        ? (activeTab === 'links' ? 'Confirm Sever Link?' : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : 'Confirm Purge peer?'))
-                        : (activeTab === 'links' ? 'Sever Link' : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge))}
-                </OperationalRowActionButton>
+                </OperationalRowActionSection>
               </OperationalRowActionMenu>
             )}
           </OperationalAnchoredPanel>

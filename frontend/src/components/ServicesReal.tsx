@@ -2142,7 +2142,7 @@ export default function ServicesReal() {
                 title={rowMenuItem.title}
                 onClose={() => setRowActionMenu(null)}
               >
-                <OperationalRowActionSection title="Quick access" layout="tile" columns={2}>
+                <OperationalRowActionSection title="Quick access" columns={2}>
                   <OperationalRowActionButton
                     layout="tile"
                     onClick={() => {
@@ -2170,87 +2170,83 @@ export default function ServicesReal() {
                   </OperationalRowActionButton>
                 </OperationalRowActionSection>
 
-                <OperationalRowActionDivider />
-
-                <OperationalRowActionSection title="Follow options" layout="inline" columns={2}>
+                <OperationalRowActionSection title="Follow options" columns={2}>
                   <OperationalRowActionButton
-                    layout="inline"
+                    layout="tile"
                     onClick={() => {
                       if (!rowMenuItem?.id) return
                       toggleWatch(rowMenuItem.id)
                     }}
-                    className="border border-slate-800 bg-slate-950 text-slate-200 hover:border-slate-700 hover:bg-slate-900"
                   >
                     {watchIds.includes(rowMenuItem.id) ? (
                       <>
-                        <EyeOff size={12} className="text-slate-400" />
+                        <EyeOff size={14} className="text-slate-400" />
                         Unwatch
                       </>
                     ) : (
                       <>
-                        <Eye size={12} className="text-sky-400" />
+                        <Eye size={14} className="text-sky-400" />
                         Watch
                       </>
                     )}
                   </OperationalRowActionButton>
                   <OperationalRowActionButton
-                    layout="inline"
+                    layout="tile"
                     onClick={() => {
                       if (!rowMenuItem?.id) return
                       toggleFavorite(rowMenuItem.id)
                     }}
-                    className="border border-slate-800 bg-slate-950 text-slate-200 hover:border-slate-700 hover:bg-slate-900"
                   >
                     {favoriteIds.includes(rowMenuItem.id) ? (
                       <>
-                        <Star size={12} className="fill-amber-400 text-amber-400" />
+                        <Star size={14} className="fill-amber-400 text-amber-400" />
                         Unpin
                       </>
                     ) : (
                       <>
-                        <Star size={12} className="text-amber-400" />
+                        <Star size={14} className="text-amber-400" />
                         Pin
                       </>
                     )}
                   </OperationalRowActionButton>
                 </OperationalRowActionSection>
 
-                <OperationalRowActionDivider />
-
-                {activeTab === 'deleted' && (
+                <OperationalRowActionSection title="Archive" columns={1}>
+                  {activeTab === 'deleted' && (
+                    <OperationalRowActionButton
+                      layout="inline"
+                      onClick={() => {
+                        if (!rowMenuItem?.id) return
+                        bulkMutation.mutate({ action: 'restore', ids: [rowMenuItem.id] })
+                        setRowActionMenu(null)
+                      }}
+                      className="text-emerald-300 hover:bg-emerald-950/80"
+                    >
+                      <Undo2 size={14} />
+                      Restore Service
+                    </OperationalRowActionButton>
+                  )}
                   <OperationalRowActionButton
+                    layout="inline"
+                    className={`text-rose-300 hover:bg-rose-950/80 ${rowDeleteConfirmId === rowMenuItem.id ? 'bg-rose-600 text-white animate-pulse' : ''}`}
+                    onMouseLeave={() => setRowDeleteConfirmId(null)}
                     onClick={() => {
                       if (!rowMenuItem?.id) return
-                      bulkMutation.mutate({ action: 'restore', ids: [rowMenuItem.id] })
+                      if (rowDeleteConfirmId !== rowMenuItem.id) {
+                        setRowDeleteConfirmId(rowMenuItem.id)
+                        return
+                      }
+                      bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [rowMenuItem.id] })
                       setRowActionMenu(null)
+                      setRowDeleteConfirmId(null)
                     }}
-                    className="text-emerald-300 hover:bg-emerald-950/80"
                   >
-                    <Undo2 size={14} />
-                    Restore Service
+                    <Trash2 size={14} />
+                    {rowDeleteConfirmId === rowMenuItem.id
+                        ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm)
+                        : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge)}
                   </OperationalRowActionButton>
-                )}
-                <OperationalRowActionButton
-                  onClick={() => {
-                    if (!rowMenuItem?.id) return
-                    if (rowDeleteConfirmId !== rowMenuItem.id) {
-                      setRowDeleteConfirmId(rowMenuItem.id)
-                      return
-                    }
-                    bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [rowMenuItem.id] })
-                    setRowActionMenu(null)
-                    setRowDeleteConfirmId(null)
-                  }}
-                  onMouseLeave={() => setRowDeleteConfirmId(null)}
-                  className={rowDeleteConfirmId === rowMenuItem.id
-                    ? 'bg-rose-600 text-white animate-pulse'
-                    : 'text-rose-300 hover:bg-rose-950/80'}
-                >
-                  <Trash2 size={14} />
-                  {rowDeleteConfirmId === rowMenuItem.id
-                    ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm)
-                    : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge)}
-                </OperationalRowActionButton>
+                </OperationalRowActionSection>
               </OperationalRowActionMenu>
             ) : null}
           </OperationalAnchoredPanel>

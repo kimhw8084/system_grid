@@ -49,12 +49,10 @@ export function OperationalRowActionMenu({
 export function OperationalRowActionSection({
   title,
   children,
-  layout = 'tile',
   columns = 2,
 }: {
   title: string
   children: React.ReactNode
-  layout?: 'tile' | 'inline'
   columns?: 1 | 2 | 3 | 4 | 5
 }) {
   return (
