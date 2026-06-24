@@ -10,7 +10,6 @@ const DEFAULT_BUTTON_MIN_WIDTH = 100
 export type OperationalRowActionSectionId = 'quickAccess' | 'followOptions' | 'archive'
 
 export type OperationalRowActionTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger'
-
 export type OperationalRowActionVariant = 'tile' | 'inline'
 
 export type OperationalRowActionItem = {
@@ -25,6 +24,7 @@ export type OperationalRowActionItem = {
   confirmLabel?: string
   ariaLabel?: string
 }
+
 
 export type OperationalRowActionSectionModel = {
   id: OperationalRowActionSectionId
@@ -151,7 +151,7 @@ export function OperationalRowActionMenu({
                         : 'px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em]'
                         } ${item.confirming ? 'bg-rose-600 animate-pulse' : ''}`}
                     >
-                      {React.createElement(item.icon, { size: 14, className: TONE_ICON_CLASS[item.tone ?? 'neutral'] })}
+                      <item.icon size={14} className={TONE_ICON_CLASS[item.tone ?? 'neutral']} />
                       <span className="min-w-0 max-w-full truncate block text-slate-300">
                         {item.confirming ? (item.confirmLabel || 'Confirm?') : item.label}
                       </span>

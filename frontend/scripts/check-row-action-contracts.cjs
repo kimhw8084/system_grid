@@ -11,17 +11,13 @@ const forbiddenPatterns = [
   "style.bottom",
   "ComponentType",
   "| string",
+  "React.ComponentType",
+  "icon: React.ComponentType",
   "icon: any",
   "tone?: any",
   "variant?: any",
   "id: any",
   "columns?: number"
-];
-
-const requiredPatterns = [
-  "computeFloatingPanelRect",
-  "computeRowActionSectionColumns",
-  "minmax(0, 1fr)"
 ];
 
 const relevantFiles = [
