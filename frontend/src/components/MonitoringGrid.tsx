@@ -74,7 +74,9 @@ import {
   OperationalRowActionMenu,
   type OperationalRowActionSectionModel,
   type OperationalRowActionItem,
-  type OperationalRowActionSectionId
+  type OperationalRowActionSectionId,
+  type OperationalRowActionTone,
+  type OperationalRowActionVariant
 } from './shared/OperationalRowActionMenu'
 import {
   OperationalAnchoredPanel,
@@ -2113,11 +2115,12 @@ export default function MonitoringGrid() {
                     id: 'quickAccess',
                     columns: 5 as 5,
                     items: [
-                        { id: 'details', label: 'Details', icon: Maximize2, tone: 'info', onClick: () => { detailRoute.openDetail(item); setRowActionMenu(null); } },
-                        { id: 'edit', label: 'Edit', icon: Edit2, tone: 'success', onClick: () => { setEditingItem(item); setIsFormOpen(true); setRowActionMenu(null); } },
-                        { id: 'history', label: 'History', icon: Clock, tone: 'warning', onClick: () => { setHistoryItem(item); setRowActionMenu(null); } },
-                        { id: 'asset', label: 'Asset', icon: Monitor, tone: 'info', onClick: () => { if (item.device_id) navigate(`/asset?id=${item.device_id}`); setRowActionMenu(null); } },
-                        { id: 'knowledge', label: 'Knowledge', icon: BookOpen, tone: 'success', onClick: () => { const firstDoc = item.recovery_docs?.[0]; const docId = typeof firstDoc === 'object' ? firstDoc?.id : firstDoc; if (docId) navigate(`/knowledge?id=${docId}`); setRowActionMenu(null); }, disabled: !item.recovery_docs?.[0] }
+                        { id: 'details', label: 'Details', icon: Maximize2, tone: 'info' as OperationalRowActionTone, onClick: () => { detailRoute.openDetail(item); setRowActionMenu(null); } },
+                        { id: 'edit', label: 'Edit', icon: Edit2, tone: 'success' as OperationalRowActionTone, onClick: () => { setEditingItem(item); setIsFormOpen(true); setRowActionMenu(null); } },
+                        { id: 'history', label: 'History', icon: Clock, tone: 'warning' as OperationalRowActionTone, onClick: () => { setHistoryItem(item); setRowActionMenu(null); } },
+                        { id: 'asset', label: 'Asset', icon: Monitor, tone: 'info' as OperationalRowActionTone, onClick: () => { if (item.device_id) navigate(`/asset?id=${item.device_id}`); setRowActionMenu(null); } },
+                        { id: 'knowledge', label: 'Knowledge', icon: BookOpen, tone: 'success' as OperationalRowActionTone, onClick: () => { const firstDoc = item.recovery_docs?.[0]; const docId = typeof firstDoc === 'object' ? firstDoc?.id : firstDoc; if (docId) navigate(`/knowledge?id=${docId}`); setRowActionMenu(null); }, disabled: !item.recovery_docs?.[0] }
+
                     ]
                 },
                 {
@@ -2132,13 +2135,13 @@ export default function MonitoringGrid() {
                     id: 'archive',
                     columns: 1 as 1,
                     items: [
-                        ...(activeTab === 'deleted' ? [{ id: 'restore', label: 'Restore', icon: Undo2, tone: 'success', variant: 'inline', onClick: () => { bulkMutation.mutate({ action: 'restore', ids: [item.id] }); setRowActionMenu(null); } }] : []),
+                        ...(activeTab === 'deleted' ? [{ id: 'restore', label: 'Restore', icon: Undo2, tone: 'success' as OperationalRowActionTone, variant: 'inline' as OperationalRowActionVariant, onClick: () => { bulkMutation.mutate({ action: 'restore', ids: [item.id] }); setRowActionMenu(null); } }] : []),
                         {
                             id: 'archive',
                             label: rowDeleteConfirmId === item.id ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm) : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge),
                             icon: Trash2,
-                            tone: 'danger',
-                            variant: 'inline',
+                            tone: 'danger' as OperationalRowActionTone,
+                            variant: 'inline' as OperationalRowActionVariant,
                             confirming: rowDeleteConfirmId === item.id,
                             onClick: () => {
                                 if (rowDeleteConfirmId !== item.id) { setRowDeleteConfirmId(item.id); return }

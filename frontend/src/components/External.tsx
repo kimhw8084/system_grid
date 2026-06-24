@@ -13,7 +13,8 @@ import {
   OperationalRowActionMenu,
   type OperationalRowActionSectionModel,
   type OperationalRowActionItem,
-  type OperationalRowActionVariant
+  type OperationalRowActionVariant,
+  type OperationalRowActionTone
 } from './shared/OperationalRowActionMenu'
 import {
   HeaderScopeSwitch,
@@ -44,6 +45,7 @@ import {
 import { useWorkspaceAnchoredLayer, WorkspaceEmptyState, useEscapeDismiss, useBodyModalFlag, WorkspaceFloatingPanel, WorkspaceSplitView } from './shared/OperationalWorkspacePrimitives'
 import { OperationalAnchoredPanel, OperationalDisplayPanel, OperationalGroupedGridSection, OperationalGroupedGridView, OperationalSavedViewsPanel, OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'
 import { OperationalImportModal } from './shared/OperationalImportModal'
+// (Removed duplicate imports)
 import { EXTERNAL_WORKSPACE_STANDARD } from './shared/OperationalWorkspace'
 import { WorkspaceModal } from './shared/WorkspaceModal'
 import { OperationalFormProps, useOperationalFormDirty } from './shared/OperationalFormContracts'
@@ -2973,7 +2975,7 @@ export default function External() {
                             id: 'details',
                             label: 'Details',
                             icon: Maximize2,
-                            tone: 'info',
+                            tone: 'info' as OperationalRowActionTone,
                             onClick: () => {
                                 if (activeTab === 'links') {
                                     const ent = allEntities?.find((e: any) => e.id === item.external_entity_id)
@@ -2988,7 +2990,7 @@ export default function External() {
                             id: 'edit',
                             label: 'Edit',
                             icon: Edit2,
-                            tone: 'success',
+                            tone: 'success' as OperationalRowActionTone,
                             onClick: () => {
                                 if (activeTab === 'links') {
                                     setEditingLink(item)
@@ -3009,14 +3011,14 @@ export default function External() {
                             id: 'watch',
                             label: normalizedWatchIds.includes(Number(item.id)) ? 'Unwatch' : 'Watch',
                             icon: normalizedWatchIds.includes(Number(item.id)) ? EyeOff : Eye,
-                            tone: 'neutral',
+                            tone: 'neutral' as OperationalRowActionTone,
                             onClick: () => toggleWatch(item.id)
                         },
                         {
                             id: 'favorite',
                             label: normalizedFavoriteIds.includes(Number(item.id)) ? 'Unpin' : 'Pin',
                             icon: Star,
-                            tone: 'warning',
+                            tone: 'warning' as OperationalRowActionTone,
                             onClick: () => toggleFavorite(item.id)
                         }
                     ]
@@ -3029,8 +3031,8 @@ export default function External() {
                             id: 'restore',
                             label: 'Restore',
                             icon: Undo2,
-                            tone: 'success',
-                            variant: 'inline',
+                            tone: 'success' as OperationalRowActionTone,
+                            variant: 'inline' as OperationalRowActionVariant,
                             onClick: () => {
                                 restoreMutation.mutate(item.id)
                                 setRowActionMenu(null)
@@ -3042,8 +3044,9 @@ export default function External() {
                                     : (rowDeleteConfirmId === item.id ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm)
                                     : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge)),
                             icon: Trash2,
-                            tone: 'danger',
-                            variant: 'inline',
+                            tone: 'danger' as OperationalRowActionTone,
+                            variant: 'inline' as OperationalRowActionVariant,
+
                             confirming: rowDeleteConfirmId === item.id,
                             onClick: () => {
                                 if (rowDeleteConfirmId !== item.id) {
