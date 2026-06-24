@@ -8,6 +8,7 @@ const VIEWPORT_PADDING = 12
 const SECTION_HORIZONTAL_PADDING = 10
 const SECTION_GAP = 8
 const BUTTON_SAFETY_BUFFER = 20
+const MIN_USABLE_BUTTON_WIDTH = 60
 
 export type OperationalRowActionSectionId = 'quickAccess' | 'followOptions' | 'archive'
 
@@ -19,8 +20,8 @@ export type OperationalRowActionItem = {
   id: string
   label: string
   icon: any
-  tone?: string
-  variant?: string
+  tone?: any
+  variant?: any
   onClick: () => void
   disabled?: boolean
   confirming?: boolean
@@ -29,7 +30,7 @@ export type OperationalRowActionItem = {
 }
 
 export type OperationalRowActionSectionModel = {
-  id: OperationalRowActionSectionId
+  id: any
   columns?: number
   items: OperationalRowActionItem[]
 }
@@ -50,28 +51,38 @@ const TONE_ICON_CLASS: Record<OperationalRowActionTone, string> = {
 
 export function computeRowActionLayout({ 
     viewportWidth, 
-    buttonMinWidth, 
+    rawButtonMinWidth, 
     sections 
 }: { 
     viewportWidth: number, 
-    buttonMinWidth: number, 
+    rawButtonMinWidth: number, 
     sections: OperationalRowActionSectionModel[] 
 }) {
-    const viewportSafeWidth = viewportWidth - VIEWPORT_PADDING * 2
+    const viewportSafeWidth = Math.max(MIN_PANEL_WIDTH, viewportWidth - VIEWPORT_PADDING * 2)
+    
+    // Effective button width cap: panel width minus padding
+    const maxSingleColumnButtonWidth = Math.max(
+        MIN_USABLE_BUTTON_WIDTH,
+        viewportSafeWidth - SECTION_HORIZONTAL_PADDING * 2
+    )
+    
+    const effectiveButtonMinWidth = Math.min(rawButtonMinWidth, maxSingleColumnButtonWidth)
     
     const processedSections = sections.map(section => {
         const preferredColumns = section.columns || 2
-        const maxColumnsThatFit = Math.max(1, Math.floor((viewportSafeWidth - SECTION_HORIZONTAL_PADDING * 2 + SECTION_GAP) / (buttonMinWidth + SECTION_GAP)))
+        // Max columns that fit: (AvailableWidth + Gap) / (ButtonWidth + Gap)
+        const availableWidth = viewportSafeWidth - SECTION_HORIZONTAL_PADDING * 2
+        const maxColumnsThatFit = Math.max(1, Math.floor((availableWidth + SECTION_GAP) / (effectiveButtonMinWidth + SECTION_GAP)))
         const actualColumns = Math.min(preferredColumns, maxColumnsThatFit)
         
-        const sectionWidth = (SECTION_HORIZONTAL_PADDING * 2) + (actualColumns * buttonMinWidth) + ((actualColumns - 1) * SECTION_GAP)
+        const sectionWidth = (SECTION_HORIZONTAL_PADDING * 2) + (actualColumns * effectiveButtonMinWidth) + ((actualColumns - 1) * SECTION_GAP)
         return { ...section, actualColumns, sectionWidth }
     })
     
     const menuRequiredWidth = Math.max(...processedSections.map(s => s.sectionWidth))
     const finalPanelWidth = Math.min(Math.max(menuRequiredWidth, MIN_PANEL_WIDTH), viewportSafeWidth)
     
-    return { processedSections, finalPanelWidth }
+    return { processedSections, finalPanelWidth, effectiveButtonMinWidth }
 }
 
 export function OperationalRowActionMenu({
@@ -86,8 +97,11 @@ export function OperationalRowActionMenu({
   sections: OperationalRowActionSectionModel[]
 }) {
   const menuRef = useRef<HTMLDivElement>(null)
-  const [minButtonWidth, setMinButtonWidth] = useState(0)
-  const [layout, setLayout] = useState({ processedSections: sections.map(s => ({ ...s, actualColumns: s.columns || 2, sectionWidth: 0 })), finalPanelWidth: MIN_PANEL_WIDTH })
+  const [layout, setLayout] = useState({ 
+    processedSections: sections.map(s => ({ ...s, actualColumns: s.columns || 2, sectionWidth: 0 })), 
+    finalPanelWidth: MIN_PANEL_WIDTH,
+    effectiveButtonMinWidth: 100
+  })
 
   useLayoutEffect(() => {
     const updateLayout = () => {
@@ -99,11 +113,10 @@ export function OperationalRowActionMenu({
         const width = (btn as HTMLElement).scrollWidth
         if (width > maxButtonWidth) maxButtonWidth = width
       })
-      const buttonMinWidth = Math.max(100, maxButtonWidth + BUTTON_SAFETY_BUFFER)
-      setMinButtonWidth(buttonMinWidth)
+      const rawButtonMinWidth = Math.max(100, maxButtonWidth + BUTTON_SAFETY_BUFFER)
 
       const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1024
-      setLayout(computeRowActionLayout({ viewportWidth, buttonMinWidth, sections }))
+      setLayout(computeRowActionLayout({ viewportWidth, rawButtonMinWidth, sections }))
     }
 
     updateLayout()
@@ -116,7 +129,7 @@ export function OperationalRowActionMenu({
         kind="context" 
         className="max-w-[calc(100vw-24px)] overflow-hidden" 
         style={{ 
-            '--row-action-button-min-width': `${minButtonWidth}px`,
+            '--row-action-button-min-width': `${layout.effectiveButtonMinWidth}px`,
             width: `${layout.finalPanelWidth}px`,
             maxWidth: `${typeof window !== 'undefined' ? window.innerWidth - VIEWPORT_PADDING * 2 : 500}px`
         } as React.CSSProperties}
@@ -157,14 +170,14 @@ export function OperationalRowActionMenu({
                             data-row-action-button="true"
                             onClick={item.onClick}
                             disabled={item.disabled}
-                            className={`flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950 transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 justify-center ${
+                            className={`flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950 transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 justify-center min-w-0 ${
                                 (item.variant || 'tile') === 'tile'
                                     ? 'flex-col py-3 text-[9px] font-black uppercase tracking-[0.1em]'
                                     : 'px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em]'
                             } ${item.confirming ? 'bg-rose-600 animate-pulse' : ''}`}
                         >
-                            <item.icon size={14} className={TONE_ICON_CLASS[item.tone as OperationalRowActionTone || 'neutral']} />
-                            <span className="text-slate-300">{item.confirming ? (item.confirmLabel || 'Confirm?') : item.label}</span>
+                            <item.icon size={14} className={TONE_ICON_CLASS[item.tone || 'neutral']} />
+                            <span className="truncate block max-w-full text-slate-300">{item.confirming ? (item.confirmLabel || 'Confirm?') : item.label}</span>
                         </button>
                     ))}
                 </div>
