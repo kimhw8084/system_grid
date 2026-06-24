@@ -1,5 +1,5 @@
 import { BkmListModal, BkmDetailModal, MonitoringForm } from './monitoring/Modals'
-import * as OperationalDataStatus from './shared/OperationalDataStatus'
+import { DataStatusPill, DataDiagnosticModal } from './shared/OperationalDataStatus'
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
@@ -1877,12 +1877,12 @@ export default function MonitoringGrid() {
             />
             {isError && (
               <>
-                <OperationalDataStatus.DataStatusPill 
+                <DataStatusPill 
                     status="error" 
                     errorDetail={{ status: (error as any)?.status }} 
                     onClick={() => setShowMonitoringDataDiagnostic(true)} 
                 />
-                <OperationalDataStatus.DataDiagnosticModal 
+                <DataDiagnosticModal 
                     isOpen={showMonitoringDataDiagnostic} 
                     onClose={() => setShowMonitoringDataDiagnostic(false)} 
                     errorDetail={{

@@ -48,6 +48,32 @@ const TONE_ICON_CLASS: Record<OperationalRowActionTone, string> = {
   danger: 'text-rose-300',
 }
 
+export function computeRowActionLayout({ 
+    viewportWidth, 
+    buttonMinWidth, 
+    sections 
+}: { 
+    viewportWidth: number, 
+    buttonMinWidth: number, 
+    sections: OperationalRowActionSectionModel[] 
+}) {
+    const viewportSafeWidth = viewportWidth - VIEWPORT_PADDING * 2
+    
+    const processedSections = sections.map(section => {
+        const preferredColumns = section.columns || 2
+        const maxColumnsThatFit = Math.max(1, Math.floor((viewportSafeWidth - SECTION_HORIZONTAL_PADDING * 2 + SECTION_GAP) / (buttonMinWidth + SECTION_GAP)))
+        const actualColumns = Math.min(preferredColumns, maxColumnsThatFit)
+        
+        const sectionWidth = (SECTION_HORIZONTAL_PADDING * 2) + (actualColumns * buttonMinWidth) + ((actualColumns - 1) * SECTION_GAP)
+        return { ...section, actualColumns, sectionWidth }
+    })
+    
+    const menuRequiredWidth = Math.max(...processedSections.map(s => s.sectionWidth))
+    const finalPanelWidth = Math.min(Math.max(menuRequiredWidth, MIN_PANEL_WIDTH), viewportSafeWidth)
+    
+    return { processedSections, finalPanelWidth }
+}
+
 export function OperationalRowActionMenu({
   meta,
   title,
@@ -61,10 +87,10 @@ export function OperationalRowActionMenu({
 }) {
   const menuRef = useRef<HTMLDivElement>(null)
   const [minButtonWidth, setMinButtonWidth] = useState(0)
-  const [finalPanelWidth, setFinalPanelWidth] = useState(MIN_PANEL_WIDTH)
+  const [layout, setLayout] = useState({ processedSections: sections.map(s => ({ ...s, actualColumns: s.columns || 2, sectionWidth: 0 })), finalPanelWidth: MIN_PANEL_WIDTH })
 
   useLayoutEffect(() => {
-    const updateWidths = () => {
+    const updateLayout = () => {
       if (!menuRef.current) return
       
       const buttons = menuRef.current.querySelectorAll('button[data-row-action-button="true"]')
@@ -76,22 +102,13 @@ export function OperationalRowActionMenu({
       const buttonMinWidth = Math.max(100, maxButtonWidth + BUTTON_SAFETY_BUFFER)
       setMinButtonWidth(buttonMinWidth)
 
-      const sectionEls = menuRef.current.querySelectorAll('div[data-row-action-section="true"]')
-      let maxSectionWidth = 0
-      sectionEls.forEach((sec) => {
-        const cols = parseInt((sec as HTMLElement).dataset.rowActionColumns || '2')
-        const sectionWidth = (SECTION_HORIZONTAL_PADDING * 2) + (cols * buttonMinWidth) + ((cols - 1) * SECTION_GAP)
-        if (sectionWidth > maxSectionWidth) maxSectionWidth = sectionWidth
-      })
-
-      const viewportSafeWidth = typeof window !== 'undefined' ? window.innerWidth - VIEWPORT_PADDING * 2 : 500
-      const calculatedWidth = Math.max(maxSectionWidth, MIN_PANEL_WIDTH)
-      setFinalPanelWidth(Math.min(calculatedWidth, viewportSafeWidth))
+      const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1024
+      setLayout(computeRowActionLayout({ viewportWidth, buttonMinWidth, sections }))
     }
 
-    updateWidths()
-    window.addEventListener('resize', updateWidths)
-    return () => window.removeEventListener('resize', updateWidths)
+    updateLayout()
+    window.addEventListener('resize', updateLayout)
+    return () => window.removeEventListener('resize', updateLayout)
   }, [sections])
 
   return (
@@ -100,7 +117,7 @@ export function OperationalRowActionMenu({
         className="max-w-[calc(100vw-24px)] overflow-hidden" 
         style={{ 
             '--row-action-button-min-width': `${minButtonWidth}px`,
-            width: `${finalPanelWidth}px`,
+            width: `${layout.finalPanelWidth}px`,
             maxWidth: `${typeof window !== 'undefined' ? window.innerWidth - VIEWPORT_PADDING * 2 : 500}px`
         } as React.CSSProperties}
     >
@@ -120,17 +137,17 @@ export function OperationalRowActionMenu({
         </button>
       </div>
       <div ref={menuRef} className="max-h-[calc(100vh-180px)] overflow-y-auto p-2.5 custom-scrollbar">
-        {sections.map((section, idx) => (
+        {layout.processedSections.map((section, idx) => (
             <React.Fragment key={section.id}>
                 <div className="px-3 py-1">
                     <p className="text-[10px] font-semibold text-slate-400">{SECTION_TITLE_MAP[section.id]}</p>
                 </div>
                 <div
                     data-row-action-section="true"
-                    data-row-action-columns={section.columns || 2}
+                    data-row-action-columns={section.actualColumns}
                     className="grid gap-2 px-2 pb-3"
                     style={{
-                        gridTemplateColumns: `repeat(${section.columns || 2}, minmax(var(--row-action-button-min-width), 1fr))`
+                        gridTemplateColumns: `repeat(${section.actualColumns}, minmax(var(--row-action-button-min-width), 1fr))`
                     }}
                 >
                     {section.items.map((item) => (
@@ -146,12 +163,12 @@ export function OperationalRowActionMenu({
                                     : 'px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em]'
                             } ${item.confirming ? 'bg-rose-600 animate-pulse' : ''}`}
                         >
-                            <item.icon size={14} className={TONE_ICON_CLASS[item.tone || 'neutral']} />
+                            <item.icon size={14} className={TONE_ICON_CLASS[item.tone as OperationalRowActionTone || 'neutral']} />
                             <span className="text-slate-300">{item.confirming ? (item.confirmLabel || 'Confirm?') : item.label}</span>
                         </button>
                     ))}
                 </div>
-                {idx < sections.length - 1 && <div className="mx-2 my-2 h-px bg-slate-800" />}
+                {idx < layout.processedSections.length - 1 && <div className="mx-2 my-2 h-px bg-slate-800" />}
             </React.Fragment>
         ))}
       </div>

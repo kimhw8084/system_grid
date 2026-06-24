@@ -30,7 +30,7 @@ export function classifyDataStatus(
     return { status: 'healthy' };
 }
 
-export function DataStatusPill({ status, errorDetail, onClick }: { status: string, errorDetail?: any, onClick: () => void }) {
+export default function DataStatusPill({ status, errorDetail, onClick }: { status: string, errorDetail?: any, onClick: () => void }) {
     if (status === 'healthy') return null
     
     const colors = {
