@@ -3050,7 +3050,7 @@ export default function External() {
                             }}
                         >
                             <Undo2 size={14} className="text-emerald-300" />
-                            <span className="text-emerald-300">Restore</span>
+                            <span>Restore</span>
                         </OperationalRowActionButton>
                     )}
 
@@ -3080,7 +3080,7 @@ export default function External() {
                         }}
                     >
                         <Trash2 size={14} className="text-rose-300" />
-                        <span className="text-rose-300">{rowDeleteConfirmId === rowActionMenu.item.id
+                        <span>{rowDeleteConfirmId === rowActionMenu.item.id
                             ? (activeTab === 'links' ? 'Confirm Sever Link?' : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm))
                             : (activeTab === 'links' ? 'Sever Link' : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge))}</span>
                     </OperationalRowActionButton>

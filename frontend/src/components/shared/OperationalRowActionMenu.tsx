@@ -25,32 +25,37 @@ export function OperationalRowActionMenu({
   const [finalPanelWidth, setFinalPanelWidth] = useState(MIN_PANEL_WIDTH)
 
   useLayoutEffect(() => {
-    if (!menuRef.current) return
-    
-    // 1. Compute buttonMinWidth
-    const buttons = menuRef.current.querySelectorAll('button[data-row-action-button="true"]')
-    let maxButtonWidth = 0
-    buttons.forEach((btn) => {
-        const width = (btn as HTMLElement).scrollWidth
-        if (width > maxButtonWidth) maxButtonWidth = width
-    })
-    const buttonMinWidth = Math.max(100, maxButtonWidth + BUTTON_SAFETY_BUFFER)
-    setMinButtonWidth(buttonMinWidth)
+    const updateWidths = () => {
+        if (!menuRef.current) return
+        
+        // 1. Compute buttonMinWidth
+        const buttons = menuRef.current.querySelectorAll('button[data-row-action-button="true"]')
+        let maxButtonWidth = 0
+        buttons.forEach((btn) => {
+            const width = (btn as HTMLElement).scrollWidth
+            if (width > maxButtonWidth) maxButtonWidth = width
+        })
+        const buttonMinWidth = Math.max(100, maxButtonWidth + BUTTON_SAFETY_BUFFER)
+        setMinButtonWidth(buttonMinWidth)
 
-    // 2. Compute menuRequiredWidth based on sections
-    const sections = menuRef.current.querySelectorAll('div[data-row-action-section="true"]')
-    let maxSectionWidth = 0
-    sections.forEach((sec) => {
-        const cols = parseInt((sec as HTMLElement).dataset.rowActionColumns || '2')
-        const sectionWidth = (SECTION_HORIZONTAL_PADDING * 2) + (cols * buttonMinWidth) + ((cols - 1) * SECTION_GAP)
-        if (sectionWidth > maxSectionWidth) maxSectionWidth = sectionWidth
-    })
+        // 2. Compute menuRequiredWidth based on sections
+        const sections = menuRef.current.querySelectorAll('div[data-row-action-section="true"]')
+        let maxSectionWidth = 0
+        sections.forEach((sec) => {
+            const cols = parseInt((sec as HTMLElement).dataset.rowActionColumns || '2')
+            const sectionWidth = (SECTION_HORIZONTAL_PADDING * 2) + (cols * buttonMinWidth) + ((cols - 1) * SECTION_GAP)
+            if (sectionWidth > maxSectionWidth) maxSectionWidth = sectionWidth
+        })
 
-    // 3. Compute finalPanelWidth
-    const viewportSafeWidth = typeof window !== 'undefined' ? window.innerWidth - VIEWPORT_PADDING * 2 : 500
-    const calculatedWidth = Math.max(maxSectionWidth, MIN_PANEL_WIDTH)
-    setFinalPanelWidth(Math.min(calculatedWidth, viewportSafeWidth))
+        // 3. Compute finalPanelWidth
+        const viewportSafeWidth = typeof window !== 'undefined' ? window.innerWidth - VIEWPORT_PADDING * 2 : 500
+        const calculatedWidth = Math.max(maxSectionWidth, MIN_PANEL_WIDTH)
+        setFinalPanelWidth(Math.min(calculatedWidth, viewportSafeWidth))
+    }
 
+    updateWidths()
+    window.addEventListener('resize', updateWidths)
+    return () => window.removeEventListener('resize', updateWidths)
   }, [children])
 
   return (
