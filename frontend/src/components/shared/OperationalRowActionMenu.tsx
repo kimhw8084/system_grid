@@ -71,14 +71,14 @@ export function OperationalRowActionMenu({
     <div ref={panelRef} style={{ position: "fixed", zIndex: 1115, ...geometry.style }}>
       <WorkspaceFloatingPanel
         kind="context"
-        className="flex flex-col"
+        className="flex flex-col rounded-xl overflow-hidden"
         style={{
           width: "100%",
           maxHeight: geometry.style.maxHeight,
           boxSizing: "border-box",
         }}
       >
-        <div className="flex-shrink-0 flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
+        <div className="flex-shrink-0 flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3 rounded-t-xl">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold text-slate-400">Row actions</p>
             <p className="pt-1 text-[11px] font-semibold text-slate-100">{meta}</p>

@@ -42,11 +42,9 @@ export function computeRowActionGeometry({
 
   // 1. Initial Calculation (with wrapping)
   let processedSections = sections.map((section) => {
-    // Check and cap widths immediately
-    const rawButtonWidths = section.items.map((item) => {
-        const w = estimateRowActionButtonWidth(item.label, item.confirmLabel, item.confirming);
-        return Math.min(w, contentSafeWidth);
-    });
+    const rawButtonWidths = section.items.map((item) =>
+      estimateRowActionButtonWidth(item.label, item.confirmLabel, item.confirming)
+    );
     
     // Attempt wrapping based on contentSafeWidth
     const rows: { items: OperationalRowActionItem[], buttonWidths: number[], rowWidth: number, allowWrap: boolean }[] = [];
@@ -59,10 +57,7 @@ export function computeRowActionGeometry({
         const isConstrained = w >= contentSafeWidth;
 
         if (currentRowItems.length > 0 && (currentRowWidth + gap + w > contentSafeWidth || isConstrained)) {
-            // If current row has content, wrap it
-            if (currentRowItems.length > 0) {
-              rows.push({ items: currentRowItems, buttonWidths: currentRowButtonWidths, rowWidth: currentRowWidth, allowWrap: false });
-            }
+            rows.push({ items: currentRowItems, buttonWidths: currentRowButtonWidths, rowWidth: currentRowWidth, allowWrap: false });
             currentRowItems = [];
             currentRowButtonWidths = [];
             currentRowWidth = 0;
@@ -86,6 +81,7 @@ export function computeRowActionGeometry({
     return {
       id: section.id,
       showTitle: section.id !== "archive",
+      items: section.items,
       rows,
     };
   });
@@ -122,10 +118,32 @@ export function computeRowActionGeometry({
       if (idx < processedSections.length - 1) panelHeight += SECTION_GAP + DIVIDER_HEIGHT;
   });
 
-  // 4. Vertical placement
+  // 4. Vertical placement logic
   const belowSpace = viewportHeight - edge - (cursorY + POINT_MENU_CURSOR_GAP);
   const aboveSpace = cursorY - POINT_MENU_CURSOR_GAP - edge;
-  const placement = (belowSpace >= panelHeight || belowSpace >= aboveSpace) ? "below" : "above";
+  
+  let placement: "below" | "above" = "below";
+  let top: number | undefined;
+  let bottom: number | undefined;
+  let maxHeight: number;
+
+  if (panelHeight <= belowSpace) {
+      placement = "below";
+      top = cursorY + POINT_MENU_CURSOR_GAP;
+      maxHeight = panelHeight;
+  } else if (panelHeight <= aboveSpace) {
+      placement = "above";
+      bottom = viewportHeight - cursorY + POINT_MENU_CURSOR_GAP;
+      maxHeight = panelHeight;
+  } else if (belowSpace >= aboveSpace) {
+      placement = "below";
+      top = cursorY + POINT_MENU_CURSOR_GAP;
+      maxHeight = Math.max(0, belowSpace);
+  } else {
+      placement = "above";
+      bottom = viewportHeight - cursorY + POINT_MENU_CURSOR_GAP;
+      maxHeight = Math.max(0, aboveSpace);
+  }
 
   return {
     panelWidth,
@@ -133,10 +151,10 @@ export function computeRowActionGeometry({
     placement,
     style: {
       left: Math.max(edge, Math.min(cursorX, viewportWidth - panelWidth - edge)),
-      top: placement === "below" ? cursorY + POINT_MENU_CURSOR_GAP : undefined,
-      bottom: placement === "above" ? viewportHeight - cursorY + POINT_MENU_CURSOR_GAP : undefined,
+      top,
+      bottom,
       width: panelWidth,
-      maxHeight: placement === "below" ? belowSpace : aboveSpace,
+      maxHeight,
     },
     sections: processedSections,
     actionSetWidth,
