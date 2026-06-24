@@ -3,7 +3,7 @@ import { useWorkspaceDismissHandlers } from './OperationalWorkspaceHooks'
 
 export const FLOATING_PANEL_EDGE = 16
 export const POINT_MENU_CURSOR_GAP = 8
-export const MIN_USABLE_MENU_HEIGHT = 200
+
 
 export function computeFloatingPanelRect({
   x,
@@ -34,13 +34,37 @@ export function computeFloatingPanelRect({
   const belowSpace = viewportHeight - edge - (y + POINT_MENU_CURSOR_GAP)
   const aboveSpace = y - POINT_MENU_CURSOR_GAP - edge
 
-  if (belowSpace >= MIN_USABLE_MENU_HEIGHT || belowSpace >= aboveSpace) {
+  if (preferredHeight <= belowSpace) {
     return {
       left,
       width,
-      maxHeight: Math.min(preferredHeight, Math.max(0, belowSpace)),
+      maxHeight: preferredHeight,
       top: y + POINT_MENU_CURSOR_GAP
     }
+  } else if (preferredHeight <= aboveSpace) {
+    return {
+      left,
+      width,
+      maxHeight: preferredHeight,
+      bottom: viewportHeight - y + POINT_MENU_CURSOR_GAP
+    }
+  } else if (belowSpace >= aboveSpace) {
+    return {
+      left,
+      width,
+      maxHeight: Math.max(0, belowSpace),
+      top: y + POINT_MENU_CURSOR_GAP
+    }
+  } else {
+    return {
+      left,
+      width,
+      maxHeight: Math.max(0, aboveSpace),
+      bottom: viewportHeight - y + POINT_MENU_CURSOR_GAP
+    }
+  }
+}
+
   } else {
     return {
       left,
