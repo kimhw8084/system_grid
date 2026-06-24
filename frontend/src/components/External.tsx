@@ -3070,10 +3070,11 @@ export default function External() {
                   meta={`ID ${item.id} · ${activeTab === 'links' ? item.external_entity_name : item.name}`}
                   title={activeTab === 'links' ? `Link · ${item.protocol} Port ${item.port}` : (item.type || 'External Peer')}
                   sections={sections}
+                  cursorX={rowActionMenu.point.x}
+                  cursorY={rowActionMenu.point.y}
                 />
               )
             })()}
-          </OperationalAnchoredPanel>
         
         </>
       }

@@ -96,7 +96,7 @@ export function OperationalRowActionMenu({
           </button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto p-3 custom-scrollbar">
-          {sections.map((section, idx) => (
+          {geometry.sections.map((section, idx) => (
             <React.Fragment key={section.id}>
               {section.id !== 'archive' && (
                 <div className="px-1 py-1.5">
@@ -106,10 +106,11 @@ export function OperationalRowActionMenu({
               <div
                 className="grid gap-2"
                 style={{
-                  gridTemplateColumns: `repeat(${section.items.length}, 1fr)`,
+                  gridTemplateColumns: section.buttonWidths.map(w => `${w}px`).join(' '),
+                  width: 'fit-content'
                 }}
               >
-                {section.items.map((item) => (
+                {section.items.map((item, itemIdx) => (
                   <button
                     key={item.id}
                     type="button"
@@ -117,7 +118,7 @@ export function OperationalRowActionMenu({
                     disabled={item.disabled}
                     className={`flex flex-row items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${item.confirming ? 'bg-rose-600 animate-pulse' : ''}`}
                     style={{
-                      width: '100%',
+                      width: `${section.buttonWidths[itemIdx]}px`,
                     }}
                   >
                     {React.createElement(item.icon, { size: 14, className: `flex-shrink-0 ${TONE_ICON_CLASS[item.tone ?? 'neutral']}` })}
@@ -127,7 +128,7 @@ export function OperationalRowActionMenu({
                   </button>
                 ))}
               </div>
-              {idx < sections.length - 1 && <div className="my-3 h-px bg-slate-800" />}
+              {idx < geometry.sections.length - 1 && <div className="my-3 h-px bg-slate-800" />}
             </React.Fragment>
           ))}
         </div>

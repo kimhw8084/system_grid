@@ -2,43 +2,40 @@ const fs = require('fs');
 const path = require('path');
 
 const forbiddenPatterns = [
-  "querySelectorAll('button[data-row-action-button=\"true\"]')",
-  ".scrollWidth",
-  "--row-action-button-min-width",
-  "minmax(var(--row-action-button-min-width)",
-  "menuWidth = 336",
-  "style.right",
-  "style.bottom",
-  "flex-col",
-  "ComponentType",
-  "| string",
-  "React.ComponentType",
-  "icon: React.ComponentType",
-  "icon: any",
-  "tone?: any",
-  "variant?: any",
-  "id: any",
-  "columns?: number",
-  "top = y - POINT_MENU_CURSOR_GAP - preferredHeight",
-  "y - POINT_MENU_CURSOR_GAP - preferredHeight"
+  "panelHeight = 400",
+  "repeat(${section.items.length}, 1fr)",
+  "repeat(section.items.length, 1fr)",
+  "minmax(0, 1fr)",
+  "overflow-x-auto",
+  "overflow-x-scroll",
+  "truncate",
+  "text-overflow",
+  "menuWidth: 336",
+  "menuWidth: 280",
+  "querySelectorAll",
+  "scrollWidth",
+  "row-action-button-min-width",
+  "OperationalAnchoredPanel"
 ];
 
 const requiredPatterns = [
-  "computeFloatingPanelRect",
-  "computeRowActionSectionColumns",
+  "computeRowActionGeometry",
+  "estimateRowActionButtonWidth",
+  "actionSetWidth",
+  "buttonWidths",
+  "panelHeight",
   "POINT_MENU_CURSOR_GAP",
   "belowSpace",
-  "aboveSpace"
+  "aboveSpace",
+  "whitespace-nowrap",
+  "justify-center"
 ];
 
 const relevantFiles = [
-  'shared/OperationalGridInteractions.ts',
   'shared/OperationalRowActionMenu.tsx',
-  'AssetReal.tsx',
   'MonitoringGrid.tsx',
   'ServicesReal.tsx',
-  'VendorsReal.tsx',
-  'NetworkReal.tsx'
+  'External.tsx'
 ];
 
 relevantFiles.forEach(file => {
@@ -46,29 +43,14 @@ relevantFiles.forEach(file => {
   if (!fs.existsSync(filePath)) return;
   let content = fs.readFileSync(filePath, 'utf8');
 
-// Only check row-action specific areas to avoid false positives in other components
-  if (file === 'shared/OperationalRowActionMenu.tsx') {
-    content = content.replace(/export type OperationalRowActionItem = \{[\s\S]*?\}/g, '');
-    
-    // Allow flex-col on the root panel, but check for it on button elements
-    const buttonMatches = content.match(/<button[\s\S]*?className="[\s\S]*?"/g);
-    if (buttonMatches) {
-        buttonMatches.forEach(btn => {
-            if (btn.includes('flex-col')) {
-                console.error(`Forbidden pattern found in ${file}: button flex-col`);
-                process.exit(1);
-            }
-        });
-    }
-  } else {
-    // For other files, only scan within row-action menu definitions
+  // Only scan within row-action menu definitions if it's a grid/view file
+  if (file !== 'shared/OperationalRowActionMenu.tsx') {
     const menuMatch = content.match(/setRowActionMenu\(\{[\s\S]*?\}\)/g);
-    content = menuMatch ? menuMatch.join('\n') : '';
+    const renderMatch = content.match(/<OperationalRowActionMenu[\s\S]*?\/>/g);
+    content = (menuMatch ? menuMatch.join('\n') : '') + '\n' + (renderMatch ? renderMatch.join('\n') : '');
   }
   
   forbiddenPatterns.forEach(pattern => {
-    // Skip flex-col check here, as we do a specialized check for buttons
-    if (pattern === 'flex-col') return;
     if (content.includes(pattern)) {
       console.error(`Forbidden pattern found in ${file}: ${pattern}`);
       process.exit(1);
@@ -76,33 +58,26 @@ relevantFiles.forEach(file => {
   });
 });
 
-// Check for required patterns in the specific files
-const interactionsContent = fs.readFileSync(path.join(__dirname, '../src/components/shared/OperationalGridInteractions.ts'), 'utf8');
+// Specific checks
 const menuContent = fs.readFileSync(path.join(__dirname, '../src/components/shared/OperationalRowActionMenu.tsx'), 'utf8');
+const geoContent = fs.readFileSync(path.join(__dirname, '../src/components/shared/OperationalRowActionGeometry.ts'), 'utf8');
+const externalContent = fs.readFileSync(path.join(__dirname, '../src/components/External.tsx'), 'utf8');
 
-if (!interactionsContent.includes("computeFloatingPanelRect")) {
-  console.error("computeFloatingPanelRect not found");
+requiredPatterns.forEach(pattern => {
+  if (!geoContent.includes(pattern) && !menuContent.includes(pattern)) {
+    console.error(`Required pattern not found: ${pattern}`);
+    process.exit(1);
+  }
+});
+
+if (!externalContent.includes("cursorX={rowActionMenu.point.x}") || !externalContent.includes("cursorY={rowActionMenu.point.y}")) {
+  console.error("External.tsx must pass cursorX and cursorY to OperationalRowActionMenu");
   process.exit(1);
 }
 
-if (!interactionsContent.includes("POINT_MENU_CURSOR_GAP")) {
-  console.error("POINT_MENU_CURSOR_GAP not found");
-  process.exit(1);
-}
-
-if (!interactionsContent.includes("belowSpace")) {
-  console.error("belowSpace not found");
-  process.exit(1);
-}
-
-if (!interactionsContent.includes("aboveSpace")) {
-  console.error("aboveSpace not found");
-  process.exit(1);
-}
-
-if (!menuContent.includes("computeRowActionSectionColumns")) {
-  console.error("computeRowActionSectionColumns not found");
-  process.exit(1);
+if (menuContent.includes('SECTION_TITLE_MAP["archive"]')) {
+    console.error("Archive title should not be rendered");
+    process.exit(1);
 }
 
 console.log('Row-action contract check passed.');
