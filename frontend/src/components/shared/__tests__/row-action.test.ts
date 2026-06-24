@@ -44,3 +44,29 @@ describe("Row-action geometry and placement", () => {
     expect(geometry.style.maxHeight).toBeLessThan(geometry.panelHeight);
   });
 });
+
+  test("Placement: middle cursor opens above when fits", () => {
+    const sections = [{ id: "quickAccess" as const, items: [{ id: "1", label: "Details", icon: () => null, onClick: () => {} }] }];
+    const viewportHeight = 900;
+    const cursorY = 520;
+    const measuredPanelHeight = 430;
+    // belowSpace = 900 - 16 - (520 + 8) = 356
+    // aboveSpace = 520 - 8 - 16 = 496
+    // panelHeight = 430
+    // panelHeight > belowSpace (356), but panelHeight <= aboveSpace (496).
+    // Placement must be above.
+
+    const geometry = computeRowActionGeometry({
+        sections,
+        viewportWidth: 1000,
+        viewportHeight: 900,
+        cursorX: 500,
+        cursorY: cursorY,
+        measuredHeight: measuredPanelHeight
+    });
+
+    expect(geometry.placement).toBe("above");
+    expect(geometry.style.bottom).toBeDefined();
+    expect(geometry.style.top).toBeUndefined();
+    expect(geometry.style.maxHeight).toBe(measuredPanelHeight);
+  });

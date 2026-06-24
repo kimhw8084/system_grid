@@ -42,13 +42,11 @@ export function computeRowActionGeometry({
   const viewportSafeWidth = Math.max(0, viewportWidth - edge * 2);
   const contentSafeWidth = Math.max(0, viewportSafeWidth - panelPadding * 2);
 
-  // 1. Initial Calculation (with wrapping)
   let processedSections = sections.map((section) => {
     const rawButtonWidths = section.items.map((item) =>
       estimateRowActionButtonWidth(item.label, item.confirmLabel, item.confirming)
     );
     
-    // Attempt wrapping based on contentSafeWidth
     const rows: { items: OperationalRowActionItem[], buttonWidths: number[], rowWidth: number, allowWrap: boolean }[] = [];
     let currentRowItems: OperationalRowActionItem[] = [];
     let currentRowButtonWidths: number[] = [];
@@ -70,7 +68,6 @@ export function computeRowActionGeometry({
         currentRowButtonWidths.push(w);
         currentRowWidth += w;
 
-        // If this item is constrained, close row immediately
         if (isConstrained) {
             rows.push({ items: currentRowItems, buttonWidths: currentRowButtonWidths, rowWidth: currentRowWidth, allowWrap: true });
             currentRowItems = [];
@@ -80,21 +77,13 @@ export function computeRowActionGeometry({
     });
     if (currentRowItems.length > 0) rows.push({ items: currentRowItems, buttonWidths: currentRowButtonWidths, rowWidth: currentRowWidth, allowWrap: false });
 
-    return {
-      id: section.id,
-      showTitle: section.id !== "archive",
-      items: section.items,
-      rows,
-    };
+    return { id: section.id, showTitle: section.id !== "archive", items: section.items, rows };
   });
 
-  // Calculate actionSetWidth - must be <= contentSafeWidth
   let actionSetWidth = Math.max(...processedSections.flatMap(s => s.rows.map(r => r.rowWidth)), 200);
   actionSetWidth = Math.min(actionSetWidth, contentSafeWidth);
   
-  // 2. Normalize all rows to actionSetWidth
-  processedSections = processedSections.map(section => {
-    return {
+  processedSections = processedSections.map(section => ({
         ...section,
         rows: section.rows.map(row => {
             const extra = actionSetWidth - row.rowWidth;
@@ -107,12 +96,10 @@ export function computeRowActionGeometry({
                 allowWrap: row.allowWrap
             };
         })
-    };
-  });
+  }));
 
   const panelWidth = Math.min(actionSetWidth + panelPadding * 2, viewportSafeWidth);
 
-  // 3. Panel height calculation
   let panelHeight = HEADER_HEIGHT + BODY_PADDING * 2;
   processedSections.forEach((section, idx) => {
       if (section.showTitle) panelHeight += SECTION_TITLE_HEIGHT;
@@ -120,10 +107,7 @@ export function computeRowActionGeometry({
       if (idx < processedSections.length - 1) panelHeight += SECTION_GAP + DIVIDER_HEIGHT;
   });
   
-  // Use measured height if available
   const finalPanelHeight = measuredHeight ?? panelHeight;
-
-  // 4. Vertical placement logic
   const belowSpace = viewportHeight - edge - (cursorY + POINT_MENU_CURSOR_GAP);
   const aboveSpace = cursorY - POINT_MENU_CURSOR_GAP - edge;
   

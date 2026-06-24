@@ -72,13 +72,15 @@ export function OperationalRowActionMenu({
 
   useLayoutEffect(() => {
     if (panelRef.current) {
+        // Measurement target: header (border-b) + body (overflow-y-auto)
         const header = panelRef.current.querySelector(".border-b");
         const body = panelRef.current.querySelector(".overflow-y-auto");
         if (header && body) {
-            setMeasuredHeight(header.clientHeight + body.scrollHeight);
+            setMeasuredHeight(header.offsetHeight + body.scrollHeight);
         }
     }
-  }, []);
+  }, [sections]);
+
 
   const menuContent = (
     <div 
