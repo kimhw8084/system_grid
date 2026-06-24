@@ -146,4 +146,35 @@ describe('AppDropdown', () => {
     expect(screen.queryByPlaceholderText('Search options...')).not.toBeInTheDocument()
     expect(onChange).not.toHaveBeenCalled()
   })
+
+  it('renders inline error and hint states with unique aria ids', () => {
+    render(
+      <>
+        <AppDropdown
+          label="Primary"
+          value=""
+          onChange={() => {}}
+          options={[{ value: 'alpha', label: 'Alpha' }]}
+          error="Primary is required"
+        />
+        <AppDropdown
+          label="Secondary"
+          value=""
+          onChange={() => {}}
+          options={[{ value: 'beta', label: 'Beta' }]}
+          hint="Optional selection"
+        />
+      </>
+    )
+
+    const [primary, secondary] = screen.getAllByRole('button', { name: /select/i })
+    const error = screen.getByText('Primary is required')
+    const hint = screen.getByText('Optional selection')
+
+    expect(primary).toHaveAttribute('aria-invalid', 'true')
+    expect(primary).toHaveAttribute('aria-describedby', error.parentElement?.id || '')
+    expect(secondary).toHaveAttribute('aria-invalid', 'false')
+    expect(secondary).toHaveAttribute('aria-describedby', hint.parentElement?.id || '')
+    expect(error.parentElement?.id).not.toBe(hint.parentElement?.id)
+  })
 })

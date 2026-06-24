@@ -5,6 +5,8 @@ import {
   OperationalGridSurface,
 } from './OperationalWorkspaceShells'
 import { OPERATIONAL_GRID_AUTO_SIZE_STRATEGY } from './OperationalGridSizing'
+import { WorkspaceEmptyState } from './OperationalWorkspacePrimitives'
+import type { OperationalDataState } from './OperationalDataState'
 
 type OperationalGridRuntimeLike = {
   preserveExplicitColumnWidths?: boolean
@@ -47,6 +49,7 @@ interface OperationalDataGridProps {
   loading?: boolean
   loadingIcon?: React.ReactNode
   loadingLabel?: React.ReactNode
+  dataState?: OperationalDataState
   className?: string
   height?: string
 }
@@ -71,6 +74,7 @@ export function OperationalDataGrid({
   loading = false,
   loadingIcon,
   loadingLabel,
+  dataState,
   className = '',
   height,
 }: OperationalDataGridProps) {
@@ -78,6 +82,21 @@ export function OperationalDataGrid({
     () => (runtime?.preserveExplicitColumnWidths ? undefined : OPERATIONAL_GRID_AUTO_SIZE_STRATEGY),
     [runtime?.preserveExplicitColumnWidths]
   )
+
+  if (dataState?.kind === 'query-error') {
+    return (
+      <OperationalGridSurface
+        className={className}
+        style={getOperationalGridSurfaceStyle(fontSize, height)}
+        loading={false}
+      >
+        <WorkspaceEmptyState
+          title={dataState.title}
+          description={dataState.description}
+        />
+      </OperationalGridSurface>
+    )
+  }
 
   return (
     <OperationalGridSurface
@@ -113,7 +132,7 @@ export function OperationalDataGrid({
         onCellContextMenu={contextMenu?.handleCellContextMenu}
         onFirstDataRendered={onFirstDataRendered}
         onRowDataUpdated={onRowDataUpdated}
-        noRowsLabel={noRowsLabel}
+        noRowsLabel={dataState?.noRowsLabel || noRowsLabel}
       />
     </OperationalGridSurface>
   )

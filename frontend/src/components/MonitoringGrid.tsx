@@ -67,6 +67,7 @@ import {
 import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } from './shared/WorkspaceModalShells'
 import { OperationalImportModal } from './shared/OperationalImportModal'
 import { OperationalDataGrid } from './shared/OperationalDataGrid'
+import { resolveOperationalDataState } from './shared/OperationalDataState'
 import { OPERATIONAL_ACTION_LABELS } from './shared/OperationalActionLabels'
 import {
   OperationalRowActionButton,
@@ -563,7 +564,7 @@ export default function MonitoringGrid() {
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
   const [pendingIds, setPendingIds] = useState<number[]>([])
 
-  const { data: allItems, isLoading } = useQuery({
+  const { data: allItems, isLoading, isError, error } = useQuery({
     queryKey: ['monitoring-items'],
     queryFn: async () => (await apiFetch('/api/v1/monitoring?include_deleted=true')).json()
   })
@@ -1385,6 +1386,25 @@ export default function MonitoringGrid() {
     // or we can just always use sortedItemsForGrouped for the rowData to keep it consistent.
     return sortedItemsForGrouped
   }, [sortedItemsForGrouped, groupBy])
+
+  const monitoringDataState = useMemo(
+    () => resolveOperationalDataState({
+      loading: isLoading,
+      error: isError ? error : null,
+      totalCount: Array.isArray(allItems) ? allItems.length : 0,
+      tabCount: items.length,
+      visibleCount: displayedItemsInOrder.length,
+      emptyLabel: 'No monitoring data found',
+      filteredLabel: 'No monitoring results match the current filters',
+      tabEmptyKind: activeTab === 'deleted' ? 'deleted-empty' : 'active-empty',
+      tabEmptyLabel: activeTab === 'deleted' ? 'No archived monitoring items found' : 'No active monitoring items found',
+      errorTitle: 'Monitoring data could not be loaded',
+      errorDescription: 'The monitoring registry request failed.',
+    }),
+    [activeTab, allItems, displayedItemsInOrder.length, error, isError, isLoading, items.length]
+  )
+
+  const shouldRenderRawGrid = groupBy === 'raw' || monitoringDataState.kind !== 'ready'
 
   useEffect(() => {
     if (!displayedItemsInOrder.length) return
@@ -2309,7 +2329,7 @@ export default function MonitoringGrid() {
       }
     >
 
-      {groupBy === 'raw' ? (
+      {shouldRenderRawGrid ? (
         <OperationalDataGrid
           gridRef={gridRef}
           rows={displayedItemsInOrder || []}
@@ -2325,7 +2345,8 @@ export default function MonitoringGrid() {
           getRowClass={getRowClass}
           fontSize={fontSize}
           rowDensity={rowDensity}
-          noRowsLabel="No monitoring data found"
+          dataState={monitoringDataState}
+          noRowsLabel={monitoringDataState.noRowsLabel}
           loading={isLoading}
           loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
           loadingLabel={<p className="text-[10px] font-semibold text-blue-400">Scanning monitoring matrix...</p>}

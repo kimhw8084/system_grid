@@ -58,6 +58,7 @@ import { WorkspaceCompareShell, WorkspaceDossierShell } from './shared/Workspace
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
 import { OperationalImportModal } from './shared/OperationalImportModal'
 import { OperationalDataGrid } from './shared/OperationalDataGrid'
+import { resolveOperationalDataState } from './shared/OperationalDataState'
 import { OPERATIONAL_ACTION_LABELS } from './shared/OperationalActionLabels'
 import {
   OperationalRowActionButton,
@@ -1183,7 +1184,7 @@ export default function ServicesReal() {
     }
   }, [showBulkMenu, showDisplayMenu, showViewsMenu])
 
-  const { data: allItems, isLoading } = useQuery({
+  const { data: allItems, isLoading, isError, error } = useQuery({
     queryKey: ['logical-services'],
     queryFn: async () => (await apiFetch('/api/v1/logical-services/?include_deleted=true')).json()
   })
@@ -1314,6 +1315,25 @@ export default function ServicesReal() {
     // or we can just always use sortedItemsForGrouped for the rowData to keep it consistent.
     return sortedItemsForGrouped
   }, [sortedItemsForGrouped, groupBy])
+
+  const servicesDataState = useMemo(
+    () => resolveOperationalDataState({
+      loading: isLoading,
+      error: isError ? error : null,
+      totalCount: Array.isArray(allItems) ? allItems.length : 0,
+      tabCount: items.length,
+      visibleCount: displayedItemsInOrder.length,
+      emptyLabel: 'No service data found',
+      filteredLabel: 'No services match the current filters',
+      tabEmptyKind: activeTab === 'deleted' ? 'deleted-empty' : 'active-empty',
+      tabEmptyLabel: activeTab === 'deleted' ? 'No archived services found' : 'No active services found',
+      errorTitle: 'Services data could not be loaded',
+      errorDescription: 'The services registry request failed.',
+    }),
+    [activeTab, allItems, displayedItemsInOrder.length, error, isError, isLoading, items.length]
+  )
+
+  const shouldRenderRawGrid = groupBy === 'raw' || servicesDataState.kind !== 'ready'
 
   useEffect(() => {
     if (!displayedItemsInOrder.length) return
@@ -2238,7 +2258,7 @@ export default function ServicesReal() {
       }
     >
 
-      {groupBy === 'raw' ? (
+      {shouldRenderRawGrid ? (
 	        <OperationalDataGrid
             gridRef={gridRef}
             rows={displayedItemsInOrder || []}
@@ -2254,7 +2274,8 @@ export default function ServicesReal() {
             getRowClass={getRowClass}
             onFirstDataRendered={handleGridDataUpdated}
             onRowDataUpdated={handleGridDataUpdated}
-            noRowsLabel="No service data found"
+            dataState={servicesDataState}
+            noRowsLabel={servicesDataState.noRowsLabel}
             loading={isLoading}
             loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
             loadingLabel={<p className="text-[10px] font-semibold text-blue-400">Scanning service registry...</p>}
@@ -2872,7 +2893,13 @@ function ServiceRecordForm({ item, devices, options, onClose, onSuccess }: any) 
   const queryClient = useQueryClient()
   const [isMaximized, setIsMaximized] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
+  const [backendFieldErrors, setBackendFieldErrors] = useState<Record<string, string>>({})
   const dirtyRef = useRef(false)
+
+  useEffect(() => {
+    setBackendFieldErrors({})
+  }, [item?.id])
+
   const mutation = useMutation({
     mutationFn: async (payload: any) => {
       const sanitized = sanitizeServicePayload(payload)
@@ -2884,12 +2911,12 @@ function ServiceRecordForm({ item, devices, options, onClose, onSuccess }: any) 
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['logical-services'] })
+      setBackendFieldErrors({})
       onSuccess?.()
     },
     onError: (e: any) => {
       const { fieldErrors, generalError } = parseOperationalApiValidationError(e)
-      // Assuming ServicesReal has a way to set errors. Based on reading, it seems ServicesReal does not have a field-level error state defined in the same way as MonitoringForm. 
-      // I will only show the toast if I cannot find a field error state.
+      setBackendFieldErrors(fieldErrors)
       const message = generalError || e.message || 'Failed to save service record'
       showWorkspaceToast(message, { type: 'error' })
     },
@@ -2943,6 +2970,15 @@ function ServiceRecordForm({ item, devices, options, onClose, onSuccess }: any) 
             isPending={mutation.isPending}
             options={options}
             devices={devices}
+            backendFieldErrors={backendFieldErrors}
+            clearBackendFieldError={(field: string) => {
+              setBackendFieldErrors((current) => {
+                if (!current[field]) return current
+                const next = { ...current }
+                delete next[field]
+                return next
+              })
+            }}
             dirtyRef={dirtyRef}
             onDirtyChange={setIsDirty}
             renderActions={false}

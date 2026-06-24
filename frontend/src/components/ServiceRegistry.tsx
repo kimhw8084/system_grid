@@ -14,6 +14,7 @@ import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { OPERATIONAL_GRID_AUTO_SIZE_STRATEGY } from './shared/OperationalGridSizing'
 import { StyledSelect } from "./shared/StyledSelect"
 import { AppDropdown } from "./shared/AppDropdown"
+import { mergeOperationalFieldErrors } from './shared/OperationalFieldValidation'
 
 const SERVICE_LICENSE_OPTIONS = ["One-time", "Subscription", "OEM", "Free"]
 const SERVICE_CURRENCY_OPTIONS = ["USD", "EUR", "KRW", "JPY", "GBP"]
@@ -39,7 +40,7 @@ export const canonicalizeServiceStatus = (value: any) => {
   return normalized
 }
 
-const serviceFieldClass = (invalid?: boolean) =>
+const serviceFieldClass = (invalid?: boolean | string) =>
   `w-full rounded-lg border px-3 py-2 text-[10px] font-bold outline-none transition-all ${
     invalid
       ? "border-rose-500/60 bg-rose-500/10 text-white focus:border-rose-400"
@@ -351,6 +352,8 @@ export const ServiceForm = ({
   formId,
   onDirtyChange,
   dirtyRef,
+  backendFieldErrors = {},
+  clearBackendFieldError,
   renderActions = true,
 }: any) => {
   const buildInitialFormData = (initialData: any = {}) => {
@@ -385,6 +388,10 @@ export const ServiceForm = ({
   const [formData, setFormData] = useState(() => buildInitialFormData(initialData))
   const initialDataNormalized = useMemo(() => buildInitialFormData(initialData), [initialData])
   const initialDirtySnapshotRef = useRef(JSON.stringify(initialDataNormalized))
+  const fieldErrors = useMemo(
+    () => mergeOperationalFieldErrors(backendFieldErrors || {}, validationErrors),
+    [backendFieldErrors, validationErrors]
+  )
 
   const getOptions = (category: string) => Array.isArray(options) ? options.filter((entry: any) => entry.category === category) : []
   const ensureCurrentOption = (entries: Array<{ value: string; label: string }>, currentValue: string) => {
@@ -433,6 +440,7 @@ export const ServiceForm = ({
       delete next[field]
       return next
     })
+    clearBackendFieldError?.(field)
   }
 
   const validate = () => {
@@ -513,8 +521,8 @@ export const ServiceForm = ({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2 space-y-1.5">
               <label className="block px-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Name <span className="text-rose-400">*</span></label>
-              <input value={formData.name || ''} onChange={(e) => updateField('name', e.target.value)} className={serviceFieldClass(Boolean(validationErrors.name))} placeholder="e.g. ERP DB Prod 01" />
-              {validationErrors.name && <p className="px-1 text-[9px] font-bold text-rose-400">{validationErrors.name}</p>}
+              <input value={formData.name || ''} onChange={(e) => updateField('name', e.target.value)} className={serviceFieldClass(fieldErrors.name)} placeholder="e.g. ERP DB Prod 01" />
+              {fieldErrors.name && <p className="px-1 text-[9px] font-bold text-rose-400">{fieldErrors.name}</p>}
             </div>
             <div className="space-y-1.5">
               <AppDropdown
@@ -524,8 +532,8 @@ export const ServiceForm = ({
                 onChange={(value) => updateField('device_id', value ? parseInt(String(value), 10) : null)}
                 options={hostOptions}
                 placeholder="Select host node"
+                error={fieldErrors.device_id}
               />
-              {validationErrors.device_id && <p className="px-1 text-[9px] font-bold text-rose-400">{validationErrors.device_id}</p>}
             </div>
             <div className="space-y-1.5">
               <AppDropdown
@@ -535,20 +543,23 @@ export const ServiceForm = ({
                 onChange={(value) => updateField('service_type', String(value))}
                 options={resolvedServiceTypeOptions}
                 placeholder="Select service type"
+                error={fieldErrors.service_type}
               />
-              {validationErrors.service_type && <p className="px-1 text-[9px] font-bold text-rose-400">{validationErrors.service_type}</p>}
             </div>
             <div className="space-y-1.5">
               <label className="block px-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Deployment Date</label>
-              <input type="date" value={formData.installation_date ? String(formData.installation_date).split('T')[0] : ''} onChange={(e) => updateField('installation_date', e.target.value)} className={serviceFieldClass(false)} />
+              <input type="date" value={formData.installation_date ? String(formData.installation_date).split('T')[0] : ''} onChange={(e) => updateField('installation_date', e.target.value)} className={serviceFieldClass(fieldErrors.installation_date)} />
+              {fieldErrors.installation_date && <p className="px-1 text-[9px] font-bold text-rose-400">{fieldErrors.installation_date}</p>}
             </div>
             <div className="space-y-1.5">
               <label className="block px-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Version</label>
-              <input value={formData.version || ''} onChange={(e) => updateField('version', e.target.value)} className={serviceFieldClass(false)} placeholder="v1.0.0" />
+              <input value={formData.version || ''} onChange={(e) => updateField('version', e.target.value)} className={serviceFieldClass(fieldErrors.version)} placeholder="v1.0.0" />
+              {fieldErrors.version && <p className="px-1 text-[9px] font-bold text-rose-400">{fieldErrors.version}</p>}
             </div>
             <div className="sm:col-span-2 space-y-1.5">
               <label className="block px-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Purpose</label>
-              <textarea value={formData.purpose || ''} onChange={(e) => updateField('purpose', e.target.value)} className={`${serviceFieldClass(false)} min-h-[110px] resize-none`} placeholder="Primary transactional store..." />
+              <textarea value={formData.purpose || ''} onChange={(e) => updateField('purpose', e.target.value)} className={`${serviceFieldClass(fieldErrors.purpose)} min-h-[110px] resize-none`} placeholder="Primary transactional store..." />
+              {fieldErrors.purpose && <p className="px-1 text-[9px] font-bold text-rose-400">{fieldErrors.purpose}</p>}
             </div>
           </div>
         </section>
@@ -566,8 +577,8 @@ export const ServiceForm = ({
                 onChange={(value) => updateField('status', String(value))}
                 options={resolvedStatusOptions}
                 placeholder="Select status"
+                error={fieldErrors.status}
               />
-              {validationErrors.status && <p className="px-1 text-[9px] font-bold text-rose-400">{validationErrors.status}</p>}
             </div>
             <div className="space-y-1.5">
               <AppDropdown
@@ -577,8 +588,8 @@ export const ServiceForm = ({
                 onChange={(value) => updateField('environment', String(value))}
                 options={resolvedEnvironmentOptions}
                 placeholder="Select environment"
+                error={fieldErrors.environment}
               />
-              {validationErrors.environment && <p className="px-1 text-[9px] font-bold text-rose-400">{validationErrors.environment}</p>}
             </div>
             <div className="space-y-1.5">
               <AppDropdown
@@ -587,25 +598,28 @@ export const ServiceForm = ({
                 onChange={(value) => updateField('purchase_type', String(value))}
                 options={resolvedLicenseOptions}
                 placeholder="Select license type"
+                error={fieldErrors.purchase_type}
               />
             </div>
             <div className="space-y-1.5">
               <label className="block px-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Expiry Date</label>
-              <input type="date" value={formData.expiry_date ? String(formData.expiry_date).split('T')[0] : ''} onChange={(e) => updateField('expiry_date', e.target.value)} className={serviceFieldClass(Boolean(validationErrors.expiry_date))} />
-              {validationErrors.expiry_date && <p className="px-1 text-[9px] font-bold text-rose-400">{validationErrors.expiry_date}</p>}
+              <input type="date" value={formData.expiry_date ? String(formData.expiry_date).split('T')[0] : ''} onChange={(e) => updateField('expiry_date', e.target.value)} className={serviceFieldClass(fieldErrors.expiry_date)} />
+              {fieldErrors.expiry_date && <p className="px-1 text-[9px] font-bold text-rose-400">{fieldErrors.expiry_date}</p>}
             </div>
             <div className="space-y-1.5">
               <label className="block px-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Manufacturer</label>
-              <input value={formData.manufacturer || ''} onChange={(e) => updateField('manufacturer', e.target.value)} className={serviceFieldClass(false)} placeholder="Vendor / publisher" />
+              <input value={formData.manufacturer || ''} onChange={(e) => updateField('manufacturer', e.target.value)} className={serviceFieldClass(fieldErrors.manufacturer)} placeholder="Vendor / publisher" />
+              {fieldErrors.manufacturer && <p className="px-1 text-[9px] font-bold text-rose-400">{fieldErrors.manufacturer}</p>}
             </div>
             <div className="space-y-1.5">
               <label className="block px-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Supplier</label>
-              <input value={formData.supplier || ''} onChange={(e) => updateField('supplier', e.target.value)} className={serviceFieldClass(false)} placeholder="Reseller / supplier" />
+              <input value={formData.supplier || ''} onChange={(e) => updateField('supplier', e.target.value)} className={serviceFieldClass(fieldErrors.supplier)} placeholder="Reseller / supplier" />
+              {fieldErrors.supplier && <p className="px-1 text-[9px] font-bold text-rose-400">{fieldErrors.supplier}</p>}
             </div>
             <div className="space-y-1.5">
               <label className="block px-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Cost</label>
-              <input type="number" min="0" step="0.01" value={formData.cost ?? 0} onChange={(e) => updateField('cost', e.target.value)} className={serviceFieldClass(Boolean(validationErrors.cost))} placeholder="0.00" />
-              {validationErrors.cost && <p className="px-1 text-[9px] font-bold text-rose-400">{validationErrors.cost}</p>}
+              <input type="number" min="0" step="0.01" value={formData.cost ?? 0} onChange={(e) => updateField('cost', e.target.value)} className={serviceFieldClass(fieldErrors.cost)} placeholder="0.00" />
+              {fieldErrors.cost && <p className="px-1 text-[9px] font-bold text-rose-400">{fieldErrors.cost}</p>}
             </div>
             <div className="space-y-1.5">
               <AppDropdown
@@ -614,6 +628,7 @@ export const ServiceForm = ({
                 onChange={(value) => updateField('currency', String(value))}
                 options={resolvedCurrencyOptions}
                 placeholder="Select currency"
+                error={fieldErrors.currency}
               />
             </div>
           </div>
@@ -626,7 +641,7 @@ export const ServiceForm = ({
           <p className="mt-1 text-[10px] font-bold text-slate-500">Configuration metadata keys follow the selected service type when definitions exist.</p>
         </div>
         <MetadataEditor value={formData.config_json} onChange={(value) => updateField('config_json', value)} onError={setMetadataError} />
-        {validationErrors.config_json && <p className="px-1 text-[9px] font-bold text-rose-400">{validationErrors.config_json}</p>}
+        {fieldErrors.config_json && <p className="px-1 text-[9px] font-bold text-rose-400">{fieldErrors.config_json}</p>}
       </section>
 
       {renderActions ? (

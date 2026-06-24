@@ -26,7 +26,8 @@ import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
 import { WorkspaceCompareShell } from './shared/WorkspaceModalShells'
 import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shared/WorkspaceFlyout'
 import { showWorkspaceRevertToast, showWorkspaceToast } from './shared/WorkspaceToast'
-import { parseOperationalApiValidationError } from './shared/OperationalFieldValidation'
+import { mergeOperationalFieldErrors, parseOperationalApiValidationError } from './shared/OperationalFieldValidation'
+import { resolveOperationalDataState } from './shared/OperationalDataState'
 import {
   OPERATIONAL_GRID_LAYOUT_POLICIES,
   useOperationalGridRuntime,
@@ -683,6 +684,8 @@ const ExternalForm = ({
   options,
   teams,
   operators,
+  backendFieldErrors = {},
+  clearBackendFieldError,
   formId = 'external-entity-form',
   renderActions = true,
   ...formProps
@@ -693,12 +696,18 @@ const ExternalForm = ({
   options: any
   teams: any
   operators: any
+  backendFieldErrors?: Record<string, string>
+  clearBackendFieldError?: (field: string) => void
   formId?: string
   renderActions?: boolean
 } & OperationalFormProps) => {
   const { onDirtyChange } = formProps
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const fieldErrors = useMemo(
+    () => mergeOperationalFieldErrors(backendFieldErrors || {}, errors),
+    [backendFieldErrors, errors]
+  )
   const initialFormState = useMemo(() => {
     const normalizedContacts = normalizeLegacyContacts(initialData || {})
     return {
@@ -777,9 +786,10 @@ const ExternalForm = ({
   const updateField = (key: string, value: any) => {
     patchValue({ [key]: value } as Partial<typeof formData>)
     setErrors((prev) => ({ ...prev, [key]: '' }))
+    clearBackendFieldError?.(key)
   }
 
-  const inputClass = (field: string) => `w-full bg-slate-900 border ${errors[field] ? 'border-rose-500/50 bg-rose-500/5' : 'border-white/10'} rounded-lg px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all`
+  const inputClass = (field: string) => `w-full bg-slate-900 border ${fieldErrors[field] ? 'border-rose-500/50 bg-rose-500/5' : 'border-white/10'} rounded-lg px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-blue-500 transition-all`
 
   const validate = () => {
     const nextErrors: Record<string, string> = {}
@@ -820,13 +830,13 @@ const ExternalForm = ({
           <div>
             <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Entity Name *</label>
             <input value={formData.name} onChange={e => updateField('name', e.target.value)} className={inputClass('name')} placeholder="customer-feed-api" />
-            {errors.name && <p className="mt-1 px-1 text-[9px] font-bold text-rose-400">{errors.name}</p>}
+            {fieldErrors.name && <p className="mt-1 px-1 text-[9px] font-bold text-rose-400">{fieldErrors.name}</p>}
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <StyledSelect label="Type" value={formData.type} onChange={e => updateField('type', e.target.value)} options={types} />
-            <StyledSelect label="Operational Status" value={formData.status} onChange={e => updateField('status', e.target.value)} options={statusOptions} />
+            <StyledSelect label="Type" value={formData.type} onChange={e => updateField('type', e.target.value)} options={types} error={fieldErrors.type} />
+            <StyledSelect label="Operational Status" value={formData.status} onChange={e => updateField('status', e.target.value)} options={statusOptions} error={fieldErrors.status} />
           </div>
-          <StyledSelect label="Environment" value={formData.environment} onChange={e => updateField('environment', e.target.value)} options={envOptions} />
+          <StyledSelect label="Environment" value={formData.environment} onChange={e => updateField('environment', e.target.value)} options={envOptions} error={fieldErrors.environment} />
         </div>
 
         <div className="space-y-4">
@@ -834,20 +844,22 @@ const ExternalForm = ({
           <div>
             <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">External Organization</label>
             <input value={formData.owner_organization} onChange={e => updateField('owner_organization', e.target.value)} className={inputClass('owner_organization')} placeholder="PartnerCo" />
+            {fieldErrors.owner_organization && <p className="mt-1 px-1 text-[9px] font-bold text-rose-400">{fieldErrors.owner_organization}</p>}
           </div>
           <div>
             <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">External Team Label</label>
             <input value={formData.owner_team} onChange={e => updateField('owner_team', e.target.value)} className={inputClass('owner_team')} placeholder="B2B Platform" />
+            {fieldErrors.owner_team && <p className="mt-1 px-1 text-[9px] font-bold text-rose-400">{fieldErrors.owner_team}</p>}
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <StyledSelect label="Accountable Owner Mode" value={formData.ownership_mode} onChange={e => updateField('ownership_mode', e.target.value)} options={ACCOUNTABLE_OWNER_OPTIONS} />
+            <StyledSelect label="Accountable Owner Mode" value={formData.ownership_mode} onChange={e => updateField('ownership_mode', e.target.value)} options={ACCOUNTABLE_OWNER_OPTIONS} error={fieldErrors.ownership_mode} />
             {formData.ownership_mode === 'team' ? (
               <StyledSelect
                 label="Accountable Team"
                 value={formData.internal_team_id}
                 onChange={e => updateField('internal_team_id', e.target.value)}
                 options={(teams || []).filter((team: any) => !team.is_archived).map((team: any) => ({ value: String(team.id), label: team.name }))}
-                error={!!errors.internal_team_id}
+                error={fieldErrors.internal_team_id}
                 placeholder="Select team"
               />
             ) : (
@@ -856,34 +868,35 @@ const ExternalForm = ({
                 value={formData.internal_operator_id}
                 onChange={e => updateField('internal_operator_id', e.target.value)}
                 options={(operators || []).map((operator: any) => ({ value: String(operator.id), label: operator.full_name || operator.username || operator.external_id }))}
-                error={!!errors.internal_operator_id}
+                error={fieldErrors.internal_operator_id}
                 placeholder="Select operator"
               />
             )}
           </div>
           <p className="px-1 text-[9px] text-slate-500 italic">Optional internal accountability mapping for SysGrid operations.</p>
-          {(errors.internal_team_id || errors.internal_operator_id) && (
-            <p className="px-1 text-[9px] font-bold text-rose-400">{errors.internal_team_id || errors.internal_operator_id}</p>
+          {(fieldErrors.internal_team_id || fieldErrors.internal_operator_id) && (
+            <p className="px-1 text-[9px] font-bold text-rose-400">{fieldErrors.internal_team_id || fieldErrors.internal_operator_id}</p>
           )}
           <div>
             <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Business Purpose *</label>
             <textarea value={formData.business_purpose} onChange={e => updateField('business_purpose', e.target.value)} className={`${inputClass('business_purpose')} h-24 resize-none`} placeholder="What business capability depends on this external entity?" />
-            {errors.business_purpose && <p className="mt-1 px-1 text-[9px] font-bold text-rose-400">{errors.business_purpose}</p>}
+            {fieldErrors.business_purpose && <p className="mt-1 px-1 text-[9px] font-bold text-rose-400">{fieldErrors.business_purpose}</p>}
           </div>
           <div>
             <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1 px-1">Functional Description</label>
             <textarea value={formData.description} onChange={e => updateField('description', e.target.value)} className={`${inputClass('description')} h-24 resize-none`} placeholder="Operational context for this external dependency" />
+            {fieldErrors.description && <p className="mt-1 px-1 text-[9px] font-bold text-rose-400">{fieldErrors.description}</p>}
           </div>
         </div>
 
         <div className="col-span-2">
           <POCManager pocs={formData.contacts_json || []} onChange={newPocs => updateField('contacts_json', newPocs)} />
-          {(errors.contacts_json || metadataError) && <p className="mt-2 px-1 text-[9px] font-bold text-rose-400">{errors.contacts_json}</p>}
+          {(fieldErrors.contacts_json || metadataError) && <p className="mt-2 px-1 text-[9px] font-bold text-rose-400">{fieldErrors.contacts_json}</p>}
         </div>
 
         <div className="col-span-2">
           <MetadataEditor value={formData.metadata_json} onChange={v => updateField('metadata_json', v)} onError={setMetadataError} allowedKeys={allowedMetadataKeys} />
-          {errors.metadata_json && <p className="mt-2 px-1 text-[9px] font-bold text-rose-400">{errors.metadata_json}</p>}
+          {fieldErrors.metadata_json && <p className="mt-2 px-1 text-[9px] font-bold text-rose-400">{fieldErrors.metadata_json}</p>}
         </div>
       </div>
 
@@ -1348,6 +1361,7 @@ export default function External() {
   const [activeTab, setActiveTab] = useState<'active' | 'deleted' | 'links'>(persistedUiState.activeTab === 'deleted' ? 'deleted' : 'active')
   const [activeModal, setActiveModal] = useState<any>(null)
   const [isActiveModalDirty, setIsActiveModalDirty] = useState(false)
+  const [activeModalBackendFieldErrors, setActiveModalBackendFieldErrors] = useState<Record<string, string>>({})
   const [activeDetails, setActiveDetails] = useState<any>(null)
   const [showLinkModal, setShowLinkModal] = useState(false)
   const [linkSeedEntityId, setLinkSeedEntityId] = useState<number | null>(null)
@@ -1426,6 +1440,10 @@ export default function External() {
     if (!activeModal) setIsActiveModalDirty(false)
   }, [activeModal])
 
+  useEffect(() => {
+    setActiveModalBackendFieldErrors({})
+  }, [activeModal?.id])
+
   const {
     columnLayoutState,
     setColumnLayoutState,
@@ -1480,7 +1498,7 @@ export default function External() {
     queryFn: async () => (await (await apiFetch('/api/v1/settings/operators')).json())
   })
 
-  const { data: allEntities, isLoading } = useQuery({
+  const { data: allEntities, isLoading, isError: isEntityError, error: entityError } = useQuery({
     queryKey: ['external-entities', { include_deleted: true }],
     queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities?include_deleted=true')).json())
   })
@@ -1501,7 +1519,7 @@ export default function External() {
   }
 
 
-  const { data: links, isLoading: linkLoading } = useQuery({ 
+  const { data: links, isLoading: linkLoading, isError: isLinkError, error: linkError } = useQuery({ 
     queryKey: ['external-links'], 
     queryFn: async () => (await (await apiFetch('/api/v1/intelligence/links')).json()) 
   })
@@ -1700,6 +1718,42 @@ export default function External() {
     }, [])
     return sections.sort((a, b) => a.label.localeCompare(b.label))
   }, [filteredEntities, filteredLinks, groupBy, activeTab])
+
+  const externalDataState = useMemo(
+    () => resolveOperationalDataState({
+      loading: activeTab === 'links' ? linkLoading : isLoading,
+      error: activeTab === 'links'
+        ? (isLinkError ? linkError : null)
+        : (isEntityError ? entityError : null),
+      totalCount: activeTab === 'links'
+        ? (Array.isArray(links) ? links.length : 0)
+        : (Array.isArray(allEntities) ? allEntities.length : 0),
+      tabCount: activeTab === 'links' ? (Array.isArray(links) ? links.length : 0) : entities.length,
+      visibleCount: activeTab === 'links' ? filteredLinks.length : filteredEntities.length,
+      emptyLabel: activeTab === 'links' ? 'No external links found' : 'No external registry data found',
+      filteredLabel: activeTab === 'links' ? 'No external links match the current filters' : 'No external entities match the current filters',
+      tabEmptyKind: activeTab === 'deleted' ? 'deleted-empty' : 'active-empty',
+      tabEmptyLabel: activeTab === 'deleted' ? 'No archived external entities found' : 'No active external entities found',
+      errorTitle: activeTab === 'links' ? 'External links could not be loaded' : 'External entities could not be loaded',
+      errorDescription: activeTab === 'links' ? 'The external links request failed.' : 'The external entities request failed.',
+    }),
+    [
+      activeTab,
+      allEntities,
+      entities.length,
+      entityError,
+      filteredEntities.length,
+      filteredLinks.length,
+      isEntityError,
+      isLinkError,
+      isLoading,
+      linkError,
+      linkLoading,
+      links,
+    ]
+  )
+
+  const shouldRenderRawGrid = groupBy === 'raw' || externalDataState.kind !== 'ready'
 
   useEffect(() => {
     if (groupBy === 'raw') return
@@ -2126,13 +2180,14 @@ export default function External() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['external-entities'] })
       showWorkspaceToast('External Manifest Synchronized')
+      setActiveModalBackendFieldErrors({})
       setIsActiveModalDirty(false)
       setActiveModal(null)
       detailRoute.finishTransition()
     },
     onError: (e: any) => {
       const { fieldErrors, generalError } = parseOperationalApiValidationError(e)
-      setFormErrors(fieldErrors)
+      setActiveModalBackendFieldErrors(fieldErrors)
       const message = generalError || e.message || 'Failed to save entity'
       showWorkspaceToast(message, { type: 'error' })
       detailRoute.finishTransition()
@@ -3059,7 +3114,7 @@ export default function External() {
       }
     >
 
-      {groupBy === 'raw' ? (
+      {shouldRenderRawGrid ? (
         <OperationalDataGrid
           gridRef={gridRef}
           rows={activeTab === 'links' ? filteredLinks : filteredEntities}
@@ -3076,8 +3131,9 @@ export default function External() {
           getRowClass={getRowClass}
           fontSize={fontSize}
           rowDensity={rowDensity}
-          noRowsLabel="No external registry data found"
-          loading={isLoading || linkLoading}
+          dataState={externalDataState}
+          noRowsLabel={externalDataState.noRowsLabel}
+          loading={activeTab === 'links' ? linkLoading : isLoading}
           loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
           loadingLabel={<p className="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-400">Synchronizing Intelligence Matrix...</p>}
         />
@@ -3199,6 +3255,15 @@ export default function External() {
           options={options}
           teams={teams || []}
           operators={operators || []}
+          backendFieldErrors={activeModalBackendFieldErrors}
+          clearBackendFieldError={(field) => {
+            setActiveModalBackendFieldErrors((current) => {
+              if (!current[field]) return current
+              const next = { ...current }
+              delete next[field]
+              return next
+            })
+          }}
           onDirtyChange={setIsActiveModalDirty}
           isDirty={isActiveModalDirty}
         />

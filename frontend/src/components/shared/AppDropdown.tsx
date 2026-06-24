@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useId, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown, Check } from 'lucide-react'
 import { OPERATIONAL_WORKSPACE_VISUALS } from './OperationalWorkspace'
@@ -50,6 +50,7 @@ export const AppDropdown = ({
 }: AppDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const describedById = useId()
   const { triggerRef, panelRef, panelStyle } = useWorkspaceAnchoredLayer(isOpen, { minWidth: 200 })
   const uniqueOptions = options.filter((option, index, items) => (
     items.findIndex((candidate) => candidate.value === option.value) === index
@@ -106,7 +107,9 @@ export const AppDropdown = ({
     return selectedOption ? selectedOption.label : placeholder || 'Select...'
   }
 
-  const errorId = error ? 'dropdown-error' : undefined
+  const errorId = error ? `${describedById}-error` : undefined
+  const hintId = hint && !error ? `${describedById}-hint` : undefined
+  const describedBy = errorId || hintId
 
   return (
     <div className={`space-y-1 ${className} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}>
@@ -126,7 +129,7 @@ export const AppDropdown = ({
           type="button"
           onClick={() => !disabled && setIsOpen(!isOpen)}
           aria-invalid={!!error}
-          aria-describedby={errorId}
+          aria-describedby={describedBy}
           className={`
             w-full flex items-center justify-between
             ${OPERATIONAL_WORKSPACE_VISUALS.controlSurface}
@@ -141,7 +144,7 @@ export const AppDropdown = ({
         </button>
 
         {error && <div id={errorId}><WorkspaceFieldError message={error} /></div>}
-        {hint && !error && <WorkspaceFieldHint message={hint} />}
+        {hint && !error && <div id={hintId}><WorkspaceFieldHint message={hint} /></div>}
 
         {isOpen && typeof document !== 'undefined' && createPortal(
           <div

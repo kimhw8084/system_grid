@@ -11,41 +11,127 @@ export function mergeOperationalFieldErrors(
   return { ...existingErrors, ...newErrors }
 }
 
+function tryParseJsonString(value: string): any {
+  const trimmed = value.trim()
+  if (!trimmed || (trimmed[0] !== '{' && trimmed[0] !== '[')) return null
+  try {
+    return JSON.parse(trimmed)
+  } catch {
+    return null
+  }
+}
+
+function normalizeFieldMessage(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed || null
+  }
+  if (Array.isArray(value)) {
+    const parts = value.map(normalizeFieldMessage).filter(Boolean)
+    return parts.length ? parts.join(', ') : null
+  }
+  return null
+}
+
+function getErrorFieldName(candidate: any): string | null {
+  if (typeof candidate?.field === 'string' && candidate.field.trim()) return candidate.field.trim()
+  if (typeof candidate?.path === 'string' && candidate.path.trim()) return candidate.path.trim()
+  if (Array.isArray(candidate?.loc)) {
+    const filtered = candidate.loc
+      .map((part: any) => String(part))
+      .filter((part: string) => part && !['body', 'query', 'path'].includes(part))
+    if (filtered.length) return filtered[0]
+  }
+  return null
+}
+
+function assignFieldErrors(target: OperationalFieldErrors, input: unknown) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return
+  Object.entries(input as Record<string, unknown>).forEach(([field, message]) => {
+    const normalized = normalizeFieldMessage(message)
+    if (normalized) target[field] = normalized
+  })
+}
+
 export function parseOperationalApiValidationError(error: any): {
   fieldErrors: OperationalFieldErrors
   generalError: string | null
 } {
   const fieldErrors: OperationalFieldErrors = {}
-  let generalError: string | null = null
+  const generalMessages: string[] = []
 
-  if (typeof error === 'string') {
-    generalError = error
-  } else if (error && typeof error === 'object') {
-    if (error.field_errors) {
-      Object.assign(fieldErrors, error.field_errors)
+  const collect = (input: any) => {
+    if (input == null) return
+
+    if (typeof input === 'string') {
+      const parsed = tryParseJsonString(input)
+      if (parsed) {
+        collect(parsed)
+        return
+      }
+      if (input.trim()) generalMessages.push(input.trim())
+      return
     }
-    if (error.errors && Array.isArray(error.errors)) {
-      error.errors.forEach((err: any) => {
-        if (err.field && err.message) {
-          fieldErrors[err.field] = err.message
-        }
+
+    if (input instanceof Error) {
+      collect(input.message)
+      return
+    }
+
+    if (Array.isArray(input)) {
+      input.forEach(collect)
+      return
+    }
+
+    if (typeof input !== 'object') {
+      const normalized = normalizeFieldMessage(input)
+      if (normalized) generalMessages.push(normalized)
+      return
+    }
+
+    assignFieldErrors(fieldErrors, input.field_errors)
+
+    if (Array.isArray(input.errors)) {
+      input.errors.forEach((entry: any) => {
+        const field = getErrorFieldName(entry)
+        const message = normalizeFieldMessage(entry?.message ?? entry?.msg ?? entry?.detail ?? entry)
+        if (field && message) fieldErrors[field] = message
+        else if (message) generalMessages.push(message)
       })
     }
-    if (error.detail) {
-      if (Array.isArray(error.detail)) {
-        error.detail.forEach((err: any) => {
-          if (err.loc && Array.isArray(err.loc) && err.loc.length > 1) {
-            fieldErrors[err.loc[1]] = err.msg
-          }
-        })
-      } else if (typeof error.detail === 'string') {
-        generalError = error.detail
-      }
+
+    if (Array.isArray(input.detail)) {
+      input.detail.forEach((entry: any) => {
+        const field = getErrorFieldName(entry)
+        const message = normalizeFieldMessage(entry?.msg ?? entry?.message ?? entry?.detail ?? entry)
+        if (field && message) fieldErrors[field] = message
+        else if (message) generalMessages.push(message)
+      })
+    } else if (typeof input.detail === 'string') {
+      generalMessages.push(input.detail.trim())
+    } else if (input.detail && typeof input.detail === 'object') {
+      collect(input.detail)
     }
-    if (!generalError && (error.message || error.error)) {
-      generalError = error.message || error.error
+
+    const nestedMessage = typeof input.message === 'string' ? tryParseJsonString(input.message) : null
+    if (nestedMessage) {
+      collect(nestedMessage)
+    } else if (typeof input.message === 'string' && input.message.trim()) {
+      generalMessages.push(input.message.trim())
+    }
+
+    const nestedError = typeof input.error === 'string' ? tryParseJsonString(input.error) : null
+    if (nestedError) {
+      collect(nestedError)
+    } else if (typeof input.error === 'string' && input.error.trim()) {
+      generalMessages.push(input.error.trim())
     }
   }
 
-  return { fieldErrors, generalError }
+  collect(error)
+
+  return {
+    fieldErrors,
+    generalError: generalMessages.find(Boolean) || null,
+  }
 }
