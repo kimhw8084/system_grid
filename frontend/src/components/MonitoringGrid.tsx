@@ -1,5 +1,5 @@
 import { BkmListModal, BkmDetailModal, MonitoringForm } from './monitoring/Modals'
-import { DataStatusPill, DataDiagnosticModal } from './shared/OperationalDataStatus'
+import * as OperationalDataStatus from './shared/OperationalDataStatus'
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
@@ -1877,19 +1877,23 @@ export default function MonitoringGrid() {
             />
             {isError && (
               <>
-                <DataStatusPill 
+                <OperationalDataStatus.DataStatusPill 
                     status="error" 
                     errorDetail={{ status: (error as any)?.status }} 
-                    onClose={() => setShowMonitoringDataDiagnostic(true)} 
+                    onClick={() => setShowMonitoringDataDiagnostic(true)} 
                 />
-                <DataDiagnosticModal 
+                <OperationalDataStatus.DataDiagnosticModal 
                     isOpen={showMonitoringDataDiagnostic} 
                     onClose={() => setShowMonitoringDataDiagnostic(false)} 
                     errorDetail={{
+                        endpoint: '/api/v1/monitoring?include_deleted=true',
                         status: (error as any)?.status,
+                        statusText: (error as any)?.statusText,
                         url: (error as any)?.url,
                         message: (error as any)?.message,
-                        rawBody: (error as any)?.rawBody
+                        rawBody: (error as any)?.rawBody,
+                        userId: localStorage.getItem('SYSGRID_USER_ID') || 'admin_root',
+                        tenantId: localStorage.getItem('SYSGRID_TENANT_ID') || '1'
                     }} 
                 />
               </>

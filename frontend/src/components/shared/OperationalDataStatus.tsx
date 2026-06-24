@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { AlertCircle, RefreshCw, X, Copy } from 'lucide-react'
+import React from 'react'
+import { AlertCircle, X, Copy } from 'lucide-react'
 import { WorkspaceModal } from './WorkspaceModal'
 
 export type DataStatus = 'healthy' | 'loading' | 'error' | 'filtered' | 'empty'
@@ -12,7 +12,7 @@ export function normalizeOperationalListResponse(data: any) {
         if (Array.isArray(data.results)) return data.results;
         if (Array.isArray(data.rows)) return data.rows;
     }
-    return null; // Signals shape mismatch
+    return null;
 }
 
 export function classifyDataStatus(
@@ -30,11 +30,11 @@ export function classifyDataStatus(
     return { status: 'healthy' };
 }
 
-export function DataStatusPill({ status, errorDetail, onClose }: { status: string, errorDetail?: any, onClose: () => void }) {
+export function DataStatusPill({ status, errorDetail, onClick }: { status: string, errorDetail?: any, onClick: () => void }) {
     if (status === 'healthy') return null
     
     const colors = {
-        error: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+        error: 'bg-rose-500/20 text-rose-300 border-rose-500/30 cursor-pointer hover:bg-rose-500/30',
         empty: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
         filtered: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
         loading: 'bg-blue-500/20 text-blue-300 border-blue-500/30'
@@ -48,15 +48,13 @@ export function DataStatusPill({ status, errorDetail, onClose }: { status: strin
     }
 
     return (
-        <div className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest ${colors[status as keyof typeof colors]}`}>
+        <button 
+            onClick={onClick}
+            className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest ${colors[status as keyof typeof colors] || ''}`}
+        >
             <AlertCircle size={12} />
-            <span>{labels[status as keyof typeof labels]}</span>
-            {status === 'error' && (
-                <button onClick={onClose} className="ml-2 hover:text-white">
-                    <X size={12} />
-                </button>
-            )}
-        </div>
+            <span>{labels[status as keyof typeof labels] || 'Data status'}</span>
+        </button>
     )
 }
 
@@ -68,11 +66,15 @@ export function DataDiagnosticModal({ isOpen, onClose, errorDetail }: { isOpen: 
     return (
         <WorkspaceModal isOpen={isOpen} onClose={onClose} title="Diagnostic Information">
             <div className="p-4 text-[12px] text-slate-300 font-mono space-y-2">
-                <p>Status: {errorDetail?.status}</p>
-                <p>URL: {errorDetail?.url}</p>
-                <p>Detail: {errorDetail?.message}</p>
+                <p><strong>Endpoint:</strong> {errorDetail?.endpoint || '/api/v1/monitoring?include_deleted=true'}</p>
+                <p><strong>Status:</strong> {errorDetail?.status}</p>
+                <p><strong>Status Text:</strong> {errorDetail?.statusText}</p>
+                <p><strong>URL:</strong> {errorDetail?.url}</p>
+                <p><strong>User ID:</strong> {errorDetail?.userId || 'admin_root'}</p>
+                <p><strong>Tenant ID:</strong> {errorDetail?.tenantId || '1'}</p>
+                <p><strong>Message:</strong> {errorDetail?.message}</p>
                 <div className="bg-slate-900 p-2 rounded overflow-x-auto">
-                    <pre>{errorDetail?.rawBody}</pre>
+                    <pre>{typeof errorDetail?.rawBody === 'string' ? errorDetail.rawBody : JSON.stringify(errorDetail?.data || errorDetail, null, 2)}</pre>
                 </div>
                 <button onClick={copyDiagnostics} className="flex items-center gap-2 px-3 py-1 bg-slate-800 rounded hover:bg-slate-700">
                     <Copy size={12} />
