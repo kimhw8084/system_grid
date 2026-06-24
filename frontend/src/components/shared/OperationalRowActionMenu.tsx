@@ -68,7 +68,7 @@ export function OperationalRowActionMenu({
   });
 
   return (
-    <div ref={panelRef} style={{ position: "fixed", zIndex: 1115, ...geometry.style }}>
+    <div ref={panelRef} className="row-action-menu-container" style={{ position: "fixed", zIndex: 1115, ...geometry.style }}>
       <WorkspaceFloatingPanel
         kind="context"
         className="flex flex-col rounded-xl overflow-hidden"

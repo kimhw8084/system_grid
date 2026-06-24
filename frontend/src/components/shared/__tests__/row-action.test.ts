@@ -9,18 +9,15 @@ test.describe("Row-action rectangle law", () => {
       { id: 'archive' as const, items: [{ id: '5', label: 'Archive', icon: () => null, onClick: () => {} }] }
     ];
     
-    const viewportWidth = 240;
-    const viewportHeight = 800;
     const geometry = computeRowActionGeometry({
         sections,
-        viewportWidth,
-        viewportHeight,
+        viewportWidth: 240,
+        viewportHeight: 800,
         cursorX: 100,
         cursorY: 100
     });
 
-    expect(geometry.panelWidth).toBeLessThanOrEqual(viewportWidth - 32);
-    
+    expect(geometry.panelWidth).toBeLessThanOrEqual(240 - 32);
     geometry.sections.forEach(section => {
         section.rows.forEach(row => {
             expect(row.rowWidth).toBe(geometry.actionSetWidth);
@@ -28,7 +25,7 @@ test.describe("Row-action rectangle law", () => {
     });
   });
 
-  test("Placement: prefers above when it fits and below does not", () => {
+  test("Placement: prefers above when it fits and below does not (bottom position)", () => {
     const sections = [
       { id: "quickAccess" as const, items: [{ id: "1", label: "Details", icon: () => null, onClick: () => {} }] }
     ];
