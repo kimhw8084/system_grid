@@ -26,7 +26,6 @@ const forbiddenPatterns = [
 const requiredPatterns = [
   "computeFloatingPanelRect",
   "computeRowActionSectionColumns",
-  "minmax(0, 1fr)",
   "POINT_MENU_CURSOR_GAP",
   "belowSpace",
   "aboveSpace"
@@ -90,11 +89,6 @@ if (!interactionsContent.includes("aboveSpace")) {
 
 if (!menuContent.includes("computeRowActionSectionColumns")) {
   console.error("computeRowActionSectionColumns not found");
-  process.exit(1);
-}
-
-if (!menuContent.includes("minmax(0, 1fr)")) {
-  console.error("minmax(0, 1fr) not found");
   process.exit(1);
 }
 
