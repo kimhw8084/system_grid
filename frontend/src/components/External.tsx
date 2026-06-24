@@ -11,9 +11,9 @@ import { apiFetch } from "../api/apiClient"
 import { parseAppDate, formatAppDate } from '../utils/dateUtils'
 import {
   OperationalRowActionMenu,
-  OperationalRowActionSection,
-  OperationalRowActionButton,
-  OperationalRowActionDivider,
+  type OperationalRowActionSectionModel,
+  type OperationalRowActionItem,
+  type OperationalRowActionVariant
 } from './shared/OperationalRowActionMenu'
 import {
   HeaderScopeSwitch,
@@ -2962,131 +2962,116 @@ export default function External() {
             style={rowActionMenu?.style ?? { position: 'fixed', top: -9999, left: -9999 }}
             className="row-action-menu-container"
           >
-            {rowActionMenu && (
-              <OperationalRowActionMenu
-                onClose={() => setRowActionMenu(null)}
-                meta={`ID ${rowActionMenu.item.id} · ${activeTab === 'links' ? rowActionMenu.item.external_entity_name : rowActionMenu.item.name}`}
-                title={activeTab === 'links' ? `Link · ${rowActionMenu.item.protocol} Port ${rowActionMenu.item.port}` : (rowActionMenu.item.type || 'External Peer')}
-              >
-                <OperationalRowActionSection title="Quick access" columns={2}>
-                    <OperationalRowActionButton
-                        onClick={() => {
-                          if (activeTab === 'links') {
-                            const ent = allEntities?.find((e: any) => e.id === rowActionMenu.item.external_entity_id)
-                            if (ent) detailRoute.openDetail(ent)
-                          } else {
-                            detailRoute.openDetail(rowActionMenu.item)
-                          }
-                          setRowActionMenu(null)
-                        }}
-                    >
-                      <Maximize2 size={14} className="text-blue-400" />
-                      <span>Details</span>
-                    </OperationalRowActionButton>
-                    {(activeTab === 'active' || activeTab === 'links') && (
-                      <OperationalRowActionButton
-                        onClick={() => {
-                          if (activeTab === 'links') {
-                            setEditingLink(rowActionMenu.item)
-                            setShowLinkModal(true)
-                          } else {
-                            setActiveModal(rowActionMenu.item)
-                          }
-                          setRowActionMenu(null)
-                        }}
-                      >
-                        <Edit2 size={14} className="text-emerald-400" />
-                        <span>Edit</span>
-                      </OperationalRowActionButton>
-                    )}
-                </OperationalRowActionSection>
-
-                {activeTab !== 'links' && (
-                    <>
-                        <OperationalRowActionSection title="Follow options" columns={2}>
-                            <OperationalRowActionButton
-                                onClick={() => toggleWatch(rowActionMenu.item.id)}
-                            >
-                                {normalizedWatchIds.includes(Number(rowActionMenu.item.id)) ? (
-                                    <>
-                                        <EyeOff size={14} className="text-slate-400" />
-                                        <span>Unwatch</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Eye size={14} className="text-sky-400" />
-                                        <span>Watch</span>
-                                    </>
-                                )}
-                            </OperationalRowActionButton>
-                            <OperationalRowActionButton
-                                onClick={() => toggleFavorite(rowActionMenu.item.id)}
-                            >
-                                {normalizedFavoriteIds.includes(Number(rowActionMenu.item.id)) ? (
-                                    <>
-                                        <Star size={14} className="fill-amber-400 text-amber-400" />
-                                        <span>Unpin</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Star size={14} className="text-amber-400" />
-                                        <span>Pin</span>
-                                    </>
-                                )}
-                            </OperationalRowActionButton>
-                        </OperationalRowActionSection>
-                        <OperationalRowActionDivider />
-                    </>
-                )}
-
-                <OperationalRowActionSection title="Archive" columns={1}>
-                    {activeTab === 'deleted' && (
-                        <OperationalRowActionButton
-                            layout="inline"
-                            className="hover:bg-emerald-950/80"
-                            onClick={() => {
-                                restoreMutation.mutate(rowActionMenu.item.id)
+            {rowActionMenu && (() => {
+              const item = rowActionMenu.item
+              const sections: OperationalRowActionSectionModel[] = [
+                {
+                    id: 'quickAccess',
+                    columns: 2,
+                    items: [
+                        {
+                            id: 'details',
+                            label: 'Details',
+                            icon: Maximize2,
+                            tone: 'info',
+                            onClick: () => {
+                                if (activeTab === 'links') {
+                                    const ent = allEntities?.find((e: any) => e.id === item.external_entity_id)
+                                    if (ent) detailRoute.openDetail(ent)
+                                } else {
+                                    detailRoute.openDetail(item)
+                                }
                                 setRowActionMenu(null)
-                            }}
-                        >
-                            <Undo2 size={14} className="text-emerald-300" />
-                            <span>Restore</span>
-                        </OperationalRowActionButton>
-                    )}
-
-                    <OperationalRowActionButton
-                        layout="inline"
-                        className={`hover:bg-rose-950/80 ${rowDeleteConfirmId === rowActionMenu.item.id ? 'bg-rose-600 animate-pulse' : ''}`}
-                        onMouseLeave={() => setRowDeleteConfirmId(null)}
-                        onClick={() => {
-                            const item = rowActionMenu.item
-                            if (activeTab === 'links') {
+                            }
+                        },
+                        ...((activeTab === 'active' || activeTab === 'links') ? [{
+                            id: 'edit',
+                            label: 'Edit',
+                            icon: Edit2,
+                            tone: 'success',
+                            onClick: () => {
+                                if (activeTab === 'links') {
+                                    setEditingLink(item)
+                                    setShowLinkModal(true)
+                                } else {
+                                    setActiveModal(item)
+                                }
+                                setRowActionMenu(null)
+                            }
+                        }] : [])
+                    ]
+                },
+                ...(activeTab !== 'links' ? [{
+                    id: 'followOptions' as const,
+                    columns: 2,
+                    items: [
+                        {
+                            id: 'watch',
+                            label: normalizedWatchIds.includes(Number(item.id)) ? 'Unwatch' : 'Watch',
+                            icon: normalizedWatchIds.includes(Number(item.id)) ? EyeOff : Eye,
+                            tone: 'neutral',
+                            onClick: () => toggleWatch(item.id)
+                        },
+                        {
+                            id: 'favorite',
+                            label: normalizedFavoriteIds.includes(Number(item.id)) ? 'Unpin' : 'Pin',
+                            icon: Star,
+                            tone: 'warning',
+                            onClick: () => toggleFavorite(item.id)
+                        }
+                    ]
+                }] : []),
+                {
+                    id: 'archive',
+                    columns: 1,
+                    items: [
+                        ...(activeTab === 'deleted' ? [{
+                            id: 'restore',
+                            label: 'Restore',
+                            icon: Undo2,
+                            tone: 'success',
+                            variant: 'inline',
+                            onClick: () => {
+                                restoreMutation.mutate(item.id)
+                                setRowActionMenu(null)
+                            }
+                        }] : []),
+                        {
+                            id: 'archive',
+                            label: activeTab === 'links' ? (rowDeleteConfirmId === item.id ? 'Confirm Sever Link?' : 'Sever Link') 
+                                    : (rowDeleteConfirmId === item.id ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm)
+                                    : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge)),
+                            icon: Trash2,
+                            tone: 'danger',
+                            variant: 'inline',
+                            confirming: rowDeleteConfirmId === item.id,
+                            onClick: () => {
                                 if (rowDeleteConfirmId !== item.id) {
                                     setRowDeleteConfirmId(item.id)
                                     return
                                 }
-                                deleteMutation.mutate({ id: item.id, purge: false, type: 'link' })
-                                setRowActionMenu(null)
-                                setRowDeleteConfirmId(null)
-                            } else {
-                                if (rowDeleteConfirmId !== item.id) {
-                                    setRowDeleteConfirmId(item.id)
-                                    return
+                                if (activeTab === 'links') {
+                                    deleteMutation.mutate({ id: item.id, purge: false, type: 'link' })
+                                } else {
+                                    deleteMutation.mutate({ id: item.id, purge: activeTab === 'deleted', type: 'entity' })
                                 }
-                                deleteMutation.mutate({ id: item.id, purge: activeTab === 'deleted', type: 'entity' })
                                 setRowActionMenu(null)
                                 setRowDeleteConfirmId(null)
                             }
-                        }}
-                    >
-                        <Trash2 size={14} className="text-rose-300" />
-                        <span>{rowDeleteConfirmId === rowActionMenu.item.id
-                            ? (activeTab === 'links' ? 'Confirm Sever Link?' : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm))
-                            : (activeTab === 'links' ? 'Sever Link' : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge))}</span>
-                    </OperationalRowActionButton>
-                </OperationalRowActionSection>
-              </OperationalRowActionMenu>
-            )}
+                        }
+                    ]
+                }
+              ]
+
+              return (
+                <OperationalRowActionMenu
+                  onClose={() => setRowActionMenu(null)}
+                  meta={`ID ${item.id} · ${activeTab === 'links' ? item.external_entity_name : item.name}`}
+                  title={activeTab === 'links' ? `Link · ${item.protocol} Port ${item.port}` : (item.type || 'External Peer')}
+                  sections={sections}
+                />
+              )
+            })()}
           </OperationalAnchoredPanel>
         
         </>

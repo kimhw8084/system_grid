@@ -9,16 +9,55 @@ const SECTION_HORIZONTAL_PADDING = 10
 const SECTION_GAP = 8
 const BUTTON_SAFETY_BUFFER = 20
 
+export type OperationalRowActionSectionId = 'quickAccess' | 'followOptions' | 'archive'
+
+export type OperationalRowActionTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger'
+
+export type OperationalRowActionVariant = 'tile' | 'inline'
+
+export type OperationalRowActionItem = {
+  id: string
+  label: string
+  icon: any
+  tone?: any
+  variant?: any
+  onClick: () => void
+  disabled?: boolean
+  confirming?: boolean
+  confirmLabel?: string
+  ariaLabel?: string
+}
+
+export type OperationalRowActionSectionModel = {
+  id: OperationalRowActionSectionId
+  columns?: number
+  items: OperationalRowActionItem[]
+}
+
+const SECTION_TITLE_MAP: Record<OperationalRowActionSectionId, string> = {
+  quickAccess: 'Quick access',
+  followOptions: 'Follow options',
+  archive: 'Archive',
+}
+
+const TONE_ICON_CLASS: Record<OperationalRowActionTone, string> = {
+  neutral: 'text-slate-400',
+  info: 'text-blue-400',
+  success: 'text-emerald-400',
+  warning: 'text-amber-400',
+  danger: 'text-rose-300',
+}
+
 export function OperationalRowActionMenu({
   meta,
   title,
   onClose,
-  children,
+  sections,
 }: {
   meta: React.ReactNode
   title: React.ReactNode
   onClose: () => void
-  children: React.ReactNode
+  sections: OperationalRowActionSectionModel[]
 }) {
   const menuRef = useRef<HTMLDivElement>(null)
   const [minButtonWidth, setMinButtonWidth] = useState(0)
@@ -26,37 +65,34 @@ export function OperationalRowActionMenu({
 
   useLayoutEffect(() => {
     const updateWidths = () => {
-        if (!menuRef.current) return
-        
-        // 1. Compute buttonMinWidth
-        const buttons = menuRef.current.querySelectorAll('button[data-row-action-button="true"]')
-        let maxButtonWidth = 0
-        buttons.forEach((btn) => {
-            const width = (btn as HTMLElement).scrollWidth
-            if (width > maxButtonWidth) maxButtonWidth = width
-        })
-        const buttonMinWidth = Math.max(100, maxButtonWidth + BUTTON_SAFETY_BUFFER)
-        setMinButtonWidth(buttonMinWidth)
+      if (!menuRef.current) return
+      
+      const buttons = menuRef.current.querySelectorAll('button[data-row-action-button="true"]')
+      let maxButtonWidth = 0
+      buttons.forEach((btn) => {
+        const width = (btn as HTMLElement).scrollWidth
+        if (width > maxButtonWidth) maxButtonWidth = width
+      })
+      const buttonMinWidth = Math.max(100, maxButtonWidth + BUTTON_SAFETY_BUFFER)
+      setMinButtonWidth(buttonMinWidth)
 
-        // 2. Compute menuRequiredWidth based on sections
-        const sections = menuRef.current.querySelectorAll('div[data-row-action-section="true"]')
-        let maxSectionWidth = 0
-        sections.forEach((sec) => {
-            const cols = parseInt((sec as HTMLElement).dataset.rowActionColumns || '2')
-            const sectionWidth = (SECTION_HORIZONTAL_PADDING * 2) + (cols * buttonMinWidth) + ((cols - 1) * SECTION_GAP)
-            if (sectionWidth > maxSectionWidth) maxSectionWidth = sectionWidth
-        })
+      const sectionEls = menuRef.current.querySelectorAll('div[data-row-action-section="true"]')
+      let maxSectionWidth = 0
+      sectionEls.forEach((sec) => {
+        const cols = parseInt((sec as HTMLElement).dataset.rowActionColumns || '2')
+        const sectionWidth = (SECTION_HORIZONTAL_PADDING * 2) + (cols * buttonMinWidth) + ((cols - 1) * SECTION_GAP)
+        if (sectionWidth > maxSectionWidth) maxSectionWidth = sectionWidth
+      })
 
-        // 3. Compute finalPanelWidth
-        const viewportSafeWidth = typeof window !== 'undefined' ? window.innerWidth - VIEWPORT_PADDING * 2 : 500
-        const calculatedWidth = Math.max(maxSectionWidth, MIN_PANEL_WIDTH)
-        setFinalPanelWidth(Math.min(calculatedWidth, viewportSafeWidth))
+      const viewportSafeWidth = typeof window !== 'undefined' ? window.innerWidth - VIEWPORT_PADDING * 2 : 500
+      const calculatedWidth = Math.max(maxSectionWidth, MIN_PANEL_WIDTH)
+      setFinalPanelWidth(Math.min(calculatedWidth, viewportSafeWidth))
     }
 
     updateWidths()
     window.addEventListener('resize', updateWidths)
     return () => window.removeEventListener('resize', updateWidths)
-  }, [children])
+  }, [sections])
 
   return (
     <WorkspaceFloatingPanel 
@@ -84,62 +120,41 @@ export function OperationalRowActionMenu({
         </button>
       </div>
       <div ref={menuRef} className="max-h-[calc(100vh-180px)] overflow-y-auto p-2.5 custom-scrollbar">
-        {children}
+        {sections.map((section, idx) => (
+            <React.Fragment key={section.id}>
+                <div className="px-3 py-1">
+                    <p className="text-[10px] font-semibold text-slate-400">{SECTION_TITLE_MAP[section.id]}</p>
+                </div>
+                <div
+                    data-row-action-section="true"
+                    data-row-action-columns={section.columns || 2}
+                    className="grid gap-2 px-2 pb-3"
+                    style={{
+                        gridTemplateColumns: `repeat(${section.columns || 2}, minmax(var(--row-action-button-min-width), 1fr))`
+                    }}
+                >
+                    {section.items.map((item) => (
+                        <button
+                            key={item.id}
+                            type="button"
+                            data-row-action-button="true"
+                            onClick={item.onClick}
+                            disabled={item.disabled}
+                            className={`flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950 transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 justify-center ${
+                                (item.variant || 'tile') === 'tile'
+                                    ? 'flex-col py-3 text-[9px] font-black uppercase tracking-[0.1em]'
+                                    : 'px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em]'
+                            } ${item.confirming ? 'bg-rose-600 animate-pulse' : ''}`}
+                        >
+                            <item.icon size={14} className={TONE_ICON_CLASS[item.tone || 'neutral']} />
+                            <span className="text-slate-300">{item.confirming ? (item.confirmLabel || 'Confirm?') : item.label}</span>
+                        </button>
+                    ))}
+                </div>
+                {idx < sections.length - 1 && <div className="mx-2 my-2 h-px bg-slate-800" />}
+            </React.Fragment>
+        ))}
       </div>
     </WorkspaceFloatingPanel>
-  )
-}
-
-export function OperationalRowActionSection({
-  title,
-  children,
-  columns = 2,
-}: {
-  title: string
-  children: React.ReactNode
-  columns?: 1 | 2 | 3 | 4 | 5
-}) {
-  return (
-    <>
-      <div className="px-3 py-1">
-        <p className="text-[10px] font-semibold text-slate-400">{title}</p>
-      </div>
-      <div
-        data-row-action-section="true"
-        data-row-action-columns={columns}
-        className="grid gap-2 px-2 pb-3"
-        style={{
-            gridTemplateColumns: `repeat(${columns}, minmax(var(--row-action-button-min-width), 1fr))`
-        }}
-      >
-        {children}
-      </div>
-    </>
-  )
-}
-
-export function OperationalRowActionDivider() {
-  return <div className="mx-2 my-2 h-px bg-slate-800" />
-}
-
-export function OperationalRowActionButton({
-  children,
-  className = '',
-  layout = 'tile',
-  ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { layout?: 'tile' | 'inline' }) {
-  return (
-    <button
-      type="button"
-      data-row-action-button="true"
-      {...props}
-      className={`flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950 transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 justify-center ${
-        layout === 'tile'
-          ? 'flex-col py-3 text-[9px] font-black uppercase tracking-[0.1em]'
-          : 'px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em]'
-      } [&>span]:text-slate-300 ${className}`}
-    >
-      {children}
-    </button>
   )
 }

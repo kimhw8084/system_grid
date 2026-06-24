@@ -61,10 +61,10 @@ import { OperationalDataGrid } from './shared/OperationalDataGrid'
 import { resolveOperationalDataState } from './shared/OperationalDataState'
 import { OPERATIONAL_ACTION_LABELS } from './shared/OperationalActionLabels'
 import {
-  OperationalRowActionButton,
-  OperationalRowActionDivider,
   OperationalRowActionMenu,
-  OperationalRowActionSection,
+  type OperationalRowActionSectionModel,
+  type OperationalRowActionItem,
+  type OperationalRowActionSectionId
 } from './shared/OperationalRowActionMenu'
 import {
   OperationalAnchoredPanel,
@@ -2137,117 +2137,50 @@ export default function ServicesReal() {
             className="row-action-menu-container"
           >
             {rowActionMenu && rowMenuItem ? (
-              <OperationalRowActionMenu
-                meta={`ID ${rowMenuItem.id} · ${rowMenuItem.device_name || 'No host linked'}`}
-                title={rowMenuItem.title}
-                onClose={() => setRowActionMenu(null)}
-              >
-                <OperationalRowActionSection title="Quick access" columns={2}>
-                  <OperationalRowActionButton
-                    layout="tile"
-                    onClick={() => {
-                      if (!rowMenuItem?.id) return
-                      detailRoute.openDetail(rowMenuItem, { replace: false })
-                      setRowActionMenu(null)
-                    }}
-                    className="border border-slate-800 bg-slate-950 text-blue-400 hover:border-blue-500/30 hover:bg-blue-600/10"
-                  >
-                    <Maximize2 size={14} />
-                    Details
-                  </OperationalRowActionButton>
-                  <OperationalRowActionButton
-                    layout="tile"
-                    onClick={() => {
-                      if (!rowMenuItem?.id) return
-                      setEditingItem(rowMenuItem)
-                      setIsFormOpen(true)
-                      setRowActionMenu(null)
-                    }}
-                    className="border border-slate-800 bg-slate-950 text-emerald-400 hover:border-emerald-500/30 hover:bg-emerald-600/10"
-                  >
-                    <Edit2 size={14} />
-                    Edit
-                  </OperationalRowActionButton>
-                </OperationalRowActionSection>
-
-                <OperationalRowActionSection title="Follow options" columns={2}>
-                  <OperationalRowActionButton
-                    layout="tile"
-                    onClick={() => {
-                      if (!rowMenuItem?.id) return
-                      toggleWatch(rowMenuItem.id)
-                    }}
-                  >
-                    {watchIds.includes(rowMenuItem.id) ? (
-                      <>
-                        <EyeOff size={14} className="text-slate-400" />
-                        Unwatch
-                      </>
-                    ) : (
-                      <>
-                        <Eye size={14} className="text-sky-400" />
-                        Watch
-                      </>
-                    )}
-                  </OperationalRowActionButton>
-                  <OperationalRowActionButton
-                    layout="tile"
-                    onClick={() => {
-                      if (!rowMenuItem?.id) return
-                      toggleFavorite(rowMenuItem.id)
-                    }}
-                  >
-                    {favoriteIds.includes(rowMenuItem.id) ? (
-                      <>
-                        <Star size={14} className="fill-amber-400 text-amber-400" />
-                        Unpin
-                      </>
-                    ) : (
-                      <>
-                        <Star size={14} className="text-amber-400" />
-                        Pin
-                      </>
-                    )}
-                  </OperationalRowActionButton>
-                </OperationalRowActionSection>
-
-                <OperationalRowActionSection title="Archive" columns={1}>
-                  {activeTab === 'deleted' && (
-                    <OperationalRowActionButton
-                      layout="inline"
-                      onClick={() => {
-                        if (!rowMenuItem?.id) return
-                        bulkMutation.mutate({ action: 'restore', ids: [rowMenuItem.id] })
-                        setRowActionMenu(null)
-                      }}
-                      className="text-emerald-300 hover:bg-emerald-950/80"
-                    >
-                      <Undo2 size={14} />
-                      Restore Service
-                    </OperationalRowActionButton>
-                  )}
-                  <OperationalRowActionButton
-                    layout="inline"
-                    className={`text-rose-300 hover:bg-rose-950/80 ${rowDeleteConfirmId === rowMenuItem.id ? 'bg-rose-600 text-white animate-pulse' : ''}`}
-                    onMouseLeave={() => setRowDeleteConfirmId(null)}
-                    onClick={() => {
-                      if (!rowMenuItem?.id) return
-                      if (rowDeleteConfirmId !== rowMenuItem.id) {
-                        setRowDeleteConfirmId(rowMenuItem.id)
-                        return
-                      }
-                      bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [rowMenuItem.id] })
-                      setRowActionMenu(null)
-                      setRowDeleteConfirmId(null)
-                    }}
-                  >
-                    <Trash2 size={14} />
-                    {rowDeleteConfirmId === rowMenuItem.id
-                        ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm)
-                        : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge)}
-                  </OperationalRowActionButton>
-                </OperationalRowActionSection>
-              </OperationalRowActionMenu>
+                            <OperationalRowActionMenu
+                  onClose={() => setRowActionMenu(null)}
+                  meta={`ID ${rowMenuItem.id} · ${rowMenuItem.name}`}
+                  title={rowMenuItem.type || 'Service'}
+                  sections={[
+                    {
+                        id: 'quickAccess',
+                        columns: 2,
+                        items: [
+                            { id: 'details', label: 'Details', icon: Maximize2, tone: 'info', onClick: () => { if (!rowMenuItem?.id) return; detailRoute.openDetail(rowMenuItem, { replace: false }); setRowActionMenu(null); } },
+                            { id: 'edit', label: 'Edit', icon: Edit2, tone: 'success', onClick: () => { if (!rowMenuItem?.id) return; setEditingItem(rowMenuItem); setIsFormOpen(true); setRowActionMenu(null); } }
+                        ]
+                    },
+                    {
+                        id: 'followOptions',
+                        columns: 2,
+                        items: [
+                            { id: 'watch', label: watchIds.includes(rowMenuItem.id) ? 'Unwatch' : 'Watch', icon: watchIds.includes(rowMenuItem.id) ? EyeOff : Eye, tone: 'neutral', onClick: () => { if (!rowMenuItem?.id) return; toggleWatch(rowMenuItem.id); } },
+                            { id: 'favorite', label: favoriteIds.includes(rowMenuItem.id) ? 'Unpin' : 'Pin', icon: Star, tone: 'warning', onClick: () => { if (!rowMenuItem?.id) return; toggleFavorite(rowMenuItem.id); } }
+                        ]
+                    },
+                    {
+                        id: 'archive',
+                        columns: 1,
+                        items: [
+                            ...(activeTab === 'deleted' ? [{ id: 'restore', label: 'Restore', icon: Undo2, tone: 'success', variant: 'inline', onClick: () => { if (!rowMenuItem?.id) return; bulkMutation.mutate({ action: 'restore', ids: [rowMenuItem.id] }); setRowActionMenu(null); } }] : []),
+                            {
+                                id: 'archive',
+                                label: rowDeleteConfirmId === rowMenuItem.id ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm) : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge),
+                                icon: Trash2,
+                                tone: 'danger',
+                                variant: 'inline',
+                                confirming: rowDeleteConfirmId === rowMenuItem.id,
+                                onClick: () => {
+                                    if (!rowMenuItem?.id) return
+                                    if (rowDeleteConfirmId !== rowMenuItem.id) { setRowDeleteConfirmId(rowMenuItem.id); return }
+                                    bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [rowMenuItem.id] });
+                                    setRowActionMenu(null); setRowDeleteConfirmId(null);
+                                }
+                            }
+                        ]
+                    }
+                  ]}
+                />
             ) : null}
           </OperationalAnchoredPanel>
         </>

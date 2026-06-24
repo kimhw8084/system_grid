@@ -70,10 +70,10 @@ import { OperationalDataGrid } from './shared/OperationalDataGrid'
 import { resolveOperationalDataState } from './shared/OperationalDataState'
 import { OPERATIONAL_ACTION_LABELS } from './shared/OperationalActionLabels'
 import {
-  OperationalRowActionButton,
-  OperationalRowActionDivider,
   OperationalRowActionMenu,
-  OperationalRowActionSection,
+  type OperationalRowActionSectionModel,
+  type OperationalRowActionItem,
+  type OperationalRowActionSectionId
 } from './shared/OperationalRowActionMenu'
 import {
   OperationalAnchoredPanel,
@@ -2056,270 +2056,64 @@ export default function MonitoringGrid() {
               : 'Raw monitoring table'}
           />
 
-          <OperationalAnchoredPanel
-            isOpen={showBulkMenu}
-            panelKey="bulk-menu"
-            style={bulkMenuStyle}
-            className="bulk-menu-container"
-            yOffset={10}
-          >
-            <WorkspaceFloatingPanel kind="context" className="max-h-[560px] overflow-y-auto custom-scrollbar p-3">
-                  <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
-                    <p className="text-[10px] font-semibold text-slate-400">Bulk actions</p>
-                    <p className="pt-1 text-[12px] font-semibold text-slate-100">{selectedIds.length} monitors selected</p>
-                  </div>
-
-                  {activeTab === 'deleted' ? (
-                      <button
-                      onClick={() => bulkMutation.mutate({ action: 'restore' })}
-                      disabled={bulkMutation.isPending}
-                      className="w-full rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-left transition-all hover:bg-emerald-500/15 disabled:opacity-50"
-                    >
-                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">
-                        {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : 'Restore Selection'}
-                      </p>
-                    </button>
-                  ) : (
-                    <div className="space-y-2">
-                      <button
-                        onClick={() => setShowBulkEditModal(true)}
-                        className="w-full rounded-lg border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-left transition-all hover:bg-blue-500/15"
-                      >
-                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">Bulk Edit Table</p>
-                        <p className="pt-1 text-[10px] font-semibold text-slate-400">Edit selected monitors row by row using safe columns only.</p>
-                      </button>
-
-                      <WorkspaceFlyoutActionCard
-                        title="Set Status"
-                        active={expandedBulkSection === 'status'}
-                        onClick={() => setExpandedBulkSection(expandedBulkSection === 'status' ? null : 'status')}
-                      />
-                      {expandedBulkSection === 'status' && (
-                        <WorkspaceFlyoutDropdownEditor
-                          value={bulkDraft.status}
-                          onChange={(value) => setBulkDraft((current) => ({ ...current, status: value }))}
-                          options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
-                          placeholder="Choose status"
-                          actionLabel="Apply Status"
-                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { status: bulkDraft.status } })}
-                          disabled={!bulkDraft.status || bulkMutation.isPending}
-                        />
-                      )}
-
-                      <WorkspaceFlyoutActionCard
-                        title="Set Severity"
-                        active={expandedBulkSection === 'severity'}
-                        onClick={() => setExpandedBulkSection(expandedBulkSection === 'severity' ? null : 'severity')}
-                      />
-                      {expandedBulkSection === 'severity' && (
-                        <WorkspaceFlyoutDropdownEditor
-                          value={bulkDraft.severity}
-                          onChange={(value) => setBulkDraft((current) => ({ ...current, severity: value }))}
-                          options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
-                          placeholder="Choose severity"
-                          actionLabel="Apply Severity"
-                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { severity: bulkDraft.severity } })}
-                          disabled={!bulkDraft.severity || bulkMutation.isPending}
-                        />
-                      )}
-
-                      <WorkspaceFlyoutActionCard
-                        title="Set Notification"
-                        active={expandedBulkSection === 'notification'}
-                        onClick={() => setExpandedBulkSection(expandedBulkSection === 'notification' ? null : 'notification')}
-                      />
-                      {expandedBulkSection === 'notification' && (
-                        <WorkspaceFlyoutDropdownEditor
-                          value={bulkDraft.notification_method}
-                          onChange={(value) => setBulkDraft((current) => ({ ...current, notification_method: value }))}
-                          options={notificationMethods.map((method: any) => ({ value: method.value, label: method.label }))}
-                          placeholder="Choose notification path"
-                          actionLabel="Apply Notification"
-                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { notification_method: bulkDraft.notification_method } })}
-                          disabled={!bulkDraft.notification_method || bulkMutation.isPending}
-                        />
-                      )}
-                    </div>
-                  )}
-
-                  <div className="mx-1 my-3 h-px bg-slate-800" />
-                  <button
-                    onClick={() => {
-                      if (!bulkDeleteConfirm) {
-                        setBulkDeleteConfirm(true)
-                        return
-                      }
-                      bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' })
-                    }}
-                    onMouseLeave={() => setBulkDeleteConfirm(false)}
-                    disabled={bulkMutation.isPending}
-                    className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
-                      bulkDeleteConfirm 
-                        ? 'border-rose-500 bg-rose-600 animate-pulse' 
-                        : 'border-rose-900/70 bg-rose-950/70 hover:bg-rose-950'
-                    } disabled:opacity-50`}
-                  >
-                    <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
-                      {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
-                        bulkDeleteConfirm
-                          ? (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purgeSelectionConfirm : OPERATIONAL_ACTION_LABELS.archiveSelectionConfirm)
-                          : (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purgeSelection : OPERATIONAL_ACTION_LABELS.archiveSelection)
-                      )}
-                    </p>
-                  </button>
-            </WorkspaceFloatingPanel>
-          </OperationalAnchoredPanel>
-
-          <OperationalAnchoredPanel
+                              <OperationalAnchoredPanel
             isOpen={!!rowActionMenu}
             panelKey="row-action-menu"
             style={rowActionMenu?.style ?? { position: 'fixed', top: -9999, left: -9999 }}
             className="row-action-menu-container"
           >
-            {rowActionMenu && (
-              <OperationalRowActionMenu
-                meta={`ID ${rowActionMenu.item.id} · ${rowActionMenu.item.device_name || 'No target asset linked'}`}
-                title={rowActionMenu.item.title}
-                onClose={() => setRowActionMenu(null)}
-              >
-                <OperationalRowActionSection title="Quick access" columns={5}>
-                  <OperationalRowActionButton
-                    layout="tile"
-                    onClick={() => {
-                      detailRoute.openDetail(rowActionMenu.item)
-                      setRowActionMenu(null)
-                    }}
-                    className="border border-slate-800 bg-slate-950 text-blue-400 hover:border-blue-500/30 hover:bg-blue-600/10"
-                  >
-                    <Maximize2 size={14} />
-                    Details
-                  </OperationalRowActionButton>
-                  <OperationalRowActionButton
-                    layout="tile"
-                    onClick={() => {
-                      setEditingItem(rowActionMenu.item)
-                      setIsFormOpen(true)
-                      setRowActionMenu(null)
-                    }}
-                    className="border border-slate-800 bg-slate-950 text-emerald-400 hover:border-emerald-500/30 hover:bg-emerald-600/10"
-                  >
-                    <Edit2 size={14} />
-                    Edit
-                  </OperationalRowActionButton>
-                  <OperationalRowActionButton
-                    layout="tile"
-                    onClick={() => {
-                      setHistoryItem(rowActionMenu.item)
-                      setRowActionMenu(null)
-                    }}
-                    className="border border-slate-800 bg-slate-950 text-amber-400 hover:border-amber-500/30 hover:bg-amber-600/10"
-                  >
-                    <Clock size={14} />
-                    History
-                  </OperationalRowActionButton>
-                  <OperationalRowActionButton
-                    layout="tile"
-                    onClick={() => {
-                      if (rowActionMenu.item.device_id) navigate(`/asset?id=${rowActionMenu.item.device_id}`)
-                      setRowActionMenu(null)
-                    }}
-                    className="border border-slate-800 bg-slate-950 text-slate-200 hover:border-slate-700 hover:bg-slate-900"
-                  >
-                    <Monitor size={14} className="text-blue-400" />
-                    Asset
-                  </OperationalRowActionButton>
-                  <OperationalRowActionButton
-                    layout="tile"
-                    onClick={() => {
-                      const firstDoc = rowActionMenu.item.recovery_docs?.[0]
-                      const docId = typeof firstDoc === 'object' ? firstDoc?.id : firstDoc
-                      if (docId) navigate(`/knowledge?id=${docId}`)
-                      setRowActionMenu(null)
-                    }}
-                    disabled={!rowActionMenu.item.recovery_docs?.[0]}
-                    className="border border-slate-800 bg-slate-950 text-slate-200 hover:border-slate-700 hover:bg-slate-900 disabled:text-slate-600"
-                  >
-                    <BookOpen size={14} className="text-emerald-400" />
-                    Knowledge
-                  </OperationalRowActionButton>
-                </OperationalRowActionSection>
-
-                <OperationalRowActionSection title="Follow options" columns={2}>
-                  <OperationalRowActionButton
-                    layout="tile"
-                    onClick={() => {
-                      toggleWatch(rowActionMenu.item.id)
-                    }}
-                  >
-                    {watchIds.includes(rowActionMenu.item.id) ? (
-                      <>
-                        <EyeOff size={14} className="text-slate-400" />
-                        Unwatch
-                      </>
-                    ) : (
-                      <>
-                        <Eye size={14} className="text-sky-400" />
-                        Watch
-                      </>
-                    )}
-                  </OperationalRowActionButton>
-                  <OperationalRowActionButton
-                    layout="tile"
-                    onClick={() => {
-                      toggleFavorite(rowActionMenu.item.id)
-                    }}
-                  >
-                    {favoriteIds.includes(rowActionMenu.item.id) ? (
-                      <>
-                        <Star size={14} className="fill-amber-400 text-amber-400" />
-                        Unpin
-                      </>
-                    ) : (
-                      <>
-                        <Star size={14} className="text-amber-400" />
-                        Pin
-                      </>
-                    )}
-                  </OperationalRowActionButton>
-                </OperationalRowActionSection>
-
-                <OperationalRowActionSection title="Archive" columns={1}>
-                  {activeTab === 'deleted' && (
-                    <OperationalRowActionButton
-                      layout="inline"
-                      onClick={() => {
-                        bulkMutation.mutate({ action: 'restore', ids: [rowActionMenu.item.id] })
-                        setRowActionMenu(null)
-                      }}
-                      className="text-emerald-300 hover:bg-emerald-950/80"
-                    >
-                      <Undo2 size={14} />
-                      Restore
-                    </OperationalRowActionButton>
-                  )}
-                  <OperationalRowActionButton
-                    layout="inline"
-                    className={`text-rose-300 hover:bg-rose-950/80 ${rowDeleteConfirmId === rowActionMenu.item.id ? 'bg-rose-600 text-white animate-pulse' : ''}`}
-                    onMouseLeave={() => setRowDeleteConfirmId(null)}
-                    onClick={() => {
-                      const item = rowActionMenu.item
-                      if (rowDeleteConfirmId !== item.id) {
-                        setRowDeleteConfirmId(item.id)
-                        return
-                      }
-                      bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [item.id] })
-                      setRowActionMenu(null)
-                      setRowDeleteConfirmId(null)
-                    }}
-                  >
-                    <Trash2 size={14} />
-                    {rowDeleteConfirmId === rowActionMenu.item.id
-                        ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm)
-                        : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge)}
-                  </OperationalRowActionButton>
-                </OperationalRowActionSection>
-              </OperationalRowActionMenu>
-            )}
+            {rowActionMenu && (() => {
+              const item = rowActionMenu.item
+              const sections: OperationalRowActionSectionModel[] = [
+                {
+                    id: 'quickAccess',
+                    columns: 5,
+                    items: [
+                        { id: 'details', label: 'Details', icon: Maximize2, tone: 'info', onClick: () => { detailRoute.openDetail(item); setRowActionMenu(null); } },
+                        { id: 'edit', label: 'Edit', icon: Edit2, tone: 'success', onClick: () => { setEditingItem(item); setIsFormOpen(true); setRowActionMenu(null); } },
+                        { id: 'history', label: 'History', icon: Clock, tone: 'warning', onClick: () => { setHistoryItem(item); setRowActionMenu(null); } },
+                        { id: 'asset', label: 'Asset', icon: Monitor, tone: 'info', onClick: () => { if (item.device_id) navigate(`/asset?id=${item.device_id}`); setRowActionMenu(null); } },
+                        { id: 'knowledge', label: 'Knowledge', icon: BookOpen, tone: 'success', onClick: () => { const firstDoc = item.recovery_docs?.[0]; const docId = typeof firstDoc === 'object' ? firstDoc?.id : firstDoc; if (docId) navigate(`/knowledge?id=${docId}`); setRowActionMenu(null); }, disabled: !item.recovery_docs?.[0] }
+                    ]
+                },
+                {
+                    id: 'followOptions',
+                    columns: 2,
+                    items: [
+                        { id: 'watch', label: watchIds.includes(item.id) ? 'Unwatch' : 'Watch', icon: watchIds.includes(item.id) ? EyeOff : Eye, tone: 'neutral', onClick: () => toggleWatch(item.id) },
+                        { id: 'favorite', label: favoriteIds.includes(item.id) ? 'Unpin' : 'Pin', icon: Star, tone: 'warning', onClick: () => toggleFavorite(item.id) }
+                    ]
+                },
+                {
+                    id: 'archive',
+                    columns: 1,
+                    items: [
+                        ...(activeTab === 'deleted' ? [{ id: 'restore', label: 'Restore', icon: Undo2, tone: 'success', variant: 'inline', onClick: () => { bulkMutation.mutate({ action: 'restore', ids: [item.id] }); setRowActionMenu(null); } }] : []),
+                        {
+                            id: 'archive',
+                            label: rowDeleteConfirmId === item.id ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm) : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge),
+                            icon: Trash2,
+                            tone: 'danger',
+                            variant: 'inline',
+                            confirming: rowDeleteConfirmId === item.id,
+                            onClick: () => {
+                                if (rowDeleteConfirmId !== item.id) { setRowDeleteConfirmId(item.id); return }
+                                bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [item.id] });
+                                setRowActionMenu(null); setRowDeleteConfirmId(null);
+                            }
+                        }
+                    ]
+                }
+              ]
+              return (
+                <OperationalRowActionMenu
+                  onClose={() => setRowActionMenu(null)}
+                  meta={`ID ${item.id} · ${item.device_name || 'No target asset linked'}`}
+                  title={item.title}
+                  sections={sections}
+                />
+              )
+            })()}
           </OperationalAnchoredPanel>
         </>
       }
