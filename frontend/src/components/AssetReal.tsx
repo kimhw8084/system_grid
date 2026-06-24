@@ -19,8 +19,6 @@ import toast from 'react-hot-toast'
 import { showWorkspaceToast } from './shared/WorkspaceToast'
 import {
   computeFloatingPanelRect,
-  ROW_ACTION_PREFERRED_WIDTH,
-  ROW_ACTION_PREFERRED_HEIGHT,
 } from './shared/OperationalGridInteractions'
 import { apiFetch } from '../api/apiClient'
 import { buildMonitoringFormErrors, getMonitoringTabErrorCounts } from '../utils/monitoringValidation'
@@ -688,7 +686,7 @@ export default function AssetReal() {
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [detailDeleteConfirm, setDetailDeleteConfirm] = useState(false)
   const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<number | null>(null)
-  const [rowActionMenu, setRowActionMenu] = useState<{ item: any; style: React.CSSProperties } | null>(null)
+  const [rowActionMenu, setRowActionMenu] = useState<{ item: any; point: { x: number; y: number } } | null>(null)
   const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
   const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
   const [gridSortModel, setGridSortModel] = useState<any[]>([{ colId: 'favorite', sort: 'desc' }])
@@ -930,7 +928,7 @@ export default function AssetReal() {
   const openRowActionMenuAtPoint = useCallback((item: any, x: number, y: number) => {
     setRowActionMenu({
       item,
-      style: getPointFloatingStyle({ x, y, width: ROW_ACTION_PREFERRED_WIDTH, height: ROW_ACTION_PREFERRED_HEIGHT, zIndex: 1115 })
+      point: { x, y }
     })
   }, [])
 

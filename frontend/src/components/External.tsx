@@ -1574,11 +1574,9 @@ export default function External() {
   })
 
   const { handleCellContextMenu, openRowActionMenuAtPoint } = useOperationalContextMenu({
-    onOpenRowActionMenu: useCallback((item, style) => {
-      setRowActionMenu({ item, style })
-    }, []),
-    menuWidth: 280,
-    menuHeight: 360
+    onOpenRowActionMenu: useCallback((item, point) => {
+      setRowActionMenu({ item, point })
+    }, [])
   })
 
   const entities = useMemo(() => {

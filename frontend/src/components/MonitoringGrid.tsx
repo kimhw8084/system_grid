@@ -546,7 +546,7 @@ export default function MonitoringGrid() {
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [detailDeleteConfirm, setDetailDeleteConfirm] = useState(false)
   const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<number | null>(null)
-  const [rowActionMenu, setRowActionMenu] = useState<{ item: any; style: React.CSSProperties } | null>(null)
+  const [rowActionMenu, setRowActionMenu] = useState<{ item: any; point: { x: number; y: number } } | null>(null)
   const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
   const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
   const [gridSortModel, setGridSortModel] = useState<any[]>([{ colId: 'favorite', sort: 'desc' }])
@@ -835,11 +835,9 @@ export default function MonitoringGrid() {
   const handleRowId = useCallback((params: any) => String(params.data.id), [])
 
   const { handleCellContextMenu, openRowActionMenuAtPoint } = useOperationalContextMenu({
-    onOpenRowActionMenu: useCallback((item, style) => {
-      setRowActionMenu({ item, style })
-    }, []),
-    menuWidth: 336,
-    menuHeight: 432
+    onOpenRowActionMenu: useCallback((item, point) => {
+      setRowActionMenu({ item, point })
+    }, [])
   })
 
   const autoSizeMonitoringColumns = useCallback(() => {
@@ -2102,13 +2100,7 @@ export default function MonitoringGrid() {
               : 'Raw monitoring table'}
           />
 
-                              <OperationalAnchoredPanel
-            isOpen={!!rowActionMenu}
-            panelKey="row-action-menu"
-            style={rowActionMenu?.style ?? { position: 'fixed', top: -9999, left: -9999 }}
-            className="row-action-menu-container"
-          >
-            {rowActionMenu && (() => {
+{rowActionMenu && (() => {
               const item = rowActionMenu.item
               const sections: OperationalRowActionSectionModel[] = [
                 {
@@ -2158,10 +2150,11 @@ export default function MonitoringGrid() {
                   meta={`ID ${item.id} · ${item.device_name || 'No target asset linked'}`}
                   title={item.title}
                   sections={sections}
+                  cursorX={rowActionMenu.point.x}
+                  cursorY={rowActionMenu.point.y}
                 />
               )
             })()}
-          </OperationalAnchoredPanel>
         </>
       }
     >

@@ -22,8 +22,6 @@ import toast from 'react-hot-toast'
 import { showWorkspaceToast } from './shared/WorkspaceToast'
 import {
   computeFloatingPanelRect,
-  ROW_ACTION_PREFERRED_WIDTH,
-  ROW_ACTION_PREFERRED_HEIGHT,
   FLOATING_PANEL_EDGE,
 } from './shared/OperationalGridInteractions'
 import { apiFetch } from '../api/apiClient'
@@ -540,7 +538,6 @@ export default function VendorsReal() {
   const openRowActionMenuAtPoint = useCallback((item: any, x: number, y: number) => {
     setRowActionMenu({
       item,
-      style: getPointFloatingStyle({ x, y, width: ROW_ACTION_PREFERRED_WIDTH, height: ROW_ACTION_PREFERRED_HEIGHT, zIndex: 1115 })
     })
   }, [])
 

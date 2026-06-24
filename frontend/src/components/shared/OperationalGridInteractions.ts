@@ -192,29 +192,14 @@ export function useOperationalRowInteractions({
   }
 }
 
-export const ROW_ACTION_PREFERRED_WIDTH = 560
-export const ROW_ACTION_PREFERRED_HEIGHT = 520
-
 export function useOperationalContextMenu({
-  onOpenRowActionMenu,
-  menuWidth = ROW_ACTION_PREFERRED_WIDTH,
-  menuHeight = ROW_ACTION_PREFERRED_HEIGHT
+  onOpenRowActionMenu
 }: {
-  onOpenRowActionMenu: (item: any, style: any) => void
-  menuWidth?: number
-  menuHeight?: number
+  onOpenRowActionMenu: (item: any, point: { x: number; y: number }) => void
 }) {
   const openRowActionMenuAtPoint = useCallback((item: any, x: number, y: number) => {
-    const style = getPointFloatingStyle({
-      x,
-      y,
-      width: menuWidth,
-      height: menuHeight,
-      zIndex: 1115
-    })
-    onOpenRowActionMenu(item, style)
-  }, [onOpenRowActionMenu, menuWidth, menuHeight])
-
+    onOpenRowActionMenu(item, { x, y })
+  }, [onOpenRowActionMenu])
 
   const handleCellContextMenu = useCallback((e: any) => {
     if (!e?.data || shouldIgnoreRowSelection(e.event?.target)) return

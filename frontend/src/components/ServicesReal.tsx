@@ -555,7 +555,7 @@ export default function ServicesReal() {
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [detailDeleteConfirm, setDetailDeleteConfirm] = useState(false)
   const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<number | null>(null)
-  const [rowActionMenu, setRowActionMenu] = useState<{ item: any; style: React.CSSProperties } | null>(null)
+  const [rowActionMenu, setRowActionMenu] = useState<{ item: any; point: { x: number; y: number } } | null>(null)
   const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
   const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
   const [gridSortModel, setGridSortModel] = useState<any[]>([{ colId: 'favorite', sort: 'desc' }])
@@ -782,11 +782,9 @@ export default function ServicesReal() {
     return String(params?.node?.id ?? 'unknown-row')
   }, [])
   const { handleCellContextMenu, openRowActionMenuAtPoint } = useOperationalContextMenu({
-    onOpenRowActionMenu: useCallback((item, style) => {
-      setRowActionMenu({ item, style })
-    }, []),
-    menuWidth: 336,
-    menuHeight: 432,
+    onOpenRowActionMenu: useCallback((item, point) => {
+      setRowActionMenu({ item, point })
+    }, [])
   })
 
   const handleGridReady = useCallback((event: any) => {
@@ -2132,63 +2130,53 @@ export default function ServicesReal() {
             </WorkspaceFloatingPanel>
           </OperationalAnchoredPanel>
 
-          <OperationalAnchoredPanel
-            isOpen={!!rowActionMenu}
-            panelKey="row-action-menu"
-            style={rowActionMenu?.style ?? { position: 'fixed', top: -9999, left: -9999 }}
-            className="row-action-menu-container"
-          >
-            {rowActionMenu && (() => {
-              const item = rowMenuItem
-              const sections: OperationalRowActionSectionModel[] = [
+          {rowActionMenu && (
+            <OperationalRowActionMenu
+              cursorX={rowActionMenu.point.x}
+              cursorY={rowActionMenu.point.y}
+              onClose={() => setRowActionMenu(null)}
+              meta={`ID ${rowActionMenu.item.id} · ${rowActionMenu.item.name}`}
+              title={rowActionMenu.item.type || 'Service'}
+              sections={[
                 {
                     id: 'quickAccess',
                     columns: 2 as 2,
                     items: [
-                        { id: 'details', label: 'Details', icon: Maximize2, tone: 'info' as OperationalRowActionTone, onClick: () => { detailRoute.openDetail(item, { replace: false }); setRowActionMenu(null); } },
-                        { id: 'edit', label: 'Edit', icon: Edit2, tone: 'success' as OperationalRowActionTone, onClick: () => { setEditingItem(item); setIsFormOpen(true); setRowActionMenu(null); } }
-
+                        { id: 'details', label: 'Details', icon: Maximize2, tone: 'info' as OperationalRowActionTone, onClick: () => { detailRoute.openDetail(rowActionMenu.item, { replace: false }); setRowActionMenu(null); } },
+                        { id: 'edit', label: 'Edit', icon: Edit2, tone: 'success' as OperationalRowActionTone, onClick: () => { setEditingItem(rowActionMenu.item); setIsFormOpen(true); setRowActionMenu(null); } }
                     ]
                 },
                 {
                     id: 'followOptions',
                     columns: 2 as 2,
                     items: [
-                        { id: 'watch', label: watchIds.includes(item.id) ? 'Unwatch' : 'Watch', icon: watchIds.includes(item.id) ? EyeOff : Eye, tone: 'neutral', onClick: () => { toggleWatch(item.id); } },
-                        { id: 'favorite', label: favoriteIds.includes(item.id) ? 'Unpin' : 'Pin', icon: Star, tone: 'warning', onClick: () => { toggleFavorite(item.id); } }
+                        { id: 'watch', label: watchIds.includes(rowActionMenu.item.id) ? 'Unwatch' : 'Watch', icon: watchIds.includes(rowActionMenu.item.id) ? EyeOff : Eye, tone: 'neutral', onClick: () => { toggleWatch(rowActionMenu.item.id); } },
+                        { id: 'favorite', label: favoriteIds.includes(rowActionMenu.item.id) ? 'Unpin' : 'Pin', icon: Star, tone: 'warning', onClick: () => { toggleFavorite(rowActionMenu.item.id); } }
                     ]
                 },
                 {
                     id: 'archive',
                     columns: 1 as 1,
                     items: [
-                        ...(activeTab === 'deleted' ? [{ id: 'restore', label: 'Restore', icon: Undo2, tone: 'success' as OperationalRowActionTone, variant: 'inline' as OperationalRowActionVariant, onClick: () => { bulkMutation.mutate({ action: 'restore', ids: [item.id] }); setRowActionMenu(null); } }] : []),
+                        ...(activeTab === 'deleted' ? [{ id: 'restore', label: 'Restore', icon: Undo2, tone: 'success' as OperationalRowActionTone, variant: 'inline' as OperationalRowActionVariant, onClick: () => { bulkMutation.mutate({ action: 'restore', ids: [rowActionMenu.item.id] }); setRowActionMenu(null); } }] : []),
                         {
                             id: 'archive',
-                            label: rowDeleteConfirmId === item.id ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm) : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge),
+                            label: rowDeleteConfirmId === rowActionMenu.item.id ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm) : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge),
                             icon: Trash2,
                             tone: 'danger' as OperationalRowActionTone,
                             variant: 'inline' as OperationalRowActionVariant,
-                            confirming: rowDeleteConfirmId === item.id,
+                            confirming: rowDeleteConfirmId === rowActionMenu.item.id,
                             onClick: () => {
-                                if (rowDeleteConfirmId !== item.id) { setRowDeleteConfirmId(item.id); return }
-                                bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [item.id] });
+                                if (rowDeleteConfirmId !== rowActionMenu.item.id) { setRowDeleteConfirmId(rowActionMenu.item.id); return }
+                                bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [rowActionMenu.item.id] });
                                 setRowActionMenu(null); setRowDeleteConfirmId(null);
                             }
                         }
                     ]
                 }
-              ]
-              return (
-                <OperationalRowActionMenu
-                  onClose={() => setRowActionMenu(null)}
-                  meta={`ID ${item.id} · ${item.name}`}
-                  title={item.type || 'Service'}
-                  sections={sections}
-                />
-              )
-            })()}
-          </OperationalAnchoredPanel>
+              ]}
+            />
+          )}
         </>
       }
     >
