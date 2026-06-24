@@ -118,7 +118,7 @@ export function OperationalRowActionMenu({
                         style={{ width: `${row.buttonWidths[itemIdx]}px` }}
                       >
                         {React.createElement(item.icon, { size: 14, className: `flex-shrink-0 ${TONE_ICON_CLASS[item.tone ?? "neutral"]}` })}
-                        <span className="whitespace-nowrap text-slate-300">
+                        <span className={`${row.allowWrap ? "whitespace-normal break-words" : "whitespace-nowrap"} text-slate-300`}>
                           {item.confirming ? (item.confirmLabel || "Confirm?") : item.label}
                         </span>
                       </button>

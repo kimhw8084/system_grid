@@ -42,30 +42,46 @@ export function computeRowActionGeometry({
 
   // 1. Initial Calculation (with wrapping)
   let processedSections = sections.map((section) => {
-    const rawButtonWidths = section.items.map((item) =>
-      estimateRowActionButtonWidth(item.label, item.confirmLabel, item.confirming)
-    );
+    // Check and cap widths immediately
+    const rawButtonWidths = section.items.map((item) => {
+        const w = estimateRowActionButtonWidth(item.label, item.confirmLabel, item.confirming);
+        return Math.min(w, contentSafeWidth);
+    });
     
     // Attempt wrapping based on contentSafeWidth
-    const rows: { items: OperationalRowActionItem[], buttonWidths: number[], rowWidth: number }[] = [];
+    const rows: { items: OperationalRowActionItem[], buttonWidths: number[], rowWidth: number, allowWrap: boolean }[] = [];
     let currentRowItems: OperationalRowActionItem[] = [];
     let currentRowButtonWidths: number[] = [];
     let currentRowWidth = 0;
     
     section.items.forEach((item, idx) => {
         const w = rawButtonWidths[idx];
-        if (currentRowItems.length > 0 && currentRowWidth + gap + w > contentSafeWidth) {
-            rows.push({ items: currentRowItems, buttonWidths: currentRowButtonWidths, rowWidth: currentRowWidth });
+        const isConstrained = w >= contentSafeWidth;
+
+        if (currentRowItems.length > 0 && (currentRowWidth + gap + w > contentSafeWidth || isConstrained)) {
+            // If current row has content, wrap it
+            if (currentRowItems.length > 0) {
+              rows.push({ items: currentRowItems, buttonWidths: currentRowButtonWidths, rowWidth: currentRowWidth, allowWrap: false });
+            }
             currentRowItems = [];
             currentRowButtonWidths = [];
             currentRowWidth = 0;
         }
+
         if (currentRowItems.length > 0) currentRowWidth += gap;
         currentRowItems.push(item);
         currentRowButtonWidths.push(w);
         currentRowWidth += w;
+
+        // If this item is constrained, close row immediately
+        if (isConstrained) {
+            rows.push({ items: currentRowItems, buttonWidths: currentRowButtonWidths, rowWidth: currentRowWidth, allowWrap: true });
+            currentRowItems = [];
+            currentRowButtonWidths = [];
+            currentRowWidth = 0;
+        }
     });
-    if (currentRowItems.length > 0) rows.push({ items: currentRowItems, buttonWidths: currentRowButtonWidths, rowWidth: currentRowWidth });
+    if (currentRowItems.length > 0) rows.push({ items: currentRowItems, buttonWidths: currentRowButtonWidths, rowWidth: currentRowWidth, allowWrap: false });
 
     return {
       id: section.id,
@@ -74,8 +90,9 @@ export function computeRowActionGeometry({
     };
   });
 
-  // Calculate actionSetWidth
+  // Calculate actionSetWidth - must be <= contentSafeWidth
   let actionSetWidth = Math.max(...processedSections.flatMap(s => s.rows.map(r => r.rowWidth)), 200);
+  actionSetWidth = Math.min(actionSetWidth, contentSafeWidth);
   
   // 2. Normalize all rows to actionSetWidth
   processedSections = processedSections.map(section => {
@@ -83,12 +100,13 @@ export function computeRowActionGeometry({
         ...section,
         rows: section.rows.map(row => {
             const extra = actionSetWidth - row.rowWidth;
-            const extraPerButton = extra / row.buttonWidths.length;
+            const extraPerButton = row.buttonWidths.length > 0 ? extra / row.buttonWidths.length : 0;
             const newButtonWidths = row.buttonWidths.map(w => w + extraPerButton);
             return {
                 items: row.items,
                 buttonWidths: newButtonWidths,
-                rowWidth: actionSetWidth
+                rowWidth: actionSetWidth,
+                allowWrap: row.allowWrap
             };
         })
     };
