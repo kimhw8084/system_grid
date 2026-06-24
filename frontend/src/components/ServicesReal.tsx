@@ -2136,52 +2136,55 @@ export default function ServicesReal() {
             style={rowActionMenu?.style ?? { position: 'fixed', top: -9999, left: -9999 }}
             className="row-action-menu-container"
           >
-            {rowActionMenu && rowMenuItem ? (
-                            <OperationalRowActionMenu
-                  onClose={() => setRowActionMenu(null)}
-                  meta={`ID ${rowMenuItem.id} · ${rowMenuItem.name}`}
-                  title={rowMenuItem.type || 'Service'}
-                  sections={[
-                    {
-                        id: 'quickAccess',
-                        columns: 2,
-                        items: [
-                            { id: 'details', label: 'Details', icon: Maximize2, tone: 'info', onClick: () => { if (!rowMenuItem?.id) return; detailRoute.openDetail(rowMenuItem, { replace: false }); setRowActionMenu(null); } },
-                            { id: 'edit', label: 'Edit', icon: Edit2, tone: 'success', onClick: () => { if (!rowMenuItem?.id) return; setEditingItem(rowMenuItem); setIsFormOpen(true); setRowActionMenu(null); } }
-                        ]
-                    },
-                    {
-                        id: 'followOptions',
-                        columns: 2,
-                        items: [
-                            { id: 'watch', label: watchIds.includes(rowMenuItem.id) ? 'Unwatch' : 'Watch', icon: watchIds.includes(rowMenuItem.id) ? EyeOff : Eye, tone: 'neutral', onClick: () => { if (!rowMenuItem?.id) return; toggleWatch(rowMenuItem.id); } },
-                            { id: 'favorite', label: favoriteIds.includes(rowMenuItem.id) ? 'Unpin' : 'Pin', icon: Star, tone: 'warning', onClick: () => { if (!rowMenuItem?.id) return; toggleFavorite(rowMenuItem.id); } }
-                        ]
-                    },
-                    {
-                        id: 'archive',
-                        columns: 1,
-                        items: [
-                            ...(activeTab === 'deleted' ? [{ id: 'restore', label: 'Restore', icon: Undo2, tone: 'success', variant: 'inline', onClick: () => { if (!rowMenuItem?.id) return; bulkMutation.mutate({ action: 'restore', ids: [rowMenuItem.id] }); setRowActionMenu(null); } }] : []),
-                            {
-                                id: 'archive',
-                                label: rowDeleteConfirmId === rowMenuItem.id ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm) : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge),
-                                icon: Trash2,
-                                tone: 'danger',
-                                variant: 'inline',
-                                confirming: rowDeleteConfirmId === rowMenuItem.id,
-                                onClick: () => {
-                                    if (!rowMenuItem?.id) return
-                                    if (rowDeleteConfirmId !== rowMenuItem.id) { setRowDeleteConfirmId(rowMenuItem.id); return }
-                                    bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [rowMenuItem.id] });
-                                    setRowActionMenu(null); setRowDeleteConfirmId(null);
-                                }
+            {rowActionMenu && (() => {
+              const item = rowMenuItem
+              const sections: OperationalRowActionSectionModel[] = [
+                {
+                    id: 'quickAccess',
+                    columns: 2,
+                    items: [
+                        { id: 'details', label: 'Details', icon: Maximize2, tone: 'info', onClick: () => { detailRoute.openDetail(item, { replace: false }); setRowActionMenu(null); } },
+                        { id: 'edit', label: 'Edit', icon: Edit2, tone: 'success', onClick: () => { setEditingItem(item); setIsFormOpen(true); setRowActionMenu(null); } }
+                    ]
+                },
+                {
+                    id: 'followOptions',
+                    columns: 2,
+                    items: [
+                        { id: 'watch', label: watchIds.includes(item.id) ? 'Unwatch' : 'Watch', icon: watchIds.includes(item.id) ? EyeOff : Eye, tone: 'neutral', onClick: () => { toggleWatch(item.id); } },
+                        { id: 'favorite', label: favoriteIds.includes(item.id) ? 'Unpin' : 'Pin', icon: Star, tone: 'warning', onClick: () => { toggleFavorite(item.id); } }
+                    ]
+                },
+                {
+                    id: 'archive',
+                    columns: 1,
+                    items: [
+                        ...(activeTab === 'deleted' ? [{ id: 'restore', label: 'Restore', icon: Undo2, tone: 'success', variant: 'inline', onClick: () => { bulkMutation.mutate({ action: 'restore', ids: [item.id] }); setRowActionMenu(null); } }] : []),
+                        {
+                            id: 'archive',
+                            label: rowDeleteConfirmId === item.id ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm) : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge),
+                            icon: Trash2,
+                            tone: 'danger',
+                            variant: 'inline',
+                            confirming: rowDeleteConfirmId === item.id,
+                            onClick: () => {
+                                if (rowDeleteConfirmId !== item.id) { setRowDeleteConfirmId(item.id); return }
+                                bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [item.id] });
+                                setRowActionMenu(null); setRowDeleteConfirmId(null);
                             }
-                        ]
-                    }
-                  ]}
+                        }
+                    ]
+                }
+              ]
+              return (
+                <OperationalRowActionMenu
+                  onClose={() => setRowActionMenu(null)}
+                  meta={`ID ${item.id} · ${item.name}`}
+                  title={item.type || 'Service'}
+                  sections={sections}
                 />
-            ) : null}
+              )
+            })()}
           </OperationalAnchoredPanel>
         </>
       }

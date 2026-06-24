@@ -134,20 +134,21 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     let errorData: any = {};
-    let fullTraceback = null;
+    let rawBody = '';
     try {
-      errorData = await response.json();
-      fullTraceback = errorData.traceback || null;
+      rawBody = await response.clone().text();
+      errorData = JSON.parse(rawBody);
     } catch (e) {
-      errorData = { detail: `API Error ${response.status}: ${response.statusText}` };
+      errorData = { detail: `API Error ${response.status}: ${response.statusText}`, raw: rawBody };
     }
     
     const errorMessage = errorData.detail || errorData.message || `API error: ${response.status}`;
     const error = new Error(errorMessage) as any;
     error.status = response.status;
-    error.traceback = fullTraceback;
+    error.statusText = response.statusText;
     error.data = errorData;
-    error.url = url; // attach URL so we can log it
+    error.rawBody = rawBody.slice(0, 1000); // Capture excerpt
+    error.url = url; 
     throw error;
   }
 

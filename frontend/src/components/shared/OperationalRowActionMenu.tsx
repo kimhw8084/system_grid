@@ -19,8 +19,8 @@ export type OperationalRowActionItem = {
   id: string
   label: string
   icon: any
-  tone?: any
-  variant?: any
+  tone?: string
+  variant?: string
   onClick: () => void
   disabled?: boolean
   confirming?: boolean
