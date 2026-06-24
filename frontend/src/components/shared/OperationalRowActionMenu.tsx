@@ -67,8 +67,6 @@ export function OperationalRowActionMenu({
     cursorY,
   });
 
-  let itemCounter = 0;
-
   return (
     <div ref={panelRef} style={{ position: "fixed", zIndex: 1115, ...geometry.style }}>
       <WorkspaceFloatingPanel
@@ -96,51 +94,41 @@ export function OperationalRowActionMenu({
           </button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto p-3 custom-scrollbar">
-          {geometry.sections.map((section, sectionIdx) => {
-            const originalSection = sections.find(s => s.id === section.id);
-            const sectionItems = originalSection?.items || [];
-            
-            return (
-                <React.Fragment key={section.id}>
-                {section.showTitle && (
-                    <div className="px-1 py-1.5">
-                    <p className="text-[10px] font-semibold text-slate-400">{SECTION_TITLE_MAP[section.id]}</p>
-                    </div>
-                )}
-                <div className="flex flex-col gap-2">
-                    {section.rows.map((row, rowIdx) => {
-                        const rowItems = sectionItems.slice(itemCounter, itemCounter + row.buttonWidths.length);
-                        itemCounter += row.buttonWidths.length;
-                        
-                        return (
-                            <div
-                                key={rowIdx}
-                                className="flex gap-2"
-                                style={{ width: `${geometry.actionSetWidth}px` }}
-                            >
-                                {rowItems.map((item, itemIdx) => (
-                                    <button
-                                        key={item.id}
-                                        type="button"
-                                        onClick={item.onClick}
-                                        disabled={item.disabled}
-                                        className={`flex flex-row items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${item.confirming ? "bg-rose-600 animate-pulse" : ""}`}
-                                        style={{ width: `${row.buttonWidths[itemIdx]}px` }}
-                                    >
-                                        {React.createElement(item.icon, { size: 14, className: `flex-shrink-0 ${TONE_ICON_CLASS[item.tone ?? "neutral"]}` })}
-                                        <span className="whitespace-nowrap text-slate-300">
-                                            {item.confirming ? (item.confirmLabel || "Confirm?") : item.label}
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-                        );
-                    })}
+          {geometry.sections.map((section, sectionIdx) => (
+            <React.Fragment key={section.id}>
+              {section.showTitle && (
+                <div className="px-1 py-1.5">
+                  <p className="text-[10px] font-semibold text-slate-400">{SECTION_TITLE_MAP[section.id]}</p>
                 </div>
-                {sectionIdx < geometry.sections.length - 1 && <div className="my-3 h-px bg-slate-800" />}
-                </React.Fragment>
-            );
-          })}
+              )}
+              <div className="flex flex-col gap-2">
+                {section.rows.map((row, rowIdx) => (
+                  <div
+                    key={rowIdx}
+                    className="flex gap-2"
+                    style={{ width: `${geometry.actionSetWidth}px` }}
+                  >
+                    {row.items.map((item, itemIdx) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={item.onClick}
+                        disabled={item.disabled}
+                        className={`flex flex-row items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${item.confirming ? "bg-rose-600 animate-pulse" : ""}`}
+                        style={{ width: `${row.buttonWidths[itemIdx]}px` }}
+                      >
+                        {React.createElement(item.icon, { size: 14, className: `flex-shrink-0 ${TONE_ICON_CLASS[item.tone ?? "neutral"]}` })}
+                        <span className="whitespace-nowrap text-slate-300">
+                          {item.confirming ? (item.confirmLabel || "Confirm?") : item.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+              {sectionIdx < geometry.sections.length - 1 && <div className="my-3 h-px bg-slate-800" />}
+            </React.Fragment>
+          ))}
         </div>
       </WorkspaceFloatingPanel>
     </div>

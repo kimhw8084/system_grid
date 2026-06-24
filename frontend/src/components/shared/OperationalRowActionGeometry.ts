@@ -1,4 +1,4 @@
-import { OperationalRowActionSectionModel } from "./OperationalRowActionMenu";
+import { OperationalRowActionSectionModel, OperationalRowActionItem } from "./OperationalRowActionMenu";
 
 const CHAR_WIDTH = 8;
 const ICON_WIDTH = 14;
@@ -37,7 +37,8 @@ export function computeRowActionGeometry({
   panelPadding?: number;
 }) {
   const POINT_MENU_CURSOR_GAP = 8;
-  const maxAvailableWidth = viewportWidth - edge * 2 - panelPadding * 2;
+  const viewportSafeWidth = Math.max(0, viewportWidth - edge * 2);
+  const contentSafeWidth = Math.max(0, viewportSafeWidth - panelPadding * 2);
 
   // 1. Initial Calculation (with wrapping)
   let processedSections = sections.map((section) => {
@@ -45,34 +46,37 @@ export function computeRowActionGeometry({
       estimateRowActionButtonWidth(item.label, item.confirmLabel, item.confirming)
     );
     
-    // Attempt wrapping based on maxAvailableWidth
-    const rows: { buttonWidths: number[], rowWidth: number }[] = [];
-    let currentRow: number[] = [];
+    // Attempt wrapping based on contentSafeWidth
+    const rows: { items: OperationalRowActionItem[], buttonWidths: number[], rowWidth: number }[] = [];
+    let currentRowItems: OperationalRowActionItem[] = [];
+    let currentRowButtonWidths: number[] = [];
     let currentRowWidth = 0;
     
-    rawButtonWidths.forEach((w) => {
-        if (currentRow.length > 0 && currentRowWidth + gap + w > maxAvailableWidth) {
-            rows.push({ buttonWidths: currentRow, rowWidth: currentRowWidth });
-            currentRow = [];
+    section.items.forEach((item, idx) => {
+        const w = rawButtonWidths[idx];
+        if (currentRowItems.length > 0 && currentRowWidth + gap + w > contentSafeWidth) {
+            rows.push({ items: currentRowItems, buttonWidths: currentRowButtonWidths, rowWidth: currentRowWidth });
+            currentRowItems = [];
+            currentRowButtonWidths = [];
             currentRowWidth = 0;
         }
-        if (currentRow.length > 0) currentRowWidth += gap;
-        currentRow.push(w);
+        if (currentRowItems.length > 0) currentRowWidth += gap;
+        currentRowItems.push(item);
+        currentRowButtonWidths.push(w);
         currentRowWidth += w;
     });
-    if (currentRow.length > 0) rows.push({ buttonWidths: currentRow, rowWidth: currentRowWidth });
+    if (currentRowItems.length > 0) rows.push({ items: currentRowItems, buttonWidths: currentRowButtonWidths, rowWidth: currentRowWidth });
 
     return {
       id: section.id,
       showTitle: section.id !== "archive",
-      items: section.items,
       rows,
     };
   });
 
   // Calculate actionSetWidth
   let actionSetWidth = Math.max(...processedSections.flatMap(s => s.rows.map(r => r.rowWidth)), 200);
-
+  
   // 2. Normalize all rows to actionSetWidth
   processedSections = processedSections.map(section => {
     return {
@@ -82,6 +86,7 @@ export function computeRowActionGeometry({
             const extraPerButton = extra / row.buttonWidths.length;
             const newButtonWidths = row.buttonWidths.map(w => w + extraPerButton);
             return {
+                items: row.items,
                 buttonWidths: newButtonWidths,
                 rowWidth: actionSetWidth
             };
@@ -89,7 +94,7 @@ export function computeRowActionGeometry({
     };
   });
 
-  const panelWidth = actionSetWidth + panelPadding * 2;
+  const panelWidth = Math.min(actionSetWidth + panelPadding * 2, viewportSafeWidth);
 
   // 3. Panel height calculation
   let panelHeight = HEADER_HEIGHT + BODY_PADDING * 2;
