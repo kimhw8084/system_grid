@@ -9,7 +9,13 @@ import {
 } from 'lucide-react'
 import { apiFetch } from "../api/apiClient"
 import { parseAppDate, formatAppDate } from '../utils/dateUtils'
-import { 
+import {
+  OperationalRowActionMenu,
+  OperationalRowActionSection,
+  OperationalRowActionButton,
+  OperationalRowActionDivider,
+} from './shared/OperationalRowActionMenu'
+import {
   HeaderScopeSwitch,
   ToolbarGroup, 
   ToolbarSearch, 
@@ -2956,46 +2962,29 @@ export default function External() {
             style={rowActionMenu?.style ?? { position: 'fixed', top: -9999, left: -9999 }}
             className="row-action-menu-container"
           >
-            {rowActionMenu ? (
-              <WorkspaceFloatingPanel kind="context" className="overflow-hidden">
-                <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-[10px] font-semibold text-slate-400">Row actions</p>
-                    <p className="pt-1 text-[11px] font-semibold text-slate-100">ID {rowActionMenu.item.id} · {activeTab === 'links' ? rowActionMenu.item.external_entity_name : rowActionMenu.item.name}</p>
-                    <p className="truncate pt-1 text-[12px] text-slate-300">
-                      {activeTab === 'links' ? `Link · ${rowActionMenu.item.protocol} Port ${rowActionMenu.item.port}` : (rowActionMenu.item.type || 'External Peer')}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setRowActionMenu(null)}
-                    className="ml-3 flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-slate-400 transition-all hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
-                    aria-label="Close row actions"
-                  >
-                    <X size={13} />
-                  </button>
-                </div>
-                <div className="max-h-[calc(100vh-180px)] overflow-y-auto p-2.5 custom-scrollbar">
-                  <div className="px-3 py-1">
-                    <p className="text-[10px] font-semibold text-slate-400">Quick access</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 px-2 pb-3 border-b border-slate-800 mb-2">
-                    <button
-                      onClick={() => {
-                        if (activeTab === 'links') {
-                          const ent = allEntities?.find((e: any) => e.id === rowActionMenu.item.external_entity_id)
-                          if (ent) detailRoute.openDetail(ent)
-                        } else {
-                          detailRoute.openDetail(rowActionMenu.item)
-                        }
-                        setRowActionMenu(null)
-                      }}
-                      className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-blue-400 transition-all hover:border-blue-500/30 hover:bg-blue-600/10 active:scale-95"
+            {rowActionMenu && (
+              <OperationalRowActionMenu
+                onClose={() => setRowActionMenu(null)}
+                meta={`ID ${rowActionMenu.item.id} · ${activeTab === 'links' ? rowActionMenu.item.external_entity_name : rowActionMenu.item.name}`}
+                title={activeTab === 'links' ? `Link · ${rowActionMenu.item.protocol} Port ${rowActionMenu.item.port}` : (rowActionMenu.item.type || 'External Peer')}
+              >
+                <OperationalRowActionSection title="Quick access" columns={2}>
+                    <OperationalRowActionButton
+                        onClick={() => {
+                          if (activeTab === 'links') {
+                            const ent = allEntities?.find((e: any) => e.id === rowActionMenu.item.external_entity_id)
+                            if (ent) detailRoute.openDetail(ent)
+                          } else {
+                            detailRoute.openDetail(rowActionMenu.item)
+                          }
+                          setRowActionMenu(null)
+                        }}
                     >
                       <Maximize2 size={14} />
                       Details
-                    </button>
+                    </OperationalRowActionButton>
                     {(activeTab === 'active' || activeTab === 'links') && (
-                      <button
+                      <OperationalRowActionButton
                         onClick={() => {
                           if (activeTab === 'links') {
                             setEditingLink(rowActionMenu.item)
@@ -3005,111 +2994,99 @@ export default function External() {
                           }
                           setRowActionMenu(null)
                         }}
-                        className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-emerald-400 transition-all hover:border-emerald-500/30 hover:bg-emerald-600/10 active:scale-95"
                       >
                         <Edit2 size={14} />
                         Edit
-                      </button>
+                      </OperationalRowActionButton>
                     )}
-                  </div>
+                </OperationalRowActionSection>
 
-                  {activeTab !== 'links' && (
+                {activeTab !== 'links' && (
                     <>
-                      <div className="px-3 py-1">
-                        <p className="text-[10px] font-semibold text-slate-400">Follow options</p>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 px-2 pb-1">
-                        <button
-                          onClick={() => {
-                            toggleWatch(rowActionMenu.item.id)
-                          }}
-                          className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
-                        >
-                          {normalizedWatchIds.includes(Number(rowActionMenu.item.id)) ? (
-                            <>
-                              <EyeOff size={12} className="text-slate-400" />
-                              Unwatch
-                            </>
-                          ) : (
-                            <>
-                              <Eye size={12} className="text-sky-400" />
-                              Watch
-                            </>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => {
-                            toggleFavorite(rowActionMenu.item.id)
-                          }}
-                          className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200 transition-all hover:border-slate-700 hover:bg-slate-900"
-                        >
-                          {normalizedFavoriteIds.includes(Number(rowActionMenu.item.id)) ? (
-                            <>
-                              <Star size={12} className="fill-amber-400 text-amber-400" />
-                              Unpin
-                            </>
-                          ) : (
-                            <>
-                              <Star size={12} className="text-amber-400" />
-                              Pin
-                            </>
-                          )}
-                        </button>
-                      </div>
-                      <div className="mx-2 my-2 h-px bg-slate-800" />
+                        <OperationalRowActionSection title="Follow options" columns={2}>
+                            <OperationalRowActionButton
+                                onClick={() => toggleWatch(rowActionMenu.item.id)}
+                            >
+                                {normalizedWatchIds.includes(Number(rowActionMenu.item.id)) ? (
+                                    <>
+                                        <EyeOff size={14} className="text-slate-400" />
+                                        Unwatch
+                                    </>
+                                ) : (
+                                    <>
+                                        <Eye size={14} className="text-sky-400" />
+                                        Watch
+                                    </>
+                                )}
+                            </OperationalRowActionButton>
+                            <OperationalRowActionButton
+                                onClick={() => toggleFavorite(rowActionMenu.item.id)}
+                            >
+                                {normalizedFavoriteIds.includes(Number(rowActionMenu.item.id)) ? (
+                                    <>
+                                        <Star size={14} className="fill-amber-400 text-amber-400" />
+                                        Unpin
+                                    </>
+                                ) : (
+                                    <>
+                                        <Star size={14} className="text-amber-400" />
+                                        Pin
+                                    </>
+                                )}
+                            </OperationalRowActionButton>
+                        </OperationalRowActionSection>
+                        <OperationalRowActionDivider />
                     </>
-                  )}
-                  
-                  {activeTab === 'deleted' && (
-                    <button
-                      onClick={() => {
-                        restoreMutation.mutate(rowActionMenu.item.id)
-                        setRowActionMenu(null)
-                      }}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300 transition-all hover:bg-emerald-950/80"
-                    >
-                      <Undo2 size={14} />
-                      Restore Entity
-                    </button>
-                  )}
+                )}
 
-                  <button
-                    onClick={() => {
-                      const item = rowActionMenu.item
-                      if (activeTab === 'links') {
-                        if (rowDeleteConfirmId !== item.id) {
-                          setRowDeleteConfirmId(item.id)
-                          return
-                        }
-                        deleteMutation.mutate({ id: item.id, purge: false, type: 'link' })
-                        setRowActionMenu(null)
-                        setRowDeleteConfirmId(null)
-                      } else {
-                        if (rowDeleteConfirmId !== item.id) {
-                          setRowDeleteConfirmId(item.id)
-                          return
-                        }
-                        deleteMutation.mutate({ id: item.id, purge: activeTab === 'deleted', type: 'entity' })
-                        setRowActionMenu(null)
-                        setRowDeleteConfirmId(null)
-                      }
-                    }}
+                {activeTab === 'deleted' && (
+                    <OperationalRowActionButton
+                        layout="inline"
+                        className="text-emerald-300 hover:bg-emerald-950/80"
+                        onClick={() => {
+                            restoreMutation.mutate(rowActionMenu.item.id)
+                            setRowActionMenu(null)
+                        }}
+                    >
+                        <Undo2 size={14} />
+                        Restore Entity
+                    </OperationalRowActionButton>
+                )}
+
+                <OperationalRowActionButton
+                    layout="inline"
+                    className={`text-rose-300 hover:bg-rose-950/80 ${rowDeleteConfirmId === rowActionMenu.item.id ? 'bg-rose-600 text-white animate-pulse' : ''}`}
                     onMouseLeave={() => setRowDeleteConfirmId(null)}
-                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] transition-all ${
-                      rowDeleteConfirmId === rowActionMenu.item.id
-                        ? 'bg-rose-600 text-white animate-pulse'
-                        : 'text-rose-300 hover:bg-rose-950/80'
-                    }`}
-                  >
+                    onClick={() => {
+                        const item = rowActionMenu.item
+                        if (activeTab === 'links') {
+                            if (rowDeleteConfirmId !== item.id) {
+                                setRowDeleteConfirmId(item.id)
+                                return
+                            }
+                            deleteMutation.mutate({ id: item.id, purge: false, type: 'link' })
+                            setRowActionMenu(null)
+                            setRowDeleteConfirmId(null)
+                        } else {
+                            if (rowDeleteConfirmId !== item.id) {
+                                setRowDeleteConfirmId(item.id)
+                                return
+                            }
+                            deleteMutation.mutate({ id: item.id, purge: activeTab === 'deleted', type: 'entity' })
+                            setRowActionMenu(null)
+                            setRowDeleteConfirmId(null)
+                        }
+                    }}
+                >
                     <Trash2 size={14} />
                     {rowDeleteConfirmId === rowActionMenu.item.id
-                      ? (activeTab === 'links' ? 'Confirm Sever Link?' : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : 'Confirm Purge peer?'))
-                      : (activeTab === 'links' ? 'Sever Link' : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge))}
-                  </button>
-                </div>
-              </WorkspaceFloatingPanel>
-            ) : null}
+                        ? (activeTab === 'links' ? 'Confirm Sever Link?' : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : 'Confirm Purge peer?'))
+                        : (activeTab === 'links' ? 'Sever Link' : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge))}
+                </OperationalRowActionButton>
+              </OperationalRowActionMenu>
+            )}
           </OperationalAnchoredPanel>
+        
         </>
       }
     >

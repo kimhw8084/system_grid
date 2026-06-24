@@ -2221,7 +2221,7 @@ export default function MonitoringGrid() {
 
                 <OperationalRowActionDivider />
 
-                <OperationalRowActionSection title="Related destinations" layout="inline" columns={4}>
+                <OperationalRowActionSection title="Follow options" layout="inline" columns={4}>
                   <OperationalRowActionButton
                     layout="inline"
                     onClick={() => {
