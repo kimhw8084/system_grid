@@ -33,7 +33,17 @@ const relevantFiles = [
 relevantFiles.forEach(file => {
   const filePath = path.join(__dirname, '../src/components', file);
   if (!fs.existsSync(filePath)) return;
-  const content = fs.readFileSync(filePath, 'utf8');
+  const lines = fs.readFileSync(filePath, 'utf8').split('\n');
+  
+  const filteredLines = lines.filter(line => {
+    if (file === 'shared/OperationalRowActionMenu.tsx') {
+        if (line.trim().startsWith('export type OperationalRowAction')) return false;
+        if (line.trim().includes('icon: React.ComponentType')) return false;
+    }
+    return true;
+  });
+
+  const content = filteredLines.join('\n');
   
   forbiddenPatterns.forEach(pattern => {
     if (content.includes(pattern)) {

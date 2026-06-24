@@ -15,7 +15,7 @@ export type OperationalRowActionVariant = 'tile' | 'inline'
 export type OperationalRowActionItem = {
   id: string
   label: string
-  icon: React.ElementType
+  icon: React.ComponentType<{ size?: number | string; className?: string }>
   tone?: OperationalRowActionTone
   variant?: OperationalRowActionVariant
   onClick: () => void
