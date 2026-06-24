@@ -2967,7 +2967,7 @@ export default function External() {
               const sections: OperationalRowActionSectionModel[] = [
                 {
                     id: 'quickAccess',
-                    columns: 2,
+                    columns: 2 as 2,
                     items: [
                         {
                             id: 'details',
@@ -3003,7 +3003,7 @@ export default function External() {
                 },
                 ...(activeTab !== 'links' ? [{
                     id: 'followOptions' as const,
-                    columns: 2,
+                    columns: 2 as 2,
                     items: [
                         {
                             id: 'watch',
@@ -3023,7 +3023,7 @@ export default function External() {
                 }] : []),
                 {
                     id: 'archive',
-                    columns: 1,
+                    columns: 1 as 1,
                     items: [
                         ...(activeTab === 'deleted' ? [{
                             id: 'restore',

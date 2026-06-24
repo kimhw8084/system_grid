@@ -3,6 +3,38 @@ import { useWorkspaceDismissHandlers } from './OperationalWorkspaceHooks'
 
 export const FLOATING_PANEL_EDGE = 16
 
+export function computeFloatingPanelRect({
+  x,
+  y,
+  preferredWidth,
+  preferredHeight,
+  viewportWidth,
+  viewportHeight,
+  edge,
+}: {
+  x: number
+  y: number
+  preferredWidth: number
+  preferredHeight: number
+  viewportWidth: number
+  viewportHeight: number
+  edge: number
+}): {
+  left: number
+  top: number
+  width: number
+  maxHeight: number
+} {
+  const viewportSafeWidth = Math.max(0, viewportWidth - edge * 2)
+  const viewportSafeHeight = Math.max(0, viewportHeight - edge * 2)
+  const width = Math.min(preferredWidth, viewportSafeWidth)
+  const maxHeight = Math.min(preferredHeight, viewportSafeHeight)
+  const left = Math.min(Math.max(x, edge), Math.max(edge, viewportWidth - width - edge))
+  const top = Math.min(Math.max(y, edge), Math.max(edge, viewportHeight - maxHeight - edge))
+
+  return { left, top, width, maxHeight }
+}
+
 export function shouldIgnoreRowSelection(target: EventTarget | null) {
   const element = target as HTMLElement | null
   if (!element) return false
@@ -57,40 +89,31 @@ export const getPointFloatingStyle = ({
   width,
   height,
   zIndex,
-  offset = 0
 }: {
   x: number
   y: number
   width: number
   height: number
   zIndex: number
-  offset?: number
 }) => {
-  const vW = window.innerWidth
-  const vH = window.innerHeight
+  const rect = computeFloatingPanelRect({
+    x,
+    y,
+    preferredWidth: width,
+    preferredHeight: height,
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight,
+    edge: FLOATING_PANEL_EDGE,
+  })
 
-  const style: any = {
+  return {
     position: 'fixed' as const,
-    width,
-    maxHeight: `calc(100vh - ${FLOATING_PANEL_EDGE * 2}px)`,
-    zIndex
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    maxHeight: rect.maxHeight,
+    zIndex,
   }
-
-  // Horizontal positioning
-  if (x + width > vW - FLOATING_PANEL_EDGE) {
-    style.right = vW - x
-  } else {
-    style.left = Math.max(FLOATING_PANEL_EDGE, x)
-  }
-
-  // Vertical positioning
-  if (y + height > vH - FLOATING_PANEL_EDGE) {
-    style.bottom = vH - y
-  } else {
-    style.top = Math.max(FLOATING_PANEL_EDGE, y)
-  }
-
-  return style
 }
 
 export function useOperationalRowInteractions({
@@ -147,10 +170,13 @@ export function useOperationalRowInteractions({
   }
 }
 
+export const ROW_ACTION_PREFERRED_WIDTH = 560
+export const ROW_ACTION_PREFERRED_HEIGHT = 520
+
 export function useOperationalContextMenu({
   onOpenRowActionMenu,
-  menuWidth = 336,
-  menuHeight = 432
+  menuWidth = ROW_ACTION_PREFERRED_WIDTH,
+  menuHeight = ROW_ACTION_PREFERRED_HEIGHT
 }: {
   onOpenRowActionMenu: (item: any, style: any) => void
   menuWidth?: number
@@ -166,6 +192,7 @@ export function useOperationalContextMenu({
     })
     onOpenRowActionMenu(item, style)
   }, [onOpenRowActionMenu, menuWidth, menuHeight])
+
 
   const handleCellContextMenu = useCallback((e: any) => {
     if (!e?.data || shouldIgnoreRowSelection(e.event?.target)) return

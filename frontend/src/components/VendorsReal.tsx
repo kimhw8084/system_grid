@@ -20,6 +20,12 @@ import { History as HistoryIcon2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { showWorkspaceToast } from './shared/WorkspaceToast'
+import {
+  computeFloatingPanelRect,
+  ROW_ACTION_PREFERRED_WIDTH,
+  ROW_ACTION_PREFERRED_HEIGHT,
+  FLOATING_PANEL_EDGE,
+} from './shared/OperationalGridInteractions'
 import { apiFetch } from '../api/apiClient'
 import { formatAppDate, formatAppTime, formatAppDay, parseAppDate } from '../utils/dateUtils'
 import { AppDropdown } from './shared/AppDropdown'
@@ -94,7 +100,7 @@ const VENDOR_PERSISTED_COLUMN_IDS = new Set([
   'personnel_count', 'created_at', 'updated_at', 'row_actions',
 ])
 const VENDOR_VALID_GROUP_BY = new Set(['raw', 'country'])
-const FLOATING_PANEL_EDGE = 16
+// 
 
 // ---------------------------------------------------------------------------
 // Helper utilities
@@ -201,14 +207,37 @@ const getAnchoredFloatingStyle = ({ rect, width, height, zIndex, offset = 4 }: {
   return { position: 'fixed' as const, top: Math.floor(top), left: Math.floor(left), width, maxHeight: `calc(100vh - ${FLOATING_PANEL_EDGE * 2}px)`, zIndex }
 }
 
-const getPointFloatingStyle = ({ x, y, width, height, zIndex, offset = 0 }: {
-  x: number; y: number; width: number; height: number; zIndex: number; offset?: number
+const getPointFloatingStyle = ({
+  x,
+  y,
+  width,
+  height,
+  zIndex,
+}: {
+  x: number
+  y: number
+  width: number
+  height: number
+  zIndex: number
 }) => {
-  const vW = window.innerWidth, vH = window.innerHeight
-  const style: any = { position: 'fixed' as const, width, maxHeight: `calc(100vh - ${FLOATING_PANEL_EDGE * 2}px)`, zIndex }
-  if (x + width > vW - FLOATING_PANEL_EDGE) { style.right = vW - x } else { style.left = Math.max(FLOATING_PANEL_EDGE, x) }
-  if (y + height > vH - FLOATING_PANEL_EDGE) { style.bottom = vH - y } else { style.top = Math.max(FLOATING_PANEL_EDGE, y) }
-  return style
+  const rect = computeFloatingPanelRect({
+    x,
+    y,
+    preferredWidth: width,
+    preferredHeight: height,
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight,
+    edge: FLOATING_PANEL_EDGE,
+  })
+
+  return {
+    position: 'fixed' as const,
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    maxHeight: rect.maxHeight,
+    zIndex,
+  }
 }
 
 const getVendorGroupValue = (item: any, field: string) => {
@@ -510,8 +539,12 @@ export default function VendorsReal() {
   const handleRowId = useCallback((params: any) => String(params.data.id), [])
 
   const openRowActionMenuAtPoint = useCallback((item: any, x: number, y: number) => {
-    setRowActionMenu({ item, style: getPointFloatingStyle({ x, y, width: 300, height: 380, zIndex: 1115 }) })
+    setRowActionMenu({
+      item,
+      style: getPointFloatingStyle({ x, y, width: ROW_ACTION_PREFERRED_WIDTH, height: ROW_ACTION_PREFERRED_HEIGHT, zIndex: 1115 })
+    })
   }, [])
+
   const handleCellContextMenu = useCallback((e: any) => {
     if (!e?.data) return
     const mouseEvent = e.event as MouseEvent

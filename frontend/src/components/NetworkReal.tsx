@@ -16,6 +16,12 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { showWorkspaceToast } from './shared/WorkspaceToast'
+import {
+  computeFloatingPanelRect,
+  ROW_ACTION_PREFERRED_WIDTH,
+  ROW_ACTION_PREFERRED_HEIGHT,
+  FLOATING_PANEL_EDGE,
+} from './shared/OperationalGridInteractions'
 import { apiFetch } from '../api/apiClient'
 import { formatAppDate, formatAppTime, formatAppDay, parseAppDate } from '../utils/dateUtils'
 import { AppDropdown } from './shared/AppDropdown'
@@ -330,7 +336,7 @@ const slugifyViewId = (value: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || `view-${Date.now()}`
 
-const FLOATING_PANEL_EDGE = 16
+// 
 
 const getAnchoredFloatingStyle = ({
   rect,
@@ -375,40 +381,31 @@ const getPointFloatingStyle = ({
   width,
   height,
   zIndex,
-  offset = 0
 }: {
   x: number
   y: number
   width: number
   height: number
   zIndex: number
-  offset?: number
 }) => {
-  const vW = window.innerWidth
-  const vH = window.innerHeight
+  const rect = computeFloatingPanelRect({
+    x,
+    y,
+    preferredWidth: width,
+    preferredHeight: height,
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight,
+    edge: FLOATING_PANEL_EDGE,
+  })
 
-  const style: any = {
+  return {
     position: 'fixed' as const,
-    width,
-    maxHeight: `calc(100vh - ${FLOATING_PANEL_EDGE * 2}px)`,
-    zIndex
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    maxHeight: rect.maxHeight,
+    zIndex,
   }
-
-  // Horizontal positioning
-  if (x + width > vW - FLOATING_PANEL_EDGE) {
-    style.right = vW - x
-  } else {
-    style.left = Math.max(FLOATING_PANEL_EDGE, x)
-  }
-
-  // Vertical positioning
-  if (y + height > vH - FLOATING_PANEL_EDGE) {
-    style.bottom = vH - y
-  } else {
-    style.top = Math.max(FLOATING_PANEL_EDGE, y)
-  }
-
-  return style
 }
 
 // Isolated component to prevent UI state changes (menus) from triggering AgGrid recalculations
@@ -960,7 +957,7 @@ export default function NetworkReal() {
   const openRowActionMenuAtPoint = useCallback((item: any, x: number, y: number) => {
     setRowActionMenu({
       item,
-      style: getPointFloatingStyle({ x, y, width: 336, height: 432, zIndex: 1115 })
+      style: getPointFloatingStyle({ x, y, width: ROW_ACTION_PREFERRED_WIDTH, height: ROW_ACTION_PREFERRED_HEIGHT, zIndex: 1115 })
     })
   }, [])
 

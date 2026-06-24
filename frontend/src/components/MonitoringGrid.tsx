@@ -1,5 +1,5 @@
 import { BkmListModal, BkmDetailModal, MonitoringForm } from './monitoring/Modals'
-import DataStatusPill, { DataDiagnosticModal, classifyDataStatus, normalizeOperationalListResponse } from './shared/OperationalDataStatus'
+import DiagnosticStatusPill, { DataDiagnosticModal, classifyDataStatus, normalizeOperationalListResponse } from './shared/OperationalDataStatus'
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
@@ -1877,7 +1877,7 @@ export default function MonitoringGrid() {
             />
             {isError && (
               <>
-                <DataStatusPill 
+                <DiagnosticStatusPill 
                     status="error" 
                     errorDetail={{ status: (error as any)?.status }} 
                     onClick={() => setShowMonitoringDataDiagnostic(true)} 
@@ -2111,7 +2111,7 @@ export default function MonitoringGrid() {
               const sections: OperationalRowActionSectionModel[] = [
                 {
                     id: 'quickAccess',
-                    columns: 5,
+                    columns: 5 as 5,
                     items: [
                         { id: 'details', label: 'Details', icon: Maximize2, tone: 'info', onClick: () => { detailRoute.openDetail(item); setRowActionMenu(null); } },
                         { id: 'edit', label: 'Edit', icon: Edit2, tone: 'success', onClick: () => { setEditingItem(item); setIsFormOpen(true); setRowActionMenu(null); } },
@@ -2122,7 +2122,7 @@ export default function MonitoringGrid() {
                 },
                 {
                     id: 'followOptions',
-                    columns: 2,
+                    columns: 2 as 2,
                     items: [
                         { id: 'watch', label: watchIds.includes(item.id) ? 'Unwatch' : 'Watch', icon: watchIds.includes(item.id) ? EyeOff : Eye, tone: 'neutral', onClick: () => toggleWatch(item.id) },
                         { id: 'favorite', label: favoriteIds.includes(item.id) ? 'Unpin' : 'Pin', icon: Star, tone: 'warning', onClick: () => toggleFavorite(item.id) }
@@ -2130,7 +2130,7 @@ export default function MonitoringGrid() {
                 },
                 {
                     id: 'archive',
-                    columns: 1,
+                    columns: 1 as 1,
                     items: [
                         ...(activeTab === 'deleted' ? [{ id: 'restore', label: 'Restore', icon: Undo2, tone: 'success', variant: 'inline', onClick: () => { bulkMutation.mutate({ action: 'restore', ids: [item.id] }); setRowActionMenu(null); } }] : []),
                         {

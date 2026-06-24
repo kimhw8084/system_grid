@@ -2141,7 +2141,7 @@ export default function ServicesReal() {
               const sections: OperationalRowActionSectionModel[] = [
                 {
                     id: 'quickAccess',
-                    columns: 2,
+                    columns: 2 as 2,
                     items: [
                         { id: 'details', label: 'Details', icon: Maximize2, tone: 'info', onClick: () => { detailRoute.openDetail(item, { replace: false }); setRowActionMenu(null); } },
                         { id: 'edit', label: 'Edit', icon: Edit2, tone: 'success', onClick: () => { setEditingItem(item); setIsFormOpen(true); setRowActionMenu(null); } }
@@ -2149,7 +2149,7 @@ export default function ServicesReal() {
                 },
                 {
                     id: 'followOptions',
-                    columns: 2,
+                    columns: 2 as 2,
                     items: [
                         { id: 'watch', label: watchIds.includes(item.id) ? 'Unwatch' : 'Watch', icon: watchIds.includes(item.id) ? EyeOff : Eye, tone: 'neutral', onClick: () => { toggleWatch(item.id); } },
                         { id: 'favorite', label: favoriteIds.includes(item.id) ? 'Unpin' : 'Pin', icon: Star, tone: 'warning', onClick: () => { toggleFavorite(item.id); } }
@@ -2157,7 +2157,7 @@ export default function ServicesReal() {
                 },
                 {
                     id: 'archive',
-                    columns: 1,
+                    columns: 1 as 1,
                     items: [
                         ...(activeTab === 'deleted' ? [{ id: 'restore', label: 'Restore', icon: Undo2, tone: 'success', variant: 'inline', onClick: () => { bulkMutation.mutate({ action: 'restore', ids: [item.id] }); setRowActionMenu(null); } }] : []),
                         {
