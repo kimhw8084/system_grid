@@ -173,12 +173,14 @@ export function WorkspaceFloatingPanel({
   children,
   className = '',
   kind = 'menu',
+  style,
 }: {
   children: React.ReactNode
   className?: string
   kind?: 'menu' | 'context' | 'detail'
+  style?: React.CSSProperties
 }) {
-  return <div className={join(getWorkspaceFloatingPanelClass(kind), className)}>{children}</div>
+  return <div className={join(getWorkspaceFloatingPanelClass(kind), className)} style={style}>{children}</div>
 }
 
 export function WorkspaceSectionBadge({

@@ -1,15 +1,7 @@
-import React from 'react'
+import React, { useLayoutEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 
 import { WorkspaceFloatingPanel } from './OperationalWorkspacePrimitives'
-
-const columnClassMap = {
-  1: 'grid-cols-1',
-  2: 'grid-cols-2',
-  3: 'grid-cols-3',
-  4: 'grid-cols-4',
-  5: 'grid-cols-5',
-}
 
 export function OperationalRowActionMenu({
   meta,
@@ -22,8 +14,22 @@ export function OperationalRowActionMenu({
   onClose: () => void
   children: React.ReactNode
 }) {
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [minButtonWidth, setMinButtonWidth] = useState(0)
+
+  useLayoutEffect(() => {
+    if (!menuRef.current) return
+    const buttons = menuRef.current.querySelectorAll('button[data-row-action-button="true"]')
+    let max = 0
+    buttons.forEach((btn) => {
+        const width = (btn as HTMLElement).getBoundingClientRect().width
+        if (width > max) max = width
+    })
+    if (max > 0) setMinButtonWidth(max)
+  }, [children])
+
   return (
-    <WorkspaceFloatingPanel kind="context" className="max-w-[calc(100vw-24px)] overflow-hidden">
+    <WorkspaceFloatingPanel kind="context" className="max-w-[calc(100vw-24px)] overflow-hidden" style={{ '--row-action-button-min-width': `${minButtonWidth}px` } as React.CSSProperties}>
       <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
         <div className="min-w-0">
           <p className="truncate text-[10px] font-semibold text-slate-400">Row actions</p>
@@ -39,7 +45,7 @@ export function OperationalRowActionMenu({
           <X size={13} />
         </button>
       </div>
-      <div className="max-h-[calc(100vh-180px)] overflow-y-auto p-2.5 custom-scrollbar">
+      <div ref={menuRef} className="max-h-[calc(100vh-180px)] overflow-y-auto p-2.5 custom-scrollbar">
         {children}
       </div>
     </WorkspaceFloatingPanel>
@@ -60,7 +66,12 @@ export function OperationalRowActionSection({
       <div className="px-3 py-1">
         <p className="text-[10px] font-semibold text-slate-400">{title}</p>
       </div>
-      <div className={`grid ${columnClassMap[columns]} gap-2 px-2 pb-3`}>
+      <div
+        className="grid gap-2 px-2 pb-3"
+        style={{
+            gridTemplateColumns: `repeat(${columns}, minmax(var(--row-action-button-min-width), 1fr))`
+        }}
+      >
         {children}
       </div>
     </>
@@ -80,8 +91,9 @@ export function OperationalRowActionButton({
   return (
     <button
       type="button"
+      data-row-action-button="true"
       {...props}
-      className={`flex w-full items-center gap-2 rounded-lg border border-slate-800 bg-slate-950 transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 justify-center ${
+      className={`flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950 transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 justify-center ${
         layout === 'tile'
           ? 'flex-col py-3 text-[9px] font-black uppercase tracking-[0.1em]'
           : 'px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em]'
