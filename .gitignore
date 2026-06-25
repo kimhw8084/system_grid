@@ -32,3 +32,14 @@ check_load_error.mjs
 frontend/coverage/
 backend/*.log
 backend/critical_failures.log
+
+# local review/export artifacts
+*.zip
+Copy of *.zip
+frontend-debug-lean.zip
+
+# local test/debug artifacts
+test-results/
+playwright-report/
+*.log
+.DS_Store
