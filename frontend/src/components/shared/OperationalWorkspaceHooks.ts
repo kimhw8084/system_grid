@@ -308,6 +308,59 @@ export function useOperationalSelection(initialSelectedIds: number[] = []) {
   };
 }
 
+export function useOperationalSavedViews<TView extends { id: string }>(
+  initialViews: TView[],
+  initialActiveViewId: string | null,
+  onViewsChange?: (views: TView[]) => void,
+  onActiveViewIdChange?: (id: string | null) => void
+) {
+  const [views, setViews] = useState<TView[]>(initialViews)
+  const [activeViewId, setActiveViewId] = useState<string | null>(initialActiveViewId)
+
+  const activeView = useMemo(() => {
+    return views.find((view) => view.id === activeViewId) || null
+  }, [views, activeViewId])
+
+  const setViewsAndPersist = useCallback((newViews: TView[] | ((prev: TView[]) => TView[])) => {
+    setViews((prev) => {
+      const next = typeof newViews === 'function' ? newViews(prev) : newViews
+      onViewsChange?.(next)
+      return next
+    })
+  }, [onViewsChange])
+
+  const setActiveViewIdAndPersist = useCallback((id: string | null) => {
+    setActiveViewId(id)
+    onActiveViewIdChange?.(id)
+  }, [onActiveViewIdChange])
+
+  const setView = useCallback((view: TView) => {
+    setViewsAndPersist((prev) => prev.map((v) => (v.id === view.id ? view : v)))
+  }, [setViewsAndPersist])
+
+  const addView = useCallback((view: TView) => {
+    setViewsAndPersist((prev) => [...prev, view])
+  }, [setViewsAndPersist])
+
+  const removeView = useCallback((id: string) => {
+    setViewsAndPersist((prev) => prev.filter((v) => v.id !== id))
+    if (activeViewId === id) {
+      setActiveViewIdAndPersist(null)
+    }
+  }, [activeViewId, setActiveViewIdAndPersist, setViewsAndPersist])
+
+  return {
+    views,
+    setViews: setViewsAndPersist,
+    activeViewId,
+    setActiveViewId: setActiveViewIdAndPersist,
+    activeView,
+    setView,
+    addView,
+    removeView,
+  }
+}
+
 export function useOperationalGridRuntime({
   initialColumnLayoutState,
   hasSavedViewWidths,

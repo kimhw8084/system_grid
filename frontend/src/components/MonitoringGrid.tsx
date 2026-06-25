@@ -66,6 +66,7 @@ import {
   useWorkspaceSessionValue,
   useOperationalDetailRoute,
   useOperationalSelection,
+  useOperationalSavedViews
 } from './shared/OperationalWorkspaceHooks'
 import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } from './shared/WorkspaceModalShells'
 import { OperationalImportModal } from './shared/OperationalImportModal'
@@ -567,13 +568,28 @@ export default function MonitoringGrid() {
     initialQuickFilters: persistedUiState?.quickFilters ?? { status: [] as string[], severity: [] as string[], platform: [] as string[], owner: [] as string[] },
   })
   const [gridSortModel, setGridSortModel] = useState<any[]>([{ colId: 'favorite', sort: 'desc' }])
-  const [savedViews, setSavedViews] = usePersistentJsonState<any[]>(MONITORING_VIEW_STORAGE_KEY, () => {
+  const [persistedViews, setPersistedViews] = usePersistentJsonState<any[]>(MONITORING_VIEW_STORAGE_KEY, () => {
     return initialWorkspaceState?.savedViews ?? normalizeMonitoringSavedViews([])
   })
-  const [activeViewId, setActiveViewId] = useWorkspaceSessionValue<string | null>(
+  const [persistedActiveViewId, setPersistedActiveViewId] = useWorkspaceSessionValue<string | null>(
     'sysgrid_monitoring_session_init',
     null,
     () => initialWorkspaceState?.activeViewId ?? (typeof window === 'undefined' ? null : window.localStorage.getItem(MONITORING_ACTIVE_VIEW_KEY))
+  )
+  const {
+    views: savedViews,
+    setViews: setSavedViews,
+    activeViewId,
+    setActiveViewId,
+    activeView,
+    setView,
+    addView,
+    removeView,
+  } = useOperationalSavedViews<any>(
+    persistedViews,
+    persistedActiveViewId,
+    setPersistedViews,
+    setPersistedActiveViewId
   )
   const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>(MONITORING_FAVORITES_STORAGE_KEY, initialWorkspaceState?.favoriteIds ?? [])
   const [watchIds, setWatchIds] = usePersistentJsonState<number[]>(MONITORING_WATCH_STORAGE_KEY, initialWorkspaceState?.watchIds ?? [])
@@ -1224,24 +1240,14 @@ export default function MonitoringGrid() {
       `Delete View: ${view.name}?`,
       "Are you sure you want to permanently remove this saved layout?",
       () => {
-        const nextViews = savedViews.filter((v) => v.id !== viewId)
-        setSavedViews(nextViews)
-        if (activeViewId === viewId) {
-          setActiveViewId(null)
-          if (typeof window !== 'undefined') {
-             window.localStorage.removeItem(MONITORING_ACTIVE_VIEW_KEY)
-          }
-        }
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
-        }
+        const previousSavedViews = savedViews
+        const previousActiveViewId = activeViewId
+        
+        removeView(viewId)
+        
         showWorkspaceRevertToast(`Deleted view ${view.name}`, () => {
-          setSavedViews(savedViews)
-          setActiveViewId(activeViewId)
-          if (typeof window !== 'undefined') {
-            window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(savedViews))
-            if (activeViewId) window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, activeViewId)
-          }
+          setSavedViews(previousSavedViews)
+          setActiveViewId(previousActiveViewId)
         })
       }
     )
