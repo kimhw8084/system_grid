@@ -60,6 +60,7 @@ import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, Tool
 import {
   OPERATIONAL_GRID_LAYOUT_POLICIES,
   useOperationalGridRuntime,
+  useOperationalWorkspaceController,
   usePersistentJsonState,
   useWorkspaceDismissHandlers,
   useWorkspaceSessionValue,
@@ -548,7 +549,15 @@ export default function MonitoringGrid() {
   const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<number | null>(null)
   const [rowActionMenu, setRowActionMenu] = useState<{ item: any; point: { x: number; y: number } } | null>(null)
   const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
-  const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
+  const {
+    filterModel: gridFilterModel,
+    setFilterModel: setGridFilterModel,
+    quickFilters,
+    setQuickFilters,
+  } = useOperationalWorkspaceController({
+    initialFilterModel: {},
+    initialQuickFilters: persistedUiState?.quickFilters ?? { status: [] as string[], severity: [] as string[], platform: [] as string[], owner: [] as string[] },
+  })
   const [gridSortModel, setGridSortModel] = useState<any[]>([{ colId: 'favorite', sort: 'desc' }])
   const [savedViews, setSavedViews] = usePersistentJsonState<any[]>(MONITORING_VIEW_STORAGE_KEY, () => {
     return initialWorkspaceState?.savedViews ?? normalizeMonitoringSavedViews([])
@@ -560,7 +569,6 @@ export default function MonitoringGrid() {
   )
   const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>(MONITORING_FAVORITES_STORAGE_KEY, initialWorkspaceState?.favoriteIds ?? [])
   const [watchIds, setWatchIds] = usePersistentJsonState<number[]>(MONITORING_WATCH_STORAGE_KEY, initialWorkspaceState?.watchIds ?? [])
-  const [quickFilters, setQuickFilters] = useState(persistedUiState?.quickFilters ?? { status: [] as string[], severity: [] as string[], platform: [] as string[], owner: [] as string[] })
   const [searchTerm, setSearchTerm] = useState(persistedUiState?.searchTerm ?? '')
   const [groupBy, setGroupBy] = useState<string>(persistedUiState?.groupBy ?? 'raw')
   const [bulkDraft, setBulkDraft] = useState({ status: '', severity: '', notification_method: '' })

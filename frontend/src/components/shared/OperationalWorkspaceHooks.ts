@@ -263,6 +263,24 @@ export function useOperationalGridController({
   }
 }
 
+export function useOperationalWorkspaceController<TFilters = any, TQuickFilters = any>({
+  initialFilterModel,
+  initialQuickFilters,
+}: {
+  initialFilterModel?: TFilters;
+  initialQuickFilters?: TQuickFilters;
+}) {
+  const [filterModel, setFilterModel] = useState<TFilters>(initialFilterModel ?? ({} as TFilters));
+  const [quickFilters, setQuickFilters] = useState<TQuickFilters>(initialQuickFilters ?? ({} as TQuickFilters));
+
+  return {
+    filterModel,
+    setFilterModel,
+    quickFilters,
+    setQuickFilters,
+  };
+}
+
 export function useOperationalGridRuntime({
   initialColumnLayoutState,
   hasSavedViewWidths,
