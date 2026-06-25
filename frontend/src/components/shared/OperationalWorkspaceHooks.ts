@@ -292,6 +292,10 @@ export function useOperationalSelection(initialSelectedIds: number[] = []) {
     return selectedIds.includes(id);
   }, [selectedIds]);
 
+  const hasSelection = useCallback(() => {
+    return selectedIds.length > 0;
+  }, [selectedIds]);
+
   const selectedCount = useMemo(() => selectedIds.length, [selectedIds]);
 
   return {
@@ -299,6 +303,7 @@ export function useOperationalSelection(initialSelectedIds: number[] = []) {
     setSelectedIds,
     clearSelection,
     isSelected,
+    hasSelection,
     selectedCount,
   };
 }

@@ -543,6 +543,9 @@ export default function MonitoringGrid() {
     selectedIds,
     setSelectedIds,
     clearSelection,
+    isSelected,
+    hasSelection,
+    selectedCount,
   } = useOperationalSelection([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
@@ -830,7 +833,7 @@ export default function MonitoringGrid() {
   }, [buildMonitoringWorkspacePreferencePayload, hasUserSettings])
 
   useEffect(() => {
-    setSelectedIds([])
+    clearSelection()
     groupSelectionsRef.current = {}
   }, [groupBy])
 
@@ -971,7 +974,7 @@ export default function MonitoringGrid() {
   }, [])
 
   const openCompare = () => {
-    if (selectedIds.length < 2 || selectedIds.length > 5) return
+    if (selectedCount < 2 || selectedCount > 5) return
     setCompareOpen(true)
   }
 
@@ -1447,8 +1450,8 @@ export default function MonitoringGrid() {
   }, [autoSizeMonitoringColumns, displayedItemsInOrder, fontSize, hiddenColumns, isIntelligenceExpanded])
 
   const selectedItems = useMemo(
-    () => displayedItems.filter((item: any) => selectedIds.includes(item.id)),
-    [displayedItems, selectedIds]
+    () => displayedItems.filter((item: any) => isSelected(item.id)),
+    [displayedItems, selectedIds, isSelected]
   )
 
   const compareItems = useMemo(() => selectedItems.slice(0, 5), [selectedItems])
@@ -1535,17 +1538,17 @@ export default function MonitoringGrid() {
   }, [activeViewId, items.length])
 
   useEffect(() => {
-    if (!gridRef.current?.api || !selectedIds.length) return
+    if (!gridRef.current?.api || !hasSelection()) return
     gridRef.current.api.forEachNode((node: any) => {
-      node.setSelected(selectedIds.includes(node.data?.id))
+      node.setSelected(isSelected(node.data?.id))
     })
-  }, [displayedItems, selectedIds])
+  }, [displayedItems, selectedIds, isSelected])
 
   useEffect(() => {
-    if (selectedIds.length === 0) {
+    if (!hasSelection()) {
       setShowBulkMenu(false)
     }
-  }, [selectedIds.length])
+  }, [hasSelection])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -1881,7 +1884,7 @@ export default function MonitoringGrid() {
               value={activeTab}
               onChange={(next) => {
                 setActiveTab(next as 'active' | 'deleted')
-                setSelectedIds([])
+                clearSelection()
               }}
               options={[
                 { label: 'Existing', value: 'active' },
@@ -2021,7 +2024,7 @@ export default function MonitoringGrid() {
           {MONITORING_SUPPORTS_COMPARE && (
             <ToolbarButton
               onClick={openCompare}
-              disabled={selectedIds.length < 2 || selectedIds.length > 5}
+              disabled={selectedCount < 2 || selectedCount > 5}
               active={compareOpen}
               title="Compare selected monitors"
             >
@@ -2033,7 +2036,7 @@ export default function MonitoringGrid() {
           )}
           <ToolbarButton
             onClick={toggleBulkWindow}
-            disabled={selectedIds.length === 0}
+            disabled={!hasSelection()}
             active={showBulkMenu}
             title="Bulk actions"
             className="bulk-menu-trigger"
@@ -2228,7 +2231,7 @@ export default function MonitoringGrid() {
           }
           sections={groupedSections.map((section) => {
             const isCollapsed = collapsedGroups[section.key]
-            const selectedCount = section.items.filter((item: any) => selectedIds.includes(item.id)).length
+            const selectedCount = section.items.filter((item: any) => isSelected(item.id)).length
             return (
               <OperationalGroupedGridSection
                 key={section.key}
@@ -2272,7 +2275,7 @@ export default function MonitoringGrid() {
         isNotifyOpen={isBulkNotifyOpen}
         onClose={() => { setIsBulkStatusOpen(false); setIsBulkSeverityOpen(false); setIsBulkNotifyOpen(false); }}
         onApply={(action, val) => bulkMutation.mutate({ action: 'update', payload: { [action]: val } })}
-        count={selectedIds.length}
+        count={selectedCount}
         severities={severities}
         notificationMethods={notificationMethods}
       />
