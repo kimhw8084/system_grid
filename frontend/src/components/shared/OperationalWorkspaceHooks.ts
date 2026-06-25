@@ -281,6 +281,28 @@ export function useOperationalWorkspaceController<TFilters = any, TQuickFilters 
   };
 }
 
+export function useOperationalSelection(initialSelectedIds: number[] = []) {
+  const [selectedIds, setSelectedIds] = useState<number[]>(initialSelectedIds);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds([]);
+  }, []);
+
+  const isSelected = useCallback((id: number) => {
+    return selectedIds.includes(id);
+  }, [selectedIds]);
+
+  const selectedCount = useMemo(() => selectedIds.length, [selectedIds]);
+
+  return {
+    selectedIds,
+    setSelectedIds,
+    clearSelection,
+    isSelected,
+    selectedCount,
+  };
+}
+
 export function useOperationalGridRuntime({
   initialColumnLayoutState,
   hasSavedViewWidths,

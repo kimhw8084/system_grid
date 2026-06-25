@@ -65,6 +65,7 @@ import {
   useWorkspaceDismissHandlers,
   useWorkspaceSessionValue,
   useOperationalDetailRoute,
+  useOperationalSelection,
 } from './shared/OperationalWorkspaceHooks'
 import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } from './shared/WorkspaceModalShells'
 import { OperationalImportModal } from './shared/OperationalImportModal'
@@ -538,7 +539,11 @@ export default function MonitoringGrid() {
   const [isBulkEditDirty, setIsBulkEditDirty] = useState(false)
   const [isConfigDirty, setIsConfigDirty] = useState(false)
   
-  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const {
+    selectedIds,
+    setSelectedIds,
+    clearSelection,
+  } = useOperationalSelection([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
   const [isBulkSeverityOpen, setIsBulkSeverityOpen] = useState(false)
