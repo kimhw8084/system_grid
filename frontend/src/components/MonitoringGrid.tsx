@@ -901,8 +901,23 @@ export default function MonitoringGrid() {
     openRowActionMenuAtPoint(item, event.clientX, event.clientY)
   }
 
-  const toggleBulkWindow = () => {
-    setShowBulkMenu(!showBulkMenu)
+  const togglePanel = (panel: 'display' | 'views' | 'bulk') => {
+    if (panel === 'display') {
+      setShowDisplayMenu(!showDisplayMenu)
+      setShowViewsMenu(false)
+      setShowBulkMenu(false)
+      setRowActionMenu(null)
+    } else if (panel === 'views') {
+      setShowViewsMenu(!showViewsMenu)
+      setShowDisplayMenu(false)
+      setShowBulkMenu(false)
+      setRowActionMenu(null)
+    } else if (panel === 'bulk') {
+      setShowBulkMenu(!showBulkMenu)
+      setShowDisplayMenu(false)
+      setShowViewsMenu(false)
+      setRowActionMenu(null)
+    }
   }
 
   const toggleFavorite = useCallback((monitorId: number) => {
@@ -1942,7 +1957,7 @@ export default function MonitoringGrid() {
             </ToolbarButton>
           )}
           <ToolbarButton
-            onClick={toggleBulkWindow}
+            onClick={() => togglePanel('bulk')}
             disabled={!hasSelection()}
             active={showBulkMenu}
             title="Bulk actions"

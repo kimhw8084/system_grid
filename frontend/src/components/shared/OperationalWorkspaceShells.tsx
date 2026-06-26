@@ -373,6 +373,13 @@ export function OperationalSavedViewsPanel<TView extends { id: string; name: str
   onDeleteView: (id: string) => void
   describeView: (view: TView) => string
 }) {
+  const [confirmingDeleteViewId, setConfirmingDeleteViewId] = React.useState<string | null>(null)
+  
+  // Clear confirmation on any significant change
+  React.useEffect(() => {
+    setConfirmingDeleteViewId(null)
+  }, [isOpen, activeViewId])
+
   return (
     <OperationalAnchoredPanel
       isOpen={isOpen}
@@ -446,6 +453,7 @@ export function OperationalSavedViewsPanel<TView extends { id: string; name: str
 
             {savedViews.map((view) => {
               const isDefaultView = defaultViewIds.has(view.id)
+              const isConfirming = confirmingDeleteViewId === view.id
               return (
                 <div key={view.id} className="flex items-center gap-2">
                   <button
@@ -474,9 +482,20 @@ export function OperationalSavedViewsPanel<TView extends { id: string; name: str
                     </button>
                     {!isDefaultView ? (
                       <button
-                        onClick={() => onDeleteView(view.id)}
-                        title={`Delete ${view.name}`}
-                        className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-1.5 text-rose-500 transition-all hover:bg-rose-500/20"
+                        onClick={() => {
+                          if (isConfirming) {
+                            onDeleteView(view.id)
+                            setConfirmingDeleteViewId(null)
+                          } else {
+                            setConfirmingDeleteViewId(view.id)
+                          }
+                        }}
+                        title={isConfirming ? `Confirm delete ${view.name}` : `Delete ${view.name}`}
+                        className={`rounded-lg border p-1.5 transition-all ${
+                          isConfirming
+                            ? 'border-rose-500 bg-rose-500 text-white'
+                            : 'border-rose-500/20 bg-rose-500/5 text-rose-500 hover:bg-rose-500/20'
+                        }`}
                       >
                         <Trash2 size={12} />
                       </button>

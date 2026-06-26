@@ -2007,10 +2007,23 @@ export default function External() {
     setCompareOpen(true)
   }
 
-  const toggleBulkWindow = () => {
-    setShowBulkMenu((current) => {
-      return !current
-    })
+  const togglePanel = (panel: 'display' | 'views' | 'bulk') => {
+    if (panel === 'display') {
+      setShowDisplayMenu(!showDisplayMenu)
+      setShowViewsMenu(false)
+      setShowBulkMenu(false)
+      setRowActionMenu(null)
+    } else if (panel === 'views') {
+      setShowViewsMenu(!showViewsMenu)
+      setShowDisplayMenu(false)
+      setShowBulkMenu(false)
+      setRowActionMenu(null)
+    } else if (panel === 'bulk') {
+      setShowBulkMenu(!showBulkMenu)
+      setShowDisplayMenu(false)
+      setShowViewsMenu(false)
+      setRowActionMenu(null)
+    }
   }
 
   // Backend currently uses PUT for entity updates; this helper sends required stable fields plus intended changed fields while avoiding unrelated legacy invalid enum values.
@@ -2555,7 +2568,7 @@ export default function External() {
         <>
           <ToolbarGroup>
             <div className="views-menu-container">
-              <ToolbarButton active={showViewsMenu} onClick={() => setShowViewsMenu((current) => !current)} ref={viewsMenuButtonRef as any}>
+              <ToolbarButton active={showViewsMenu} onClick={() => togglePanel('views')} ref={viewsMenuButtonRef as any}>
                 <span className="flex items-center gap-2">
                   <LayoutGrid size={14} />
                   Views
@@ -2563,7 +2576,7 @@ export default function External() {
               </ToolbarButton>
             </div>
             <div className="display-menu-container">
-              <ToolbarButton active={showDisplayMenu} onClick={() => setShowDisplayMenu((current) => !current)} ref={displayMenuButtonRef as any}>
+              <ToolbarButton active={showDisplayMenu} onClick={() => togglePanel('display')} ref={displayMenuButtonRef as any}>
                 <span className="flex items-center gap-2">
                   <Sliders size={14} />
                   Display
@@ -2688,7 +2701,7 @@ export default function External() {
             </ToolbarButton>
           )}
           <ToolbarButton
-            onClick={toggleBulkWindow}
+            onClick={() => togglePanel('bulk')}
             disabled={selectedIds.length === 0}
             active={showBulkMenu}
             title="Bulk actions"

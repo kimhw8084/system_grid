@@ -840,8 +840,23 @@ export default function ServicesReal() {
     openRowActionMenuAtPoint(item, event.clientX, event.clientY)
   }
 
-  const toggleBulkWindow = () => {
-    setShowBulkMenu(!showBulkMenu)
+  const togglePanel = (panel: 'display' | 'views' | 'bulk') => {
+    if (panel === 'display') {
+      setShowDisplayMenu(!showDisplayMenu)
+      setShowViewsMenu(false)
+      setShowBulkMenu(false)
+      setRowActionMenu(null)
+    } else if (panel === 'views') {
+      setShowViewsMenu(!showViewsMenu)
+      setShowDisplayMenu(false)
+      setShowBulkMenu(false)
+      setRowActionMenu(null)
+    } else if (panel === 'bulk') {
+      setShowBulkMenu(!showBulkMenu)
+      setShowDisplayMenu(false)
+      setShowViewsMenu(false)
+      setRowActionMenu(null)
+    }
   }
 
   const toggleFavorite = useCallback((monitorId: number) => {
@@ -1757,7 +1772,7 @@ export default function ServicesReal() {
         <>
           <ToolbarGroup>
             <div className="views-menu-container">
-              <ToolbarButton active={showViewsMenu} onClick={() => setShowViewsMenu(!showViewsMenu)} ref={viewsMenuButtonRef as any}>
+              <ToolbarButton active={showViewsMenu} onClick={() => togglePanel('views')} ref={viewsMenuButtonRef as any}>
                 <span className="flex items-center gap-2">
                   <LayoutGrid size={14} />
                   Views
@@ -1765,7 +1780,7 @@ export default function ServicesReal() {
               </ToolbarButton>
             </div>
             <div className="display-menu-container">
-              <ToolbarButton active={showDisplayMenu} onClick={() => setShowDisplayMenu(!showDisplayMenu)} ref={displayMenuButtonRef as any}>
+              <ToolbarButton active={showDisplayMenu} onClick={() => togglePanel('display')} ref={displayMenuButtonRef as any}>
                 <span className="flex items-center gap-2">
                   <Sliders size={14} />
                   Display
@@ -1864,7 +1879,7 @@ export default function ServicesReal() {
             </ToolbarButton>
           )}
           <ToolbarButton
-            onClick={toggleBulkWindow}
+            onClick={() => togglePanel('bulk')}
             disabled={selectedIds.length === 0}
             active={showBulkMenu}
             title="Bulk actions"
