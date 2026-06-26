@@ -1,0 +1,8 @@
+frontend/src/components/MonitoringGrid.tsx:63:  useOperationalGridRuntime,
+frontend/src/components/MonitoringGrid.tsx:651:  } = useOperationalGridRuntime({
+frontend/src/components/ServicesReal.tsx:53:import { useOperationalDetailRoute, useOperationalGridRuntime, usePersistentJsonState, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
+frontend/src/components/ServicesReal.tsx:574:  } = useOperationalGridRuntime({
+frontend/src/components/ServicesReal.tsx:616:      // Logic handled by onBeforeManualResize in useOperationalGridRuntime
+frontend/src/components/External.tsx:40:  useOperationalGridRuntime,
+frontend/src/components/External.tsx:1469:  } = useOperationalGridRuntime({
+frontend/src/components/External.tsx:42:  useWorkspaceDismissHandlers,
