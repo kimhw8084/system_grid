@@ -321,44 +321,7 @@ const slugifyViewId = (value: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || `view-${Date.now()}`
 
-const FLOATING_PANEL_EDGE = 16
-
-const getAnchoredFloatingStyle = ({
-  rect,
-  width,
-  height,
-  zIndex,
-  offset = 4
-}: {
-  rect: DOMRect
-  width: number
-  height: number
-  zIndex: number
-  offset?: number
-}) => {
-  const vW = window.innerWidth
-  const vH = window.innerHeight
-  
-  // Pivot logic: align right edge of menu to right edge of trigger
-  let left = rect.right - width
-  let top = rect.bottom + offset
-
-  // Viewport containment and flipping
-  if (left < FLOATING_PANEL_EDGE) left = rect.left
-  if (top + height > vH - FLOATING_PANEL_EDGE) top = rect.top - height - offset
-  
-  left = Math.max(FLOATING_PANEL_EDGE, Math.min(left, vW - width - FLOATING_PANEL_EDGE))
-  top = Math.max(FLOATING_PANEL_EDGE, Math.min(top, vH - height - FLOATING_PANEL_EDGE))
-
-  return {
-    position: 'fixed' as const,
-    top: Math.floor(top),
-    left: Math.floor(left),
-    width,
-    maxHeight: `calc(100vh - ${FLOATING_PANEL_EDGE * 2}px)`,
-    zIndex
-  }
-}
+// Removed stale floating panel positioning helpers.
 
 // Isolated component to prevent UI state changes (menus) from triggering AgGrid recalculations
 const getMonitorGroupValue = (item: any, field: string) => {
@@ -875,20 +838,6 @@ export default function ServicesReal() {
   const openRowActionMenu = (event: React.MouseEvent, item: any) => {
     event.stopPropagation()
     openRowActionMenuAtPoint(item, event.clientX, event.clientY)
-  }
-
-  const positionUtilityWindow = (button: HTMLButtonElement | null, width: number, height: number, zIndex: number) => {
-    if (!button) {
-      return {
-        position: 'fixed' as const,
-        top: 120,
-        left: Math.max(FLOATING_PANEL_EDGE, window.innerWidth - width - 40),
-        width,
-        maxHeight: `calc(100vh - ${FLOATING_PANEL_EDGE * 2}px)`,
-        zIndex
-      }
-    }
-    return getAnchoredFloatingStyle({ rect: button.getBoundingClientRect(), width, height, zIndex, offset: 12 })
   }
 
   const toggleBulkWindow = () => {
@@ -1955,6 +1904,7 @@ export default function ServicesReal() {
         <>
           <OperationalDisplayPanel
             isOpen={showDisplayMenu}
+            panelRef={displayMenuPanelRef}
             panelStyle={displayMenuStyle}
             onClose={() => setShowDisplayMenu(false)}
             fontSize={fontSize}
@@ -1977,6 +1927,7 @@ export default function ServicesReal() {
 
           <OperationalSavedViewsPanel
             isOpen={showViewsMenu}
+            panelRef={viewsMenuPanelRef}
             panelStyle={viewsMenuStyle}
             entityLabel="Services"
             onClose={() => setShowViewsMenu(false)}
@@ -1997,9 +1948,10 @@ export default function ServicesReal() {
           />
 
           <OperationalAnchoredPanel
-            isOpen={showBulkMenu && !!bulkMenuStyle.top}
-            panelKey="bulk-menu"
+            isOpen={showBulkMenu}
+            panelRef={bulkMenuPanelRef}
             style={bulkMenuStyle}
+            panelKey="bulk-menu"
             className="bulk-menu-container"
             yOffset={10}
           >
