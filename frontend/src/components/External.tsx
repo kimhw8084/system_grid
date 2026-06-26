@@ -2009,17 +2009,17 @@ export default function External() {
 
   const togglePanel = (panel: 'display' | 'views' | 'bulk') => {
     if (panel === 'display') {
-      setShowDisplayMenu(!showDisplayMenu)
+      setShowDisplayMenu(curr => !curr)
       setShowViewsMenu(false)
       setShowBulkMenu(false)
       setRowActionMenu(null)
     } else if (panel === 'views') {
-      setShowViewsMenu(!showViewsMenu)
+      setShowViewsMenu(curr => !curr)
       setShowDisplayMenu(false)
       setShowBulkMenu(false)
       setRowActionMenu(null)
     } else if (panel === 'bulk') {
-      setShowBulkMenu(!showBulkMenu)
+      setShowBulkMenu(curr => !curr)
       setShowDisplayMenu(false)
       setShowViewsMenu(false)
       setRowActionMenu(null)
@@ -2139,13 +2139,35 @@ export default function External() {
       if (skipped > 0) summaryMessage += `${skipped} skipped. `
       if (failed > 0) summaryMessage += `${failed} failed.`
 
-      if (failed > 0) {
-        showWorkspaceToast(`${summaryMessage} Errors: ${errors.join('; ')}`, { type: 'error' })
-      } else {
-        showWorkspaceToast(summaryMessage, { type: 'success' })
+      const revertAction = async () => {
+        const undo = externalUndoRef.current
+        externalUndoRef.current = null
+        if (!undo) return
+        if (undo.mode === 'bulk') {
+          await bulkMutation.mutateAsync({ action: undo.action, ids: undo.ids })
+        } else if (undo.mode === 'restore_snapshots') {
+          await Promise.all((undo.snapshots || []).map(async (snapshot: any) => {
+            if (!snapshot?.id) return
+            const restoreFields: any = {}
+            Object.keys(payload).forEach((key) => {
+              restoreFields[key] = snapshot[key]
+            })
+            const payloadToRestore = buildExternalSafeBulkPutPayload(snapshot, restoreFields)
+            const res = await apiFetch(`/api/v1/intelligence/entities/${snapshot.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payloadToRestore),
+            })
+            if (!res.ok) throw new Error(await res.text())
+          }))
+          queryClient.invalidateQueries({ queryKey: ['external-entities'] })
+          queryClient.invalidateQueries({ queryKey: ['external-links'] })
+        }
       }
 
-      if (updated > 0 && action !== 'purge') {
+      if (failed > 0) {
+        showWorkspaceToast(`${summaryMessage} Errors: ${errors.join('; ')}`, { type: 'error' })
+      } else if (updated > 0 && action !== 'purge') {
         if (action === 'delete') {
           externalUndoRef.current = { mode: 'bulk', ids: previousSnapshots.map(s => s.id), action: 'restore' }
         } else if (action === 'restore') {
@@ -2153,34 +2175,9 @@ export default function External() {
         } else if (action === 'update') {
           externalUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
         }
-
-        if (externalUndoRef.current) {
-          showWorkspaceRevertToast(`Revert last bulk ${action} (${updated} rows)?`, async () => {
-            const undo = externalUndoRef.current
-            externalUndoRef.current = null
-            if (!undo) return
-            if (undo.mode === 'bulk') {
-              await bulkMutation.mutateAsync({ action: undo.action, ids: undo.ids })
-            } else if (undo.mode === 'restore_snapshots') {
-              await Promise.all((undo.snapshots || []).map(async (snapshot: any) => {
-                if (!snapshot?.id) return
-                const restoreFields: any = {}
-                Object.keys(payload).forEach((key) => {
-                  restoreFields[key] = snapshot[key]
-                })
-                const payloadToRestore = buildExternalSafeBulkPutPayload(snapshot, restoreFields)
-                const res = await apiFetch(`/api/v1/intelligence/entities/${snapshot.id}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(payloadToRestore),
-                })
-                if (!res.ok) throw new Error(await res.text())
-              }))
-              queryClient.invalidateQueries({ queryKey: ['external-entities'] })
-              queryClient.invalidateQueries({ queryKey: ['external-links'] })
-            }
-          })
-        }
+        showWorkspaceRevertToast(summaryMessage, revertAction)
+      } else {
+        showWorkspaceToast(summaryMessage, { type: 'success' })
       }
     },
     onError: (e: any) => {

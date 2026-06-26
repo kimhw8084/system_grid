@@ -903,17 +903,17 @@ export default function MonitoringGrid() {
 
   const togglePanel = (panel: 'display' | 'views' | 'bulk') => {
     if (panel === 'display') {
-      setShowDisplayMenu(!showDisplayMenu)
+      setShowDisplayMenu(curr => !curr)
       setShowViewsMenu(false)
       setShowBulkMenu(false)
       setRowActionMenu(null)
     } else if (panel === 'views') {
-      setShowViewsMenu(!showViewsMenu)
+      setShowViewsMenu(curr => !curr)
       setShowDisplayMenu(false)
       setShowBulkMenu(false)
       setRowActionMenu(null)
     } else if (panel === 'bulk') {
-      setShowBulkMenu(!showBulkMenu)
+      setShowBulkMenu(curr => !curr)
       setShowDisplayMenu(false)
       setShowViewsMenu(false)
       setRowActionMenu(null)
@@ -1177,31 +1177,25 @@ export default function MonitoringGrid() {
   const deleteView = (viewId: string) => {
     const view = savedViews.find((v) => v.id === viewId)
     if (!view) return
-    openConfirm(
-      `Delete View: ${view.name}?`,
-      "Are you sure you want to permanently remove this saved layout?",
-      () => {
-        const nextViews = savedViews.filter((v) => v.id !== viewId)
-        setSavedViews(nextViews)
-        if (activeViewId === viewId) {
-          setActiveViewId(null)
-          if (typeof window !== 'undefined') {
-             window.localStorage.removeItem(MONITORING_ACTIVE_VIEW_KEY)
-          }
-        }
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
-        }
-        showWorkspaceRevertToast(`Deleted view ${view.name}`, () => {
-          setSavedViews(savedViews)
-          setActiveViewId(activeViewId)
-          if (typeof window !== 'undefined') {
-            window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(savedViews))
-            if (activeViewId) window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, activeViewId)
-          }
-        })
+    const nextViews = savedViews.filter((v) => v.id !== viewId)
+    setSavedViews(nextViews)
+    if (activeViewId === viewId) {
+      setActiveViewId(null)
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(MONITORING_ACTIVE_VIEW_KEY)
       }
-    )
+    }
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
+    }
+    showWorkspaceRevertToast(`Deleted view ${view.name}`, () => {
+      setSavedViews(savedViews)
+      setActiveViewId(activeViewId)
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(savedViews))
+        if (activeViewId) window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, activeViewId)
+      }
+    })
   }
 
   const dismissWorkspaceMenus = useCallback(() => {
@@ -2039,6 +2033,42 @@ export default function MonitoringGrid() {
               ? `Grouped by ${groupOptions.find((option) => option.value === view.config.groupBy)?.label || view.config.groupBy}`
               : 'Raw monitoring table'}
           />
+
+          <OperationalAnchoredPanel
+            isOpen={showBulkMenu}
+            panelRef={bulkMenuPanelRef}
+            style={bulkMenuStyle}
+            panelKey="bulk-menu"
+            className="bulk-menu-container"
+            yOffset={10}
+          >
+            <WorkspaceFloatingPanel kind="context" className="max-h-[560px] overflow-y-auto custom-scrollbar p-3">
+              <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
+                <p className="text-[10px] font-semibold text-slate-400">Bulk actions</p>
+                <p className="pt-1 text-[12px] font-semibold text-slate-100">{selectedIds.length} monitors selected</p>
+              </div>
+              <div className="space-y-2">
+                <button
+                  onClick={() => { setIsBulkStatusOpen(true); setShowBulkMenu(false) }}
+                  className="w-full rounded-lg border border-white/5 bg-white/[0.03] px-4 py-3 text-left transition-all hover:bg-white/[0.06] disabled:opacity-50"
+                >
+                  <p className="text-[11px] font-semibold text-slate-200">Set Status</p>
+                </button>
+                <button
+                  onClick={() => { setIsBulkSeverityOpen(true); setShowBulkMenu(false) }}
+                  className="w-full rounded-lg border border-white/5 bg-white/[0.03] px-4 py-3 text-left transition-all hover:bg-white/[0.06] disabled:opacity-50"
+                >
+                  <p className="text-[11px] font-semibold text-slate-200">Set Severity</p>
+                </button>
+                <button
+                  onClick={() => { setIsBulkNotifyOpen(true); setShowBulkMenu(false) }}
+                  className="w-full rounded-lg border border-white/5 bg-white/[0.03] px-4 py-3 text-left transition-all hover:bg-white/[0.06] disabled:opacity-50"
+                >
+                  <p className="text-[11px] font-semibold text-slate-200">Set Notification Method</p>
+                </button>
+              </div>
+            </WorkspaceFloatingPanel>
+          </OperationalAnchoredPanel>
 
 {rowActionMenu && (() => {
               const item = rowActionMenu.item

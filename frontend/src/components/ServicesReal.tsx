@@ -842,17 +842,17 @@ export default function ServicesReal() {
 
   const togglePanel = (panel: 'display' | 'views' | 'bulk') => {
     if (panel === 'display') {
-      setShowDisplayMenu(!showDisplayMenu)
+      setShowDisplayMenu(curr => !curr)
       setShowViewsMenu(false)
       setShowBulkMenu(false)
       setRowActionMenu(null)
     } else if (panel === 'views') {
-      setShowViewsMenu(!showViewsMenu)
+      setShowViewsMenu(curr => !curr)
       setShowDisplayMenu(false)
       setShowBulkMenu(false)
       setRowActionMenu(null)
     } else if (panel === 'bulk') {
-      setShowBulkMenu(!showBulkMenu)
+      setShowBulkMenu(curr => !curr)
       setShowDisplayMenu(false)
       setShowViewsMenu(false)
       setRowActionMenu(null)
@@ -1069,24 +1069,25 @@ export default function ServicesReal() {
   const deleteView = (viewId: string) => {
     const view = savedViews.find((v) => v.id === viewId)
     if (!view) return
-    openConfirm(
-      `Delete View: ${view.name}?`,
-      "Are you sure you want to permanently remove this saved layout?",
-      () => {
-        const nextViews = savedViews.filter((v) => v.id !== viewId)
-        setSavedViews(nextViews)
-        if (activeViewId === viewId) {
-          setActiveViewId(null)
-          if (typeof window !== 'undefined') {
-             window.localStorage.removeItem(SERVICE_ACTIVE_VIEW_KEY)
-          }
-        }
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem(SERVICE_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
-        }
-        showWorkspaceToast(`Deleted view ${view.name}`)
+    const nextViews = savedViews.filter((v) => v.id !== viewId)
+    setSavedViews(nextViews)
+    if (activeViewId === viewId) {
+      setActiveViewId(null)
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(SERVICE_ACTIVE_VIEW_KEY)
       }
-    )
+    }
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(SERVICE_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
+    }
+    showWorkspaceRevertToast(`Deleted view ${view.name}`, () => {
+      setSavedViews(savedViews)
+      setActiveViewId(activeViewId)
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(SERVICE_VIEW_STORAGE_KEY, JSON.stringify(savedViews))
+        if (activeViewId) window.localStorage.setItem(SERVICE_ACTIVE_VIEW_KEY, activeViewId)
+      }
+    })
   }
 
   const dismissWorkspaceMenus = useCallback(() => {
