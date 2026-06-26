@@ -51,7 +51,8 @@ import {
 } from './shared/OperationalWorkspacePrimitives'
 import {
   useOperationalRowInteractions,
-  useOperationalContextMenu
+  useOperationalContextMenu,
+  useOperationalDismissController,
 } from './shared/OperationalGridInteractions'
 import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shared/WorkspaceFlyout'
 import { StatusPill } from './shared/StatusPill'
@@ -62,7 +63,6 @@ import {
   useOperationalGridRuntime,
   useOperationalWorkspaceController,
   usePersistentJsonState,
-  useWorkspaceDismissHandlers,
   useWorkspaceSessionValue,
   useOperationalDetailRoute,
   useOperationalSelection,
@@ -336,44 +336,7 @@ const slugifyViewId = (value: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || `view-${Date.now()}`
 
-const FLOATING_PANEL_EDGE = 16
-
-const getAnchoredFloatingStyle = ({
-  rect,
-  width,
-  height,
-  zIndex,
-  offset = 4
-}: {
-  rect: DOMRect
-  width: number
-  height: number
-  zIndex: number
-  offset?: number
-}) => {
-  const vW = window.innerWidth
-  const vH = window.innerHeight
-  
-  // Pivot logic: align right edge of menu to right edge of trigger
-  let left = rect.right - width
-  let top = rect.bottom + offset
-
-  // Viewport containment and flipping
-  if (left < FLOATING_PANEL_EDGE) left = rect.left
-  if (top + height > vH - FLOATING_PANEL_EDGE) top = rect.top - height - offset
-  
-  left = Math.max(FLOATING_PANEL_EDGE, Math.min(left, vW - width - FLOATING_PANEL_EDGE))
-  top = Math.max(FLOATING_PANEL_EDGE, Math.min(top, vH - height - FLOATING_PANEL_EDGE))
-
-  return {
-    position: 'fixed' as const,
-    top: Math.floor(top),
-    left: Math.floor(left),
-    width,
-    maxHeight: `calc(100vh - ${FLOATING_PANEL_EDGE * 2}px)`,
-    zIndex
-  }
-}
+  // Removed stale positioning helpers.
 
 const getMonitorGroupValue = (item: any, field: string) => {
   if (field === 'notification_method') return item.notification_method || 'No notification path'
@@ -618,12 +581,9 @@ export default function MonitoringGrid() {
   })
 
   // allItems query and detailRoute hook moved to top of component to be in scope for callbacks
-  const displayMenuButtonRef = useRef<HTMLButtonElement | null>(null)
-  const viewsMenuButtonRef = useRef<HTMLButtonElement | null>(null)
-  const bulkMenuButtonRef = useRef<HTMLButtonElement | null>(null)
-  const [displayMenuStyle, setDisplayMenuStyle] = useState<React.CSSProperties>({})
-  const [viewsMenuStyle, setViewsMenuStyle] = useState<React.CSSProperties>({})
-  const [bulkMenuStyle, setBulkMenuStyle] = useState<React.CSSProperties>({})
+  const { triggerRef: displayMenuButtonRef, panelRef: displayMenuPanelRef, panelStyle: displayMenuStyle } = useWorkspaceAnchoredLayer(showDisplayMenu, { minWidth: 320 })
+  const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
+  const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
   const lastUndoRef = useRef<any>(null)
   const [newViewName, setNewViewName] = useState('')
 
@@ -941,26 +901,8 @@ export default function MonitoringGrid() {
     openRowActionMenuAtPoint(item, event.clientX, event.clientY)
   }
 
-  const positionUtilityWindow = (button: HTMLButtonElement | null, width: number, height: number, zIndex: number) => {
-    if (!button) {
-      return {
-        position: 'fixed' as const,
-        top: 120,
-        left: Math.max(FLOATING_PANEL_EDGE, window.innerWidth - width - 40),
-        width,
-        maxHeight: `calc(100vh - ${FLOATING_PANEL_EDGE * 2}px)`,
-        zIndex
-      }
-    }
-    return getAnchoredFloatingStyle({ rect: button.getBoundingClientRect(), width, height, zIndex })
-  }
-
   const toggleBulkWindow = () => {
-    setShowBulkMenu((current) => {
-      if (current) return false
-      setBulkMenuStyle(positionUtilityWindow(bulkMenuButtonRef.current, 340, BULK_MENU_MAX_HEIGHT, 1105))
-      return true
-    })
+    setShowBulkMenu(!showBulkMenu)
   }
 
   const toggleFavorite = useCallback((monitorId: number) => {
@@ -1256,59 +1198,24 @@ export default function MonitoringGrid() {
     setRowDeleteConfirmId(null)
   }, [])
 
-  useWorkspaceDismissHandlers({
+  useOperationalDismissController({
     active: showBulkMenu || showDisplayMenu || showViewsMenu || !!rowActionMenu,
     onDismiss: dismissWorkspaceMenus,
-    shouldDismiss: (target) => {
-      if (target.closest('[data-workspace-panel]')) return false
-      if (showBulkMenu && !target.closest('.bulk-menu-container') && !target.closest('.bulk-menu-trigger')) return true
-      if (showDisplayMenu && !target.closest('.display-menu-container')) return true
-      if (showViewsMenu && !target.closest('.views-menu-container')) return true
-      if (rowActionMenu && !target.closest('.row-action-menu-container')) return true
-      return false
-    },
+    bulkMenuButtonRef,
+    bulkMenuPanelRef,
+    displayMenuButtonRef,
+    displayMenuPanelRef,
+    viewsMenuButtonRef,
+    viewsMenuPanelRef,
+    showBulkMenu,
+    showDisplayMenu,
+    showViewsMenu,
+    hasRowActionMenu: !!rowActionMenu
   })
 
 
 
-  useEffect(() => {
-    const updateMenuPositions = () => {
-      if (showDisplayMenu && displayMenuButtonRef.current) {
-        setDisplayMenuStyle(getAnchoredFloatingStyle({
-          rect: displayMenuButtonRef.current.getBoundingClientRect(),
-          width: 320,
-          height: 420,
-          zIndex: 1100
-        }))
-      }
-      if (showViewsMenu && viewsMenuButtonRef.current) {
-        setViewsMenuStyle(getAnchoredFloatingStyle({
-          rect: viewsMenuButtonRef.current.getBoundingClientRect(),
-          width: 380,
-          height: 460,
-          zIndex: 1100
-        }))
-      }
-      if (showBulkMenu && bulkMenuButtonRef.current) {
-        setBulkMenuStyle(getAnchoredFloatingStyle({
-          rect: bulkMenuButtonRef.current.getBoundingClientRect(),
-          width: 340,
-          height: BULK_MENU_MAX_HEIGHT,
-          zIndex: 1105
-        }))
-      }
-    }
-
-    updateMenuPositions()
-    if (showDisplayMenu || showBulkMenu || showViewsMenu) {
-      window.addEventListener('resize', updateMenuPositions)
-      window.addEventListener('scroll', updateMenuPositions, true)
-      return () => {
-        window.removeEventListener('resize', updateMenuPositions)
-        window.removeEventListener('scroll', updateMenuPositions, true)
-      }
-    }
-  }, [showBulkMenu, showDisplayMenu, showViewsMenu])
+  // Removed manual menu position updates as they are now handled by useWorkspaceAnchoredLayer.
 
 
 
@@ -2075,6 +1982,7 @@ export default function MonitoringGrid() {
         <>
           <OperationalDisplayPanel
             isOpen={showDisplayMenu}
+            panelRef={displayMenuPanelRef}
             panelStyle={displayMenuStyle}
             onClose={() => setShowDisplayMenu(false)}
             fontSize={fontSize}
@@ -2097,6 +2005,7 @@ export default function MonitoringGrid() {
 
           <OperationalSavedViewsPanel
             isOpen={showViewsMenu}
+            panelRef={viewsMenuPanelRef}
             panelStyle={viewsMenuStyle}
             entityLabel="Monitoring"
             onClose={dismissWorkspaceMenus}
