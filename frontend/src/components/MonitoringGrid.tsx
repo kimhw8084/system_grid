@@ -1611,6 +1611,7 @@ export default function MonitoringGrid() {
         showWorkspaceRevertToast(result?.summary || 'Updated monitoring state', async () => {
           try {
             await runUndo()
+            lastUndoRef.current = null
             showWorkspaceToast('Reverted monitoring operation', { type: 'success' })
           } catch (error: any) {
             showWorkspaceToast(error.message || 'Undo failed', { type: 'error' })
