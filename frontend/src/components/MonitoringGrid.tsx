@@ -1591,26 +1591,34 @@ export default function MonitoringGrid() {
       setIsBulkStatusOpen(false)
       setIsBulkSeverityOpen(false)
       setIsBulkNotifyOpen(false)
-
-      const summaryMessage = result?.summary || 'Updated monitoring state'
+      
+      const changedCount = Number(result?.changed ?? idsToUse.length)
+      if (changedCount <= 0) {
+        lastUndoRef.current = null
+        if (action === 'purge') {
+          showWorkspaceToast('Purge did not change any records', { type: 'error' })
+        } else {
+          showWorkspaceToast(result?.summary || 'No semantic change', { type: 'success' })
+        }
+        return
+      }
 
       if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
       else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
       else if (action === 'update') lastUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
       else lastUndoRef.current = null
 
-      const revertAction = async () => {
-        const undo = lastUndoRef.current
-        lastUndoRef.current = null
-        if (!undo) return
-        await runUndo()
-        showWorkspaceToast('Reverted monitoring operation', { type: 'success' })
-      }
-
       if (lastUndoRef.current) {
-        showWorkspaceRevertToast(summaryMessage, revertAction)
+        showWorkspaceRevertToast(result?.summary || 'Updated monitoring state', async () => {
+          try {
+            await runUndo()
+            showWorkspaceToast('Reverted monitoring operation', { type: 'success' })
+          } catch (error: any) {
+            showWorkspaceToast(error.message || 'Undo failed', { type: 'error' })
+          }
+        })
       } else {
-        showWorkspaceToast(summaryMessage, { type: 'success' })
+        showWorkspaceToast(result?.summary || 'Updated monitoring state', { type: 'success' })
       }
     },
     onError: (e: any) => showWorkspaceToast(`Operation failed: ${e.message}`, { type: 'error' })
