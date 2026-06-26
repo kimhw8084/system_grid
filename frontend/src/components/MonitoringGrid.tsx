@@ -1610,6 +1610,9 @@ export default function MonitoringGrid() {
 
       if (lastUndoRef.current) {
         showWorkspaceRevertToast(result?.summary || 'Updated monitoring state', async () => {
+          const undo = lastUndoRef.current
+          lastUndoRef.current = null
+          if (!undo) return
           try {
             await runUndo()
             showWorkspaceToast('Reverted monitoring operation', { type: 'success' })
