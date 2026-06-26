@@ -241,19 +241,12 @@ export function useOperationalContextMenu({
 export function useOperationalDismissController({
   active,
   onDismiss,
-  bulkMenuButtonRef,
-  bulkMenuPanelRef,
-  displayMenuButtonRef,
-  displayMenuPanelRef,
-  viewsMenuButtonRef,
-  viewsMenuPanelRef,
-  showBulkMenu,
-  showDisplayMenu,
-  showViewsMenu,
-  hasRowActionMenu,
+  allTriggerRefs,
+  ...panels
 }: {
   active: boolean;
   onDismiss: () => void;
+  allTriggerRefs: React.RefObject<HTMLElement | null>[];
   bulkMenuButtonRef: React.RefObject<HTMLElement | null>;
   bulkMenuPanelRef: React.RefObject<HTMLElement | null>;
   displayMenuButtonRef: React.RefObject<HTMLElement | null>;
@@ -270,10 +263,11 @@ export function useOperationalDismissController({
     onDismiss,
     shouldDismiss: (target) => {
       if (target.closest("[data-workspace-panel]")) return false;
-      if (showBulkMenu && !bulkMenuButtonRef.current?.contains(target) && !bulkMenuPanelRef.current?.contains(target)) return true;
-      if (showDisplayMenu && !displayMenuButtonRef.current?.contains(target) && !displayMenuPanelRef.current?.contains(target)) return true;
-      if (showViewsMenu && !viewsMenuButtonRef.current?.contains(target) && !viewsMenuPanelRef.current?.contains(target)) return true;
-      if (hasRowActionMenu && !target.closest(".row-action-menu-container")) return true;
+      if (allTriggerRefs.some((ref) => ref.current?.contains(target))) return false;
+      if (panels.showBulkMenu && !panels.bulkMenuButtonRef.current?.contains(target) && !panels.bulkMenuPanelRef.current?.contains(target)) return true;
+      if (panels.showDisplayMenu && !panels.displayMenuButtonRef.current?.contains(target) && !panels.displayMenuPanelRef.current?.contains(target)) return true;
+      if (panels.showViewsMenu && !panels.viewsMenuButtonRef.current?.contains(target) && !panels.viewsMenuPanelRef.current?.contains(target)) return true;
+      if (panels.hasRowActionMenu && !target.closest(".row-action-menu-container")) return true;
       return false;
     },
   });

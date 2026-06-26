@@ -1561,6 +1561,7 @@ export default function External() {
   useOperationalDismissController({
     active: showBulkMenu || showDisplayMenu || showViewsMenu || !!rowActionMenu,
     onDismiss: dismissWorkspaceMenus,
+    allTriggerRefs: [bulkMenuButtonRef, displayMenuButtonRef, viewsMenuButtonRef],
     bulkMenuButtonRef,
     bulkMenuPanelRef,
     displayMenuButtonRef,

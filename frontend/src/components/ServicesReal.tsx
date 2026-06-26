@@ -16,7 +16,7 @@ import {
 import { parseOperationalApiValidationError } from './shared/OperationalFieldValidation'
 import { AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { showWorkspaceToast } from './shared/WorkspaceToast'
+import { showWorkspaceToast, showWorkspaceRevertToast } from './shared/WorkspaceToast'
 import { apiFetch } from '../api/apiClient'
 import { formatAppDate, formatAppTime, formatAppDay, parseAppDate } from '../utils/dateUtils'
 import { AppDropdown } from './shared/AppDropdown'
@@ -1102,6 +1102,7 @@ export default function ServicesReal() {
   useOperationalDismissController({
     active: showBulkMenu || showDisplayMenu || showViewsMenu || !!rowActionMenu,
     onDismiss: dismissWorkspaceMenus,
+    allTriggerRefs: [bulkMenuButtonRef, displayMenuButtonRef, viewsMenuButtonRef],
     bulkMenuButtonRef,
     bulkMenuPanelRef,
     displayMenuButtonRef,
