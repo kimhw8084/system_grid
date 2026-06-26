@@ -1210,6 +1210,7 @@ export default function MonitoringGrid() {
   useOperationalDismissController({
     active: showBulkMenu || showDisplayMenu || showViewsMenu || !!rowActionMenu,
     onDismiss: dismissWorkspaceMenus,
+    allTriggerRefs: [bulkMenuButtonRef, displayMenuButtonRef, viewsMenuButtonRef],
     bulkMenuButtonRef,
     bulkMenuPanelRef,
     displayMenuButtonRef,
@@ -1845,7 +1846,7 @@ export default function MonitoringGrid() {
         <>
           <ToolbarGroup>
             <div className="views-menu-container">
-              <ToolbarButton active={showViewsMenu} onClick={() => setShowViewsMenu(!showViewsMenu)} ref={viewsMenuButtonRef as any}>
+              <ToolbarButton active={showViewsMenu} onClick={() => togglePanel('views')} ref={viewsMenuButtonRef as any}>
                 <span className="flex items-center gap-2">
                   <LayoutGrid size={14} />
                   Views
@@ -1853,7 +1854,7 @@ export default function MonitoringGrid() {
               </ToolbarButton>
             </div>
             <div className="display-menu-container">
-              <ToolbarButton active={showDisplayMenu} onClick={() => setShowDisplayMenu(!showDisplayMenu)} ref={displayMenuButtonRef as any}>
+              <ToolbarButton active={showDisplayMenu} onClick={() => togglePanel('display')} ref={displayMenuButtonRef as any}>
                 <span className="flex items-center gap-2">
                   <Sliders size={14} />
                   Display
