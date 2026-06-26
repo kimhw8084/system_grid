@@ -173,7 +173,7 @@ export function useOperationalRowInteractions({
       const end = Math.max(selectionAnchorRef.current, currentIndex);
       event.api.deselectAll();
       event.api.forEachNodeAfterFilterAndSort((node: any) => {
-        if (node.rowIndex !== null && node.rowIndex >= start && node.rowIndex >= end) {
+        if (node.rowIndex !== null && node.rowIndex >= start && node.rowIndex <= end) {
           if (!node.data || !pendingIds.includes(Number(node.data.id))) {
             node.setSelected(true);
           }
