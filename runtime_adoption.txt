@@ -1,0 +1,81 @@
+frontend/src/components/MonitoringGrid.tsx:48:  useWorkspaceAnchoredLayer,
+frontend/src/components/MonitoringGrid.tsx:53:  useOperationalRowInteractions,
+frontend/src/components/MonitoringGrid.tsx:54:  useOperationalContextMenu,
+frontend/src/components/MonitoringGrid.tsx:55:  useOperationalDismissController,
+frontend/src/components/MonitoringGrid.tsx:63:  useOperationalGridRuntime,
+frontend/src/components/MonitoringGrid.tsx:64:  useOperationalWorkspaceController,
+frontend/src/components/MonitoringGrid.tsx:65:  usePersistentJsonState,
+frontend/src/components/MonitoringGrid.tsx:66:  useWorkspaceSessionValue,
+frontend/src/components/MonitoringGrid.tsx:67:  useOperationalDetailRoute,
+frontend/src/components/MonitoringGrid.tsx:68:  useOperationalSelection,
+frontend/src/components/MonitoringGrid.tsx:512:  } = useOperationalSelection([])
+frontend/src/components/MonitoringGrid.tsx:528:  } = useOperationalWorkspaceController({
+frontend/src/components/MonitoringGrid.tsx:533:  const [savedViews, setSavedViews] = usePersistentJsonState<any[]>(MONITORING_VIEW_STORAGE_KEY, () => {
+frontend/src/components/MonitoringGrid.tsx:536:  const [activeViewId, setActiveViewId] = useWorkspaceSessionValue<string | null>(
+frontend/src/components/MonitoringGrid.tsx:541:  const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>(MONITORING_FAVORITES_STORAGE_KEY, initialWorkspaceState?.favoriteIds ?? [])
+frontend/src/components/MonitoringGrid.tsx:542:  const [watchIds, setWatchIds] = usePersistentJsonState<number[]>(MONITORING_WATCH_STORAGE_KEY, initialWorkspaceState?.watchIds ?? [])
+frontend/src/components/MonitoringGrid.tsx:573:  const detailRoute = useOperationalDetailRoute({
+frontend/src/components/MonitoringGrid.tsx:584:  const { triggerRef: displayMenuButtonRef, panelRef: displayMenuPanelRef, panelStyle: displayMenuStyle } = useWorkspaceAnchoredLayer(showDisplayMenu, { minWidth: 320 })
+frontend/src/components/MonitoringGrid.tsx:585:  const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
+frontend/src/components/MonitoringGrid.tsx:586:  const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
+frontend/src/components/MonitoringGrid.tsx:651:  } = useOperationalGridRuntime({
+frontend/src/components/MonitoringGrid.tsx:813:  const { handleCellContextMenu, openRowActionMenuAtPoint } = useOperationalContextMenu({
+frontend/src/components/MonitoringGrid.tsx:923:  const { handleRowClicked, handleRowDoubleClicked, selectionAnchorRef } = useOperationalRowInteractions({
+frontend/src/components/MonitoringGrid.tsx:1201:  useOperationalDismissController({
+frontend/src/components/MonitoringGrid.tsx:1218:  // Removed manual menu position updates as they are now handled by useWorkspaceAnchoredLayer.
+frontend/src/components/MonitoringGrid.tsx:3156:  const { triggerRef, panelRef, panelStyle } = useWorkspaceAnchoredLayer(isOpen, { minWidth: 420 })
+frontend/src/components/ServicesReal.tsx:47:  useWorkspaceAnchoredLayer,
+frontend/src/components/ServicesReal.tsx:53:import { useOperationalDetailRoute, useOperationalGridRuntime, usePersistentJsonState, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
+frontend/src/components/ServicesReal.tsx:55:  useOperationalRowInteractions,
+frontend/src/components/ServicesReal.tsx:56:  useOperationalContextMenu,
+frontend/src/components/ServicesReal.tsx:57:  useOperationalDismissController,
+frontend/src/components/ServicesReal.tsx:504:  const { triggerRef: displayMenuButtonRef, panelRef: displayMenuPanelRef, panelStyle: displayMenuStyle } = useWorkspaceAnchoredLayer(showDisplayMenu, { minWidth: 320 })
+frontend/src/components/ServicesReal.tsx:505:  const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
+frontend/src/components/ServicesReal.tsx:506:  const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
+frontend/src/components/ServicesReal.tsx:531:  const [savedViews, setSavedViews] = usePersistentJsonState<any[]>(SERVICE_VIEW_STORAGE_KEY, () => {
+frontend/src/components/ServicesReal.tsx:534:  const [activeViewId, setActiveViewId] = useWorkspaceSessionValue<string | null>(
+frontend/src/components/ServicesReal.tsx:539:  const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>(SERVICE_FAVORITES_STORAGE_KEY, initialWorkspaceState?.favoriteIds ?? [])
+frontend/src/components/ServicesReal.tsx:540:  const [watchIds, setWatchIds] = usePersistentJsonState<number[]>(SERVICE_WATCH_STORAGE_KEY, initialWorkspaceState?.watchIds ?? [])
+frontend/src/components/ServicesReal.tsx:548:  // Removed redundant refs and styles. Anchoring is now handled by useWorkspaceAnchoredLayer.
+frontend/src/components/ServicesReal.tsx:574:  } = useOperationalGridRuntime({
+frontend/src/components/ServicesReal.tsx:616:      // Logic handled by onBeforeManualResize in useOperationalGridRuntime
+frontend/src/components/ServicesReal.tsx:773:  const { handleCellContextMenu, openRowActionMenuAtPoint } = useOperationalContextMenu({
+frontend/src/components/ServicesReal.tsx:865:  const { handleRowClicked, handleRowDoubleClicked } = useOperationalRowInteractions({
+frontend/src/components/ServicesReal.tsx:1086:  useOperationalDismissController({
+frontend/src/components/ServicesReal.tsx:1114:  // Removed manual menu position updates as they are now handled by useWorkspaceAnchoredLayer.
+frontend/src/components/ServicesReal.tsx:1127:  const detailRoute = useOperationalDetailRoute({
+frontend/src/components/External.tsx:40:  useOperationalGridRuntime,
+frontend/src/components/External.tsx:41:  usePersistentJsonState,
+frontend/src/components/External.tsx:43:  useOperationalDetailRoute,
+frontend/src/components/External.tsx:45:import { useWorkspaceAnchoredLayer, WorkspaceEmptyState, useEscapeDismiss, useBodyModalFlag, WorkspaceFloatingPanel, WorkspaceSplitView } from './shared/OperationalWorkspacePrimitives'
+frontend/src/components/External.tsx:70:  useOperationalRowInteractions,
+frontend/src/components/External.tsx:71:  useOperationalContextMenu,
+frontend/src/components/External.tsx:72:  useOperationalDismissController
+frontend/src/components/External.tsx:1351:  const [savedViews, setSavedViews] = usePersistentJsonState(externalViewStorageKey, [] as any[])
+frontend/src/components/External.tsx:1352:  const [activeViewId, setActiveViewId] = usePersistentJsonState<string | null>(externalActiveViewKey, null)
+frontend/src/components/External.tsx:1353:  const [persistedUiState, setPersistedUiState] = usePersistentJsonState(externalUiStateKey, () => normalizeExternalWorkspaceState(null))
+frontend/src/components/External.tsx:1384:  const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>(externalFavoritesKey, [])
+frontend/src/components/External.tsx:1385:  const [watchIds, setWatchIds] = usePersistentJsonState<number[]>(externalWatchKey, [])
+frontend/src/components/External.tsx:1443:  const { triggerRef: displayMenuButtonRef, panelRef: displayMenuPanelRef, panelStyle: displayMenuStyle } = useWorkspaceAnchoredLayer(showDisplayMenu, { minWidth: 320 })
+frontend/src/components/External.tsx:1444:  const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
+frontend/src/components/External.tsx:1445:  const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
+frontend/src/components/External.tsx:1469:  } = useOperationalGridRuntime({
+frontend/src/components/External.tsx:1515:  const detailRoute = useOperationalDetailRoute({
+frontend/src/components/External.tsx:1561:  useOperationalDismissController({
+frontend/src/components/External.tsx:1576:  const { handleCellContextMenu, openRowActionMenuAtPoint } = useOperationalContextMenu({
+frontend/src/components/External.tsx:2270:  const { handleRowClicked, handleRowDoubleClicked } = useOperationalRowInteractions({
+frontend/OUT-8-ITERATION-19-MONITORING-BULK-DISCOVERY.md:4:- LEGACY_INCOMPLETE_SURFACE
+frontend/OUT-8-ITERATION-19-MONITORING-BULK-DISCOVERY.md:11:  - `showBulkMenu`, `setShowBulkMenu`
+frontend/OUT-8-ITERATION-19-MONITORING-BULK-DISCOVERY.md:12:  - `bulkMenuButtonRef`, `bulkMenuPanelRef`, `bulkMenuStyle`
+frontend/OUT-8-ITERATION-19-MONITORING-BULK-DISCOVERY.md:19:- `MonitoringGrid` maintains `showBulkMenu` state and a `bulkMenuButtonRef` that triggers `toggleBulkWindow`.
+frontend/OUT-8-ITERATION-19-MONITORING-BULK-DISCOVERY.md:21:- The `bulkMenuTrigger` button exists and toggles the `showBulkMenu` state.
+frontend/OUT-8-ITERATION-19-MONITORING-BULK-DISCOVERY.md:23:- It appears that the `showBulkMenu` lifecycle logic in `MonitoringGrid` is a legacy holdover or placeholder that was never fully realized for an anchored bulk menu.
+frontend/OUT-8-ITERATION-19-MONITORING-BULK-DISCOVERY.md:27:- Source evidence supports LEGACY_INCOMPLETE_SURFACE, not INTENTIONALLY_MISSING.
+frontend/src/components/MonitoringGrid.tsx:513:  const [showBulkMenu, setShowBulkMenu] = useState(false)
+frontend/src/components/MonitoringGrid.tsx:586:  const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
+frontend/src/components/MonitoringGrid.tsx:905:    setShowBulkMenu(!showBulkMenu)
+frontend/src/components/MonitoringGrid.tsx:1202:    active: showBulkMenu || showDisplayMenu || showViewsMenu || !!rowActionMenu,
+frontend/src/components/MonitoringGrid.tsx:1205:    bulkMenuPanelRef,
+frontend/src/components/MonitoringGrid.tsx:1210:    showBulkMenu,
+frontend/src/components/MonitoringGrid.tsx:1947:            active={showBulkMenu}
+frontend/src/components/External.tsx:42:  useWorkspaceDismissHandlers,
