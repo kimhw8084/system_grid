@@ -2130,10 +2130,14 @@ export default function External() {
     onSuccess: ({ action, idsToUse, payload, previousSnapshots, updated, skipped, failed, errors }) => {
       queryClient.invalidateQueries({ queryKey: ['external-entities'] })
       queryClient.invalidateQueries({ queryKey: ['external-links'] })
-      setSelectedIds([])
-      setShowBulkMenu(false)
-      setBulkDraft({ status: '', environment: '', criticality: '', risk_rating: '' })
-      setExpandedBulkSection(null)
+
+      const hasFailures = failed > 0
+      if (!hasFailures) {
+        setSelectedIds([])
+        setShowBulkMenu(false)
+        setBulkDraft({ status: '', environment: '', criticality: '', risk_rating: '' })
+        setExpandedBulkSection(null)
+      }
 
       let summaryMessage = `Bulk ${action} completed: `
       if (updated > 0) summaryMessage += `${updated} updated. `
