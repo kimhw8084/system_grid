@@ -1539,17 +1539,16 @@ export default function ServicesReal() {
       else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
       else lastUndoRef.current = null
 
+      const revertAction = async () => {
+        const undo = lastUndoRef.current
+        lastUndoRef.current = null
+        if (!undo) return
+        await runUndo()
+        showWorkspaceToast('Reverted service operation', { type: 'success' })
+      }
+
       if (lastUndoRef.current) {
-        showWorkspaceToast(result?.summary || 'Updated service records', {
-          onRevert: async () => {
-            try {
-              await runUndo()
-              showWorkspaceToast('Reverted service operation', { type: 'success' })
-            } catch (error: any) {
-              showWorkspaceToast(error.message || 'Undo failed', { type: 'error' })
-            }
-          }
-        })
+        showWorkspaceRevertToast(result?.summary || 'Updated service records', revertAction)
       } else {
         showWorkspaceToast(result?.summary || 'Updated service records', { type: 'success' })
       }
