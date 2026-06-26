@@ -49,7 +49,7 @@ import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shar
 import { StatusPill } from './shared/StatusPill'
 import { parseCommaSeparatedValues } from '../utils/dataParsers'
 import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
-import { useOperationalDetailRoute, useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
+import { useOperationalDetailRoute, useOperationalGridRuntime, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
 import {
   useOperationalRowInteractions,
   useOperationalContextMenu,
@@ -599,8 +599,63 @@ export default function ServicesReal() {
     preserveExplicitColumnWidths,
     syncColumnLayoutState,
     applyColumnLayoutState,
-    handleColumnResized,
-  } = useOperationalGridLayout(persistedUiState?.columnLayoutState ?? [], Boolean(activeViewId))
+    handleColumnResized: handleBaseColumnResized,
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
+    handleGridReady: handleBaseGridReady,
+    handleFilterChanged,
+    handleSortChanged,
+  } = useOperationalGridRuntime({
+    initialColumnLayoutState: persistedUiState?.columnLayoutState ?? [],
+    hasSavedViewWidths: Boolean(activeViewId),
+    applyGridState: (config) => {
+      const api = gridRef.current?.api
+      if (!api) return
+      applyOperationalColumnState(api, config.columnLayoutState, preserveExplicitColumnWidths)
+      api.setFilterModel(config.filterModel || {})
+      api.applyColumnState({
+        state: (config.sortModel || []).map((entry: any) => ({ colId: entry.colId, sort: entry.sort as 'asc' | 'desc' })),
+        defaultState: { sort: null },
+        applyOrder: false,
+      })
+    },
+    initialFilterModel: gridFilterModel,
+    initialSortModel: gridSortModel,
+    setGridFilterModel,
+    setGridSortModel,
+    onGridApiReady: (params) => {
+      if (typeof window !== 'undefined') {
+        ;(window as any).__DEBUG_NETWORK_GRID_API__ = params.api
+      }
+      if (columnLayoutState.length > 0) {
+        applyOperationalColumnState(params.api, columnLayoutState, preserveExplicitColumnWidths)
+      }
+    },
+    onBeforeManualResize: (event) => {
+      clearPendingAutoSize()
+      preserveExplicitColumnWidthsRef.current = true
+      setTransientManualColumnWidths(true)
+    },
+  })
+
+  const handleColumnResized = useCallback((event: any) => {
+    const source = event?.source || ''
+    const isAutoResizeSource =
+      source === 'autosizeColumns' ||
+      source === 'sizeColumnsToFit' ||
+      source === 'api' ||
+      source === 'flex'
+
+    if (!isAutoResizeSource) {
+      // Logic handled by onBeforeManualResize in useOperationalGridRuntime
+    }
+
+    handleBaseColumnResized(event)
+  }, [handleBaseColumnResized])
+
+  const handleGridReady = handleBaseGridReady;
 
   const groupSelectionsRef = useRef<Record<string, number[]>>({})
 
@@ -747,36 +802,6 @@ export default function ServicesReal() {
     setSelectedIds(allSelected)
   }, [])
 
-  const handleColumnMoved = useCallback((event: any) => {
-    if (!event.source.includes('drag')) syncColumnLayoutState(event.api)
-  }, [syncColumnLayoutState])
-
-  const handleDragStopped = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
-  const handleColumnPinned = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
-  const handleColumnVisible = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
-  const handleFilterChanged = useCallback((e: any) => setGridFilterModel(e.api.getFilterModel() || {}), [])
-  const handleServiceColumnResized = useCallback((event: any) => {
-    const source = event?.source || ''
-    const isAutoResizeSource =
-      source === 'autosizeColumns' ||
-      source === 'sizeColumnsToFit' ||
-      source === 'api' ||
-      source === 'flex'
-
-    if (!isAutoResizeSource) {
-      clearPendingAutoSize()
-      preserveExplicitColumnWidthsRef.current = true
-      setTransientManualColumnWidths(true)
-    }
-
-    handleColumnResized(event)
-  }, [clearPendingAutoSize, handleColumnResized, setTransientManualColumnWidths])
-  
-  const handleSortChanged = useCallback((e: any) => {
-    const nextSortModel = e.api.getColumnState().filter((col: any) => col.sort).map((col: any) => ({ colId: col.colId, sort: col.sort }))
-    setGridSortModel(nextSortModel)
-  }, [])
-
   const handleRowId = useCallback((params: any) => {
     if (params?.data?.id != null) return String(params.data.id)
     return String(params?.node?.id ?? 'unknown-row')
@@ -786,16 +811,6 @@ export default function ServicesReal() {
       setRowActionMenu({ item, point })
     }, [])
   })
-
-  const handleGridReady = useCallback((event: any) => {
-    if (typeof window !== 'undefined') {
-      ;(window as any).__DEBUG_NETWORK_GRID_API__ = event.api
-    }
-    // Immediately apply layout if we have it to prevent squish
-    if (columnLayoutState.length > 0) {
-      applyOperationalColumnState(event.api, columnLayoutState, preserveExplicitColumnWidths)
-    }
-  }, [columnLayoutState, preserveExplicitColumnWidths])
 
   const autoSizeServiceColumns = useCallback(() => {
     if (!gridRef.current?.api || preserveExplicitColumnWidthsRef.current) return
@@ -1762,7 +1777,7 @@ export default function ServicesReal() {
   const serviceGridRuntime = useMemo(() => ({
     preserveExplicitColumnWidths,
     handleGridReady,
-    handleColumnResized: handleServiceColumnResized,
+    handleColumnResized,
     handleColumnMoved,
     handleDragStopped,
     handleColumnPinned,
@@ -1772,7 +1787,7 @@ export default function ServicesReal() {
   }), [
     preserveExplicitColumnWidths,
     handleGridReady,
-    handleServiceColumnResized,
+    handleColumnResized,
     handleColumnMoved,
     handleDragStopped,
     handleColumnPinned,
