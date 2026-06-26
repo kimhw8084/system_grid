@@ -44,15 +44,17 @@ import {
   getWorkspaceInputClass,
   useEscapeDismiss,
   useBodyModalFlag,
+  useWorkspaceAnchoredLayer,
 } from './shared/OperationalWorkspacePrimitives'
 import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shared/WorkspaceFlyout'
 import { StatusPill } from './shared/StatusPill'
 import { parseCommaSeparatedValues } from '../utils/dataParsers'
 import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
-import { useOperationalDetailRoute, useOperationalGridRuntime, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
+import { useOperationalDetailRoute, useOperationalGridRuntime, usePersistentJsonState, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
 import {
   useOperationalRowInteractions,
   useOperationalContextMenu,
+  useOperationalDismissController,
 } from './shared/OperationalGridInteractions'
 import { WorkspaceCompareShell, WorkspaceDossierShell } from './shared/WorkspaceModalShells'
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
@@ -533,7 +535,12 @@ export default function ServicesReal() {
   const [rowDensity, setRowDensity] = useState(persistedUiState?.rowDensity ?? 8)
   const [showDisplayMenu, setShowDisplayMenu] = useState(false)
   const [showViewsMenu, setShowViewsMenu] = useState(false)
+  const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [showRegistry, setShowRegistry] = useState(false)
+  
+  const { triggerRef: displayMenuButtonRef, panelRef: displayMenuPanelRef, panelStyle: displayMenuStyle } = useWorkspaceAnchoredLayer(showDisplayMenu, { minWidth: 320 })
+  const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
+  const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
   const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedUiState?.hiddenColumns ?? ['created_at', 'updated_at'])
   const [activeTab, setActiveTab] = useState<'active' | 'deleted'>(persistedUiState?.activeTab === 'deleted' ? 'deleted' : 'active')
   const [showFilterBar, setShowFilterBar] = useState<boolean>(persistedUiState?.showFilterBar ?? true)
@@ -547,7 +554,6 @@ export default function ServicesReal() {
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
   
   const [selectedIds, setSelectedIds] = useState<number[]>([])
-  const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
   const [isBulkSeverityOpen, setIsBulkSeverityOpen] = useState(false)
   const [isBulkNotifyOpen, setIsBulkNotifyOpen] = useState(false)
@@ -576,12 +582,7 @@ export default function ServicesReal() {
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'service_type' | 'environment' | null>(null)
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
   const [pendingIds, setPendingIds] = useState<number[]>([])
-  const displayMenuButtonRef = useRef<HTMLButtonElement | null>(null)
-  const viewsMenuButtonRef = useRef<HTMLButtonElement | null>(null)
-  const bulkMenuButtonRef = useRef<HTMLButtonElement | null>(null)
-  const [displayMenuStyle, setDisplayMenuStyle] = useState<React.CSSProperties>({})
-  const [viewsMenuStyle, setViewsMenuStyle] = useState<React.CSSProperties>({})
-  const [bulkMenuStyle, setBulkMenuStyle] = useState<React.CSSProperties>({})
+  // Removed redundant refs and styles. Anchoring is now handled by useWorkspaceAnchoredLayer.
   const lastUndoRef = useRef<any>(null)
   const [newViewName, setNewViewName] = useState('')
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
@@ -891,11 +892,7 @@ export default function ServicesReal() {
   }
 
   const toggleBulkWindow = () => {
-    setShowBulkMenu((current) => {
-      if (current) return false
-      setBulkMenuStyle(positionUtilityWindow(bulkMenuButtonRef.current, 340, BULK_MENU_MAX_HEIGHT, 1105))
-      return true
-    })
+    setShowBulkMenu(!showBulkMenu)
   }
 
   const toggleFavorite = useCallback((monitorId: number) => {
@@ -1137,17 +1134,19 @@ export default function ServicesReal() {
     setRowDeleteConfirmId(null)
   }, [])
 
-  useWorkspaceDismissHandlers({
+  useOperationalDismissController({
     active: showBulkMenu || showDisplayMenu || showViewsMenu || !!rowActionMenu,
     onDismiss: dismissWorkspaceMenus,
-    shouldDismiss: (target) => {
-      if (target.closest('[data-workspace-panel]')) return false
-      if (showBulkMenu && !target.closest('.bulk-menu-container') && !target.closest('.bulk-menu-trigger')) return true
-      if (showDisplayMenu && !target.closest('.display-menu-container')) return true
-      if (showViewsMenu && !target.closest('.views-menu-container')) return true
-      if (rowActionMenu && !target.closest('.row-action-menu-container')) return true
-      return false
-    },
+    bulkMenuButtonRef,
+    bulkMenuPanelRef,
+    displayMenuButtonRef,
+    displayMenuPanelRef,
+    viewsMenuButtonRef,
+    viewsMenuPanelRef,
+    showBulkMenu,
+    showDisplayMenu,
+    showViewsMenu,
+    hasRowActionMenu: !!rowActionMenu
   })
 
   useEffect(() => {
@@ -1163,41 +1162,7 @@ export default function ServicesReal() {
     return () => document.removeEventListener('contextmenu', handleContextMenu)
   }, [])
 
-  useEffect(() => {
-    const updateMenuPositions = () => {
-      if (showDisplayMenu && displayMenuButtonRef.current) {
-        setDisplayMenuStyle(getAnchoredFloatingStyle({
-          rect: displayMenuButtonRef.current.getBoundingClientRect(),
-          width: 320,
-          height: 420,
-          zIndex: 1100,
-          offset: 12
-        }))
-      }
-      if (showViewsMenu && viewsMenuButtonRef.current) {
-        setViewsMenuStyle(getAnchoredFloatingStyle({
-          rect: viewsMenuButtonRef.current.getBoundingClientRect(),
-          width: 380,
-          height: 460,
-          zIndex: 1100,
-          offset: 12
-        }))
-      }
-      if (showBulkMenu && bulkMenuButtonRef.current) {
-        setBulkMenuStyle(positionUtilityWindow(bulkMenuButtonRef.current, 340, BULK_MENU_MAX_HEIGHT, 1105))
-      }
-    }
-
-    updateMenuPositions()
-    if (showDisplayMenu || showBulkMenu || showViewsMenu) {
-      window.addEventListener('resize', updateMenuPositions)
-      window.addEventListener('scroll', updateMenuPositions, true)
-      return () => {
-        window.removeEventListener('resize', updateMenuPositions)
-        window.removeEventListener('scroll', updateMenuPositions, true)
-      }
-    }
-  }, [showBulkMenu, showDisplayMenu, showViewsMenu])
+  // Removed manual menu position updates as they are now handled by useWorkspaceAnchoredLayer.
 
   const { data: allItems, isLoading, isError, error } = useQuery({
     queryKey: ['logical-services'],
