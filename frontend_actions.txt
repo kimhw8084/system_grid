@@ -1,0 +1,1290 @@
+frontend/src/main.tsx:173:          console.log("BOOTSTRAP: Configuration updated, triggering re-render");
+frontend/src/test/setup.ts:19:      store.delete(key)
+frontend/src/utils/monitoring.test.ts:13:      updated_at: 'later',
+frontend/src/utils/monitoring.test.ts:15:      is_deleted: false,
+frontend/src/utils/monitoring.ts:4:  delete next.created_at
+frontend/src/utils/monitoring.ts:5:  delete next.updated_at
+frontend/src/utils/monitoring.ts:6:  delete next.version
+frontend/src/utils/monitoring.ts:7:  delete next.is_deleted
+frontend/src/utils/monitoring.ts:8:  delete next.device_name
+frontend/src/utils/monitoring.ts:9:  delete next.recovery_doc_titles
+frontend/src/utils/monitoring.ts:10:  delete next.recovery_doc_details
+frontend/src/utils/monitoring.ts:11:  delete next.monitored_service_names
+frontend/src/utils/payloadGenerator.ts:9:    delete payload[requiredField];
+frontend/src/components/Settings.tsx:312:        changeKind: 'deleted' as const,
+frontend/src/components/Settings.tsx:374:  const order = { changed: 0, added: 1, deleted: 2 } as const
+frontend/src/components/Settings.tsx:420:  const deletedCount = historyRows.filter((row) => row.changeKind === 'deleted').length
+frontend/src/components/Settings.tsx:483:                               toast.promise(apiFetch(`/api/v1/settings/user-pool/restore/${h.id}`, { method: 'POST' }), {
+frontend/src/components/Settings.tsx:536:                     <span className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-rose-300">{deletedCount} deleted</span>
+frontend/src/components/Settings.tsx:563:                                       : row.changeKind === 'deleted'
+frontend/src/components/Settings.tsx:573:                                             : row.changeKind === 'deleted'
+frontend/src/components/Settings.tsx:961:        showWorkspaceToast("UI Gateway updated & persisted locally");
+frontend/src/components/Settings.tsx:1134:    VITE_ENABLE_WEBSOCKETS: { details: "Toggle real-time engine-to-ui updates.", impact: "HIGH" },
+frontend/src/components/Settings.tsx:1206:      delete permissionCommitBufferRef.current[op.id]
+frontend/src/components/Settings.tsx:1221:  const deleteOperatorMutation = useMutation({
+frontend/src/components/Settings.tsx:1233:    mutationFn: async ({ updates }: { updates: Array<{ id: number, payload: any }> }) => {
+frontend/src/components/Settings.tsx:1234:      const res = await apiFetch(`/api/v1/settings/operators/bulk-update`, {
+frontend/src/components/Settings.tsx:1236:        body: JSON.stringify({ updates })
+frontend/src/components/Settings.tsx:1247:      showWorkspaceToast("Identity updates applied")
+frontend/src/components/Settings.tsx:1253:      const res = await apiFetch(`/api/v1/settings/operators/bulk-delete`, {
+frontend/src/components/Settings.tsx:1292:  const deleteTeamMutation = useMutation({
+frontend/src/components/Settings.tsx:1308:      const updates = ids.map(async (id) => {
+frontend/src/components/Settings.tsx:1321:      return Promise.all(updates)
+frontend/src/components/Settings.tsx:1448:      updates: selectedOperators.map((op: any) => ({
+frontend/src/components/Settings.tsx:1461:      updates: selectedOperators.map((op: any) => ({
+frontend/src/components/Settings.tsx:1474:      updates: selectedOperators.map((op: any) => ({
+frontend/src/components/Settings.tsx:1628:    // Always persist as numeric for simplicity in this update
+frontend/src/components/Settings.tsx:2450:                                    deleteOperatorMutation.mutate(op.id);
+frontend/src/components/Settings.tsx:2842:                                 onConfirm={() => deleteTeamMutation.mutate(selectedTeamId)}
+frontend/src/components/Settings.tsx:2874:                                         const updatedTeams = isMember
+frontend/src/components/Settings.tsx:2879:                                           teams: updatedTeams,
+frontend/src/components/Settings.tsx:3150:                            onClick={() => { setUserPoolScript(viewVersionScript); setViewVersionScript(null); setShowPoolLogic(true); showWorkspaceToast("Script restored to editor"); }}
+frontend/src/components/Projects.tsx:354:                            <span className="text-[8px] font-bold text-slate-500 uppercase">{p.updated_at ? format(parseAppDate(p.updated_at)!, 'MMM dd') : 'N/A'}</span>
+frontend/src/components/Projects.tsx:463:                              const updated = e.target.checked ? [...activeROI, t.value] : activeROI.filter((v:any) => v !== t.value)
+frontend/src/components/Projects.tsx:464:                              handleChange('roi_types', updated)
+frontend/src/components/Projects.tsx:852:    let updated = [...currentTasks]
+frontend/src/components/Projects.tsx:853:    const successors = updated.filter(t => t.dependencies_json?.includes(taskId))
+frontend/src/components/Projects.tsx:861:        const updatedSuccStart = predEnd.toISOString()
+frontend/src/components/Projects.tsx:862:        const updatedSuccEnd = addDays(predEnd, duration).toISOString()
+frontend/src/components/Projects.tsx:864:        updated = updated.map(t => t.id === succ.id ? { ...t, start_date: updatedSuccStart, end_date: updatedSuccEnd } : t)
+frontend/src/components/Projects.tsx:865:        updated = propagateChanges(succ.id, updatedSuccEnd, updated)
+frontend/src/components/Projects.tsx:868:    return updated
+frontend/src/components/Projects.tsx:901:  // Sync tasks from project when it updates, but not while editing
+frontend/src/components/Projects.tsx:939:      if (newIds.has(id)) newIds.delete(id)
+frontend/src/components/Projects.tsx:955:      let updatedTasks = [...tasks]
+frontend/src/components/Projects.tsx:957:      updatedTasks = updatedTasks.map(t => {
+frontend/src/components/Projects.tsx:971:        const moved = updatedTasks.find(t => t.id === mid)
+frontend/src/components/Projects.tsx:972:        if (moved) updatedTasks = propagateChanges(mid, moved.end_date, updatedTasks)
+frontend/src/components/Projects.tsx:975:      setTasks(updatedTasks)
+frontend/src/components/Projects.tsx:990:      let updatedTasks = [...tasks]
+frontend/src/components/Projects.tsx:993:      updatedTasks = updatedTasks.map(t => {
+frontend/src/components/Projects.tsx:996:          let updatedTask = { ...t }
+frontend/src/components/Projects.tsx:1000:              updatedTask.start_date = newStart.toISOString()
+frontend/src/components/Projects.tsx:1006:              updatedTask.end_date = newEnd.toISOString()
+frontend/src/components/Projects.tsx:1010:          return updatedTask
+frontend/src/components/Projects.tsx:1017:        const resized = updatedTasks.find(t => t.id === id)
+frontend/src/components/Projects.tsx:1018:        if (resized) updatedTasks = propagateChanges(id, resized.end_date, updatedTasks)
+frontend/src/components/Projects.tsx:1021:      setTasks(updatedTasks)
+frontend/src/components/Projects.tsx:1110:  const handleTaskUpdate = (id: number, updates: any) => {
+frontend/src/components/Projects.tsx:1114:    const updatedTasks = tasks.map(t => t.id === id ? { ...t, ...updates } : t)
+frontend/src/components/Projects.tsx:1115:    setTasks(updatedTasks)
+frontend/src/components/Projects.tsx:1243:                 const updated = [...tasks, newTask]
+frontend/src/components/Projects.tsx:1244:                 setTasks(updated)
+frontend/src/components/Projects.tsx:1245:                 onUpdate({ ...project, tasks: updated })
+frontend/src/components/Projects.tsx:1387:                    const updateSubtask = (idx: number, updates: any) => {
+frontend/src/components/Projects.tsx:1389:                      newSubtasks[idx] = { ...newSubtasks[idx], ...updates }
+frontend/src/components/Projects.tsx:1425:                                onClick={() => { if(confirm('Decommission this strategic milestone?')) { const updated = tasks.filter(t => t.id !== task.id); setTasks(updated); onUpdate({ ...project, tasks: updated }); setSelectedTaskId(null); } }}
+frontend/src/components/Projects.tsx:1435:                                  const updatedTasks = tasks.map(t => t.id === task.id ? finalTask : t)
+frontend/src/components/Projects.tsx:1436:                                  onUpdate({ ...project, tasks: updatedTasks })
+frontend/src/components/Projects.tsx:1472:                                           onChange={e => updateSubtask(idx, { completed: e.target.checked })}
+frontend/src/components/Projects.tsx:1477:                                           onChange={e => updateSubtask(idx, { label: e.target.value })}
+frontend/src/components/Projects.tsx:1932:            const updatedImages = [...(metadata.images || []), { url: base64, caption: '', timestamp: new Date().toISOString() }]
+frontend/src/components/Projects.tsx:1933:            onUpdate({ ...project, metadata_json: { ...metadata, images: updatedImages } })
+frontend/src/components/Projects.tsx:2068:                                        const updated = e.target.checked ? [...current, val] : current.filter((x:any) => x !== val)
+frontend/src/components/Projects.tsx:2069:                                        handleFieldChange(group.key, updated)
+frontend/src/components/Projects.tsx:2110:                                const updated = e.target.checked ? [...current, o.value] : current.filter((x:any) => x !== o.value)
+frontend/src/components/Projects.tsx:2111:                                handleFieldChange('owners', updated)
+frontend/src/components/Projects.tsx:2214:                           const updated = metadata.diagrams.filter((_:any, i:number) => i !== idx)
+frontend/src/components/Projects.tsx:2215:                           handleFieldChange('metadata_json', { ...metadata, diagrams: updated })
+frontend/src/components/Projects.tsx:2225:                          <DiagramBuilder data={d} onChange={(updated: any) => {
+frontend/src/components/Projects.tsx:2228:                            newDiagrams[idx] = { ...newDiagrams[idx], ...updated }
+frontend/src/components/Projects.tsx:2263:                          const updated = (metadata.images || []).filter((_:any, idx:number) => idx !== i)
+frontend/src/components/Projects.tsx:2264:                          handleFieldChange('metadata_json', { ...metadata, images: updated })
+frontend/src/components/Projects.tsx:2300:                        const updated = metadata.references.filter((_:any, idx:number) => idx !== i)
+frontend/src/components/Projects.tsx:2301:                        handleFieldChange('metadata_json', { ...metadata, references: updated })
+frontend/src/components/Projects.tsx:2543:                             const updated = e.target.checked ? [...current, t.value] : current.filter((v:any) => v !== t.value)
+frontend/src/components/Projects.tsx:2544:                             setFormData({ ...formData, roi_types: updated })
+frontend/src/components/Projects.tsx:2571:                                  const updated = e.target.checked ? [...current, o.value] : current.filter((x:any) => x !== o.value)
+frontend/src/components/Projects.tsx:2574:                                  const validAssets = devices?.filter((d:any) => updated.includes(d.system)).map((d:any) => d.id) || []
+frontend/src/components/Projects.tsx:2581:                                  setFormData({ ...formData, target_systems: updated, target_assets: prunedAssets, target_services: prunedServices })
+frontend/src/components/Projects.tsx:2594:                                  const updated = e.target.checked ? [...current, d.id] : current.filter((x:any) => x !== d.id)
+frontend/src/components/Projects.tsx:2597:                                  const validServices = services?.filter((s:any) => updated.includes(s.device_id)).map((s:any) => s.id) || []
+frontend/src/components/Projects.tsx:2600:                                  setFormData({ ...formData, target_assets: updated, target_services: prunedServices })
+frontend/src/components/Projects.tsx:2613:                                  const updated = e.target.checked ? [...current, s.id] : current.filter((x:any) => x !== s.id)
+frontend/src/components/Projects.tsx:2614:                                  setFormData({ ...formData, target_services: updated })
+frontend/src/components/Projects.tsx:2790:    const updatedLogs = [log, ...logs]
+frontend/src/components/Projects.tsx:2791:    onUpdate({ ...project, metadata_json: { ...metadata, adoption_logs: updatedLogs } })
+frontend/src/components/Projects.tsx:2797:    const updatedLogs = logs.filter((l: any) => l.id !== id)
+frontend/src/components/Projects.tsx:2798:    onUpdate({ ...project, metadata_json: { ...metadata, adoption_logs: updatedLogs } })
+frontend/src/components/Projects.tsx:2966:    else nextParams.delete('id')
+frontend/src/components/Projects.tsx:3030:  const deleteMutation = useMutation({
+frontend/src/components/Projects.tsx:3036:    onSuccess: (deletedId) => {
+frontend/src/components/Projects.tsx:3039:      const currentIndex = sorted.findIndex(p => p.id === deletedId)
+frontend/src/components/Projects.tsx:3040:      const remainingProjects = currentProjects.filter((project: any) => project.id !== deletedId)
+frontend/src/components/Projects.tsx:3044:      if (selectedProjectId === deletedId) {
+frontend/src/components/Projects.tsx:3086:      deleteMutation.mutate(pendingNav.id)
+frontend/src/components/Projects.tsx:3098:  const handleUpdate = (updated: any) => {
+frontend/src/components/Projects.tsx:3100:      setDraftProject(updated)
+frontend/src/components/Projects.tsx:3102:      mutation.mutate({ data: updated, silent: true })
+frontend/src/components/Projects.tsx:3246:             message={pendingNav.type === 'DELETE' ? "Are you certain? This action permanently removes all milestones and ROI data." : "You have uncommitted changes in the strategic matrix. Leaving now will discard these updates."}
+frontend/src/components/Knowledge.tsx:287:  const deleteMutation = useMutation({
+frontend/src/components/Knowledge.tsx:408:        return (parseAppDate(b.updated_at)?.getTime() || 0) - (parseAppDate(a.updated_at)?.getTime() || 0)
+frontend/src/components/Knowledge.tsx:463:    next.delete('id')
+frontend/src/components/Knowledge.tsx:747:        onConfirm={() => { deleteMutation.mutate(confirmModal.id); setConfirmModal({ isOpen: false, id: null }); }} 
+frontend/src/components/Knowledge.tsx:872:            REV.{new Date(entry.updated_at).getFullYear()}.{new Date(entry.updated_at).getMonth() + 1}
+frontend/src/components/Knowledge.tsx:1002:  const updateMetadata = (patch: any) => setFormData({ ...formData, metadata_json: mergeDeep(metadata, patch) })
+frontend/src/components/Knowledge.tsx:1005:    updateMetadata({ links: { [key]: current.includes(id) ? current.filter((value: number) => value !== id) : [...current, id] } })
+frontend/src/components/Knowledge.tsx:1101:                           onChange={e => updateMetadata({ entry_type: e.target.value })}
+frontend/src/components/Knowledge.tsx:1109:                           onChange={e => updateMetadata({ criticality: e.target.value })}
+frontend/src/components/Knowledge.tsx:1119:                           onChange={e => updateMetadata({ ownership: { owner: e.target.value } })}
+frontend/src/components/Knowledge.tsx:1128:                           onChange={e => updateMetadata({ ownership: { backup_owner: e.target.value } })}
+frontend/src/components/Knowledge.tsx:1137:                           onChange={e => updateMetadata({ ownership: { review_team: e.target.value } })}
+frontend/src/components/Knowledge.tsx:1146:                           onChange={e => updateMetadata({ ownership: { escalation_contact: e.target.value } })}
+frontend/src/components/Knowledge.tsx:1157:                           onChange={e => updateMetadata({ verification: { state: e.target.value } })}
+frontend/src/components/Knowledge.tsx:1165:                           onChange={e => updateMetadata({ verification: { verified_by: e.target.value } })}
+frontend/src/components/Knowledge.tsx:1175:                           onChange={e => updateMetadata({ verification: { last_verified_at: e.target.value } })}
+frontend/src/components/Knowledge.tsx:1184:                           onChange={e => updateMetadata({ verification: { next_review_at: e.target.value } })}
+frontend/src/components/Knowledge.tsx:1262:  const update = (field: string, val: any) => onChange({ ...data, [field]: val })
+frontend/src/components/Knowledge.tsx:1264:  const addPrereq = () => update('prerequisites', [...(data.prerequisites || []), { description: '', link: '', criticality: 'High' }])
+frontend/src/components/Knowledge.tsx:1265:  const addStep = () => update('steps', [...(data.steps || []), { task: '', description: '', tool: '', image_url: '' }])
+frontend/src/components/Knowledge.tsx:1266:  const addTip = () => update('tips', [...(data.tips || []), ''])
+frontend/src/components/Knowledge.tsx:1267:  const addTrouble = () => update('troubleshooting', [...(data.troubleshooting || []), { symptom: '', cause: '', solution: '' }])
+frontend/src/components/Knowledge.tsx:1277:          onChange={e => update('purpose', e.target.value)} 
+frontend/src/components/Knowledge.tsx:1290:            onChange={e => update('symptoms', e.target.value)}
+frontend/src/components/Knowledge.tsx:1301:            onChange={e => update('incident_mode', { ...(data.incident_mode || {}), first_five_minutes: e.target.value })}
+frontend/src/components/Knowledge.tsx:1324:                  const next = [...data.prerequisites]; next[idx].description = e.target.value; update('prerequisites', next)
+frontend/src/components/Knowledge.tsx:1329:              <button onClick={() => update('prerequisites', data.prerequisites.filter((_:any, i:any) => i !== idx))} className="text-slate-700 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all">
+frontend/src/components/Knowledge.tsx:1359:                    const next = [...data.steps]; next[idx].task = e.target.value; update('steps', next)
+frontend/src/components/Knowledge.tsx:1367:                    const next = [...data.steps]; next[idx].description = e.target.value; update('steps', next)
+frontend/src/components/Knowledge.tsx:1378:                          const next = [...data.steps]; next[idx].tool = e.target.value; update('steps', next)
+frontend/src/components/Knowledge.tsx:1389:                          const next = [...data.steps]; next[idx].image_url = e.target.value; update('steps', next)
+frontend/src/components/Knowledge.tsx:1397:              <button onClick={() => update('steps', data.steps.filter((_:any, i:any) => i !== idx))} className="absolute top-6 right-6 text-slate-700 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all">
+frontend/src/components/Knowledge.tsx:1422:                        const next = [...data.troubleshooting]; next[idx].symptom = e.target.value; update('troubleshooting', next)
+frontend/src/components/Knowledge.tsx:1433:                        const next = [...data.troubleshooting]; next[idx].cause = e.target.value; update('troubleshooting', next)
+frontend/src/components/Knowledge.tsx:1444:                        const next = [...data.troubleshooting]; next[idx].solution = e.target.value; update('troubleshooting', next)
+frontend/src/components/Knowledge.tsx:1450:                 <button onClick={() => update('troubleshooting', data.troubleshooting.filter((_:any, i:any) => i !== idx))} className="absolute -right-2 -top-2 w-8 h-8 rounded-lg bg-slate-900 border border-white/10 text-slate-700 hover:text-rose-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-xl">
+frontend/src/components/Knowledge.tsx:1475:                    const next = [...data.tips]; next[idx] = e.target.value; update('tips', next)
+frontend/src/components/Knowledge.tsx:1480:                <button onClick={() => update('tips', data.tips.filter((_:any, i:any) => i !== idx))} className="text-slate-700 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all">
+frontend/src/components/Knowledge.tsx:1495:               onChange={e => update('next_steps', e.target.value)} 
+frontend/src/components/Knowledge.tsx:1537:  const update = (section: string, field: string, val: any) => {
+frontend/src/components/Knowledge.tsx:1563:                     onChange={e => update('business_value', 'business_problem', e.target.value)}
+frontend/src/components/Knowledge.tsx:1572:                     onChange={e => update('business_value', 'roi_projection', e.target.value)}
+frontend/src/components/Knowledge.tsx:1584:                           {k} <X size={12} className="cursor-pointer hover:text-white" onClick={() => update('business_value', 'kpis', data.business_value.kpis.filter((x:any) => x !== k))} />
+frontend/src/components/Knowledge.tsx:1590:                     onChange={e => update('business_value', 'kpis', [...(data.business_value?.kpis || []), e.target.value])}
+frontend/src/components/Knowledge.tsx:1602:                               const next = [...data.business_value.beneficiaries]; next[idx].who = e.target.value; update('business_value', 'beneficiaries', next)
+frontend/src/components/Knowledge.tsx:1610:                               const next = [...data.business_value.beneficiaries]; next[idx].value = e.target.value; update('business_value', 'beneficiaries', next)
+frontend/src/components/Knowledge.tsx:1618:                        onClick={() => update('business_value', 'beneficiaries', [...(data.business_value?.beneficiaries || []), { who: '', value: '' }])}
+frontend/src/components/Knowledge.tsx:1645:                        onChange={e => update('overview', 'official_name', e.target.value)}
+frontend/src/components/Knowledge.tsx:1654:                        onChange={e => update('overview', 'version', e.target.value)}
+frontend/src/components/Knowledge.tsx:1668:                          update('overview', 'service_ids', current.includes(s.id) ? current.filter((id:any) => id !== s.id) : [...current, s.id])
+frontend/src/components/Knowledge.tsx:1689:                          update('overview', 'asset_ids', current.includes(d.id) ? current.filter((id:any) => id !== d.id) : [...current, d.id])
+frontend/src/components/Knowledge.tsx:1719:                     onChange={e => update('performance', 'availability_target', e.target.value)}
+frontend/src/components/Knowledge.tsx:1728:                     onChange={e => update('performance', 'latency_limits', e.target.value)}
+frontend/src/components/Knowledge.tsx:1739:                     onChange={e => update('performance', 'throughput_capacity', e.target.value)}
+frontend/src/components/Knowledge.tsx:1748:                     onChange={e => update('performance', 'capacity_methodology', e.target.value)}
+frontend/src/components/Knowledge.tsx:1773:                        onChange={e => update('operation', 'owner_team', e.target.value)}
+frontend/src/components/Knowledge.tsx:1782:                        onChange={e => update('operation', 'owner_individual', e.target.value)}
+frontend/src/components/Knowledge.tsx:1796:                          update('operation', 'far_ids', current.includes(fm.id) ? current.filter((id:any) => id !== fm.id) : [...current, fm.id])
+frontend/src/components/Knowledge.tsx:1814:                        onChange={e => update('operation', 'dr_strategy', { ...data.operation?.dr_strategy, rto: e.target.value })}
+frontend/src/components/Knowledge.tsx:1823:                        onChange={e => update('operation', 'dr_strategy', { ...data.operation?.dr_strategy, rpo: e.target.value })}
+frontend/src/components/Knowledge.tsx:1842:                               update('operation', 'raci', next)
+frontend/src/components/Knowledge.tsx:1887:  const restoreVersion = (version: any) => {
+frontend/src/components/Knowledge.tsx:1890:    const restoredMetadata = mergeDeep(snapshot.metadata_json || {}, {
+frontend/src/components/Knowledge.tsx:1903:      metadata_json: restoredMetadata
+frontend/src/components/Knowledge.tsx:1936:                     <History size={14}/> LAST_SYNC: {formatAppDate(entry.updated_at)}
+frontend/src/components/Knowledge.tsx:1999:                   onRestoreVersion={restoreVersion}
+frontend/src/components/Knowledge.tsx:2018:                   onRestoreVersion={restoreVersion}
+frontend/src/components/Knowledge.tsx:2037:                   onRestoreVersion={restoreVersion}
+frontend/src/components/SettingsStandards.tsx:210:              <LexiconEntry term="Shared Flyout Primitive" definition="The bulk-action flyout contract must be implemented through shared primitives such as `WorkspaceFlyoutActionCard` and `WorkspaceFlyoutDropdownEditor`, not duplicated per view." usage="Changing the shared flyout primitive should update Monitoring, Settings Permissions, and the next standardized table views immediately." />
+frontend/src/components/SettingsStandards.tsx:211:              <LexiconEntry term="Saved View Integrity" definition="Saved layouts, hidden columns, sort definitions, and filter models must be sanitized against the current table schema before apply." usage="If a column was removed or renamed, stale saved state is dropped silently instead of corrupting the restored view." />
+frontend/src/components/SettingsStandards.tsx:213:              <LexiconEntry term="Canonical History Delta" definition="History APIs for versioned operational records must return backend-generated structured deltas per version, including changed field ids, labels, before/after values, and change type." usage="Timeline cards, compare panes, sharing links, and restore previews should prefer backend delta payloads over client-side snapshot guessing." />
+frontend/src/components/SettingsStandards.tsx:275:              <LexiconEntry term="Saved State Contract" definition="Views, display settings, filters, sorting, grouping, favorites, and similar workspace state must restore through one versioned payload shape, not scattered unrelated keys." usage="Standardized workspaces should be changed by editing the shared payload contract once so dependent views inherit the new rule immediately." />
+frontend/src/components/SettingsStandards.tsx:276:              <LexiconEntry term="History Navigation Contract" definition="Timeline navigation should be driven by backend-provided summary and delta metadata first, with raw snapshots retained only as the fallback and restore source." usage="This improves sharing, readability, and cross-view consistency because all history consumers speak the same change language." />
+frontend/src/components/SettingsStandards.tsx:385:             usage="Apply SameButtonConfirm to all delete/revoke actions."
+frontend/src/components/External.tsx:115:const EXTERNAL_PURGE_BLOCKED_MESSAGE = 'Cannot purge selected external records because one or more are still linked or credentialed.'
+frontend/src/components/External.tsx:228:    activeTab: (safeConfig.activeTab === 'deleted' ? 'deleted' : 'active') as 'active' | 'deleted',
+frontend/src/components/External.tsx:494:  const updatePOC = (index: number, field: string, value: any) => {
+frontend/src/components/External.tsx:525:                <input value={poc.full_name} onChange={e => updatePOC(idx, 'full_name', e.target.value)} className="w-full bg-slate-900 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-amber-500/50" placeholder="Jane Doe" />
+frontend/src/components/External.tsx:531:                  onChange={e => updatePOC(idx, 'role', e.target.value)}
+frontend/src/components/External.tsx:537:                <input value={poc.external_person_id} onChange={e => updatePOC(idx, 'external_person_id', e.target.value)} className="w-full bg-slate-900 border border-white/5 rounded-lg px-3 py-1.5 text-[10px] font-bold text-white outline-none focus:border-amber-500/50" placeholder="JD-1234" />
+frontend/src/components/External.tsx:543:                <input value={poc.email} onChange={e => updatePOC(idx, 'email', e.target.value)} className="flex-1 bg-transparent text-[10px] font-bold text-slate-300 outline-none" placeholder="jane.doe@org.com" />
+frontend/src/components/External.tsx:547:                <input value={poc.phone} onChange={e => updatePOC(idx, 'phone', e.target.value)} className="flex-1 bg-transparent text-[10px] font-bold text-slate-300 outline-none" placeholder="+1-555-0199" />
+frontend/src/components/External.tsx:556:                <input type="checkbox" checked={!!poc.is_escalation} onChange={e => updatePOC(idx, 'is_escalation', e.target.checked)} />
+frontend/src/components/External.tsx:570:    queryKey: ['external-entities', { include_deleted: true }],
+frontend/src/components/External.tsx:571:    queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities?include_deleted=true')).json())
+frontend/src/components/External.tsx:596:  const deleteMutation = useMutation({
+frontend/src/components/External.tsx:691:                  <button onClick={() => deleteMutation.mutate(s.id)} className="p-1.5 text-slate-600 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100">
+frontend/src/components/External.tsx:815:  const updateField = (key: string, value: any) => {
+frontend/src/components/External.tsx:861:            <input value={formData.name} onChange={e => updateField('name', e.target.value)} className={inputClass('name')} placeholder="customer-feed-api" />
+frontend/src/components/External.tsx:865:            <StyledSelect label="Type" value={formData.type} onChange={e => updateField('type', e.target.value)} options={types} error={fieldErrors.type} />
+frontend/src/components/External.tsx:866:            <StyledSelect label="Operational Status" value={formData.status} onChange={e => updateField('status', e.target.value)} options={statusOptions} error={fieldErrors.status} />
+frontend/src/components/External.tsx:868:          <StyledSelect label="Environment" value={formData.environment} onChange={e => updateField('environment', e.target.value)} options={envOptions} error={fieldErrors.environment} />
+frontend/src/components/External.tsx:875:            <input value={formData.owner_organization} onChange={e => updateField('owner_organization', e.target.value)} className={inputClass('owner_organization')} placeholder="PartnerCo" />
+frontend/src/components/External.tsx:880:            <input value={formData.owner_team} onChange={e => updateField('owner_team', e.target.value)} className={inputClass('owner_team')} placeholder="B2B Platform" />
+frontend/src/components/External.tsx:884:            <StyledSelect label="Accountable Owner Mode" value={formData.ownership_mode} onChange={e => updateField('ownership_mode', e.target.value)} options={ACCOUNTABLE_OWNER_OPTIONS} error={fieldErrors.ownership_mode} />
+frontend/src/components/External.tsx:889:                onChange={e => updateField('internal_team_id', e.target.value)}
+frontend/src/components/External.tsx:890:                options={(teams || []).filter((team: any) => !team.is_archived).map((team: any) => ({ value: String(team.id), label: team.name }))}
+frontend/src/components/External.tsx:898:                onChange={e => updateField('internal_operator_id', e.target.value)}
+frontend/src/components/External.tsx:911:            <textarea value={formData.business_purpose} onChange={e => updateField('business_purpose', e.target.value)} className={`${inputClass('business_purpose')} h-24 resize-none`} placeholder="What business capability depends on this external entity?" />
+frontend/src/components/External.tsx:916:            <textarea value={formData.description} onChange={e => updateField('description', e.target.value)} className={`${inputClass('description')} h-24 resize-none`} placeholder="Operational context for this external dependency" />
+frontend/src/components/External.tsx:922:          <POCManager pocs={formData.contacts_json || []} onChange={newPocs => updateField('contacts_json', newPocs)} />
+frontend/src/components/External.tsx:927:          <MetadataEditor value={formData.metadata_json} onChange={v => updateField('metadata_json', v)} onError={setMetadataError} allowedKeys={allowedMetadataKeys} />
+frontend/src/components/External.tsx:1343:  if (messageText.includes("cannot be restored without an accountable operator") || messageText.includes("accountable operator is missing")) {
+frontend/src/components/External.tsx:1344:    return "This archived entity cannot be restored because its accountable operator is missing. Please edit the entity first to assign an active operator."
+frontend/src/components/External.tsx:1346:  if (messageText.includes("cannot be restored without an accountable team") || messageText.includes("accountable team is missing") || messageText.includes("without an accountable internal team")) {
+frontend/src/components/External.tsx:1347:    return "This archived entity cannot be restored because its accountable team is missing or archived. Please edit the entity first to assign an active team."
+frontend/src/components/External.tsx:1388:  const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedUiState.hiddenColumns ?? ['created_at', 'updated_at'])
+frontend/src/components/External.tsx:1390:  const [activeTab, setActiveTab] = useState<'active' | 'deleted' | 'links'>(persistedUiState.activeTab === 'deleted' ? 'deleted' : 'active')
+frontend/src/components/External.tsx:1531:    queryKey: ['external-entities', { include_deleted: true }],
+frontend/src/components/External.tsx:1532:    queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities?include_deleted=true')).json())
+frontend/src/components/External.tsx:1570:    if (activeTab !== 'deleted' || selectedIds.length === 0) return false
+frontend/src/components/External.tsx:1629:      .filter((e: any) => activeTab === 'active' ? !e.is_deleted : e.is_deleted)
+frontend/src/components/External.tsx:1646:    active: allEntities?.filter((entity: any) => !entity.is_deleted).length || 0,
+frontend/src/components/External.tsx:1647:    archived: allEntities?.filter((entity: any) => entity.is_deleted).length || 0,
+frontend/src/components/External.tsx:1776:      tabEmptyKind: activeTab === 'deleted' ? 'deleted-empty' : 'active-empty',
+frontend/src/components/External.tsx:1777:      tabEmptyLabel: activeTab === 'deleted' ? 'No archived external entities found' : 'No active external entities found',
+frontend/src/components/External.tsx:1807:        if (!groupedSections.some((section) => section.key === key)) delete next[key]
+frontend/src/components/External.tsx:1828:    const changedAt = item?.updated_at || item?.created_at
+frontend/src/components/External.tsx:1924:    showWorkspaceRevertToast('External workspace view updated', () => {
+frontend/src/components/External.tsx:1930:  const deleteView = (viewId: string) => {
+frontend/src/components/External.tsx:2064:  // Backend currently uses PUT for entity updates; this helper sends required stable fields plus intended changed fields while avoiding unrelated legacy invalid enum values.
+frontend/src/components/External.tsx:2101:            if (action === 'update') {
+frontend/src/components/External.tsx:2107:              const updatePayload = buildExternalSafeBulkPutPayload(original, payload)
+frontend/src/components/External.tsx:2112:                body: JSON.stringify(updatePayload),
+frontend/src/components/External.tsx:2117:              return { id, status: 'updated', previous: original }
+frontend/src/components/External.tsx:2118:            } else if (action === 'delete') {
+frontend/src/components/External.tsx:2121:              return { id, status: 'updated', previous: original }
+frontend/src/components/External.tsx:2122:            } else if (action === 'purge') {
+frontend/src/components/External.tsx:2123:              const res = await apiFetch(`/api/v1/intelligence/entities/${id}?purge=true`, { method: 'DELETE' })
+frontend/src/components/External.tsx:2125:              return { id, status: 'updated' }
+frontend/src/components/External.tsx:2126:            } else if (action === 'restore') {
+frontend/src/components/External.tsx:2127:              const res = await apiFetch(`/api/v1/intelligence/entities/${id}/restore`, { method: 'POST' })
+frontend/src/components/External.tsx:2129:              return { id, status: 'updated', previous: original }
+frontend/src/components/External.tsx:2139:      let updated = 0
+frontend/src/components/External.tsx:2146:        if (res.status === 'updated') {
+frontend/src/components/External.tsx:2147:          updated++
+frontend/src/components/External.tsx:2161:      return { action, idsToUse, payload, previousSnapshots, updated, skipped, failed, errors }
+frontend/src/components/External.tsx:2163:    onSuccess: ({ action, idsToUse, payload, previousSnapshots, updated, skipped, failed, errors }) => {
+frontend/src/components/External.tsx:2183:        } else if (undo.mode === 'restore_snapshots') {
+frontend/src/components/External.tsx:2186:            const restoreFields: any = {}
+frontend/src/components/External.tsx:2188:              restoreFields[key] = snapshot[key]
+frontend/src/components/External.tsx:2190:            const payloadToRestore = buildExternalSafeBulkPutPayload(snapshot, restoreFields)
+frontend/src/components/External.tsx:2207:        if (updated <= 0) {
+frontend/src/components/External.tsx:2209:        } else if (action === 'delete') {
+frontend/src/components/External.tsx:2210:          externalUndoRef.current = { mode: 'bulk', ids: previousSnapshots.map(s => s.id), action: 'restore' }
+frontend/src/components/External.tsx:2211:        } else if (action === 'restore') {
+frontend/src/components/External.tsx:2212:          externalUndoRef.current = { mode: 'bulk', ids: previousSnapshots.map(s => s.id), action: 'delete' }
+frontend/src/components/External.tsx:2213:        } else if (action === 'update') {
+frontend/src/components/External.tsx:2214:          externalUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
+frontend/src/components/External.tsx:2220:          action: action === 'delete' ? 'archive' : action,
+frontend/src/components/External.tsx:2222:          changedCount: updated,
+frontend/src/components/External.tsx:2293:  const deleteMutation = useMutation({
+frontend/src/components/External.tsx:2294:    mutationFn: async ({ id, purge, type }: { id: number, purge: boolean, type: 'entity' | 'link' }) => {
+frontend/src/components/External.tsx:2295:      if (type === 'entity' && purge && !isExternalEntityPurgeable(findExternalEntityById(id))) {
+frontend/src/components/External.tsx:2298:      const url = type === 'entity' ? `/api/v1/intelligence/entities/${id}${purge ? '?purge=true' : ''}` : `/api/v1/intelligence/links/${id}`
+frontend/src/components/External.tsx:2306:         if (variables.purge) {
+frontend/src/components/External.tsx:2310:             restoreMutation.mutate(variables.id)
+frontend/src/components/External.tsx:2321:  const restoreMutation = useMutation({
+frontend/src/components/External.tsx:2323:      const res = await apiFetch(`/api/v1/intelligence/entities/${id}/restore`, { method: 'POST' })
+frontend/src/components/External.tsx:2327:    onSuccess: (_, restoredId) => {
+frontend/src/components/External.tsx:2330:        deleteMutation.mutate({ id: restoredId, purge: false, type: 'entity' })
+frontend/src/components/External.tsx:2599:            summary={`${registryCounts.active} active · ${registryCounts.archived} archived · ${registryCounts.links} links`}
+frontend/src/components/External.tsx:2602:              setActiveTab(value as 'active' | 'deleted' | 'links')
+frontend/src/components/External.tsx:2607:              { label: 'Archived', value: 'deleted' },
+frontend/src/components/External.tsx:2864:            onDeleteView={deleteView}
+frontend/src/components/External.tsx:2866:              const tabLabel = view.config?.activeTab === 'deleted' ? 'Archive' : 'Registry'
+frontend/src/components/External.tsx:2888:                  {activeTab === 'deleted' ? (
+frontend/src/components/External.tsx:2890:                      onClick={() => bulkMutation.mutate({ action: 'restore' })}
+frontend/src/components/External.tsx:2921:                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { status: bulkDraft.status } })}
+frontend/src/components/External.tsx:2946:                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { environment: bulkDraft.environment } })}
+frontend/src/components/External.tsx:2968:                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { criticality: bulkDraft.criticality } })}
+frontend/src/components/External.tsx:2990:                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { risk_rating: bulkDraft.risk_rating } })}
+frontend/src/components/External.tsx:2998:                  {activeTab === 'deleted' && !canPurgeSelectedDeletedEntities ? (
+frontend/src/components/External.tsx:3009:                      bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' })
+frontend/src/components/External.tsx:3012:                    disabled={bulkMutation.isPending || (activeTab === 'deleted' && !canPurgeSelectedDeletedEntities)}
+frontend/src/components/External.tsx:3022:                          ? (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purgeSelectionConfirm : OPERATIONAL_ACTION_LABELS.archiveSelectionConfirm)
+frontend/src/components/External.tsx:3023:                          : (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purgeSelection : OPERATIONAL_ACTION_LABELS.archiveSelection)
+frontend/src/components/External.tsx:3032:              const deletedItemPurgeable = activeTab !== 'deleted' || isExternalEntityPurgeable(item)
+frontend/src/components/External.tsx:3091:                    id: 'archive',
+frontend/src/components/External.tsx:3094:                        ...(activeTab === 'deleted' ? [{
+frontend/src/components/External.tsx:3095:                            id: 'restore',
+frontend/src/components/External.tsx:3101:                                restoreMutation.mutate(item.id)
+frontend/src/components/External.tsx:3106:                            id: 'archive',
+frontend/src/components/External.tsx:3108:                                    : (!deletedItemPurgeable ? EXTERNAL_PURGE_BLOCKED_MESSAGE
+frontend/src/components/External.tsx:3109:                                    : (rowDeleteConfirmId === item.id ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm)
+frontend/src/components/External.tsx:3110:                                    : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge))),
+frontend/src/components/External.tsx:3114:                            disabled: activeTab === 'deleted' && !deletedItemPurgeable,
+frontend/src/components/External.tsx:3122:                                    deleteMutation.mutate({ id: item.id, purge: false, type: 'link' })
+frontend/src/components/External.tsx:3124:                                    deleteMutation.mutate({ id: item.id, purge: activeTab === 'deleted', type: 'entity' })
+frontend/src/components/External.tsx:3298:              delete next[field]
+frontend/src/components/External.tsx:3309:            entities={allEntities?.filter((e: any) => !e.is_deleted)}
+frontend/src/components/External.tsx:3348:        forensicLineage={activeDetails ? { createdAt: activeDetails.created_at, updatedAt: activeDetails.updated_at } : undefined}
+frontend/src/components/External.tsx:3373:            {activeTab === 'deleted' && !isExternalEntityPurgeable(activeDetails) ? (
+frontend/src/components/External.tsx:3397:              disabled={activeTab === 'deleted' && !isExternalEntityPurgeable(activeDetails)}
+frontend/src/components/External.tsx:3400:                  deleteMutation.mutate({ id: activeDetails.id, purge: activeTab === 'deleted', type: 'entity' })
+frontend/src/components/External.tsx:3407:              title={activeTab === 'deleted' && !isExternalEntityPurgeable(activeDetails) ? EXTERNAL_PURGE_BLOCKED_MESSAGE : undefined}
+frontend/src/components/External.tsx:3411:                ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : 'Confirm Purge peer?')
+frontend/src/components/External.tsx:3412:                : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : (activeTab === 'deleted' && !isExternalEntityPurgeable(activeDetails) ? 'Purge unavailable' : OPERATIONAL_ACTION_LABELS.purge))}
+frontend/src/components/AssetGrid_Legacy.tsx:553:              ctx.restore();
+frontend/src/components/AssetGrid_Legacy.tsx:911:  const [activeTab, setActiveTab] = useState<'inventory' | 'deleted'>('inventory')
+frontend/src/components/AssetGrid_Legacy.tsx:953:    queryFn: async () => (await (await apiFetch('/api/v1/devices/?include_deleted=true')).json())
+frontend/src/components/AssetGrid_Legacy.tsx:956:  const { inventoryAssets, deletedAssets } = useMemo(() => {
+frontend/src/components/AssetGrid_Legacy.tsx:957:    if (!allAssets) return { inventoryAssets: [], deletedAssets: [] }
+frontend/src/components/AssetGrid_Legacy.tsx:959:      inventoryAssets: allAssets.filter((a: any) => !a.is_deleted),
+frontend/src/components/AssetGrid_Legacy.tsx:960:      deletedAssets: allAssets.filter((a: any) => a.is_deleted)
+frontend/src/components/AssetGrid_Legacy.tsx:964:  const assets = activeTab === 'inventory' ? inventoryAssets : deletedAssets
+frontend/src/components/AssetGrid_Legacy.tsx:1014:      if (variables.action === 'restore') {
+frontend/src/components/AssetGrid_Legacy.tsx:1016:            toast.error(`Restored ${data.restored.length} assets. ${data.conflicts.length} failed due to hostname conflict.`)
+frontend/src/components/AssetGrid_Legacy.tsx:1018:            toast.success(`Restored ${data.restored.length} assets successfully.`)
+frontend/src/components/AssetGrid_Legacy.tsx:1192:               {activeTab !== 'deleted' ? (
+frontend/src/components/AssetGrid_Legacy.tsx:1193:                 <button onClick={() => openConfirm('Soft Delete', 'Move this asset to deleted?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="Soft Delete" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+frontend/src/components/AssetGrid_Legacy.tsx:1195:                 <button onClick={() => openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }))} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+frontend/src/components/AssetGrid_Legacy.tsx:1270:                  variant={activeTab === 'deleted' ? 'primary' : 'secondary'}
+frontend/src/components/AssetGrid_Legacy.tsx:1271:                  onClick={() => { setActiveTab('deleted'); setSelectedIds([]) }}
+frontend/src/components/AssetGrid_Legacy.tsx:1301:                      {activeTab === 'deleted' ? (
+frontend/src/components/AssetGrid_Legacy.tsx:1302:                        <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
+frontend/src/components/AssetGrid_Legacy.tsx:1311:                          const title = activeTab === 'deleted' ? 'Purge Assets' : 'Soft Delete'
+frontend/src/components/AssetGrid_Legacy.tsx:1312:                          const msg = activeTab === 'deleted' ? 'PURGE PERMANENTLY?' : 'Soft-delete assets?'
+frontend/src/components/AssetGrid_Legacy.tsx:1313:                          openConfirm(title, msg, () => bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' }))
+frontend/src/components/AssetGrid_Legacy.tsx:1314:                        }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">{activeTab === 'deleted' ? 'Bulk Purge' : 'Bulk Delete'}</button>
+frontend/src/components/AssetGrid_Legacy.tsx:1429:        onApply={(s) => bulkMutation.mutate({ action: 'update', payload: { status: s } })}
+frontend/src/components/AssetGrid_Legacy.tsx:1437:        onApply={(e) => bulkMutation.mutate({ action: 'update', payload: { environment: e } })}
+frontend/src/components/AssetGrid_Legacy.tsx:1596:        onError: (e: any) => toast.error(e.message || 'Failed to update asset')
+frontend/src/components/AssetGrid_Legacy.tsx:1677:    onError: (e: any) => toast.error(e.message || 'Failed to delete component')
+frontend/src/components/AssetGrid_Legacy.tsx:1680:  const updateMutation = useMutation({
+frontend/src/components/AssetGrid_Legacy.tsx:1690:    onError: (e: any) => toast.error(e.message || 'Failed to update component')
+frontend/src/components/AssetGrid_Legacy.tsx:1747:                        <button onClick={() => updateMutation.mutate(editData)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={14}/></button>
+frontend/src/components/AssetGrid_Legacy.tsx:1840:    onError: (e: any) => toast.error(e.message || 'Failed to delete credential')
+frontend/src/components/AssetGrid_Legacy.tsx:1843:  const updateMutation = useMutation({
+frontend/src/components/AssetGrid_Legacy.tsx:1847:    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-secrets', deviceId] }); setEditingId(null); toast.success('Credential updated') },
+frontend/src/components/AssetGrid_Legacy.tsx:1848:    onError: (e: any) => toast.error(e.message || 'Failed to update credential')
+frontend/src/components/AssetGrid_Legacy.tsx:1909:                        <button onClick={() => updateMutation.mutate(editData)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={14}/></button>
+frontend/src/components/AssetGrid_Legacy.tsx:2080:    onError: (e: any) => toast.error(e.message || 'Failed to delete relationship')
+frontend/src/components/AssetGrid_Legacy.tsx:2083:  const updateMutation = useMutation({
+frontend/src/components/AssetGrid_Legacy.tsx:2087:    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-rel', deviceId] }); setEditingId(null); toast.success('Relationship updated') },
+frontend/src/components/AssetGrid_Legacy.tsx:2088:    onError: (e: any) => toast.error(e.message || 'Failed to update relationship')
+frontend/src/components/AssetGrid_Legacy.tsx:2181:                      <button onClick={() => updateMutation.mutate(editData)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-all"><Check size={14}/></button>
+frontend/src/components/AssetGrid_Legacy.tsx:2585:      !a.is_deleted && 
+frontend/src/components/AssetGrid_Legacy.tsx:2794:                ctx.restore();
+frontend/src/components/VendorsReal.tsx:98:  'personnel_count', 'created_at', 'updated_at', 'row_actions',
+frontend/src/components/VendorsReal.tsx:170:        : ['created_at', 'updated_at'],
+frontend/src/components/VendorsReal.tsx:388:  const [hiddenColumns,   setHiddenColumns]   = useState<string[]>(persistedUiState?.hiddenColumns ?? ['created_at', 'updated_at'])
+frontend/src/components/VendorsReal.tsx:482:      setHiddenColumns(payload?.uiState.hiddenColumns ?? ['created_at', 'updated_at'])
+frontend/src/components/VendorsReal.tsx:689:  const deleteView = (viewId: string) => {
+frontend/src/components/VendorsReal.tsx:725:    const update = () => {
+frontend/src/components/VendorsReal.tsx:730:    update()
+frontend/src/components/VendorsReal.tsx:732:      window.addEventListener('resize', update); window.addEventListener('scroll', update, true)
+frontend/src/components/VendorsReal.tsx:733:      return () => { window.removeEventListener('resize', update); window.removeEventListener('scroll', update, true) }
+frontend/src/components/VendorsReal.tsx:780:    return { active: processedVendors.filter((v: any) => !v.is_deleted).length }
+frontend/src/components/VendorsReal.tsx:783:  const items = useMemo(() => processedVendors.filter((v: any) => !v.is_deleted), [processedVendors])
+frontend/src/components/VendorsReal.tsx:847:      Object.keys(next).forEach((key) => { if (!groupedSections.some((s) => s.key === key)) delete next[key] })
+frontend/src/components/VendorsReal.tsx:853:    const changedAt = item?.updated_at || item?.created_at
+frontend/src/components/VendorsReal.tsx:866:        const next = { ...(gridRef.current.api.getFilterModel() || {}) }; delete next[field]
+frontend/src/components/VendorsReal.tsx:904:      const updated = processedVendors.find((v: any) => v.id === detailItem.id)
+frontend/src/components/VendorsReal.tsx:905:      if (updated) setDetailItem(updated)
+frontend/src/components/VendorsReal.tsx:915:      const nextParams = new URLSearchParams(searchParams); nextParams.delete('id')
+frontend/src/components/VendorsReal.tsx:935:      if (action === 'delete') lastUndoRef.current = { action: 'restore', ids: idsToUse }
+frontend/src/components/VendorsReal.tsx:936:      else if (action === 'restore') lastUndoRef.current = { action: 'delete', ids: idsToUse }
+frontend/src/components/VendorsReal.tsx:1013:      { field: 'updated_at', headerName: 'Updated', width: 170, filter: 'agDateColumnFilter', cellClass: 'text-center font-bold text-slate-500 flex items-center justify-center', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? <div className="flex items-center gap-2"><Clock size={12} className="opacity-40" /><span style={{ fontSize: `${fontSize}px` }}>{formatAppDate(p.value)}</span></div> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500">—</span>, hide: hiddenColumns.includes('updated_at') },
+frontend/src/components/VendorsReal.tsx:1128:            onApplyView={applySavedView} onOverwriteView={saveCurrentToView} onDeleteView={deleteView}
+frontend/src/components/VendorsReal.tsx:1142:                    onClick={() => { if (!bulkDeleteConfirm) { setBulkDeleteConfirm(true); return } bulkMutation.mutate({ action: 'delete' }) }}
+frontend/src/components/VendorsReal.tsx:1184:                        bulkMutation.mutate({ action: 'delete', ids: [item.id] }); setRowActionMenu(null); setRowDeleteConfirmId(null)
+frontend/src/components/VendorsReal.tsx:1312:              bulkMutation.mutate({ action: 'delete', ids: [vendor.id] }); setDetailItem(null); setDetailDeleteConfirm(false)
+frontend/src/components/VendorsReal.tsx:1314:            deleteConfirm={detailDeleteConfirm}
+frontend/src/components/VendorsReal.tsx:1392:function VendorDetailPanel({ vendor, devices, systems, onClose, onDelete, deleteConfirm }: any) {
+frontend/src/components/VendorsReal.tsx:1408:  const updateField = (field: string, value: any) => { setFormData({ ...formData, [field]: value }); setHasChanges(true) }
+frontend/src/components/VendorsReal.tsx:1424:  const deletePersonnelMutation = useMutation({
+frontend/src/components/VendorsReal.tsx:1436:  const deleteContractMutation = useMutation({
+frontend/src/components/VendorsReal.tsx:1437:    mutationFn: async (id: number) => apiFetch('/api/v1/vendors/bulk-action', { method: 'POST', body: JSON.stringify({ ids: [id], action: 'delete', target: 'contract' }) }),
+frontend/src/components/VendorsReal.tsx:1464:      forensicLineage={{ createdAt: vendor.created_at, updatedAt: vendor.updated_at }}
+frontend/src/components/VendorsReal.tsx:1485:            className={`${deleteConfirm ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : ''} whitespace-nowrap`}
+frontend/src/components/VendorsReal.tsx:1487:            {deleteConfirm ? 'Confirm Archive?' : 'Archive'}
+frontend/src/components/VendorsReal.tsx:1579:                            <input value={formData.name} onChange={(e) => updateField('name', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+frontend/src/components/VendorsReal.tsx:1587:                            <select value={formData.country || 'South Korea'} onChange={(e) => updateField('country', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all">
+frontend/src/components/VendorsReal.tsx:1597:                            <select value={formData.primary_personnel_id || ''} onChange={(e) => updateField('primary_personnel_id', e.target.value ? Number(e.target.value) : null)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all">
+frontend/src/components/VendorsReal.tsx:1691:                                <button onClick={(e) => { e.stopPropagation(); deleteContractMutation.mutate(c.id); setConfirmingContractId(null) }} className="px-3 py-1 bg-rose-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest animate-pulse whitespace-nowrap">Confirm?</button>
+frontend/src/components/VendorsReal.tsx:1733:                                <button onClick={() => { deletePersonnelMutation.mutate(p.id); setConfirmingPersonnelId(null) }} className="px-3 py-1 bg-rose-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest animate-pulse whitespace-nowrap">Confirm?</button>
+frontend/src/components/VendorsReal.tsx:1804:  const updateField = (field: string, value: any) => setFormData((prev: any) => ({ ...prev, [field]: value }))
+frontend/src/components/VendorsReal.tsx:1812:  const updateAccItem = (index: number, field: string, value: any) => { const newAccs = [...formData.accounts]; newAccs[index] = { ...newAccs[index], [field]: value }; setFormData({ ...formData, accounts: newAccs }) }
+frontend/src/components/VendorsReal.tsx:1813:  const updatePcItem  = (index: number, field: string, value: any) => { const newPcs  = [...formData.pcs];     newPcs[index]  = { ...newPcs[index],  [field]: value }; setFormData({ ...formData, pcs:  newPcs  }) }
+frontend/src/components/VendorsReal.tsx:1852:                      <input value={formData[field] || ''} onChange={(e) => updateField(field, e.target.value)} className={`w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all ${mono ? 'font-mono' : ''}`} />
+frontend/src/components/VendorsReal.tsx:1896:                                {isEditingAcc ? <input value={formData.accounts[selectedAccIndex][field] || ''} onChange={(e) => updateAccItem(selectedAccIndex, field, e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-emerald-500/30 transition-all" />
+frontend/src/components/VendorsReal.tsx:1946:                              {isEditingPc ? <input value={formData.pcs[selectedPcIndex].name || ''} onChange={(e) => updatePcItem(selectedPcIndex, 'name', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-indigo-500/30 transition-all" />
+frontend/src/components/VendorsReal.tsx:1952:                                <select value={formData.pcs[selectedPcIndex].type || 'PC'} onChange={(e) => updatePcItem(selectedPcIndex, 'type', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark] outline-none focus:border-indigo-500/30 transition-all">
+frontend/src/components/VendorsReal.tsx:1959:                              {isEditingPc ? <input value={formData.pcs[selectedPcIndex].purpose_description || ''} onChange={(e) => updatePcItem(selectedPcIndex, 'purpose_description', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-indigo-500/30 transition-all" />
+frontend/src/components/VendorsReal.tsx:1987:  const updateField = (field: string, value: any) => setFormData({ ...formData, [field]: value })
+frontend/src/components/VendorsReal.tsx:2000:              <input value={formData[field] || ''} onChange={(e) => updateField(field, e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+frontend/src/components/VendorsReal.tsx:2005:            <select value={formData.status || 'Drafted'} onChange={(e) => updateField('status', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all">
+frontend/src/components/VendorsReal.tsx:2013:                <input type="date" value={formData[field]?.split('T')[0] || ''} onChange={(e) => updateField(field, e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all" />
+frontend/src/components/VendorsReal.tsx:2059:  const updateField  = (field: string, value: any) => { setFormData({ ...formData, [field]: value }); setHasChanges(true) }
+frontend/src/components/VendorsReal.tsx:2060:  const updateSchedule = (field: string, value: any) => { setFormData({ ...formData, schedule: { ...formData.schedule, [field]: value } }); setHasChanges(true) }
+frontend/src/components/VendorsReal.tsx:2061:  const updateSowItem  = (index: number, field: string, value: any) => { const newSow = [...formData.scope_of_work]; newSow[index] = { ...newSow[index], [field]: value }; setFormData({ ...formData, scope_of_work: newSow }); setHasChanges(true) }
+frontend/src/components/VendorsReal.tsx:2091:                    {isEditing ? <input value={formData.title || ''} onChange={(e) => updateField('title', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+frontend/src/components/VendorsReal.tsx:2096:                    {isEditing ? <input value={formData.contract_id || ''} onChange={(e) => updateField('contract_id', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+frontend/src/components/VendorsReal.tsx:2102:                      <select value={formData.status || 'Drafted'} onChange={(e) => updateField('status', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all">
+frontend/src/components/VendorsReal.tsx:2109:                    {isEditing ? <input value={formData.document_link || ''} onChange={(e) => updateField('document_link', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white font-mono outline-none focus:border-blue-500/50 transition-all" />
+frontend/src/components/VendorsReal.tsx:2116:                      {isEditing ? <input type="date" value={formData[field]?.split('T')[0] || ''} onChange={(e) => updateField(field, e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all" />
+frontend/src/components/VendorsReal.tsx:2128:                      {isEditing ? <input value={formData.schedule?.[field] || ''} onChange={(e) => updateSchedule(field, e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-emerald-500/30 transition-all" />
+frontend/src/components/VendorsReal.tsx:2134:                    {isEditing ? <textarea value={formData.schedule?.holiday_policy || ''} onChange={(e) => updateSchedule('holiday_policy', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white min-h-[60px] outline-none focus:border-emerald-500/30 transition-all" />
+frontend/src/components/VendorsReal.tsx:2227:                            {isEditingSow ? <input value={formData.scope_of_work[selectedSowIndex].work_description || ''} onChange={(e) => updateSowItem(selectedSowIndex, 'work_description', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-amber-500/30 transition-all" />
+frontend/src/components/VendorsReal.tsx:2234:                                {isEditingSow ? <input value={formData.scope_of_work[selectedSowIndex][field] || ''} onChange={(e) => updateSowItem(selectedSowIndex, field, e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-amber-500/30 transition-all" />
+frontend/src/components/VendorsReal.tsx:2244:                                  <input placeholder="Purpose of this task..." value={formData.scope_of_work[selectedSowIndex].objective_description || ''} onChange={(e) => updateSowItem(selectedSowIndex, 'objective_description', e.target.value)} className="flex-1 bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-amber-500/30 transition-all" />
+frontend/src/components/VendorsReal.tsx:2245:                                  <select value={formData.scope_of_work[selectedSowIndex].importance || 'Medium'} onChange={(e) => updateSowItem(selectedSowIndex, 'importance', e.target.value)} className="w-32 bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none [color-scheme:dark]">
+frontend/src/components/VendorsReal.tsx:2276:                  <textarea value={formData.previous_contract_changes || ''} onChange={(e) => updateField('previous_contract_changes', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-xs text-white min-h-[120px] outline-none focus:border-blue-500/30 transition-all" placeholder="Document commercial or technical deviations..." />
+frontend/src/components/Dashboard.tsx:48:        // Standardizing URL update
+frontend/src/components/Dashboard.tsx:547:                            <span className="text-[8px] font-black text-slate-600 uppercase mt-1 tracking-widest">{formatAppDay(item.created_at || item.updated_at)}</span>
+frontend/src/components/Racks.tsx:285:  const updateLines = React.useCallback(() => {
+frontend/src/components/Racks.tsx:288:      requestRef.current = requestAnimationFrame(updateLines)
+frontend/src/components/Racks.tsx:320:      requestRef.current = requestAnimationFrame(updateLines)
+frontend/src/components/Racks.tsx:368:    requestRef.current = requestAnimationFrame(updateLines)
+frontend/src/components/Racks.tsx:372:    requestRef.current = requestAnimationFrame(updateLines)
+frontend/src/components/Racks.tsx:374:  }, [updateLines])
+frontend/src/components/Racks.tsx:2409:      toast.success("Plan saved to archive")
+frontend/src/components/Racks.tsx:2413:  const deletePlanMutation = useMutation({
+frontend/src/components/Racks.tsx:2419:      toast.success("Plan removed from archive")
+frontend/src/components/Racks.tsx:2443:  const [activeTab, setActiveTab] = useState<'active' | 'deleted'>('active')
+frontend/src/components/Racks.tsx:2455:  const [restoreWizard, setRestoreWizard] = useState<{
+frontend/src/components/Racks.tsx:2471:    queryFn: async () => (await (await apiFetch('/api/v1/racks/?include_deleted=true')).json())
+frontend/src/components/Racks.tsx:2474:  const { activeRacks, deletedRacks } = useMemo(() => {
+frontend/src/components/Racks.tsx:2475:    if (!allRacks) return { activeRacks: [], deletedRacks: [] }
+frontend/src/components/Racks.tsx:2477:      activeRacks: allRacks.filter((r: any) => !r.is_deleted),
+frontend/src/components/Racks.tsx:2478:      deletedRacks: allRacks.filter((r: any) => r.is_deleted)
+frontend/src/components/Racks.tsx:2482:  const racks = activeTab === 'active' ? activeRacks : deletedRacks
+frontend/src/components/Racks.tsx:2515:    let list = devices?.filter((d: any) => !d.is_deleted && d.status !== 'Decommissioned')
+frontend/src/components/Racks.tsx:2580:      // If in sandbox mode, update virtual state instead of API
+frontend/src/components/Racks.tsx:2651:  const deleteSiteMutation = useMutation({
+frontend/src/components/Racks.tsx:2657:    onSuccess: (_data, deletedSiteId) => {
+frontend/src/components/Racks.tsx:2658:      if (activeSite === deletedSiteId) {
+frontend/src/components/Racks.tsx:2704:      const hasPartialConflict = (variables.action === 'restore' || variables.action === 'relocate') && conflictIds.length > 0
+frontend/src/components/Racks.tsx:2719:    if (!restoreWizard) return
+frontend/src/components/Racks.tsx:2720:    const ids = restoreWizard.ids
+frontend/src/components/Racks.tsx:2722:    const nameConflicts = deletedRacks
+frontend/src/components/Racks.tsx:2725:    const assetWarnings = deletedRacks
+frontend/src/components/Racks.tsx:2729:    if (nameConflicts.length > 0 && restoreWizard.step === 'site-select') {
+frontend/src/components/Racks.tsx:2730:      setRestoreWizard({ ...restoreWizard, step: 'name-conflict', targetSiteId, nameConflicts, assetWarnings, generalAssetWarning: assetWarnings.length > 0 })
+frontend/src/components/Racks.tsx:2731:    } else if (assetWarnings.length > 0 && restoreWizard.step !== 'asset-warning') {
+frontend/src/components/Racks.tsx:2732:      setRestoreWizard({ ...restoreWizard, step: 'asset-warning', targetSiteId, nameConflicts: restoreWizard.nameConflicts, assetWarnings, generalAssetWarning: true })
+frontend/src/components/Racks.tsx:2740:    if (restoreWizard?.nameConflicts) {
+frontend/src/components/Racks.tsx:2741:      for (const nc of restoreWizard.nameConflicts) {
+frontend/src/components/Racks.tsx:2746:      action: 'restore',
+frontend/src/components/Racks.tsx:2752:  const updateMountMutation = useMutation({
+frontend/src/components/Racks.tsx:2785:        toast.success('Virtual mount updated')
+frontend/src/components/Racks.tsx:2789:        toast.success('Mount updated')
+frontend/src/components/Racks.tsx:3001:                { label: 'Purged', value: 'deleted' }
+frontend/src/components/Racks.tsx:3086:      {!showCompareOnly && activeTab !== 'deleted' && !isMaskMode && (
+frontend/src/components/Racks.tsx:3153:                          <button onClick={e => { e.stopPropagation(); openConfirm('Decommission Site', `Remove site "${s.name}"? This cannot be undone. All racks will be unassigned but keep historical site name.`, () => deleteSiteMutation.mutate(s.id)); setActiveSiteMenu(null) }}
+frontend/src/components/Racks.tsx:3284:                          if (activeTab === 'deleted') {
+frontend/src/components/Racks.tsx:3285:                            openConfirm('Purge Rack', `Permanently delete rack "${r.name}"? This cannot be undone.`, () => bulkActionMutation.mutate({ action: 'purge', ids: [id] }))
+frontend/src/components/Racks.tsx:3287:                            openConfirm('Decommission Rack', `Mark rack "${r.name}" as decommissioned?`, () => bulkActionMutation.mutate({ action: 'delete', ids: [id] }))
+frontend/src/components/Racks.tsx:3297:                        }}                        isDeleted={activeTab === 'deleted'}
+frontend/src/components/Racks.tsx:3335:                        if (activeTab === 'deleted') {
+frontend/src/components/Racks.tsx:3336:                          openConfirm('Purge Rack', `Permanently delete rack "${r.name}"? This cannot be undone.`, () => bulkActionMutation.mutate({ action: 'purge', ids: [id] }))
+frontend/src/components/Racks.tsx:3338:                          openConfirm('Decommission Rack', `Mark rack "${r.name}" as decommissioned?`, () => bulkActionMutation.mutate({ action: 'delete', ids: [id] }))
+frontend/src/components/Racks.tsx:3348:                      }}                      isDeleted={activeTab === 'deleted'}
+frontend/src/components/Racks.tsx:3369:              title={activeTab === 'deleted' ? 'No Purged Records' : searchTerm ? `No results for "${searchTerm}"` : 'No Racks in Scope'}
+frontend/src/components/Racks.tsx:3380:            count={selectedRacks.length}            isDeleted={activeTab === 'deleted'}
+frontend/src/components/Racks.tsx:3386:              activeTab === 'deleted' ? 'Purge Racks' : 'Delete Racks',
+frontend/src/components/Racks.tsx:3387:              activeTab === 'deleted' ? `Permanently delete ${selectedRacks.length} rack(s)?` : `Soft-delete ${selectedRacks.length} rack(s)?`,
+frontend/src/components/Racks.tsx:3388:              () => bulkActionMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete', ids: selectedRacks })
+frontend/src/components/Racks.tsx:3430:          onDeletePlan={(id) => deletePlanMutation.mutate(id)}
+frontend/src/components/Racks.tsx:3506:          onUpdateMount={(data) => updateMountMutation.mutate(data)}
+frontend/src/components/Racks.tsx:3515:              toast.success('Asset updated virtually')
+frontend/src/components/Racks.tsx:3521:            toast.success('Device updated')
+frontend/src/components/Racks.tsx:4028:        {restoreWizard && sites && (
+frontend/src/components/Racks.tsx:4040:              {restoreWizard.step === 'site-select' && (
+frontend/src/components/Racks.tsx:4043:                  <p className="text-sm text-slate-400">Choose where to restore these racks.</p>
+frontend/src/components/Racks.tsx:4049:                    value={String(restoreWizard.targetSiteId || '')}
+frontend/src/components/Racks.tsx:4050:                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setRestoreWizard({ ...restoreWizard, targetSiteId: e.target.value ? parseInt(e.target.value) : undefined })}
+frontend/src/components/Racks.tsx:4055:                    <button onClick={() => proceedRestoreWizard(restoreWizard.targetSiteId)} className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors">Next</button>
+frontend/src/components/Racks.tsx:4061:              {restoreWizard.step === 'name-conflict' && (
+frontend/src/components/Racks.tsx:4066:                    {restoreWizard.nameConflicts.map(nc => (
+frontend/src/components/Racks.tsx:4073:                            const updated = restoreWizard.nameConflicts.map(c => c.rackId === nc.rackId ? { ...c, newName: e.target.value } : c)
+frontend/src/components/Racks.tsx:4074:                            setRestoreWizard({ ...restoreWizard, nameConflicts: updated })
+frontend/src/components/Racks.tsx:4084:                    <button onClick={() => proceedRestoreWizard(restoreWizard.targetSiteId)} className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors">Next</button>
+frontend/src/components/Racks.tsx:4090:              {restoreWizard.step === 'asset-warning' && (
+frontend/src/components/Racks.tsx:4093:                  {restoreWizard.generalAssetWarning && (
+frontend/src/components/Racks.tsx:4095:                      <p className="text-xs text-amber-200">Previously mounted assets have been reassigned elsewhere and will not return to this rack when restored.</p>
+frontend/src/components/Racks.tsx:4098:                  {restoreWizard.assetWarnings.length > 0 && (
+frontend/src/components/Racks.tsx:4100:                      {restoreWizard.assetWarnings.map((w, i) => (
+frontend/src/components/Racks.tsx:4110:                    <button onClick={() => executeRestore(restoreWizard.ids, restoreWizard.targetSiteId)} className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-colors">Restore</button>
+frontend/src/components/DataFlowDesigner.tsx:237:  upstreamNodeIds.delete(seedNodeId)
+frontend/src/components/DataFlowDesigner.tsx:238:  downstreamNodeIds.delete(seedNodeId)
+frontend/src/components/DataFlowDesigner.tsx:464:      const updated = [...base, snapshot].slice(-40)
+frontend/src/components/DataFlowDesigner.tsx:465:      historyIndexRef.current = updated.length - 1
+frontend/src/components/DataFlowDesigner.tsx:466:      return updated
+frontend/src/components/DataFlowDesigner.tsx:470:  const restoreSnapshot = useCallback((snapshot: any) => {
+frontend/src/components/DataFlowDesigner.tsx:475:        onChange: (id: string, updates: any) => {
+frontend/src/components/DataFlowDesigner.tsx:477:          setInternalNodes((nds) => nds.map((node) => node.id === id ? { ...node, data: { ...node.data, ...updates } } : node))
+frontend/src/components/DataFlowDesigner.tsx:519:        onChange: (id: string, updates: any) => {
+frontend/src/components/DataFlowDesigner.tsx:521:          setInternalNodes(nds => nds.map(node => node.id === id ? { ...node, data: { ...node.data, ...updates } } : node))
+frontend/src/components/DataFlowDesigner.tsx:626:        onChange: (id: string, updates: any) => {
+frontend/src/components/DataFlowDesigner.tsx:628:          setInternalNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, ...updates } } : n))
+frontend/src/components/DataFlowDesigner.tsx:702:    restoreSnapshot(historyStack[nextIndex])
+frontend/src/components/DataFlowDesigner.tsx:710:    restoreSnapshot(historyStack[nextIndex])
+frontend/src/components/DataFlowDesigner.tsx:1305:   const handleEdgeChange = (f: string, v: any) => { const updated = { ...edgeForm, [f]: v }; setEdgeForm(updated); onUpdateEdge(selectedEdge.id, updated); };
+frontend/src/components/DataFlowDesigner.tsx:1306:   const handleNodeChange = (f: string, v: any) => { const updated = { ...nodeForm, [f]: v }; setNodeForm(updated); onUpdateNode(selectedNode.id, updated); };
+frontend/src/components/DataFlowDesigner.tsx:1451:  const { data: externalEntities } = useQuery({ queryKey: ['external-entities', { include_deleted: false }], queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities')).json()) });
+frontend/src/components/DataFlowDesigner.tsx:1468:  const filteredAssets = useMemo(() => (assets || []).filter((a: any) => { const matchSearch = (a.hostname || a.name || '').toLowerCase().includes(inventorySearch.toLowerCase()) || (a.ip_address || '').includes(inventorySearch); const matchSystem = selectedSystem === 'All' || a.system === selectedSystem; return matchSearch && matchSystem && !a.is_deleted; }), [assets, inventorySearch, selectedSystem]);
+frontend/src/components/DataFlowDesigner.tsx:1487:  const restoreMutation = useMutation({
+frontend/src/components/DataFlowDesigner.tsx:1489:      const response = await apiFetch(`/api/v1/data-flows/${activeFlow.id}/history/${historyId}/restore`, { method: 'POST' })
+frontend/src/components/DataFlowDesigner.tsx:1502:  const updateNodeData = (nodeId: string, updatedData: any) => { setNodes((nds) => nds.map((node) => node.id === nodeId ? { ...node, data: { ...node.data, ...updatedData } } : node)); setHasUnsavedChanges(true); };
+frontend/src/components/DataFlowDesigner.tsx:1503:  const updateEdgeData = (edgeId: string, updatedData: any) => { setEdges((eds) => eds.map((edge) => edge.id === edgeId ? { ...edge, data: { ...edge.data, ...updatedData } } : edge)); setHasUnsavedChanges(true); };
+frontend/src/components/DataFlowDesigner.tsx:1505:  const deleteNode = (nodeId: string) => { setNodes((nds) => nds.filter((node) => node.id !== nodeId)); setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId)); setSelectedNodeId(null); setHasUnsavedChanges(true); };
+frontend/src/components/DataFlowDesigner.tsx:1506:  const deleteEdge = (edgeId: string) => { setEdges((eds) => eds.filter((edge) => edge.id !== edgeId)); setSelectedEdgeId(null); setHasUnsavedChanges(true); };
+frontend/src/components/DataFlowDesigner.tsx:1567:  const updateFlowMetadata = (updates: Record<string, any>) => {
+frontend/src/components/DataFlowDesigner.tsx:1568:    setActiveFlow((current: any) => current ? { ...current, metadata: { ...(current.metadata || {}), ...updates } } : current)
+frontend/src/components/DataFlowDesigner.tsx:1776:            <AnimatePresence>{!isPresentationMode && isConfigSidebarOpen && (<motion.div initial={{ x: 500 }} animate={{ x: 0 }} exit={{ x: 500 }} className="h-full z-50 shadow-3xl"><MissionControl selectedNode={nodes.find(n => n.id === selectedNodeId)} selectedEdge={edges.find(e => e.id === selectedEdgeId)} impactedNodes={impactedNodes} pathAnalysis={pathAnalysis} relatedLinks={relatedLinks} nodeOperationalStatus={nodeOperationalMap.get(selectedNodeId || '')} onBack={() => setIsConfigSidebarOpen(false)} onUpdateNode={updateNodeData} onUpdateEdge={updateEdgeData} onAddServiceToNode={addServiceToNode} onDeleteNode={deleteNode} onDeleteEdge={deleteEdge} availableServices={logicalServices} setIsServiceFlowOpen={setIsServiceFlowOpen}/></motion.div>)}</AnimatePresence>
+frontend/src/components/DataFlowDesigner.tsx:1788:             onRestore={(historyId: number) => restoreMutation.mutate(historyId)}
+frontend/src/components/DataFlowDesigner.tsx:1813:             onSave={(edgeId: string, updatedData: any) => updateEdgeData(edgeId, updatedData)} 
+frontend/src/components/Vendor.tsx:62:      const updated = vendors.find((v: any) => v.id === activeDetails.id)
+frontend/src/components/Vendor.tsx:63:      if (updated) setActiveDetails(updated)
+frontend/src/components/Vendor.tsx:117:  const deleteMutation = useMutation({
+frontend/src/components/Vendor.tsx:258:               <button onClick={() => setConfirmModal({ isOpen: true, title: 'Purge Vendor', message: 'Erase vendor record?', onConfirm: () => deleteMutation.mutate(p.data.id) })} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+frontend/src/components/Vendor.tsx:264:  ], [setActiveDetails, deleteMutation, fontSize, hiddenColumns]) as any
+frontend/src/components/Vendor.tsx:608:  const updateField = (field: string, value: any) => {
+frontend/src/components/Vendor.tsx:656:  const deletePersonnelMutation = useMutation({
+frontend/src/components/Vendor.tsx:679:  const deleteContractMutation = useMutation({
+frontend/src/components/Vendor.tsx:682:      body: JSON.stringify({ ids: [id], action: 'delete', target: 'contract' }) 
+frontend/src/components/Vendor.tsx:744:                           <input value={formData.name} onChange={e => updateField('name', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+frontend/src/components/Vendor.tsx:754:                            onChange={e => updateField('country', e.target.value)} 
+frontend/src/components/Vendor.tsx:768:                            onChange={e => updateField('primary_personnel_id', e.target.value ? Number(e.target.value) : null)} 
+frontend/src/components/Vendor.tsx:954:                                      deleteContractMutation.mutate(c.id); 
+frontend/src/components/Vendor.tsx:1015:                                deletePersonnelMutation.mutate(p.id); 
+frontend/src/components/Vendor.tsx:1121:  const updateField = (field: string, value: any) => {
+frontend/src/components/Vendor.tsx:1161:  const updateAccItem = (index: number, field: string, value: any) => {
+frontend/src/components/Vendor.tsx:1167:  const updatePcItem = (index: number, field: string, value: any) => {
+frontend/src/components/Vendor.tsx:1203:                  <input value={formData.name} onChange={e => updateField('name', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+frontend/src/components/Vendor.tsx:1211:                  <input value={formData.name_original} onChange={e => updateField('name_original', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+frontend/src/components/Vendor.tsx:1219:                  <input value={formData.position} onChange={e => updateField('position', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+frontend/src/components/Vendor.tsx:1227:                  <input value={formData.team} onChange={e => updateField('team', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+frontend/src/components/Vendor.tsx:1235:                  <input value={formData.company_email} onChange={e => updateField('company_email', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white font-mono outline-none focus:border-blue-500/50 transition-all" />
+frontend/src/components/Vendor.tsx:1243:                  <input value={formData.internal_email} onChange={e => updateField('internal_email', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white font-mono outline-none focus:border-blue-500/50 transition-all" />
+frontend/src/components/Vendor.tsx:1251:                  <input value={formData.phone} onChange={e => updateField('phone', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+frontend/src/components/Vendor.tsx:1308:                                         <input value={formData.accounts[selectedAccIndex].type} onChange={e => updateAccItem(selectedAccIndex, 'type', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white" />
+frontend/src/components/Vendor.tsx:1316:                                         <input value={formData.accounts[selectedAccIndex].username} onChange={e => updateAccItem(selectedAccIndex, 'username', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-mono" />
+frontend/src/components/Vendor.tsx:1325:                                      <textarea value={formData.accounts[selectedAccIndex].purpose_description} onChange={e => updateAccItem(selectedAccIndex, 'purpose_description', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white min-h-[80px]" />
+frontend/src/components/Vendor.tsx:1386:                                         <input value={formData.pcs[selectedPcIndex].name} onChange={e => updatePcItem(selectedPcIndex, 'name', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white" />
+frontend/src/components/Vendor.tsx:1396:                                            onChange={e => updatePcItem(selectedPcIndex, 'type', e.target.value)} 
+frontend/src/components/Vendor.tsx:1409:                                      <textarea value={formData.pcs[selectedPcIndex].purpose_description} onChange={e => updatePcItem(selectedPcIndex, 'purpose_description', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white min-h-[80px]" />
+frontend/src/components/Vendor.tsx:1552:  const updateField = (field: string, value: any) => {
+frontend/src/components/Vendor.tsx:1557:  const updateSchedule = (field: string, value: any) => {
+frontend/src/components/Vendor.tsx:1562:  const updateSowItem = (index: number, field: string, value: any) => {
+frontend/src/components/Vendor.tsx:1602:                         <input value={formData.title} onChange={e => updateField('title', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+frontend/src/components/Vendor.tsx:1610:                         <input value={formData.contract_id} onChange={e => updateField('contract_id', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+frontend/src/components/Vendor.tsx:1620:                            onChange={e => updateField('status', e.target.value)} 
+frontend/src/components/Vendor.tsx:1632:                         <input value={formData.document_link} onChange={e => updateField('document_link', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white font-mono outline-none focus:border-blue-500/50 transition-all" />
+frontend/src/components/Vendor.tsx:1644:                         <input type="date" value={formData.effective_date?.split('T')[0]} onChange={e => updateField('effective_date', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all" />
+frontend/src/components/Vendor.tsx:1652:                         <input type="date" value={formData.expiry_date?.split('T')[0]} onChange={e => updateField('expiry_date', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2.5 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all" />
+frontend/src/components/Vendor.tsx:1666:                         <input value={formData.schedule?.work_schedule} onChange={e => updateSchedule('work_schedule', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-emerald-500/30 transition-all" />
+frontend/src/components/Vendor.tsx:1674:                         <input value={formData.schedule?.oncall_method} onChange={e => updateSchedule('oncall_method', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-emerald-500/30 transition-all" />
+frontend/src/components/Vendor.tsx:1682:                         <textarea value={formData.schedule?.holiday_policy} onChange={e => updateSchedule('holiday_policy', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white min-h-[60px] outline-none focus:border-emerald-500/30 transition-all" />
+frontend/src/components/Vendor.tsx:1807:                                     <input value={formData.scope_of_work[selectedSowIndex].work_description} onChange={e => updateSowItem(selectedSowIndex, 'work_description', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-amber-500/30 transition-all" />
+frontend/src/components/Vendor.tsx:1817:                                        <input value={formData.scope_of_work[selectedSowIndex].frequency} onChange={e => updateSowItem(selectedSowIndex, 'frequency', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-amber-500/30 transition-all" />
+frontend/src/components/Vendor.tsx:1825:                                        <input value={formData.scope_of_work[selectedSowIndex].response} onChange={e => updateSowItem(selectedSowIndex, 'response', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-amber-500/30 transition-all" />
+frontend/src/components/Vendor.tsx:1837:                                          <input placeholder="Purpose of this task..." value={formData.scope_of_work[selectedSowIndex].objective_description} onChange={e => updateSowItem(selectedSowIndex, 'objective_description', e.target.value)} className="flex-1 bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-amber-500/30 transition-all" />
+frontend/src/components/Vendor.tsx:1838:                                          <select value={formData.scope_of_work[selectedSowIndex].importance} onChange={e => updateSowItem(selectedSowIndex, 'importance', e.target.value)} className="w-32 bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-amber-500/30 transition-all">
+frontend/src/components/Vendor.tsx:1876:                   <textarea value={formData.previous_contract_changes} onChange={e => updateField('previous_contract_changes', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-3 text-xs text-white min-h-[120px] outline-none focus:border-blue-500/30 transition-all" placeholder="Document commercial or technical deviations..." />
+frontend/src/components/shared/FARModals.tsx:358:  const deleteResolutionMutation = useMutation({
+frontend/src/components/shared/FARModals.tsx:410:                            onClick={() => deleteResolutionMutation.mutate(res.id)} 
+frontend/src/components/shared/FARModals.tsx:411:                            disabled={deleteResolutionMutation.isPending}
+frontend/src/components/shared/FARModals.tsx:414:                            {deleteResolutionMutation.isPending ? <Activity size={14} className="animate-spin" /> : <X size={14}/>}
+frontend/src/components/shared/OperationalRowActionGeometry.ts:82:    return { id: section.id, showTitle: section.id !== "archive", items: section.items, rows };
+frontend/src/components/shared/BulkImportModal.tsx:113:    if (next.has(rowIdx)) next.delete(rowIdx)
+frontend/src/components/shared/OperationalBulkContract.ts:3:export type OperationalBulkAction = 'update' | 'archive' | 'restore' | 'purge'
+frontend/src/components/shared/OperationalBulkContract.ts:78:  if (action === 'update') {
+frontend/src/components/shared/OperationalBulkContract.ts:88:  if (action === 'archive') {
+frontend/src/components/shared/OperationalBulkContract.ts:92:  if (action === 'restore') {
+frontend/src/components/shared/OperationalBulkContract.ts:96:  return `Permanently purged ${changedCount} of ${totalSelected} ${selectedRecordLabel}.`
+frontend/src/components/shared/OperationalBulkContract.ts:115:  if (changedCount > 0 && action !== 'purge' && onRevert) {
+frontend/src/components/shared/OperationalGridSizing.ts:104:    if (!preserveExplicitWidths) delete nextColumn.width
+frontend/src/components/shared/OperationalGridSizing.ts:109:    if (!preserveExplicitWidths) delete nextColumn.flex
+frontend/src/components/shared/OperationalWorkspaceHooks.ts:533:      nextParams.delete('id')
+frontend/src/components/shared/OperationalWorkspaceHooks.ts:602:      const isDeleted = target.is_deleted || target.status === 'Deleted' || target.status === 'Archived'
+frontend/src/components/shared/OperationalWorkspaceHooks.ts:603:      setActiveTab(isDeleted ? 'deleted' : 'active')
+frontend/src/components/shared/OperationalWorkspaceHooks.ts:628:        nextParams.delete('id')
+frontend/src/components/shared/OperationalRowActionMenu.tsx:10:export type OperationalRowActionSectionId = "quickAccess" | "followOptions" | "archive";
+frontend/src/components/shared/OperationalRowActionMenu.tsx:36:  archive: "Archive",
+frontend/src/components/shared/OperationalWorkspace.ts:11:  | 'archiveRestore'
+frontend/src/components/shared/OperationalWorkspace.ts:51:    'Page header with title, subtitle, actions, and active/archive segmented state',
+frontend/src/components/shared/OperationalWorkspace.ts:64:    'History and archive/restore behavior when the entity lifecycle supports it',
+frontend/src/components/shared/OperationalWorkspace.ts:89:    'History, compare, and archive/restore appear only when the backing entity supports them',
+frontend/src/components/shared/OperationalWorkspace.ts:91:    'If a route carries a valid entity id query parameter, the view should restore or open the matching detail surface directly and fail cleanly when the record is missing or unauthorized',
+frontend/src/components/shared/OperationalWorkspace.ts:104:    'archiveRestore',
+frontend/src/components/shared/OperationalWorkspace.ts:155:export type OperationalRegistryLifecycleAction = 'archive' | 'recover' | 'delete'
+frontend/src/components/shared/OperationalWorkspace.ts:219:    archive: 'archiveRestore',
+frontend/src/components/shared/OperationalWorkspace.ts:220:    recover: 'archiveRestore',
+frontend/src/components/shared/OperationalWorkspace.ts:221:    delete: true,
+frontend/src/components/shared/OperationalWorkspace.ts:251:    supports: ['savedViews', 'displayControls', 'grouping', 'contextMenu', 'bulkActions', 'hoverPreviews', 'history', 'linkedRecords', 'archiveRestore', 'stickyIdentityHeader', 'frontendValidation', 'searchableSelectors'],
+frontend/src/components/shared/OperationalWorkspace.ts:258:    supports: ['savedViews', 'displayControls', 'grouping', 'contextMenu', 'bulkActions', 'hoverPreviews', 'history', 'compare', 'linkedRecords', 'archiveRestore', 'stickyIdentityHeader', 'frontendValidation', 'searchableSelectors'],
+frontend/src/components/shared/OperationalWorkspace.ts:265:    supports: ['savedViews', 'displayControls', 'grouping', 'contextMenu', 'bulkActions', 'hoverPreviews', 'history', 'linkedRecords', 'archiveRestore', 'stickyIdentityHeader', 'frontendValidation', 'searchableSelectors'],
+frontend/src/components/shared/OperationalWorkspace.ts:272:    supports: ['savedViews', 'displayControls', 'grouping', 'contextMenu', 'bulkActions', 'hoverPreviews', 'history', 'compare', 'linkedRecords', 'archiveRestore', 'stickyIdentityHeader', 'frontendValidation', 'searchableSelectors'],
+frontend/src/components/shared/OperationalWorkspace.ts:279:    supports: ['savedViews', 'displayControls', 'grouping', 'contextMenu', 'bulkActions', 'hoverPreviews', 'history', 'linkedRecords', 'archiveRestore', 'stickyIdentityHeader', 'frontendValidation', 'searchableSelectors'],
+frontend/src/components/shared/OperationalWorkspaceShells.tsx:493:                        title={isConfirming ? `Confirm delete ${view.name}` : `Delete ${view.name}`}
+frontend/src/components/shared/WorkspaceModal.tsx:23:  forensicLineage?: { createdAt?: string | Date; updatedAt?: string | Date }
+frontend/src/components/shared/OperationalDataState.test.ts:80:  it('supports deleted-tab empty states', () => {
+frontend/src/components/shared/OperationalDataState.test.ts:83:      tabEmptyKind: 'deleted-empty',
+frontend/src/components/shared/OperationalDataState.test.ts:84:      tabEmptyLabel: 'No archived rows found',
+frontend/src/components/shared/OperationalDataState.test.ts:91:      kind: 'deleted-empty',
+frontend/src/components/shared/OperationalDataState.test.ts:92:      noRowsLabel: 'No archived rows found',
+frontend/src/components/shared/OperationalActionLabels.ts:2:  archive: 'Archive',
+frontend/src/components/shared/OperationalActionLabels.ts:3:  archiveConfirm: 'Confirm Archive?',
+frontend/src/components/shared/OperationalActionLabels.ts:4:  archiveSelection: 'Archive Selection',
+frontend/src/components/shared/OperationalActionLabels.ts:5:  archiveSelectionConfirm: 'Confirm Archive?',
+frontend/src/components/shared/OperationalActionLabels.ts:6:  purge: 'Purge',
+frontend/src/components/shared/OperationalActionLabels.ts:7:  purgeConfirm: 'Confirm Purge?',
+frontend/src/components/shared/OperationalActionLabels.ts:8:  purgeSelection: 'Purge Selection',
+frontend/src/components/shared/OperationalActionLabels.ts:9:  purgeSelectionConfirm: 'Confirm Permanent Purge?',
+frontend/src/components/shared/OperationalWorkspacePrimitives.tsx:96:  const updatePosition = useCallback(() => {
+frontend/src/components/shared/OperationalWorkspacePrimitives.tsx:128:    updatePosition()
+frontend/src/components/shared/OperationalWorkspacePrimitives.tsx:129:    window.addEventListener('resize', updatePosition)
+frontend/src/components/shared/OperationalWorkspacePrimitives.tsx:130:    window.addEventListener('scroll', updatePosition, true)
+frontend/src/components/shared/OperationalWorkspacePrimitives.tsx:132:      window.removeEventListener('resize', updatePosition)
+frontend/src/components/shared/OperationalWorkspacePrimitives.tsx:133:      window.removeEventListener('scroll', updatePosition, true)
+frontend/src/components/shared/OperationalWorkspacePrimitives.tsx:135:  }, [isOpen, updatePosition])
+frontend/src/components/shared/OperationalWorkspacePrimitives.tsx:160:      const updatedCount = Math.max(0, Number(body.dataset.sysgridModalCount || '1') - 1)
+frontend/src/components/shared/OperationalWorkspacePrimitives.tsx:161:      if (updatedCount === 0) {
+frontend/src/components/shared/OperationalWorkspacePrimitives.tsx:162:        delete body.dataset.sysgridModalCount
+frontend/src/components/shared/OperationalWorkspacePrimitives.tsx:163:        delete body.dataset.sysgridModalOpen
+frontend/src/components/shared/OperationalWorkspacePrimitives.tsx:165:        body.dataset.sysgridModalCount = String(updatedCount)
+frontend/src/components/shared/OperationalWorkspacePrimitives.tsx:630:  forensicLineage?: { createdAt?: string | Date; updatedAt?: string | Date }
+frontend/src/components/shared/OperationalWorkspacePrimitives.tsx:684:                        <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">{formatDate(forensicLineage.updatedAt)}</span>
+frontend/src/components/shared/OperationalGridStandard.tsx:621:        const dateStr = formatAppDate(p.data.updated_at || p.data.created_at)
+frontend/src/components/shared/OperationalDataStatus.tsx:69:                <p><strong>Endpoint:</strong> {errorDetail?.endpoint || '/api/v1/monitoring?include_deleted=true'}</p>
+frontend/src/components/shared/OperationalFormContracts.ts:11:const resolveNextValue = <T,>(updater: ValueUpdater<T>, current: T) => (
+frontend/src/components/shared/OperationalFormContracts.ts:12:  typeof updater === 'function'
+frontend/src/components/shared/OperationalFormContracts.ts:13:    ? (updater as (value: T) => T)(current)
+frontend/src/components/shared/OperationalFormContracts.ts:14:    : updater
+frontend/src/components/shared/OperationalFormContracts.ts:56:  const updateValue = useCallback((updater: (current: T) => T) => {
+frontend/src/components/shared/OperationalFormContracts.ts:58:    const nextValue = updater(currentValue)
+frontend/src/components/shared/OperationalFormContracts.ts:68:    updateValue(() => nextValue)
+frontend/src/components/shared/OperationalFormContracts.ts:69:  ), [updateValue])
+frontend/src/components/shared/OperationalFormContracts.ts:72:    updateValue((current) => ({ ...current, ...partial }))
+frontend/src/components/shared/OperationalFormContracts.ts:73:  ), [updateValue])
+frontend/src/components/shared/OperationalFormContracts.ts:121:    updateValue,
+frontend/src/components/shared/InvestigationTab.tsx:61:      const updatedSteps = (formData.identification_steps_json || []).map((s: any) =>
+frontend/src/components/shared/InvestigationTab.tsx:62:        s.id === editingStepId ? { ...s, text: stepData.text, images: stepData.images, status: stepData.status, updated_at: new Date().toISOString() } : s
+frontend/src/components/shared/InvestigationTab.tsx:64:      setFormData({ ...formData, identification_steps_json: updatedSteps })
+frontend/src/components/shared/InvestigationTab.tsx:73:        updated_at: new Date().toISOString()
+frontend/src/components/shared/InvestigationTab.tsx:99:        delete next[`${variables.id}_${variables.type}`];
+frontend/src/components/shared/InvestigationTab.tsx:116:  const deleteCauseMutation = useMutation({
+frontend/src/components/shared/InvestigationTab.tsx:131:  const updateFailureStatus = (fmId: number, field: string, status: string) => {
+frontend/src/components/shared/InvestigationTab.tsx:214:                                  onChange={(val: string) => updateFailureStatus(fm.id, 'cause', val)}
+frontend/src/components/shared/InvestigationTab.tsx:223:                                  onChange={(val: string) => updateFailureStatus(fm.id, 'workaround', val)}
+frontend/src/components/shared/InvestigationTab.tsx:233:                                  onChange={(val: string) => updateFailureStatus(fm.id, 'monitoring', val)}
+frontend/src/components/shared/InvestigationTab.tsx:243:                                  onChange={(val: string) => updateFailureStatus(fm.id, 'prevention', val)}
+frontend/src/components/shared/InvestigationTab.tsx:327:                  message={`Are you sure you want to delete "${causeToDelete?.cause_text}"? This will also remove all linked mitigations and preventions.`}
+frontend/src/components/shared/InvestigationTab.tsx:328:                  onConfirm={() => { deleteCauseMutation.mutate(causeToDelete.id); setCauseCauseToDelete(null); }}
+frontend/src/components/shared/OperationalDataState.ts:8:  | { kind: 'deleted-empty'; noRowsLabel: string }
+frontend/src/components/shared/OperationalDataState.ts:38:  tabEmptyKind: 'active-empty' | 'deleted-empty'
+frontend/src/components/shared/OperationalFormContracts.test.tsx:59:  it('supports functional updates and baseline refresh', () => {
+frontend/src/components/shared/OperationalFormContracts.test.tsx:73:      result.current.updateValue((current) => ({ ...current, count: current.count + 1 }))
+frontend/src/components/shared/OperationalWorkspaceHooks.test.tsx:35:    { id: 1, name: 'Service One', is_deleted: false },
+frontend/src/components/shared/OperationalWorkspaceHooks.test.tsx:36:    { id: 2, name: 'Service Two', is_deleted: false },
+frontend/src/components/shared/OperationalImportModal.tsx:376:  const updateDraftCell = (rowIndex: number, columnName: string, value: string) => {
+frontend/src/components/shared/OperationalImportModal.tsx:909:                                        onChange={(value) => updateDraftCell(rowIndex, field.name, String(value))}
+frontend/src/components/shared/OperationalImportModal.tsx:917:                                        onChange={(event) => updateDraftCell(rowIndex, field.name, event.target.value)}
+frontend/src/components/ConfigRegistry.tsx:84:  const updateMutation = useMutation({
+frontend/src/components/ConfigRegistry.tsx:106:        throw new Error(err.detail || `Failed to update ${isTeamCategory ? "team" : "option"}`)
+frontend/src/components/ConfigRegistry.tsx:114:      showWorkspaceToast(isTeamCategory ? "Team updated" : "Option updated", { type: 'success' })
+frontend/src/components/ConfigRegistry.tsx:119:  const deleteMutation = useMutation({
+frontend/src/components/ConfigRegistry.tsx:127:        throw new Error(err.detail || `Failed to delete ${isTeamCategory ? "team" : "option"}`)
+frontend/src/components/ConfigRegistry.tsx:216:                                  updateMutation.mutate({
+frontend/src/components/ConfigRegistry.tsx:226:                                updateMutation.mutate({
+frontend/src/components/ConfigRegistry.tsx:262:                                onClick={() => deleteMutation.mutate(record.id)}
+frontend/src/components/ServiceRegistry.tsx:210:  const deleteMutation = useMutation({
+frontend/src/components/ServiceRegistry.tsx:251:            <button onClick={() => deleteMutation.mutate(s.id)} className="p-1.5 text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={14}/></button>
+frontend/src/components/ServiceRegistry.tsx:435:  const updateField = (field: string, value: any) => {
+frontend/src/components/ServiceRegistry.tsx:440:      delete next[field]
+frontend/src/components/ServiceRegistry.tsx:524:              <input value={formData.name || ''} onChange={(e) => updateField('name', e.target.value)} className={serviceFieldClass(fieldErrors.name)} placeholder="e.g. ERP DB Prod 01" />
+frontend/src/components/ServiceRegistry.tsx:532:                onChange={(value) => updateField('device_id', value ? parseInt(String(value), 10) : null)}
+frontend/src/components/ServiceRegistry.tsx:543:                onChange={(value) => updateField('service_type', String(value))}
+frontend/src/components/ServiceRegistry.tsx:551:              <input type="date" value={formData.installation_date ? String(formData.installation_date).split('T')[0] : ''} onChange={(e) => updateField('installation_date', e.target.value)} className={serviceFieldClass(fieldErrors.installation_date)} />
+frontend/src/components/ServiceRegistry.tsx:556:              <input value={formData.version || ''} onChange={(e) => updateField('version', e.target.value)} className={serviceFieldClass(fieldErrors.version)} placeholder="v1.0.0" />
+frontend/src/components/ServiceRegistry.tsx:561:              <textarea value={formData.purpose || ''} onChange={(e) => updateField('purpose', e.target.value)} className={`${serviceFieldClass(fieldErrors.purpose)} min-h-[110px] resize-none`} placeholder="Primary transactional store..." />
+frontend/src/components/ServiceRegistry.tsx:577:                onChange={(value) => updateField('status', String(value))}
+frontend/src/components/ServiceRegistry.tsx:588:                onChange={(value) => updateField('environment', String(value))}
+frontend/src/components/ServiceRegistry.tsx:598:                onChange={(value) => updateField('purchase_type', String(value))}
+frontend/src/components/ServiceRegistry.tsx:606:              <input type="date" value={formData.expiry_date ? String(formData.expiry_date).split('T')[0] : ''} onChange={(e) => updateField('expiry_date', e.target.value)} className={serviceFieldClass(fieldErrors.expiry_date)} />
+frontend/src/components/ServiceRegistry.tsx:611:              <input value={formData.manufacturer || ''} onChange={(e) => updateField('manufacturer', e.target.value)} className={serviceFieldClass(fieldErrors.manufacturer)} placeholder="Vendor / publisher" />
+frontend/src/components/ServiceRegistry.tsx:616:              <input value={formData.supplier || ''} onChange={(e) => updateField('supplier', e.target.value)} className={serviceFieldClass(fieldErrors.supplier)} placeholder="Reseller / supplier" />
+frontend/src/components/ServiceRegistry.tsx:621:              <input type="number" min="0" step="0.01" value={formData.cost ?? 0} onChange={(e) => updateField('cost', e.target.value)} className={serviceFieldClass(fieldErrors.cost)} placeholder="0.00" />
+frontend/src/components/ServiceRegistry.tsx:628:                onChange={(value) => updateField('currency', String(value))}
+frontend/src/components/ServiceRegistry.tsx:643:        <MetadataEditor value={formData.config_json} onChange={(value) => updateField('config_json', value)} onError={setMetadataError} />
+frontend/src/components/ServiceRegistry.tsx:682:  const [activeTab, setActiveTab] = useState<'active' | 'purged'>('active')
+frontend/src/components/ServiceRegistry.tsx:693:  const { data: allServices, isLoading } = useQuery({ queryKey: ["logical-services"], queryFn: async () => (await (await apiFetch("/api/v1/logical-services/?include_deleted=true")).json()) })
+frontend/src/components/ServiceRegistry.tsx:696:    return activeTab === 'active' ? allServices.filter((s: any) => !s.is_deleted) : allServices.filter((s: any) => s.is_deleted)
+frontend/src/components/ServiceRegistry.tsx:706:    setActiveTab(target.is_deleted ? 'purged' : 'active')
+frontend/src/components/ServiceRegistry.tsx:712:    nextParams.delete('id')
+frontend/src/components/ServiceRegistry.tsx:726:    onError: (e: any) => toast.error(e.message || 'Failed to update registry')
+frontend/src/components/ServiceRegistry.tsx:789:               activeTab === 'active' ? 'Terminate this service instance?' : 'This service is already purged. No additional purge action is available.',
+frontend/src/components/ServiceRegistry.tsx:790:               () => activeTab === 'active' ? bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }) : setConfirmModal((prev: any) => ({ ...prev, isOpen: false })),
+frontend/src/components/ServiceRegistry.tsx:808:              <button onClick={() => { setActiveTab('purged'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'purged' ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20' : 'text-slate-500 hover:text-slate-300'}`}>Purged</button>
+frontend/src/components/ServiceRegistry.tsx:826:                   {activeTab === 'active' ? (<><button onClick={() => { setIsBulkStatusOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-blue-400 ">Set Status...</button><button onClick={() => { setIsBulkEnvOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-emerald-400 ">Set Env...</button><button onClick={() => { setIsBulkHostOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-amber-400 ">Set Host...</button><div className="h-px bg-white/5 mx-2 my-1" /><button onClick={() => openConfirm('Bulk Terminate', `Terminate ${selectedIds.length} instances?`, () => bulkMutation.mutate({ action: 'delete' }))} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 ">Bulk Purge</button></>) : (<button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-emerald-400 ">Restore Selected</button>)}
+frontend/src/components/Research.tsx:271:  const deleteMutation = useMutation({
+frontend/src/components/Research.tsx:285:    return [...invs, ...rcas].sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())
+frontend/src/components/Research.tsx:469:      field: "updated_at", 
+frontend/src/components/Research.tsx:476:      hide: hiddenColumns.includes("updated_at")
+frontend/src/components/Research.tsx:553:                 onConfirm: () => deleteMutation.mutate(p.data) 
+frontend/src/components/Research.tsx:560:  ], [setActiveDetails, setActiveModal, setConfirmModal, deleteMutation, fontSize, hiddenColumns]) as any
+frontend/src/components/Research.tsx:1053:        if (['updated_at', 'created_at', 'id', 'rca_id', 'is_deleted', 'created_by_user_id'].includes(key)) return;
+frontend/src/components/Research.tsx:1114:        // Also update lastAcknowledgedData so we don't immediately auto-save the same data back
+frontend/src/components/Research.tsx:1131:    updated_at: new Date().toISOString() 
+frontend/src/components/Research.tsx:1202:      updated_at: now 
+frontend/src/components/Research.tsx:1204:    const updated = { ...formData, timeline }
+frontend/src/components/Research.tsx:1205:    setFormData(updated)
+frontend/src/components/Research.tsx:1214:      updated_at: now 
+frontend/src/components/Research.tsx:1220:    const updated = { ...formData, timeline: (formData.timeline || []).filter((t: any) => t.id !== id) }
+frontend/src/components/Research.tsx:1221:    setFormData(updated)
+frontend/src/components/Research.tsx:1232:      t.id === editingTimelineId ? { ...editTimelineData, updated_at: new Date().toISOString() } : t
+frontend/src/components/Research.tsx:1234:    const updated = { ...formData, timeline }
+frontend/src/components/Research.tsx:1235:    setFormData(updated)
+frontend/src/components/Research.tsx:1360:                         <span className="text-[10px] font-bold text-emerald-400">{formData.updated_at ? formatAppDate(formData.updated_at) : 'N/A'}</span>
+frontend/src/components/Research.tsx:2035:        if (['updated_at', 'created_at', 'id', 'created_by_user_id'].includes(key)) return;
+frontend/src/components/Research.tsx:2139:                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Pulse: {formatAppDate(formData.updated_at || formData.created_at)}</span>
+frontend/src/components/MonitoringGrid.tsx:237:  'updated_at',
+frontend/src/components/MonitoringGrid.tsx:320:      activeTab: uiState.activeTab === 'deleted' ? 'deleted' : 'active',
+frontend/src/components/MonitoringGrid.tsx:325:        : ['created_at', 'updated_at'],
+frontend/src/components/MonitoringGrid.tsx:372:  delete next.created_at
+frontend/src/components/MonitoringGrid.tsx:373:  delete next.updated_at
+frontend/src/components/MonitoringGrid.tsx:374:  delete next.version
+frontend/src/components/MonitoringGrid.tsx:375:  delete next.is_deleted
+frontend/src/components/MonitoringGrid.tsx:376:  delete next.device_name
+frontend/src/components/MonitoringGrid.tsx:377:  delete next.recovery_doc_titles
+frontend/src/components/MonitoringGrid.tsx:378:  delete next.recovery_doc_details
+frontend/src/components/MonitoringGrid.tsx:379:  delete next.monitored_service_names
+frontend/src/components/MonitoringGrid.tsx:420:      const updated = parseAppDate(i.updated_at)
+frontend/src/components/MonitoringGrid.tsx:421:      return updated ? (new Date().getTime() - updated.getTime() < 3600000) : false // 1 hour
+frontend/src/components/MonitoringGrid.tsx:499:  const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedUiState?.hiddenColumns ?? ['created_at', 'updated_at'])
+frontend/src/components/MonitoringGrid.tsx:500:  const [activeTab, setActiveTab] = useState<'active' | 'deleted'>(persistedUiState?.activeTab === 'deleted' ? 'deleted' : 'active')
+frontend/src/components/MonitoringGrid.tsx:562:    queryFn: async () => (await apiFetch('/api/v1/monitoring?include_deleted=true')).json()
+frontend/src/components/MonitoringGrid.tsx:573:                endpoint: '/api/v1/monitoring?include_deleted=true',
+frontend/src/components/MonitoringGrid.tsx:746:      setHiddenColumns(payload?.uiState.hiddenColumns ?? ['created_at', 'updated_at'])
+frontend/src/components/MonitoringGrid.tsx:747:      setActiveTab(payload?.uiState.activeTab === 'deleted' ? 'deleted' : 'active')
+frontend/src/components/MonitoringGrid.tsx:1187:  const deleteView = (viewId: string) => {
+frontend/src/components/MonitoringGrid.tsx:1239:  // Removed manual menu position updates as they are now handled by useWorkspaceAnchoredLayer.
+frontend/src/components/MonitoringGrid.tsx:1244:    if (!Array.isArray(allItems)) return { existing: 0, archived: 0 }
+frontend/src/components/MonitoringGrid.tsx:1246:      existing: allItems.filter((item: any) => !item.is_deleted).length,
+frontend/src/components/MonitoringGrid.tsx:1247:      archived: allItems.filter((item: any) => item.is_deleted).length,
+frontend/src/components/MonitoringGrid.tsx:1260:    return allItems.filter((i: any) => activeTab === 'active' ? !i.is_deleted : i.is_deleted)
+frontend/src/components/MonitoringGrid.tsx:1362:      tabEmptyKind: activeTab === 'deleted' ? 'deleted-empty' : 'active-empty',
+frontend/src/components/MonitoringGrid.tsx:1363:      tabEmptyLabel: activeTab === 'deleted' ? 'No archived monitoring items found' : 'No active monitoring items found',
+frontend/src/components/MonitoringGrid.tsx:1410:        if (!groupedSections.some((section) => section.key === key)) delete next[key]
+frontend/src/components/MonitoringGrid.tsx:1417:    const changedAt = item?.updated_at || item?.created_at
+frontend/src/components/MonitoringGrid.tsx:1493:      delete (window as any).__DEBUG_SET_MONITORING_COLUMN_WIDTH__
+frontend/src/components/MonitoringGrid.tsx:1528:            delete nextModel[field]
+frontend/src/components/MonitoringGrid.tsx:1561:    } else if (undo.mode === 'restore_snapshots') {
+frontend/src/components/MonitoringGrid.tsx:1606:        : action === 'update'
+frontend/src/components/MonitoringGrid.tsx:1608:          : action === 'delete'
+frontend/src/components/MonitoringGrid.tsx:1609:            ? previousSnapshots.filter((snapshot: any) => !snapshot?.is_deleted).length
+frontend/src/components/MonitoringGrid.tsx:1610:            : action === 'restore'
+frontend/src/components/MonitoringGrid.tsx:1611:              ? previousSnapshots.filter((snapshot: any) => !!snapshot?.is_deleted).length
+frontend/src/components/MonitoringGrid.tsx:1617:      else if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
+frontend/src/components/MonitoringGrid.tsx:1618:      else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
+frontend/src/components/MonitoringGrid.tsx:1619:      else if (action === 'update') lastUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
+frontend/src/components/MonitoringGrid.tsx:1623:        action: action === 'delete' ? 'archive' : action,
+frontend/src/components/MonitoringGrid.tsx:1696:      getIsDeleted: (p) => p.data?.is_deleted || p.data?.status === 'Deleted',
+frontend/src/components/MonitoringGrid.tsx:1760:      field: 'updated_at',
+frontend/src/components/MonitoringGrid.tsx:1763:      hide: hiddenColumns.includes('updated_at'),
+frontend/src/components/MonitoringGrid.tsx:1815:              summary={`${lifecycleCounts.existing} existing · ${lifecycleCounts.archived} archived`}
+frontend/src/components/MonitoringGrid.tsx:1818:                setActiveTab(next as 'active' | 'deleted')
+frontend/src/components/MonitoringGrid.tsx:1823:                { label: 'Archived', value: 'deleted' }
+frontend/src/components/MonitoringGrid.tsx:1837:                        endpoint: '/api/v1/monitoring?include_deleted=true',
+frontend/src/components/MonitoringGrid.tsx:2047:            onDeleteView={deleteView}
+frontend/src/components/MonitoringGrid.tsx:2079:                    onApply={() => bulkMutation.mutate({ action: 'update', payload: { status: bulkDraft.status } })}
+frontend/src/components/MonitoringGrid.tsx:2095:                    onApply={() => bulkMutation.mutate({ action: 'update', payload: { severity: bulkDraft.severity } })}
+frontend/src/components/MonitoringGrid.tsx:2111:                    onApply={() => bulkMutation.mutate({ action: 'update', payload: { notification_method: bulkDraft.notification_method } })}
+frontend/src/components/MonitoringGrid.tsx:2143:                    id: 'archive',
+frontend/src/components/MonitoringGrid.tsx:2146:                        ...(activeTab === 'deleted' ? [{ id: 'restore', label: 'Restore', icon: Undo2, tone: 'success' as OperationalRowActionTone, variant: 'inline' as OperationalRowActionVariant, onClick: () => { bulkMutation.mutate({ action: 'restore', ids: [item.id] }); setRowActionMenu(null); } }] : []),
+frontend/src/components/MonitoringGrid.tsx:2148:                            id: 'archive',
+frontend/src/components/MonitoringGrid.tsx:2149:                            label: rowDeleteConfirmId === item.id ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm) : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge),
+frontend/src/components/MonitoringGrid.tsx:2156:                                bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [item.id] });
+frontend/src/components/MonitoringGrid.tsx:2348:              bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [monitor.id] })
+frontend/src/components/MonitoringGrid.tsx:2354:            deleteConfirm={detailDeleteConfirm}
+frontend/src/components/MonitoringGrid.tsx:2425:    { label: 'Updated', getValue: (item: any) => formatAppDate(item.updated_at) },
+frontend/src/components/MonitoringGrid.tsx:2551:  const updateRow = (rowId: number, field: string, value: any) => {
+frontend/src/components/MonitoringGrid.tsx:2664:                  <td className="px-2 py-2"><AppDropdown value={row.status} onChange={(value) => updateRow(row.id, 'status', value)} options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))} placeholder="Status" /></td>
+frontend/src/components/MonitoringGrid.tsx:2665:                  <td className="px-2 py-2"><AppDropdown value={row.severity} onChange={(value) => updateRow(row.id, 'severity', value)} options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))} placeholder="Severity" /></td>
+frontend/src/components/MonitoringGrid.tsx:2666:                  <td className="px-2 py-2"><AppDropdown value={row.notification_method} onChange={(value) => updateRow(row.id, 'notification_method', value)} options={notificationMethods.map((method: any) => ({ value: method.value, label: method.label }))} placeholder="Notification" /></td>
+frontend/src/components/MonitoringGrid.tsx:2667:                  <td className="px-2 py-2"><input value={row.owner_team} onChange={(event) => updateRow(row.id, 'owner_team', event.target.value)} placeholder="Team names..." className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+frontend/src/components/MonitoringGrid.tsx:2668:                  <td className="px-2 py-2"><input value={row.owner_user_ids} onChange={(event) => updateRow(row.id, 'owner_user_ids', event.target.value)} placeholder="User IDs..." className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+frontend/src/components/MonitoringGrid.tsx:2669:                  <td className="px-2 py-2"><input type="number" value={row.check_interval} min={CHECK_INTERVAL_MIN} max={CHECK_INTERVAL_MAX} onChange={(event) => updateRow(row.id, 'check_interval', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] [appearance:textfield]`} /></td>
+frontend/src/components/MonitoringGrid.tsx:2670:                  <td className="px-2 py-2"><input type="number" value={row.alert_duration} min={ALERT_DURATION_MIN} max={ALERT_DURATION_MAX} onChange={(event) => updateRow(row.id, 'alert_duration', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] [appearance:textfield]`} /></td>
+frontend/src/components/MonitoringGrid.tsx:2671:                  <td className="px-2 py-2"><input type="number" value={row.notification_throttle} min={NOTIFICATION_THROTTLE_MIN} max={NOTIFICATION_THROTTLE_MAX} onChange={(event) => updateRow(row.id, 'notification_throttle', event.target.value)} className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] [appearance:textfield]`} /></td>
+frontend/src/components/MonitoringGrid.tsx:2675:                      onClick={() => updateRow(row.id, 'is_active', !row.is_active)}
+frontend/src/components/MonitoringGrid.tsx:2722:function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm, onDelete, onOpenAsset, onOpenKnowledge, deleteConfirm }: any) {
+frontend/src/components/MonitoringGrid.tsx:2756:      forensicLineage={{ createdAt: item.created_at, updatedAt: item.updated_at }}
+frontend/src/components/MonitoringGrid.tsx:2775:                if (deleteConfirm) {
+frontend/src/components/MonitoringGrid.tsx:2776:                  const action = item.is_deleted ? 'Purged' : 'Archived';
+frontend/src/components/MonitoringGrid.tsx:2785:              className={deleteConfirm ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : ''}
+frontend/src/components/MonitoringGrid.tsx:2787:              {deleteConfirm 
+frontend/src/components/MonitoringGrid.tsx:2788:                ? (item.is_deleted ? 'Confirm Purge?' : 'Confirm Archive?') 
+frontend/src/components/MonitoringGrid.tsx:2789:                : (item.is_deleted ? 'Purge' : 'Archive')}
+frontend/src/components/MonitoringGrid.tsx:3284:      if (['updated_at', 'created_at', 'id', 'version', 'is_deleted', 'monitored_service_names', 'recovery_doc_titles', 'device_name'].includes(k)) return false
+frontend/src/components/MonitoringGrid.tsx:3385:                                 const response: any = await apiFetch(`/api/v1/monitoring/${item.id}/restore/${h.id}`, { method: 'POST' })
+frontend/src/components/NetworkReal.tsx:193:  'updated_at',
+frontend/src/components/NetworkReal.tsx:217:  'updated_at',
+frontend/src/components/NetworkReal.tsx:305:      activeTab: uiState.activeTab === 'deleted' ? 'deleted' : 'active',
+frontend/src/components/NetworkReal.tsx:310:        : ['created_at', 'updated_at'],
+frontend/src/components/NetworkReal.tsx:427:  delete next.created_at
+frontend/src/components/NetworkReal.tsx:428:  delete next.updated_at
+frontend/src/components/NetworkReal.tsx:429:  delete next.version
+frontend/src/components/NetworkReal.tsx:430:  delete next.is_deleted
+frontend/src/components/NetworkReal.tsx:431:  delete next.device_name
+frontend/src/components/NetworkReal.tsx:432:  delete next.recovery_doc_titles
+frontend/src/components/NetworkReal.tsx:433:  delete next.recovery_doc_details
+frontend/src/components/NetworkReal.tsx:434:  delete next.monitored_service_names
+frontend/src/components/NetworkReal.tsx:552:    is_deleted: status === 'Deleted',
+frontend/src/components/NetworkReal.tsx:556:    created_at: connection?.created_at || connection?.updated_at || null,
+frontend/src/components/NetworkReal.tsx:557:    updated_at: connection?.updated_at || connection?.created_at || null,
+frontend/src/components/NetworkReal.tsx:590:      const updated = parseAppDate(i.updated_at)
+frontend/src/components/NetworkReal.tsx:591:      return updated ? (new Date().getTime() - updated.getTime() < 3600000) : false // 1 hour
+frontend/src/components/NetworkReal.tsx:693:  const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedUiState?.hiddenColumns ?? ['created_at', 'updated_at'])
+frontend/src/components/NetworkReal.tsx:694:  const [activeTab, setActiveTab] = useState<'active' | 'deleted'>(persistedUiState?.activeTab === 'deleted' ? 'deleted' : 'active')
+frontend/src/components/NetworkReal.tsx:829:      setHiddenColumns(payload?.uiState.hiddenColumns ?? ['created_at', 'updated_at'])
+frontend/src/components/NetworkReal.tsx:830:      setActiveTab(payload?.uiState.activeTab === 'deleted' ? 'deleted' : 'active')
+frontend/src/components/NetworkReal.tsx:950:    nextParams.delete('id')
+frontend/src/components/NetworkReal.tsx:1326:  const deleteView = (viewId: string) => {
+frontend/src/components/NetworkReal.tsx:1385:    const updateMenuPositions = () => {
+frontend/src/components/NetworkReal.tsx:1409:    updateMenuPositions()
+frontend/src/components/NetworkReal.tsx:1411:      window.addEventListener('resize', updateMenuPositions)
+frontend/src/components/NetworkReal.tsx:1412:      window.addEventListener('scroll', updateMenuPositions, true)
+frontend/src/components/NetworkReal.tsx:1414:        window.removeEventListener('resize', updateMenuPositions)
+frontend/src/components/NetworkReal.tsx:1415:        window.removeEventListener('scroll', updateMenuPositions, true)
+frontend/src/components/NetworkReal.tsx:1422:    queryFn: async () => (await apiFetch('/api/v1/networks/connections?include_deleted=true')).json()
+frontend/src/components/NetworkReal.tsx:1426:    if (!Array.isArray(allItems)) return { existing: 0, archived: 0 }
+frontend/src/components/NetworkReal.tsx:1428:      existing: allItems.filter((item: any) => !item.is_deleted).length,
+frontend/src/components/NetworkReal.tsx:1429:      archived: allItems.filter((item: any) => item.is_deleted).length,
+frontend/src/components/NetworkReal.tsx:1444:      .filter((item: any) => activeTab === 'active' ? !item.is_deleted : item.is_deleted)
+frontend/src/components/NetworkReal.tsx:1578:        if (!groupedSections.some((section) => section.key === key)) delete next[key]
+frontend/src/components/NetworkReal.tsx:1585:    const changedAt = item?.updated_at || item?.created_at
+frontend/src/components/NetworkReal.tsx:1613:      nextParams.delete('id')
+frontend/src/components/NetworkReal.tsx:1617:    setActiveTab(target.is_deleted ? 'deleted' : 'active')
+frontend/src/components/NetworkReal.tsx:1673:      delete (window as any).__DEBUG_SET_NETWORK_COLUMN_WIDTH__
+frontend/src/components/NetworkReal.tsx:1708:            delete nextModel[field]
+frontend/src/components/NetworkReal.tsx:1740:          status: undo.action === 'restore' ? 'Active' : 'Deleted',
+frontend/src/components/NetworkReal.tsx:1762:      if (action === 'update') {
+frontend/src/components/NetworkReal.tsx:1790:      } else if (action === 'restore') {
+frontend/src/components/NetworkReal.tsx:1791:        res = await apiFetch('/api/v1/networks/connections/bulk-restore', {
+frontend/src/components/NetworkReal.tsx:1795:      } else if (action === 'purge') {
+frontend/src/components/NetworkReal.tsx:1796:        res = await apiFetch('/api/v1/networks/connections/bulk-purge', {
+frontend/src/components/NetworkReal.tsx:1801:        res = await apiFetch('/api/v1/networks/connections/bulk-delete', {
+frontend/src/components/NetworkReal.tsx:1825:      if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
+frontend/src/components/NetworkReal.tsx:1826:      else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
+frontend/src/components/NetworkReal.tsx:1914:          const dateStr = formatAppDate(p.data.updated_at || p.data.created_at)
+frontend/src/components/NetworkReal.tsx:2158:        field: 'updated_at',
+frontend/src/components/NetworkReal.tsx:2159:        colId: 'updated_at',
+frontend/src/components/NetworkReal.tsx:2242:            summary={`${lifecycleCounts.existing} active · ${lifecycleCounts.archived} deleted`}
+frontend/src/components/NetworkReal.tsx:2245:              setActiveTab(next as 'active' | 'deleted')
+frontend/src/components/NetworkReal.tsx:2250:              { label: 'Deleted', value: 'deleted' }
+frontend/src/components/NetworkReal.tsx:2448:            onDeleteView={deleteView}
+frontend/src/components/NetworkReal.tsx:2467:                  {activeTab === 'deleted' ? (
+frontend/src/components/NetworkReal.tsx:2469:                      onClick={() => bulkMutation.mutate({ action: 'restore' })}
+frontend/src/components/NetworkReal.tsx:2499:                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { status: bulkDraft.status } })}
+frontend/src/components/NetworkReal.tsx:2516:                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { link_type: bulkDraft.link_type } })}
+frontend/src/components/NetworkReal.tsx:2533:                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { direction: bulkDraft.direction } })}
+frontend/src/components/NetworkReal.tsx:2547:                      bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' })
+frontend/src/components/NetworkReal.tsx:2560:                          ? (activeTab === 'deleted' ? 'Confirm Permanent Purge?' : 'Confirm De-activation?') 
+frontend/src/components/NetworkReal.tsx:2561:                          : (activeTab === 'deleted' ? 'Purge Selection' : 'De-activate Selection')
+frontend/src/components/NetworkReal.tsx:2619:                {activeTab === 'deleted' && (
+frontend/src/components/NetworkReal.tsx:2622:                      bulkMutation.mutate({ action: 'restore', ids: [rowActionMenu.item.id] })
+frontend/src/components/NetworkReal.tsx:2638:                    bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [item.id] })
+frontend/src/components/NetworkReal.tsx:2794:        onApply={(action, val) => bulkMutation.mutate({ action: 'update', payload: { [action]: val } })}
+frontend/src/components/NetworkReal.tsx:2838:              bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [connection.id] })
+frontend/src/components/NetworkReal.tsx:2843:            deleteConfirm={detailDeleteConfirm}
+frontend/src/components/NetworkReal.tsx:2923:    { label: 'Updated', getValue: (item: any) => formatAppDate(item.updated_at) },
+frontend/src/components/NetworkReal.tsx:3154:  const updateRow = (rowId: number, field: string, value: any) => {
+frontend/src/components/NetworkReal.tsx:3238:                  <td className="px-2 py-2"><AppDropdown value={row.status} onChange={(value) => updateRow(row.id, 'status', value)} options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))} placeholder="Status" /></td>
+frontend/src/components/NetworkReal.tsx:3239:                  <td className="px-2 py-2"><AppDropdown value={row.link_type} onChange={(value) => updateRow(row.id, 'link_type', value)} options={mergeOptionsWithCurrentValue(linkPurposeOptions, row.link_type)} placeholder="Type" /></td>
+frontend/src/components/NetworkReal.tsx:3240:                  <td className="px-2 py-2"><AppDropdown value={row.direction} onChange={(value) => updateRow(row.id, 'direction', value)} options={NETWORK_DIRECTIONS.map((value) => ({ value, label: value }))} placeholder="Direction" /></td>
+frontend/src/components/NetworkReal.tsx:3241:                  <td className="px-2 py-2"><AppDropdown value={row.farm} onChange={(value) => updateRow(row.id, 'farm', value)} options={mergeOptionsWithCurrentValue(farmOptions, row.farm)} placeholder="Farm" /></td>
+frontend/src/components/NetworkReal.tsx:3242:                  <td className="px-2 py-2"><input value={row.purpose} onChange={(event) => updateRow(row.id, 'purpose', event.target.value)} placeholder="Purpose" className={`${networkInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+frontend/src/components/NetworkReal.tsx:3243:                  <td className="px-2 py-2"><input type="number" value={row.speed_gbps} onChange={(event) => updateRow(row.id, 'speed_gbps', event.target.value)} placeholder="Speed" className={`${networkInputClass()} h-[42px] px-3 py-2 text-[10px] [appearance:textfield]`} /></td>
+frontend/src/components/NetworkReal.tsx:3244:                  <td className="px-2 py-2"><AppDropdown value={row.unit} onChange={(value) => updateRow(row.id, 'unit', value)} options={NETWORK_UNITS.map((value) => ({ value, label: value }))} placeholder="Unit" /></td>
+frontend/src/components/NetworkReal.tsx:3245:                  <td className="px-2 py-2"><AppDropdown value={row.cable_type} onChange={(value) => updateRow(row.id, 'cable_type', value)} options={mergeOptionsWithCurrentValue(cableTypeOptions, row.cable_type)} placeholder="Cable type" /></td>
+frontend/src/components/NetworkReal.tsx:3246:                  <td className="px-2 py-2"><input value={row.request_link} onChange={(event) => updateRow(row.id, 'request_link', event.target.value)} placeholder="Request link" className={`${networkInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+frontend/src/components/NetworkReal.tsx:3250:                      onClick={() => updateRow(row.id, 'is_active', !row.is_active)}
+frontend/src/components/NetworkReal.tsx:3266:function NetworkDetailModal({ item, onClose, onEdit, onDelete, onOpenAsset, onOpenKnowledge, deleteConfirm }: any) {
+frontend/src/components/NetworkReal.tsx:3306:      forensicLineage={{ createdAt: item.created_at, updatedAt: item.updated_at }}
+frontend/src/components/NetworkReal.tsx:3323:                if (deleteConfirm) {
+frontend/src/components/NetworkReal.tsx:3324:                  const action = item.is_deleted ? 'Purged' : 'Archived';
+frontend/src/components/NetworkReal.tsx:3333:              className={deleteConfirm ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : ''}
+frontend/src/components/NetworkReal.tsx:3335:              {deleteConfirm 
+frontend/src/components/NetworkReal.tsx:3336:                ? (item.is_deleted ? 'Confirm Purge?' : 'Confirm Archive?') 
+frontend/src/components/NetworkReal.tsx:3337:                : (item.is_deleted ? 'Purge' : 'Archive')}
+frontend/src/components/NetworkReal.tsx:3481:                    <p className="mt-1 text-[11px] font-bold text-slate-200">{formatAppDate(item.updated_at)}</p>
+frontend/src/components/NetworkReal.tsx:3649:      delete next[field]
+frontend/src/components/NetworkReal.tsx:3654:  const updateField = useCallback((field: string, value: any) => {
+frontend/src/components/NetworkReal.tsx:3787:                    onChange={(value) => updateField('source_device_id', value)}
+frontend/src/components/NetworkReal.tsx:3795:                      <input value={formData.source_port} onChange={(e) => updateField('source_port', e.target.value)} placeholder="Source port" className={fieldClass('source_port')} />
+frontend/src/components/NetworkReal.tsx:3800:                      <input type="number" min="0" max="4094" step="1" value={formData.source_vlan} onChange={(e) => updateField('source_vlan', e.target.value)} placeholder="0-4094" className={fieldClass('source_vlan')} />
+frontend/src/components/NetworkReal.tsx:3805:                      <input value={formData.source_ip} onChange={(e) => updateField('source_ip', e.target.value)} placeholder="192.168.1.10" className={fieldClass('source_ip')} />
+frontend/src/components/NetworkReal.tsx:3810:                      <input value={formData.source_mac} onChange={(e) => updateField('source_mac', e.target.value)} placeholder="00:11:22:33:44:55" className={fieldClass('source_mac')} />
+frontend/src/components/NetworkReal.tsx:3822:                    onChange={(value) => updateField('target_device_id', value)}
+frontend/src/components/NetworkReal.tsx:3830:                      <input value={formData.target_port} onChange={(e) => updateField('target_port', e.target.value)} placeholder="Peer port" className={fieldClass('target_port')} />
+frontend/src/components/NetworkReal.tsx:3835:                      <input type="number" min="0" max="4094" step="1" value={formData.target_vlan} onChange={(e) => updateField('target_vlan', e.target.value)} placeholder="0-4094" className={fieldClass('target_vlan')} />
+frontend/src/components/NetworkReal.tsx:3840:                      <input value={formData.target_ip} onChange={(e) => updateField('target_ip', e.target.value)} placeholder="192.168.1.11" className={fieldClass('target_ip')} />
+frontend/src/components/NetworkReal.tsx:3845:                      <input value={formData.target_mac} onChange={(e) => updateField('target_mac', e.target.value)} placeholder="00:11:22:33:44:66" className={fieldClass('target_mac')} />
+frontend/src/components/NetworkReal.tsx:3859:                      onChange={(value) => updateField('link_type', value)}
+frontend/src/components/NetworkReal.tsx:3869:                      onChange={(value) => updateField('status', value)}
+frontend/src/components/NetworkReal.tsx:3877:                    <input type="number" step="0.1" min="0" value={formData.speed_gbps} onChange={(e) => updateField('speed_gbps', e.target.value)} placeholder="10" className={fieldClass('speed_gbps')} />
+frontend/src/components/NetworkReal.tsx:3884:                      onChange={(value) => updateField('unit', value)}
+frontend/src/components/NetworkReal.tsx:3894:                      onChange={(value) => updateField('direction', value)}
+frontend/src/components/NetworkReal.tsx:3904:                      onChange={(value) => updateField('farm', value)}
+frontend/src/components/NetworkReal.tsx:3914:                      onChange={(value) => updateField('cable_type', value)}
+frontend/src/components/NetworkReal.tsx:3922:                    <input type="url" value={formData.request_link} onChange={(e) => updateField('request_link', e.target.value)} placeholder="https://..." className={fieldClass('request_link')} />
+frontend/src/components/NetworkReal.tsx:3927:                    <textarea value={formData.purpose} onChange={(e) => updateField('purpose', e.target.value)} placeholder="Why this connection exists" className={`${fieldClass('purpose')} min-h-[110px]`} />
+frontend/src/components/NetworkReal.tsx:4112:      if (['updated_at', 'created_at', 'id', 'version', 'is_deleted', 'monitored_service_names', 'recovery_doc_titles', 'device_name'].includes(k)) return false
+frontend/src/components/NetworkReal.tsx:4214:                               toast.promise(apiFetch(`/api/v1/networks/connections/${item.id}/restore/${h.id}`, { method: 'POST' }), {
+frontend/src/components/Temp1.tsx:165:    const updateSize = () => {
+frontend/src/components/Temp1.tsx:175:    updateSize();
+frontend/src/components/Temp1.tsx:176:    const observer = new ResizeObserver(() => requestAnimationFrame(updateSize));
+frontend/src/components/Temp1.tsx:178:    window.addEventListener('resize', updateSize);
+frontend/src/components/Temp1.tsx:179:    const timer = setTimeout(updateSize, 500);
+frontend/src/components/Temp1.tsx:182:      window.removeEventListener('resize', updateSize);
+frontend/src/components/Temp1.tsx:431:                  ctx.restore();
+frontend/src/components/AssetReal.tsx:197:  'updated_at',
+frontend/src/components/AssetReal.tsx:230:  'updated_at',
+frontend/src/components/AssetReal.tsx:319:      activeTab: uiState.activeTab === 'deleted' ? 'deleted' : 'active',
+frontend/src/components/AssetReal.tsx:324:        : ['created_at', 'updated_at'],
+frontend/src/components/AssetReal.tsx:441:  delete next.created_at
+frontend/src/components/AssetReal.tsx:442:  delete next.updated_at
+frontend/src/components/AssetReal.tsx:443:  delete next.version
+frontend/src/components/AssetReal.tsx:444:  delete next.is_deleted
+frontend/src/components/AssetReal.tsx:445:  delete next.device_name
+frontend/src/components/AssetReal.tsx:446:  delete next.recovery_doc_titles
+frontend/src/components/AssetReal.tsx:447:  delete next.recovery_doc_details
+frontend/src/components/AssetReal.tsx:448:  delete next.monitored_service_names
+frontend/src/components/AssetReal.tsx:514:  created_at: asset?.created_at || asset?.updated_at || null,
+frontend/src/components/AssetReal.tsx:515:  updated_at: asset?.updated_at || asset?.created_at || null,
+frontend/src/components/AssetReal.tsx:516:  is_deleted: Boolean(asset?.is_deleted),
+frontend/src/components/AssetReal.tsx:561:      const updated = parseAppDate(i.updated_at)
+frontend/src/components/AssetReal.tsx:562:      return updated ? (new Date().getTime() - updated.getTime() < 3600000) : false // 1 hour
+frontend/src/components/AssetReal.tsx:664:  const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedUiState?.hiddenColumns ?? ['created_at', 'updated_at'])
+frontend/src/components/AssetReal.tsx:665:  const [activeTab, setActiveTab] = useState<'active' | 'deleted'>(persistedUiState?.activeTab === 'deleted' ? 'deleted' : 'active')
+frontend/src/components/AssetReal.tsx:803:      setHiddenColumns(payload?.uiState.hiddenColumns ?? ['created_at', 'updated_at'])
+frontend/src/components/AssetReal.tsx:804:      setActiveTab(payload?.uiState.activeTab === 'deleted' ? 'deleted' : 'active')
+frontend/src/components/AssetReal.tsx:924:    nextParams.delete('id')
+frontend/src/components/AssetReal.tsx:1311:  const deleteView = (viewId: string) => {
+frontend/src/components/AssetReal.tsx:1370:    const updateMenuPositions = () => {
+frontend/src/components/AssetReal.tsx:1394:    updateMenuPositions()
+frontend/src/components/AssetReal.tsx:1396:      window.addEventListener('resize', updateMenuPositions)
+frontend/src/components/AssetReal.tsx:1397:      window.addEventListener('scroll', updateMenuPositions, true)
+frontend/src/components/AssetReal.tsx:1399:        window.removeEventListener('resize', updateMenuPositions)
+frontend/src/components/AssetReal.tsx:1400:        window.removeEventListener('scroll', updateMenuPositions, true)
+frontend/src/components/AssetReal.tsx:1407:    queryFn: async () => (await apiFetch('/api/v1/devices?include_deleted=true')).json()
+frontend/src/components/AssetReal.tsx:1411:    if (!Array.isArray(allItems)) return { existing: 0, archived: 0 }
+frontend/src/components/AssetReal.tsx:1413:      existing: allItems.filter((item: any) => !item.is_deleted).length,
+frontend/src/components/AssetReal.tsx:1414:      archived: allItems.filter((item: any) => item.is_deleted).length,
+frontend/src/components/AssetReal.tsx:1429:      .filter((item: any) => activeTab === 'active' ? !item.is_deleted : item.is_deleted)
+frontend/src/components/AssetReal.tsx:1562:        if (!groupedSections.some((section) => section.key === key)) delete next[key]
+frontend/src/components/AssetReal.tsx:1569:    const changedAt = item?.updated_at || item?.created_at
+frontend/src/components/AssetReal.tsx:1597:      nextParams.delete('id')
+frontend/src/components/AssetReal.tsx:1601:    setActiveTab(target.is_deleted ? 'deleted' : 'active')
+frontend/src/components/AssetReal.tsx:1657:      delete (window as any).__DEBUG_SET_ASSET_COLUMN_WIDTH__
+frontend/src/components/AssetReal.tsx:1692:            delete nextModel[field]
+frontend/src/components/AssetReal.tsx:1743:      if (action === 'update') {
+frontend/src/components/AssetReal.tsx:1787:      if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
+frontend/src/components/AssetReal.tsx:1788:      else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
+frontend/src/components/AssetReal.tsx:1876:          const dateStr = formatAppDate(p.data.updated_at || p.data.created_at)
+frontend/src/components/AssetReal.tsx:2210:        field: 'updated_at',
+frontend/src/components/AssetReal.tsx:2211:        colId: 'updated_at',
+frontend/src/components/AssetReal.tsx:2293:            summary={`${lifecycleCounts.existing} active · ${lifecycleCounts.archived} deleted`}
+frontend/src/components/AssetReal.tsx:2296:              setActiveTab(next as 'active' | 'deleted')
+frontend/src/components/AssetReal.tsx:2301:              { label: 'Deleted', value: 'deleted' }
+frontend/src/components/AssetReal.tsx:2501:            onDeleteView={deleteView}
+frontend/src/components/AssetReal.tsx:2523:                  {activeTab === 'deleted' ? (
+frontend/src/components/AssetReal.tsx:2525:                      onClick={() => bulkMutation.mutate({ action: 'restore' })}
+frontend/src/components/AssetReal.tsx:2555:                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { status: bulkDraft.status } })}
+frontend/src/components/AssetReal.tsx:2572:                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { system: bulkDraft.link_type } })}
+frontend/src/components/AssetReal.tsx:2589:                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { owner: bulkDraft.direction } })}
+frontend/src/components/AssetReal.tsx:2603:                      bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' })
+frontend/src/components/AssetReal.tsx:2616:                          ? (activeTab === 'deleted' ? 'Confirm Permanent Purge?' : 'Confirm Archive?') 
+frontend/src/components/AssetReal.tsx:2617:                          : (activeTab === 'deleted' ? 'Purge Selection' : 'Archive Selection')
+frontend/src/components/AssetReal.tsx:2679:                {activeTab === 'deleted' && (
+frontend/src/components/AssetReal.tsx:2682:                      bulkMutation.mutate({ action: 'restore', ids: [rowActionMenu.item.id] })
+frontend/src/components/AssetReal.tsx:2698:                    bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [item.id] })
+frontend/src/components/AssetReal.tsx:2862:        onApply={(action, val) => bulkMutation.mutate({ action: 'update', payload: { [action]: val } })}
+frontend/src/components/AssetReal.tsx:2900:              bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [asset.id] })
+frontend/src/components/AssetReal.tsx:2993:    { label: 'Updated', getValue: (item: any) => formatAppDate(item.updated_at) },
+frontend/src/components/AssetReal.tsx:3224:  const updateRow = (rowId: number, field: string, value: any) => {
+frontend/src/components/AssetReal.tsx:3308:                  <td className="px-2 py-2"><AppDropdown value={row.status} onChange={(value) => updateRow(row.id, 'status', value)} options={ASSET_STATUSES.filter((status) => status !== 'Deleted').map((status) => ({ value: status, label: status }))} placeholder="Status" /></td>
+frontend/src/components/AssetReal.tsx:3309:                  <td className="px-2 py-2"><input value={row.link_type} onChange={(event) => updateRow(row.id, 'link_type', event.target.value)} placeholder="System" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+frontend/src/components/AssetReal.tsx:3310:                  <td className="px-2 py-2"><input value={row.direction} onChange={(event) => updateRow(row.id, 'direction', event.target.value)} placeholder="Owner" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+frontend/src/components/AssetReal.tsx:3311:                  <td className="px-2 py-2"><AppDropdown value={row.farm} onChange={(value) => updateRow(row.id, 'farm', value)} options={ASSET_ENVIRONMENTS.map((value) => ({ value, label: value }))} placeholder="Environment" /></td>
+frontend/src/components/AssetReal.tsx:3312:                  <td className="px-2 py-2"><input value={row.purpose} onChange={(event) => updateRow(row.id, 'purpose', event.target.value)} placeholder="Role" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+frontend/src/components/AssetReal.tsx:3313:                  <td className="px-2 py-2"><input type="number" value={row.speed_gbps} onChange={(event) => updateRow(row.id, 'speed_gbps', event.target.value)} placeholder="Size U" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px] [appearance:textfield]`} /></td>
+frontend/src/components/AssetReal.tsx:3314:                  <td className="px-2 py-2"><input value={row.unit} onChange={(event) => updateRow(row.id, 'unit', event.target.value)} placeholder="Primary IP" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+frontend/src/components/AssetReal.tsx:3315:                  <td className="px-2 py-2"><input value={row.cable_type} onChange={(event) => updateRow(row.id, 'cable_type', event.target.value)} placeholder="Mgmt IP" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+frontend/src/components/AssetReal.tsx:3316:                  <td className="px-2 py-2"><input value={row.request_link} onChange={(event) => updateRow(row.id, 'request_link', event.target.value)} placeholder="Mgmt URL" className={`${monitoringInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+frontend/src/components/AssetReal.tsx:3320:                      onClick={() => updateRow(row.id, 'is_active', !row.is_active)}
+frontend/src/components/AssetReal.tsx:3391:      forensicLineage={{ createdAt: item.created_at, updatedAt: item.updated_at }}
+frontend/src/components/AssetReal.tsx:3402:            {item.is_deleted ? 'Purge' : 'Archive'}
+frontend/src/components/AssetReal.tsx:3477:  const updateField = useCallback((field: string, value: any) => {
+frontend/src/components/AssetReal.tsx:3482:      delete next[field]
+frontend/src/components/AssetReal.tsx:3578:                    <input value={formData.name} onChange={(e) => updateField('name', e.target.value)} className={fieldClass('name')} />
+frontend/src/components/AssetReal.tsx:3583:                    <input value={formData.role} onChange={(e) => updateField('role', e.target.value)} className={fieldClass('role')} />
+frontend/src/components/AssetReal.tsx:3587:                    <input value={formData.system} onChange={(e) => updateField('system', e.target.value)} className={fieldClass('system')} />
+frontend/src/components/AssetReal.tsx:3592:                    <input value={formData.owner} onChange={(e) => updateField('owner', e.target.value)} className={fieldClass('owner')} />
+frontend/src/components/AssetReal.tsx:3596:                    <input value={formData.business_unit} onChange={(e) => updateField('business_unit', e.target.value)} className={fieldClass('business_unit')} />
+frontend/src/components/AssetReal.tsx:3602:                  <AppDropdown label="Asset Type" value={formData.type} onChange={(value) => updateField('type', value)} options={['Physical', 'Virtual', 'Storage', 'Switch', 'Firewall', 'Load Balancer', 'PDU', 'UPS', 'Console-Server', 'Patch Panel'].map((value) => ({ value, label: value }))} />
+frontend/src/components/AssetReal.tsx:3603:                  <AppDropdown label="Status" value={formData.status} onChange={(value) => updateField('status', value)} options={ASSET_STATUSES.filter((value) => value !== 'Deleted').map((value) => ({ value, label: value }))} />
+frontend/src/components/AssetReal.tsx:3604:                  <AppDropdown label="Environment" value={formData.environment} onChange={(value) => updateField('environment', value)} options={ASSET_ENVIRONMENTS.map((value) => ({ value, label: value }))} />
+frontend/src/components/AssetReal.tsx:3605:                  <AppDropdown label="Depth" value={formData.depth} onChange={(value) => updateField('depth', value)} options={ASSET_DEPTHS.map((value) => ({ value, label: value }))} />
+frontend/src/components/AssetReal.tsx:3606:                  <AppDropdown label="Mount Orientation" value={formData.mount_orientation} onChange={(value) => updateField('mount_orientation', value)} options={ASSET_MOUNT_ORIENTATIONS.map((value) => ({ value, label: value }))} />
+frontend/src/components/AssetReal.tsx:3609:                    <input type="number" min="1" value={formData.size_u} onChange={(e) => updateField('size_u', e.target.value)} className={fieldClass('size_u')} />
+frontend/src/components/AssetReal.tsx:3617:                    <input value={formData.primary_ip} onChange={(e) => updateField('primary_ip', e.target.value)} className={fieldClass('primary_ip')} />
+frontend/src/components/AssetReal.tsx:3621:                    <input value={formData.management_ip} onChange={(e) => updateField('management_ip', e.target.value)} className={fieldClass('management_ip')} />
+frontend/src/components/AssetReal.tsx:3625:                    <input value={formData.management_url} onChange={(e) => updateField('management_url', e.target.value)} className={fieldClass('management_url')} />
+frontend/src/components/AssetReal.tsx:3629:                    <input value={formData.os_name} onChange={(e) => updateField('os_name', e.target.value)} className={fieldClass('os_name')} />
+frontend/src/components/AssetReal.tsx:3633:                    <input value={formData.os_version} onChange={(e) => updateField('os_version', e.target.value)} className={fieldClass('os_version')} />
+frontend/src/components/AssetReal.tsx:3643:                    <input value={formData.manufacturer} onChange={(e) => updateField('manufacturer', e.target.value)} className={fieldClass('manufacturer')} />
+frontend/src/components/AssetReal.tsx:3647:                    <input value={formData.model} onChange={(e) => updateField('model', e.target.value)} className={fieldClass('model')} />
+frontend/src/components/AssetReal.tsx:3651:                    <input value={formData.serial_number} onChange={(e) => updateField('serial_number', e.target.value)} className={fieldClass('serial_number')} />
+frontend/src/components/AssetReal.tsx:3656:                    <input value={formData.asset_tag} onChange={(e) => updateField('asset_tag', e.target.value)} className={fieldClass('asset_tag')} />
+frontend/src/components/AssetReal.tsx:3661:                    <input type="number" min="0" value={formData.power_typical_w} onChange={(e) => updateField('power_typical_w', e.target.value)} className={fieldClass('power_typical_w')} />
+frontend/src/components/AssetReal.tsx:3665:                    <input type="number" min="0" value={formData.power_max_w} onChange={(e) => updateField('power_max_w', e.target.value)} className={fieldClass('power_max_w')} />
+frontend/src/components/AssetReal.tsx:3674:                      <input type="date" value={formData.purchase_date} onChange={(e) => updateField('purchase_date', e.target.value)} className={fieldClass('purchase_date')} />
+frontend/src/components/AssetReal.tsx:3678:                      <input type="date" value={formData.install_date} onChange={(e) => updateField('install_date', e.target.value)} className={fieldClass('install_date')} />
+frontend/src/components/AssetReal.tsx:3682:                      <input type="date" value={formData.warranty_end} onChange={(e) => updateField('warranty_end', e.target.value)} className={fieldClass('warranty_end')} />
+frontend/src/components/AssetReal.tsx:3686:                      <input type="date" value={formData.eol_date} onChange={(e) => updateField('eol_date', e.target.value)} className={fieldClass('eol_date')} />
+frontend/src/components/AssetReal.tsx:3704:function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm, onDelete, onOpenAsset, onOpenKnowledge, deleteConfirm }: any) {
+frontend/src/components/AssetReal.tsx:3744:      forensicLineage={{ createdAt: item.created_at, updatedAt: item.updated_at }}
+frontend/src/components/AssetReal.tsx:3761:                if (deleteConfirm) {
+frontend/src/components/AssetReal.tsx:3762:                  const action = item.is_deleted ? 'Purged' : 'Archived';
+frontend/src/components/AssetReal.tsx:3771:              className={deleteConfirm ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : ''}
+frontend/src/components/AssetReal.tsx:3773:              {deleteConfirm 
+frontend/src/components/AssetReal.tsx:3774:                ? (item.is_deleted ? 'Confirm Purge?' : 'Confirm Archive?') 
+frontend/src/components/AssetReal.tsx:3775:                : (item.is_deleted ? 'Purge' : 'Archive')}
+frontend/src/components/AssetReal.tsx:3919:                    <p className="mt-1 text-[11px] font-bold text-slate-200">{formatAppDate(item.updated_at)}</p>
+frontend/src/components/AssetReal.tsx:4087:      delete next[field]
+frontend/src/components/AssetReal.tsx:4092:  const updateField = useCallback((field: string, value: any) => {
+frontend/src/components/AssetReal.tsx:4225:                    onChange={(value) => updateField('source_device_id', value)}
+frontend/src/components/AssetReal.tsx:4233:                      <input value={formData.source_port} onChange={(e) => updateField('source_port', e.target.value)} placeholder="Source port" className={fieldClass('source_port')} />
+frontend/src/components/AssetReal.tsx:4238:                      <input type="number" min="0" max="4094" step="1" value={formData.source_vlan} onChange={(e) => updateField('source_vlan', e.target.value)} placeholder="0-4094" className={fieldClass('source_vlan')} />
+frontend/src/components/AssetReal.tsx:4243:                      <input value={formData.source_ip} onChange={(e) => updateField('source_ip', e.target.value)} placeholder="192.168.1.10" className={fieldClass('source_ip')} />
+frontend/src/components/AssetReal.tsx:4248:                      <input value={formData.source_mac} onChange={(e) => updateField('source_mac', e.target.value)} placeholder="00:11:22:33:44:55" className={fieldClass('source_mac')} />
+frontend/src/components/AssetReal.tsx:4260:                    onChange={(value) => updateField('target_device_id', value)}
+frontend/src/components/AssetReal.tsx:4268:                      <input value={formData.target_port} onChange={(e) => updateField('target_port', e.target.value)} placeholder="Peer port" className={fieldClass('target_port')} />
+frontend/src/components/AssetReal.tsx:4273:                      <input type="number" min="0" max="4094" step="1" value={formData.target_vlan} onChange={(e) => updateField('target_vlan', e.target.value)} placeholder="0-4094" className={fieldClass('target_vlan')} />
+frontend/src/components/AssetReal.tsx:4278:                      <input value={formData.target_ip} onChange={(e) => updateField('target_ip', e.target.value)} placeholder="192.168.1.11" className={fieldClass('target_ip')} />
+frontend/src/components/AssetReal.tsx:4283:                      <input value={formData.target_mac} onChange={(e) => updateField('target_mac', e.target.value)} placeholder="00:11:22:33:44:66" className={fieldClass('target_mac')} />
+frontend/src/components/AssetReal.tsx:4297:                      onChange={(value) => updateField('link_type', value)}
+frontend/src/components/AssetReal.tsx:4307:                      onChange={(value) => updateField('status', value)}
+frontend/src/components/AssetReal.tsx:4315:                    <input type="number" step="0.1" min="0" value={formData.speed_gbps} onChange={(e) => updateField('speed_gbps', e.target.value)} placeholder="10" className={fieldClass('speed_gbps')} />
+frontend/src/components/AssetReal.tsx:4322:                      onChange={(value) => updateField('unit', value)}
+frontend/src/components/AssetReal.tsx:4332:                      onChange={(value) => updateField('direction', value)}
+frontend/src/components/AssetReal.tsx:4342:                      onChange={(value) => updateField('farm', value)}
+frontend/src/components/AssetReal.tsx:4352:                      onChange={(value) => updateField('cable_type', value)}
+frontend/src/components/AssetReal.tsx:4360:                    <input type="url" value={formData.request_link} onChange={(e) => updateField('request_link', e.target.value)} placeholder="https://..." className={fieldClass('request_link')} />
+frontend/src/components/AssetReal.tsx:4365:                    <textarea value={formData.purpose} onChange={(e) => updateField('purpose', e.target.value)} placeholder="Why this connection exists" className={`${fieldClass('purpose')} min-h-[110px]`} />
+frontend/src/components/AssetReal.tsx:4550:      if (['updated_at', 'created_at', 'id', 'version', 'is_deleted', 'monitored_service_names', 'recovery_doc_titles', 'device_name'].includes(k)) return false
+frontend/src/components/AssetReal.tsx:4652:                               toast.promise(apiFetch(`/api/v1/monitoring/${item.id}/restore/${h.id}`, { method: 'POST' }), {
+frontend/src/components/Assets.tsx:786:              ctx.restore();
+frontend/src/components/Assets.tsx:1384:      const updated = new Date(a.updated_at)
+frontend/src/components/Assets.tsx:1385:      const diff = new Date().getTime() - updated.getTime()
+frontend/src/components/Assets.tsx:1453:    queryKey: ['external-entities', { include_deleted: true }],
+frontend/src/components/Assets.tsx:1454:    queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities?include_deleted=true')).json())
+frontend/src/components/Assets.tsx:1472:  const [activeTab, setActiveTab] = useState<'inventory' | 'deleted'>('inventory')
+frontend/src/components/Assets.tsx:1499:    queryFn: async () => (await (await apiFetch('/api/v1/devices?include_deleted=true')).json())
+frontend/src/components/Assets.tsx:1518:    setActiveTab(asset.is_deleted ? 'deleted' : 'inventory')
+frontend/src/components/Assets.tsx:1536:  const { inventoryAssets, deletedAssets } = useMemo(() => {
+frontend/src/components/Assets.tsx:1537:    if (!devices) return { inventoryAssets: [], deletedAssets: [] }
+frontend/src/components/Assets.tsx:1539:      inventoryAssets: devices.filter((a: any) => !a.is_deleted),
+frontend/src/components/Assets.tsx:1540:      deletedAssets: devices.filter((a: any) => a.is_deleted)
+frontend/src/components/Assets.tsx:1544:  const assets = activeTab === 'inventory' ? inventoryAssets : deletedAssets
+frontend/src/components/Assets.tsx:1697:      if (variables.action === 'restore') {
+frontend/src/components/Assets.tsx:1699:            toast.error(`Restored ${data.restored.length} assets. ${data.conflicts.length} failed due to hostname conflict.`)
+frontend/src/components/Assets.tsx:1701:            toast.success(`Restored ${data.restored.length} assets successfully.`)
+frontend/src/components/Assets.tsx:1914:               {activeTab !== 'deleted' ? (
+frontend/src/components/Assets.tsx:1915:                 <button onClick={() => openConfirm('Soft Delete', 'Move this asset to deleted?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="Soft Delete" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+frontend/src/components/Assets.tsx:1917:                 <button onClick={() => openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }))} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+frontend/src/components/Assets.tsx:2050:                  <button onClick={() => { setActiveTab('deleted'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
+frontend/src/components/Assets.tsx:2121:                     {activeTab === 'deleted' ? (
+frontend/src/components/Assets.tsx:2122:                       <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
+frontend/src/components/Assets.tsx:2143:                         const title = activeTab === 'deleted' ? 'Purge Assets' : 'Soft Delete'
+frontend/src/components/Assets.tsx:2144:                         const msg = activeTab === 'deleted' ? 'PURGE PERMANENTLY?' : 'Soft-delete assets?'
+frontend/src/components/Assets.tsx:2145:                         openConfirm(title, msg, () => bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' }))
+frontend/src/components/Assets.tsx:2146:                      }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">{activeTab === 'deleted' ? 'Bulk Purge' : 'Bulk Delete'}</button>
+frontend/src/components/Assets.tsx:2262:          onSync={(key, value, ids) => bulkMutation.mutate({ action: 'update', payload: { [key]: value }, ids })}
+frontend/src/components/Assets.tsx:2278:        onApply={(s) => bulkMutation.mutate({ action: 'update', payload: { status: s } })}
+frontend/src/components/Assets.tsx:2286:        onApply={(e) => bulkMutation.mutate({ action: 'update', payload: { environment: e } })}
+frontend/src/components/Assets.tsx:2896:  const deleteMutation = useMutation({
+frontend/src/components/Assets.tsx:3042:        onConfirm={() => deleteMutation.mutate(confirmModal.id)}
+frontend/src/components/Assets.tsx:3186:    onError: (e: any) => toast.error(e.message || 'Failed to delete component')
+frontend/src/components/Assets.tsx:3189:  const updateMutation = useMutation({
+frontend/src/components/Assets.tsx:3199:    onError: (e: any) => toast.error(e.message || 'Failed to update component')
+frontend/src/components/Assets.tsx:3256:                        <button onClick={() => updateMutation.mutate(editData)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={14}/></button>
+frontend/src/components/Assets.tsx:3349:    onError: (e: any) => toast.error(e.message || 'Failed to delete credential')
+frontend/src/components/Assets.tsx:3352:  const updateMutation = useMutation({
+frontend/src/components/Assets.tsx:3356:    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-secrets', deviceId] }); setEditingId(null); toast.success('Credential updated') },
+frontend/src/components/Assets.tsx:3357:    onError: (e: any) => toast.error(e.message || 'Failed to update credential')
+frontend/src/components/Assets.tsx:3418:                        <button onClick={() => updateMutation.mutate(editData)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={14}/></button>
+frontend/src/components/Assets.tsx:3589:    onError: (e: any) => toast.error(e.message || 'Failed to delete relationship')
+frontend/src/components/Assets.tsx:3592:  const updateMutation = useMutation({
+frontend/src/components/Assets.tsx:3596:    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-rel', deviceId] }); setEditingId(null); toast.success('Relationship updated') },
+frontend/src/components/Assets.tsx:3597:    onError: (e: any) => toast.error(e.message || 'Failed to update relationship')
+frontend/src/components/Assets.tsx:3690:                      <button onClick={() => updateMutation.mutate(editData)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-all"><Check size={14}/></button>
+frontend/src/components/Assets.tsx:3962:                                    const n = {...formData.metadata_json}; delete n.port_definitions;
+frontend/src/components/Assets.tsx:4448:                 ctx.restore();
+frontend/src/components/monitoring/MonitoringForm.tsx:101:    updateValue,
+frontend/src/components/monitoring/MonitoringForm.tsx:105:  const updateFormData = useCallback((newData: any) => {
+frontend/src/components/monitoring/MonitoringForm.tsx:149:      delete next.owner_team
+frontend/src/components/monitoring/MonitoringForm.tsx:150:      delete next.owners
+frontend/src/components/monitoring/MonitoringForm.tsx:151:      delete next.ownership
+frontend/src/components/monitoring/MonitoringForm.tsx:171:       updateFormData({
+frontend/src/components/monitoring/MonitoringForm.tsx:185:         delete next.owners
+frontend/src/components/monitoring/MonitoringForm.tsx:186:         delete next.ownership
+frontend/src/components/monitoring/MonitoringForm.tsx:196:    updateFormData({ ...formData, owners: next })
+frontend/src/components/monitoring/MonitoringForm.tsx:276:    updateFormData({ ...formData, monitored_services: current })
+frontend/src/components/monitoring/MonitoringForm.tsx:287:    updateFormData({ ...formData, recovery_docs: current })
+frontend/src/components/monitoring/MonitoringForm.tsx:293:    updateFormData({ ...formData, logic_json: newEntries })
+frontend/src/components/monitoring/MonitoringForm.tsx:299:    updateFormData({ ...formData, logic_json: filtered })
+frontend/src/components/monitoring/MonitoringForm.tsx:305:  const updateLogicEntry = (id: number, field: keyof MonitoringLogicEntry, value: string) => {
+frontend/src/components/monitoring/MonitoringForm.tsx:307:    updateFormData({ ...formData, logic_json: newEntries })
+frontend/src/components/monitoring/MonitoringForm.tsx:343:      updateFormData({ ...formData, notification_recipients: [...formData.notification_recipients, recipientInput] })
+frontend/src/components/monitoring/MonitoringForm.tsx:349:    updateFormData({ ...formData, notification_recipients: formData.notification_recipients.filter((item: string) => item !== r) })
+frontend/src/components/monitoring/MonitoringForm.tsx:445:                  onChange={e => updateFormData({ ...formData, title: e.target.value })}
+frontend/src/components/monitoring/MonitoringForm.tsx:456:                  onChange={(value) => updateValue((current) => ({
+frontend/src/components/monitoring/MonitoringForm.tsx:470:                  onChange={(value) => updateFormData({ ...formData, severity: value })}
+frontend/src/components/monitoring/MonitoringForm.tsx:483:                  onChange={(value) => updateFormData({ ...formData, category: value })}
+frontend/src/components/monitoring/MonitoringForm.tsx:492:                  onChange={(value) => updateFormData({ ...formData, platform: value })}
+frontend/src/components/monitoring/MonitoringForm.tsx:533:                                onChange={(deviceId) => updateFormData({ ...formData, device_id: deviceId, monitored_services: [] })}
+frontend/src/components/monitoring/MonitoringForm.tsx:552:                                            updateFormData({ ...formData, monitored_services: current })
+frontend/src/components/monitoring/MonitoringForm.tsx:582:                                  onChange={e => updateFormData({ ...formData, monitoring_url: e.target.value })}
+frontend/src/components/monitoring/MonitoringForm.tsx:620:                            onChange={e => updateFormData({ ...formData, purpose: e.target.value })}
+frontend/src/components/monitoring/MonitoringForm.tsx:630:                            onChange={e => updateFormData({ ...formData, impact: e.target.value })}
+frontend/src/components/monitoring/MonitoringForm.tsx:673:                                  onChange={(event) => updateFormData({ ...formData, owner_team: event.target.value })}
+frontend/src/components/monitoring/MonitoringForm.tsx:836:                                onChange={e => updateFormData({ ...formData, check_interval: Number(e.target.value) })}
+frontend/src/components/monitoring/MonitoringForm.tsx:854:                                onChange={e => updateFormData({ ...formData, alert_duration: Number(e.target.value) })}
+frontend/src/components/monitoring/MonitoringForm.tsx:870:                              onChange={e => updateFormData({ ...formData, notification_throttle: Number(e.target.value) })}
+frontend/src/components/monitoring/MonitoringForm.tsx:893:                                onChange={(value) => updateLogicEntry(activeLogicEntry.id, 'type', value)}
+frontend/src/components/monitoring/MonitoringForm.tsx:900:                                  onChange={e => updateLogicEntry(activeLogicEntry.id, 'description', e.target.value)}
+frontend/src/components/monitoring/MonitoringForm.tsx:922:                                  onChange={(value) => updateLogicEntry(activeLogicEntry.id, 'logic_info', value)}
+frontend/src/components/monitoring/MonitoringForm.tsx:949:                            onChange={(value) => updateFormData({ ...formData, notification_method: value })}
+frontend/src/components/monitoring/MonitoringForm.tsx:1084:                                                 updateFormData({ ...formData, recovery_docs: next });
+frontend/src/components/monitoring/MonitoringDetailModal.tsx:21:export function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm, onDelete, onOpenAsset, onOpenKnowledge, deleteConfirm }: any) {
+frontend/src/components/monitoring/MonitoringDetailModal.tsx:60:      forensicLineage={{ createdAt: item.created_at, updatedAt: item.updated_at }}
+frontend/src/components/monitoring/MonitoringDetailModal.tsx:79:                if (deleteConfirm) {
+frontend/src/components/monitoring/MonitoringDetailModal.tsx:85:              className={`${deleteConfirm ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : ''} whitespace-nowrap`}
+frontend/src/components/monitoring/MonitoringDetailModal.tsx:87:              {deleteConfirm 
+frontend/src/components/monitoring/MonitoringDetailModal.tsx:88:                ? (item.is_deleted ? 'Confirm Purge?' : 'Confirm Archive?') 
+frontend/src/components/monitoring/MonitoringDetailModal.tsx:89:                : (item.is_deleted ? 'Purge' : 'Archive')}
+frontend/src/components/monitoring/BkmListModal.tsx:66:        throw new Error(err.detail || 'Failed to update recovery procedures')
+frontend/src/components/monitoring/BkmListModal.tsx:75:    onError: (e: any) => showWorkspaceToast(e.message || 'Failed to update recovery procedures', { type: 'error' })
+frontend/src/components/monitoring/BkmListModal.tsx:90:  const updateNote = (id: number, note: string) => {
+frontend/src/components/monitoring/BkmListModal.tsx:212:                     onChange={e => updateNote(doc.id, e.target.value)}
+frontend/src/components/assets/AssetDetailsView.tsx:162:        onError: (e: any) => toast.error(e.message || 'Failed to update asset')
+frontend/src/components/assets/AssetDetailsView.tsx:417:    onError: (e: any) => toast.error(e.message || 'Failed to delete component')
+frontend/src/components/assets/AssetDetailsView.tsx:420:  const updateMutation = useMutation({
+frontend/src/components/assets/AssetDetailsView.tsx:430:    onError: (e: any) => toast.error(e.message || 'Failed to update component')
+frontend/src/components/assets/AssetDetailsView.tsx:487:                        <button onClick={() => updateMutation.mutate(editData)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={14}/></button>
+frontend/src/components/assets/AssetDetailsView.tsx:580:    onError: (e: any) => toast.error(e.message || 'Failed to delete credential')
+frontend/src/components/assets/AssetDetailsView.tsx:583:  const updateMutation = useMutation({
+frontend/src/components/assets/AssetDetailsView.tsx:587:    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-secrets', deviceId] }); setEditingId(null); toast.success('Credential updated') },
+frontend/src/components/assets/AssetDetailsView.tsx:588:    onError: (e: any) => toast.error(e.message || 'Failed to update credential')
+frontend/src/components/assets/AssetDetailsView.tsx:649:                        <button onClick={() => updateMutation.mutate(editData)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg"><Check size={14}/></button>
+frontend/src/components/assets/AssetDetailsView.tsx:820:    onError: (e: any) => toast.error(e.message || 'Failed to delete relationship')
+frontend/src/components/assets/AssetDetailsView.tsx:823:  const updateMutation = useMutation({
+frontend/src/components/assets/AssetDetailsView.tsx:827:    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['device-rel', deviceId] }); setEditingId(null); toast.success('Relationship updated') },
+frontend/src/components/assets/AssetDetailsView.tsx:828:    onError: (e: any) => toast.error(e.message || 'Failed to update relationship')
+frontend/src/components/assets/AssetDetailsView.tsx:921:                      <button onClick={() => updateMutation.mutate(editData)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-all"><Check size={14}/></button>
+frontend/src/components/ServicesReal.tsx:203:  'updated_at',
+frontend/src/components/ServicesReal.tsx:225:  'updated_at',
+frontend/src/components/ServicesReal.tsx:305:      activeTab: uiState.activeTab === 'deleted' ? 'deleted' : 'active',
+frontend/src/components/ServicesReal.tsx:310:        : ['created_at', 'updated_at'],
+frontend/src/components/ServicesReal.tsx:380:    is_active: !service?.is_deleted,
+frontend/src/components/ServicesReal.tsx:381:    is_deleted: Boolean(service?.is_deleted),
+frontend/src/components/ServicesReal.tsx:414:      const updated = parseAppDate(i.updated_at)
+frontend/src/components/ServicesReal.tsx:415:      return updated ? (new Date().getTime() - updated.getTime() < 3600000) : false // 1 hour
+frontend/src/components/ServicesReal.tsx:520:  const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedUiState?.hiddenColumns ?? ['created_at', 'updated_at'])
+frontend/src/components/ServicesReal.tsx:521:  const [activeTab, setActiveTab] = useState<'active' | 'deleted'>(persistedUiState?.activeTab === 'deleted' ? 'deleted' : 'active')
+frontend/src/components/ServicesReal.tsx:703:      setHiddenColumns(payload?.uiState.hiddenColumns ?? ['created_at', 'updated_at'])
+frontend/src/components/ServicesReal.tsx:704:      setActiveTab(payload?.uiState.activeTab === 'deleted' ? 'deleted' : 'active')
+frontend/src/components/ServicesReal.tsx:1082:  const deleteView = (viewId: string) => {
+frontend/src/components/ServicesReal.tsx:1144:  // Removed manual menu position updates as they are now handled by useWorkspaceAnchoredLayer.
+frontend/src/components/ServicesReal.tsx:1148:    queryFn: async () => (await apiFetch('/api/v1/logical-services/?include_deleted=true')).json()
+frontend/src/components/ServicesReal.tsx:1166:    if (!Array.isArray(allItems)) return { existing: 0, archived: 0 }
+frontend/src/components/ServicesReal.tsx:1168:      existing: allItems.filter((item: any) => !item.is_deleted).length,
+frontend/src/components/ServicesReal.tsx:1169:      archived: allItems.filter((item: any) => item.is_deleted).length,
+frontend/src/components/ServicesReal.tsx:1184:      .filter((item: any) => activeTab === 'active' ? !item.is_deleted : item.is_deleted)
+frontend/src/components/ServicesReal.tsx:1287:      tabEmptyKind: activeTab === 'deleted' ? 'deleted-empty' : 'active-empty',
+frontend/src/components/ServicesReal.tsx:1288:      tabEmptyLabel: activeTab === 'deleted' ? 'No archived services found' : 'No active services found',
+frontend/src/components/ServicesReal.tsx:1335:        if (!groupedSections.some((section) => section.key === key)) delete next[key]
+frontend/src/components/ServicesReal.tsx:1342:    const changedAt = item?.updated_at || item?.created_at
+frontend/src/components/ServicesReal.tsx:1412:      delete (window as any).__DEBUG_SET_NETWORK_COLUMN_WIDTH__
+frontend/src/components/ServicesReal.tsx:1447:            delete nextModel[field]
+frontend/src/components/ServicesReal.tsx:1479:          action: undo.action === 'restore' ? 'restore' : 'delete',
+frontend/src/components/ServicesReal.tsx:1483:    } else if (undo.mode === 'restore_snapshots') {
+frontend/src/components/ServicesReal.tsx:1486:        const restorePayload: Record<string, any> = {}
+frontend/src/components/ServicesReal.tsx:1488:          restorePayload[key] = snapshot[key]
+frontend/src/components/ServicesReal.tsx:1492:          body: JSON.stringify(restorePayload)
+frontend/src/components/ServicesReal.tsx:1515:      if (action === 'update') {
+frontend/src/components/ServicesReal.tsx:1524:          body: JSON.stringify({ ids: idsToUse, action: 'update', payload: directPayload })
+frontend/src/components/ServicesReal.tsx:1526:      } else if (action === 'restore') {
+frontend/src/components/ServicesReal.tsx:1529:          body: JSON.stringify({ ids: idsToUse, action: 'restore' })
+frontend/src/components/ServicesReal.tsx:1534:          body: JSON.stringify({ ids: idsToUse, action: 'delete' })
+frontend/src/components/ServicesReal.tsx:1553:        : action === 'update'
+frontend/src/components/ServicesReal.tsx:1555:          : action === 'delete'
+frontend/src/components/ServicesReal.tsx:1556:            ? previousSnapshots.filter((snapshot: any) => !snapshot?.is_deleted).length
+frontend/src/components/ServicesReal.tsx:1557:            : action === 'restore'
+frontend/src/components/ServicesReal.tsx:1558:              ? previousSnapshots.filter((snapshot: any) => !!snapshot?.is_deleted).length
+frontend/src/components/ServicesReal.tsx:1564:      else if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
+frontend/src/components/ServicesReal.tsx:1565:      else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
+frontend/src/components/ServicesReal.tsx:1566:      else if (action === 'update') lastUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
+frontend/src/components/ServicesReal.tsx:1570:        action: action === 'delete' ? 'archive' : action,
+frontend/src/components/ServicesReal.tsx:1696:        field: 'updated_at',
+frontend/src/components/ServicesReal.tsx:1699:        hide: hiddenColumns.includes('updated_at'),
+frontend/src/components/ServicesReal.tsx:1781:            summary={`${lifecycleCounts.existing} active · ${lifecycleCounts.archived} deleted`}
+frontend/src/components/ServicesReal.tsx:1784:              setActiveTab(next as 'active' | 'deleted')
+frontend/src/components/ServicesReal.tsx:1789:              { label: 'Deleted', value: 'deleted' }
+frontend/src/components/ServicesReal.tsx:1989:            onDeleteView={deleteView}
+frontend/src/components/ServicesReal.tsx:2009:              {activeTab === 'deleted' ? (
+frontend/src/components/ServicesReal.tsx:2011:                  onClick={() => bulkMutation.mutate({ action: 'restore' })}
+frontend/src/components/ServicesReal.tsx:2041:                      onApply={() => bulkMutation.mutate({ action: 'update', payload: { status: bulkDraft.status } })}
+frontend/src/components/ServicesReal.tsx:2058:                      onApply={() => bulkMutation.mutate({ action: 'update', payload: { service_type: bulkDraft.service_type } })}
+frontend/src/components/ServicesReal.tsx:2075:                      onApply={() => bulkMutation.mutate({ action: 'update', payload: { environment: bulkDraft.environment } })}
+frontend/src/components/ServicesReal.tsx:2091:                      bulkMutation.mutate({ action: 'delete' })
+frontend/src/components/ServicesReal.tsx:2104:                          ? OPERATIONAL_ACTION_LABELS.archiveSelectionConfirm
+frontend/src/components/ServicesReal.tsx:2105:                          : OPERATIONAL_ACTION_LABELS.archiveSelection
+frontend/src/components/ServicesReal.tsx:2139:                    id: 'archive',
+frontend/src/components/ServicesReal.tsx:2142:                        ...(activeTab === 'deleted' ? [{ id: 'restore', label: 'Restore', icon: Undo2, tone: 'success' as OperationalRowActionTone, variant: 'inline' as OperationalRowActionVariant, onClick: () => { bulkMutation.mutate({ action: 'restore', ids: [rowActionMenu.item.id] }); setRowActionMenu(null); } }] : []),
+frontend/src/components/ServicesReal.tsx:2144:                            id: 'archive',
+frontend/src/components/ServicesReal.tsx:2145:                            label: rowDeleteConfirmId === rowActionMenu.item.id ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.archive,
+frontend/src/components/ServicesReal.tsx:2152:                                bulkMutation.mutate({ action: 'delete', ids: [rowActionMenu.item.id] });
+frontend/src/components/ServicesReal.tsx:2267:        onApply={(action, val) => bulkMutation.mutate({ action: 'update', payload: { [action]: val } })}
+frontend/src/components/ServicesReal.tsx:2314:              bulkMutation.mutate({ action: 'delete', ids: [monitor.id] })
+frontend/src/components/ServicesReal.tsx:2318:            deleteConfirm={detailDeleteConfirm}
+frontend/src/components/ServicesReal.tsx:2377:    { label: 'Updated', getValue: (item: any) => formatAppDate(item.updated_at) },
+frontend/src/components/ServicesReal.tsx:2608:  const updateRow = (rowId: number, field: string, value: any) => {
+frontend/src/components/ServicesReal.tsx:2692:                  <td className="px-2 py-2"><AppDropdown value={row.status} onChange={(value) => updateRow(row.id, 'status', value)} options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))} placeholder="Status" /></td>
+frontend/src/components/ServicesReal.tsx:2693:                  <td className="px-2 py-2"><AppDropdown value={row.link_type} onChange={(value) => updateRow(row.id, 'link_type', value)} options={mergeOptionsWithCurrentValue(linkPurposeOptions, row.link_type)} placeholder="Type" /></td>
+frontend/src/components/ServicesReal.tsx:2694:                  <td className="px-2 py-2"><AppDropdown value={row.direction} onChange={(value) => updateRow(row.id, 'direction', value)} options={NETWORK_DIRECTIONS.map((value) => ({ value, label: value }))} placeholder="Environment" /></td>
+frontend/src/components/ServicesReal.tsx:2696:                  <td className="px-2 py-2"><input value={row.purpose} onChange={(event) => updateRow(row.id, 'purpose', event.target.value)} placeholder="Purpose" className={`${serviceInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+frontend/src/components/ServicesReal.tsx:2697:                  <td className="px-2 py-2"><input type="number" value={row.speed_gbps} onChange={(event) => updateRow(row.id, 'speed_gbps', event.target.value)} placeholder="Cost" className={`${serviceInputClass()} h-[42px] px-3 py-2 text-[10px] [appearance:textfield]`} /></td>
+frontend/src/components/ServicesReal.tsx:2698:                  <td className="px-2 py-2"><AppDropdown value={row.unit} onChange={(value) => updateRow(row.id, 'unit', value)} options={NETWORK_UNITS.map((value) => ({ value, label: value }))} placeholder="Currency" /></td>
+frontend/src/components/ServicesReal.tsx:2699:                  <td className="px-2 py-2"><AppDropdown value={row.cable_type} onChange={(value) => updateRow(row.id, 'cable_type', value)} options={mergeOptionsWithCurrentValue(cableTypeOptions, row.cable_type)} placeholder="License type" /></td>
+frontend/src/components/ServicesReal.tsx:2700:                  <td className="px-2 py-2"><input type="date" value={row.request_link} onChange={(event) => updateRow(row.id, 'request_link', event.target.value)} placeholder="Deployment date" className={`${serviceInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
+frontend/src/components/ServicesReal.tsx:2704:                      onClick={() => updateRow(row.id, 'is_active', !row.is_active)}
+frontend/src/components/ServicesReal.tsx:2750:function ServiceRecordDetailModal({ item, onClose, onEdit, onDelete, onOpenAsset, deleteConfirm, options, devices }: any) {
+frontend/src/components/ServicesReal.tsx:2771:      forensicLineage={{ createdAt: item.created_at, updatedAt: item.updated_at }}
+frontend/src/components/ServicesReal.tsx:2783:          {!item.is_deleted && (
+frontend/src/components/ServicesReal.tsx:2784:            <ToolbarButton variant="danger" onClick={() => onDelete?.(item)} className={deleteConfirm ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : ''}>
+frontend/src/components/ServicesReal.tsx:2785:              {deleteConfirm ? 'Confirm Archive?' : 'Archive'}
+frontend/src/components/ServicesReal.tsx:2884:                delete next[field]
+frontend/src/components/FAR.tsx:256:      if (action === 'delete') {
+frontend/src/components/FAR.tsx:257:        const res = await apiFetch('/api/v1/far/modes/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) })
+frontend/src/components/FAR.tsx:542:                   <button onClick={() => p.data?.id && openConfirm('Purge Vector', 'PERMANENTLY PURGE THIS RISK?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+frontend/src/components/FAR.tsx:1239:      // causes, mitigations, etc are managed in sub-modals, filter them out from mode update
+frontend/src/components/FAR.tsx:1240:      delete payload.causes;
+frontend/src/components/FAR.tsx:1241:      delete payload.mitigations;
+frontend/src/components/FAR.tsx:1242:      delete payload.prevention_actions;
+frontend/src/components/FAR.tsx:1243:      delete payload.linked_rcas;
+frontend/src/components/FAR.tsx:1246:      delete payload.created_at;
+frontend/src/components/FAR.tsx:1247:      delete payload.updated_at;
+frontend/src/components/FAR.tsx:1248:      delete payload.created_by_user_id;
+frontend/src/components/FAR.tsx:1355:  const deleteCauseMutation = useMutation({
+frontend/src/components/FAR.tsx:1366:    onError: (error: any) => toast.error(error.message || 'Failed to delete root cause')
+frontend/src/components/FAR.tsx:1449:                             onClick={() => deleteCauseMutation.mutate(c.id)}
+frontend/src/components/FAR.tsx:1572:  const deleteMitigationMutation = useMutation({
+frontend/src/components/FAR.tsx:1583:    onError: (error: any) => toast.error(error.message || 'Failed to delete mitigation')
+frontend/src/components/FAR.tsx:1663:                             onClick={() => deleteMitigationMutation.mutate(m.id)}
+frontend/src/components/FAR.tsx:1725:        const updatedMetadata = { ...mode.metadata_json, linked_research_ids: [...currentLinks, researchId] }
+frontend/src/components/FAR.tsx:1728:          body: JSON.stringify({ metadata_json: updatedMetadata })
+frontend/src/components/FAR.tsx:1746:        const updatedMetadata = {
+frontend/src/components/FAR.tsx:1752:          body: JSON.stringify({ metadata_json: updatedMetadata })
+frontend/src/api/apiClient.ts:162:  delete: (endpoint: string, options?: RequestInit) => apiFetch(endpoint, { ...options, method: 'DELETE' }).then(r => r.json()),
+frontend/src/api/apiClient.test.ts:7:    vi.restoreAllMocks()
+frontend/src/api/apiClient.test.ts:106:  it('emits latency updates and unsubscribes cleanly', async () => {
+frontend/src/api/apiClient.test.ts:179:  it('supports the convenience get, put, delete, and patch helpers', async () => {
+frontend/src/api/apiClient.test.ts:184:      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue({ method: 'delete' }) })
+frontend/src/api/apiClient.test.ts:190:    await expect(apiClient.delete('/three')).resolves.toEqual({ method: 'delete' })

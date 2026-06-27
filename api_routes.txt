@@ -1,0 +1,386 @@
+frontend/src/App.tsx:318:      const res = await apiFetch("/api/v1/settings/user/env-vars");
+frontend/src/App.tsx:412:      const res = await apiFetch("/api/v1/settings/user/profile");
+frontend/src/App.tsx:424:      const res = await apiFetch("/api/v1/settings/user/settings");
+frontend/src/App.tsx:466:    apiFetch("/api/v1/settings/user/settings", {
+frontend/src/App.tsx:475:      const response = await apiFetch("/api/v1/health");
+frontend/src/main.tsx:90:          const relativeResponse = await fetch('/api/v1/settings/bootstrap', {
+frontend/src/main.tsx:103:          const configuredResponse = await apiFetch('/api/v1/settings/bootstrap')
+frontend/src/main.tsx:116:              response = await apiFetch('/api/v1/settings/bootstrap');
+frontend/src/main.tsx:210:          const wsUrl = baseUrl.replace(/^https?/, wsProtocol) + '/api/v1/ws/sync';
+frontend/src/main.tsx:262:        baseUrl ? `${baseUrl}/api/v1/settings/startup-check` : null,
+frontend/src/main.tsx:263:        '/api/v1/settings/startup-check',
+frontend/src/main.tsx:365:      actions.push('Verify `/api/v1/health` on the configured backend origin and confirm `VITE_API_BASE_URL` and `BACKEND_CORS_ORIGINS` are aligned.')
+frontend/src/main.tsx:508:                <p>1. Open <span className="text-slate-200">{'<backend-origin>/api/v1/health'}</span> directly in the browser.</p>
+frontend/src/components/Settings.tsx:483:                               toast.promise(apiFetch(`/api/v1/settings/user-pool/restore/${h.id}`, { method: 'POST' }), {
+frontend/src/components/Settings.tsx:704:      queryFn: async () => (await (await apiFetch("/api/v1/settings/options")).json()) 
+frontend/src/components/Settings.tsx:779:      const res = await apiFetch("/api/v1/tenants/admin/preflight", {
+frontend/src/components/Settings.tsx:794:      const res = await apiFetch("/api/v1/tenants/admin/attach", {
+frontend/src/components/Settings.tsx:813:      const res = await apiFetch(`/api/v1/tenants/admin/storage-explorer?path=${encodeURIComponent(path)}`)
+frontend/src/components/Settings.tsx:847:      const res = await apiFetch("/api/v1/settings/user/settings");
+frontend/src/components/Settings.tsx:856:      await apiFetch("/api/v1/settings/user/settings", {
+frontend/src/components/Settings.tsx:881:      const res = await apiFetch("/api/v1/settings/global")
+frontend/src/components/Settings.tsx:951:      const res = await apiFetch("/api/v1/settings/global", {
+frontend/src/components/Settings.tsx:975:      const res = await apiFetch("/api/v1/settings/user-pool/refresh", {
+frontend/src/components/Settings.tsx:1000:      const res = await apiFetch("/api/v1/settings/operators")
+frontend/src/components/Settings.tsx:1008:      const res = await apiFetch("/api/v1/settings/teams")
+frontend/src/components/Settings.tsx:1016:      const res = await apiFetch(`/api/v1/settings/teams/${selectedTeamId}/audit`)
+frontend/src/components/Settings.tsx:1025:      const res = await apiFetch("/api/v1/settings/user-pool/versions")
+frontend/src/components/Settings.tsx:1034:      const res = await apiFetch(`/api/v1/settings/env/history?field=${historyField}`)
+frontend/src/components/Settings.tsx:1042:      const res = await apiFetch(`/api/v1/tenants/admin/backup/${tenantId}`, { method: "POST" })
+frontend/src/components/Settings.tsx:1055:      const res = await apiFetch("/api/v1/tenants/admin/all")
+frontend/src/components/Settings.tsx:1064:      const res = await apiFetch("/api/v1/tenants/admin/settings")
+frontend/src/components/Settings.tsx:1079:      const res = await apiFetch("/api/v1/tenants/admin/create", {
+frontend/src/components/Settings.tsx:1141:      const res = await apiFetch("/api/v1/settings/user/profile");
+frontend/src/components/Settings.tsx:1149:      const url = isUpdate ? `/api/v1/settings/operators/${op.id}` : "/api/v1/settings/operators";
+frontend/src/components/Settings.tsx:1223:      const res = await apiFetch(`/api/v1/settings/operators/${id}`, { method: "DELETE" })
+frontend/src/components/Settings.tsx:1234:      const res = await apiFetch(`/api/v1/settings/operators/bulk-update`, {
+frontend/src/components/Settings.tsx:1253:      const res = await apiFetch(`/api/v1/settings/operators/bulk-delete`, {
+frontend/src/components/Settings.tsx:1271:      const url = isUpdate ? `/api/v1/settings/teams/${payload.id}` : "/api/v1/settings/teams"
+frontend/src/components/Settings.tsx:1294:      const res = await apiFetch(`/api/v1/settings/teams/${id}`, { method: "DELETE" })
+frontend/src/components/Settings.tsx:1309:        const res = await apiFetch(`/api/v1/settings/operators/${id}`, {
+frontend/src/components/Projects.tsx:2910:    queryFn: () => apiFetch('/api/v1/projects').then(r => r.json()),
+frontend/src/components/Projects.tsx:2929:    mutationFn: (newOrder: any[]) => apiFetch('/api/v1/projects/reorder', {
+frontend/src/components/Projects.tsx:2947:  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: () => apiFetch('/api/v1/devices').then(r => r.json()) })
+frontend/src/components/Projects.tsx:2948:  const { data: services } = useQuery({ queryKey: ['logical-services'], queryFn: () => apiFetch('/api/v1/logical-services').then(r => r.json()) })
+frontend/src/components/Projects.tsx:2949:  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: () => apiFetch('/api/v1/settings/options').then(r => r.json()) })
+frontend/src/components/Projects.tsx:2950:  const { data: users } = useQuery({ queryKey: ['users'], queryFn: () => apiFetch('/api/v1/settings/operators').then(r => r.json()) })
+frontend/src/components/Projects.tsx:3011:      const res = await apiFetch(isNew ? '/api/v1/projects' : `/api/v1/projects/${data.id}`, {
+frontend/src/components/Projects.tsx:3032:      const res = await apiFetch(`/api/v1/projects/${id}`, { method: 'DELETE' })
+frontend/src/components/Knowledge.tsx:247:      let url = '/api/v1/knowledge/'
+frontend/src/components/Knowledge.tsx:263:  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await apiFetch('/api/v1/devices/')).json() })
+frontend/src/components/Knowledge.tsx:264:  const { data: services } = useQuery({ queryKey: ['services'], queryFn: async () => (await apiFetch('/api/v1/logical-services/')).json() })
+frontend/src/components/Knowledge.tsx:265:  const { data: dataFlows } = useQuery({ queryKey: ['data-flows'], queryFn: async () => (await apiFetch('/api/v1/data-flows/')).json() })
+frontend/src/components/Knowledge.tsx:266:  const { data: farModes } = useQuery({ queryKey: ['far', 'modes'], queryFn: async () => (await apiFetch('/api/v1/far/modes')).json() })
+frontend/src/components/Knowledge.tsx:267:  const { data: monitoringItems } = useQuery({ queryKey: ['monitoring'], queryFn: async () => (await apiFetch('/api/v1/monitoring')).json() })
+frontend/src/components/Knowledge.tsx:268:  const { data: investigations } = useQuery({ queryKey: ['investigations'], queryFn: async () => (await apiFetch('/api/v1/investigations')).json() })
+frontend/src/components/Knowledge.tsx:269:  const { data: vendors } = useQuery({ queryKey: ['vendors'], queryFn: async () => (await apiFetch('/api/v1/vendors')).json() })
+frontend/src/components/Knowledge.tsx:270:  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: async () => (await apiFetch('/api/v1/projects')).json() })
+frontend/src/components/Knowledge.tsx:274:      const url = data.id ? `/api/v1/knowledge/${data.id}` : '/api/v1/knowledge/'
+frontend/src/components/Knowledge.tsx:288:    mutationFn: async (id: number) => apiFetch(`/api/v1/knowledge/${id}`, { method: 'DELETE' }),
+frontend/src/components/Knowledge.tsx:304:      const res = await apiFetch(`/api/v1/knowledge/${entry.id}`, {
+frontend/src/components/Knowledge.tsx:2729:      const res = await apiFetch('/api/v1/knowledge/qa', { method: 'POST', body: JSON.stringify(data) })
+frontend/src/components/Knowledge.tsx:2742:      const res = await apiFetch(`/api/v1/knowledge/qa/${qaId}`, { method: 'PUT', body: JSON.stringify(patch) })
+frontend/src/components/External.tsx:571:    queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities?include_deleted=true')).json())
+frontend/src/components/External.tsx:587:    mutationFn: async (data: any) => apiFetch(`/api/v1/intelligence/entities/${entityId}/secrets`, { method: 'POST', body: JSON.stringify(data) }),
+frontend/src/components/External.tsx:597:    mutationFn: async (secretId: number) => apiFetch(`/api/v1/intelligence/entities/${entityId}/secrets/${secretId}`, { method: 'DELETE' }),
+frontend/src/components/External.tsx:1519:    queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) 
+frontend/src/components/External.tsx:1523:    queryFn: async () => (await (await apiFetch('/api/v1/settings/teams')).json())
+frontend/src/components/External.tsx:1527:    queryFn: async () => (await (await apiFetch('/api/v1/settings/operators')).json())
+frontend/src/components/External.tsx:1532:    queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities?include_deleted=true')).json())
+frontend/src/components/External.tsx:1553:    queryFn: async () => (await (await apiFetch('/api/v1/intelligence/links')).json()) 
+frontend/src/components/External.tsx:1558:    queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) 
+frontend/src/components/External.tsx:2109:              const res = await apiFetch(`/api/v1/intelligence/entities/${id}`, {
+frontend/src/components/External.tsx:2119:              const res = await apiFetch(`/api/v1/intelligence/entities/${id}`, { method: 'DELETE' })
+frontend/src/components/External.tsx:2123:              const res = await apiFetch(`/api/v1/intelligence/entities/${id}?purge=true`, { method: 'DELETE' })
+frontend/src/components/External.tsx:2127:              const res = await apiFetch(`/api/v1/intelligence/entities/${id}/restore`, { method: 'POST' })
+frontend/src/components/External.tsx:2191:            const res = await apiFetch(`/api/v1/intelligence/entities/${snapshot.id}`, {
+frontend/src/components/External.tsx:2243:      const url = data.id ? `/api/v1/intelligence/entities/${data.id}` : `/api/v1/intelligence/entities`
+frontend/src/components/External.tsx:2269:      const url = isEdit ? `/api/v1/intelligence/links/${data.id}` : '/api/v1/intelligence/links/'
+frontend/src/components/External.tsx:2298:      const url = type === 'entity' ? `/api/v1/intelligence/entities/${id}${purge ? '?purge=true' : ''}` : `/api/v1/intelligence/links/${id}`
+frontend/src/components/External.tsx:2323:      const res = await apiFetch(`/api/v1/intelligence/entities/${id}/restore`, { method: 'POST' })
+frontend/src/components/External.tsx:3500:      return (await apiFetch(`/api/v1/logical-services/?device_id=${formData.device_id}`)).json()
+frontend/src/components/Maintenance.tsx:10:  const { data: windows } = useQuery({ queryKey: ["maintenance"], queryFn: async () => (await (await apiFetch("/api/v1/maintenance/")).json()) })
+frontend/src/components/AssetGrid_Legacy.tsx:31:      const url = `/api/v1/logical-services/${data.id}`
+frontend/src/components/AssetGrid_Legacy.tsx:90:    queryFn: async () => (await (await apiFetch(`/api/v1/logical-services/?device_id=${deviceId}`)).json())
+frontend/src/components/AssetGrid_Legacy.tsx:403:    queryFn: async () => (await apiFetch(`/api/v1/monitoring/?device_id=${deviceId}`)).json()
+frontend/src/components/AssetGrid_Legacy.tsx:454:    queryFn: async () => (await apiFetch(`/api/v1/devices/${deviceId}/relationships`)).json(),
+frontend/src/components/AssetGrid_Legacy.tsx:460:    queryFn: async () => (await apiFetch(`/api/v1/networks/connections?device_id=${deviceId}`)).json(),
+frontend/src/components/AssetGrid_Legacy.tsx:930:    queryFn: async () => (await (await apiFetch("/api/v1/devices/")).json()) 
+frontend/src/components/AssetGrid_Legacy.tsx:950:  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
+frontend/src/components/AssetGrid_Legacy.tsx:953:    queryFn: async () => (await (await apiFetch('/api/v1/devices/?include_deleted=true')).json())
+frontend/src/components/AssetGrid_Legacy.tsx:974:      const url = data.id ? `/api/v1/devices/${data.id}` : `/api/v1/devices/`
+frontend/src/components/AssetGrid_Legacy.tsx:1001:      const res = await apiFetch('/api/v1/devices/bulk-action', {
+frontend/src/components/AssetGrid_Legacy.tsx:1203:  const { data: allConnections } = useQuery({ queryKey: ['all-connections'], queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()) })
+frontend/src/components/AssetGrid_Legacy.tsx:1204:  const { data: allRelationships } = useQuery({ queryKey: ['all-relationships'], queryFn: async () => (await (await apiFetch('/api/v1/devices/relationships/all')).json()) })
+frontend/src/components/AssetGrid_Legacy.tsx:1589:            const res = await apiFetch(`/api/v1/devices/${device.id}`, {
+frontend/src/components/AssetGrid_Legacy.tsx:1643:      const res = await apiFetch(`/api/v1/devices/${deviceId}/hardware`, { method: 'POST', body: JSON.stringify(d) })
+frontend/src/components/AssetGrid_Legacy.tsx:1669:  const { data: hardware } = useQuery({ queryKey: ['device-hw', deviceId], queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/hardware`)).json()) })
+frontend/src/components/AssetGrid_Legacy.tsx:1675:    mutationFn: async (id: number) => apiFetch(`/api/v1/devices/hardware/${id}`, { method: 'DELETE' }),
+frontend/src/components/AssetGrid_Legacy.tsx:1681:    mutationFn: async (data: any) => apiFetch(`/api/v1/devices/hardware/${data.id}`, {
+frontend/src/components/AssetGrid_Legacy.tsx:1780:      const res = await apiFetch(`/api/v1/devices/${deviceId}/secrets`, { method: 'POST', body: JSON.stringify(d) })
+frontend/src/components/AssetGrid_Legacy.tsx:1827:  const { data: secrets } = useQuery({ queryKey: ['device-secrets', deviceId], queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/secrets`)).json()) })
+frontend/src/components/AssetGrid_Legacy.tsx:1838:    mutationFn: async (id: number) => apiFetch(`/api/v1/devices/secrets/${id}`, { method: 'DELETE' }),
+frontend/src/components/AssetGrid_Legacy.tsx:1844:    mutationFn: async (data: any) => apiFetch(`/api/v1/devices/secrets/${data.id}`, {
+frontend/src/components/AssetGrid_Legacy.tsx:1938:  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) })
+frontend/src/components/AssetGrid_Legacy.tsx:1959:      const res = await apiFetch(`/api/v1/devices/${deviceId}/relationships`, {
+frontend/src/components/AssetGrid_Legacy.tsx:2069:  const { data: relationships } = useQuery({ queryKey: ['device-rel', deviceId], queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/relationships`)).json()) })
+frontend/src/components/AssetGrid_Legacy.tsx:2070:  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) })
+frontend/src/components/AssetGrid_Legacy.tsx:2078:    mutationFn: async (id: number) => apiFetch(`/api/v1/devices/relationships/${id}`, { method: 'DELETE' }),
+frontend/src/components/AssetGrid_Legacy.tsx:2084:    mutationFn: async (data: any) => apiFetch(`/api/v1/devices/relationships/${data.id}`, {
+frontend/src/components/VendorsReal.tsx:359:    queryFn: async () => (await apiFetch('/api/v1/settings/user/settings')).json(),
+frontend/src/components/VendorsReal.tsx:495:      apiFetch('/api/v1/settings/user/settings', { method: 'PATCH', body: JSON.stringify({ [VENDOR_WORKSPACE_PREFERENCE_KEY]: localPayload }) }).catch(() => {})
+frontend/src/components/VendorsReal.tsx:507:      apiFetch('/api/v1/settings/user/settings', { method: 'PATCH', body: JSON.stringify({ [VENDOR_WORKSPACE_PREFERENCE_KEY]: payload }) })
+frontend/src/components/VendorsReal.tsx:740:    queryFn: async () => (await apiFetch('/api/v1/vendors/')).json()
+frontend/src/components/VendorsReal.tsx:744:    queryFn: async () => (await apiFetch('/api/v1/devices/')).json()
+frontend/src/components/VendorsReal.tsx:748:    queryFn: async () => (await apiFetch('/api/v1/settings/options?category=LogicalSystem')).json()
+frontend/src/components/VendorsReal.tsx:928:      const res = await apiFetch('/api/v1/vendors/bulk-action', { method: 'POST', body: JSON.stringify({ ids: idsToUse, action, target: 'vendor' }) })
+frontend/src/components/VendorsReal.tsx:941:          await apiFetch('/api/v1/vendors/bulk-action', { method: 'POST', body: JSON.stringify({ ids: undo.ids, action: undo.action, target: 'vendor' }) })
+frontend/src/components/VendorsReal.tsx:1346:  const { data: countries } = useQuery({ queryKey: ['settings', 'VendorCountry'], queryFn: async () => (await apiFetch('/api/v1/settings/options?category=VendorCountry')).json() })
+frontend/src/components/VendorsReal.tsx:1351:      const url    = data.id ? `/api/v1/vendors/${data.id}` : '/api/v1/vendors/'
+frontend/src/components/VendorsReal.tsx:1410:  const { data: countries } = useQuery({ queryKey: ['settings', 'VendorCountry'], queryFn: async () => (await apiFetch('/api/v1/settings/options?category=VendorCountry')).json() })
+frontend/src/components/VendorsReal.tsx:1414:    mutationFn: async (data: any) => (await apiFetch(`/api/v1/vendors/${vendor.id}`, { method: 'PUT', body: JSON.stringify(data) })).json(),
+frontend/src/components/VendorsReal.tsx:1419:      const url = data.id ? `/api/v1/vendors/personnel/${data.id}` : `/api/v1/vendors/${vendor.id}/personnel`
+frontend/src/components/VendorsReal.tsx:1425:    mutationFn: async (id: number) => apiFetch(`/api/v1/vendors/personnel/${id}`, { method: 'DELETE' }),
+frontend/src/components/VendorsReal.tsx:1431:      const url = payload.id ? `/api/v1/vendors/contracts/${payload.id}` : `/api/v1/vendors/contracts/`
+frontend/src/components/VendorsReal.tsx:1437:    mutationFn: async (id: number) => apiFetch('/api/v1/vendors/bulk-action', { method: 'POST', body: JSON.stringify({ ids: [id], action: 'delete', target: 'contract' }) }),
+frontend/src/components/VendorsReal.tsx:1806:  const { data: deviceTypes } = useQuery({ queryKey: ['settings', 'VendorDeviceType'], queryFn: async () => (await apiFetch('/api/v1/settings/options?category=VendorDeviceType')).json() })
+frontend/src/components/Dashboard.tsx:174:    queryFn: async () => (await apiFetch('/api/v1/dashboard/metrics')).json(),
+frontend/src/components/Dashboard.tsx:180:    queryFn: async () => (await apiFetch('/api/v1/settings/user/profile')).json()
+frontend/src/components/Racks.tsx:654:    queryFn: async () => (await (await apiFetch('/api/v1/racks/audit-logs')).json()),
+frontend/src/components/Racks.tsx:2331:  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices')).json()) })
+frontend/src/components/Racks.tsx:2332:  const { data: sites } = useQuery({ queryKey: ['sites'], queryFn: async () => (await (await apiFetch('/api/v1/sites/')).json()) })
+frontend/src/components/Racks.tsx:2333:  const { data: connections } = useQuery({ queryKey: ['connections'], queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()) })
+frontend/src/components/Racks.tsx:2388:    queryFn: async () => (await (await apiFetch('/api/v1/racks/plans')).json()) 
+frontend/src/components/Racks.tsx:2401:      const res = await apiFetch('/api/v1/racks/plans', {
+frontend/src/components/Racks.tsx:2415:      await apiFetch(`/api/v1/racks/plans/${id}`, { method: 'DELETE' })
+frontend/src/components/Racks.tsx:2471:    queryFn: async () => (await (await apiFetch('/api/v1/racks/?include_deleted=true')).json())
+frontend/src/components/Racks.tsx:2548:        const resDev = await apiFetch('/api/v1/devices/', {
+frontend/src/components/Racks.tsx:2602:      const res = await apiFetch(`/api/v1/racks/${rackId}/mount`, { method: 'POST', body: JSON.stringify(payload) })
+frontend/src/components/Racks.tsx:2635:        ? await apiFetch(`/api/v1/sites/${data.id}`, { method: 'PUT', body: JSON.stringify(data) })
+frontend/src/components/Racks.tsx:2636:        : await apiFetch('/api/v1/sites/', { method: 'POST', body: JSON.stringify(data) })
+frontend/src/components/Racks.tsx:2653:      const res = await apiFetch(`/api/v1/sites/${id}`, { method: 'DELETE' })
+frontend/src/components/Racks.tsx:2672:        ? await apiFetch(`/api/v1/racks/${data.id}`, { method: 'PUT', body: JSON.stringify(data) })
+frontend/src/components/Racks.tsx:2673:        : await apiFetch('/api/v1/racks/', { method: 'POST', body: JSON.stringify(data) })
+frontend/src/components/Racks.tsx:2695:      const res = await apiFetch('/api/v1/racks/bulk-action', { method: 'POST', body: JSON.stringify(data) })
+frontend/src/components/Racks.tsx:2777:      const res = await apiFetch(`/api/v1/racks/${rackId}/mount`, {
+frontend/src/components/Racks.tsx:2797:    mutationFn: async (ids: number[]) => apiFetch('/api/v1/sites/reorder', { method: 'POST', body: JSON.stringify({ ids }) }),
+frontend/src/components/Racks.tsx:2803:      apiFetch(`/api/v1/sites/${siteId}/racks/reorder`, { method: 'POST', body: JSON.stringify({ ids }) }),
+frontend/src/components/Racks.tsx:2848:      const res = await apiFetch('/api/v1/racks/bulk-patch', { method: 'POST', body: JSON.stringify({ connections: conns }) })
+frontend/src/components/Racks.tsx:3500:            await apiFetch(`/api/v1/racks/mount/${deviceId}`, { method: 'DELETE' })
+frontend/src/components/Racks.tsx:3518:            await apiFetch(`/api/v1/devices/${managingDevice.device.id}`, { method: 'PUT', body: JSON.stringify(data) })
+frontend/src/components/Racks.tsx:3569:              await apiFetch(`/api/v1/racks/mount/${optionsMenu.device.id}`, { method: 'DELETE' })
+frontend/src/components/DataFlowDesigner.tsx:1449:  const { data: savedFlows } = useQuery({ queryKey: ['data-flows'], queryFn: async () => (await (await apiFetch('/api/v1/data-flows/')).json()) });
+frontend/src/components/DataFlowDesigner.tsx:1450:  const { data: assets } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) });
+frontend/src/components/DataFlowDesigner.tsx:1451:  const { data: externalEntities } = useQuery({ queryKey: ['external-entities', { include_deleted: false }], queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities')).json()) });
+frontend/src/components/DataFlowDesigner.tsx:1452:  const { data: logicalServices } = useQuery({ queryKey: ['logical-services'], queryFn: async () => (await (await apiFetch('/api/v1/logical-services/')).json()) });
+frontend/src/components/DataFlowDesigner.tsx:1453:  const { data: monitoringItems } = useQuery({ queryKey: ['monitoring'], queryFn: async () => (await (await apiFetch('/api/v1/monitoring')).json()) });
+frontend/src/components/DataFlowDesigner.tsx:1454:  const { data: incidents } = useQuery({ queryKey: ['incidents'], queryFn: async () => (await (await apiFetch('/api/v1/incidents')).json()) });
+frontend/src/components/DataFlowDesigner.tsx:1455:  const { data: maintenanceWindows } = useQuery({ queryKey: ['maintenance'], queryFn: async () => (await (await apiFetch('/api/v1/maintenance')).json()) });
+frontend/src/components/DataFlowDesigner.tsx:1456:  const { data: knowledgeEntries } = useQuery({ queryKey: ['knowledge'], queryFn: async () => (await (await apiFetch('/api/v1/knowledge')).json()) });
+frontend/src/components/DataFlowDesigner.tsx:1457:  const { data: farModes } = useQuery({ queryKey: ['far-modes'], queryFn: async () => (await (await apiFetch('/api/v1/far/modes')).json()) });
+frontend/src/components/DataFlowDesigner.tsx:1458:  const { data: vendors } = useQuery({ queryKey: ['vendors'], queryFn: async () => (await (await apiFetch('/api/v1/vendors')).json()) });
+frontend/src/components/DataFlowDesigner.tsx:1459:  const { data: projects } = useQuery({ queryKey: ['projects'], queryFn: async () => (await (await apiFetch('/api/v1/projects')).json()) });
+frontend/src/components/DataFlowDesigner.tsx:1463:    queryFn: async () => (await (await apiFetch(`/api/v1/data-flows/${activeFlow.id}/history`)).json()),
+frontend/src/components/DataFlowDesigner.tsx:1471:    mutationFn: async (data: any) => { const isUpdate = !!data.id; const url = isUpdate ? `/api/v1/data-flows/${data.id}` : '/api/v1/data-flows'; const response = await apiFetch(url, { method: isUpdate ? 'PUT' : 'POST', body: JSON.stringify(data) }); return response.json(); },
+frontend/src/components/DataFlowDesigner.tsx:1477:      const response = await apiFetch(`/api/v1/data-flows/${activeFlow.id}/approve`, { method: 'POST', body: JSON.stringify({ approved_by: getFlowMeta(activeFlow, 'owner_team') || 'Architecture Board' }) })
+frontend/src/components/DataFlowDesigner.tsx:1489:      const response = await apiFetch(`/api/v1/data-flows/${activeFlow.id}/history/${historyId}/restore`, { method: 'POST' })
+frontend/src/components/Intelligence.tsx:18:      const res = await apiFetch('/api/v1/import/csv', { method: 'POST', body: formData })
+frontend/src/components/Intelligence.tsx:35:    link.href = '/api/v1/import/template'
+frontend/src/components/Vendor.tsx:56:    queryFn: async () => (await apiFetch('/api/v1/vendors/')).json() 
+frontend/src/components/Vendor.tsx:100:    queryFn: async () => (await apiFetch('/api/v1/devices/')).json() 
+frontend/src/components/Vendor.tsx:105:      const url = data.id ? `/api/v1/vendors/${data.id}` : '/api/v1/vendors/'
+frontend/src/components/Vendor.tsx:118:    mutationFn: async (id: number) => apiFetch(`/api/v1/vendors/${id}`, { method: 'DELETE' }),
+frontend/src/components/Vendor.tsx:535:    queryFn: async () => (await apiFetch('/api/v1/settings/options?category=VendorCountry')).json() 
+frontend/src/components/Vendor.tsx:615:    queryFn: async () => (await apiFetch('/api/v1/settings/options?category=LogicalSystem')).json() 
+frontend/src/components/Vendor.tsx:620:    queryFn: async () => (await apiFetch('/api/v1/settings/options?category=VendorCountry')).json() 
+frontend/src/components/Vendor.tsx:633:      return (await apiFetch(`/api/v1/vendors/${vendor.id}`, { method: 'PUT', body: JSON.stringify(data) })).json()
+frontend/src/components/Vendor.tsx:645:      const url = data.id ? `/api/v1/vendors/personnel/${data.id}` : `/api/v1/vendors/${vendor.id}/personnel`
+frontend/src/components/Vendor.tsx:657:    mutationFn: async (id: number) => apiFetch(`/api/v1/vendors/personnel/${id}`, { method: 'DELETE' }),
+frontend/src/components/Vendor.tsx:667:      const url = payload.id ? `/api/v1/vendors/contracts/${payload.id}` : `/api/v1/vendors/contracts/`
+frontend/src/components/Vendor.tsx:680:    mutationFn: async (id: number) => apiFetch(`/api/v1/vendors/bulk-action`, { 
+frontend/src/components/Vendor.tsx:1127:    queryFn: async () => (await apiFetch('/api/v1/settings/options?category=VendorDeviceType')).json() 
+frontend/src/components/shared/FARModals.tsx:24:      const url = initialData?.id ? `/api/v1/far/causes/${initialData.id}` : '/api/v1/far/causes'
+frontend/src/components/shared/FARModals.tsx:133:       const res = await apiFetch('/api/v1/far/mitigations', { method: 'POST', body: JSON.stringify(payload) })
+frontend/src/components/shared/FARModals.tsx:273:       const res = await apiFetch('/api/v1/projects/', {
+frontend/src/components/shared/FARModals.tsx:332:    queryFn: async () => (await apiFetch('/api/v1/knowledge/?category=BKM')).json() 
+frontend/src/components/shared/FARModals.tsx:341:      const res = await apiFetch('/api/v1/far/resolutions', {
+frontend/src/components/shared/FARModals.tsx:360:      const res = await apiFetch(`/api/v1/far/resolutions/${resId}`, { method: 'DELETE' })
+frontend/src/components/shared/BulkImportModal.tsx:42:      const res = await apiFetch(`/api/v1/import/audit?table_name=${tableName}`, {
+frontend/src/components/shared/BulkImportModal.tsx:63:      const res = await apiFetch(`/api/v1/import/execute?table_name=${tableName}`, {
+frontend/src/components/shared/BulkImportModal.tsx:100:    window.open(`${window.location.origin}/api/v1/import/template/${tableName}`, '_blank')
+frontend/src/components/shared/BulkImportModal.tsx:104:    window.open(`${window.location.origin}/api/v1/import/snapshot/${tableName}`, '_blank')
+frontend/src/components/shared/TenantSelector.tsx:27:      const res = await apiFetch("/api/v1/tenants/me")
+frontend/src/components/shared/TenantSelector.tsx:35:      const res = await apiFetch("/api/v1/tenants/select", {
+frontend/src/components/shared/OperationalDataStatus.tsx:69:                <p><strong>Endpoint:</strong> {errorDetail?.endpoint || '/api/v1/monitoring?include_deleted=true'}</p>
+frontend/src/components/shared/GlobalSearch.tsx:39:          const res = await apiFetch(`/api/v1/dashboard/search?q=${encodeURIComponent(trimmedQuery)}`);
+frontend/src/components/shared/InvestigationTab.tsx:86:      const res = await apiFetch(`/api/v1/far/modes/${id}`, {
+frontend/src/components/shared/OperationalImportModal.tsx:204:      const response = await apiFetch(`/api/v1/import/schema/${tableName}`)
+frontend/src/components/shared/OperationalImportModal.tsx:304:        const response = await apiFetch('/api/v1/import/preview-file', {
+frontend/src/components/shared/OperationalImportModal.tsx:313:      const response = await apiFetch(`/api/v1/import/preview-rows?table_name=${tableName}`, {
+frontend/src/components/shared/OperationalImportModal.tsx:336:      const response = await apiFetch(`/api/v1/import/execute?table_name=${tableName}`, {
+frontend/src/components/shared/OperationalImportModal.tsx:501:    const url = `${baseUrl.replace(/\/$/, '')}/api/v1/import/template/${tableName}?${params.toString()}`
+frontend/src/components/ConfigRegistry.tsx:51:        isTeamCategory ? "/api/v1/settings/teams" : "/api/v1/settings/options",
+frontend/src/components/ConfigRegistry.tsx:87:        isTeamCategory ? `/api/v1/settings/teams/${id}` : `/api/v1/settings/options/${id}`,
+frontend/src/components/ConfigRegistry.tsx:122:        isTeamCategory ? `/api/v1/settings/teams/${id}` : `/api/v1/settings/options/${id}`,
+frontend/src/components/ConfigRegistry.tsx:391:    queryFn: async () => (await (await apiFetch("/api/v1/settings/options")).json()),
+frontend/src/components/ConfigRegistry.tsx:395:    queryFn: async () => (await (await apiFetch("/api/v1/settings/teams")).json()),
+frontend/src/components/ServiceRegistry.tsx:203:      const res = await apiFetch(`/api/v1/logical-services/${serviceId}/secrets`, { method: 'POST', body: JSON.stringify(data) })
+frontend/src/components/ServiceRegistry.tsx:212:      const res = await apiFetch(`/api/v1/logical-services/${serviceId}/secrets/${secretId}`, { method: 'DELETE' })
+frontend/src/components/ServiceRegistry.tsx:692:  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
+frontend/src/components/ServiceRegistry.tsx:693:  const { data: allServices, isLoading } = useQuery({ queryKey: ["logical-services"], queryFn: async () => (await (await apiFetch("/api/v1/logical-services/?include_deleted=true")).json()) })
+frontend/src/components/ServiceRegistry.tsx:717:  const { data: devices } = useQuery({ queryKey: ["devices"], queryFn: async () => (await (await apiFetch("/api/v1/devices/")).json()) })
+frontend/src/components/ServiceRegistry.tsx:721:      const url = data.id ? `/api/v1/logical-services/${data.id}` : "/api/v1/logical-services/"
+frontend/src/components/ServiceRegistry.tsx:731:      const res = await apiFetch('/api/v1/logical-services/bulk-action', { method: 'POST', body: JSON.stringify({ ids, action, payload }) })
+frontend/src/components/Research.tsx:204:    queryFn: async () => (await apiFetch('/api/v1/investigations/')).json() 
+frontend/src/components/Research.tsx:209:    queryFn: async () => (await apiFetch('/api/v1/rca/')).json() 
+frontend/src/components/Research.tsx:214:    queryFn: async () => (await apiFetch('/api/v1/devices/')).json() 
+frontend/src/components/Research.tsx:219:    queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() 
+frontend/src/components/Research.tsx:224:    queryFn: async () => (await apiFetch('/api/v1/far/modes')).json()
+frontend/src/components/Research.tsx:255:      const url = data.id ? `/api/v1/${isRca ? 'rca' : 'investigations'}/${data.id}` : `/api/v1/${isRca ? 'rca' : 'investigations'}/`
+frontend/src/components/Research.tsx:273:      const url = item.type === 'RCA' ? `/api/v1/rca/${item.id}` : `/api/v1/investigations/${item.id}`
+frontend/src/components/Research.tsx:1034:    queryFn: async () => (await apiFetch('/api/v1/knowledge/?category=BKM')).json() 
+frontend/src/components/Research.tsx:1038:    queryFn: async () => (await apiFetch('/api/v1/monitoring/')).json() 
+frontend/src/components/Research.tsx:1942:                                         const { data: devices } = useQuery({ queryKey: ['devices', formData.system_name], enabled: !!formData.system_name, queryFn: async () => (await apiFetch(`/api/v1/devices/?system=${encodeURIComponent(formData.system_name)}`)).json() })
+frontend/src/components/Research.tsx:1946:                                         const res = await apiFetch('/api/v1/far/modes', { method: 'POST', body: JSON.stringify(data) })
+frontend/src/components/Research.tsx:2101:      const res = await apiFetch(`/api/v1/investigations/${item.id}/logs`, {
+frontend/src/components/MonitoringGrid.tsx:484:    queryFn: async () => (await (await apiFetch('/api/v1/settings/user/settings')).json()),
+frontend/src/components/MonitoringGrid.tsx:562:    queryFn: async () => (await apiFetch('/api/v1/monitoring?include_deleted=true')).json()
+frontend/src/components/MonitoringGrid.tsx:573:                endpoint: '/api/v1/monitoring?include_deleted=true',
+frontend/src/components/MonitoringGrid.tsx:762:      apiFetch('/api/v1/settings/user/settings', {
+frontend/src/components/MonitoringGrid.tsx:788:      apiFetch('/api/v1/settings/user/settings', {
+frontend/src/components/MonitoringGrid.tsx:888:    queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) 
+frontend/src/components/MonitoringGrid.tsx:892:    queryFn: async () => (await (await apiFetch('/api/v1/settings/operators')).json())
+frontend/src/components/MonitoringGrid.tsx:896:    queryFn: async () => (await (await apiFetch('/api/v1/settings/teams')).json())
+frontend/src/components/MonitoringGrid.tsx:1549:    queryFn: async () => (await apiFetch('/api/v1/devices/')).json()
+frontend/src/components/MonitoringGrid.tsx:1556:      const res = await apiFetch('/api/v1/monitoring/bulk-action', {
+frontend/src/components/MonitoringGrid.tsx:1563:        const res = await apiFetch(`/api/v1/monitoring/${snapshot.id}`, {
+frontend/src/components/MonitoringGrid.tsx:1586:      const res = await apiFetch('/api/v1/monitoring/bulk-action', {
+frontend/src/components/MonitoringGrid.tsx:1837:                        endpoint: '/api/v1/monitoring?include_deleted=true',
+frontend/src/components/MonitoringGrid.tsx:2572:        const res = await apiFetch(`/api/v1/monitoring/${row.id}`, {
+frontend/src/components/MonitoringGrid.tsx:2736:      const response = await apiFetch(`/api/v1/knowledge?${params.toString()}`)
+frontend/src/components/MonitoringGrid.tsx:2740:      const fallback = await apiFetch(`/api/v1/knowledge?device_id=${item.device_id}`)
+frontend/src/components/MonitoringGrid.tsx:3237:    queryFn: async () => (await apiFetch(`/api/v1/monitoring/${item.id}/history`)).json()
+frontend/src/components/MonitoringGrid.tsx:3385:                                 const response: any = await apiFetch(`/api/v1/monitoring/${item.id}/restore/${h.id}`, { method: 'POST' })
+frontend/src/components/NetworkReal.tsx:655:    queryFn: async () => (await (await apiFetch('/api/v1/settings/user/settings')).json()),
+frontend/src/components/NetworkReal.tsx:845:      apiFetch('/api/v1/settings/user/settings', {
+frontend/src/components/NetworkReal.tsx:875:      apiFetch('/api/v1/settings/user/settings', {
+frontend/src/components/NetworkReal.tsx:1015:    queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) 
+frontend/src/components/NetworkReal.tsx:1019:    queryFn: async () => (await (await apiFetch('/api/v1/settings/operators')).json())
+frontend/src/components/NetworkReal.tsx:1023:    queryFn: async () => (await (await apiFetch('/api/v1/settings/teams')).json())
+frontend/src/components/NetworkReal.tsx:1422:    queryFn: async () => (await apiFetch('/api/v1/networks/connections?include_deleted=true')).json()
+frontend/src/components/NetworkReal.tsx:1729:    queryFn: async () => (await apiFetch('/api/v1/devices/')).json()
+frontend/src/components/NetworkReal.tsx:1736:      const res = await apiFetch('/api/v1/networks/connections/bulk-status', {
+frontend/src/components/NetworkReal.tsx:1776:          res = await apiFetch('/api/v1/networks/connections/bulk-status', {
+frontend/src/components/NetworkReal.tsx:1782:            const putRes = await apiFetch(`/api/v1/networks/connections/${id}`, {
+frontend/src/components/NetworkReal.tsx:1791:        res = await apiFetch('/api/v1/networks/connections/bulk-restore', {
+frontend/src/components/NetworkReal.tsx:1796:        res = await apiFetch('/api/v1/networks/connections/bulk-purge', {
+frontend/src/components/NetworkReal.tsx:1801:        res = await apiFetch('/api/v1/networks/connections/bulk-delete', {
+frontend/src/components/NetworkReal.tsx:3172:        const res = await apiFetch(`/api/v1/networks/connections/${row.id}`, {
+frontend/src/components/NetworkReal.tsx:3281:      const response = await apiFetch(`/api/v1/knowledge?${params.toString()}`)
+frontend/src/components/NetworkReal.tsx:3285:      const fallback = await apiFetch(`/api/v1/knowledge?device_id=${item.device_id}`)
+frontend/src/components/NetworkReal.tsx:3716:      const url = item?.id ? `/api/v1/networks/connections/${item.id}` : '/api/v1/networks/connections'
+frontend/src/components/NetworkReal.tsx:4065:    queryFn: async () => (await apiFetch(`/api/v1/networks/connections/${item.id}/history`)).json()
+frontend/src/components/NetworkReal.tsx:4214:                               toast.promise(apiFetch(`/api/v1/networks/connections/${item.id}/restore/${h.id}`, { method: 'POST' }), {
+frontend/src/components/Temp1.tsx:189:    queryFn: async () => (await apiFetch('/api/v1/devices/')).json()
+frontend/src/components/Temp1.tsx:194:    queryFn: async () => (await apiFetch('/api/v1/devices/relationships/all')).json()
+frontend/src/components/AssetReal.tsx:626:    queryFn: async () => (await (await apiFetch('/api/v1/settings/user/settings')).json()),
+frontend/src/components/AssetReal.tsx:819:      apiFetch('/api/v1/settings/user/settings', {
+frontend/src/components/AssetReal.tsx:849:      apiFetch('/api/v1/settings/user/settings', {
+frontend/src/components/AssetReal.tsx:990:    queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) 
+frontend/src/components/AssetReal.tsx:994:    queryFn: async () => (await (await apiFetch('/api/v1/settings/operators')).json())
+frontend/src/components/AssetReal.tsx:998:    queryFn: async () => (await (await apiFetch('/api/v1/settings/teams')).json())
+frontend/src/components/AssetReal.tsx:1407:    queryFn: async () => (await apiFetch('/api/v1/devices?include_deleted=true')).json()
+frontend/src/components/AssetReal.tsx:1713:    queryFn: async () => (await apiFetch('/api/v1/devices/')).json()
+frontend/src/components/AssetReal.tsx:1720:      const res = await apiFetch('/api/v1/devices/bulk-action', {
+frontend/src/components/AssetReal.tsx:1754:            const putRes = await apiFetch(`/api/v1/devices/${id}`, {
+frontend/src/components/AssetReal.tsx:1763:        res = await apiFetch('/api/v1/devices/bulk-action', {
+frontend/src/components/AssetReal.tsx:3242:        const res = await apiFetch(`/api/v1/devices/${row.id}`, {
+frontend/src/components/AssetReal.tsx:3510:      const url = item?.id ? `/api/v1/devices/${item.id}` : '/api/v1/devices'
+frontend/src/components/AssetReal.tsx:3719:      const response = await apiFetch(`/api/v1/knowledge?${params.toString()}`)
+frontend/src/components/AssetReal.tsx:3723:      const fallback = await apiFetch(`/api/v1/knowledge?device_id=${item.device_id}`)
+frontend/src/components/AssetReal.tsx:4154:      const url = item?.id ? `/api/v1/networks/connections/${item.id}` : '/api/v1/networks/connections'
+frontend/src/components/AssetReal.tsx:4503:    queryFn: async () => (await apiFetch(`/api/v1/monitoring/${item.id}/history`)).json()
+frontend/src/components/AssetReal.tsx:4652:                               toast.promise(apiFetch(`/api/v1/monitoring/${item.id}/restore/${h.id}`, { method: 'POST' }), {
+frontend/src/components/Assets.tsx:36:      const url = `/api/v1/logical-services/${data.id}`
+frontend/src/components/Assets.tsx:150:      const res = await apiFetch(`/api/v1/networks/connections/${activeEdit.id}`, {
+frontend/src/components/Assets.tsx:287:    queryFn: async () => (await (await apiFetch(`/api/v1/logical-services?device_id=${deviceId}`)).json())
+frontend/src/components/Assets.tsx:603:    queryFn: async () => (await apiFetch(`/api/v1/monitoring/?device_id=${deviceId}`)).json()
+frontend/src/components/Assets.tsx:667:    queryFn: async () => (await apiFetch(`/api/v1/devices/${deviceId}/relationships`)).json(),
+frontend/src/components/Assets.tsx:673:    queryFn: async () => (await apiFetch(`/api/v1/networks/connections?device_id=${deviceId}`)).json(),
+frontend/src/components/Assets.tsx:1107:    queryFn: async () => (await (await apiFetch(`/api/v1/devices/${id}/hardware`)).json())
+frontend/src/components/Assets.tsx:1114:        const res = await apiFetch(`/api/v1/devices/${id}/hardware`)
+frontend/src/components/Assets.tsx:1454:    queryFn: async () => (await (await apiFetch('/api/v1/intelligence/entities?include_deleted=true')).json())
+frontend/src/components/Assets.tsx:1492:  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
+frontend/src/components/Assets.tsx:1495:    queryFn: async () => (await apiFetch('/api/v1/settings/user/profile')).json()
+frontend/src/components/Assets.tsx:1499:    queryFn: async () => (await (await apiFetch('/api/v1/devices?include_deleted=true')).json())
+frontend/src/components/Assets.tsx:1643:    queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()),
+frontend/src/components/Assets.tsx:1649:    queryFn: async () => (await (await apiFetch('/api/v1/devices/relationships/all')).json()),
+frontend/src/components/Assets.tsx:1655:      const url = data.id ? `/api/v1/devices/${data.id}` : `/api/v1/devices`
+frontend/src/components/Assets.tsx:1682:      const res = await apiFetch('/api/v1/devices/bulk-action', {
+frontend/src/components/Assets.tsx:2478:    queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}`)).json()),
+frontend/src/components/Assets.tsx:2489:    queryFn: async () => (await (await apiFetch(`/api/v1/networks/connections?device_id=${deviceId}`)).json()),
+frontend/src/components/Assets.tsx:2496:    queryFn: async () => (await (await apiFetch('/api/v1/settings/options?category=HardwareProfile')).json())
+frontend/src/components/Assets.tsx:2503:      const res = await apiFetch('/api/v1/settings/options', {
+frontend/src/components/Assets.tsx:2824:    queryFn: async () => (await (await apiFetch(`/api/v1/security/firewall?device_id=${deviceId}`)).json()) 
+frontend/src/components/Assets.tsx:2829:    queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/interfaces`)).json()) 
+frontend/src/components/Assets.tsx:2834:    queryFn: async () => (await (await apiFetch('/api/v1/devices')).json())
+frontend/src/components/Assets.tsx:2839:    queryFn: async () => (await (await apiFetch('/api/v1/networks/connections')).json()) 
+frontend/src/components/Assets.tsx:2877:      const res = await apiFetch('/api/v1/security/firewall', {
+frontend/src/components/Assets.tsx:2898:      const res = await apiFetch(`/api/v1/security/firewall/${id}`, { method: 'DELETE' })
+frontend/src/components/Assets.tsx:3054:    queryFn: async () => (await apiFetch(`/api/v1/monitoring?device_id=${deviceId}`)).json()
+frontend/src/components/Assets.tsx:3152:      const res = await apiFetch(`/api/v1/devices/${deviceId}/hardware`, { method: 'POST', body: JSON.stringify(d) })
+frontend/src/components/Assets.tsx:3178:  const { data: hardware } = useQuery({ queryKey: ['device-hw', deviceId], queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/hardware`)).json()) })
+frontend/src/components/Assets.tsx:3184:    mutationFn: async (id: number) => apiFetch(`/api/v1/devices/hardware/${id}`, { method: 'DELETE' }),
+frontend/src/components/Assets.tsx:3190:    mutationFn: async (data: any) => apiFetch(`/api/v1/devices/hardware/${data.id}`, {
+frontend/src/components/Assets.tsx:3289:      const res = await apiFetch(`/api/v1/devices/${deviceId}/secrets`, { method: 'POST', body: JSON.stringify(d) })
+frontend/src/components/Assets.tsx:3336:  const { data: secrets } = useQuery({ queryKey: ['device-secrets', deviceId], queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/secrets`)).json()) })
+frontend/src/components/Assets.tsx:3347:    mutationFn: async (id: number) => apiFetch(`/api/v1/devices/secrets/${id}`, { method: 'DELETE' }),
+frontend/src/components/Assets.tsx:3353:    mutationFn: async (data: any) => apiFetch(`/api/v1/devices/secrets/${data.id}`, {
+frontend/src/components/Assets.tsx:3447:  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices')).json()) })
+frontend/src/components/Assets.tsx:3468:      const res = await apiFetch(`/api/v1/devices/${deviceId}/relationships`, {
+frontend/src/components/Assets.tsx:3578:  const { data: relationships } = useQuery({ queryKey: ['device-rel', deviceId], queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/relationships`)).json()) })
+frontend/src/components/Assets.tsx:3579:  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices')).json()) })
+frontend/src/components/Assets.tsx:3587:    mutationFn: async (id: number) => apiFetch(`/api/v1/devices/relationships/${id}`, { method: 'DELETE' }),
+frontend/src/components/Assets.tsx:3593:    mutationFn: async (data: any) => apiFetch(`/api/v1/devices/relationships/${data.id}`, {
+frontend/src/components/monitoring/MonitoringForm.tsx:216:      return (await apiFetch(`/api/v1/logical-services/?device_id=${formData.device_id}`)).json()
+frontend/src/components/monitoring/MonitoringForm.tsx:224:    queryFn: async () => (await apiFetch('/api/v1/knowledge/')).json()
+frontend/src/components/monitoring/MonitoringForm.tsx:237:      const url = item ? `/api/v1/monitoring/${item.id}` : '/api/v1/monitoring/'
+frontend/src/components/monitoring/MonitoringDetailModal.tsx:35:      const response = await apiFetch(`/api/v1/knowledge?${params.toString()}`)
+frontend/src/components/monitoring/MonitoringDetailModal.tsx:39:      const fallback = await apiFetch(`/api/v1/knowledge?device_id=${item.device_id}`)
+frontend/src/components/monitoring/BkmDetailModal.tsx:22:    queryFn: async () => (await apiFetch(`/api/v1/knowledge/${bkmId}`)).json(),
+frontend/src/components/monitoring/BkmListModal.tsx:45:    queryFn: async () => (await apiFetch('/api/v1/knowledge/')).json()
+frontend/src/components/monitoring/BkmListModal.tsx:60:      const res = await apiFetch(`/api/v1/monitoring/${monitorId}`, {
+frontend/src/components/assets/AssetDetailsView.tsx:27:    queryFn: async () => (await apiFetch(`/api/v1/networks/connections?device_id=${deviceId}`)).json(),
+frontend/src/components/assets/AssetDetailsView.tsx:93:      queryFn: async () => (await (await apiFetch(`/api/v1/far/modes?system=${device.system}`)).json()),
+frontend/src/components/assets/AssetDetailsView.tsx:99:      queryFn: async () => (await (await apiFetch(`/api/v1/logical-services?device_id=${device.id}`)).json()),
+frontend/src/components/assets/AssetDetailsView.tsx:105:      queryFn: async () => (await apiFetch(`/api/v1/monitoring?device_id=${device.id}`)).json(),
+frontend/src/components/assets/AssetDetailsView.tsx:111:      queryFn: async () => (await (await apiFetch(`/api/v1/networks/connections?device_id=${device.id}`)).json()),
+frontend/src/components/assets/AssetDetailsView.tsx:117:      queryFn: async () => (await apiFetch(`/api/v1/knowledge?device_id=${device.id}`)).json(),
+frontend/src/components/assets/AssetDetailsView.tsx:128:        return (await apiFetch(`/api/v1/knowledge?${params.toString()}`)).json()
+frontend/src/components/assets/AssetDetailsView.tsx:135:      queryFn: async () => (await apiFetch(`/api/v1/maintenance?device_id=${device.id}`)).json(),
+frontend/src/components/assets/AssetDetailsView.tsx:141:      queryFn: async () => (await apiFetch(`/api/v1/audit?target_table=devices&target_id=${device.id}`)).json(),
+frontend/src/components/assets/AssetDetailsView.tsx:155:            const res = await apiFetch(`/api/v1/devices/${device.id}`, {
+frontend/src/components/assets/AssetDetailsView.tsx:383:      const res = await apiFetch(`/api/v1/devices/${deviceId}/hardware`, { method: 'POST', body: JSON.stringify(d) })
+frontend/src/components/assets/AssetDetailsView.tsx:409:  const { data: hardware } = useQuery({ queryKey: ['device-hw', deviceId], queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/hardware`)).json()) })
+frontend/src/components/assets/AssetDetailsView.tsx:415:    mutationFn: async (id: number) => apiFetch(`/api/v1/devices/hardware/${id}`, { method: 'DELETE' }),
+frontend/src/components/assets/AssetDetailsView.tsx:421:    mutationFn: async (data: any) => apiFetch(`/api/v1/devices/hardware/${data.id}`, {
+frontend/src/components/assets/AssetDetailsView.tsx:520:      const res = await apiFetch(`/api/v1/devices/${deviceId}/secrets`, { method: 'POST', body: JSON.stringify(d) })
+frontend/src/components/assets/AssetDetailsView.tsx:567:  const { data: secrets } = useQuery({ queryKey: ['device-secrets', deviceId], queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/secrets`)).json()) })
+frontend/src/components/assets/AssetDetailsView.tsx:578:    mutationFn: async (id: number) => apiFetch(`/api/v1/devices/secrets/${id}`, { method: 'DELETE' }),
+frontend/src/components/assets/AssetDetailsView.tsx:584:    mutationFn: async (data: any) => apiFetch(`/api/v1/devices/secrets/${data.id}`, {
+frontend/src/components/assets/AssetDetailsView.tsx:678:  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices')).json()) })
+frontend/src/components/assets/AssetDetailsView.tsx:699:      const res = await apiFetch(`/api/v1/devices/${deviceId}/relationships`, {
+frontend/src/components/assets/AssetDetailsView.tsx:809:  const { data: relationships } = useQuery({ queryKey: ['device-rel', deviceId], queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/relationships`)).json()) })
+frontend/src/components/assets/AssetDetailsView.tsx:810:  const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices')).json()) })
+frontend/src/components/assets/AssetDetailsView.tsx:818:    mutationFn: async (id: number) => apiFetch(`/api/v1/devices/relationships/${id}`, { method: 'DELETE' }),
+frontend/src/components/assets/AssetDetailsView.tsx:824:    mutationFn: async (data: any) => apiFetch(`/api/v1/devices/relationships/${data.id}`, {
+frontend/src/components/ServicesReal.tsx:477:    queryFn: async () => (await (await apiFetch('/api/v1/settings/user/settings')).json()),
+frontend/src/components/ServicesReal.tsx:719:      apiFetch('/api/v1/settings/user/settings', {
+frontend/src/components/ServicesReal.tsx:749:      apiFetch('/api/v1/settings/user/settings', {
+frontend/src/components/ServicesReal.tsx:831:    queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) 
+frontend/src/components/ServicesReal.tsx:1148:    queryFn: async () => (await apiFetch('/api/v1/logical-services/?include_deleted=true')).json()
+frontend/src/components/ServicesReal.tsx:1468:    queryFn: async () => (await apiFetch('/api/v1/devices/')).json()
+frontend/src/components/ServicesReal.tsx:1475:      const res = await apiFetch('/api/v1/logical-services/bulk-action', {
+frontend/src/components/ServicesReal.tsx:1490:        const res = await apiFetch(`/api/v1/logical-services/${snapshot.id}`, {
+frontend/src/components/ServicesReal.tsx:1522:        res = await apiFetch('/api/v1/logical-services/bulk-action', {
+frontend/src/components/ServicesReal.tsx:1527:        res = await apiFetch('/api/v1/logical-services/bulk-action', {
+frontend/src/components/ServicesReal.tsx:1532:        res = await apiFetch('/api/v1/logical-services/bulk-action', {
+frontend/src/components/ServicesReal.tsx:2625:        const res = await apiFetch(`/api/v1/logical-services/${row.id}`, {
+frontend/src/components/ServicesReal.tsx:2812:      const url = item?.id ? `/api/v1/logical-services/${item.id}` : '/api/v1/logical-services/'
+frontend/src/components/FAR.tsx:210:    queryFn: async () => (await apiFetch('/api/v1/far/modes')).json() 
+frontend/src/components/FAR.tsx:234:  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() })
+frontend/src/components/FAR.tsx:257:        const res = await apiFetch('/api/v1/far/modes/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) })
+frontend/src/components/FAR.tsx:1039:    queryFn: async () => (await apiFetch('/api/v1/far/modes')).json() 
+frontend/src/components/FAR.tsx:1224:  const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() })
+frontend/src/components/FAR.tsx:1229:    queryFn: async () => (await apiFetch(`/api/v1/devices?system=${encodeURIComponent(formData.system_name)}`)).json() 
+frontend/src/components/FAR.tsx:1233:      const url = data.id ? `/api/v1/far/modes/${data.id}` : '/api/v1/far/modes';
+frontend/src/components/FAR.tsx:1357:      const res = await apiFetch(`/api/v1/far/causes/${causeId}`, { method: 'DELETE' })
+frontend/src/components/FAR.tsx:1570:  const { data: bkms } = useQuery({ queryKey: ['knowledge', 'bkms'], queryFn: async () => (await apiFetch('/api/v1/knowledge/?category=BKM')).json() })
+frontend/src/components/FAR.tsx:1571:  const { data: monitoring } = useQuery({ queryKey: ['monitoring-items'], queryFn: async () => (await apiFetch('/api/v1/monitoring/')).json() })
+frontend/src/components/FAR.tsx:1574:      const res = await apiFetch(`/api/v1/far/mitigations/${mitigationId}`, { method: 'DELETE' })
+frontend/src/components/FAR.tsx:1708:      queryFn: async () => (await apiFetch('/api/v1/investigations')).json() 
+frontend/src/components/FAR.tsx:1726:        const res = await apiFetch(`/api/v1/far/modes/${mode.id}`, {
+frontend/src/components/FAR.tsx:1750:        const res = await apiFetch(`/api/v1/far/modes/${mode.id}`, {
+frontend/src/components/AuditLogs.tsx:39:      const res = await apiFetch(`/api/v1/audit/?${params.toString()}`)
+frontend/src/api/apiClient.test.ts:11:    localStorage.setItem('SYSGRID_OVERRIDE_API_URL', 'http://localhost:8000/api/v1/')
+frontend/src/api/apiClient.test.ts:14:    setApiOverride('http://example.com/api/v1/')

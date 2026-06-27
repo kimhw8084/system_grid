@@ -1,0 +1,31 @@
+backend/app/api/vendors.py:182:@router.post("/bulk-action")
+backend/app/api/vendors.py:183:async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
+backend/app/api/monitoring.py:732:@router.post("/bulk-action")
+backend/app/api/monitoring.py:733:async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
+backend/app/api/monitoring.py:870:        raise HTTPException(status_code=400, detail="Unsupported bulk action")
+backend/app/api/logical_services.py:314:@router.post("/bulk-action")
+backend/app/api/logical_services.py:315:async def bulk_action(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/logical_services.py:341:        raise HTTPException(status_code=400, detail=f"Unsupported bulk action: {action}")
+backend/app/api/intelligence.py:372:            raise HTTPException(400, "Cannot purge entity with active connectivity links")
+backend/app/api/intelligence.py:375:            raise HTTPException(400, "Cannot purge entity with registered credentials")
+Binary file backend/app/api/__pycache__/intelligence.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/intelligence.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/vendors.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/vendors.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/devices.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/devices.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/monitoring.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/troubleshoot.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/logical_services.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/logical_services.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/troubleshoot.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/monitoring.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/racks.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/racks.cpython-313.pyc matches
+backend/app/api/troubleshoot.py:156:@router.post("/bulk-action")
+backend/app/api/troubleshoot.py:157:async def bulk_action(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/racks.py:457:@router.post("/bulk-action")
+backend/app/api/racks.py:458:async def bulk_action(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/racks.py:566:        raise HTTPException(status_code=400, detail="Unsupported bulk action")
+backend/app/api/devices.py:367:@router.post("/bulk-action")
+backend/app/api/devices.py:368:async def bulk_action(request: Request, data: dict, db: AsyncSession = Depends(get_db)):

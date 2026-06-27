@@ -1,0 +1,745 @@
+backend/app/database.py:4:from sqlalchemy import event, MetaData, select, update
+backend/app/database.py:200:                        update(UserTenantAccess)
+backend/app/models/config.py:11:    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+backend/app/models/config.py:31:    tenant_id = Column(Integer, ForeignKey("tenants.id", ondelete="CASCADE"))
+backend/app/models/models.py:9:    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+backend/app/models/models.py:22:    rooms = relationship("Room", back_populates="site", cascade="all, delete-orphan")
+backend/app/models/models.py:26:    site_id = Column(Integer, ForeignKey("sites.id", ondelete="CASCADE"))
+backend/app/models/models.py:36:    room_id = Column(Integer, ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True)
+backend/app/models/models.py:51:    is_deleted = Column(Boolean, default=False)
+backend/app/models/models.py:55:    device_locations = relationship("DeviceLocation", back_populates="rack", cascade="all, delete-orphan")
+backend/app/models/models.py:111:    is_deleted = Column(Boolean, default=False)
+backend/app/models/models.py:114:    locations = relationship("DeviceLocation", back_populates="device", cascade="all, delete-orphan")
+backend/app/models/models.py:115:    components = relationship("HardwareComponent", back_populates="device", cascade="all, delete-orphan")
+backend/app/models/models.py:116:    software = relationship("DeviceSoftware", back_populates="device", cascade="all, delete-orphan")
+backend/app/models/models.py:117:    secrets = relationship("SecretVault", back_populates="device", cascade="all, delete-orphan")
+backend/app/models/models.py:118:    relationships = relationship("DeviceRelationship", primaryjoin="Device.id==DeviceRelationship.source_device_id", cascade="all, delete-orphan")
+backend/app/models/models.py:119:    maintenance_windows = relationship("MaintenanceWindow", back_populates="device", cascade="all, delete-orphan")
+backend/app/models/models.py:121:    monitoring_items = relationship("MonitoringItem", back_populates="device", cascade="all, delete-orphan")
+backend/app/models/models.py:122:    network_interfaces = relationship("NetworkInterface", back_populates="device", cascade="all, delete-orphan")
+backend/app/models/models.py:126:    device_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), nullable=True) # Nullable if service is floating/clustered
+backend/app/models/models.py:154:    is_deleted = Column(Boolean, default=False)
+backend/app/models/models.py:157:    secrets = relationship("ServiceSecret", back_populates="service", cascade="all, delete-orphan")
+backend/app/models/models.py:161:    service_id = Column(Integer, ForeignKey("logical_services.id", ondelete="CASCADE"))
+backend/app/models/models.py:169:    source_device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"))
+backend/app/models/models.py:170:    target_device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"))
+backend/app/models/models.py:178:    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"))
+backend/app/models/models.py:179:    rack_id = Column(Integer, ForeignKey("racks.id", ondelete="CASCADE"))
+backend/app/models/models.py:189:    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"))
+backend/app/models/models.py:200:    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"))
+backend/app/models/models.py:211:    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"))
+backend/app/models/models.py:221:    source_device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"))
+backend/app/models/models.py:226:    target_device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"))
+backend/app/models/models.py:265:    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"))
+backend/app/models/models.py:274:    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"))
+backend/app/models/models.py:285:    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=True)
+backend/app/models/models.py:307:    is_deleted = Column(Boolean, default=False)
+backend/app/models/models.py:312:    owners = relationship("MonitoringOwner", back_populates="monitoring_item", cascade="all, delete-orphan")
+backend/app/models/models.py:319:    monitoring_item_id = Column(Integer, ForeignKey("monitoring_items.id", ondelete="CASCADE"))
+backend/app/models/models.py:328:    monitoring_item_id = Column(Integer, ForeignKey("monitoring_items.id", ondelete="CASCADE"))
+backend/app/models/models.py:329:    operator_id = Column(Integer, ForeignKey("operators.id", ondelete="CASCADE"), nullable=True)
+backend/app/models/models.py:344:    source_device_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
+backend/app/models/models.py:345:    source_subnet_id = Column(Integer, ForeignKey("subnets.id", ondelete="SET NULL"), nullable=True)
+backend/app/models/models.py:350:    dest_device_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
+backend/app/models/models.py:351:    dest_subnet_id = Column(Integer, ForeignKey("subnets.id", ondelete="SET NULL"), nullable=True)
+backend/app/models/models.py:361:    is_deleted = Column(Boolean, default=False)
+backend/app/models/models.py:409:    is_deleted = Column(Boolean, default=False)
+backend/app/models/models.py:410:    history = relationship("DataFlowHistory", back_populates="data_flow", cascade="all, delete-orphan")
+backend/app/models/models.py:414:    data_flow_id = Column(Integer, ForeignKey("data_flows.id", ondelete="CASCADE"))
+backend/app/models/models.py:431:    internal_team_id = Column(Integer, ForeignKey("teams.id", ondelete="SET NULL"), nullable=True)
+backend/app/models/models.py:432:    internal_operator_id = Column(Integer, ForeignKey("operators.id", ondelete="SET NULL"), nullable=True)
+backend/app/models/models.py:460:    is_deleted = Column(Boolean, default=False)
+backend/app/models/models.py:462:    secrets = relationship("ExternalEntitySecret", back_populates="external_entity", cascade="all, delete-orphan")
+backend/app/models/models.py:468:    external_entity_id = Column(Integer, ForeignKey("external_entities.id", ondelete="CASCADE"))
+backend/app/models/models.py:532:    primary_personnel_id = Column(Integer, ForeignKey("vendor_personnel.id", ondelete="SET NULL"), nullable=True)
+backend/app/models/models.py:534:    is_deleted = Column(Boolean, default=False)
+backend/app/models/models.py:537:    personnel = relationship("VendorPersonnel", back_populates="vendor_ref", cascade="all, delete-orphan", foreign_keys="[VendorPersonnel.vendor_id]")
+backend/app/models/models.py:538:    contracts = relationship("VendorContract", back_populates="vendor_ref", cascade="all, delete-orphan")
+backend/app/models/models.py:539:    primary_personnel = relationship("VendorPersonnel", foreign_keys=[primary_personnel_id], post_update=True)
+backend/app/models/models.py:543:    vendor_id = Column(Integer, ForeignKey("vendors.id", ondelete="CASCADE"))
+backend/app/models/models.py:557:    is_deleted = Column(Boolean, default=False)
+backend/app/models/models.py:563:    vendor_id = Column(Integer, ForeignKey("vendors.id", ondelete="CASCADE"))
+backend/app/models/models.py:579:    is_deleted = Column(Boolean, default=False)
+backend/app/models/models.py:607:    is_deleted = Column(Boolean, default=False)
+backend/app/models/models.py:610:    qa_threads = relationship("KnowledgeQA", back_populates="knowledge", cascade="all, delete-orphan")
+backend/app/models/models.py:614:    knowledge_id = Column(Integer, ForeignKey("knowledge_entries.id", ondelete="CASCADE"))
+backend/app/models/models.py:615:    parent_qa_id = Column(Integer, ForeignKey("knowledge_qa.id", ondelete="CASCADE"), nullable=True)
+backend/app/models/models.py:630:    is_deleted = Column(Boolean, default=False)
+backend/app/models/models.py:634:    replies = relationship("KnowledgeQA", backref=backref("parent", remote_side="KnowledgeQA.id"), cascade="all, delete-orphan")
+backend/app/models/models.py:641:    Column("mode_id", Integer, ForeignKey("far_failure_modes.id", ondelete="CASCADE")),
+backend/app/models/models.py:642:    Column("device_id", Integer, ForeignKey("devices.id", ondelete="CASCADE"))
+backend/app/models/models.py:647:    Column("mode_id", Integer, ForeignKey("far_failure_modes.id", ondelete="CASCADE")),
+backend/app/models/models.py:648:    Column("cause_id", Integer, ForeignKey("far_failure_causes.id", ondelete="CASCADE"))
+backend/app/models/models.py:653:    Column("cause_id", Integer, ForeignKey("far_failure_causes.id", ondelete="CASCADE")),
+backend/app/models/models.py:654:    Column("resolution_id", Integer, ForeignKey("far_resolutions.id", ondelete="CASCADE"))
+backend/app/models/models.py:659:    Column("mode_id", Integer, ForeignKey("far_failure_modes.id", ondelete="CASCADE")),
+backend/app/models/models.py:660:    Column("mitigation_id", Integer, ForeignKey("far_mitigations.id", ondelete="CASCADE"))
+backend/app/models/models.py:666:    Column("rca_id", Integer, ForeignKey("rca_records.id", ondelete="CASCADE")),
+backend/app/models/models.py:667:    Column("failure_mode_id", Integer, ForeignKey("far_failure_modes.id", ondelete="CASCADE"))
+backend/app/models/models.py:688:    is_deleted = Column(Boolean, default=False)
+backend/app/models/models.py:695:    prevention_actions = relationship("FarPrevention", back_populates="failure_mode", cascade="all, delete-orphan")
+backend/app/models/models.py:700:    far_mode_id = Column(Integer, ForeignKey("far_failure_modes.id", ondelete="CASCADE"))
+backend/app/models/models.py:717:    mitigations = relationship("FarMitigation", backref="cause", cascade="all, delete-orphan")
+backend/app/models/models.py:718:    prevention_actions = relationship("FarPrevention", backref="cause", cascade="all, delete-orphan")
+backend/app/models/models.py:723:    knowledge_id = Column(Integer, ForeignKey("knowledge_entries.id", ondelete="SET NULL"), nullable=True)
+backend/app/models/models.py:739:    cause_id = Column(Integer, ForeignKey("far_failure_causes.id", ondelete="CASCADE"), nullable=True)
+backend/app/models/models.py:742:    monitoring_item_id = Column(Integer, ForeignKey("monitoring_items.id", ondelete="SET NULL"), nullable=True)
+backend/app/models/models.py:747:    failure_mode_id = Column(Integer, ForeignKey("far_failure_modes.id", ondelete="CASCADE"))
+backend/app/models/models.py:748:    cause_id = Column(Integer, ForeignKey("far_failure_causes.id", ondelete="CASCADE"), nullable=True)
+backend/app/models/models.py:787:    is_deleted = Column(Boolean, default=False)
+backend/app/models/models.py:790:    progress_logs = relationship("InvestigationProgress", back_populates="investigation", cascade="all, delete-orphan")
+backend/app/models/models.py:794:    investigation_id = Column(Integer, ForeignKey("investigations.id", ondelete="CASCADE"))
+backend/app/models/models.py:856:    is_deleted = Column(Boolean, default=False)
+backend/app/models/models.py:858:    tasks = relationship("ProjectTask", back_populates="project", cascade="all, delete-orphan")
+backend/app/models/models.py:859:    comments = relationship("ProjectComment", back_populates="project", cascade="all, delete-orphan")
+backend/app/models/models.py:860:    qa_items = relationship("ProjectQA", back_populates="project", cascade="all, delete-orphan")
+backend/app/models/models.py:864:    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"))
+backend/app/models/models.py:865:    parent_task_id = Column(Integer, ForeignKey("project_tasks.id", ondelete="CASCADE"), nullable=True)
+backend/app/models/models.py:883:    subtasks = relationship("ProjectTask", backref=backref("parent_task", remote_side="ProjectTask.id"), cascade="all, delete-orphan")
+backend/app/models/models.py:884:    comments = relationship("ProjectComment", back_populates="task", cascade="all, delete-orphan")
+backend/app/models/models.py:885:    qa_items = relationship("ProjectQA", back_populates="task", cascade="all, delete-orphan")
+backend/app/models/models.py:889:    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"))
+backend/app/models/models.py:890:    task_id = Column(Integer, ForeignKey("project_tasks.id", ondelete="CASCADE"), nullable=True)
+backend/app/models/models.py:901:    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"))
+backend/app/models/models.py:902:    task_id = Column(Integer, ForeignKey("project_tasks.id", ondelete="CASCADE"), nullable=True)
+backend/app/models/models.py:961:    knowledge_id = Column(Integer, ForeignKey("knowledge_entries.id", ondelete="SET NULL"), nullable=True)
+backend/app/models/models.py:962:    monitoring_item_id = Column(Integer, ForeignKey("monitoring_items.id", ondelete="SET NULL"), nullable=True)
+backend/app/models/models.py:966:    is_deleted = Column(Boolean, default=False)
+backend/app/models/models.py:970:    timeline = relationship("RcaTimelineEvent", back_populates="rca", cascade="all, delete-orphan")
+backend/app/models/models.py:971:    mitigations = relationship("RcaMitigation", back_populates="rca", cascade="all, delete-orphan")
+backend/app/models/models.py:978:    rca_id = Column(Integer, ForeignKey("rca_records.id", ondelete="CASCADE"))
+backend/app/models/models.py:991:    rca_id = Column(Integer, ForeignKey("rca_records.id", ondelete="CASCADE"))
+backend/app/models/models.py:1000:    rca_id = Column(Integer, ForeignKey("rca_records.id", ondelete="CASCADE"))
+backend/app/models/models.py:1030:    is_archived = Column(Boolean, default=False)
+backend/app/models/models.py:1034:    audits = relationship("TeamAudit", back_populates="team", cascade="all, delete-orphan")
+backend/app/models/models.py:1038:    team_id = Column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), nullable=True)
+backend/app/models/models.py:1060:    team_id = Column(Integer, ForeignKey("teams.id", ondelete="SET NULL"), nullable=True)
+Binary file backend/app/models/__pycache__/config.cpython-313.pyc matches
+Binary file backend/app/models/__pycache__/config.cpython-311.pyc matches
+Binary file backend/app/models/__pycache__/models.cpython-313.pyc matches
+Binary file backend/app/models/__pycache__/models.cpython-311.pyc matches
+Binary file backend/app/__pycache__/database.cpython-311.pyc matches
+Binary file backend/app/__pycache__/database.cpython-313.pyc matches
+Binary file backend/app/schemas/__pycache__/schemas.cpython-313.pyc matches
+Binary file backend/app/schemas/__pycache__/schemas.cpython-311.pyc matches
+Binary file backend/app/schemas/__pycache__/schemas.cpython-314.pyc matches
+backend/app/schemas/schemas.py:11:    updated_at: Optional[datetime] = None
+backend/app/schemas/schemas.py:188:    is_deleted: Optional[bool] = False
+backend/app/schemas/schemas.py:236:    is_deleted: bool = False
+backend/app/schemas/schemas.py:286:    is_deleted: bool = False
+backend/app/schemas/schemas.py:465:    is_deleted: bool = False
+backend/app/schemas/schemas.py:964:    is_deleted: bool = False
+backend/app/schemas/schemas.py:1035:    is_deleted: bool = False
+backend/app/schemas/schemas.py:1075:    is_deleted: bool = False
+backend/app/api/vendors.py:3:from sqlalchemy import select, delete, update
+backend/app/api/vendors.py:11:IMMUTABLE_VENDOR_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id"}
+backend/app/api/vendors.py:30:async def get_vendors(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
+backend/app/api/vendors.py:35:    if not include_deleted:
+backend/app/api/vendors.py:36:        query = query.filter(models.Vendor.is_deleted == False)
+backend/app/api/vendors.py:53:async def update_vendor(vendor_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+backend/app/api/vendors.py:65:@router.delete("/{vendor_id}")
+backend/app/api/vendors.py:66:async def delete_vendor(vendor_id: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/vendors.py:71:    vendor.is_deleted = True
+backend/app/api/vendors.py:92:async def update_personnel(personnel_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+backend/app/api/vendors.py:112:@router.delete("/personnel/{personnel_id}")
+backend/app/api/vendors.py:113:async def delete_personnel(personnel_id: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/vendors.py:118:    await db.delete(personnel)
+backend/app/api/vendors.py:125:async def get_contracts(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
+backend/app/api/vendors.py:127:    if not include_deleted:
+backend/app/api/vendors.py:128:        query = query.filter(models.VendorContract.is_deleted == False)
+backend/app/api/vendors.py:159:async def update_contract(contract_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+backend/app/api/vendors.py:192:    if action == "delete":
+backend/app/api/vendors.py:194:            await db.execute(delete(model).where(model.id.in_(ids)))
+backend/app/api/vendors.py:196:            await db.execute(update(model).where(model.id.in_(ids)).values(is_deleted=True))
+backend/app/api/vendors.py:197:    elif action == "restore":
+backend/app/api/vendors.py:198:        await db.execute(update(model).where(model.id.in_(ids)).values(is_deleted=False))
+backend/app/api/vendors.py:199:    elif action == "purge":
+backend/app/api/vendors.py:200:        await db.execute(delete(model).where(model.id.in_(ids)))
+backend/app/api/far.py:11:from sqlalchemy import delete, update
+backend/app/api/far.py:15:IMMUTABLE_FAR_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id", "version"}
+backend/app/api/far.py:43:        delete(models.FarHistory)
+backend/app/api/far.py:67:    ).filter(models.FarFailureMode.is_deleted == False)
+backend/app/api/far.py:131:async def update_failure_mode(mode_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+backend/app/api/far.py:140:    # Track if we need to update RPN
+backend/app/api/far.py:186:@router.post("/modes/{mode_id}/restore/{version}")
+backend/app/api/far.py:187:async def restore_far_version(mode_id: int, version: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/far.py:217:@router.delete("/modes/{mode_id}")
+backend/app/api/far.py:218:async def delete_failure_mode(mode_id: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/far.py:224:    mode.is_deleted = True
+backend/app/api/far.py:228:@router.post("/modes/bulk-delete")
+backend/app/api/far.py:229:async def bulk_delete_failure_modes(data: dict, db: AsyncSession = Depends(get_db)):
+backend/app/api/far.py:238:        mode.is_deleted = True
+backend/app/api/far.py:287:@router.delete("/causes/{cause_id}")
+backend/app/api/far.py:288:async def delete_cause(cause_id: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/far.py:295:    await db.delete(cause)
+backend/app/api/far.py:358:@router.delete("/mitigations/{mitigation_id}")
+backend/app/api/far.py:359:async def delete_mitigation(mitigation_id: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/far.py:366:    await db.delete(mitigation)
+backend/app/api/audit.py:3:from sqlalchemy import select, delete
+backend/app/api/maintenance.py:3:from sqlalchemy import select, delete, update
+backend/app/api/maintenance.py:60:@router.delete("/{mw_id}")
+backend/app/api/maintenance.py:61:async def delete_maintenance_window(mw_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/maintenance.py:65:        db.delete(mw)
+backend/app/api/monitoring.py:3:from sqlalchemy import select, delete, update, func
+backend/app/api/monitoring.py:13:IMMUTABLE_MONITORING_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id"}
+backend/app/api/monitoring.py:62:    result = await db.execute(select(models.Team.name).where(models.Team.is_archived == False))
+backend/app/api/monitoring.py:119:        "is_deleted": bool(values.get("is_deleted", False)),
+backend/app/api/monitoring.py:163:            "is_deleted": item.is_deleted,
+backend/app/api/monitoring.py:189:    if action_label == "delete":
+backend/app/api/monitoring.py:191:    if action_label == "restore":
+backend/app/api/monitoring.py:215:        "is_deleted": "Deletion state",
+backend/app/api/monitoring.py:248:    "is_deleted": "Deletion state",
+backend/app/api/monitoring.py:298:        models.MonitoringItem.is_deleted == False,
+backend/app/api/monitoring.py:321:        "delete": "Archived monitors",
+backend/app/api/monitoring.py:322:        "restore": "Restored monitors",
+backend/app/api/monitoring.py:323:        "purge": "Purged monitors",
+backend/app/api/monitoring.py:324:        "update": "Updated monitors",
+backend/app/api/monitoring.py:329:    if action == "update" and changed_fields:
+backend/app/api/monitoring.py:466:        clean_data["is_deleted"] = clean_data["status"] == "Deleted"
+backend/app/api/monitoring.py:521:        delete(models.MonitoringHistory)
+backend/app/api/monitoring.py:554:            "updated_at": entry.updated_at,
+backend/app/api/monitoring.py:568:async def get_monitoring_items(device_id: Optional[int] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
+backend/app/api/monitoring.py:572:    if not include_deleted:
+backend/app/api/monitoring.py:573:        query = query.filter(models.MonitoringItem.is_deleted == False)
+backend/app/api/monitoring.py:592:            all_service_ids.update(item.monitored_services)
+backend/app/api/monitoring.py:667:async def update_monitoring_item(item_id: int, data: dict, db: AsyncSession = Depends(get_db), user_id: str = Header(None, alias="X-User-Id")):
+backend/app/api/monitoring.py:699:    merged_payload.update(data)
+backend/app/api/monitoring.py:713:        await db.execute(delete(models.MonitoringOwner).where(models.MonitoringOwner.monitoring_item_id == item_id))
+backend/app/api/monitoring.py:723:        summarize_monitoring_snapshot_delta(previous_snapshot, next_snapshot, action_label="update"),
+backend/app/api/monitoring.py:742:    if action == "delete":
+backend/app/api/monitoring.py:750:            if item.is_deleted and item.status == "Deleted":
+backend/app/api/monitoring.py:754:            item.is_deleted = True
+backend/app/api/monitoring.py:762:                summarize_monitoring_snapshot_delta(previous_snapshot, build_monitoring_snapshot(item), action_label="delete"),
+backend/app/api/monitoring.py:765:    elif action == "purge":
+backend/app/api/monitoring.py:766:        delete_result = await db.execute(delete(models.MonitoringItem).where(models.MonitoringItem.id.in_(ids)))
+backend/app/api/monitoring.py:767:        changed_count = delete_result.rowcount or 0
+backend/app/api/monitoring.py:769:    elif action == "restore":
+backend/app/api/monitoring.py:777:            if not item.is_deleted and item.status == "Existing":
+backend/app/api/monitoring.py:781:            item.is_deleted = False
+backend/app/api/monitoring.py:789:                summarize_monitoring_snapshot_delta(previous_snapshot, build_monitoring_snapshot(item), action_label="restore"),
+backend/app/api/monitoring.py:792:    elif action == "update":
+backend/app/api/monitoring.py:830:                merged_payload.update(payload)
+backend/app/api/monitoring.py:831:                validated_update, owners_data = await build_monitoring_payload(db, merged_payload, partial=False)
+backend/app/api/monitoring.py:832:                await ensure_monitoring_item_uniqueness(db, item_data=validated_update, exclude_item_id=item.id)
+backend/app/api/monitoring.py:833:                next_snapshot = build_monitoring_snapshot_from_values(validated_update, owners_data)
+backend/app/api/monitoring.py:837:                for key, value in validated_update.items():
+backend/app/api/monitoring.py:840:                    await db.execute(delete(models.MonitoringOwner).where(models.MonitoringOwner.monitoring_item_id == item.id))
+backend/app/api/monitoring.py:849:                    summarize_monitoring_snapshot_delta(previous_snapshot, next_snapshot, action_label="update"),
+backend/app/api/monitoring.py:852:                changed_fields.update(
+backend/app/api/monitoring.py:886:@router.delete("/{item_id}")
+backend/app/api/monitoring.py:887:async def delete_monitoring_item(item_id: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/monitoring.py:890:    if item.is_deleted and item.status == "Deleted":
+backend/app/api/monitoring.py:893:    item.is_deleted = True
+backend/app/api/monitoring.py:901:        summarize_monitoring_snapshot_delta(previous_snapshot, build_monitoring_snapshot(item), action_label="delete"),
+backend/app/api/monitoring.py:907:@router.post("/{item_id}/restore/{history_id}", response_model=schemas.MonitoringItemResponse)
+backend/app/api/monitoring.py:908:async def restore_monitoring_history_version(item_id: int, history_id: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/monitoring.py:937:    await db.execute(delete(models.MonitoringOwner).where(models.MonitoringOwner.monitoring_item_id == item_id))
+backend/app/api/monitoring.py:958:        summarize_monitoring_snapshot_delta(current_snapshot, target_snapshot, action_label="restore"),
+backend/app/api/security.py:3:from sqlalchemy import select, delete, update, or_
+backend/app/api/security.py:22:        "updated_at": secret.updated_at.isoformat() if secret.updated_at else None,
+backend/app/api/security.py:82:        "updated_at": rule.updated_at.isoformat() if rule.updated_at else None
+backend/app/api/security.py:88:    include_deleted: bool = False, 
+backend/app/api/security.py:99:    if not include_deleted:
+backend/app/api/security.py:100:        query = query.filter(models.FirewallRule.is_deleted == False)
+backend/app/api/security.py:109:    result = await db.execute(query.order_by(models.FirewallRule.updated_at.desc()))
+backend/app/api/security.py:151:async def update_firewall_rule(rule_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+backend/app/api/security.py:177:@router.delete("/firewall/{rule_id}")
+backend/app/api/security.py:178:async def delete_firewall_rule(rule_id: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/security.py:183:    rule.is_deleted = True
+backend/app/api/logical_services.py:3:from sqlalchemy import select, update
+backend/app/api/logical_services.py:11:IMMUTABLE_SERVICE_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id"}
+backend/app/api/logical_services.py:49:        "is_deleted": service.is_deleted,
+backend/app/api/logical_services.py:51:        "updated_at": service.updated_at.isoformat() if service.updated_at else None,
+backend/app/api/logical_services.py:79:        "is_deleted": service.is_deleted,
+backend/app/api/logical_services.py:112:            models.LogicalService.is_deleted == False
+backend/app/api/logical_services.py:114:        .order_by(models.LogicalService.updated_at.desc(), models.LogicalService.id.desc())
+backend/app/api/logical_services.py:127:    include_deleted: bool = False,
+backend/app/api/logical_services.py:136:    if not include_deleted:
+backend/app/api/logical_services.py:137:        query = query.filter(models.LogicalService.is_deleted == False)
+backend/app/api/logical_services.py:167:    include_deleted: bool = False,
+backend/app/api/logical_services.py:170:    return await get_services(device_id=device_id, include_deleted=include_deleted, projection="summary", db=db)
+backend/app/api/logical_services.py:197:@router.delete("/{service_id}/secrets/{secret_id}")
+backend/app/api/logical_services.py:198:async def delete_service_secret(service_id: int, secret_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/logical_services.py:206:    await db.delete(secret)
+backend/app/api/logical_services.py:255:async def update_service(service_id: int, data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/logical_services.py:292:@router.delete("/{service_id}")
+backend/app/api/logical_services.py:293:async def delete_service(service_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/logical_services.py:300:    svc.is_deleted = True
+backend/app/api/logical_services.py:307:        description=f"Soft-deleted service: {name}",
+backend/app/api/logical_services.py:325:    if action == "delete":
+backend/app/api/logical_services.py:326:        await db.execute(update(models.LogicalService).where(models.LogicalService.id.in_(ids)).values(is_deleted=True))
+backend/app/api/logical_services.py:327:    elif action == "restore":
+backend/app/api/logical_services.py:328:        await db.execute(update(models.LogicalService).where(models.LogicalService.id.in_(ids)).values(is_deleted=False))
+backend/app/api/logical_services.py:329:    elif action == "update":
+backend/app/api/logical_services.py:332:        clean_update = {k: v for k, v in payload.items() if k in valid_keys}
+backend/app/api/logical_services.py:333:        if clean_update:
+backend/app/api/logical_services.py:334:            await db.execute(update(models.LogicalService).where(models.LogicalService.id.in_(ids)).values(**clean_update))
+backend/app/api/logical_services.py:335:            if "device_id" in clean_update:
+backend/app/api/logical_services.py:337:                if clean_update["device_id"]:
+backend/app/api/logical_services.py:338:                    affected_device_ids.add(clean_update["device_id"])
+backend/app/api/logical_services.py:339:                affected_device_ids.update(previous_device_ids)
+backend/app/api/logical_services.py:343:    if action in {"delete", "restore", "update"}:
+backend/app/api/logical_services.py:346:        affected_device_ids.update({service.device_id for service in refreshed_services if service.device_id})
+backend/app/api/logical_services.py:357:        changes={"ids": ids, "payload": payload if action == "update" else {}},
+backend/app/api/intelligence.py:3:from sqlalchemy import select, delete, update, or_, func
+backend/app/api/intelligence.py:14:IMMUTABLE_EXTERNAL_ENTITY_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id"}
+backend/app/api/intelligence.py:78:        "updated_at": secret.updated_at,
+backend/app/api/intelligence.py:103:        "updated_at": entity.updated_at,
+backend/app/api/intelligence.py:141:        "is_deleted": bool(entity.is_deleted),
+backend/app/api/intelligence.py:183:        models.ExternalEntity.is_deleted == False,
+backend/app/api/intelligence.py:196:async def _validate_restoreable_external_entity(db: AsyncSession, entity: models.ExternalEntity) -> None:
+backend/app/api/intelligence.py:199:            raise HTTPException(409, detail="Archived team-owned external entity cannot be restored without an accountable internal team")
+backend/app/api/intelligence.py:200:        team = await db.scalar(select(models.Team).where(models.Team.id == entity.internal_team_id, models.Team.is_archived == False))
+backend/app/api/intelligence.py:202:            raise HTTPException(409, detail="Archived team-owned external entity cannot be restored because the accountable team is missing or archived")
+backend/app/api/intelligence.py:205:            raise HTTPException(409, detail="Archived individually owned external entity cannot be restored without an accountable operator")
+backend/app/api/intelligence.py:208:            raise HTTPException(409, detail="Archived individually owned external entity cannot be restored because the accountable operator is missing")
+backend/app/api/intelligence.py:249:async def get_entities(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
+backend/app/api/intelligence.py:251:    if not include_deleted:
+backend/app/api/intelligence.py:252:        query = query.filter(models.ExternalEntity.is_deleted == False)
+backend/app/api/intelligence.py:275:async def update_entity(entity_id: int, data: schemas.ExternalEntityUpdate, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/intelligence.py:295:        sent_keys.update(["owner_team", "internal_team_id", "internal_operator_id"])
+backend/app/api/intelligence.py:310:@router.post("/entities/{entity_id}/restore")
+backend/app/api/intelligence.py:311:async def restore_entity(entity_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/intelligence.py:316:    await _validate_restoreable_external_entity(db, obj)
+backend/app/api/intelligence.py:357:    obj.is_deleted = False
+backend/app/api/intelligence.py:362:@router.delete("/entities/{entity_id}")
+backend/app/api/intelligence.py:363:async def delete_entity(entity_id: int, request: Request, purge: bool = False, db: AsyncSession = Depends(get_db)):
+backend/app/api/intelligence.py:368:    if purge:
+backend/app/api/intelligence.py:372:            raise HTTPException(400, "Cannot purge entity with active connectivity links")
+backend/app/api/intelligence.py:375:            raise HTTPException(400, "Cannot purge entity with registered credentials")
+backend/app/api/intelligence.py:376:        await db.delete(obj)
+backend/app/api/intelligence.py:377:        await log_audit(db, request, "PURGE", "external_entities", entity_id, f"Permanently purged external entity: {obj.name}")
+backend/app/api/intelligence.py:379:        obj.is_deleted = True
+backend/app/api/intelligence.py:380:        await log_audit(db, request, "DELETE", "external_entities", entity_id, f"Soft-deleted external entity: {obj.name}")
+backend/app/api/intelligence.py:392:    if obj.is_deleted:
+backend/app/api/intelligence.py:393:        raise HTTPException(400, "Cannot attach credentials to an archived external entity")
+backend/app/api/intelligence.py:405:@router.delete("/entities/{entity_id}/secrets/{secret_id}")
+backend/app/api/intelligence.py:406:async def delete_entity_secret(entity_id: int, secret_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/intelligence.py:414:    await db.delete(secret)
+backend/app/api/intelligence.py:458:    if entity.is_deleted:
+backend/app/api/intelligence.py:459:        raise HTTPException(400, "Cannot create a link for an archived external entity")
+backend/app/api/intelligence.py:481:@router.delete("/links/{link_id}")
+backend/app/api/intelligence.py:482:async def delete_link(link_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/intelligence.py:487:    await db.delete(obj)
+Binary file backend/app/api/__pycache__/rca.cpython-311-pytest-9.0.2.pyc matches
+Binary file backend/app/api/__pycache__/networks.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/rca.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/rca.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/networks.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/audit.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/security.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/intelligence.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/sites.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/sites.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/intelligence.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/security.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/audit.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/dashboard.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/settings.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/far.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/ipam.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/vendors.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/vendors.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/ipam.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/far.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/settings.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/dashboard.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/knowledge.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/data_flows.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/maintenance.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/settings.cpython-314.pyc matches
+Binary file backend/app/api/__pycache__/maintenance.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/data_flows.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/knowledge.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/tenants.cpython-314.pyc matches
+Binary file backend/app/api/__pycache__/import_engine.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/devices.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/projects.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/projects.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/devices.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/import_engine.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/investigations.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/tenants.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/tenants.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/investigations.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/monitoring.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/troubleshoot.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/logical_services.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/logical_services.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/troubleshoot.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/monitoring.cpython-313.pyc matches
+Binary file backend/app/api/__pycache__/racks.cpython-311.pyc matches
+Binary file backend/app/api/__pycache__/racks.cpython-313.pyc matches
+backend/app/api/rca.py:3:from sqlalchemy import select, delete, update
+backend/app/api/rca.py:47:        delete(models.RcaHistory)
+backend/app/api/rca.py:77:    query = select(models.RcaRecord).options(*get_rca_options()).filter(models.RcaRecord.is_deleted == False)
+backend/app/api/rca.py:125:async def update_rca(rca_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+backend/app/api/rca.py:205:@router.post("/{rca_id}/restore/{version}")
+backend/app/api/rca.py:206:async def restore_rca_version(rca_id: int, version: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/rca.py:233:        elif hasattr(record, k) and k not in ['id', 'created_at', 'updated_at']:
+backend/app/api/rca.py:242:@router.delete("/{rca_id}")
+backend/app/api/rca.py:243:async def delete_rca(rca_id: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/rca.py:248:    record.is_deleted = True
+backend/app/api/dashboard.py:29:    racks_count = (await db.execute(select(func.count(models.Rack.id)).filter(models.Rack.is_deleted == False))).scalar() or 0
+backend/app/api/dashboard.py:34:    ).filter(models.Device.is_deleted == False)
+backend/app/api/dashboard.py:38:    devices = (await db.execute(select(models.Device).filter(models.Device.is_deleted == False))).scalars().all()
+backend/app/api/dashboard.py:45:    services = (await db.execute(select(models.LogicalService).filter(models.LogicalService.is_deleted == False))).scalars().all()
+backend/app/api/dashboard.py:52:    externals = (await db.execute(select(models.ExternalEntity).filter(models.ExternalEntity.is_deleted == False))).scalars().all()
+backend/app/api/dashboard.py:66:    mon_items = (await db.execute(select(models.MonitoringItem).filter(models.MonitoringItem.is_deleted == False))).scalars().all()
+backend/app/api/dashboard.py:73:    research = (await db.execute(select(models.Investigation).order_by(desc(models.Investigation.updated_at)).limit(3))).scalars().all()
+backend/app/api/dashboard.py:79:    projects_in_progress = (await db.execute(select(models.Project).filter(models.Project.status == "In Progress").order_by(desc(models.Project.updated_at)).limit(3))).scalars().all()
+backend/app/api/dashboard.py:80:    projects_completed = (await db.execute(select(models.Project).filter(models.Project.status == "Completed").order_by(desc(models.Project.updated_at)).limit(3))).scalars().all()
+backend/app/api/dashboard.py:107:                "timestamp": m.updated_at.isoformat() if m.updated_at else None
+backend/app/api/dashboard.py:124:            "research": [{"id": r.id, "title": r.title, "updated_at": r.updated_at} for r in research],
+backend/app/api/dashboard.py:129:                "in_progress": [{"id": p.id, "title": p.name, "updated_at": p.updated_at} for p in projects_in_progress],
+backend/app/api/dashboard.py:130:                "completed": [{"id": p.id, "title": p.name, "updated_at": p.updated_at} for p in projects_completed]
+backend/app/api/dashboard.py:156:        models.Device.is_deleted == False,
+backend/app/api/dashboard.py:177:        models.Project.is_deleted == False,
+backend/app/api/dashboard.py:194:        models.FarFailureMode.is_deleted == False,
+backend/app/api/dashboard.py:212:        models.LogicalService.is_deleted == False,
+backend/app/api/dashboard.py:231:        models.MonitoringItem.is_deleted == False,
+backend/app/api/dashboard.py:251:        models.KnowledgeEntry.is_deleted == False,
+backend/app/api/troubleshoot.py:3:from sqlalchemy import select, delete, update
+backend/app/api/troubleshoot.py:55:            all_device_ids.update(inc.impacted_device_ids)
+backend/app/api/troubleshoot.py:104:async def update_incident(incident_id: int, data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/troubleshoot.py:139:@router.delete("/{incident_id}")
+backend/app/api/troubleshoot.py:140:async def delete_incident(incident_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/troubleshoot.py:146:    await db.delete(inc)
+backend/app/api/troubleshoot.py:162:    if action == "delete":
+backend/app/api/troubleshoot.py:163:        await db.execute(delete(models.IncidentLog).where(models.IncidentLog.id.in_(ids)))
+backend/app/api/troubleshoot.py:164:        log = build_audit_log(request=request, action="DELETE", target_table="incident_logs", target_id="MULTIPLE", description=f"Bulk purged {len(ids)} incident records")
+backend/app/api/networks.py:3:from sqlalchemy import select, delete, update, or_, and_, func
+backend/app/api/networks.py:84:async def update_interface(interface_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+backend/app/api/networks.py:98:async def get_connections(device_id: int = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
+backend/app/api/networks.py:143:    if not include_deleted:
+backend/app/api/networks.py:154:            "updated_at": conn.updated_at,
+backend/app/api/networks.py:188:            "is_deleted": conn.status == "Deleted",
+backend/app/api/networks.py:261:async def bulk_update_status(data: schemas.NetworkConnectionBulkStatus, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/networks.py:268:        update(models.PortConnection)
+backend/app/api/networks.py:273:    log = build_audit_log(request=request, action="BULK_UPDATE", target_table="port_connections", description=f"Bulk updated {len(ids)} links to {new_status}")
+backend/app/api/networks.py:278:@router.post("/connections/bulk-restore")
+backend/app/api/networks.py:279:async def bulk_restore_connections(data: schemas.NetworkConnectionBulkIds, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/networks.py:283:        return {"status": "success", "count": 0, "changed": 0, "summary": "No deleted connections restored"}
+backend/app/api/networks.py:285:        raise HTTPException(status_code=400, detail="Only deleted connections can be restored")
+backend/app/api/networks.py:288:        update(models.PortConnection)
+backend/app/api/networks.py:293:    log = build_audit_log(request=request, action="BULK_RESTORE", target_table="port_connections", description=f"Bulk restored {len(ids)} network links")
+backend/app/api/networks.py:298:@router.post("/connections/bulk-delete")
+backend/app/api/networks.py:299:async def bulk_delete_connections(data: schemas.NetworkConnectionBulkIds, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/networks.py:307:        return {"status": "success", "count": 0, "changed": 0, "summary": "No connections archived"}
+backend/app/api/networks.py:309:    deleted_ids = []
+backend/app/api/networks.py:311:        deleted_ids.append(conn.id)
+backend/app/api/networks.py:314:    log = build_audit_log(request=request, action="BULK_DELETE", target_table="port_connections", description=f"Bulk severed {len(deleted_ids)} network links")
+backend/app/api/networks.py:317:    return {"status": "success", "count": len(deleted_ids), "changed": len(deleted_ids), "deleted_ids": deleted_ids, "summary": f"Archived {len(deleted_ids)} connections"}
+backend/app/api/networks.py:319:@router.post("/connections/bulk-purge")
+backend/app/api/networks.py:320:async def bulk_purge_connections(data: schemas.NetworkConnectionBulkIds, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/networks.py:327:        return {"status": "success", "count": 0, "changed": 0, "summary": "No deleted connections purged"}
+backend/app/api/networks.py:329:        raise HTTPException(status_code=400, detail="Only deleted connections can be purged")
+backend/app/api/networks.py:331:    deleted_ids = [conn.id for conn in connections]
+backend/app/api/networks.py:332:    log = build_audit_log(request=request, action="BULK_PURGE", target_table="port_connections", description=f"Bulk purged {len(deleted_ids)} network links")
+backend/app/api/networks.py:335:        await db.delete(conn)
+backend/app/api/networks.py:337:    return {"status": "success", "count": len(deleted_ids), "changed": len(deleted_ids), "deleted_ids": deleted_ids, "summary": f"Purged {len(deleted_ids)} connections"}
+backend/app/api/networks.py:340:async def update_connection(conn_id: int, data: schemas.NetworkConnectionUpdate, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/networks.py:420:@router.delete("/connections/{conn_id}")
+backend/app/api/networks.py:421:async def delete_connection(conn_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/networks.py:432:@router.post("/connections/{conn_id}/restore")
+backend/app/api/networks.py:433:async def restore_connection(conn_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/networks.py:438:        raise HTTPException(status_code=400, detail="Only deleted connections can be restored")
+backend/app/api/networks.py:446:@router.post("/connections/{conn_id}/purge")
+backend/app/api/networks.py:447:async def purge_connection(conn_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/networks.py:452:        raise HTTPException(status_code=400, detail="Only deleted connections can be purged")
+backend/app/api/networks.py:456:    await db.delete(conn)
+backend/app/api/sites.py:3:from sqlalchemy import select, delete, update, func
+backend/app/api/sites.py:22:            update(models.Site)
+backend/app/api/sites.py:68:async def update_site(site_id: int, data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/sites.py:93:@router.delete("/{site_id}")
+backend/app/api/sites.py:94:async def delete_site(site_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/sites.py:99:    # Before deleting the site, find all racks associated with it and update their last_site_name
+backend/app/api/sites.py:100:    # Racks are linked to Site via Room. Room has cascade delete, which sets Rack.room_id to NULL.
+backend/app/api/sites.py:111:    await db.delete(site)
+backend/app/api/settings.py:6:from sqlalchemy import select, delete, update
+backend/app/api/settings.py:213:        updated = [new_value if entry == old_value else entry for entry in current]
+backend/app/api/settings.py:214:        setattr(row, field_name, updated)
+backend/app/api/settings.py:235:        await db.execute(update(models.Device).where(models.Device.status == old_value).values(status=new_value))
+backend/app/api/settings.py:236:        await db.execute(update(models.LogicalService).where(models.LogicalService.status == old_value).values(status=new_value))
+backend/app/api/settings.py:237:        await db.execute(update(models.MaintenanceWindow).where(models.MaintenanceWindow.status == old_value).values(status=new_value))
+backend/app/api/settings.py:238:        await db.execute(update(models.ExternalEntity).where(models.ExternalEntity.status == old_value).values(status=new_value))
+backend/app/api/settings.py:240:        await db.execute(update(models.Device).where(models.Device.environment == old_value).values(environment=new_value))
+backend/app/api/settings.py:241:        await db.execute(update(models.LogicalService).where(models.LogicalService.environment == old_value).values(environment=new_value))
+backend/app/api/settings.py:242:        await db.execute(update(models.ExternalEntity).where(models.ExternalEntity.environment == old_value).values(environment=new_value))
+backend/app/api/settings.py:244:        await db.execute(update(models.Device).where(models.Device.type == old_value).values(type=new_value))
+backend/app/api/settings.py:246:        await db.execute(update(models.Device).where(models.Device.system == old_value).values(system=new_value))
+backend/app/api/settings.py:249:        await db.execute(update(models.Vendor).where(models.Vendor.country == old_value).values(country=new_value))
+backend/app/api/settings.py:253:        await db.execute(update(models.PortConnection).where(models.PortConnection.link_type == old_value).values(link_type=new_value))
+backend/app/api/settings.py:255:        await db.execute(update(models.PortConnection).where(models.PortConnection.farm == old_value).values(farm=new_value))
+backend/app/api/settings.py:257:        await db.execute(update(models.PortConnection).where(models.PortConnection.cable_type == old_value).values(cable_type=new_value))
+backend/app/api/settings.py:259:        await db.execute(update(models.Device).where(models.Device.manufacturer == old_value).values(manufacturer=new_value))
+backend/app/api/settings.py:261:        await db.execute(update(models.Device).where(models.Device.model == old_value).values(model=new_value))
+backend/app/api/settings.py:263:        await db.execute(update(models.Device).where(models.Device.owner == old_value).values(owner=new_value))
+backend/app/api/settings.py:265:        await db.execute(update(models.Device).where(models.Device.business_unit == old_value).values(business_unit=new_value))
+backend/app/api/settings.py:267:        await db.execute(update(models.Device).where(models.Device.vendor == old_value).values(vendor=new_value))
+backend/app/api/settings.py:269:        await db.execute(update(models.LogicalService).where(models.LogicalService.service_type == old_value).values(service_type=new_value))
+backend/app/api/settings.py:271:        await db.execute(update(models.MonitoringItem).where(models.MonitoringItem.category == old_value).values(category=new_value))
+backend/app/api/settings.py:273:        await db.execute(update(models.MonitoringItem).where(models.MonitoringItem.platform == old_value).values(platform=new_value))
+backend/app/api/settings.py:275:        await db.execute(update(models.ExternalEntity).where(models.ExternalEntity.type == old_value).values(type=new_value))
+backend/app/api/settings.py:385:    await db.execute(update(models.UserPoolVersion).values(is_active=False))
+backend/app/api/settings.py:454:        summary.update(extra_summary)
+backend/app/api/settings.py:469:    await db.execute(update(models.UserPoolVersion).values(is_active=False))
+backend/app/api/settings.py:630:    team_updates = []
+backend/app/api/settings.py:632:        team_updates.append({"external_id": op.external_id, "old": previous_state["team"], "new": current_state["team"], "mode": "primary_team_changed"})
+backend/app/api/settings.py:634:        team_updates.append({"external_id": op.external_id, "old": previous_state["teams"], "new": current_state["teams"], "mode": "group_membership_changed"})
+backend/app/api/settings.py:638:        "team_updates": team_updates,
+backend/app/api/settings.py:642:async def apply_operator_delete(
+backend/app/api/settings.py:652:    await db.execute(delete(models.Operator).where(models.Operator.id == op.id))
+backend/app/api/settings.py:654:        "team_updates": [{"external_id": op.external_id, "old": op.team, "new": None, "mode": "operator_deleted"}],
+backend/app/api/settings.py:731:        permissions.update(operator.custom_permissions)
+backend/app/api/settings.py:774:async def update_user_settings(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/settings.py:783:        statement = statement.on_conflict_do_update(
+backend/app/api/settings.py:854:async def update_option(opt_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+backend/app/api/settings.py:900:@router.delete("/options/{opt_id}")
+backend/app/api/settings.py:901:async def delete_option(opt_id: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/settings.py:911:        raise HTTPException(status_code=400, detail="Cannot delete option that is currently in use")
+backend/app/api/settings.py:913:    await db.execute(delete(models.SettingOption).where(models.SettingOption.id == opt_id))
+backend/app/api/settings.py:942:async def update_ui_settings(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/settings.py:944:    from sqlalchemy import delete
+backend/app/api/settings.py:953:    await db.execute(delete(models.SettingOption).where(models.SettingOption.category == "UISettings"))
+backend/app/api/settings.py:1105:async def update_global_settings(data: dict, request: Request, db: AsyncSession = Depends(get_db), config_db: AsyncSession = Depends(get_config_db)):
+backend/app/api/settings.py:1113:        raise HTTPException(status_code=403, detail="Privileged Access Required: Configuration updates restricted to administrators.")
+backend/app/api/settings.py:1168:            description=f"Configuration parameter '{key}' updated via Admin Dashboard."
+backend/app/api/settings.py:1185:        print(f"IntegrityError during global settings update: {e}")
+backend/app/api/settings.py:1215:        .order_by(models.Team.is_archived.asc(), models.Team.name.asc())
+backend/app/api/settings.py:1224:            "is_archived": team.is_archived,
+backend/app/api/settings.py:1227:            "updated_at": team.updated_at,
+backend/app/api/settings.py:1269:        is_archived=bool(data.get("is_archived", False)),
+backend/app/api/settings.py:1280:        "team_updates": [{"team": team.name, "mode": "team_created"}],
+backend/app/api/settings.py:1287:async def update_team(team_id: int, data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/settings.py:1302:        await db.execute(update(models.Operator).where(models.Operator.team_id == team_id).values(team=next_name))
+backend/app/api/settings.py:1306:            update(models.ExternalEntity)
+backend/app/api/settings.py:1316:    if "is_archived" in data:
+backend/app/api/settings.py:1317:        team.is_archived = bool(data.get("is_archived"))
+backend/app/api/settings.py:1325:        "is_archived" in data or
+backend/app/api/settings.py:1331:        await record_team_audit(db, team.id, "team_updated", user_id, {"from": old_name, "to": team.name})
+backend/app/api/settings.py:1336:            "team_updates": [{"team": team.name, "mode": "team_updated", "old": old_name, "new": team.name}],
+backend/app/api/settings.py:1342:@router.delete("/teams/{team_id}")
+backend/app/api/settings.py:1343:async def delete_team(team_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/settings.py:1353:        raise HTTPException(status_code=400, detail=f"Cannot delete team while references still exist: {active_refs}")
+backend/app/api/settings.py:1355:    await record_team_audit(db, None, "team_deleted", user_id, {"team_id": team.id, "name": team.name})
+backend/app/api/settings.py:1356:    await db.execute(delete(models.Team).where(models.Team.id == team_id))
+backend/app/api/settings.py:1361:        "team_updates": [{"team": team.name, "mode": "team_deleted"}],
+backend/app/api/settings.py:1428:                "team_updates": [{"external_id": external_id, "team": team.name, "mode": "member_added"}] if team else [],
+backend/app/api/settings.py:1438:async def update_operator(op_id: int, data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/settings.py:1443:    update_result = await apply_operator_patch(db, op=op, data=data, user_id=user_id)
+backend/app/api/settings.py:1444:    if update_result["changed"]:
+backend/app/api/settings.py:1449:            "team_updates": update_result["team_updates"],
+backend/app/api/settings.py:1456:@router.delete("/operators/{op_id}")
+backend/app/api/settings.py:1457:async def delete_operator(op_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/settings.py:1462:    delete_result = await apply_operator_delete(db, op=op, user_id=user_id)
+backend/app/api/settings.py:1467:        "team_updates": delete_result["team_updates"],
+backend/app/api/settings.py:1473:@router.post("/operators/bulk-update")
+backend/app/api/settings.py:1474:async def bulk_update_operators(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/settings.py:1475:    updates = data.get("updates")
+backend/app/api/settings.py:1476:    if not isinstance(updates, list) or not updates:
+backend/app/api/settings.py:1477:        raise HTTPException(status_code=400, detail="A non-empty updates list is required")
+backend/app/api/settings.py:1481:    team_updates: list[dict] = []
+backend/app/api/settings.py:1484:    for index, update_item in enumerate(updates):
+backend/app/api/settings.py:1485:        if not isinstance(update_item, dict):
+backend/app/api/settings.py:1486:            raise HTTPException(status_code=400, detail=f"updates[{index}] must be an object")
+backend/app/api/settings.py:1487:        op_id = update_item.get("id")
+backend/app/api/settings.py:1488:        payload = update_item.get("payload")
+backend/app/api/settings.py:1490:            raise HTTPException(status_code=400, detail=f"updates[{index}].id must be an integer")
+backend/app/api/settings.py:1492:            raise HTTPException(status_code=400, detail=f"updates[{index}].payload must be an object")
+backend/app/api/settings.py:1497:        update_result = await apply_operator_patch(db, op=op, data=payload, user_id=user_id)
+backend/app/api/settings.py:1498:        if update_result["changed"]:
+backend/app/api/settings.py:1500:        team_updates.extend(update_result["team_updates"])
+backend/app/api/settings.py:1507:            extra_summary={"team_updates": team_updates, "source": "bulk_operator_update"},
+backend/app/api/settings.py:1511:    return {"status": "success", "changed": changed_count > 0, "updated": changed_count}
+backend/app/api/settings.py:1514:@router.post("/operators/bulk-delete")
+backend/app/api/settings.py:1515:async def bulk_delete_operators(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/settings.py:1522:    team_updates: list[dict] = []
+backend/app/api/settings.py:1523:    deleted_count = 0
+backend/app/api/settings.py:1532:        delete_result = await apply_operator_delete(db, op=op, user_id=user_id)
+backend/app/api/settings.py:1533:        deleted_count += 1
+backend/app/api/settings.py:1534:        team_updates.extend(delete_result["team_updates"])
+backend/app/api/settings.py:1536:    if deleted_count:
+backend/app/api/settings.py:1541:            extra_summary={"team_updates": team_updates, "source": "bulk_operator_delete"},
+backend/app/api/settings.py:1545:    return {"status": "success", "changed": deleted_count > 0, "deleted": deleted_count}
+backend/app/api/settings.py:1608:        "team_updates": [],
+backend/app/api/settings.py:1668:                    diff_summary["team_updates"].append({"external_id": ext_id, "team": team.name, "mode": "created"})
+backend/app/api/settings.py:1721:                            diff_summary["team_updates"].append({"external_id": op.external_id, "team": team.name, "mode": "updated"})
+backend/app/api/settings.py:1756:                await db.delete(op)
+backend/app/api/settings.py:1782:@router.post("/user-pool/restore/{version_id}")
+backend/app/api/settings.py:1783:async def restore_user_pool(version_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/settings.py:1839:                await db.delete(op)
+backend/app/api/import_engine.py:65:    "updated_at",
+backend/app/api/import_engine.py:401:    devices = await db.execute(select(models.Device.name).where(models.Device.is_deleted == False).order_by(models.Device.name))
+backend/app/api/import_engine.py:402:    teams = await db.execute(select(models.Team.name).where(models.Team.is_archived == False).order_by(models.Team.name))
+backend/app/api/import_engine.py:411:        .where(models.MonitoringItem.is_deleted == False)
+backend/app/api/import_engine.py:412:        .order_by(models.MonitoringItem.updated_at.desc(), models.MonitoringItem.id.desc())
+backend/app/api/import_engine.py:503:    teams = await db.execute(select(models.Team.name).where(models.Team.is_archived == False).order_by(models.Team.name))
+backend/app/api/import_engine.py:510:        .where(models.ExternalEntity.is_deleted == False)
+backend/app/api/import_engine.py:511:        .order_by(models.ExternalEntity.updated_at.desc(), models.ExternalEntity.id.desc())
+backend/app/api/import_engine.py:630:        if team and not team.is_archived:
+backend/app/api/import_engine.py:634:            models.Team.is_archived == False,
+backend/app/api/import_engine.py:832:        models.ExternalEntity.is_deleted == False,
+backend/app/api/import_engine.py:875:        .where(models.Device.is_deleted == False)
+backend/app/api/import_engine.py:947:        if device and not device.is_deleted:
+backend/app/api/import_engine.py:951:            models.Device.is_deleted == False,
+backend/app/api/import_engine.py:1306:                        "is_deleted": item.is_deleted,
+backend/app/api/import_engine.py:1484:            query = select(profile.model).order_by(profile.model.updated_at.desc(), profile.model.id.desc()).limit(1)
+backend/app/api/import_engine.py:1522:            .where(models.MonitoringItem.is_deleted == False)
+backend/app/api/import_engine.py:1523:            .order_by(models.MonitoringItem.updated_at.desc(), models.MonitoringItem.id.desc())
+backend/app/api/import_engine.py:1533:        exclude = {"id", "created_at", "updated_at", "created_by_user_id"}
+backend/app/api/import_engine.py:1537:        if hasattr(model, "is_deleted"):
+backend/app/api/import_engine.py:1538:            query = query.where(model.is_deleted == False)
+backend/app/api/data_flows.py:64:        "is_deleted": flow.is_deleted,
+backend/app/api/data_flows.py:101:        "is_deleted": flow.is_deleted,
+backend/app/api/data_flows.py:104:        "updated_at": flow.updated_at.isoformat() if flow.updated_at else None,
+backend/app/api/data_flows.py:118:        "updated_at": entry.updated_at.isoformat() if entry.updated_at else None,
+backend/app/api/data_flows.py:151:    if "is_deleted" in data:
+backend/app/api/data_flows.py:152:        flow.is_deleted = data["is_deleted"]
+backend/app/api/data_flows.py:158:async def get_flows(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
+backend/app/api/data_flows.py:160:    query = query.where(models.DataFlow.is_deleted == include_deleted)
+backend/app/api/data_flows.py:161:    result = await db.execute(query.order_by(models.DataFlow.updated_at.desc(), models.DataFlow.id.desc()))
+backend/app/api/data_flows.py:201:async def update_flow(flow_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+backend/app/api/data_flows.py:224:@router.post("/{flow_id}/history/{history_id}/restore")
+backend/app/api/data_flows.py:225:async def restore_flow_version(flow_id: int, history_id: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/data_flows.py:239:    flow.is_deleted = False
+backend/app/api/data_flows.py:271:@router.post("/{flow_id}/restore")
+backend/app/api/data_flows.py:272:async def restore_flow(flow_id: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/data_flows.py:274:    flow.is_deleted = False
+backend/app/api/data_flows.py:277:    await save_history(flow, db, "Restored deleted architecture")
+backend/app/api/data_flows.py:283:@router.delete("/{flow_id}")
+backend/app/api/data_flows.py:284:async def delete_flow(flow_id: int, permanent: bool = False, db: AsyncSession = Depends(get_db)):
+backend/app/api/data_flows.py:288:        await db.delete(flow)
+backend/app/api/data_flows.py:292:    flow.is_deleted = True
+backend/app/api/projects.py:3:from sqlalchemy import select, delete, update, func
+backend/app/api/projects.py:15:async def get_projects(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
+backend/app/api/projects.py:23:    if not include_deleted:
+backend/app/api/projects.py:24:        query = query.filter(models.Project.is_deleted == False)
+backend/app/api/projects.py:35:                update(models.Project)
+backend/app/api/projects.py:40:    return {"message": "Order updated successfully"}
+backend/app/api/projects.py:78:async def update_project(project_id: int, data: schemas.ProjectUpdate, db: AsyncSession = Depends(get_db)):
+backend/app/api/projects.py:88:    update_data = data.model_dump(exclude_unset=True)
+backend/app/api/projects.py:89:    tasks_data = update_data.pop("tasks", None)
+backend/app/api/projects.py:96:    if update_data.get("status") == "Completed" and not db_project.completed_at and not update_data.get("completed_at"):
+backend/app/api/projects.py:99:    for key, value in update_data.items():
+backend/app/api/projects.py:110:                await db.delete(t_obj)
+backend/app/api/projects.py:146:    if update_data:
+backend/app/api/projects.py:151:            f"{k}: {previous_values.get(k)} -> {update_data[k]}"
+backend/app/api/projects.py:153:            if k in update_data and update_data[k] != previous_values.get(k)
+backend/app/api/projects.py:167:@router.delete("/{project_id}")
+backend/app/api/projects.py:168:async def delete_project(project_id: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/projects.py:173:    db_project.is_deleted = True
+backend/app/api/projects.py:175:    return {"message": "Project deleted"}
+backend/app/api/projects.py:185:    return await update_task(task.id, {}, db)
+backend/app/api/projects.py:188:async def update_task(task_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+backend/app/api/projects.py:243:async def update_qa(qa_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+backend/app/api/racks.py:4:from sqlalchemy import select, delete, and_, update, func
+backend/app/api/racks.py:44:@router.delete("/plans/{plan_id}")
+backend/app/api/racks.py:45:async def delete_plan(plan_id: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/racks.py:46:    await db.execute(delete(models.InfrastructurePlan).filter(models.InfrastructurePlan.id == plan_id))
+backend/app/api/racks.py:48:    return {"status": "deleted"}
+backend/app/api/racks.py:51:async def get_racks(site_id: Optional[str] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
+backend/app/api/racks.py:59:    if not include_deleted:
+backend/app/api/racks.py:60:        query = query.filter(models.Rack.is_deleted == False)
+backend/app/api/racks.py:134:            "is_deleted": rack.is_deleted,
+backend/app/api/racks.py:181:            update(models.Rack)
+backend/app/api/racks.py:258:async def update_rack(rack_id: int, data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/racks.py:348:@router.delete("/{rack_id}")
+backend/app/api/racks.py:349:async def delete_rack(rack_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+backend/app/api/racks.py:356:    rack.is_deleted = True
+backend/app/api/racks.py:362:        description=f"Soft-deleted rack {name}",
+backend/app/api/racks.py:363:        changes={"is_deleted": True}
+backend/app/api/racks.py:387:        .filter(models.DeviceLocation.device_id == device_id, models.Rack.is_deleted == False)
+backend/app/api/racks.py:426:    # Delete ANY existing locations (cleanup stale/deleted-rack locations + prepare for new location)
+backend/app/api/racks.py:427:    await db.execute(delete(models.DeviceLocation).where(models.DeviceLocation.device_id == device_id))
+backend/app/api/racks.py:464:    if action == "delete": # Soft delete
+backend/app/api/racks.py:465:        await db.execute(update(models.Rack).where(models.Rack.id.in_(ids)).values(is_deleted=True))
+backend/app/api/racks.py:468:            description=f"Soft-deleted {len(ids)} racks", changes={"ids": ids}
+backend/app/api/racks.py:471:    elif action == "purge": # Hard delete
+backend/app/api/racks.py:472:        await db.execute(delete(models.Rack).where(models.Rack.id.in_(ids)))
+backend/app/api/racks.py:475:            description=f"Permanently purged {len(ids)} racks", changes={"ids": ids}
+backend/app/api/racks.py:478:    elif action == "restore":
+backend/app/api/racks.py:480:        racks_to_restore = res.scalars().all()
+backend/app/api/racks.py:492:        restored_ids, conflict_ids = [], []
+backend/app/api/racks.py:493:        for r in racks_to_restore:
+backend/app/api/racks.py:505:                    models.Rack.is_deleted == False
+backend/app/api/racks.py:510:                    r.is_deleted = False
+backend/app/api/racks.py:515:                    restored_ids.append(r.id)
+backend/app/api/racks.py:516:            else: # If rack has no room, it can be restored directly (standalone)
+backend/app/api/racks.py:517:                r.is_deleted = False
+backend/app/api/racks.py:522:                restored_ids.append(r.id)
+backend/app/api/racks.py:526:            description=f"Restored {len(restored_ids)} racks", changes={"ids": restored_ids, "site_id": new_site_id}
+backend/app/api/racks.py:530:        return {"status": "success", "restored": restored_ids, "conflicts": conflict_ids}
+backend/app/api/racks.py:550:                models.Rack.is_deleted == False
+backend/app/api/racks.py:606:    await db.execute(delete(models.DeviceLocation).filter(models.DeviceLocation.device_id == device_id))
+backend/app/api/racks.py:630:@router.delete("/mount/{device_id}")
+backend/app/api/racks.py:637:    await db.execute(delete(models.DeviceLocation).where(models.DeviceLocation.device_id == device_id))
+backend/app/api/tenants.py:3:from sqlalchemy import select, update, insert, func, text, create_engine
+backend/app/api/tenants.py:88:    await db.execute(update(UserTenantAccess).where(UserTenantAccess.user_id == user_id).values(is_selected=False))
+backend/app/api/tenants.py:145:async def update_master_setting(setting: MasterSettingBase, db: AsyncSession = Depends(get_config_db)):
+backend/app/api/tenants.py:390:                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+backend/app/api/tenants.py:404:                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+backend/app/api/investigations.py:3:from sqlalchemy import select, delete, update
+backend/app/api/investigations.py:12:IMMUTABLE_INVESTIGATION_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id"}
+backend/app/api/investigations.py:15:async def get_investigations(include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
+backend/app/api/investigations.py:17:    if not include_deleted:
+backend/app/api/investigations.py:18:        query = query.filter(models.Investigation.is_deleted == False)
+backend/app/api/investigations.py:19:    result = await db.execute(query.order_by(models.Investigation.updated_at.desc()))
+backend/app/api/investigations.py:41:async def update_investigation(inv_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+backend/app/api/investigations.py:59:@router.delete("/{inv_id}")
+backend/app/api/investigations.py:60:async def delete_investigation(inv_id: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/investigations.py:65:    inv.is_deleted = True
+backend/app/api/investigations.py:87:    investigation.updated_at = datetime.now(timezone.utc)
+backend/app/api/devices.py:3:from sqlalchemy import select, delete, update, or_, func
+backend/app/api/devices.py:18:            models.LogicalService.is_deleted == False
+backend/app/api/devices.py:39:async def get_devices(request: Request, system: Optional[str] = None, include_deleted: bool = False, db: AsyncSession = Depends(get_db)):
+backend/app/api/devices.py:47:    if not include_deleted:
+backend/app/api/devices.py:48:        query = query.filter(models.Device.is_deleted == False)
+backend/app/api/devices.py:144:            for s in d.logical_services if not s.is_deleted
+backend/app/api/devices.py:165:        device_dict.update({
+backend/app/api/devices.py:181:    include_deleted: bool = False,
+backend/app/api/devices.py:188:    if not include_deleted:
+backend/app/api/devices.py:189:        query = query.filter(models.Device.is_deleted == False)
+backend/app/api/devices.py:192:    query = query.order_by(models.Device.updated_at.desc(), models.Device.id.desc()).offset(max(offset, 0)).limit(min(max(limit, 1), 500))
+backend/app/api/devices.py:208:            "updated_at": device.updated_at.isoformat() if device.updated_at else None,
+backend/app/api/devices.py:299:        models.Device.is_deleted == False
+backend/app/api/devices.py:319:    res_list = await get_devices(request=request, include_deleted=True, db=db)
+backend/app/api/devices.py:324:async def update_device(request: Request, device_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+backend/app/api/devices.py:334:            models.Device.is_deleted == False, 
+backend/app/api/devices.py:343:    for ro_field in ["id", "created_at", "updated_at", "created_by_user_id"]:
+backend/app/api/devices.py:375:    if action == "delete":
+backend/app/api/devices.py:376:        await db.execute(update(models.Device).where(models.Device.id.in_(ids)).filter(models.Device.tenant_id == tenant_id).values(is_deleted=True))
+backend/app/api/devices.py:377:    elif action == "purge":
+backend/app/api/devices.py:378:        await db.execute(delete(models.Device).where(models.Device.id.in_(ids)).filter(models.Device.tenant_id == tenant_id))
+backend/app/api/devices.py:379:    elif action == "restore":
+backend/app/api/devices.py:380:        # Conflicts check before restore
+backend/app/api/devices.py:382:        to_restore = res.scalars().all()
+backend/app/api/devices.py:384:        restored_ids, conflict_ids = [], []
+backend/app/api/devices.py:385:        for d in to_restore:
+backend/app/api/devices.py:387:            dup_res = await db.execute(select(models.Device).filter(models.Device.name == d.name, models.Device.is_deleted == False, models.Device.id != d.id))
+backend/app/api/devices.py:391:                d.is_deleted = False
+backend/app/api/devices.py:392:                restored_ids.append(d.id)
+backend/app/api/devices.py:395:        return {"status": "success", "restored": restored_ids, "conflicts": conflict_ids}
+backend/app/api/devices.py:396:    elif action == "update":
+backend/app/api/devices.py:397:        clean_update = filter_valid_columns(models.Device, payload)
+backend/app/api/devices.py:398:        if clean_update:
+backend/app/api/devices.py:399:            await db.execute(update(models.Device).where(models.Device.id.in_(ids)).filter(models.Device.tenant_id == tenant_id).values(**clean_update))
+backend/app/api/devices.py:454:@router.delete("/{device_id}")
+backend/app/api/devices.py:455:async def delete_device(request: Request, device_id: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/devices.py:460:    db_device.is_deleted = True
+backend/app/api/devices.py:464:@router.delete("/{resource}/{id}")
+backend/app/api/devices.py:465:async def delete_resource(request: Request, resource: str, id: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/devices.py:468:    await db.execute(delete(model_map[resource]).where(model_map[resource].id == id))
+backend/app/api/devices.py:472:async def update_resource(request: Request, resource: str, id: int, data: dict, db: AsyncSession = Depends(get_db)):
+backend/app/api/knowledge.py:6:from sqlalchemy import select, delete, update, or_
+backend/app/api/knowledge.py:157:    query = select(models.KnowledgeEntry).filter(models.KnowledgeEntry.is_deleted == False).options(
+backend/app/api/knowledge.py:164:    result = await db.execute(query.order_by(models.KnowledgeEntry.updated_at.desc()))
+backend/app/api/knowledge.py:232:async def update_entry(entry_id: int, data: schemas.KnowledgeEntryBase, db: AsyncSession = Depends(get_db)):
+backend/app/api/knowledge.py:246:        build_version_snapshot(entry, entry.metadata_json, payload.get("status", "Knowledge update"))
+backend/app/api/knowledge.py:259:@router.delete("/{entry_id}")
+backend/app/api/knowledge.py:260:async def delete_entry(entry_id: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/knowledge.py:265:    entry.is_deleted = True
+backend/app/api/knowledge.py:286:async def update_qa_entry(qa_id: int, data: schemas.KnowledgeQABase, db: AsyncSession = Depends(get_db)):
+backend/app/api/knowledge.py:304:@router.delete("/qa/{qa_id}")
+backend/app/api/knowledge.py:305:async def delete_qa_entry(qa_id: int, db: AsyncSession = Depends(get_db)):
+backend/app/api/knowledge.py:310:    qa.is_deleted = True
