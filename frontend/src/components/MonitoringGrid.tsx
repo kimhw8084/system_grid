@@ -511,9 +511,7 @@ export default function MonitoringGrid() {
     selectedCount,
   } = useOperationalSelection([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
-  const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
-  const [isBulkSeverityOpen, setIsBulkSeverityOpen] = useState(false)
-  const [isBulkNotifyOpen, setIsBulkNotifyOpen] = useState(false)
+  const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'severity' | 'notification' | null>(null)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [detailDeleteConfirm, setDetailDeleteConfirm] = useState(false)
@@ -543,7 +541,6 @@ export default function MonitoringGrid() {
   const [searchTerm, setSearchTerm] = useState(persistedUiState?.searchTerm ?? '')
   const [groupBy, setGroupBy] = useState<string>(persistedUiState?.groupBy ?? 'raw')
   const [bulkDraft, setBulkDraft] = useState({ status: '', severity: '', notification_method: '' })
-  const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'severity' | 'notification' | null>(null)
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
   const [pendingIds, setPendingIds] = useState<number[]>([])
 
@@ -1200,6 +1197,7 @@ export default function MonitoringGrid() {
 
   const dismissWorkspaceMenus = useCallback(() => {
     setShowBulkMenu(false)
+    setExpandedBulkSection(null)
     setBulkDeleteConfirm(false)
     setShowDisplayMenu(false)
     setShowViewsMenu(false)
@@ -1443,11 +1441,10 @@ export default function MonitoringGrid() {
       showFilterBar,
       columnLayoutState: normalizeOperationalColumnLayout(columnLayoutState, false),
       selectedIds,
-      expandedBulkSection,
       lastVisitedAt,
       searchTerm
     }))
-  }, [activeTab, columnLayoutState, expandedBulkSection, fontSize, groupBy, hiddenColumns, lastVisitedAt, quickFilters, rowDensity, searchTerm, selectedIds, showFilterBar])
+  }, [activeTab, columnLayoutState, fontSize, groupBy, hiddenColumns, lastVisitedAt, quickFilters, rowDensity, searchTerm, selectedIds, showFilterBar])
 
   useEffect(() => {
     if (!activeViewId || !gridRef.current?.api) return
@@ -1464,6 +1461,7 @@ export default function MonitoringGrid() {
   useEffect(() => {
     if (!hasSelection()) {
       setShowBulkMenu(false)
+      setExpandedBulkSection(null)
     }
   }, [hasSelection])
 
@@ -1588,9 +1586,6 @@ export default function MonitoringGrid() {
       setShowBulkMenu(false)
       setExpandedBulkSection(null)
       setBulkDraft({ status: '', severity: '', notification_method: '' })
-      setIsBulkStatusOpen(false)
-      setIsBulkSeverityOpen(false)
-      setIsBulkNotifyOpen(false)
       
       const changedCount = Number(result?.changed ?? idsToUse.length)
       if (changedCount <= 0) {
@@ -2050,24 +2045,54 @@ export default function MonitoringGrid() {
                 <p className="pt-1 text-[12px] font-semibold text-slate-100">{selectedIds.length} monitors selected</p>
               </div>
               <div className="space-y-2">
-                <button
-                  onClick={() => { setIsBulkStatusOpen(true); setShowBulkMenu(false) }}
-                  className="w-full rounded-lg border border-white/5 bg-white/[0.03] px-4 py-3 text-left transition-all hover:bg-white/[0.06] disabled:opacity-50"
-                >
-                  <p className="text-[11px] font-semibold text-slate-200">Set Status</p>
-                </button>
-                <button
-                  onClick={() => { setIsBulkSeverityOpen(true); setShowBulkMenu(false) }}
-                  className="w-full rounded-lg border border-white/5 bg-white/[0.03] px-4 py-3 text-left transition-all hover:bg-white/[0.06] disabled:opacity-50"
-                >
-                  <p className="text-[11px] font-semibold text-slate-200">Set Severity</p>
-                </button>
-                <button
-                  onClick={() => { setIsBulkNotifyOpen(true); setShowBulkMenu(false) }}
-                  className="w-full rounded-lg border border-white/5 bg-white/[0.03] px-4 py-3 text-left transition-all hover:bg-white/[0.06] disabled:opacity-50"
-                >
-                  <p className="text-[11px] font-semibold text-slate-200">Set Notification Method</p>
-                </button>
+                <WorkspaceFlyoutActionCard
+                  title="Set Status"
+                  active={expandedBulkSection === 'status'}
+                  onClick={() => setExpandedBulkSection(expandedBulkSection === 'status' ? null : 'status')}
+                />
+                {expandedBulkSection === 'status' && (
+                  <WorkspaceFlyoutDropdownEditor
+                    value={bulkDraft.status}
+                    onChange={(value) => setBulkDraft((current) => ({ ...current, status: value }))}
+                    options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
+                    placeholder="Choose status"
+                    actionLabel="Apply Status"
+                    onApply={() => bulkMutation.mutate({ action: 'update', payload: { status: bulkDraft.status } })}
+                    disabled={!bulkDraft.status || bulkMutation.isPending}
+                  />
+                )}
+                <WorkspaceFlyoutActionCard
+                  title="Set Severity"
+                  active={expandedBulkSection === 'severity'}
+                  onClick={() => setExpandedBulkSection(expandedBulkSection === 'severity' ? null : 'severity')}
+                />
+                {expandedBulkSection === 'severity' && (
+                  <WorkspaceFlyoutDropdownEditor
+                    value={bulkDraft.severity}
+                    onChange={(value) => setBulkDraft((current) => ({ ...current, severity: value }))}
+                    options={severities.map((severity: any) => ({ value: severity.value, label: severity.label }))}
+                    placeholder="Choose severity"
+                    actionLabel="Apply Severity"
+                    onApply={() => bulkMutation.mutate({ action: 'update', payload: { severity: bulkDraft.severity } })}
+                    disabled={!bulkDraft.severity || bulkMutation.isPending}
+                  />
+                )}
+                <WorkspaceFlyoutActionCard
+                  title="Set Notification Method"
+                  active={expandedBulkSection === 'notification'}
+                  onClick={() => setExpandedBulkSection(expandedBulkSection === 'notification' ? null : 'notification')}
+                />
+                {expandedBulkSection === 'notification' && (
+                  <WorkspaceFlyoutDropdownEditor
+                    value={bulkDraft.notification_method}
+                    onChange={(value) => setBulkDraft((current) => ({ ...current, notification_method: value }))}
+                    options={notificationMethods.map((method: any) => ({ value: method.value, label: method.label }))}
+                    placeholder="Choose notification method"
+                    actionLabel="Apply Method"
+                    onApply={() => bulkMutation.mutate({ action: 'update', payload: { notification_method: bulkDraft.notification_method } })}
+                    disabled={!bulkDraft.notification_method || bulkMutation.isPending}
+                  />
+                )}
               </div>
             </WorkspaceFloatingPanel>
           </OperationalAnchoredPanel>
@@ -2224,17 +2249,6 @@ export default function MonitoringGrid() {
           })}
         />
       )}
-
-      <BulkActionModals
-        isStatusOpen={isBulkStatusOpen}
-        isSeverityOpen={isBulkSeverityOpen}
-        isNotifyOpen={isBulkNotifyOpen}
-        onClose={() => { setIsBulkStatusOpen(false); setIsBulkSeverityOpen(false); setIsBulkNotifyOpen(false); }}
-        onApply={(action, val) => bulkMutation.mutate({ action: 'update', payload: { [action]: val } })}
-        count={selectedCount}
-        severities={severities}
-        notificationMethods={notificationMethods}
-      />
 
       <ConfirmationModal 
         isOpen={confirmModal.isOpen}
