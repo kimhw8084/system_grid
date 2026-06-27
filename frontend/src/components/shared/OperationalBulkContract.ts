@@ -17,7 +17,7 @@ export const BULK_NO_CHANGES_MESSAGE = 'No changes made. Selected records alread
 export const BULK_REVERTED_MESSAGE = 'Bulk operation reverted.'
 export const BULK_REVERT_FAILED_MESSAGE = 'Bulk revert failed.'
 
-const getSelectedRecordLabel = (count: number) => count === 1 ? 'selected record' : 'selected records'
+const getSelectedRecordLabel = () => 'selected records'
 
 const toDisplayLabel = (value: string) => (
   value
@@ -73,7 +73,7 @@ const buildOperationalBulkMessage = ({
   unchangedCount = Math.max(0, totalSelected - changedCount),
   fieldLabel = 'Field',
 }: Omit<ShowOperationalBulkResultOptions, 'onRevert'>) => {
-  const selectedRecordLabel = getSelectedRecordLabel(totalSelected)
+  const selectedRecordLabel = getSelectedRecordLabel()
 
   if (action === 'update') {
     if (changedCount <= 0) return BULK_NO_CHANGES_MESSAGE

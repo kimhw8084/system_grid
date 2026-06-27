@@ -64,3 +64,27 @@
 `run one narrow source patch first`
 
 The source and support package are strong enough to reach final human UI validation after one narrow blocker is removed: the shared bulk helper copy mismatch. Without that patch, OUT-8 would be claiming an exact locked bulk contract the current source does not fully satisfy. After that fix, proceed to human UI validation using `frontend/RUN3-E-ui-standard-acceptance-checklist.md`, while keeping the broader row-action nested-control claim scoped to what the trio source actually proves.
+
+## Post-Fix Note — OperationalBulkContract Wording
+- Verdict: `BULK_WORDING_FIXED_SOURCE_LEVEL`
+- Source changed:
+  `frontend/src/components/shared/OperationalBulkContract.ts`
+- Confirmed:
+  count 1 and count > 1 both use `selected records`
+- Remaining OUT-8 close blocker:
+  none from bulk wording
+- Human validation still required:
+  yes
+- Exact source line changed:
+  `frontend/src/components/shared/OperationalBulkContract.ts:20`
+- Exact wording now guaranteed:
+  `No changes made. Selected records already match the chosen value.`
+  `Updated X of Y selected records: {Field Label} changed.`
+  `Updated X of Y selected records: {Field Label} changed. N already matched.`
+  `Archived X of Y selected records.`
+  `Restored X of Y selected records.`
+  `Permanently purged X of Y selected records.`
+- Proof command output summary:
+  `rg` now shows `getSelectedRecordLabel = () => 'selected records'` and the success-message templates all resolve through that constant.
+  `npm run test:unit --prefix frontend -- OperationalBulkContract.test.ts` passed with `1` file and `6` tests passing.
+  `npm run typecheck --prefix frontend` still fails on the pre-existing unrelated `NetworkReal.tsx` and `VendorsReal.tsx` errors already documented in `frontend/RUN3-F-typecheck-build-blockers.md`; no new typecheck failure was introduced by this patch.
