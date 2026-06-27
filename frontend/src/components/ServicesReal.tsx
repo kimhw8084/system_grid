@@ -333,6 +333,25 @@ const readServiceUiState = () => {
   return readServiceWorkspaceStateFromLocalStorage()?.uiState ?? null
 }
 
+const normalizeBulkValue = (value: any) => {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'string') return value.trim()
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return String(value)
+  }
+}
+
+const countSemanticChanges = (snapshots: any[], payload: Record<string, any>) => {
+  const entries = Object.entries(payload || {}).filter(([, value]) => value !== undefined)
+  if (entries.length === 0) return 0
+  return snapshots.filter((snapshot) => (
+    entries.some(([key, value]) => normalizeBulkValue(snapshot?.[key]) !== normalizeBulkValue(value))
+  )).length
+}
+
 const SERVICE_STATUSES = STATUSES.map((status) => status.value)
 const SERVICE_PURCHASE_TYPES = ['One-time', 'Subscription', 'OEM', 'Free']
 const getServiceTitle = (service: any) => service?.name || `Service ${service?.id ?? 'Unknown'}`
@@ -1494,6 +1513,7 @@ export default function ServicesReal() {
     mutationFn: async ({ action, payload = {}, ids: overrideIds }: any) => {
       const idsToUse = overrideIds ?? selectedIds
       const previousSnapshots = (allItems || []).filter((item: any) => idsToUse.includes(item.id)).map((item: any) => ({ ...item }))
+      let effectivePayload = payload
       let res
       if (action === 'update') {
         const directPayload = {
@@ -1501,6 +1521,7 @@ export default function ServicesReal() {
           ...(payload.service_type ? { service_type: payload.service_type } : {}),
           ...(payload.environment ? { environment: payload.environment } : {}),
         }
+        effectivePayload = directPayload
         res = await apiFetch('/api/v1/logical-services/bulk-action', {
           method: 'POST',
           body: JSON.stringify({ ids: idsToUse, action: 'update', payload: directPayload })
@@ -1523,7 +1544,7 @@ export default function ServicesReal() {
       }
       if (!res.ok) throw new Error(await res.text())
       const result = await res.json()
-      return { result, action, payload, idsToUse, previousSnapshots }
+      return { result, action, payload: effectivePayload, idsToUse, previousSnapshots }
     },
     onSuccess: ({ result, action, payload, idsToUse, previousSnapshots }: any) => {
       queryClient.invalidateQueries({ queryKey: ['logical-services'] })
@@ -1534,7 +1555,12 @@ export default function ServicesReal() {
       setIsBulkSeverityOpen(false)
       setIsBulkNotifyOpen(false)
       
-      const changedCount = Number(result?.changed ?? 0)
+      const parsedChangedCount = Number(result?.changed)
+      const changedCount = Number.isFinite(parsedChangedCount)
+        ? parsedChangedCount
+        : action === 'update'
+          ? countSemanticChanges(previousSnapshots, payload)
+          : 0
       if (changedCount <= 0) {
         lastUndoRef.current = null
         if (action === 'purge') {
