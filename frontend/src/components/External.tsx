@@ -112,6 +112,7 @@ const EXTERNAL_BULK_FIELD_LABELS: Record<string, string> = {
   criticality: 'Criticality',
   risk_rating: 'Risk Rating',
 }
+const EXTERNAL_PURGE_BLOCKED_MESSAGE = 'Cannot purge selected external records because one or more are still linked or credentialed.'
 const SECRET_TYPE_OPTIONS = ['VaultReference', 'SharedSecret', 'Token', 'KeyPair', 'Certificate']
 const SECRET_STATUS_OPTIONS = ['Active', 'RotationDue', 'Disabled']
 const VAULT_PROVIDER_OPTIONS = ['1Password', 'Bitwarden', 'HashiCorp Vault', 'AWS Secrets Manager', 'Azure Key Vault', 'Other']
@@ -303,6 +304,12 @@ const getEntityInsights = (entity: any, links: any[] = []) => {
     extensionKeys,
     warnings,
   }
+}
+
+const canSafelyPurgeExternalEntity = (entity: any, links: any[] | undefined) => {
+  if (!entity || !Array.isArray(links) || !Array.isArray(entity.secrets)) return false
+  const insights = getEntityInsights(entity, links)
+  return insights.linked.length === 0 && entity.secrets.length === 0
 }
 
 const MetadataEditor = ({
@@ -1551,6 +1558,19 @@ export default function External() {
     queryFn: async () => (await (await apiFetch('/api/v1/devices/')).json()) 
   })
 
+  const findExternalEntityById = useCallback((id: number) => {
+    return allEntities?.find((entity: any) => entity.id === id) || null
+  }, [allEntities])
+
+  const isExternalEntityPurgeable = useCallback((entity: any) => {
+    return canSafelyPurgeExternalEntity(entity, links)
+  }, [links])
+
+  const canPurgeSelectedDeletedEntities = useMemo(() => {
+    if (activeTab !== 'deleted' || selectedIds.length === 0) return false
+    return selectedIds.every((id) => isExternalEntityPurgeable(findExternalEntityById(id)))
+  }, [activeTab, findExternalEntityById, isExternalEntityPurgeable, selectedIds])
+
   const dismissWorkspaceMenus = useCallback(() => {
     if (showViewsMenu && newViewName.trim() !== '') {
       setConfirmModal({
@@ -2272,6 +2292,9 @@ export default function External() {
 
   const deleteMutation = useMutation({
     mutationFn: async ({ id, purge, type }: { id: number, purge: boolean, type: 'entity' | 'link' }) => {
+      if (type === 'entity' && purge && !isExternalEntityPurgeable(findExternalEntityById(id))) {
+        throw new Error(EXTERNAL_PURGE_BLOCKED_MESSAGE)
+      }
       const url = type === 'entity' ? `/api/v1/intelligence/entities/${id}${purge ? '?purge=true' : ''}` : `/api/v1/intelligence/links/${id}`
       const res = await apiFetch(url, { method: 'DELETE' })
       if (!res.ok) throw new Error(await res.text())
@@ -2972,6 +2995,11 @@ export default function External() {
                   )}
 
                   <div className="mx-1 my-3 h-px bg-slate-800" />
+                  {activeTab === 'deleted' && !canPurgeSelectedDeletedEntities ? (
+                    <div className="mb-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
+                      <p className="text-[10px] font-semibold text-amber-200">{EXTERNAL_PURGE_BLOCKED_MESSAGE}</p>
+                    </div>
+                  ) : null}
                   <button
                     onClick={() => {
                       if (!bulkDeleteConfirm) {
@@ -2981,7 +3009,7 @@ export default function External() {
                       bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' })
                     }}
                     onMouseLeave={() => setBulkDeleteConfirm(false)}
-                    disabled={bulkMutation.isPending}
+                    disabled={bulkMutation.isPending || (activeTab === 'deleted' && !canPurgeSelectedDeletedEntities)}
                     className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
                       bulkDeleteConfirm 
                         ? 'border-rose-500 bg-rose-600 animate-pulse' 
@@ -3001,6 +3029,7 @@ export default function External() {
 
             {rowActionMenu && (() => {
               const item = rowActionMenu.item
+              const deletedItemPurgeable = activeTab !== 'deleted' || isExternalEntityPurgeable(item)
               const sections: OperationalRowActionSectionModel[] = [
                 {
                     id: 'quickAccess',
@@ -3076,12 +3105,13 @@ export default function External() {
                         {
                             id: 'archive',
                             label: activeTab === 'links' ? (rowDeleteConfirmId === item.id ? 'Confirm Sever Link?' : 'Sever Link') 
+                                    : (!deletedItemPurgeable ? EXTERNAL_PURGE_BLOCKED_MESSAGE
                                     : (rowDeleteConfirmId === item.id ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm)
-                                    : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge)),
+                                    : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge))),
                             icon: Trash2,
                             tone: 'danger' as OperationalRowActionTone,
                             variant: 'inline' as OperationalRowActionVariant,
-
+                            disabled: activeTab === 'deleted' && !deletedItemPurgeable,
                             confirming: rowDeleteConfirmId === item.id,
                             onClick: () => {
                                 if (rowDeleteConfirmId !== item.id) {
@@ -3340,6 +3370,11 @@ export default function External() {
         ) : undefined}
         footerRight={activeDetails ? (
           <div className="flex items-center gap-3 shrink-0">
+            {activeTab === 'deleted' && !isExternalEntityPurgeable(activeDetails) ? (
+              <span className="max-w-[280px] text-[10px] font-semibold text-amber-200">
+                {EXTERNAL_PURGE_BLOCKED_MESSAGE}
+              </span>
+            ) : null}
             <ToolbarButton
               onClick={() => {
                 detailRoute.openEditFromDetail(activeDetails, () => setActiveModal(activeDetails))
@@ -3359,6 +3394,7 @@ export default function External() {
             </ToolbarButton>
             <ToolbarButton
               variant="danger"
+              disabled={activeTab === 'deleted' && !isExternalEntityPurgeable(activeDetails)}
               onClick={() => {
                 if (rowDeleteConfirmId === activeDetails.id) {
                   deleteMutation.mutate({ id: activeDetails.id, purge: activeTab === 'deleted', type: 'entity' })
@@ -3368,11 +3404,12 @@ export default function External() {
                   setRowDeleteConfirmId(activeDetails.id)
                 }
               }}
+              title={activeTab === 'deleted' && !isExternalEntityPurgeable(activeDetails) ? EXTERNAL_PURGE_BLOCKED_MESSAGE : undefined}
               className={rowDeleteConfirmId === activeDetails.id ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20 whitespace-nowrap' : 'whitespace-nowrap'}
             >
               {rowDeleteConfirmId === activeDetails.id
                 ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : 'Confirm Purge peer?')
-                : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge)}
+                : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : (activeTab === 'deleted' && !isExternalEntityPurgeable(activeDetails) ? 'Purge unavailable' : OPERATIONAL_ACTION_LABELS.purge))}
             </ToolbarButton>
           </div>
         ) : undefined}

@@ -246,3 +246,51 @@ Evidence:
 - Services deleted bulk panel exposes restore only.
 - Services archive action is exposed only on the active tab.
 - Services row action no longer exposes purge on deleted items.
+
+## I37 External Purge Safety
+
+Source: `frontend/src/components/External.tsx`
+
+```tsx
+const EXTERNAL_PURGE_BLOCKED_MESSAGE = 'Cannot purge selected external records because one or more are still linked or credentialed.'
+
+const canSafelyPurgeExternalEntity = (entity: any, links: any[] | undefined) => {
+  if (!entity || !Array.isArray(links) || !Array.isArray(entity.secrets)) return false
+  const insights = getEntityInsights(entity, links)
+  return insights.linked.length === 0 && entity.secrets.length === 0
+}
+```
+
+```tsx
+const canPurgeSelectedDeletedEntities = useMemo(() => {
+  if (activeTab !== 'deleted' || selectedIds.length === 0) return false
+  return selectedIds.every((id) => isExternalEntityPurgeable(findExternalEntityById(id)))
+}, [activeTab, findExternalEntityById, isExternalEntityPurgeable, selectedIds])
+```
+
+```tsx
+{activeTab === 'deleted' && !canPurgeSelectedDeletedEntities ? (
+  <div className="mb-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
+    <p className="text-[10px] font-semibold text-amber-200">{EXTERNAL_PURGE_BLOCKED_MESSAGE}</p>
+  </div>
+) : null}
+<button
+  ...
+  disabled={bulkMutation.isPending || (activeTab === 'deleted' && !canPurgeSelectedDeletedEntities)}
+>
+```
+
+```tsx
+const deleteMutation = useMutation({
+  mutationFn: async ({ id, purge, type }: { id: number, purge: boolean, type: 'entity' | 'link' }) => {
+    if (type === 'entity' && purge && !isExternalEntityPurgeable(findExternalEntityById(id))) {
+      throw new Error(EXTERNAL_PURGE_BLOCKED_MESSAGE)
+    }
+    const url = type === 'entity' ? `/api/v1/intelligence/entities/${id}${purge ? '?purge=true' : ''}` : `/api/v1/intelligence/links/${id}`
+```
+
+Evidence:
+
+- External purgeability is now proven locally only when the entity exists, `links` is loaded as an array, `entity.secrets` is loaded as an array, `getEntityInsights(...).linked.length === 0`, and `entity.secrets.length === 0`.
+- Deleted-tab bulk purge is disabled and replaced with a visible explanation when any selected row is unsafe or unverifiable.
+- Row/detail purge attempts are also blocked before any API call by the `deleteMutation` guard, so unsafe External purge cannot reach backend validation.
