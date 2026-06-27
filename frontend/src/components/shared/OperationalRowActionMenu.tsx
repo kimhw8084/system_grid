@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { WorkspaceFloatingPanel } from "./OperationalWorkspacePrimitives";
 import { computeRowActionGeometry } from "./OperationalRowActionGeometry";
+import { estimateRowActionHeaderTextWidth } from "./OperationalBulkContract";
 
 const SECTION_HORIZONTAL_PADDING = 12;
 
@@ -61,9 +62,16 @@ export function OperationalRowActionMenu({
   const headerRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
+  const metaText = typeof meta === "string" ? meta : String(meta ?? "");
+  const titleText = typeof title === "string" ? title : String(title ?? "");
+  const headerContentWidth = Math.max(
+    estimateRowActionHeaderTextWidth(metaText, 72),
+    estimateRowActionHeaderTextWidth(titleText, 72)
+  );
 
   const geometry = computeRowActionGeometry({
     sections,
+    headerContentWidth,
     viewportWidth: typeof window !== "undefined" ? window.innerWidth : 1000,
     viewportHeight: typeof window !== "undefined" ? window.innerHeight : 1000,
     cursorX,
@@ -99,8 +107,8 @@ export function OperationalRowActionMenu({
         <div ref={headerRef} className="flex-shrink-0 flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold text-slate-400">Row actions</p>
-            <p className="pt-1 text-[11px] font-semibold text-slate-100">{meta}</p>
-            <p className="pt-1 text-[12px] text-slate-300">{title}</p>
+            <p className="pt-1 truncate whitespace-nowrap text-[11px] font-semibold text-slate-100" title={metaText}>{meta}</p>
+            <p className="pt-1 truncate whitespace-nowrap text-[12px] font-semibold text-slate-300" title={titleText}>{title}</p>
           </div>
           <button
             type="button"

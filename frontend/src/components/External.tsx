@@ -67,6 +67,14 @@ import {
   renderOperationalActionButtons,
 } from './shared/OperationalGridStandard'
 import {
+  countSemanticBulkChanges,
+  resolveBulkFieldLabel,
+  showOperationalBulkErrorToast,
+  showOperationalBulkRevertErrorToast,
+  showOperationalBulkResultToast,
+  showOperationalBulkRevertedToast,
+} from './shared/OperationalBulkContract'
+import {
   useOperationalRowInteractions,
   useOperationalContextMenu,
   useOperationalDismissController
@@ -98,6 +106,12 @@ const ACCOUNTABLE_OWNER_OPTIONS = [
 ]
 
 const CONTACT_ROLE_OPTIONS = ['Primary', 'Operational', 'Escalation', 'Security', 'Business']
+const EXTERNAL_BULK_FIELD_LABELS: Record<string, string> = {
+  status: 'Status',
+  environment: 'Environment',
+  criticality: 'Criticality',
+  risk_rating: 'Risk Rating',
+}
 const SECRET_TYPE_OPTIONS = ['VaultReference', 'SharedSecret', 'Token', 'KeyPair', 'Certificate']
 const SECRET_STATUS_OPTIONS = ['Active', 'RotationDue', 'Disabled']
 const VAULT_PROVIDER_OPTIONS = ['1Password', 'Bitwarden', 'HashiCorp Vault', 'AWS Secrets Manager', 'Azure Key Vault', 'Other']
@@ -2065,8 +2079,7 @@ export default function External() {
 
           try {
             if (action === 'update') {
-              const keys = Object.keys(payload)
-              const alreadyMatches = keys.every((key) => original[key] === payload[key])
+              const alreadyMatches = countSemanticBulkChanges([original], payload) <= 0
               if (alreadyMatches) {
                 return { id, status: 'skipped', previous: original }
               }
@@ -2130,6 +2143,8 @@ export default function External() {
     onSuccess: ({ action, idsToUse, payload, previousSnapshots, updated, skipped, failed, errors }) => {
       queryClient.invalidateQueries({ queryKey: ['external-entities'] })
       queryClient.invalidateQueries({ queryKey: ['external-links'] })
+      const totalSelected = idsToUse.length
+      const fieldLabel = resolveBulkFieldLabel(payload, EXTERNAL_BULK_FIELD_LABELS)
 
       const hasFailures = failed > 0
       if (!hasFailures) {
@@ -2138,11 +2153,6 @@ export default function External() {
         setBulkDraft({ status: '', environment: '', criticality: '', risk_rating: '' })
         setExpandedBulkSection(null)
       }
-
-      let summaryMessage = `Bulk ${action} completed: `
-      if (updated > 0) summaryMessage += `${updated} updated. `
-      if (skipped > 0) summaryMessage += `${skipped} skipped. `
-      if (failed > 0) summaryMessage += `${failed} failed.`
 
       const revertAction = async () => {
         const undo = externalUndoRef.current
@@ -2171,22 +2181,40 @@ export default function External() {
       }
 
       if (failed > 0) {
-        showWorkspaceToast(`${summaryMessage} Errors: ${errors.join('; ')}`, { type: 'error' })
-      } else if (updated > 0 && action !== 'purge') {
-        if (action === 'delete') {
+        externalUndoRef.current = null
+        showOperationalBulkErrorToast(`${failed} of ${totalSelected} selected records could not be processed. ${errors.join('; ')}`)
+      } else {
+        if (updated <= 0) {
+          externalUndoRef.current = null
+        } else if (action === 'delete') {
           externalUndoRef.current = { mode: 'bulk', ids: previousSnapshots.map(s => s.id), action: 'restore' }
         } else if (action === 'restore') {
           externalUndoRef.current = { mode: 'bulk', ids: previousSnapshots.map(s => s.id), action: 'delete' }
         } else if (action === 'update') {
           externalUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
+        } else {
+          externalUndoRef.current = null
         }
-        showWorkspaceRevertToast(summaryMessage, revertAction)
-      } else {
-        showWorkspaceToast(summaryMessage, { type: 'success' })
+
+        showOperationalBulkResultToast({
+          action: action === 'delete' ? 'archive' : action,
+          totalSelected,
+          changedCount: updated,
+          unchangedCount: skipped,
+          fieldLabel,
+          onRevert: externalUndoRef.current ? async () => {
+          try {
+            await revertAction()
+            showOperationalBulkRevertedToast()
+          } catch (error: any) {
+            showOperationalBulkRevertErrorToast(error.message || 'Bulk revert failed')
+          }
+        } : undefined,
+      })
       }
     },
     onError: (e: any) => {
-      showWorkspaceToast(`Bulk operation failed: ${e.message}`, { type: 'error' })
+      showOperationalBulkErrorToast(e.message)
     }
   })
 
@@ -3076,8 +3104,10 @@ export default function External() {
               return (
                 <OperationalRowActionMenu
                   onClose={() => setRowActionMenu(null)}
-                  meta={`ID ${item.id} · ${activeTab === 'links' ? item.external_entity_name : item.name}`}
-                  title={activeTab === 'links' ? `Link · ${item.protocol} Port ${item.port}` : (item.type || 'External Peer')}
+                  meta={activeTab === 'links'
+                    ? `ID ${item.id} · Link · ${item.protocol} Port ${item.port}`
+                    : `ID ${item.id} · ${item.type || 'External Peer'}`}
+                  title={activeTab === 'links' ? item.external_entity_name : item.name}
                   sections={sections}
                   cursorX={rowActionMenu.point.x}
                   cursorY={rowActionMenu.point.y}

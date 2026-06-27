@@ -19,6 +19,7 @@ export function estimateRowActionButtonWidth(label: string, confirmLabel?: strin
 
 export function computeRowActionGeometry({
   sections,
+  headerContentWidth = 0,
   viewportWidth,
   viewportHeight,
   cursorX,
@@ -29,6 +30,7 @@ export function computeRowActionGeometry({
   measuredHeight
 }: {
   sections: OperationalRowActionSectionModel[];
+  headerContentWidth?: number;
   viewportWidth: number;
   viewportHeight: number;
   cursorX: number;
@@ -98,7 +100,8 @@ export function computeRowActionGeometry({
         })
   }));
 
-  const panelWidth = Math.min(actionSetWidth + panelPadding * 2, viewportSafeWidth);
+  const minimumContentWidth = Math.max(actionSetWidth, Math.min(headerContentWidth, contentSafeWidth));
+  const panelWidth = Math.min(minimumContentWidth + panelPadding * 2, viewportSafeWidth);
 
   let panelHeight = HEADER_HEIGHT + BODY_PADDING * 2;
   processedSections.forEach((section, idx) => {

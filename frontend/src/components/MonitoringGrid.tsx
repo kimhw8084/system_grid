@@ -105,6 +105,14 @@ import {
   buildOperationalGridColumnDefinitions,
   renderOperationalActionButtons,
 } from './shared/OperationalGridStandard'
+import {
+  countSemanticBulkChanges,
+  resolveBulkFieldLabel,
+  showOperationalBulkErrorToast,
+  showOperationalBulkRevertErrorToast,
+  showOperationalBulkResultToast,
+  showOperationalBulkRevertedToast,
+} from './shared/OperationalBulkContract'
 
 const MONITORING_VIEW_STORAGE_KEY = 'sysgrid_monitoring_views_v1'
 const MONITORING_ACTIVE_VIEW_KEY = 'sysgrid_monitoring_active_view_v1'
@@ -114,6 +122,11 @@ const MONITORING_WATCH_STORAGE_KEY = 'sysgrid_monitoring_watch_v1'
 const MONITORING_WORKSPACE_PREFERENCE_KEY = 'monitoring_workspace_state_v2'
 const MONITORING_WORKSPACE_PREFERENCE_VERSION = 2
 const BULK_MENU_MAX_HEIGHT = 560
+const MONITORING_BULK_FIELD_LABELS: Record<string, string> = {
+  status: 'Status',
+  severity: 'Severity',
+  notification_method: 'Notification Method',
+}
 export const STATUSES = [
   { value: 'Existing', label: 'Existing', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
   { value: 'Planned', label: 'Planned', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
@@ -1586,38 +1599,44 @@ export default function MonitoringGrid() {
       setShowBulkMenu(false)
       setExpandedBulkSection(null)
       setBulkDraft({ status: '', severity: '', notification_method: '' })
-      
-      const changedCount = Number(result?.changed ?? idsToUse.length)
-      if (changedCount <= 0) {
-        lastUndoRef.current = null
-        if (action === 'purge') {
-          showWorkspaceToast('Purge did not change any records', { type: 'error' })
-        } else {
-          showWorkspaceToast(result?.summary || 'No semantic change', { type: 'success' })
-        }
-        return
-      }
+      const totalSelected = idsToUse.length
+      const parsedChangedCount = Number(result?.changed)
+      const changedCount = Number.isFinite(parsedChangedCount)
+        ? parsedChangedCount
+        : action === 'update'
+          ? countSemanticBulkChanges(previousSnapshots, payload)
+          : action === 'delete'
+            ? previousSnapshots.filter((snapshot: any) => !snapshot?.is_deleted).length
+            : action === 'restore'
+              ? previousSnapshots.filter((snapshot: any) => !!snapshot?.is_deleted).length
+              : totalSelected
+      const unchangedCount = Math.max(0, totalSelected - changedCount)
+      const fieldLabel = resolveBulkFieldLabel(payload, MONITORING_BULK_FIELD_LABELS)
 
-      if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
+      if (changedCount <= 0) lastUndoRef.current = null
+      else if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
       else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
       else if (action === 'update') lastUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
       else lastUndoRef.current = null
 
-      if (lastUndoRef.current) {
-        showWorkspaceRevertToast(result?.summary || 'Updated monitoring state', async () => {
+      showOperationalBulkResultToast({
+        action: action === 'delete' ? 'archive' : action,
+        totalSelected,
+        changedCount,
+        unchangedCount,
+        fieldLabel,
+        onRevert: lastUndoRef.current ? async () => {
           try {
             await runUndo()
             lastUndoRef.current = null
-            showWorkspaceToast('Reverted monitoring operation', { type: 'success' })
+            showOperationalBulkRevertedToast()
           } catch (error: any) {
-            showWorkspaceToast(error.message || 'Undo failed', { type: 'error' })
+            showOperationalBulkRevertErrorToast(error.message || 'Bulk revert failed')
           }
-        })
-      } else {
-        showWorkspaceToast(result?.summary || 'Updated monitoring state', { type: 'success' })
-      }
+        } : undefined,
+      })
     },
-    onError: (e: any) => showWorkspaceToast(`Operation failed: ${e.message}`, { type: 'error' })
+    onError: (e: any) => showOperationalBulkErrorToast(e.message)
   })
 
   const columnDefs = useMemo(() => {

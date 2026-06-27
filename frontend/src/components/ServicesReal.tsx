@@ -16,7 +16,7 @@ import {
 import { parseOperationalApiValidationError } from './shared/OperationalFieldValidation'
 import { AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { showWorkspaceToast, showWorkspaceRevertToast } from './shared/WorkspaceToast'
+import { showWorkspaceRevertToast, showWorkspaceToast } from './shared/WorkspaceToast'
 import { apiFetch } from '../api/apiClient'
 import { formatAppDate, formatAppTime, formatAppDay, parseAppDate } from '../utils/dateUtils'
 import { AppDropdown } from './shared/AppDropdown'
@@ -101,6 +101,14 @@ import {
   buildOperationalGridColumnDefinitions,
   renderOperationalActionButtons,
 } from './shared/OperationalGridStandard'
+import {
+  countSemanticBulkChanges,
+  resolveBulkFieldLabel,
+  showOperationalBulkErrorToast,
+  showOperationalBulkRevertErrorToast,
+  showOperationalBulkResultToast,
+  showOperationalBulkRevertedToast,
+} from './shared/OperationalBulkContract'
 
 const SERVICE_VIEW_STORAGE_KEY = 'sysgrid_services_views_v1'
 const SERVICE_ACTIVE_VIEW_KEY = 'sysgrid_services_active_view_v1'
@@ -110,6 +118,11 @@ const SERVICE_WATCH_STORAGE_KEY = 'sysgrid_services_watch_v1'
 const SERVICE_WORKSPACE_PREFERENCE_KEY = 'services_workspace_state_v1'
 const SERVICE_WORKSPACE_PREFERENCE_VERSION = 2
 const BULK_MENU_MAX_HEIGHT = 560
+const SERVICES_BULK_FIELD_LABELS: Record<string, string> = {
+  status: 'Status',
+  service_type: 'Service Type',
+  environment: 'Environment',
+}
 const SERVICE_FIXED_WIDTH_COLUMN_IDS = new Set([
   'select',
   'id',
@@ -331,25 +344,6 @@ const getMonitorGroupValue = (item: any, field: string) => {
 
 const readServiceUiState = () => {
   return readServiceWorkspaceStateFromLocalStorage()?.uiState ?? null
-}
-
-const normalizeBulkValue = (value: any) => {
-  if (value === null || value === undefined) return ''
-  if (typeof value === 'string') return value.trim()
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
-  try {
-    return JSON.stringify(value)
-  } catch {
-    return String(value)
-  }
-}
-
-const countSemanticChanges = (snapshots: any[], payload: Record<string, any>) => {
-  const entries = Object.entries(payload || {}).filter(([, value]) => value !== undefined)
-  if (entries.length === 0) return 0
-  return snapshots.filter((snapshot) => (
-    entries.some(([key, value]) => normalizeBulkValue(snapshot?.[key]) !== normalizeBulkValue(value))
-  )).length
 }
 
 const SERVICE_STATUSES = STATUSES.map((status) => status.value)
@@ -1487,15 +1481,18 @@ export default function ServicesReal() {
       })
       if (!res.ok) throw new Error(await res.text())
     } else if (undo.mode === 'restore_snapshots') {
-      const res = await apiFetch('/api/v1/logical-services/bulk-action', {
-        method: 'POST',
-        body: JSON.stringify({
-          ids: undo.snapshots.map((s: any) => s.id),
-          action: 'restore_snapshots',
-          payload: undo.snapshots
+      for (const snapshot of undo.snapshots || []) {
+        if (!snapshot?.id) continue
+        const restorePayload: Record<string, any> = {}
+        Object.keys(undo.payload || {}).forEach((key) => {
+          restorePayload[key] = snapshot[key]
         })
-      })
-      if (!res.ok) throw new Error(await res.text())
+        const res = await apiFetch(`/api/v1/logical-services/${snapshot.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(restorePayload)
+        })
+        if (!res.ok) throw new Error(await res.text())
+      }
     }
     lastUndoRef.current = null
     queryClient.invalidateQueries({ queryKey: ['logical-services'] })
@@ -1531,11 +1528,6 @@ export default function ServicesReal() {
           method: 'POST',
           body: JSON.stringify({ ids: idsToUse, action: 'restore' })
         })
-      } else if (action === 'purge') {
-        res = await apiFetch('/api/v1/logical-services/bulk-action', {
-          method: 'POST',
-          body: JSON.stringify({ ids: idsToUse, action: 'purge' })
-        })
       } else {
         res = await apiFetch('/api/v1/logical-services/bulk-action', {
           method: 'POST',
@@ -1554,44 +1546,43 @@ export default function ServicesReal() {
       setIsBulkStatusOpen(false)
       setIsBulkSeverityOpen(false)
       setIsBulkNotifyOpen(false)
-      
+      const totalSelected = idsToUse.length
       const parsedChangedCount = Number(result?.changed)
       const changedCount = Number.isFinite(parsedChangedCount)
         ? parsedChangedCount
         : action === 'update'
-          ? countSemanticChanges(previousSnapshots, payload)
-          : 0
-      if (changedCount <= 0) {
-        lastUndoRef.current = null
-        if (action === 'purge') {
-          showWorkspaceToast('Purge did not change any services', { type: 'error' })
-        } else {
-          showWorkspaceToast(result?.summary || 'No semantic change', { type: 'success' })
-        }
-        return
-      }
+          ? countSemanticBulkChanges(previousSnapshots, payload)
+          : action === 'delete'
+            ? previousSnapshots.filter((snapshot: any) => !snapshot?.is_deleted).length
+            : action === 'restore'
+              ? previousSnapshots.filter((snapshot: any) => !!snapshot?.is_deleted).length
+              : totalSelected
+      const unchangedCount = Math.max(0, totalSelected - changedCount)
+      const fieldLabel = resolveBulkFieldLabel(payload, SERVICES_BULK_FIELD_LABELS)
 
-      if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
+      if (changedCount <= 0) lastUndoRef.current = null
+      else if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
       else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
       else if (action === 'update') lastUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
       else lastUndoRef.current = null
 
-      if (lastUndoRef.current) {
-        showWorkspaceToast(result?.summary || 'Updated service records', {
-          onRevert: async () => {
-            try {
-              await runUndo()
-              showWorkspaceToast('Reverted service operation', { type: 'success' })
-            } catch (error: any) {
-              showWorkspaceToast(error.message || 'Undo failed', { type: 'error' })
-            }
+      showOperationalBulkResultToast({
+        action: action === 'delete' ? 'archive' : action,
+        totalSelected,
+        changedCount,
+        unchangedCount,
+        fieldLabel,
+        onRevert: lastUndoRef.current ? async () => {
+          try {
+            await runUndo()
+            showOperationalBulkRevertedToast()
+          } catch (error: any) {
+            showOperationalBulkRevertErrorToast(error.message || 'Bulk revert failed')
           }
-        })
-      } else {
-        showWorkspaceToast(result?.summary || 'Updated service records', { type: 'success' })
-      }
+        } : undefined,
+      })
     },
-    onError: (e: any) => showWorkspaceToast(`Operation failed: ${e.message}`, { type: 'error' })
+    onError: (e: any) => showOperationalBulkErrorToast(e.message)
   })
 
   const columnDefs = useMemo(() => {
@@ -2088,31 +2079,35 @@ export default function ServicesReal() {
                 </div>
               )}
 
-              <div className="mx-1 my-3 h-px bg-slate-800" />
-              <button
-                onClick={() => {
-                  if (!bulkDeleteConfirm) {
-                    setBulkDeleteConfirm(true)
-                    return
-                  }
-                  bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' })
-                }}
-                onMouseLeave={() => setBulkDeleteConfirm(false)}
-                disabled={bulkMutation.isPending}
-                className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
-                  bulkDeleteConfirm
-                    ? 'border-rose-500 bg-rose-600 animate-pulse'
-                    : 'border-rose-900/70 bg-rose-950/70 hover:bg-rose-950'
-                } disabled:opacity-50`}
-              >
-                <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
-                  {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
-                    bulkDeleteConfirm
-                      ? (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purgeSelectionConfirm : OPERATIONAL_ACTION_LABELS.archiveSelectionConfirm)
-                      : (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purgeSelection : OPERATIONAL_ACTION_LABELS.archiveSelection)
-                  )}
-                </p>
-              </button>
+              {activeTab === 'active' && (
+                <>
+                  <div className="mx-1 my-3 h-px bg-slate-800" />
+                  <button
+                    onClick={() => {
+                      if (!bulkDeleteConfirm) {
+                        setBulkDeleteConfirm(true)
+                        return
+                      }
+                      bulkMutation.mutate({ action: 'delete' })
+                    }}
+                    onMouseLeave={() => setBulkDeleteConfirm(false)}
+                    disabled={bulkMutation.isPending}
+                    className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
+                      bulkDeleteConfirm
+                        ? 'border-rose-500 bg-rose-600 animate-pulse'
+                        : 'border-rose-900/70 bg-rose-950/70 hover:bg-rose-950'
+                    } disabled:opacity-50`}
+                  >
+                    <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
+                      {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
+                        bulkDeleteConfirm
+                          ? OPERATIONAL_ACTION_LABELS.archiveSelectionConfirm
+                          : OPERATIONAL_ACTION_LABELS.archiveSelection
+                      )}
+                    </p>
+                  </button>
+                </>
+              )}
             </WorkspaceFloatingPanel>
           </OperationalAnchoredPanel>
 
@@ -2121,8 +2116,8 @@ export default function ServicesReal() {
               cursorX={rowActionMenu.point.x}
               cursorY={rowActionMenu.point.y}
               onClose={() => setRowActionMenu(null)}
-              meta={`ID ${rowActionMenu.item.id} · ${rowActionMenu.item.name}`}
-              title={rowActionMenu.item.type || 'Service'}
+              meta={`ID ${rowActionMenu.item.id} · ${rowActionMenu.item.type || 'Service'}`}
+              title={rowActionMenu.item.name}
               sections={[
                 {
                     id: 'quickAccess',
@@ -2145,19 +2140,19 @@ export default function ServicesReal() {
                     columns: 1 as 1,
                     items: [
                         ...(activeTab === 'deleted' ? [{ id: 'restore', label: 'Restore', icon: Undo2, tone: 'success' as OperationalRowActionTone, variant: 'inline' as OperationalRowActionVariant, onClick: () => { bulkMutation.mutate({ action: 'restore', ids: [rowActionMenu.item.id] }); setRowActionMenu(null); } }] : []),
-                        {
+                        ...(activeTab === 'active' ? [{
                             id: 'archive',
-                            label: rowDeleteConfirmId === rowActionMenu.item.id ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm) : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge),
+                            label: rowDeleteConfirmId === rowActionMenu.item.id ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.archive,
                             icon: Trash2,
                             tone: 'danger' as OperationalRowActionTone,
                             variant: 'inline' as OperationalRowActionVariant,
                             confirming: rowDeleteConfirmId === rowActionMenu.item.id,
                             onClick: () => {
                                 if (rowDeleteConfirmId !== rowActionMenu.item.id) { setRowDeleteConfirmId(rowActionMenu.item.id); return }
-                                bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [rowActionMenu.item.id] });
+                                bulkMutation.mutate({ action: 'delete', ids: [rowActionMenu.item.id] });
                                 setRowActionMenu(null); setRowDeleteConfirmId(null);
                             }
-                        }
+                        }] : [])
                     ]
                 }
               ]}
@@ -2316,7 +2311,7 @@ export default function ServicesReal() {
                 setDetailDeleteConfirm(true)
                 return
               }
-              bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [monitor.id] })
+              bulkMutation.mutate({ action: 'delete', ids: [monitor.id] })
               detailRoute.closeDetail()
             }}
             onOpenAsset={(deviceId: number) => navigate(`/asset?id=${deviceId}`)}
@@ -2785,9 +2780,11 @@ function ServiceRecordDetailModal({ item, onClose, onEdit, onDelete, onOpenAsset
         <div className="flex items-center gap-3">
           {item.device_id ? <ToolbarButton onClick={() => onOpenAsset?.(item.device_id)}>Open Host</ToolbarButton> : null}
           <ToolbarButton onClick={() => onEdit?.(item)}>Edit Service</ToolbarButton>
-          <ToolbarButton variant="danger" onClick={() => onDelete?.(item)} className={deleteConfirm ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : ''}>
-            {deleteConfirm ? (item.is_deleted ? 'Confirm Purge?' : 'Confirm Archive?') : (item.is_deleted ? 'Purge' : 'Archive')}
-          </ToolbarButton>
+          {!item.is_deleted && (
+            <ToolbarButton variant="danger" onClick={() => onDelete?.(item)} className={deleteConfirm ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : ''}>
+              {deleteConfirm ? 'Confirm Archive?' : 'Archive'}
+            </ToolbarButton>
+          )}
         </div>
       }
     >
