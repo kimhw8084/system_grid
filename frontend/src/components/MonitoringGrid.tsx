@@ -1617,6 +1617,7 @@ export default function MonitoringGrid() {
       else if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
       else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
       else if (action === 'update') lastUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
+      else if (action === 'purge') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
       else lastUndoRef.current = null
 
       showOperationalBulkResultToast({

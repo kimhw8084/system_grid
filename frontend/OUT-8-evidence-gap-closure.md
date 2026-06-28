@@ -48,9 +48,9 @@
 
 ## Bulk Contract Verification
 - `shared wording helper exists`: `YES`. `frontend/src/components/shared/OperationalBulkContract.ts:69-120`.
-- `no-op has no revert`: `YES`. Revert is only attached when `changedCount > 0 && action !== 'purge'` in `frontend/src/components/shared/OperationalBulkContract.ts:115-120`.
+- `no-op has no revert`: `YES`. Revert is only attached when `changedCount > 0 && onRevert` in `frontend/src/components/shared/OperationalBulkContract.ts:115-120`.
 - `actual update has revert when reversible`: `YES`. Monitoring, External, and Services all pass `onRevert` only when undo state exists at `frontend/src/components/MonitoringGrid.tsx:1616-1637`, `frontend/src/components/External.tsx:2207-2233`, and `frontend/src/components/ServicesReal.tsx:1563-1583`.
-- `purge has no revert`: `YES`. Shared helper suppresses revert for `purge` in `frontend/src/components/shared/OperationalBulkContract.ts:115`.
+- `supported purge can have revert when truthful`: `YES`. Shared helper allows revert for any successful action when the caller supplies truthful `onRevert` data in `frontend/src/components/shared/OperationalBulkContract.ts:115-120`.
 - `blocked unsafe purge has exact explanation`: `YES`. `frontend/src/components/External.tsx:115,2295-2296,2998-3003,3108-3115`.
 - `Services unsupported purge absent`: `YES`. Deleted-scope bulk and row actions expose restore only in `frontend/src/components/ServicesReal.tsx:2009-2018,2142-2145`.
 
@@ -88,3 +88,9 @@ The source and support package are strong enough to reach final human UI validat
   `rg` now shows `getSelectedRecordLabel = () => 'selected records'` and the success-message templates all resolve through that constant.
   `npm run test:unit --prefix frontend -- OperationalBulkContract.test.ts` passed with `1` file and `6` tests passing.
   `npm run typecheck --prefix frontend` still fails on the pre-existing unrelated `NetworkReal.tsx` and `VendorsReal.tsx` errors already documented in `frontend/RUN3-F-typecheck-build-blockers.md`; no new typecheck failure was introduced by this patch.
+
+## Post-Human-Validation H/I Recovery Note
+- Monitoring purge Revert restored/fixed
+- External disabled Purge label fixed
+- Services purge remains unexposed
+- Human validation required again only for H/I

@@ -10,9 +10,11 @@ import {
 } from './OperationalBulkContract'
 import { showWorkspaceToast } from './WorkspaceToast'
 
+const mockedShowWorkspaceToast = vi.mocked(showWorkspaceToast)
+
 describe('showOperationalBulkResultToast wording', () => {
   beforeEach(() => {
-    showWorkspaceToast.mockReset()
+    mockedShowWorkspaceToast.mockReset()
   })
 
   it('uses selected records for one-of-one updates', () => {
@@ -23,7 +25,7 @@ describe('showOperationalBulkResultToast wording', () => {
       fieldLabel: 'Status',
     })
 
-    expect(showWorkspaceToast).toHaveBeenCalledWith(
+    expect(mockedShowWorkspaceToast).toHaveBeenCalledWith(
       'Updated 1 of 1 selected records: Status changed.',
       { type: 'success' },
     )
@@ -36,7 +38,7 @@ describe('showOperationalBulkResultToast wording', () => {
       changedCount: 1,
     })
 
-    expect(showWorkspaceToast).toHaveBeenCalledWith(
+    expect(mockedShowWorkspaceToast).toHaveBeenCalledWith(
       'Archived 1 of 1 selected records.',
       { type: 'success' },
     )
@@ -49,7 +51,7 @@ describe('showOperationalBulkResultToast wording', () => {
       changedCount: 1,
     })
 
-    expect(showWorkspaceToast).toHaveBeenCalledWith(
+    expect(mockedShowWorkspaceToast).toHaveBeenCalledWith(
       'Restored 1 of 1 selected records.',
       { type: 'success' },
     )
@@ -62,9 +64,25 @@ describe('showOperationalBulkResultToast wording', () => {
       changedCount: 1,
     })
 
-    expect(showWorkspaceToast).toHaveBeenCalledWith(
+    expect(mockedShowWorkspaceToast).toHaveBeenCalledWith(
       'Permanently purged 1 of 1 selected records.',
       { type: 'success' },
+    )
+  })
+
+  it('allows revert for purge when truthful revert data is supplied', () => {
+    const onRevert = vi.fn()
+
+    showOperationalBulkResultToast({
+      action: 'purge',
+      totalSelected: 1,
+      changedCount: 1,
+      onRevert,
+    })
+
+    expect(mockedShowWorkspaceToast).toHaveBeenCalledWith(
+      'Permanently purged 1 of 1 selected records.',
+      { type: 'success', onRevert },
     )
   })
 
@@ -76,7 +94,7 @@ describe('showOperationalBulkResultToast wording', () => {
       fieldLabel: 'Status',
     })
 
-    expect(showWorkspaceToast).toHaveBeenCalledWith(
+    expect(mockedShowWorkspaceToast).toHaveBeenCalledWith(
       BULK_NO_CHANGES_MESSAGE,
       { type: 'success' },
     )
@@ -91,7 +109,7 @@ describe('showOperationalBulkResultToast wording', () => {
       fieldLabel: 'Environment',
     })
 
-    expect(showWorkspaceToast).toHaveBeenCalledWith(
+    expect(mockedShowWorkspaceToast).toHaveBeenCalledWith(
       'Updated 1 of 3 selected records: Environment changed. 2 already matched.',
       { type: 'success' },
     )

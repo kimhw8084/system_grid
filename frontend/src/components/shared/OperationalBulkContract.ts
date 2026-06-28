@@ -112,7 +112,7 @@ export const showOperationalBulkResultToast = ({
     fieldLabel,
   })
 
-  if (changedCount > 0 && action !== 'purge' && onRevert) {
+  if (changedCount > 0 && onRevert) {
     showWorkspaceToast(message, { type: 'success', onRevert })
     return
   }

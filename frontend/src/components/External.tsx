@@ -3010,6 +3010,7 @@ export default function External() {
                     }}
                     onMouseLeave={() => setBulkDeleteConfirm(false)}
                     disabled={bulkMutation.isPending || (activeTab === 'deleted' && !canPurgeSelectedDeletedEntities)}
+                    title={activeTab === 'deleted' && !canPurgeSelectedDeletedEntities ? EXTERNAL_PURGE_BLOCKED_MESSAGE : undefined}
                     className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
                       bulkDeleteConfirm 
                         ? 'border-rose-500 bg-rose-600 animate-pulse' 
@@ -3104,10 +3105,13 @@ export default function External() {
                         }] : []),
                         {
                             id: 'archive',
-                            label: activeTab === 'links' ? (rowDeleteConfirmId === item.id ? 'Confirm Sever Link?' : 'Sever Link') 
-                                    : (!deletedItemPurgeable ? EXTERNAL_PURGE_BLOCKED_MESSAGE
-                                    : (rowDeleteConfirmId === item.id ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm)
-                                    : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge))),
+                            label: activeTab === 'links'
+                              ? (rowDeleteConfirmId === item.id ? 'Confirm Sever Link?' : 'Sever Link')
+                              : (
+                                  rowDeleteConfirmId === item.id
+                                    ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm)
+                                    : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge)
+                                ),
                             icon: Trash2,
                             tone: 'danger' as OperationalRowActionTone,
                             variant: 'inline' as OperationalRowActionVariant,
@@ -3409,7 +3413,7 @@ export default function External() {
             >
               {rowDeleteConfirmId === activeDetails.id
                 ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : 'Confirm Purge peer?')
-                : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : (activeTab === 'deleted' && !isExternalEntityPurgeable(activeDetails) ? 'Purge unavailable' : OPERATIONAL_ACTION_LABELS.purge))}
+                : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge)}
             </ToolbarButton>
           </div>
         ) : undefined}

@@ -41,15 +41,15 @@ This packet is ready if run exactly as written. Mark any un-runnable item `BLOCK
 | M-BULK-3 | Monitoring | Select partial multi-select set | Bulk update one reversible field | Partial-update toast appears exactly; Revert appears | Toast text differs, counts wrong, or Revert missing | Toast screenshot plus selected ids |
 | M-BULK-4 | Monitoring | Select active row(s) | Bulk archive | Archive toast appears exactly; Revert appears | Toast text differs or Revert missing | Toast screenshot |
 | M-BULK-5 | Monitoring | Select deleted row(s) | Bulk restore | Restore toast appears exactly; Revert appears | Toast text differs or Revert missing | Toast screenshot |
-| M-BULK-6 | Monitoring | Deleted row(s) available and purge UI visible in this route | Bulk purge | Purge toast appears exactly; no Revert appears | Toast text differs or Revert appears | Toast screenshot |
+| M-BULK-6 | Monitoring | Deleted row(s) available and purge UI visible in this route | Bulk purge | Purge toast appears exactly; Revert appears | Toast text differs or Revert missing | Toast screenshot |
 | M-BULK-7 | Monitoring | Immediately after M-BULK-2, 3, 4, or 5 | Click Revert | `Bulk operation reverted.` appears and affected row values/state return to prior values | Revert fails, wrong toast, or state does not return | Before/after screenshots and revert toast |
 | E-BULK-1 | External | Select only no-op row(s) | Bulk update one field to the already-matching value | No-op toast appears exactly; no Revert action appears | Toast text differs or Revert appears | Toast screenshot plus selected ids |
 | E-BULK-2 | External | Select only actual-update row(s) | Bulk update one reversible field | Actual-update toast appears exactly; Revert appears | Toast text differs or Revert missing | Toast screenshot |
 | E-BULK-3 | External | Select partial multi-select set | Bulk update one reversible field | Partial-update toast appears exactly; Revert appears | Toast text differs, counts wrong, or Revert missing | Toast screenshot |
 | E-BULK-4 | External | Select active row(s) | Bulk archive | Archive toast appears exactly; Revert appears | Toast text differs or Revert missing | Toast screenshot |
 | E-BULK-5 | External | Select deleted row(s) that are restorable | Bulk restore | Restore toast appears exactly; Revert appears | Toast text differs or Revert missing | Toast screenshot |
-| E-BULK-6 | External | Select unsafe deleted row(s) with link or credential; DevTools Network open | Attempt bulk purge | UI blocks purge before backend call with exact blocked message; no purge request is sent | Purge request is sent, destructive action remains enabled, or wording differs | Screenshot of disabled/block state and network capture |
-| E-BULK-7 | External | Select safe deleted row(s), if available | Bulk purge | Purge toast appears exactly; no Revert appears | Toast text differs or Revert appears | Toast screenshot |
+| E-BULK-6 | External | Select unsafe deleted row(s) with link or credential; DevTools Network open | Attempt bulk purge | UI blocks purge before backend call; the disabled button remains labeled `Purge`; the exact blocked message appears as tooltip/explanation; no purge request is sent | Purge request is sent, button label changes, destructive action remains enabled, or wording differs | Screenshot of disabled/block state and network capture |
+| E-BULK-7 | External | Select safe deleted row(s), if available | Bulk purge | Purge toast appears exactly; Revert appears only when the source truthfully supports reversal | Toast text differs or unsupported revert behavior is exposed | Toast screenshot |
 | E-BULK-8 | External | Immediately after E-BULK-2, 3, 4, or 5 | Click Revert | `Bulk operation reverted.` appears and affected row values/state return to prior values | Revert fails, wrong toast, or state does not return | Before/after screenshots and revert toast |
 | S-BULK-1 | Services | Select only no-op row(s) | Bulk update one supported field to the already-matching value | No-op toast appears exactly; no Revert action appears | Toast text differs or Revert appears | Toast screenshot plus selected ids |
 | S-BULK-2 | Services | Select only actual-update row(s) | Bulk update one supported reversible field | Actual-update toast appears exactly; Revert appears | Toast text differs or Revert missing | Toast screenshot |
@@ -76,7 +76,7 @@ This packet is ready if run exactly as written. Mark any un-runnable item `BLOCK
 | VIEW-10 | Services | Custom saved view is active | Delete that active view | Active saved view is cleared; current view falls back to no active saved view; Views panel current-view label no longer shows deleted view name | Deleted active view remains active or stale name persists | Screenshot |
 | VIEW-11 | Services | Non-default layout available | Save a new view, apply a different view or system default, then re-apply saved view | Saved view re-applies the saved layout deterministically | Saved view does not restore its own layout | Before/after screenshots |
 | VIEW-12 | Services | Display panel closed | Toggle Display, change one display setting, then open Views | Views opens and Display closes; changed display setting stays applied for current workspace state | Panel overlap occurs or display change is lost immediately | Screenshot |
-| TOAST-1 | Monitoring, External, Services | Complete no-op, actual update, partial update, archive, restore, and revert flows | Compare each toast to the locked strings below | Exact locked wording matches; no-op has no Revert; reversible real changes do; purge never does | Any wording drift or revert-law drift appears | Toast gallery screenshots |
+| TOAST-1 | Monitoring, External, Services | Complete no-op, actual update, partial update, archive, restore, purge, and revert flows | Compare each toast to the locked strings below | Exact locked wording matches; no-op has no Revert; reversible real changes do; supported purge also shows Revert when truthful; Services exposes no purge path | Any wording drift or revert-law drift appears | Toast gallery screenshots |
 | TOAST-2 | External | Unsafe purge-block case executed | Compare blocked text to the locked string below | Exact blocked wording matches | Any wording drift | Screenshot of block message |
 | NET-1 | Services | DevTools Network open; perform a reversible Services update, then Revert | Inspect `/api/v1/logical-services/bulk-action` and follow-up requests | No request to logical-services bulk-action contains `action: restore_snapshots`; revert uses per-row `PUT` calls only | Any `restore_snapshots` bulk request is sent | Network capture |
 | NET-2 | External | DevTools Network open; unsafe deleted External row selected | Attempt purge | No purge request is sent because block happens before backend call | Any purge request is sent | Network capture |
@@ -105,7 +105,9 @@ OUT-8 can close only if:
 - External unsafe purge is blocked before backend call
 - no-op has no revert
 - reversible real changes have working revert
-- purge has no revert
+- supported purge has working revert when truthful
+- Services does not expose Purge now
+- External unsafe Purge label remains `Purge` and the blocked reason stays in the tooltip/explanation
 - evidence screenshots/network captures are collected
 
 ## Failure Routing
