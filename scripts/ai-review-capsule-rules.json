@@ -1,0 +1,42 @@
+{
+  "_comment": "Override/tune these rules without editing create-ai-review-capsule.cjs. Keep this file source-truth and task-neutral.",
+  "modes": {
+    "minimal": { "importDepth": 1, "backendSearchLimit": 12, "testLimit": 20, "mapContentBytes": 350000 },
+    "standard": { "importDepth": 2, "backendSearchLimit": 30, "testLimit": 45, "mapContentBytes": 600000 },
+    "deep": { "importDepth": 3, "backendSearchLimit": 80, "testLimit": 120, "mapContentBytes": 1200000 }
+  },
+  "projectSpine": [
+    "AGENTS.md",
+    "README.md",
+    "DEPLOYMENT.md",
+    "docs/operational-workspace-law.md",
+    "frontend/package.json",
+    "frontend/tsconfig.json",
+    "frontend/tsconfig.node.json",
+    "frontend/vite.config.ts",
+    "frontend/playwright.config.ts",
+    "frontend/vitest.setup.ts",
+    "frontend/src/App.tsx",
+    "frontend/src/main.tsx",
+    "frontend/src/api/apiClient.ts",
+    "backend/requirements.txt",
+    "backend/pytest.ini",
+    "backend/alembic.ini",
+    "backend/app/main.py",
+    "backend/app/database.py",
+    "backend/app/models/models.py",
+    "backend/app/schemas/schemas.py"
+  ],
+  "highRiskKeywords": [
+    "bulk", "purge", "restore", "archive", "delete", "update", "revert", "snapshot",
+    "credential", "dependency", "link", "tenant", "owner", "settings", "migration",
+    "schema", "action", "route", "permission", "role", "auth", "toast", "selection",
+    "saved view", "saved_view", "localstorage", "modal", "row action", "row-action"
+  ],
+  "workspaceTerms": [
+    "monitoring", "external", "service", "services", "network", "networks", "asset", "assets",
+    "vendor", "vendors", "far", "research", "project", "projects", "settings", "rack", "racks",
+    "device", "devices", "dashboard", "dataflow", "data_flow", "knowledge", "audit",
+    "maintenance", "intelligence", "rca", "tenant", "tenants", "site", "sites"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "_comment": "Hard exclusion policy for AI review capsules. These files should not be included even if changed unless the script is deliberately extended.",
+  "directories": [
+    ".git", "node_modules", "venv", "__pycache__", ".pytest_cache", "coverage", "dist", "build",
+    "playwright-report", "test-results", ".ai-review-latest", ".next", ".cache", ".turbo", "site-packages"
+  ],
+  "fileNames": [".DS_Store", ".coverage"],
+  "extensions": [
+    ".zip", ".tgz", ".gz", ".rar", ".7z", ".db", ".sqlite", ".sqlite3", ".db-shm", ".db-wal",
+    ".log", ".pyc", ".pyo", ".so", ".dylib", ".dll", ".exe", ".png", ".jpg", ".jpeg", ".gif",
+    ".webp", ".ico", ".pdf", ".mp4", ".mov", ".avi", ".woff", ".woff2", ".ttf", ".otf"
+  ],
+  "secretFileNames": [".env", ".env.local", ".env.local.runtime", ".env.production", ".env.development"],
+  "allowSecretExamples": [".env.example"]
+}
