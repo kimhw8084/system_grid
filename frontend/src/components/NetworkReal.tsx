@@ -79,6 +79,7 @@ import {
   sanitizeOperationalFilterModel,
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
+import { OPERATIONAL_ACTION_LABELS } from './shared/OperationalActionLabels'
 
 const NETWORK_VIEW_STORAGE_KEY = 'sysgrid_network_views_v1'
 const NETWORK_ACTIVE_VIEW_KEY = 'sysgrid_network_active_view_v1'
@@ -2558,7 +2559,7 @@ export default function NetworkReal() {
                       {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
                         bulkDeleteConfirm 
                           ? (activeTab === 'deleted' ? 'Confirm Permanent Purge?' : 'Confirm De-activation?') 
-                          : (activeTab === 'deleted' ? 'Purge Selection' : 'De-activate Selection')
+                          : (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purge : 'De-activate Selection')
                       )}
                     </p>
                   </button>

@@ -135,23 +135,47 @@ export function OperationalRowActionMenu({
                     className="flex gap-2"
                     style={{ width: `${geometry.actionSetWidth}px` }}
                   >
-                    {row.items.map((item, itemIdx) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={item.onClick}
-                        disabled={item.disabled}
-                        title={item.disabled ? item.disabledReason : undefined}
-                        aria-label={item.disabled ? (item.ariaLabel || item.disabledReason || item.label) : item.ariaLabel}
-                        className={`flex flex-row items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${item.confirming ? "bg-rose-600 animate-pulse" : ""}`}
-                        style={{ width: `${row.buttonWidths[itemIdx]}px` }}
-                      >
-                        {React.createElement(item.icon, { size: 14, className: `flex-shrink-0 ${TONE_ICON_CLASS[item.tone ?? "neutral"]}` })}
-                        <span className={`${row.allowWrap ? "whitespace-normal break-words" : "whitespace-nowrap"} text-slate-300`}>
-                          {item.confirming ? (item.confirmLabel || "Confirm?") : item.label}
-                        </span>
-                      </button>
-                    ))}
+                    {row.items.map((item, itemIdx) => {
+                      const button = (
+                        <button
+                          type="button"
+                          onClick={item.onClick}
+                          disabled={item.disabled}
+                          aria-label={item.disabled ? (item.ariaLabel || item.disabledReason || item.label) : item.ariaLabel}
+                          className={`flex w-full flex-row items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${item.confirming ? "bg-rose-600 animate-pulse" : ""}`}
+                        >
+                          {React.createElement(item.icon, { size: 14, className: `flex-shrink-0 ${TONE_ICON_CLASS[item.tone ?? "neutral"]}` })}
+                          <span className={`${row.allowWrap ? "whitespace-normal break-words" : "whitespace-nowrap"} text-slate-300`}>
+                            {item.confirming ? (item.confirmLabel || "Confirm?") : item.label}
+                          </span>
+                        </button>
+                      );
+
+                      if (item.disabled && item.disabledReason) {
+                        return (
+                          <div
+                            key={item.id}
+                            className="inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
+                            style={{ width: `${row.buttonWidths[itemIdx]}px` }}
+                            title={item.disabledReason}
+                            aria-label={item.ariaLabel || item.disabledReason || item.label}
+                            tabIndex={0}
+                          >
+                            {button}
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="inline-flex"
+                          style={{ width: `${row.buttonWidths[itemIdx]}px` }}
+                        >
+                          {button}
+                        </div>
+                      );
+                    })}
                   </div>
                 ))}
               </div>

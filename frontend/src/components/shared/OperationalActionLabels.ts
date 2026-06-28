@@ -5,7 +5,6 @@ export const OPERATIONAL_ACTION_LABELS = {
   archiveSelectionConfirm: 'Confirm Archive?',
   purge: 'Purge',
   purgeConfirm: 'Confirm Purge?',
-  purgeSelection: 'Purge Selection',
+  purgeSelection: 'Purge',
   purgeSelectionConfirm: 'Confirm Permanent Purge?',
 } as const
-

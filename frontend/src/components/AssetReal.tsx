@@ -74,6 +74,7 @@ import {
   sanitizeOperationalFilterModel,
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
+import { OPERATIONAL_ACTION_LABELS } from './shared/OperationalActionLabels'
 
 const MONITORING_VIEW_STORAGE_KEY = 'sysgrid_asset_real_views_v1'
 const MONITORING_ACTIVE_VIEW_KEY = 'sysgrid_asset_real_active_view_v1'
@@ -2614,7 +2615,7 @@ export default function AssetReal() {
                       {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
                         bulkDeleteConfirm 
                           ? (activeTab === 'deleted' ? 'Confirm Permanent Purge?' : 'Confirm Archive?') 
-                          : (activeTab === 'deleted' ? 'Purge Selection' : 'Archive Selection')
+                          : (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purge : 'Archive Selection')
                       )}
                     </p>
                   </button>
