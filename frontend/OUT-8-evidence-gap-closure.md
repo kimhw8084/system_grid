@@ -1,5 +1,28 @@
 # OUT-8 Evidence Gap Closure Audit
 
+## Full-Stack Artifact Packaging Gate
+
+- Previous verdict:
+  `FAIL_UNVERIFIABLE_BACKEND_CLAIM_REPEATED`
+- Workspace backend availability:
+  `BACKEND_PRESENT`
+- Artifact packaging verdict:
+  `FULL_STACK_ARTIFACT_INCLUDED`
+- Backend files included:
+  `backend/app/api/monitoring.py`
+- Backend tests included:
+  `backend/test_monitoring_workflows.py`
+  `backend/test_monitoring_query_and_bulk_edges.py`
+  `backend/test_monitoring_restore_edges.py`
+- Correct current verdict:
+  `BACKEND_REVERSIBLE_PURGE_IMPLEMENTED`
+- Exact backend/source restore mechanism:
+  Monitoring purge Revert sends `restore_purged` to `/api/v1/monitoring/bulk-action` with the captured deleted-row snapshots. `backend/app/api/monitoring.py` recreates each purged `MonitoringItem` by original id, restores persisted fields and owner rows, records restore history, and the frontend refetches `monitoring-items` from backend source.
+- Monitoring purge Revert truth:
+  Truthful end-to-end at source level. The purge removes the row from backend state, and Revert recreates it in backend state rather than faking a local-only restore.
+- Remaining human validation:
+  `H/I only`
+
 ## Verdict
 `BACKEND_REVERSIBLE_PURGE_IMPLEMENTED`
 
