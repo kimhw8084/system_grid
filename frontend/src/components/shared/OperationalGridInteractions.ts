@@ -211,8 +211,10 @@ export function useOperationalRowInteractions({
 
 export function useOperationalGroupedSelection({
   setSelectedIds,
+  selectionScopeKey,
 }: {
   setSelectedIds: (ids: number[]) => void;
+  selectionScopeKey?: string | number | null;
 }) {
   const groupSelectionsRef = useRef<Record<string, number[]>>({});
 
@@ -230,6 +232,10 @@ export function useOperationalGroupedSelection({
     groupSelectionsRef.current = {};
     setSelectedIds([]);
   }, [setSelectedIds]);
+
+  useEffect(() => {
+    resetGroupedSelection();
+  }, [resetGroupedSelection, selectionScopeKey]);
 
   return {
     handleSelectionChanged,

@@ -533,9 +533,6 @@ export default function ServicesReal() {
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
   
   const [selectedIds, setSelectedIds] = useState<number[]>([])
-  const { handleSelectionChanged, resetGroupedSelection } = useOperationalGroupedSelection({
-    setSelectedIds,
-  })
   const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
   const [isBulkSeverityOpen, setIsBulkSeverityOpen] = useState(false)
   const [isBulkNotifyOpen, setIsBulkNotifyOpen] = useState(false)
@@ -766,10 +763,6 @@ export default function ServicesReal() {
       }
     }
   }, [buildServiceWorkspacePreferencePayload, hasUserSettings])
-
-  useEffect(() => {
-    resetGroupedSelection()
-  }, [groupBy, resetGroupedSelection])
 
   const handleRowId = useCallback((params: any) => {
     if (params?.data?.id != null) return String(params.data.id)
@@ -1266,6 +1259,11 @@ export default function ServicesReal() {
     const visibleIds = displayedItemsInOrder.map((item: any) => item.id).join(',')
     return `${activeTab}:${groupBy}:${visibleIds}`
   }, [activeTab, displayedItemsInOrder, groupBy])
+
+  const { handleSelectionChanged } = useOperationalGroupedSelection({
+    setSelectedIds,
+    selectionScopeKey,
+  })
 
   const servicesDataState = useMemo(
     () => resolveOperationalDataState({

@@ -526,9 +526,6 @@ export default function MonitoringGrid() {
     hasSelection,
     selectedCount,
   } = useOperationalSelection([])
-  const { handleSelectionChanged, resetGroupedSelection } = useOperationalGroupedSelection({
-    setSelectedIds,
-  })
   const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'severity' | 'notification' | null>(null)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
@@ -806,10 +803,6 @@ export default function MonitoringGrid() {
       }
     }
   }, [buildMonitoringWorkspacePreferencePayload, hasUserSettings])
-
-  useEffect(() => {
-    resetGroupedSelection()
-  }, [groupBy, resetGroupedSelection])
 
   const handleRowId = useCallback((params: any) => String(params.data.id), [])
 
@@ -1335,6 +1328,11 @@ export default function MonitoringGrid() {
     const visibleIds = displayedItemsInOrder.map((item: any) => item.id).join(',')
     return `${activeTab}:${groupBy}:${visibleIds}`
   }, [activeTab, displayedItemsInOrder, groupBy])
+
+  const { handleSelectionChanged } = useOperationalGroupedSelection({
+    setSelectedIds,
+    selectionScopeKey,
+  })
 
   const monitoringDataState = useMemo(
     () => resolveOperationalDataState({

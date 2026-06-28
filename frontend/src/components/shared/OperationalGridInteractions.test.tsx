@@ -156,6 +156,70 @@ describe('OperationalGridInteractions', () => {
     expect(setSelectedIds).toHaveBeenLastCalledWith([1, 2, 3])
   })
 
+  it('clears grouped selections when the selection scope changes', () => {
+    const setSelectedIds = vi.fn()
+    const { result, rerender } = renderHook(
+      ({ selectionScopeKey }) => useOperationalGroupedSelection({ setSelectedIds, selectionScopeKey }),
+      { initialProps: { selectionScopeKey: 'active:raw:1,2,3' } }
+    )
+
+    act(() => {
+      result.current.handleSelectionChanged({
+        api: {
+          getSelectedNodes: () => [{ data: { id: 1 } }, { data: { id: 2 } }],
+        },
+      }, 'group:a')
+    })
+
+    act(() => {
+      result.current.handleSelectionChanged({
+        api: {
+          getSelectedNodes: () => [{ data: { id: 3 } }],
+        },
+      }, 'group:b')
+    })
+
+    rerender({ selectionScopeKey: 'deleted:raw:4,5,6' })
+
+    expect(setSelectedIds).toHaveBeenLastCalledWith([])
+  })
+
+  it('does not re-emit stale grouped selections after a scope change', () => {
+    const setSelectedIds = vi.fn()
+    const { result, rerender } = renderHook(
+      ({ selectionScopeKey }) => useOperationalGroupedSelection({ setSelectedIds, selectionScopeKey }),
+      { initialProps: { selectionScopeKey: 'active:status:1,2,3' } }
+    )
+
+    act(() => {
+      result.current.handleSelectionChanged({
+        api: {
+          getSelectedNodes: () => [{ data: { id: 1 } }, { data: { id: 2 } }],
+        },
+      }, 'status:active')
+    })
+
+    act(() => {
+      result.current.handleSelectionChanged({
+        api: {
+          getSelectedNodes: () => [{ data: { id: 3 } }],
+        },
+      }, 'environment:prod')
+    })
+
+    rerender({ selectionScopeKey: 'deleted:status:8,9,10' })
+
+    act(() => {
+      result.current.handleSelectionChanged({
+        api: {
+          getSelectedNodes: () => [{ data: { id: 9 } }],
+        },
+      }, 'status:deleted')
+    })
+
+    expect(setSelectedIds).toHaveBeenLastCalledWith([9])
+  })
+
   it('resets the range anchor when the selection scope changes', () => {
     const { result, rerender } = renderHook(
       ({ selectionScopeKey }) => useOperationalRowInteractions({ selectionScopeKey }),

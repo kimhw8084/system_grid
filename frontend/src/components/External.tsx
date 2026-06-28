@@ -1489,10 +1489,6 @@ export default function External() {
   const [isWorkspaceMaximized, setIsWorkspaceMaximized] = useState(false)
   const [searchTerm, setSearchTerm] = useState(persistedUiState.searchTerm)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
-  const { handleSelectionChanged, resetGroupedSelection } = useOperationalGroupedSelection({
-    setSelectedIds,
-  })
-
   // Cloned states from Monitoring view
   const [groupBy, setGroupBy] = useState<string>(persistedUiState.groupBy || 'raw')
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
@@ -1865,6 +1861,11 @@ export default function External() {
     return `${activeTab}:${groupBy}:${visibleIds}`
   }, [activeTab, filteredEntities, filteredLinks, groupBy])
 
+  const { handleSelectionChanged } = useOperationalGroupedSelection({
+    setSelectedIds,
+    selectionScopeKey,
+  })
+
   const externalDataState = useMemo(
     () => resolveOperationalDataState({
       loading: activeTab === 'links' ? linkLoading : isLoading,
@@ -1900,10 +1901,6 @@ export default function External() {
   )
 
   const shouldRenderRawGrid = groupBy === 'raw' || externalDataState.kind !== 'ready'
-
-  useEffect(() => {
-    resetGroupedSelection()
-  }, [activeTab, groupBy, resetGroupedSelection])
 
   useEffect(() => {
     if (groupBy === 'raw') return
