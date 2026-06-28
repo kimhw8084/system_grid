@@ -114,6 +114,7 @@ import {
   showOperationalBulkResultToast,
   showOperationalBulkRevertedToast,
 } from './shared/OperationalBulkContract'
+import { buildOperationalLifecycleToastMessage } from './shared/OperationalLifecycleToasts'
 
 const MONITORING_VIEW_STORAGE_KEY = 'sysgrid_monitoring_views_v1'
 const MONITORING_ACTIVE_VIEW_KEY = 'sysgrid_monitoring_active_view_v1'
@@ -596,7 +597,7 @@ export default function MonitoringGrid() {
   const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
   const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
   const lastUndoRef = useRef<any>(null)
-  const purgeRestoreCapabilityRef = useRef<boolean | null>(null)
+  const purgeRestoreCapabilityRef = useRef<{ supported: boolean; reason: string } | null>(null)
   const [newViewName, setNewViewName] = useState('')
 
   const isWorkspaceDirty = useMemo(() => {
@@ -1590,11 +1591,35 @@ export default function MonitoringGrid() {
         method: 'POST',
         body: JSON.stringify({ ids: [0], action: 'restore_purged', payload: {} })
       })
-      purgeRestoreCapabilityRef.current = true
+      purgeRestoreCapabilityRef.current = {
+        supported: true,
+        reason: 'restore_purged probe request succeeded.',
+      }
     } catch (error: any) {
-      purgeRestoreCapabilityRef.current = monitoringSupportsRestorePurged(error)
+      const detail = (
+        typeof error?.data?.detail === 'string' && error.data.detail.trim()
+          ? error.data.detail.trim()
+          : error instanceof Error && error.message.trim()
+            ? error.message.trim()
+            : 'Unknown restore_purged probe failure'
+      )
+      const status = Number.isFinite(Number(error?.status)) ? Number(error.status) : null
+      const supported = monitoringSupportsRestorePurged(error)
+      const detailPrefix = status ? `${status} ` : ''
+      purgeRestoreCapabilityRef.current = supported
+        ? {
+            supported: true,
+            reason: `restore_purged probe returned ${detailPrefix}${detail}; treating backend support as present.`,
+          }
+        : {
+            supported: false,
+            reason: `Revert unavailable: restore_purged probe returned ${detailPrefix}${detail}.`,
+          }
     }
-    return purgeRestoreCapabilityRef.current ?? false
+    return purgeRestoreCapabilityRef.current ?? {
+      supported: false,
+      reason: 'Revert unavailable: restore_purged capability probe produced no result.',
+    }
   }, [])
 
   const bulkMutation = useMutation({
@@ -1608,6 +1633,7 @@ export default function MonitoringGrid() {
     },
     mutationFn: async ({ action, payload = {}, ids: overrideIds }: any) => {
       const idsToUse = overrideIds ?? selectedIds
+      // Capture the full pre-purge rows here; truthful restore_purged depends on real snapshots, not ids alone.
       const previousSnapshots = (allItems || []).filter((item: any) => idsToUse.includes(item.id)).map((item: any) => ({ ...item }))
       const res = await apiFetch('/api/v1/monitoring/bulk-action', {
         method: 'POST',
@@ -1638,19 +1664,49 @@ export default function MonitoringGrid() {
               : totalSelected
       const unchangedCount = Math.max(0, totalSelected - changedCount)
       const fieldLabel = resolveBulkFieldLabel(payload, MONITORING_BULK_FIELD_LABELS)
-      const purgeRestoreSupported = action === 'purge'
-        ? await ensurePurgeRestoreCapability()
-        : true
+      const actionId = action === 'delete' ? 'archive' : action
+      const availableSnapshots = Array.isArray(previousSnapshots) ? previousSnapshots.filter(Boolean) : []
+      const shouldEvaluatePurgeRevert = action === 'purge' && changedCount > 0
+      let purgeSuppressionReason: string | null = null
+      let purgeRestoreCapability = null as null | { supported: boolean; reason: string }
+
+      if (shouldEvaluatePurgeRevert) {
+        if (availableSnapshots.length === 0) {
+          purgeSuppressionReason = 'Revert unavailable: missing restore snapshots before purge.'
+        } else {
+          purgeRestoreCapability = await ensurePurgeRestoreCapability()
+          if (!purgeRestoreCapability.supported) {
+            purgeSuppressionReason = purgeRestoreCapability.reason
+          }
+        }
+      }
 
       if (changedCount <= 0) lastUndoRef.current = null
       else if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
       else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
-      else if (action === 'purge' && purgeRestoreSupported) lastUndoRef.current = { mode: 'restore_purged', snapshots: previousSnapshots }
+      else if (action === 'purge' && availableSnapshots.length > 0 && purgeRestoreCapability?.supported) {
+        lastUndoRef.current = { mode: 'restore_purged', snapshots: availableSnapshots }
+      }
       else if (action === 'update') lastUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
       else lastUndoRef.current = null
 
+      // When purge cannot expose Revert, emit the exact suppression cause in the success toast instead of hiding it silently.
+      if (action === 'purge' && changedCount > 0 && purgeSuppressionReason) {
+        showWorkspaceToast(
+          `${buildOperationalLifecycleToastMessage({
+            action: actionId,
+            totalSelected,
+            changedCount,
+            unchangedCount,
+            fieldLabel,
+          })} ${purgeSuppressionReason}`,
+          { type: 'success' }
+        )
+        return
+      }
+
       showOperationalBulkResultToast({
-        action: action === 'delete' ? 'archive' : action,
+        action: actionId,
         totalSelected,
         changedCount,
         unchangedCount,
