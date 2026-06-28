@@ -41,8 +41,8 @@ This packet is ready if run exactly as written. Mark any un-runnable item `BLOCK
 | M-BULK-3 | Monitoring | Select partial multi-select set | Bulk update one reversible field | Partial-update toast appears exactly; Revert appears | Toast text differs, counts wrong, or Revert missing | Toast screenshot plus selected ids |
 | M-BULK-4 | Monitoring | Select active row(s) | Bulk archive | Archive toast appears exactly; Revert appears | Toast text differs or Revert missing | Toast screenshot |
 | M-BULK-5 | Monitoring | Select deleted row(s) | Bulk restore | Restore toast appears exactly; Revert appears | Toast text differs or Revert missing | Toast screenshot |
-| M-BULK-6 | Monitoring | Deleted row(s) available and purge UI visible in this route | Bulk purge | Purge toast appears exactly; if the backend cannot truthfully restore a purged row, mark `PARTIAL_BACKEND_BLOCKER_MONITORING_PURGE_REVERT` instead of claiming Revert works | Toast text differs, fake Revert appears, or blocker is hidden | Toast screenshot and backend-behavior note |
-| M-BULK-7 | Monitoring | Immediately after M-BULK-2, 3, 4, or 5 | Click Revert | `Bulk operation reverted.` appears and affected row values/state return to prior values | Revert fails, wrong toast, or state does not return | Before/after screenshots and revert toast |
+| M-BULK-6 | Monitoring | Deleted row(s) available and purge UI visible in this route | Bulk purge | Purge toast appears exactly and shows Revert | Toast text differs or Revert missing | Toast screenshot |
+| M-BULK-7 | Monitoring | Immediately after M-BULK-6 | Click Revert, then refresh/fetch | `Bulk operation reverted.` appears and the purged row returns from backend/source truth after refresh/fetch | Revert fails, wrong toast, or refreshed data still lacks the row | Before/after screenshots, revert toast, and refreshed grid capture |
 | E-BULK-1 | External | Select only no-op row(s) | Bulk update one field to the already-matching value | No-op toast appears exactly; no Revert action appears | Toast text differs or Revert appears | Toast screenshot plus selected ids |
 | E-BULK-2 | External | Select only actual-update row(s) | Bulk update one reversible field | Actual-update toast appears exactly; Revert appears | Toast text differs or Revert missing | Toast screenshot |
 | E-BULK-3 | External | Select partial multi-select set | Bulk update one reversible field | Partial-update toast appears exactly; Revert appears | Toast text differs, counts wrong, or Revert missing | Toast screenshot |
@@ -106,9 +106,11 @@ OUT-8 can close only if:
 - no-op has no revert
 - reversible real changes have working revert
 - supported purge has working revert only when truthfully restorable end-to-end
-- if Monitoring purge cannot be truthfully restored, report `PARTIAL_BACKEND_BLOCKER_MONITORING_PURGE_REVERT`
+- Monitoring purge Revert must be manually revalidated end-to-end: purge deleted row, click Revert, refresh/fetch, confirm row returns
 - Services does not expose Purge now
 - External unsafe Purge label remains `Purge` and never `Purge Selection`; the blocked reason stays in the tooltip/explanation
+- External unsafe Purge recheck: label = `Purge`, tooltip reason visible, no request sent
+- Services purge absence recheck: no Purge button in deleted scope and no row-action Purge
 - evidence screenshots/network captures are collected
 
 ## Failure Routing

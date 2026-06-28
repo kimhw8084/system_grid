@@ -320,6 +320,7 @@ def summarize_bulk_monitoring_action(
     base = {
         "delete": "Archived monitors",
         "restore": "Restored monitors",
+        "restore_purged": "Restored monitors",
         "purge": "Purged monitors",
         "update": "Updated monitors",
     }.get(action, "Updated monitors")
@@ -533,6 +534,76 @@ async def save_monitoring_history(item_id: int, version: int, db: AsyncSession, 
         created_by_user_id=user_id
     )
     db.add(history_obj)
+
+
+async def restore_purged_monitoring_item_from_snapshot(
+    db: AsyncSession,
+    snapshot: dict[str, Any],
+    *,
+    item_id: int,
+) -> bool:
+    existing_item = await load_monitoring_item(db, item_id)
+    target_snapshot = build_monitoring_snapshot_from_values(snapshot, snapshot.get("owners") or [])
+    if existing_item:
+        if build_monitoring_snapshot(existing_item) == target_snapshot:
+            return False
+        raise HTTPException(status_code=409, detail=f"Monitoring item {item_id} already exists and does not match the purge snapshot")
+
+    await ensure_monitoring_item_uniqueness(db, item_data=target_snapshot, exclude_item_id=item_id)
+
+    owner_rows: list[models.MonitoringOwner] = []
+    for owner in target_snapshot.get("owners") or []:
+        operator_id = owner.get("operator_id")
+        if operator_id is not None:
+            operator_exists = await db.scalar(select(models.Operator.id).where(models.Operator.id == operator_id))
+            if operator_exists is None:
+                operator_id = None
+        owner_rows.append(models.MonitoringOwner(
+            monitoring_item_id=item_id,
+            operator_id=operator_id,
+            name=normalize_string(owner.get("name")),
+            external_id=normalize_string(owner.get("external_id")),
+            role=normalize_string(owner.get("role")),
+        ))
+
+    restored_item = models.MonitoringItem(
+        id=item_id,
+        device_id=target_snapshot.get("device_id"),
+        category=target_snapshot.get("category"),
+        status=target_snapshot.get("status"),
+        title=target_snapshot.get("title"),
+        spec=target_snapshot.get("spec"),
+        platform=target_snapshot.get("platform"),
+        monitoring_url=target_snapshot.get("monitoring_url"),
+        purpose=target_snapshot.get("purpose"),
+        impact=target_snapshot.get("impact"),
+        notification_method=target_snapshot.get("notification_method"),
+        notification_recipients=target_snapshot.get("notification_recipients") or [],
+        logic=target_snapshot.get("logic"),
+        logic_json=target_snapshot.get("logic_json") or [],
+        monitored_services=target_snapshot.get("monitored_services") or [],
+        owner_team=target_snapshot.get("owner_team"),
+        check_interval=target_snapshot.get("check_interval"),
+        alert_duration=target_snapshot.get("alert_duration"),
+        notification_throttle=target_snapshot.get("notification_throttle"),
+        severity=target_snapshot.get("severity"),
+        is_active=bool(target_snapshot.get("is_active", True)),
+        is_deleted=bool(target_snapshot.get("is_deleted", False)),
+        recovery_docs=target_snapshot.get("recovery_docs") or [],
+        version=max(int(snapshot.get("version") or 0) + 1, 1),
+    )
+    db.add(restored_item)
+    await db.flush()
+    for owner_row in owner_rows:
+        db.add(owner_row)
+    await db.flush()
+    await save_monitoring_history(
+        item_id,
+        restored_item.version,
+        db,
+        summarize_monitoring_snapshot_delta(None, target_snapshot, action_label="restore"),
+    )
+    return True
 
 @router.get("/{item_id}/history", response_model=List[schemas.MonitoringHistoryResponse])
 async def get_monitoring_history(item_id: int, db: AsyncSession = Depends(get_db)):
@@ -766,6 +837,28 @@ async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
         delete_result = await db.execute(delete(models.MonitoringItem).where(models.MonitoringItem.id.in_(ids)))
         changed_count = delete_result.rowcount or 0
         skipped_count = max(0, len(ids) - changed_count)
+    elif action == "restore_purged":
+        snapshots = payload.get("snapshots")
+        if not isinstance(snapshots, list):
+            raise HTTPException(status_code=400, detail="restore_purged requires payload.snapshots")
+        snapshots_by_id = {
+            int(snapshot.get("id")): snapshot
+            for snapshot in snapshots
+            if isinstance(snapshot, dict) and snapshot.get("id") is not None
+        }
+        for requested_id in ids:
+            if int(requested_id) not in snapshots_by_id:
+                raise HTTPException(status_code=400, detail=f"Missing purge snapshot for monitoring item {requested_id}")
+        for requested_id in ids:
+            restored = await restore_purged_monitoring_item_from_snapshot(
+                db,
+                snapshots_by_id[int(requested_id)],
+                item_id=int(requested_id),
+            )
+            if restored:
+                changed_count += 1
+            else:
+                skipped_count += 1
     elif action == "restore":
         result = await db.execute(
             select(models.MonitoringItem)

@@ -1,7 +1,7 @@
 # OUT-8 Evidence Gap Closure Audit
 
 ## Verdict
-`PARTIAL_NEEDS_SOURCE_FIX`
+`BACKEND_REVERSIBLE_PURGE_IMPLEMENTED`
 
 ## Source Evidence Matrix
 | Contract | Source Anchor | Evidence Status | Gap? | Required Action |
@@ -30,7 +30,6 @@
 | `frontend/RUN3-G-implementation-roadmap.md` | Confirms no implementation should be driven by downgraded claims and no route deletion should hide inside OUT-8 close | `STRONG` | No |
 
 ## OUT-8 Direct Close Risks
-- Shared bulk wording is not fully locked to the support-package exact contract. `frontend/src/components/shared/OperationalBulkContract.ts:20` singularizes to `selected record`, while the locked contract expects `selected records` even for `1 of 1`. This is a narrow source blocker because OUT-8 close-critical bulk wording would otherwise be overstated.
 - Row-action width law is source-proven for shared button rows, but not generically for cards/dropdowns/nested controls inside the trio row-action panels. The trio source does not currently show those control types inside `OperationalRowActionMenu`, so a full generic pass claim would overreach the source.
 
 ## Future-Run Risks Not Blocking OUT-8
@@ -53,18 +52,33 @@
 - `supported purge can have revert when truthful`: `YES`. Shared helper allows revert for any successful action when the caller supplies truthful `onRevert` data in `frontend/src/components/shared/OperationalBulkContract.ts:115-120`.
 - `blocked unsafe purge has exact explanation`: `YES`. `frontend/src/components/External.tsx:115,2295-2296,2998-3003,3108-3115`.
 - `Services unsupported purge absent`: `YES`. Deleted-scope bulk and row actions expose restore only in `frontend/src/components/ServicesReal.tsx:2009-2018,2142-2145`.
-- `Monitoring purge revert truth`: `PARTIAL_BACKEND_BLOCKER_MONITORING_PURGE_REVERT`. `backend/app/api/monitoring.py:765-768` hard-deletes purged rows with `delete(models.MonitoringItem)`, while `restore` at `backend/app/api/monitoring.py:769-790` only revives rows that still exist, so purge cannot be truthfully reverted end-to-end today.
+- `Monitoring purge revert truth`: `BACKEND_REVERSIBLE_PURGE_IMPLEMENTED`. `frontend/src/components/MonitoringGrid.tsx` now sends purge Revert through a backend `restore_purged` action, and `backend/app/api/monitoring.py` recreates the purged Monitoring row from the exact pre-purge snapshot before the grid refetches it.
+
+## Backend Reversible Purge Capability Audit
+- Verdict: `BACKEND_REVERSIBLE_PURGE_IMPLEMENTED`
+- Purge endpoint/action:
+  `backend/app/api/monitoring.py` bulk action `action == "purge"`
+- Restore endpoint/action for existing deleted rows:
+  `backend/app/api/monitoring.py` bulk action `action == "restore"`
+  and history restore `POST /api/v1/monitoring/{item_id}/restore/{history_id}`
+- Prior hard-delete finding:
+  prior source used `delete(models.MonitoringItem)` for purge, which removed the row and cascaded Monitoring history, so ordinary restore could not revive it
+- Deleted-row state retained before purge:
+  `frontend/src/components/MonitoringGrid.tsx` already captured `previousSnapshots` before bulk actions, including deleted Monitoring rows selected for purge
+- Backend recreate/upsert capability now used:
+  `backend/app/api/monitoring.py` adds `restore_purged`, which recreates the purged Monitoring row from the exact pre-purge snapshot and writes a new restore history entry
+- Why Revert is truthful:
+  Revert no longer depends on frontend-only state. The frontend sends the stored snapshot back to the backend, the backend recreates the row in persistent storage, and the grid invalidates and refetches `monitoring-items` from source
 
 ## Evidence Gaps
 | Gap | Severity | Blocks OUT-8? | Source Needed | Recommended Prompt If Blocking |
 | --- | --- | --- | --- | --- |
-| Shared bulk helper uses `selected record` for count `1`, but support contract locks `selected records` universally | High | Yes | `frontend/src/components/shared/OperationalBulkContract.ts` exact wording update plus tests | `Patch frontend/src/components/shared/OperationalBulkContract.ts so all success messages use "selected records" for both singular and plural counts, then add/adjust unit coverage for no-op, changed, archive, restore, purge, and revert visibility.` |
 | Full generic row-action width law is broader than current trio row-action source proof; current source proves button-row coupling, not generic nested-control/card/dropdown coupling inside trio row-action panels | Medium | No | Either narrower claim language in close decision, or additional source/tests showing non-button controls inside `OperationalRowActionMenu` | `Audit or add proof for non-button row-action controls using OperationalRowActionMenu, or narrow the OUT-8 close claim to button-row width coupling only.` |
 
 ## Close Recommendation
-`run one narrow source patch first`
+`backend reversible purge source recovery implemented; rerun H/I human validation`
 
-The source and support package are strong enough to reach final human UI validation after one narrow blocker is removed: the shared bulk helper copy mismatch. Without that patch, OUT-8 would be claiming an exact locked bulk contract the current source does not fully satisfy. After that fix, proceed to human UI validation using `frontend/RUN3-E-ui-standard-acceptance-checklist.md`, while keeping the broader row-action nested-control claim scoped to what the trio source actually proves.
+The remaining step is H/I human validation. Monitoring purge Revert now restores the purged row through backend/source recreation, while External unsafe purge labeling/tooltips and Services purge absence remain source-verified. Keep the broader row-action nested-control claim scoped to what the trio source actually proves.
 
 ## Post-Fix Note — OperationalBulkContract Wording
 - Verdict: `BULK_WORDING_FIXED_SOURCE_LEVEL`
@@ -91,7 +105,7 @@ The source and support package are strong enough to reach final human UI validat
   `npm run typecheck --prefix frontend` still fails on the pre-existing unrelated `NetworkReal.tsx` and `VendorsReal.tsx` errors already documented in `frontend/RUN3-F-typecheck-build-blockers.md`; no new typecheck failure was introduced by this patch.
 
 ## Post-Human-Validation H/I Recovery Note
-- Monitoring purge Revert attempted in source but not proven truthful end-to-end
+- Monitoring purge Revert now uses backend-backed restore from the captured pre-purge snapshot
 - External disabled Purge label fixed
 - Services purge remains unexposed
 - Human validation required again only for H/I
@@ -100,7 +114,27 @@ The source and support package are strong enough to reach final human UI validat
 - External disabled Purge label fixed to `Purge`
 - External disabled Purge tooltip/focus reason added
 - Monitoring purge Revert truth source proof:
-  `PARTIAL_BACKEND_BLOCKER_MONITORING_PURGE_REVERT`
-  `backend/app/api/monitoring.py` hard-deletes on purge and cannot restore a removed row through the existing restore path
+  `BACKEND_REVERSIBLE_PURGE_IMPLEMENTED`
 - Services purge remains unexposed
 - Human validation required again only for H/I
+
+## Backend Reversible Purge Recovery Note
+- Verdict:
+  `BACKEND_REVERSIBLE_PURGE_IMPLEMENTED`
+- Backend/source files changed:
+  `backend/app/api/monitoring.py`
+  `backend/test_monitoring_workflows.py`
+- Frontend files changed:
+  `frontend/src/components/MonitoringGrid.tsx`
+  `frontend/OUT-8-human-validation-packet.md`
+  `frontend/OUT-8-evidence-gap-closure.md`
+- Exact restore mechanism:
+  Monitoring purge Revert calls backend bulk action `restore_purged` with the exact pre-purge snapshots captured from `monitoring-items`. The backend recreates each purged Monitoring row by original id and re-inserts owner rows before committing and writing a restore history entry
+- Why Revert is truthful:
+  After purge, the row is absent from source. Revert performs a backend recreate, then the frontend invalidates and refetches `monitoring-items`, so the returned row is source-backed rather than local-only
+- Proof command summary:
+  source grep now shows `restore_purged` in `backend/app/api/monitoring.py` and `restore_purged` undo wiring in `frontend/src/components/MonitoringGrid.tsx`
+  targeted backend test proves purge removes the row and `restore_purged` makes it fetchable again
+  `npm run typecheck --prefix frontend` still reports only the pre-existing `NetworkReal.tsx` and `VendorsReal.tsx` errors
+- Remaining human validation required:
+  H/I only

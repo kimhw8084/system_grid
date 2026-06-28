@@ -95,6 +95,79 @@ async def test_monitoring_bulk_actions_create_history_entries(seeded_admin_tenan
 
 
 @pytest.mark.anyio
+async def test_monitoring_purge_revert_restores_deleted_row_from_backend_snapshot(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    tenant_id = seeded_admin_tenant["tenant_id"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(tenant_id)}
+    await _ensure_admin(seeded_admin_tenant)
+
+    team_res = await client.post("/api/v1/settings/teams", json={"name": "History Ops"}, headers=headers)
+    assert team_res.status_code == 200, team_res.text
+
+    device_res = await client.post("/api/v1/devices", json={
+        "name": "MON-PURGE-UNDO-01",
+        "system": "MON-PURGE-UNDO",
+        "status": "Active",
+        "type": "Physical",
+        "serial_number": "MON-PURGE-UNDO-SN",
+        "asset_tag": "MON-PURGE-UNDO-AT",
+    }, headers=headers)
+    assert device_res.status_code == 200, device_res.text
+    device = device_res.json()
+
+    create_res = await client.post("/api/v1/monitoring", json={
+        "device_id": device["id"],
+        "category": "Hardware",
+        "status": "Existing",
+        "title": "MON-PURGE-UNDO",
+        "platform": "Zabbix",
+        "purpose": "Backend purge undo validation",
+        "notification_method": "Slack",
+        "owner_team": "History Ops",
+    }, headers=headers)
+    assert create_res.status_code == 200, create_res.text
+    monitor = create_res.json()
+
+    delete_res = await client.post("/api/v1/monitoring/bulk-action", json={
+        "ids": [monitor["id"]],
+        "action": "delete",
+    }, headers=headers)
+    assert delete_res.status_code == 200, delete_res.text
+
+    deleted_list_res = await client.get("/api/v1/monitoring?include_deleted=true", headers=headers)
+    assert deleted_list_res.status_code == 200, deleted_list_res.text
+    deleted_monitor = next(item for item in deleted_list_res.json() if item["id"] == monitor["id"])
+    assert deleted_monitor["status"] == "Deleted"
+    assert deleted_monitor["is_deleted"] is True
+
+    purge_res = await client.post("/api/v1/monitoring/bulk-action", json={
+        "ids": [monitor["id"]],
+        "action": "purge",
+    }, headers=headers)
+    assert purge_res.status_code == 200, purge_res.text
+    assert purge_res.json()["changed"] == 1
+
+    post_purge_list_res = await client.get("/api/v1/monitoring?include_deleted=true", headers=headers)
+    assert post_purge_list_res.status_code == 200, post_purge_list_res.text
+    assert all(item["id"] != monitor["id"] for item in post_purge_list_res.json())
+
+    restore_res = await client.post("/api/v1/monitoring/bulk-action", json={
+        "ids": [monitor["id"]],
+        "action": "restore_purged",
+        "payload": {"snapshots": [deleted_monitor]},
+    }, headers=headers)
+    assert restore_res.status_code == 200, restore_res.text
+    assert restore_res.json()["changed"] == 1
+
+    restored_list_res = await client.get("/api/v1/monitoring?include_deleted=true", headers=headers)
+    assert restored_list_res.status_code == 200, restored_list_res.text
+    restored_monitor = next(item for item in restored_list_res.json() if item["id"] == monitor["id"])
+    assert restored_monitor["title"] == deleted_monitor["title"]
+    assert restored_monitor["status"] == "Deleted"
+    assert restored_monitor["is_deleted"] is True
+
+
+@pytest.mark.anyio
 async def test_monitoring_enforces_guardrails_and_security_rules(seeded_admin_tenant):
     client = seeded_admin_tenant["client"]
     tenant_id = seeded_admin_tenant["tenant_id"]

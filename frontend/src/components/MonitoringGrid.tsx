@@ -1558,6 +1558,16 @@ export default function MonitoringGrid() {
         body: JSON.stringify({ ids: undo.ids, action: undo.action, payload: undo.payload || {} })
       })
       if (!res.ok) throw new Error(await res.text())
+    } else if (undo.mode === 'restore_purged') {
+      const res = await apiFetch('/api/v1/monitoring/bulk-action', {
+        method: 'POST',
+        body: JSON.stringify({
+          ids: undo.snapshots.map((snapshot: any) => snapshot.id),
+          action: 'restore_purged',
+          payload: { snapshots: undo.snapshots },
+        })
+      })
+      if (!res.ok) throw new Error(await res.text())
     } else if (undo.mode === 'restore_snapshots') {
       for (const snapshot of undo.snapshots) {
         const res = await apiFetch(`/api/v1/monitoring/${snapshot.id}`, {
@@ -1616,6 +1626,7 @@ export default function MonitoringGrid() {
       if (changedCount <= 0) lastUndoRef.current = null
       else if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
       else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
+      else if (action === 'purge') lastUndoRef.current = { mode: 'restore_purged', snapshots: previousSnapshots }
       else if (action === 'update') lastUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
       else lastUndoRef.current = null
 
