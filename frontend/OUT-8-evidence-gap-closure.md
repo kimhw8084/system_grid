@@ -194,3 +194,21 @@ The remaining step is H/I human validation. Monitoring purge Revert now restores
 - Locked wording evidence:
   `frontend/src/components/shared/OperationalActionLabels.ts` keeps active purge labels at `Purge`
   active shared sources no longer require `Purge Selection`; shared bulk wording still uses `selected records`
+
+## Golden Lifecycle Phase 1 Cleanup Evidence
+- Shared no-op toast proof:
+  `frontend/src/components/shared/OperationalLifecycleToasts.ts` now returns `No changes made. Selected records already match the chosen value.` for lifecycle actions whenever `changedCount <= 0`
+- Forbidden copy proof:
+  active cleanup targets no longer use `Confirm Purge peer?`
+  active shared lifecycle labels still resolve `purge` and `purgeSelection` to `Purge`
+  active shared toast wording still uses `selected records`
+- External blocker reason proof:
+  `frontend/src/components/External.tsx` now summarizes multi-select blockers using available link and credential counts plus blocker names when present, and falls back to the honest backend-limitation message when names are unavailable
+- Services backend-blocked proof preserved:
+  `frontend/src/components/ServicesReal.tsx` still exposes deleted-state `Purge` only as disabled with the backend-blocked explanation
+- Monitoring restore_purged proof preserved:
+  `frontend/src/components/MonitoringGrid.tsx` still uses the `restore_purged` undo path for truthful purge revert
+- Remaining backend non-PASS reasons:
+  Monitoring is still the only audited truthful purge-revert backend
+  External purge still cannot truthfully advertise purge Revert end-to-end
+  Services still has no truthful backend purge/revert support

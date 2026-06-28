@@ -21,9 +21,11 @@ export const buildOperationalLifecycleToastMessage = ({
 }) => {
   const selectedRecordLabel = getSelectedRecordLabel()
 
-  if (action === 'update') {
-    if (changedCount <= 0) return BULK_NO_CHANGES_MESSAGE
+  if (changedCount <= 0) {
+    return BULK_NO_CHANGES_MESSAGE
+  }
 
+  if (action === 'update') {
     const base = `Updated ${changedCount} of ${totalSelected} ${selectedRecordLabel}: ${fieldLabel} changed.`
     return unchangedCount > 0 ? `${base} ${unchangedCount} already matched.` : base
   }

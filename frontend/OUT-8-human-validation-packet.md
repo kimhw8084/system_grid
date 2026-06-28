@@ -143,3 +143,28 @@ rtk rg -n "setShowViewsMenu\\(!showViewsMenu\\)|setShowDisplayMenu\\(!showDispla
   confirm no purge request is sent from Services because the backend still lacks truthful purge/revert support
 - Recheck Monitoring:
   confirm existing `restore_purged` revert path still behaves as before; this phase did not replace that flow
+
+## Golden Lifecycle Phase 1 Cleanup Human Validation
+Manual checks:
+1. Trigger archive no-op:
+   expect:
+   `No changes made. Selected records already match the chosen value.`
+   no Revert
+2. Trigger restore no-op:
+   same expected no-op message
+   no Revert
+3. Trigger purge no-op if reachable:
+   same expected no-op message
+   no Revert
+4. External multi-select blocked Purge:
+   visible label remains `Purge`
+   hover/focus reason appears
+   reason is detailed if data is available, or honestly states detail is unavailable
+   no purge request is sent
+5. Services deleted view:
+   backend-blocked Purge remains visible/disabled where lifecycle actions appear
+   hover/focus explains backend blocker
+   no unsupported request is sent
+6. Monitoring:
+   `restore_purged` path still present
+   runtime Revert still requires backend/browser validation

@@ -147,3 +147,22 @@ STOP_AUDIT_ONLY
   deleted-state Purge is now represented as backend-blocked rather than omitted; no unsupported purge request path was added
 - Still not complete in Phase 1:
   backend purge/revert truth remains uneven across entities, and only source-safe shared foundation wiring was implemented here
+
+## Phase 1 Cleanup Note
+- Verdict:
+  `PARTIAL_SHARED_CONTRACT_CLEANUP_COMPLETE`
+- No-op toast fixed for archive/restore/purge:
+  yes
+- External multi-select blocker detail:
+  enumerated
+- Purge confirm copy drift:
+  fixed
+- Tests added/updated:
+  `frontend/src/components/shared/OperationalLifecycleToasts.test.ts`
+  `frontend/src/components/shared/OperationalDependencyGuard.test.ts`
+  `frontend/src/components/shared/OperationalBulkContract.test.ts`
+- Remaining Phase 2 backend parity gaps:
+  truthful purge Revert still exists only for Monitoring
+  External purge remains destructive at backend/source level
+  Services still lacks truthful backend purge/revert support
+  non-Monitoring golden views still remain outside this Phase 1 shared cleanup

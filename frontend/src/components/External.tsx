@@ -310,10 +310,68 @@ const getEntityInsights = (entity: any, links: any[] = []) => {
   }
 }
 
+const buildExternalMultiSelectPurgeReason = (entities: any[], links: any[] | undefined) => {
+  const selectedEntities = entities.filter(Boolean)
+  if (selectedEntities.length === 0) {
+    return 'Purge is blocked because one or more selected external records are linked or credentialed. Detailed blocker names are not available from the current backend response.'
+  }
+
+  const blockerNames = new Set<string>()
+  let linkCount = 0
+  let credentialCount = 0
+  let hasUnavailableDetail = false
+
+  selectedEntities.forEach((entity) => {
+    const guard = getExternalEntityPurgeGuard(entity, links)
+
+    if (!guard.blockers.length) {
+      hasUnavailableDetail = true
+      return
+    }
+
+    guard.blockers.forEach((blocker) => {
+      if (blocker.blockerEntity === 'external link') {
+        linkCount += 1
+      } else if (blocker.blockerEntity === 'credential') {
+        credentialCount += 1
+      }
+
+      if (blocker.blockerName) {
+        blockerNames.add(blocker.blockerName)
+      } else {
+        hasUnavailableDetail = true
+      }
+    })
+  })
+
+  if (linkCount === 0 && credentialCount === 0) {
+    return 'Purge is blocked because one or more selected external records are linked or credentialed. Detailed blocker names are not available from the current backend response.'
+  }
+
+  const fragments = []
+  if (linkCount > 0) {
+    fragments.push(`${linkCount} external ${linkCount === 1 ? 'link' : 'links'}`)
+  }
+  if (credentialCount > 0) {
+    fragments.push(`${credentialCount} ${credentialCount === 1 ? 'credential' : 'credentials'}`)
+  }
+
+  let message = `Linked to ${fragments.join(' and ')} across ${selectedEntities.length} selected records.`
+  const blockerList = Array.from(blockerNames).slice(0, 4)
+  if (blockerList.length > 0) {
+    message += ` Blockers: ${blockerList.join(', ')}.`
+  }
+  if (hasUnavailableDetail) {
+    message += ' Some blocker names are not available from the current backend response.'
+  }
+
+  return message
+}
+
 const getExternalEntityPurgeGuard = (entity: any, links: any[] | undefined) => {
   if (!entity || !Array.isArray(links) || !Array.isArray(entity.secrets)) {
     return buildLifecycleDependencyGuardResult({
-      summaryReason: 'Linked to external links or credentials. Detailed blockers are not available from the current backend.',
+      summaryReason: 'Purge is blocked because one or more selected external records are linked or credentialed. Detailed blocker names are not available from the current backend response.',
     })
   }
   const insights = getEntityInsights(entity, links)
@@ -340,7 +398,7 @@ const getExternalEntityPurgeGuard = (entity: any, links: any[] | undefined) => {
     blockers,
     summaryReason: blockers.length
       ? undefined
-      : 'Linked to external links or credentials. Detailed blockers are not available from the current backend.',
+      : 'Purge is blocked because one or more selected external records are linked or credentialed. Detailed blocker names are not available from the current backend response.',
   })
 }
 
@@ -3041,7 +3099,7 @@ export default function External() {
                       <p className="text-[10px] font-semibold text-amber-200">
                         {selectedIds.length === 1
                           ? getExternalEntityPurgeReason(findExternalEntityById(selectedIds[0]))
-                          : 'Linked to external links or credentials. Detailed blockers are available per row action.'}
+                          : buildExternalMultiSelectPurgeReason(selectedIds.map((id) => findExternalEntityById(id)), links)}
                       </p>
                     </div>
                   ) : null}
@@ -3050,7 +3108,7 @@ export default function External() {
                     reason={activeTab === 'deleted' && selectedIds.length === 1
                       ? getExternalEntityPurgeReason(findExternalEntityById(selectedIds[0]))
                       : activeTab === 'deleted' && !canPurgeSelectedDeletedEntities
-                        ? 'Linked to external links or credentials. Detailed blockers are available per row action.'
+                        ? buildExternalMultiSelectPurgeReason(selectedIds.map((id) => findExternalEntityById(id)), links)
                         : undefined}
                     className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
                   >
@@ -3474,7 +3532,7 @@ export default function External() {
                 className={rowDeleteConfirmId === activeDetails.id ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20 whitespace-nowrap' : 'whitespace-nowrap'}
               >
                 {rowDeleteConfirmId === activeDetails.id
-                  ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : 'Confirm Purge peer?')
+                  ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.purgeConfirm)
                   : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge)}
               </ToolbarButton>
             </OperationalDisabledActionTooltip>
