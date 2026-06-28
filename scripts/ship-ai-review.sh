@@ -3,7 +3,7 @@ set -euo pipefail
 
 # SysGrid one-command ship + AI review capsule creator.
 # Run from anywhere inside the repo:
-#   ./scripts/ship-ai-review.sh "commit message" [quick|daily|fresh|audit|full]
+#   ./scripts/ship-ai-review.sh "commit message" [changed|quick|daily|fresh|audit|full]
 # Default mode: fresh
 # Output: ../sysgrid-ai-review-capsule.zip
 
@@ -13,11 +13,12 @@ Usage:
   ./scripts/ship-ai-review.sh "commit message" [mode]
 
 Modes:
-  quick   Smallest practical capsule for same-thread quick review.
-  daily   Normal after-each-Codex-prompt capsule.
-  fresh   Default. Best balance for a brand-new AI chat with your typed goal.
-  audit   Bigger/stricter capsule for regression hunting or uncertain backend/frontend truth.
-  full    Largest non-repo-dump capsule for severe blockers or architecture review.
+  changed  Diff + changed files + before/after snapshots only. Smallest honest patch review.
+  quick    Small same-chat review: changed files + shallow context.
+  daily    Normal after-each-Codex-prompt capsule.
+  fresh    Default. Best for a brand-new AI chat with your typed goal.
+  audit    Bigger/stricter capsule for regression hunting or uncertain backend/frontend truth.
+  full     Largest non-repo-dump capsule for severe blockers or architecture review.
 
 Output:
   ../sysgrid-ai-review-capsule.zip
@@ -43,7 +44,7 @@ COMMIT_MSG="$1"
 MODE="${2:-fresh}"
 
 case "$MODE" in
-  quick|daily|fresh|audit|full|minimal|standard|deep) ;;
+  changed|quick|daily|fresh|audit|full|minimal|standard|deep) ;;
   *)
     echo "FAIL: invalid mode: $MODE" >&2
     usage
@@ -97,7 +98,7 @@ FORBIDDEN_REGEX='(^|/)(\.DS_Store|\.env|\.env\.local|\.env\.local\.runtime|\.env
 DIRTY_FORBIDDEN="$(git status --porcelain | awk '{print substr($0,4)}' | grep -E "$FORBIDDEN_REGEX" || true)"
 if [[ -n "$DIRTY_FORBIDDEN" ]]; then
   echo
-echo "FAIL: forbidden dirty artifact/secret/runtime files detected. Not committing." >&2
+  echo "FAIL: forbidden dirty artifact/secret/runtime files detected. Not committing." >&2
   echo "$DIRTY_FORBIDDEN" >&2
   echo >&2
   echo "Safe next action examples:" >&2
@@ -123,11 +124,11 @@ git diff --cached --name-status
 
 if git diff --cached --quiet; then
   echo
-echo "No staged changes. Skipping commit."
+  echo "No staged changes. Skipping commit."
   DID_COMMIT=0
 else
   echo
-echo "== git commit =="
+  echo "== git commit =="
   git commit -m "$COMMIT_MSG"
   DID_COMMIT=1
 fi
@@ -150,6 +151,9 @@ fi
 GEN_MODE="$MODE"
 EXTRA_FLAGS=(--force)
 case "$MODE" in
+  changed)
+    GEN_MODE="changed"
+    ;;
   quick)
     GEN_MODE="quick"
     ;;
@@ -175,7 +179,10 @@ esac
 
 # If nothing was committed, avoid a hard fail from empty diff while still building useful context.
 if [[ "$DID_COMMIT" == "0" ]]; then
-  EXTRA_FLAGS+=(--allow-empty --include-all-essential)
+  EXTRA_FLAGS+=(--allow-empty)
+  if [[ "$MODE" != "changed" && "$MODE" != "quick" ]]; then
+    EXTRA_FLAGS+=(--include-all-essential)
+  fi
 fi
 
 echo
@@ -203,9 +210,9 @@ p = "$ZIP_PATH"
 with zipfile.ZipFile(p) as z:
     names = z.namelist()
 print('file_count:', len(names))
-for n in names[:80]:
+for n in names[:100]:
     print(n)
-if len(names) > 80:
+if len(names) > 100:
     print('...')
 PY
 

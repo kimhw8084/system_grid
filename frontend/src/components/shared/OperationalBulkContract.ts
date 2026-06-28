@@ -1,4 +1,10 @@
 import { showWorkspaceToast } from './WorkspaceToast'
+import {
+  buildOperationalLifecycleToastMessage,
+  BULK_NO_CHANGES_MESSAGE,
+  BULK_REVERTED_MESSAGE,
+  BULK_REVERT_FAILED_MESSAGE,
+} from './OperationalLifecycleToasts'
 
 export type OperationalBulkAction = 'update' | 'archive' | 'restore' | 'purge'
 
@@ -12,12 +18,6 @@ type ShowOperationalBulkResultOptions = {
 }
 
 const CHAR_WIDTH = 8
-
-export const BULK_NO_CHANGES_MESSAGE = 'No changes made. Selected records already match the chosen value.'
-export const BULK_REVERTED_MESSAGE = 'Bulk operation reverted.'
-export const BULK_REVERT_FAILED_MESSAGE = 'Bulk revert failed.'
-
-const getSelectedRecordLabel = () => 'selected records'
 
 const toDisplayLabel = (value: string) => (
   value
@@ -66,36 +66,6 @@ export const showOperationalBulkRevertErrorToast = (message = BULK_REVERT_FAILED
   showWorkspaceToast(message, { type: 'error' })
 }
 
-const buildOperationalBulkMessage = ({
-  action,
-  totalSelected,
-  changedCount,
-  unchangedCount = Math.max(0, totalSelected - changedCount),
-  fieldLabel = 'Field',
-}: Omit<ShowOperationalBulkResultOptions, 'onRevert'>) => {
-  const selectedRecordLabel = getSelectedRecordLabel()
-
-  if (action === 'update') {
-    if (changedCount <= 0) return BULK_NO_CHANGES_MESSAGE
-
-    const base = `Updated ${changedCount} of ${totalSelected} ${selectedRecordLabel}: ${fieldLabel} changed.`
-    if (unchangedCount > 0) {
-      return `${base} ${unchangedCount} already matched.`
-    }
-    return base
-  }
-
-  if (action === 'archive') {
-    return `Archived ${changedCount} of ${totalSelected} ${selectedRecordLabel}.`
-  }
-
-  if (action === 'restore') {
-    return `Restored ${changedCount} of ${totalSelected} ${selectedRecordLabel}.`
-  }
-
-  return `Permanently purged ${changedCount} of ${totalSelected} ${selectedRecordLabel}.`
-}
-
 export const showOperationalBulkResultToast = ({
   action,
   totalSelected,
@@ -104,7 +74,7 @@ export const showOperationalBulkResultToast = ({
   fieldLabel,
   onRevert,
 }: ShowOperationalBulkResultOptions) => {
-  const message = buildOperationalBulkMessage({
+  const message = buildOperationalLifecycleToastMessage({
     action,
     totalSelected,
     changedCount,

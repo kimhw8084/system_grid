@@ -62,6 +62,7 @@ import { OperationalImportModal } from './shared/OperationalImportModal'
 import { OperationalDataGrid } from './shared/OperationalDataGrid'
 import { resolveOperationalDataState } from './shared/OperationalDataState'
 import { OPERATIONAL_ACTION_LABELS } from './shared/OperationalActionLabels'
+import { OperationalDisabledActionTooltip } from './shared/OperationalDisabledActionTooltip'
 import {
   OperationalRowActionMenu,
   type OperationalRowActionSectionModel,
@@ -123,6 +124,7 @@ const SERVICES_BULK_FIELD_LABELS: Record<string, string> = {
   service_type: 'Service Type',
   environment: 'Environment',
 }
+const SERVICES_PURGE_BLOCKED_REASON = 'Purge is unavailable because logical-services backend does not support truthful purge/revert yet.'
 const SERVICE_FIXED_WIDTH_COLUMN_IDS = new Set([
   'select',
   'id',
@@ -2007,15 +2009,32 @@ export default function ServicesReal() {
               </div>
 
               {activeTab === 'deleted' ? (
-                <button
-                  onClick={() => bulkMutation.mutate({ action: 'restore' })}
-                  disabled={bulkMutation.isPending}
-                  className="w-full rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-left transition-all hover:bg-emerald-500/15 disabled:opacity-50"
-                >
-                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">
-                    {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : 'Restore Selection'}
-                  </p>
-                </button>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => bulkMutation.mutate({ action: 'restore' })}
+                    disabled={bulkMutation.isPending}
+                    className="w-full rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-left transition-all hover:bg-emerald-500/15 disabled:opacity-50"
+                  >
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">
+                      {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : 'Restore Selection'}
+                    </p>
+                  </button>
+                  <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
+                    <p className="text-[10px] font-semibold text-amber-200">{SERVICES_PURGE_BLOCKED_REASON}</p>
+                  </div>
+                  <OperationalDisabledActionTooltip
+                    disabled
+                    reason={SERVICES_PURGE_BLOCKED_REASON}
+                    className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
+                  >
+                    <button
+                      disabled
+                      className="w-full rounded-lg border border-rose-900/70 bg-rose-950/70 px-4 py-3 text-left transition-all disabled:opacity-50"
+                    >
+                      <p className="text-[10px] font-semibold text-rose-300">{OPERATIONAL_ACTION_LABELS.purge}</p>
+                    </button>
+                  </OperationalDisabledActionTooltip>
+                </div>
               ) : (
                 <div className="space-y-2">
                   <button
@@ -2140,6 +2159,16 @@ export default function ServicesReal() {
                     columns: 1 as 1,
                     items: [
                         ...(activeTab === 'deleted' ? [{ id: 'restore', label: 'Restore', icon: Undo2, tone: 'success' as OperationalRowActionTone, variant: 'inline' as OperationalRowActionVariant, onClick: () => { bulkMutation.mutate({ action: 'restore', ids: [rowActionMenu.item.id] }); setRowActionMenu(null); } }] : []),
+                        ...(activeTab === 'deleted' ? [{
+                            id: 'purge',
+                            label: OPERATIONAL_ACTION_LABELS.purge,
+                            icon: Trash2,
+                            tone: 'danger' as OperationalRowActionTone,
+                            variant: 'inline' as OperationalRowActionVariant,
+                            disabled: true,
+                            disabledReason: SERVICES_PURGE_BLOCKED_REASON,
+                            onClick: () => {},
+                        }] : []),
                         ...(activeTab === 'active' ? [{
                             id: 'archive',
                             label: rowDeleteConfirmId === rowActionMenu.item.id ? OPERATIONAL_ACTION_LABELS.archiveConfirm : OPERATIONAL_ACTION_LABELS.archive,
@@ -2778,12 +2807,28 @@ function ServiceRecordDetailModal({ item, onClose, onEdit, onDelete, onOpenAsset
       }
       footerRight={
         <div className="flex items-center gap-3">
+          {item.is_deleted ? (
+            <span className="max-w-[280px] text-[10px] font-semibold text-amber-200">
+              {SERVICES_PURGE_BLOCKED_REASON}
+            </span>
+          ) : null}
           {item.device_id ? <ToolbarButton onClick={() => onOpenAsset?.(item.device_id)}>Open Host</ToolbarButton> : null}
           <ToolbarButton onClick={() => onEdit?.(item)}>Edit Service</ToolbarButton>
           {!item.is_deleted && (
             <ToolbarButton variant="danger" onClick={() => onDelete?.(item)} className={deleteConfirm ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : ''}>
               {deleteConfirm ? 'Confirm Archive?' : 'Archive'}
             </ToolbarButton>
+          )}
+          {item.is_deleted && (
+            <OperationalDisabledActionTooltip
+              disabled
+              reason={SERVICES_PURGE_BLOCKED_REASON}
+              className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
+            >
+              <ToolbarButton variant="danger" disabled>
+                {OPERATIONAL_ACTION_LABELS.purge}
+              </ToolbarButton>
+            </OperationalDisabledActionTooltip>
           )}
         </div>
       }

@@ -179,3 +179,18 @@ The remaining step is H/I human validation. Monitoring purge Revert now restores
   The row is removed from backend/source state by purge, then restored by backend/source state through `restore_purged`. After Revert, a fresh fetch of `monitoring-items?include_deleted=true` returns the row again
 - Remaining human validation:
   H/I only
+
+## Golden Lifecycle Phase 1 Evidence
+- Verdict: `PARTIAL_SHARED_CONTRACT_FOUNDATION_IMPLEMENTED`
+- Source evidence:
+  shared lifecycle labels and action specs now live in `frontend/src/components/shared/OperationalLifecycleContract.ts`
+  shared dependency blocker result and tooltip formatting now live in `frontend/src/components/shared/OperationalDependencyGuard.ts`
+  shared browser-safe disabled tooltip host now lives in `frontend/src/components/shared/OperationalDisabledActionTooltip.tsx`
+  shared lifecycle toast wording now routes through `frontend/src/components/shared/OperationalLifecycleToasts.ts`
+  row action disabled reasons now route through the shared tooltip wrapper in `frontend/src/components/shared/OperationalRowActionMenu.tsx`
+- View evidence:
+  `frontend/src/components/External.tsx` now maps deleted purge blockers into the shared guard result and surfaces shared disabled hover/focus explanations in bulk, row, and detail actions
+  `frontend/src/components/ServicesReal.tsx` now shows deleted purge as backend-blocked in bulk, row, and detail surfaces instead of silently omitting it
+- Locked wording evidence:
+  `frontend/src/components/shared/OperationalActionLabels.ts` keeps active purge labels at `Purge`
+  active shared sources no longer require `Purge Selection`; shared bulk wording still uses `selected records`

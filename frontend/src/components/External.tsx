@@ -52,6 +52,11 @@ import { OperationalFormProps, useOperationalFormDirty } from './shared/Operatio
 import { ConfirmationModal } from './shared/ConfirmationModal'
 import { OperationalDataGrid } from './shared/OperationalDataGrid'
 import { OPERATIONAL_ACTION_LABELS } from './shared/OperationalActionLabels'
+import { OperationalDisabledActionTooltip } from './shared/OperationalDisabledActionTooltip'
+import {
+  buildLifecycleDependencyGuardResult,
+  formatLifecycleDependencyTooltipReason,
+} from './shared/OperationalDependencyGuard'
 import {
   autoSizeOperationalColumns,
   sanitizeOperationalColumnLayout,
@@ -112,7 +117,6 @@ const EXTERNAL_BULK_FIELD_LABELS: Record<string, string> = {
   criticality: 'Criticality',
   risk_rating: 'Risk Rating',
 }
-const EXTERNAL_PURGE_BLOCKED_MESSAGE = 'Cannot purge selected external records because one or more are still linked or credentialed.'
 const SECRET_TYPE_OPTIONS = ['VaultReference', 'SharedSecret', 'Token', 'KeyPair', 'Certificate']
 const SECRET_STATUS_OPTIONS = ['Active', 'RotationDue', 'Disabled']
 const VAULT_PROVIDER_OPTIONS = ['1Password', 'Bitwarden', 'HashiCorp Vault', 'AWS Secrets Manager', 'Azure Key Vault', 'Other']
@@ -306,10 +310,38 @@ const getEntityInsights = (entity: any, links: any[] = []) => {
   }
 }
 
-const canSafelyPurgeExternalEntity = (entity: any, links: any[] | undefined) => {
-  if (!entity || !Array.isArray(links) || !Array.isArray(entity.secrets)) return false
+const getExternalEntityPurgeGuard = (entity: any, links: any[] | undefined) => {
+  if (!entity || !Array.isArray(links) || !Array.isArray(entity.secrets)) {
+    return buildLifecycleDependencyGuardResult({
+      summaryReason: 'Linked to external links or credentials. Detailed blockers are not available from the current backend.',
+    })
+  }
   const insights = getEntityInsights(entity, links)
-  return insights.linked.length === 0 && entity.secrets.length === 0
+  const blockers = [
+    ...insights.linked.map((link: any, index: number) => ({
+      blockerType: 'external_link',
+      blockerEntity: 'external link',
+      blockerId: link.id ?? `${entity.id}-link-${index}`,
+      blockerName: link.service_name || link.device_name || link.purpose || link.external_entity_name || `Link ${index + 1}`,
+      relationship: link.direction || 'linked',
+      detailTarget: link.service_name || link.device_name || null,
+    })),
+    ...entity.secrets.map((secret: any, index: number) => ({
+      blockerType: 'credential',
+      blockerEntity: 'credential',
+      blockerId: secret.id ?? `${entity.id}-secret-${index}`,
+      blockerName: secret.name || secret.secret_name || secret.label || secret.vault_reference || secret.external_secret_id || secret.type || `Credential ${index + 1}`,
+      relationship: secret.status || 'attached',
+      detailTarget: secret.vault_provider || null,
+    })),
+  ]
+
+  return buildLifecycleDependencyGuardResult({
+    blockers,
+    summaryReason: blockers.length
+      ? undefined
+      : 'Linked to external links or credentials. Detailed blockers are not available from the current backend.',
+  })
 }
 
 const MetadataEditor = ({
@@ -1563,7 +1595,12 @@ export default function External() {
   }, [allEntities])
 
   const isExternalEntityPurgeable = useCallback((entity: any) => {
-    return canSafelyPurgeExternalEntity(entity, links)
+    return getExternalEntityPurgeGuard(entity, links).canPurge
+  }, [links])
+
+  const getExternalEntityPurgeReason = useCallback((entity: any) => {
+    const result = getExternalEntityPurgeGuard(entity, links)
+    return result.canPurge ? undefined : formatLifecycleDependencyTooltipReason(result)
   }, [links])
 
   const canPurgeSelectedDeletedEntities = useMemo(() => {
@@ -2292,8 +2329,12 @@ export default function External() {
 
   const deleteMutation = useMutation({
     mutationFn: async ({ id, purge, type }: { id: number, purge: boolean, type: 'entity' | 'link' }) => {
-      if (type === 'entity' && purge && !isExternalEntityPurgeable(findExternalEntityById(id))) {
-        throw new Error(EXTERNAL_PURGE_BLOCKED_MESSAGE)
+      if (type === 'entity' && purge) {
+        const entity = findExternalEntityById(id)
+        const purgeReason = getExternalEntityPurgeReason(entity)
+        if (purgeReason) {
+          throw new Error(purgeReason)
+        }
       }
       const url = type === 'entity' ? `/api/v1/intelligence/entities/${id}${purge ? '?purge=true' : ''}` : `/api/v1/intelligence/links/${id}`
       const res = await apiFetch(url, { method: 'DELETE' })
@@ -2997,42 +3038,56 @@ export default function External() {
                   <div className="mx-1 my-3 h-px bg-slate-800" />
                   {activeTab === 'deleted' && !canPurgeSelectedDeletedEntities ? (
                     <div className="mb-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
-                      <p className="text-[10px] font-semibold text-amber-200">{EXTERNAL_PURGE_BLOCKED_MESSAGE}</p>
+                      <p className="text-[10px] font-semibold text-amber-200">
+                        {selectedIds.length === 1
+                          ? getExternalEntityPurgeReason(findExternalEntityById(selectedIds[0]))
+                          : 'Linked to external links or credentials. Detailed blockers are available per row action.'}
+                      </p>
                     </div>
                   ) : null}
-                  <button
-                    onClick={() => {
-                      if (!bulkDeleteConfirm) {
-                        setBulkDeleteConfirm(true)
-                        return
-                      }
-                      bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' })
-                    }}
-                    onMouseLeave={() => setBulkDeleteConfirm(false)}
-                    disabled={bulkMutation.isPending || (activeTab === 'deleted' && !canPurgeSelectedDeletedEntities)}
-                    title={activeTab === 'deleted' && !canPurgeSelectedDeletedEntities ? EXTERNAL_PURGE_BLOCKED_MESSAGE : undefined}
-                    className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
-                      bulkDeleteConfirm 
-                        ? 'border-rose-500 bg-rose-600 animate-pulse' 
-                        : 'border-rose-900/70 bg-rose-950/70 hover:bg-rose-950'
-                    } disabled:opacity-50`}
+                  <OperationalDisabledActionTooltip
+                    disabled={activeTab === 'deleted' && !canPurgeSelectedDeletedEntities}
+                    reason={activeTab === 'deleted' && selectedIds.length === 1
+                      ? getExternalEntityPurgeReason(findExternalEntityById(selectedIds[0]))
+                      : activeTab === 'deleted' && !canPurgeSelectedDeletedEntities
+                        ? 'Linked to external links or credentials. Detailed blockers are available per row action.'
+                        : undefined}
+                    className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
                   >
-                    <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
-                      {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
-                        activeTab === 'deleted' && !canPurgeSelectedDeletedEntities
-                          ? OPERATIONAL_ACTION_LABELS.purge
-                          : bulkDeleteConfirm
-                          ? (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purgeSelectionConfirm : OPERATIONAL_ACTION_LABELS.archiveSelectionConfirm)
-                          : (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purge : OPERATIONAL_ACTION_LABELS.archiveSelection)
-                      )}
-                    </p>
-                  </button>
+                    <button
+                      onClick={() => {
+                        if (!bulkDeleteConfirm) {
+                          setBulkDeleteConfirm(true)
+                          return
+                        }
+                        bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' })
+                      }}
+                      onMouseLeave={() => setBulkDeleteConfirm(false)}
+                      disabled={bulkMutation.isPending || (activeTab === 'deleted' && !canPurgeSelectedDeletedEntities)}
+                      className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
+                        bulkDeleteConfirm 
+                          ? 'border-rose-500 bg-rose-600 animate-pulse' 
+                          : 'border-rose-900/70 bg-rose-950/70 hover:bg-rose-950'
+                      } disabled:opacity-50`}
+                    >
+                      <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
+                        {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
+                          activeTab === 'deleted' && !canPurgeSelectedDeletedEntities
+                            ? OPERATIONAL_ACTION_LABELS.purge
+                            : bulkDeleteConfirm
+                            ? (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purgeSelectionConfirm : OPERATIONAL_ACTION_LABELS.archiveSelectionConfirm)
+                            : (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purge : OPERATIONAL_ACTION_LABELS.archiveSelection)
+                        )}
+                      </p>
+                    </button>
+                  </OperationalDisabledActionTooltip>
             </WorkspaceFloatingPanel>
           </OperationalAnchoredPanel>
 
             {rowActionMenu && (() => {
               const item = rowActionMenu.item
               const deletedItemPurgeable = activeTab !== 'deleted' || isExternalEntityPurgeable(item)
+              const deletedItemPurgeReason = activeTab === 'deleted' ? getExternalEntityPurgeReason(item) : undefined
               const sections: OperationalRowActionSectionModel[] = [
                 {
                     id: 'quickAccess',
@@ -3118,7 +3173,7 @@ export default function External() {
                             tone: 'danger' as OperationalRowActionTone,
                             variant: 'inline' as OperationalRowActionVariant,
                             disabled: activeTab === 'deleted' && !deletedItemPurgeable,
-                            disabledReason: activeTab === 'deleted' && !deletedItemPurgeable ? EXTERNAL_PURGE_BLOCKED_MESSAGE : undefined,
+                            disabledReason: activeTab === 'deleted' && !deletedItemPurgeable ? deletedItemPurgeReason : undefined,
                             confirming: rowDeleteConfirmId === item.id,
                             onClick: () => {
                                 if (rowDeleteConfirmId !== item.id) {
@@ -3379,7 +3434,7 @@ export default function External() {
           <div className="flex items-center gap-3 shrink-0">
             {activeTab === 'deleted' && !isExternalEntityPurgeable(activeDetails) ? (
               <span className="max-w-[280px] text-[10px] font-semibold text-amber-200">
-                {EXTERNAL_PURGE_BLOCKED_MESSAGE}
+                {getExternalEntityPurgeReason(activeDetails)}
               </span>
             ) : null}
             <ToolbarButton
@@ -3399,25 +3454,30 @@ export default function External() {
             >
               Map Link
             </ToolbarButton>
-            <ToolbarButton
-              variant="danger"
+            <OperationalDisabledActionTooltip
               disabled={activeTab === 'deleted' && !isExternalEntityPurgeable(activeDetails)}
-              onClick={() => {
-                if (rowDeleteConfirmId === activeDetails.id) {
-                  deleteMutation.mutate({ id: activeDetails.id, purge: activeTab === 'deleted', type: 'entity' })
-                  detailRoute.closeDetail()
-                  setRowDeleteConfirmId(null)
-                } else {
-                  setRowDeleteConfirmId(activeDetails.id)
-                }
-              }}
-              title={activeTab === 'deleted' && !isExternalEntityPurgeable(activeDetails) ? EXTERNAL_PURGE_BLOCKED_MESSAGE : undefined}
-              className={rowDeleteConfirmId === activeDetails.id ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20 whitespace-nowrap' : 'whitespace-nowrap'}
+              reason={activeTab === 'deleted' ? getExternalEntityPurgeReason(activeDetails) : undefined}
+              className="rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
             >
-              {rowDeleteConfirmId === activeDetails.id
-                ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : 'Confirm Purge peer?')
-                : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge)}
-            </ToolbarButton>
+              <ToolbarButton
+                variant="danger"
+                disabled={activeTab === 'deleted' && !isExternalEntityPurgeable(activeDetails)}
+                onClick={() => {
+                  if (rowDeleteConfirmId === activeDetails.id) {
+                    deleteMutation.mutate({ id: activeDetails.id, purge: activeTab === 'deleted', type: 'entity' })
+                    detailRoute.closeDetail()
+                    setRowDeleteConfirmId(null)
+                  } else {
+                    setRowDeleteConfirmId(activeDetails.id)
+                  }
+                }}
+                className={rowDeleteConfirmId === activeDetails.id ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20 whitespace-nowrap' : 'whitespace-nowrap'}
+              >
+                {rowDeleteConfirmId === activeDetails.id
+                  ? (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archiveConfirm : 'Confirm Purge peer?')
+                  : (activeTab === 'active' ? OPERATIONAL_ACTION_LABELS.archive : OPERATIONAL_ACTION_LABELS.purge)}
+              </ToolbarButton>
+            </OperationalDisabledActionTooltip>
           </div>
         ) : undefined}
       >

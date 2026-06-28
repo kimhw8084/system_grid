@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { WorkspaceFloatingPanel } from "./OperationalWorkspacePrimitives";
 import { computeRowActionGeometry } from "./OperationalRowActionGeometry";
 import { estimateRowActionHeaderTextWidth } from "./OperationalBulkContract";
+import { OperationalDisabledActionTooltip } from "./OperationalDisabledActionTooltip";
 
 const SECTION_HORIZONTAL_PADDING = 12;
 
@@ -151,29 +152,20 @@ export function OperationalRowActionMenu({
                         </button>
                       );
 
-                      if (item.disabled && item.disabledReason) {
-                        return (
+                      return (
+                        <OperationalDisabledActionTooltip
+                          key={item.id}
+                          disabled={item.disabled}
+                          reason={item.disabledReason}
+                          className="inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
+                        >
                           <div
-                            key={item.id}
-                            className="inline-flex rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
+                            className="inline-flex"
                             style={{ width: `${row.buttonWidths[itemIdx]}px` }}
-                            title={item.disabledReason}
-                            aria-label={item.ariaLabel || item.disabledReason || item.label}
-                            tabIndex={0}
                           >
                             {button}
                           </div>
-                        );
-                      }
-
-                      return (
-                        <div
-                          key={item.id}
-                          className="inline-flex"
-                          style={{ width: `${row.buttonWidths[itemIdx]}px` }}
-                        >
-                          {button}
-                        </div>
+                        </OperationalDisabledActionTooltip>
                       );
                     })}
                   </div>

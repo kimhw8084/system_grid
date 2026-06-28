@@ -11,6 +11,7 @@
  * narrative or START_HERE prompt, because user intent belongs outside the zip.
  *
  * Example:
+ *   node scripts/create-ai-review-capsule.cjs --mode changed --force
  *   node scripts/create-ai-review-capsule.cjs --mode standard --force
  *   node scripts/create-ai-review-capsule.cjs --mode deep --include-all-essential --force
  *   node scripts/create-ai-review-capsule.cjs --out ../custom-ai-review-capsule.zip --force
@@ -21,7 +22,7 @@ const path = require('path');
 const os = require('os');
 const cp = require('child_process');
 
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const TEXT_EXTENSIONS = new Set([
   '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json', '.md', '.txt', '.css', '.scss',
   '.html', '.py', '.toml', '.ini', '.yml', '.yaml', '.sh', '.graphql', '.sql', '.env.example'
@@ -29,6 +30,7 @@ const TEXT_EXTENSIONS = new Set([
 
 const DEFAULT_RULES = {
   modes: {
+    changed: { importDepth: 0, backendSearchLimit: 0, testLimit: 0, mapContentBytes: 80000 },
     quick: { importDepth: 1, backendSearchLimit: 8, testLimit: 12, mapContentBytes: 250000 },
     minimal: { importDepth: 1, backendSearchLimit: 12, testLimit: 20, mapContentBytes: 350000 },
     standard: { importDepth: 2, backendSearchLimit: 30, testLimit: 45, mapContentBytes: 600000 },
@@ -132,11 +134,12 @@ function usage() {
 `  node scripts/create-ai-review-capsule.cjs [options]\n\n` +
 `Options:\n` +
 `  --out <path>                 Output zip path. Default: ../sysgrid-ai-review-capsule.zip. Must be outside repo unless --allow-repo-output.\n` +
-`  --mode <quick|minimal|standard|daily|deep|fresh|audit|full> Default: standard.\n` +
+`  --mode <changed|quick|minimal|standard|daily|deep|fresh|audit|full> Default: standard.\n` +
 `  --base <git-ref>             Base ref for unstaged diff. Default: HEAD.\n` +
 `  --strict                     Turn contract/test warnings into failure where possible.\n` +
 `  --allow-empty                Allow no changed files without warning.\n` +
 `  --include-all-essential      Include stable project spine + key FE/BE source even when no current diff exists.\n` +
+`  --no-before-after           Disable FILE_VERSIONS/before and FILE_VERSIONS/after snapshots. Default: enabled.\n` +
 `  --allow-repo-output          Permit output path inside repo. Not recommended.\n` +
 `  --force                      Overwrite existing output file.\n` +
 `  --max-file-bytes <n>         Warn/exclude non-required files larger than n. Default: 2000000.\n` +
@@ -147,7 +150,7 @@ function usage() {
 function parseArgs(argv) {
   const args = {
     mode: 'standard', base: 'HEAD', out: null, strict: false, allowEmpty: false,
-    includeAllEssential: false, allowRepoOutput: false, force: false,
+    includeAllEssential: false, includeBeforeAfter: true, allowRepoOutput: false, force: false,
     maxFileBytes: 2_000_000, maxDiffBytes: 2_500_000
   };
   for (let i = 0; i < argv.length; i++) {
@@ -156,6 +159,8 @@ function parseArgs(argv) {
     if (a === '--strict') { args.strict = true; continue; }
     if (a === '--allow-empty') { args.allowEmpty = true; continue; }
     if (a === '--include-all-essential') { args.includeAllEssential = true; continue; }
+    if (a === '--include-before-after') { args.includeBeforeAfter = true; continue; }
+    if (a === '--no-before-after') { args.includeBeforeAfter = false; continue; }
     if (a === '--allow-repo-output') { args.allowRepoOutput = true; continue; }
     if (a === '--force') { args.force = true; continue; }
     const needsValue = ['--out', '--mode', '--base', '--max-file-bytes', '--max-diff-bytes'];
@@ -171,7 +176,7 @@ function parseArgs(argv) {
     }
     die(`Unknown argument: ${a}`);
   }
-  if (!DEFAULT_RULES.modes[args.mode]) die(`Invalid --mode ${args.mode}. Use quick, minimal, standard, daily, deep, fresh, audit, or full.`);
+  if (!DEFAULT_RULES.modes[args.mode]) die(`Invalid --mode ${args.mode}. Use changed, quick, minimal, standard, daily, deep, fresh, audit, or full.`);
   if (!Number.isFinite(args.maxFileBytes) || args.maxFileBytes < 10000) die('--max-file-bytes must be a number >= 10000.');
   if (!Number.isFinite(args.maxDiffBytes) || args.maxDiffBytes < 10000) die('--max-diff-bytes must be a number >= 10000.');
   return args;
@@ -337,6 +342,57 @@ function getChangedFiles(repoRoot, base) {
     if (fs.existsSync(abs) && fs.statSync(abs).isFile()) out.push(rel);
   }
   return out.sort();
+}
+
+function getChangedEntries(repoRoot, base) {
+  const entries = new Map();
+  function put(entry) {
+    const key = `${entry.status}:${entry.oldPath || ''}->${entry.path || ''}`;
+    if (!entries.has(key)) entries.set(key, entry);
+  }
+  const diffOut = run('git', ['diff', '--name-status', '--find-renames', base], { cwd: repoRoot, allowFail: true }).stdout;
+  for (const line of diffOut.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    const parts = line.split('\t');
+    const rawStatus = parts[0] || '';
+    const code = rawStatus[0] || 'M';
+    if ((code === 'R' || code === 'C') && parts.length >= 3) {
+      put({ status: code, rawStatus, oldPath: normalizeRel(parts[1]), path: normalizeRel(parts[2]), source: 'git diff --name-status' });
+    } else if (parts.length >= 2) {
+      const rel = normalizeRel(parts[1]);
+      put({ status: code, rawStatus, oldPath: code === 'A' ? null : rel, path: code === 'D' ? null : rel, source: 'git diff --name-status' });
+    }
+  }
+  const stagedOut = run('git', ['diff', '--cached', '--name-status', '--find-renames'], { cwd: repoRoot, allowFail: true }).stdout;
+  for (const line of stagedOut.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    const parts = line.split('\t');
+    const rawStatus = parts[0] || '';
+    const code = rawStatus[0] || 'M';
+    if ((code === 'R' || code === 'C') && parts.length >= 3) {
+      put({ status: code, rawStatus, oldPath: normalizeRel(parts[1]), path: normalizeRel(parts[2]), source: 'git diff --cached --name-status' });
+    } else if (parts.length >= 2) {
+      const rel = normalizeRel(parts[1]);
+      put({ status: code, rawStatus, oldPath: code === 'A' ? null : rel, path: code === 'D' ? null : rel, source: 'git diff --cached --name-status' });
+    }
+  }
+  const statusOut = run('git', ['status', '--porcelain'], { cwd: repoRoot, allowFail: true }).stdout;
+  for (const line of statusOut.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    const xy = line.slice(0, 2);
+    let p = line.slice(3).trim();
+    if (p.includes(' -> ')) {
+      const [oldP, newP] = p.split(' -> ').map(x => x.trim().replace(/^"|"$/g, ''));
+      put({ status: 'R', rawStatus: xy.trim() || 'R', oldPath: normalizeRel(oldP), path: normalizeRel(newP), source: 'git status --porcelain' });
+      continue;
+    }
+    p = p.replace(/^"|"$/g, '');
+    if (!p) continue;
+    const code = xy.includes('?') ? 'A' : (xy.includes('D') ? 'D' : 'M');
+    const rel = normalizeRel(p);
+    put({ status: code, rawStatus: xy.trim() || code, oldPath: code === 'A' ? null : rel, path: code === 'D' ? null : rel, source: 'git status --porcelain' });
+  }
+  return Array.from(entries.values()).sort((a, b) => `${a.path || a.oldPath}`.localeCompare(`${b.path || b.oldPath}`));
 }
 
 function writeFileEnsured(file, content) {
@@ -661,6 +717,62 @@ function maybeTruncate(label, text, limit, warnings) {
   return text.slice(0, limit) + `\n\n[TRUNCATED: ${label} exceeded ${limit} bytes]\n`;
 }
 
+
+function gitShowFile(repoRoot, ref, rel) {
+  const spec = `${ref}:${rel}`;
+  const res = run('git', ['show', spec], { cwd: repoRoot, allowFail: true, maxBuffer: 80 * 1024 * 1024 });
+  if (res.status !== 0) return null;
+  return res.stdout;
+}
+
+function writeBeforeAfterSnapshots(stage, repoRoot, base, changedEntries, ignore, warnings, maxFileBytes) {
+  const rows = [];
+  for (const entry of changedEntries) {
+    const beforeRel = entry.oldPath || entry.path;
+    const afterRel = entry.path;
+    if (beforeRel && entry.status !== 'A') {
+      const forbid = forbiddenReason(beforeRel, ignore);
+      if (forbid) {
+        rows.push({ side: 'before', file: beforeRel, status: 'excluded', reason: forbid });
+      } else {
+        const content = gitShowFile(repoRoot, base, beforeRel);
+        if (content === null) {
+          rows.push({ side: 'before', file: beforeRel, status: 'missing', reason: `not found at base ${base}` });
+        } else if (Buffer.byteLength(content, 'utf8') > maxFileBytes) {
+          rows.push({ side: 'before', file: beforeRel, status: 'excluded', reason: `larger than max-file-bytes (${maxFileBytes})` });
+          warnings.push(`Before snapshot omitted for large file: ${beforeRel}`);
+        } else if (content.includes('\0')) {
+          rows.push({ side: 'before', file: beforeRel, status: 'excluded', reason: 'binary/null bytes' });
+        } else {
+          writeFileEnsured(path.join(stage, 'FILE_VERSIONS', 'before', beforeRel), content);
+          rows.push({ side: 'before', file: beforeRel, status: 'included', reason: `git show ${base}:${beforeRel}` });
+        }
+      }
+    }
+    if (afterRel && entry.status !== 'D') {
+      const forbid = forbiddenReason(afterRel, ignore);
+      const abs = path.join(repoRoot, afterRel);
+      if (forbid) {
+        rows.push({ side: 'after', file: afterRel, status: 'excluded', reason: forbid });
+      } else if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) {
+        rows.push({ side: 'after', file: afterRel, status: 'missing', reason: 'not present in working tree/head' });
+      } else if (!isLikelyTextFile(afterRel, abs)) {
+        rows.push({ side: 'after', file: afterRel, status: 'excluded', reason: 'binary/non-text file' });
+      } else {
+        const st = fs.statSync(abs);
+        if (st.size > maxFileBytes) {
+          rows.push({ side: 'after', file: afterRel, status: 'excluded', reason: `larger than max-file-bytes (${maxFileBytes})` });
+          warnings.push(`After snapshot omitted for large file: ${afterRel}`);
+        } else {
+          copyFileEnsured(abs, path.join(stage, 'FILE_VERSIONS', 'after', afterRel));
+          rows.push({ side: 'after', file: afterRel, status: 'included', reason: 'current working tree/head file' });
+        }
+      }
+    }
+  }
+  return rows;
+}
+
 function writeGeneratedFiles(stage, generated) {
   for (const [rel, content] of Object.entries(generated)) {
     writeFileEnsured(path.join(stage, rel), typeof content === 'string' ? content : JSON.stringify(content, null, 2) + '\n');
@@ -698,6 +810,7 @@ function main() {
   const rules = loadJsonIfExists(path.join(scriptDir, 'ai-review-capsule-rules.json'), DEFAULT_RULES);
   const ignore = loadJsonIfExists(path.join(scriptDir, 'ai-review-capsule-ignore.json'), DEFAULT_IGNORE);
   const modeCfg = rules.modes[args.mode];
+  const changedOnlyMode = args.mode === 'changed';
   const defaultOut = path.join(repoRoot, '..', 'sysgrid-ai-review-capsule.zip');
   const outAbs = path.resolve(args.out || defaultOut);
   const outParent = path.dirname(outAbs);
@@ -716,6 +829,7 @@ function main() {
   const included = new Map();
   const excluded = new Map();
   const allFiles = listGitFiles(repoRoot);
+  const changedEntries = getChangedEntries(repoRoot, args.base);
   const changedFiles = getChangedFiles(repoRoot, args.base);
 
   if (!changedFiles.length && !args.allowEmpty) {
@@ -726,11 +840,13 @@ function main() {
     addCandidate(repoRoot, ignore, included, excluded, rel, 'changed file from git diff/status', { required: true, maxBytes: args.maxFileBytes });
   }
 
-  for (const rel of rules.projectSpine || []) {
-    addCandidate(repoRoot, ignore, included, excluded, rel, 'project spine', { required: false, maxBytes: args.maxFileBytes });
+  if (!changedOnlyMode) {
+    for (const rel of rules.projectSpine || []) {
+      addCandidate(repoRoot, ignore, included, excluded, rel, 'project spine', { required: false, maxBytes: args.maxFileBytes });
+    }
   }
 
-  if (args.includeAllEssential) {
+  if (args.includeAllEssential && !changedOnlyMode) {
     const globs = [
       ...((rules.includeAllEssential && rules.includeAllEssential.frontendComponentGlobs) || []),
       ...((rules.includeAllEssential && rules.includeAllEssential.backendGlobs) || [])
@@ -743,7 +859,7 @@ function main() {
   }
 
   const initialSourceRoots = Array.from(included.keys()).filter(rel => /\.(ts|tsx|js|jsx|py|json|css)$/.test(rel));
-  const importGraph = includeImportClosure(repoRoot, rules, ignore, included, excluded, initialSourceRoots, modeCfg.importDepth, args.maxFileBytes);
+  const importGraph = changedOnlyMode ? {} : includeImportClosure(repoRoot, rules, ignore, included, excluded, initialSourceRoots, modeCfg.importDepth, args.maxFileBytes);
 
   const changedTextFiles = changedFiles.filter(rel => !forbiddenReason(rel, ignore) && fs.existsSync(path.join(repoRoot, rel)) && isLikelyTextFile(rel, path.join(repoRoot, rel)));
   const terms = new Set();
@@ -760,7 +876,7 @@ function main() {
   const backendChanged = changedTextFiles.some(rel => rel.startsWith('backend/') && rel.endsWith('.py'));
   const highRiskDetected = Object.keys(highRiskByChangedFile).length > 0;
 
-  if ((frontendChanged && (highRiskDetected || terms.size)) || args.includeAllEssential) {
+  if (!changedOnlyMode && ((frontendChanged && (highRiskDetected || terms.size)) || args.includeAllEssential)) {
     const backendMatches = findMatchingFiles(allFiles, terms, rules.backendRoots, rel => rel.endsWith('.py')).slice(0, modeCfg.backendSearchLimit);
     let apiCount = 0;
     for (const rel of backendMatches) {
@@ -773,14 +889,14 @@ function main() {
     }
   }
 
-  if (backendChanged) {
+  if (backendChanged && !changedOnlyMode) {
     for (const rel of ['backend/app/main.py', 'backend/app/database.py', 'backend/app/models/models.py', 'backend/app/schemas/schemas.py']) {
       addCandidate(repoRoot, ignore, included, excluded, rel, 'backend API support spine', { required: false, maxBytes: args.maxFileBytes });
     }
   }
 
   const sharedOperationalChanged = changedTextFiles.some(rel => rel.startsWith('frontend/src/components/shared/Operational'));
-  if (sharedOperationalChanged || (args.includeAllEssential && args.mode !== 'minimal')) {
+  if (!changedOnlyMode && (sharedOperationalChanged || (args.includeAllEssential && args.mode !== 'minimal'))) {
     for (const rel of allFiles) {
       if (/^frontend\/src\/components\/shared\/Operational.*\.(ts|tsx)$/.test(rel)) {
         addCandidate(repoRoot, ignore, included, excluded, rel, 'shared operational contract family', { required: false, maxBytes: args.maxFileBytes });
@@ -788,12 +904,12 @@ function main() {
     }
   }
 
-  const testMatches = findMatchingFiles(allFiles, terms, null, rel => isTestFile(rel) && /\.(ts|tsx|js|jsx|py)$/.test(rel)).slice(0, modeCfg.testLimit);
+  const testMatches = changedOnlyMode ? [] : findMatchingFiles(allFiles, terms, null, rel => isTestFile(rel) && /\.(ts|tsx|js|jsx|py)$/.test(rel)).slice(0, modeCfg.testLimit);
   for (const rel of testMatches) {
     addCandidate(repoRoot, ignore, included, excluded, rel, 'relevant test match from changed terms', { required: false, maxBytes: args.maxFileBytes });
   }
 
-  for (const rel of changedFiles) {
+  if (!changedOnlyMode) for (const rel of changedFiles) {
     const ext = path.extname(rel);
     const baseNoExt = rel.slice(0, rel.length - ext.length);
     const nearby = [
@@ -804,14 +920,14 @@ function main() {
     for (const t of nearby) addCandidate(repoRoot, ignore, included, excluded, t, `same/nearby test for ${rel}`, { required: false, maxBytes: args.maxFileBytes });
   }
 
-  if (backendChanged) {
+  if (backendChanged && !changedOnlyMode) {
     const backendTestIncluded = Array.from(included.keys()).some(rel => rel.startsWith('backend/') && isTestFile(rel));
     if (!backendTestIncluded) {
       const msg = 'Backend changed but no matching backend test was included.';
       if (args.strict) failures.push(msg); else warnings.push(msg);
     }
   }
-  if (sharedOperationalChanged) {
+  if (sharedOperationalChanged && !changedOnlyMode) {
     const sharedTestIncluded = Array.from(included.keys()).some(rel => rel.startsWith('frontend/src/components/shared/') && isTestFile(rel));
     if (!sharedTestIncluded) {
       const msg = 'Shared operational frontend file changed but no shared contract test was included.';
@@ -846,15 +962,16 @@ function main() {
   const excludedRows = Array.from(excluded.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([file, reason]) => ({ file, reason }));
 
   const riskKeywordMap = buildRiskKeywordMap(repoRoot, Array.from(included.keys()), rules, Math.min(args.maxFileBytes, 800000));
-  const frontendMap = buildFrontendComponentMap(repoRoot, allFiles, rules, ignore, modeCfg.mapContentBytes);
-  const backendRouteMap = buildBackendRouteMap(repoRoot, allFiles, rules, ignore, modeCfg.mapContentBytes);
-  const testMap = buildTestMap(allFiles, rules, ignore);
-  const projectConfigMap = buildProjectConfigMap(repoRoot, allFiles, ignore);
+  const frontendMap = changedOnlyMode ? {} : buildFrontendComponentMap(repoRoot, allFiles, rules, ignore, modeCfg.mapContentBytes);
+  const backendRouteMap = changedOnlyMode ? {} : buildBackendRouteMap(repoRoot, allFiles, rules, ignore, modeCfg.mapContentBytes);
+  const testMap = changedOnlyMode ? {} : buildTestMap(allFiles, rules, ignore);
+  const projectConfigMap = changedOnlyMode ? {} : buildProjectConfigMap(repoRoot, allFiles, ignore);
   const contractSignalMap = {
     frontendChanged,
     backendChanged,
     sharedOperationalChanged,
     changedFiles,
+    changedEntries,
     highRiskByChangedFile,
     detectedTerms: Array.from(terms).sort(),
     backendApiIncluded: includedRows.filter(x => x.file.startsWith('backend/app/api/')).map(x => x.file),
@@ -867,20 +984,30 @@ function main() {
   generated['DIFFS/NUMSTAT.txt'] = numStat || '[no unstaged numstat]\n';
   generated['DIFFS/FULL_DIFF.diff'] = fullDiff || '[no unstaged/staged diff]\n';
   generated['DIFFS/FULL_DIFF_NUMBERED.diff'] = lineNumbered(fullDiff || '[no unstaged/staged diff]\n');
-  generated['GENERATED_MAPS/REPO_TREE_PRUNED.txt'] = buildRepoTreePruned(allFiles, ignore);
-  generated['GENERATED_MAPS/PROJECT_CONFIG_MAP.json'] = projectConfigMap;
-  generated['GENERATED_MAPS/FRONTEND_COMPONENT_MAP.json'] = frontendMap;
-  generated['GENERATED_MAPS/BACKEND_ROUTE_MAP.json'] = backendRouteMap;
-  generated['GENERATED_MAPS/TEST_MAP.json'] = testMap;
+  if (!changedOnlyMode) {
+    generated['GENERATED_MAPS/REPO_TREE_PRUNED.txt'] = buildRepoTreePruned(allFiles, ignore);
+    generated['GENERATED_MAPS/PROJECT_CONFIG_MAP.json'] = projectConfigMap;
+    generated['GENERATED_MAPS/FRONTEND_COMPONENT_MAP.json'] = frontendMap;
+    generated['GENERATED_MAPS/BACKEND_ROUTE_MAP.json'] = backendRouteMap;
+    generated['GENERATED_MAPS/TEST_MAP.json'] = testMap;
+    generated['GENERATED_MAPS/IMPORT_GRAPH_SLICE.json'] = importGraph;
+  }
   generated['GENERATED_MAPS/RISK_KEYWORD_MAP.json'] = riskKeywordMap;
-  generated['GENERATED_MAPS/IMPORT_GRAPH_SLICE.json'] = importGraph;
   generated['GENERATED_MAPS/CONTRACT_SIGNAL_MAP.json'] = contractSignalMap;
+  generated['GENERATED_MAPS/CHANGED_FILE_STATUS_MAP.json'] = changedEntries;
   generated['INCLUDED_FILES.txt'] = includedRows.map(x => `${x.file}\t${x.bytes ?? '?'} bytes\t${x.reasons.join(' | ')}`).join('\n') + '\n';
   generated['EXCLUDED_FILES.txt'] = excludedRows.map(x => `${x.file}\t${x.reason}`).join('\n') + '\n';
+  let fileVersionRows = [];
+  if (args.includeBeforeAfter) {
+    fileVersionRows = writeBeforeAfterSnapshots(stage, repoRoot, args.base, changedEntries, ignore, warnings, args.maxFileBytes);
+    generated['FILE_VERSIONS/FILE_VERSION_INDEX.json'] = fileVersionRows;
+  }
+
   generated['WARNINGS_AND_GAPS.md'] = warnings.length ? warnings.map(w => `- ${w}`).join('\n') + '\n' : 'No warnings.\n';
+
   generated['AI_REVIEW_MANIFEST.md'] = buildManifest({
-    args, repoRoot, branch, head, gitStatus, changedFiles, includedRows, excludedRows,
-    warnings, generatedKeys: Object.keys(generated).sort(), rulesVersion: VERSION
+    args, repoRoot, branch, head, gitStatus, changedFiles, changedEntries, includedRows, excludedRows,
+    warnings, fileVersionRows, generatedKeys: Object.keys(generated).sort(), rulesVersion: VERSION
   });
 
   writeGeneratedFiles(stage, generated);
@@ -896,8 +1023,12 @@ function main() {
   const badStaged = [];
   for (const abs of stagedFiles) {
     const rel = normalizeRel(path.relative(stage, abs));
-    const sourceRel = rel.startsWith('SOURCE_SLICE/') ? rel.slice('SOURCE_SLICE/'.length) : rel;
-    const forbid = rel.startsWith('SOURCE_SLICE/') ? forbiddenReason(sourceRel, ignore) : null;
+    let sourceRel = rel;
+    let shouldCheck = false;
+    if (rel.startsWith('SOURCE_SLICE/')) { sourceRel = rel.slice('SOURCE_SLICE/'.length); shouldCheck = true; }
+    if (rel.startsWith('FILE_VERSIONS/before/')) { sourceRel = rel.slice('FILE_VERSIONS/before/'.length); shouldCheck = true; }
+    if (rel.startsWith('FILE_VERSIONS/after/')) { sourceRel = rel.slice('FILE_VERSIONS/after/'.length); shouldCheck = true; }
+    const forbid = shouldCheck ? forbiddenReason(sourceRel, ignore) : null;
     if (forbid) badStaged.push(`${rel}: ${forbid}`);
   }
   if (badStaged.length) {
@@ -924,6 +1055,7 @@ function main() {
   console.log(`size: ${formatBytes(outStat.size)}`);
   console.log(`included_source_files: ${includedRows.length}`);
   console.log(`generated_files: ${Object.keys(generated).length}`);
+  console.log(`file_version_snapshots: ${args.includeBeforeAfter ? fileVersionRows.filter(x => x.status === 'included').length : 0}`);
   if (warnings.length) {
     console.log('\nwarnings:');
     for (const w of warnings) console.log(`- ${w}`);
@@ -951,17 +1083,20 @@ function buildManifest(ctx) {
 `- mode: ${ctx.args.mode}\n` +
 `- base_ref: ${ctx.args.base}\n` +
 `- strict: ${ctx.args.strict}\n` +
-`- include_all_essential: ${ctx.args.includeAllEssential}\n\n` +
+`- include_all_essential: ${ctx.args.includeAllEssential}\n` +
+`- include_before_after: ${ctx.args.includeBeforeAfter}\n\n` +
 `## Git\n\n` +
 `- repo_root: ${ctx.repoRoot}\n` +
 `- branch: ${ctx.branch || '[unknown]'}\n` +
 `- head: ${ctx.head || '[unknown]'}\n\n` +
 `### Git status --short\n\n` +
 '```\n' + (ctx.gitStatus || '[clean]\n') + '```\n\n' +
-`## Changed files\n\n` +
-(ctx.changedFiles.length ? ctx.changedFiles.map(f => `- ${f}`).join('\n') : '- [none detected]') + '\n\n' +
+`## Changed file status\n\n` +
+(ctx.changedEntries && ctx.changedEntries.length ? ctx.changedEntries.map(e => `- ${e.rawStatus || e.status} ${e.oldPath && e.path && e.oldPath !== e.path ? `${e.oldPath} -> ${e.path}` : (e.path || e.oldPath)}`).join('\n') : '- [none detected]') + '\n\n' +
 `## Generated capsule files\n\n` +
 ctx.generatedKeys.map(f => `- ${f}`).join('\n') + '\n\n' +
+`## Before/after file snapshots\n\n` +
+(ctx.fileVersionRows && ctx.fileVersionRows.length ? ctx.fileVersionRows.map(x => `- ${x.side} ${x.file}: ${x.status}${x.reason ? ` (${x.reason})` : ''}`).join('\n') : '- [none generated]') + '\n\n' +
 `## Included source files by reason\n\n` +
 Object.entries(grouped).sort((a, b) => a[0].localeCompare(b[0])).map(([reason, files]) => {
   return `### ${reason}\n\n` + Array.from(new Set(files)).sort().map(f => `- ${f}`).join('\n');

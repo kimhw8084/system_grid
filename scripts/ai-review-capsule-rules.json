@@ -1,9 +1,60 @@
 {
   "_comment": "Override/tune these rules without editing create-ai-review-capsule.cjs. Keep this file source-truth and task-neutral.",
   "modes": {
-    "minimal": { "importDepth": 1, "backendSearchLimit": 12, "testLimit": 20, "mapContentBytes": 350000 },
-    "standard": { "importDepth": 2, "backendSearchLimit": 30, "testLimit": 45, "mapContentBytes": 600000 },
-    "deep": { "importDepth": 3, "backendSearchLimit": 80, "testLimit": 120, "mapContentBytes": 1200000 }
+    "changed": {
+      "importDepth": 0,
+      "backendSearchLimit": 0,
+      "testLimit": 0,
+      "mapContentBytes": 80000
+    },
+    "quick": {
+      "importDepth": 1,
+      "backendSearchLimit": 8,
+      "testLimit": 12,
+      "mapContentBytes": 250000
+    },
+    "minimal": {
+      "importDepth": 1,
+      "backendSearchLimit": 12,
+      "testLimit": 20,
+      "mapContentBytes": 350000
+    },
+    "standard": {
+      "importDepth": 2,
+      "backendSearchLimit": 30,
+      "testLimit": 45,
+      "mapContentBytes": 600000
+    },
+    "daily": {
+      "importDepth": 2,
+      "backendSearchLimit": 35,
+      "testLimit": 55,
+      "mapContentBytes": 700000
+    },
+    "deep": {
+      "importDepth": 3,
+      "backendSearchLimit": 80,
+      "testLimit": 120,
+      "mapContentBytes": 1200000
+    },
+    "fresh": {
+      "importDepth": 3,
+      "backendSearchLimit": 100,
+      "testLimit": 160,
+      "mapContentBytes": 1600000
+    },
+    "audit": {
+      "importDepth": 4,
+      "backendSearchLimit": 160,
+      "testLimit": 220,
+      "mapContentBytes": 2200000
+    },
+    "full": {
+      "importDepth": 5,
+      "backendSearchLimit": 240,
+      "testLimit": 320,
+      "mapContentBytes": 3000000
+    }
   },
   "projectSpine": [
     "AGENTS.md",
@@ -28,15 +79,67 @@
     "backend/app/schemas/schemas.py"
   ],
   "highRiskKeywords": [
-    "bulk", "purge", "restore", "archive", "delete", "update", "revert", "snapshot",
-    "credential", "dependency", "link", "tenant", "owner", "settings", "migration",
-    "schema", "action", "route", "permission", "role", "auth", "toast", "selection",
-    "saved view", "saved_view", "localstorage", "modal", "row action", "row-action"
+    "bulk",
+    "purge",
+    "restore",
+    "archive",
+    "delete",
+    "update",
+    "revert",
+    "snapshot",
+    "credential",
+    "dependency",
+    "link",
+    "tenant",
+    "owner",
+    "settings",
+    "migration",
+    "schema",
+    "action",
+    "route",
+    "permission",
+    "role",
+    "auth",
+    "toast",
+    "selection",
+    "saved view",
+    "saved_view",
+    "localstorage",
+    "modal",
+    "row action",
+    "row-action"
   ],
   "workspaceTerms": [
-    "monitoring", "external", "service", "services", "network", "networks", "asset", "assets",
-    "vendor", "vendors", "far", "research", "project", "projects", "settings", "rack", "racks",
-    "device", "devices", "dashboard", "dataflow", "data_flow", "knowledge", "audit",
-    "maintenance", "intelligence", "rca", "tenant", "tenants", "site", "sites"
+    "monitoring",
+    "external",
+    "service",
+    "services",
+    "network",
+    "networks",
+    "asset",
+    "assets",
+    "vendor",
+    "vendors",
+    "far",
+    "research",
+    "project",
+    "projects",
+    "settings",
+    "rack",
+    "racks",
+    "device",
+    "devices",
+    "dashboard",
+    "dataflow",
+    "data_flow",
+    "knowledge",
+    "audit",
+    "maintenance",
+    "intelligence",
+    "rca",
+    "tenant",
+    "tenants",
+    "site",
+    "sites"
   ]
 }

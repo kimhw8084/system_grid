@@ -20,16 +20,16 @@ PARTIAL_IMPLEMENTATION_REQUIRED
 - Audit file existence proof passed: `frontend/OUT-8-golden-lifecycle-contract-audit.md` exists.
 
 ## Golden Template View Inventory
-| View | File | Uses Golden Template? | Shared Bulk? | Shared Row Action? | Backend Entity | Notes |
-| --- | --- | --- | --- | --- | --- | --- |
-| Monitoring | `frontend/src/components/MonitoringGrid.tsx` | Yes | Yes | Yes | `monitoring` | Strongest shared implementation; only audited entity with purge restore backend |
-| External | `frontend/src/components/External.tsx` | Yes | Yes | Yes | `intelligence/entities` | Has local purge guard and shared bulk toast helper |
-| AssetReal | `frontend/src/components/AssetReal.tsx` | Yes | Partial: local mutation, shared wording not fully centralized | No shared row action menu | `devices` | Shared operational shell, but lifecycle logic is local |
-| NetworkReal | `frontend/src/components/NetworkReal.tsx` | Yes | Partial: local mutation, shared wording not fully centralized | No shared row action menu | `networks/connections` | Shared operational shell, but lifecycle logic is local |
-| ServicesReal | `frontend/src/components/ServicesReal.tsx` | Yes | Yes | Yes | `logical-services` | Golden-style shared operational view; backend lacks purge |
-| VendorsReal | `frontend/src/components/VendorsReal.tsx` | Uncertain / partial only | No shared lifecycle contract | No | `vendors` | Shared grid shell only; no deleted tab lifecycle parity |
-| Racks | `frontend/src/components/Racks.tsx` | No source proof | No | No | `racks` | Operational workflow exists, but not on the shared golden lifecycle contract |
-| ServiceRegistry | `frontend/src/components/ServiceRegistry.tsx` | No source proof | No | No | `logical-services` | Legacy/service-specific lifecycle model, not golden contract |
+| View | File | Uses Golden Template? | Shared Bulk? | Shared Row Action? | Backend Entity | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Monitoring | `frontend/src/components/MonitoringGrid.tsx` | Yes | Yes | Yes | `monitoring` | Imports `showOperationalBulkResultToast` and `OperationalRowActionMenu`; deleted-state lifecycle query uses `include_deleted=true` | Strongest shared implementation; only audited entity with purge restore backend |
+| External | `frontend/src/components/External.tsx` | Yes | Yes | Yes | `intelligence/entities` | Imports `showOperationalBulkResultToast` and `OperationalRowActionMenu`; deleted-state entity query uses `include_deleted=true` | Has local purge guard and shared bulk toast helper |
+| AssetReal | `frontend/src/components/AssetReal.tsx` | Yes | Partial: local mutation, shared wording not fully centralized | No shared row action menu | `devices` | Shared operational workspace shell plus deleted-state `devices?include_deleted=true` query; no `OperationalRowActionMenu` import | Shared operational shell, but lifecycle logic is local |
+| NetworkReal | `frontend/src/components/NetworkReal.tsx` | Yes | Partial: local mutation, shared wording not fully centralized | No shared row action menu | `networks/connections` | Shared operational workspace shell plus deleted-state `connections?include_deleted=true` query; no `OperationalRowActionMenu` import | Shared operational shell, but lifecycle logic is local |
+| ServicesReal | `frontend/src/components/ServicesReal.tsx` | Yes | Yes | Yes | `logical-services` | Imports shared bulk helper and `OperationalRowActionMenu`; deleted-state `logical-services?include_deleted=true` query | Golden-style shared operational view; backend lacks purge |
+| VendorsReal | `frontend/src/components/VendorsReal.tsx` | Uncertain / partial only | No shared lifecycle contract | No | `vendors` | Uses shared grid shell, but no deleted lifecycle view and no shared bulk helper import | Shared grid shell only; no deleted tab lifecycle parity |
+| Racks | `frontend/src/components/Racks.tsx` | No source proof | No | No | `racks` | Uses `racks?include_deleted=true` and local bulk action flow; no shared lifecycle helper imports found | Operational workflow exists, but not on the shared golden lifecycle contract |
+| ServiceRegistry | `frontend/src/components/ServiceRegistry.tsx` | No source proof | No | No | `logical-services` | Uses `logical-services?include_deleted=true` and local purge/restore copy; no shared lifecycle helper imports found | Legacy/service-specific lifecycle model, not golden contract |
 
 ## View Coverage Matrix
 | View | Archive | Restore | Purge | Archive Revert | Restore Revert | Purge Revert | Dependency Guard | Disabled Reason Hover/Focus | Archived Link Routing | Status |
@@ -123,3 +123,27 @@ PARTIAL_IMPLEMENTATION_REQUIRED
 
 ## Stop/Proceed Decision
 STOP_AUDIT_ONLY
+
+## Phase 1 Shared Contract Implementation Note
+- Verdict: `PARTIAL_SHARED_CONTRACT_FOUNDATION_IMPLEMENTED`
+- Shared contract files created:
+  `frontend/src/components/shared/OperationalLifecycleContract.ts`
+  `frontend/src/components/shared/OperationalDependencyGuard.ts`
+  `frontend/src/components/shared/OperationalDisabledActionTooltip.tsx`
+  `frontend/src/components/shared/OperationalLifecycleToasts.ts`
+- Shared contract files updated:
+  `frontend/src/components/shared/OperationalBulkContract.ts`
+  `frontend/src/components/shared/OperationalBulkContract.test.ts`
+  `frontend/src/components/shared/OperationalRowActionMenu.tsx`
+  `frontend/src/components/shared/OperationalActionLabels.ts`
+- Views wired in this phase:
+  `frontend/src/components/External.tsx`
+  `frontend/src/components/ServicesReal.tsx`
+- Monitoring status:
+  `frontend/src/components/MonitoringGrid.tsx` purge `restore_purged` behavior preserved without new backend drift in this phase
+- External status:
+  deleted-state Purge now resolves through the shared dependency guard shape and shared disabled tooltip host; blocked reasons now enumerate known link and credential blockers when source data is available
+- Services status:
+  deleted-state Purge is now represented as backend-blocked rather than omitted; no unsupported purge request path was added
+- Still not complete in Phase 1:
+  backend purge/revert truth remains uneven across entities, and only source-safe shared foundation wiring was implemented here

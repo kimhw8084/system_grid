@@ -131,3 +131,15 @@ rtk rg -n "No changes made|already matched|Permanently purged|Bulk operation rev
 rtk rg -n "headerContentWidth|minWidth|maxWidth|truncate|whitespace-nowrap|DropdownEditor|ActionCard" frontend/src/components/shared frontend/src/components
 rtk rg -n "setShowViewsMenu\\(!showViewsMenu\\)|setShowDisplayMenu\\(!showDisplayMenu\\)|togglePanel\\('views'\\)|togglePanel\\('display'\\)" frontend/src/components/MonitoringGrid.tsx
 ```
+
+## Golden Lifecycle Phase 1 Human Validation
+- Verdict: `PARTIAL_SHARED_CONTRACT_FOUNDATION_IMPLEMENTED`
+- Recheck External deleted-state purge:
+  confirm the bulk surface shows shared blocked guidance
+  confirm row action and detail disabled Purge expose the blocker reason on hover and keyboard focus
+  confirm blocked reasons enumerate known links and credentials when available
+- Recheck Services deleted-state purge:
+  confirm deleted bulk menu, row action, and detail footer show `Purge` as disabled with the backend-blocked reason
+  confirm no purge request is sent from Services because the backend still lacks truthful purge/revert support
+- Recheck Monitoring:
+  confirm existing `restore_purged` revert path still behaves as before; this phase did not replace that flow
