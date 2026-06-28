@@ -53,6 +53,7 @@
 - `supported purge can have revert when truthful`: `YES`. Shared helper allows revert for any successful action when the caller supplies truthful `onRevert` data in `frontend/src/components/shared/OperationalBulkContract.ts:115-120`.
 - `blocked unsafe purge has exact explanation`: `YES`. `frontend/src/components/External.tsx:115,2295-2296,2998-3003,3108-3115`.
 - `Services unsupported purge absent`: `YES`. Deleted-scope bulk and row actions expose restore only in `frontend/src/components/ServicesReal.tsx:2009-2018,2142-2145`.
+- `Monitoring purge revert truth`: `PARTIAL_BACKEND_BLOCKER_MONITORING_PURGE_REVERT`. `backend/app/api/monitoring.py:765-768` hard-deletes purged rows with `delete(models.MonitoringItem)`, while `restore` at `backend/app/api/monitoring.py:769-790` only revives rows that still exist, so purge cannot be truthfully reverted end-to-end today.
 
 ## Evidence Gaps
 | Gap | Severity | Blocks OUT-8? | Source Needed | Recommended Prompt If Blocking |
@@ -90,7 +91,16 @@ The source and support package are strong enough to reach final human UI validat
   `npm run typecheck --prefix frontend` still fails on the pre-existing unrelated `NetworkReal.tsx` and `VendorsReal.tsx` errors already documented in `frontend/RUN3-F-typecheck-build-blockers.md`; no new typecheck failure was introduced by this patch.
 
 ## Post-Human-Validation H/I Recovery Note
-- Monitoring purge Revert restored/fixed
+- Monitoring purge Revert attempted in source but not proven truthful end-to-end
 - External disabled Purge label fixed
+- Services purge remains unexposed
+- Human validation required again only for H/I
+
+## Post-Human-Validation H/I Follow-Up Note
+- External disabled Purge label fixed to `Purge`
+- External disabled Purge tooltip/focus reason added
+- Monitoring purge Revert truth source proof:
+  `PARTIAL_BACKEND_BLOCKER_MONITORING_PURGE_REVERT`
+  `backend/app/api/monitoring.py` hard-deletes on purge and cannot restore a removed row through the existing restore path
 - Services purge remains unexposed
 - Human validation required again only for H/I

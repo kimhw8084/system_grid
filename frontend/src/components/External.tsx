@@ -3019,7 +3019,9 @@ export default function External() {
                   >
                     <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
                       {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
-                        bulkDeleteConfirm
+                        activeTab === 'deleted' && !canPurgeSelectedDeletedEntities
+                          ? OPERATIONAL_ACTION_LABELS.purge
+                          : bulkDeleteConfirm
                           ? (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purgeSelectionConfirm : OPERATIONAL_ACTION_LABELS.archiveSelectionConfirm)
                           : (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purgeSelection : OPERATIONAL_ACTION_LABELS.archiveSelection)
                       )}
@@ -3116,6 +3118,7 @@ export default function External() {
                             tone: 'danger' as OperationalRowActionTone,
                             variant: 'inline' as OperationalRowActionVariant,
                             disabled: activeTab === 'deleted' && !deletedItemPurgeable,
+                            disabledReason: activeTab === 'deleted' && !deletedItemPurgeable ? EXTERNAL_PURGE_BLOCKED_MESSAGE : undefined,
                             confirming: rowDeleteConfirmId === item.id,
                             onClick: () => {
                                 if (rowDeleteConfirmId !== item.id) {

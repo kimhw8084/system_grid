@@ -19,6 +19,7 @@ export type OperationalRowActionItem = {
   variant?: OperationalRowActionVariant;
   onClick: () => void;
   disabled?: boolean;
+  disabledReason?: string;
   confirming?: boolean;
   confirmLabel?: string;
   ariaLabel?: string;
@@ -140,6 +141,8 @@ export function OperationalRowActionMenu({
                         type="button"
                         onClick={item.onClick}
                         disabled={item.disabled}
+                        title={item.disabled ? item.disabledReason : undefined}
+                        aria-label={item.disabled ? (item.ariaLabel || item.disabledReason || item.label) : item.ariaLabel}
                         className={`flex flex-row items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] transition-all hover:bg-white/[0.03] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${item.confirming ? "bg-rose-600 animate-pulse" : ""}`}
                         style={{ width: `${row.buttonWidths[itemIdx]}px` }}
                       >
