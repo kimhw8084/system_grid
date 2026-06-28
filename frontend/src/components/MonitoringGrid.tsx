@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { showWorkspaceRevertToast, showWorkspaceToast } from './shared/WorkspaceToast'
 import { apiFetch } from '../api/apiClient'
 import { buildMonitoringFormErrors, getMonitoringTabErrorCounts } from '../utils/monitoringValidation'
+import { monitoringSupportsRestorePurged } from '../utils/monitoringPurgeRevertCapability'
 import { formatAppDate, formatAppTime, formatAppDay, parseAppDate } from '../utils/dateUtils'
 import { AppDropdown } from './shared/AppDropdown'
 import { ConfigRegistryModal } from "./ConfigRegistry"
@@ -595,6 +596,7 @@ export default function MonitoringGrid() {
   const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
   const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
   const lastUndoRef = useRef<any>(null)
+  const purgeRestoreCapabilityRef = useRef<boolean | null>(null)
   const [newViewName, setNewViewName] = useState('')
 
   const isWorkspaceDirty = useMemo(() => {
@@ -1581,6 +1583,20 @@ export default function MonitoringGrid() {
     queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
   }
 
+  const ensurePurgeRestoreCapability = useCallback(async () => {
+    if (purgeRestoreCapabilityRef.current !== null) return purgeRestoreCapabilityRef.current
+    try {
+      await apiFetch('/api/v1/monitoring/bulk-action', {
+        method: 'POST',
+        body: JSON.stringify({ ids: [0], action: 'restore_purged', payload: {} })
+      })
+      purgeRestoreCapabilityRef.current = true
+    } catch (error: any) {
+      purgeRestoreCapabilityRef.current = monitoringSupportsRestorePurged(error)
+    }
+    return purgeRestoreCapabilityRef.current ?? false
+  }, [])
+
   const bulkMutation = useMutation({
     onMutate: ({ action, ids: overrideIds }: any) => {
       const idsToUse = overrideIds ?? selectedIds
@@ -1601,7 +1617,7 @@ export default function MonitoringGrid() {
       const result = await res.json()
       return { result, action, payload, idsToUse, previousSnapshots }
     },
-    onSuccess: ({ result, action, payload, idsToUse, previousSnapshots }: any) => {
+    onSuccess: async ({ result, action, payload, idsToUse, previousSnapshots }: any) => {
       queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
       idsToUse.forEach((id: number) => {
         queryClient.invalidateQueries({ queryKey: ['monitoring-history', id] })
@@ -1622,11 +1638,14 @@ export default function MonitoringGrid() {
               : totalSelected
       const unchangedCount = Math.max(0, totalSelected - changedCount)
       const fieldLabel = resolveBulkFieldLabel(payload, MONITORING_BULK_FIELD_LABELS)
+      const purgeRestoreSupported = action === 'purge'
+        ? await ensurePurgeRestoreCapability()
+        : true
 
       if (changedCount <= 0) lastUndoRef.current = null
       else if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
       else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
-      else if (action === 'purge') lastUndoRef.current = { mode: 'restore_purged', snapshots: previousSnapshots }
+      else if (action === 'purge' && purgeRestoreSupported) lastUndoRef.current = { mode: 'restore_purged', snapshots: previousSnapshots }
       else if (action === 'update') lastUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
       else lastUndoRef.current = null
 
