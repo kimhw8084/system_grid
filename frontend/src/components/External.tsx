@@ -3023,7 +3023,7 @@ export default function External() {
                           ? OPERATIONAL_ACTION_LABELS.purge
                           : bulkDeleteConfirm
                           ? (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purgeSelectionConfirm : OPERATIONAL_ACTION_LABELS.archiveSelectionConfirm)
-                          : (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purgeSelection : OPERATIONAL_ACTION_LABELS.archiveSelection)
+                          : (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purge : OPERATIONAL_ACTION_LABELS.archiveSelection)
                       )}
                     </p>
                   </button>

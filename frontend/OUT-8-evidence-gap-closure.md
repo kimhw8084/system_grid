@@ -138,3 +138,21 @@ The remaining step is H/I human validation. Monitoring purge Revert now restores
   `npm run typecheck --prefix frontend` still reports only the pre-existing `NetworkReal.tsx` and `VendorsReal.tsx` errors
 - Remaining human validation required:
   H/I only
+
+## Backend Artifact Recovery Review Note
+- Previous review:
+  `FAIL_UNVERIFIABLE_BACKEND_CLAIM`
+- Current verdict:
+  `BACKEND_REVERSIBLE_PURGE_IMPLEMENTED`
+- Backend files included:
+  `backend/app/api/monitoring.py`
+- Backend tests included:
+  `backend/test_monitoring_workflows.py`
+  `backend/test_monitoring_query_and_bulk_edges.py`
+  `backend/test_monitoring_restore_edges.py`
+- Restore mechanism:
+  Monitoring purge Revert calls backend bulk action `restore_purged` with the exact pre-purge snapshots captured from `monitoring-items`. The backend recreates each purged Monitoring row by original id, restores persisted field values and owner rows, then writes a restore history entry
+- Why Revert is truthful:
+  The row is removed from backend/source state by purge, then restored by backend/source state through `restore_purged`. After Revert, a fresh fetch of `monitoring-items?include_deleted=true` returns the row again
+- Remaining human validation:
+  H/I only

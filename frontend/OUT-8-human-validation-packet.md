@@ -110,6 +110,7 @@ OUT-8 can close only if:
 - Services does not expose Purge now
 - External unsafe Purge label remains `Purge` and never `Purge Selection`; the blocked reason stays in the tooltip/explanation
 - External unsafe Purge recheck: label = `Purge`, tooltip reason visible, no request sent
+- Monitoring H/I recheck: purge deleted Monitoring row, click Revert, confirm backend request succeeds, refresh/fetch, confirm row returns
 - Services purge absence recheck: no Purge button in deleted scope and no row-action Purge
 - evidence screenshots/network captures are collected
 
