@@ -55,6 +55,7 @@ import {
   useOperationalRowInteractions,
   useOperationalContextMenu,
   useOperationalDismissController,
+  useOperationalGroupedSelection,
 } from './shared/OperationalGridInteractions'
 import { WorkspaceCompareShell, WorkspaceDossierShell } from './shared/WorkspaceModalShells'
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
@@ -532,6 +533,9 @@ export default function ServicesReal() {
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
   
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const { handleSelectionChanged, resetGroupedSelection } = useOperationalGroupedSelection({
+    setSelectedIds,
+  })
   const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
   const [isBulkSeverityOpen, setIsBulkSeverityOpen] = useState(false)
   const [isBulkNotifyOpen, setIsBulkNotifyOpen] = useState(false)
@@ -635,8 +639,6 @@ export default function ServicesReal() {
   }, [handleBaseColumnResized])
 
   const handleGridReady = handleBaseGridReady;
-
-  const groupSelectionsRef = useRef<Record<string, number[]>>({})
 
   useEffect(() => {
     preserveExplicitColumnWidthsRef.current = preserveExplicitColumnWidths
@@ -766,20 +768,8 @@ export default function ServicesReal() {
   }, [buildServiceWorkspacePreferencePayload, hasUserSettings])
 
   useEffect(() => {
-    setSelectedIds([])
-    groupSelectionsRef.current = {}
-  }, [groupBy])
-
-  const handleSelectionChanged = useCallback((e: any, groupKey: string = 'raw') => {
-    const selectedNodes = e?.api?.getSelectedNodes?.() || []
-    const ids = selectedNodes.map((n: any) => n.data?.id).filter(Boolean)
-    
-    groupSelectionsRef.current[groupKey] = ids
-    
-    // Aggregate all selections from all groups
-    const allSelected = Array.from(new Set(Object.values(groupSelectionsRef.current).flat()))
-    setSelectedIds(allSelected)
-  }, [])
+    resetGroupedSelection()
+  }, [groupBy, resetGroupedSelection])
 
   const handleRowId = useCallback((params: any) => {
     if (params?.data?.id != null) return String(params.data.id)
@@ -891,11 +881,6 @@ export default function ServicesReal() {
     if (selectedIds.length < 2 || selectedIds.length > 5) return
     setCompareOpen(true)
   }
-
-  const { handleRowClicked, handleRowDoubleClicked } = useOperationalRowInteractions({
-    onRowDoubleClick: (item: any) => detailRoute.openDetail(item, { replace: false }),
-    pendingIds
-  })
 
   const renderPrimaryRowActions = (item: any) => {
     if (!item?.id) return null
@@ -1277,6 +1262,11 @@ export default function ServicesReal() {
     return sortedItemsForGrouped
   }, [sortedItemsForGrouped, groupBy])
 
+  const selectionScopeKey = useMemo(() => {
+    const visibleIds = displayedItemsInOrder.map((item: any) => item.id).join(',')
+    return `${activeTab}:${groupBy}:${visibleIds}`
+  }, [activeTab, displayedItemsInOrder, groupBy])
+
   const servicesDataState = useMemo(
     () => resolveOperationalDataState({
       loading: isLoading,
@@ -1295,6 +1285,12 @@ export default function ServicesReal() {
   )
 
   const shouldRenderRawGrid = groupBy === 'raw' || servicesDataState.kind !== 'ready'
+
+  const { handleRowClicked, handleRowDoubleClicked } = useOperationalRowInteractions({
+    onRowDoubleClick: (item: any) => detailRoute.openDetail(item, { replace: false }),
+    pendingIds,
+    selectionScopeKey,
+  })
 
   useEffect(() => {
     if (!displayedItemsInOrder.length) return

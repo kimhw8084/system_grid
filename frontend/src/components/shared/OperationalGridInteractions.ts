@@ -152,9 +152,11 @@ export const getPointFloatingStyle = ({
 export function useOperationalRowInteractions({
   onRowDoubleClick,
   pendingIds = [],
+  selectionScopeKey,
 }: {
   onRowDoubleClick?: (data: any) => void;
   pendingIds?: number[];
+  selectionScopeKey?: string | number | null;
 } = {}) {
   const selectionAnchorRef = useRef<number | null>(null);
 
@@ -196,10 +198,42 @@ export function useOperationalRowInteractions({
     onRowDoubleClick?.(event.data);
   }, [onRowDoubleClick, pendingIds]);
 
+  useEffect(() => {
+    selectionAnchorRef.current = null;
+  }, [selectionScopeKey]);
+
   return {
     handleRowClicked,
     handleRowDoubleClicked,
     selectionAnchorRef,
+  };
+}
+
+export function useOperationalGroupedSelection({
+  setSelectedIds,
+}: {
+  setSelectedIds: (ids: number[]) => void;
+}) {
+  const groupSelectionsRef = useRef<Record<string, number[]>>({});
+
+  const handleSelectionChanged = useCallback((event: any, groupKey: string = "raw") => {
+    const selectedNodes = event?.api?.getSelectedNodes?.() || [];
+    const ids = selectedNodes
+      .map((node: any) => Number(node.data?.id))
+      .filter((id: number) => Number.isFinite(id) && id > 0);
+
+    groupSelectionsRef.current[groupKey] = ids;
+    setSelectedIds(Array.from(new Set(Object.values(groupSelectionsRef.current).flat())));
+  }, [setSelectedIds]);
+
+  const resetGroupedSelection = useCallback(() => {
+    groupSelectionsRef.current = {};
+    setSelectedIds([]);
+  }, [setSelectedIds]);
+
+  return {
+    handleSelectionChanged,
+    resetGroupedSelection,
   };
 }
 

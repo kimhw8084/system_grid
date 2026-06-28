@@ -82,7 +82,8 @@ import {
 import {
   useOperationalRowInteractions,
   useOperationalContextMenu,
-  useOperationalDismissController
+  useOperationalDismissController,
+  useOperationalGroupedSelection,
 } from './shared/OperationalGridInteractions'
 
 // --- Sub-components ---
@@ -1488,6 +1489,9 @@ export default function External() {
   const [isWorkspaceMaximized, setIsWorkspaceMaximized] = useState(false)
   const [searchTerm, setSearchTerm] = useState(persistedUiState.searchTerm)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const { handleSelectionChanged, resetGroupedSelection } = useOperationalGroupedSelection({
+    setSelectedIds,
+  })
 
   // Cloned states from Monitoring view
   const [groupBy, setGroupBy] = useState<string>(persistedUiState.groupBy || 'raw')
@@ -1855,6 +1859,12 @@ export default function External() {
     return sections.sort((a, b) => a.label.localeCompare(b.label))
   }, [filteredEntities, filteredLinks, groupBy, activeTab])
 
+  const selectionScopeKey = useMemo(() => {
+    const visibleItems = activeTab === 'links' ? filteredLinks : filteredEntities
+    const visibleIds = visibleItems.map((item: any) => item.id).join(',')
+    return `${activeTab}:${groupBy}:${visibleIds}`
+  }, [activeTab, filteredEntities, filteredLinks, groupBy])
+
   const externalDataState = useMemo(
     () => resolveOperationalDataState({
       loading: activeTab === 'links' ? linkLoading : isLoading,
@@ -1890,6 +1900,10 @@ export default function External() {
   )
 
   const shouldRenderRawGrid = groupBy === 'raw' || externalDataState.kind !== 'ready'
+
+  useEffect(() => {
+    resetGroupedSelection()
+  }, [activeTab, groupBy, resetGroupedSelection])
 
   useEffect(() => {
     if (groupBy === 'raw') return
@@ -2432,6 +2446,10 @@ export default function External() {
     onError: (e: any) => showWorkspaceToast(getFriendlyRestoreError(e.message || String(e)), { type: 'error' })
   })
 
+  const externalContextMenu = useMemo(() => ({
+    handleCellContextMenu,
+  }), [handleCellContextMenu])
+
   const { handleRowClicked, handleRowDoubleClicked } = useOperationalRowInteractions({
     onRowDoubleClick: useCallback((item) => {
       if (activeTab === 'links') {
@@ -2440,22 +2458,14 @@ export default function External() {
       } else {
         detailRoute.openDetail(item)
       }
-    }, [activeTab, allEntities, detailRoute])
+    }, [activeTab, allEntities, detailRoute]),
+    selectionScopeKey,
   })
 
   const externalRowInteractions = useMemo(() => ({
     handleRowClicked,
     handleRowDoubleClicked,
   }), [handleRowClicked, handleRowDoubleClicked])
-
-  const externalContextMenu = useMemo(() => ({
-    handleCellContextMenu,
-  }), [handleCellContextMenu])
-
-  const handleExternalSelectionChanged = useCallback((e: any) => {
-    const selectedNodes = e?.api?.getSelectedNodes?.() || []
-    setSelectedIds(selectedNodes.map((n: any) => n.data?.id).filter(Boolean))
-  }, [])
 
   const getRowClass = useCallback((params: any) => {
     return params.node.rowIndex % 2 === 0 ? 'operational-grid-row-even' : 'operational-grid-row-odd'
@@ -3277,7 +3287,7 @@ export default function External() {
           runtime={externalGridRuntime}
           rowInteractions={externalRowInteractions}
           contextMenu={externalContextMenu}
-          onSelectionChanged={handleExternalSelectionChanged}
+          onSelectionChanged={(e) => handleSelectionChanged(e, 'raw')}
           onFirstDataRendered={handleGridDataUpdated}
           onRowDataUpdated={handleGridDataUpdated}
           context={gridContext}
@@ -3345,7 +3355,7 @@ export default function External() {
                     runtime={externalGridRuntime}
                     rowInteractions={externalRowInteractions}
                     contextMenu={externalContextMenu}
-                    onSelectionChanged={handleExternalSelectionChanged}
+                    onSelectionChanged={(e) => handleSelectionChanged(e, section.key)}
                     onFirstDataRendered={handleGridDataUpdated}
                     onRowDataUpdated={handleGridDataUpdated}
                     context={gridContext}

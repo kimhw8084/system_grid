@@ -54,6 +54,7 @@ import {
   useOperationalRowInteractions,
   useOperationalContextMenu,
   useOperationalDismissController,
+  useOperationalGroupedSelection,
 } from './shared/OperationalGridInteractions'
 import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shared/WorkspaceFlyout'
 import { StatusPill } from './shared/StatusPill'
@@ -525,6 +526,9 @@ export default function MonitoringGrid() {
     hasSelection,
     selectedCount,
   } = useOperationalSelection([])
+  const { handleSelectionChanged, resetGroupedSelection } = useOperationalGroupedSelection({
+    setSelectedIds,
+  })
   const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'severity' | 'notification' | null>(null)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
@@ -691,8 +695,6 @@ export default function MonitoringGrid() {
     },
   })
 
-  const groupSelectionsRef = useRef<Record<string, number[]>>({})
-
   useEffect(() => {
     preserveExplicitColumnWidthsRef.current = preserveExplicitColumnWidths
   }, [preserveExplicitColumnWidths])
@@ -806,20 +808,8 @@ export default function MonitoringGrid() {
   }, [buildMonitoringWorkspacePreferencePayload, hasUserSettings])
 
   useEffect(() => {
-    clearSelection()
-    groupSelectionsRef.current = {}
-  }, [groupBy])
-
-  const handleSelectionChanged = useCallback((e: any, groupKey: string = 'raw') => {
-    const selectedNodes = e?.api?.getSelectedNodes?.() || []
-    const ids = selectedNodes.map((n: any) => n.data?.id).filter(Boolean)
-    
-    groupSelectionsRef.current[groupKey] = ids
-    
-    // Aggregate all selections from all groups
-    const allSelected = Array.from(new Set(Object.values(groupSelectionsRef.current).flat()))
-    setSelectedIds(allSelected)
-  }, [])
+    resetGroupedSelection()
+  }, [groupBy, resetGroupedSelection])
 
   const handleRowId = useCallback((params: any) => String(params.data.id), [])
 
@@ -947,18 +937,6 @@ export default function MonitoringGrid() {
     if (selectedCount < 2 || selectedCount > 5) return
     setCompareOpen(true)
   }
-
-  const { handleRowClicked, handleRowDoubleClicked, selectionAnchorRef } = useOperationalRowInteractions({
-    onRowDoubleClick: useCallback((item) => {
-      detailRoute.openDetail(item)
-    }, [detailRoute]),
-    pendingIds
-  })
-
-  const monitoringRowInteractions = useMemo(() => ({
-    handleRowClicked,
-    handleRowDoubleClicked,
-  }), [handleRowClicked, handleRowDoubleClicked])
 
   const monitoringContextMenu = useMemo(() => ({
     handleCellContextMenu,
@@ -1353,6 +1331,11 @@ export default function MonitoringGrid() {
     return sortedItemsForGrouped
   }, [sortedItemsForGrouped, groupBy])
 
+  const selectionScopeKey = useMemo(() => {
+    const visibleIds = displayedItemsInOrder.map((item: any) => item.id).join(',')
+    return `${activeTab}:${groupBy}:${visibleIds}`
+  }, [activeTab, displayedItemsInOrder, groupBy])
+
   const monitoringDataState = useMemo(
     () => resolveOperationalDataState({
       loading: isLoading,
@@ -1371,6 +1354,19 @@ export default function MonitoringGrid() {
   )
 
   const shouldRenderRawGrid = groupBy === 'raw' || monitoringDataState.kind !== 'ready'
+
+  const { handleRowClicked, handleRowDoubleClicked } = useOperationalRowInteractions({
+    onRowDoubleClick: useCallback((item) => {
+      detailRoute.openDetail(item)
+    }, [detailRoute]),
+    pendingIds,
+    selectionScopeKey,
+  })
+
+  const monitoringRowInteractions = useMemo(() => ({
+    handleRowClicked,
+    handleRowDoubleClicked,
+  }), [handleRowClicked, handleRowDoubleClicked])
 
   useEffect(() => {
     if (!displayedItemsInOrder.length) return
@@ -1438,13 +1434,6 @@ export default function MonitoringGrid() {
       currentCounts: Object.entries(currentCounts)
     }
   }, [bulkDraft, expandedBulkSection, selectedItems])
-
-
-
-  useEffect(() => {
-    selectionAnchorRef.current = null
-  }, [activeTab, items])
-
   useEffect(() => {
     if (typeof window === 'undefined') return
     window.localStorage.setItem(MONITORING_UI_STATE_KEY, JSON.stringify({
