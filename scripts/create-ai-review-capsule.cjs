@@ -21,7 +21,7 @@ const path = require('path');
 const os = require('os');
 const cp = require('child_process');
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const TEXT_EXTENSIONS = new Set([
   '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json', '.md', '.txt', '.css', '.scss',
   '.html', '.py', '.toml', '.ini', '.yml', '.yaml', '.sh', '.graphql', '.sql', '.env.example'
@@ -29,9 +29,14 @@ const TEXT_EXTENSIONS = new Set([
 
 const DEFAULT_RULES = {
   modes: {
+    quick: { importDepth: 1, backendSearchLimit: 8, testLimit: 12, mapContentBytes: 250000 },
     minimal: { importDepth: 1, backendSearchLimit: 12, testLimit: 20, mapContentBytes: 350000 },
     standard: { importDepth: 2, backendSearchLimit: 30, testLimit: 45, mapContentBytes: 600000 },
+    daily: { importDepth: 2, backendSearchLimit: 35, testLimit: 55, mapContentBytes: 700000 },
     deep: { importDepth: 3, backendSearchLimit: 80, testLimit: 120, mapContentBytes: 1200000 },
+    fresh: { importDepth: 3, backendSearchLimit: 100, testLimit: 160, mapContentBytes: 1600000 },
+    audit: { importDepth: 4, backendSearchLimit: 160, testLimit: 220, mapContentBytes: 2200000 },
+    full: { importDepth: 5, backendSearchLimit: 240, testLimit: 320, mapContentBytes: 3000000 },
   },
   projectSpine: [
     'AGENTS.md',
@@ -127,7 +132,7 @@ function usage() {
 `  node scripts/create-ai-review-capsule.cjs [options]\n\n` +
 `Options:\n` +
 `  --out <path>                 Output zip path. Default: ../sysgrid-ai-review-capsule.zip. Must be outside repo unless --allow-repo-output.\n` +
-`  --mode <minimal|standard|deep> Default: standard.\n` +
+`  --mode <quick|minimal|standard|daily|deep|fresh|audit|full> Default: standard.\n` +
 `  --base <git-ref>             Base ref for unstaged diff. Default: HEAD.\n` +
 `  --strict                     Turn contract/test warnings into failure where possible.\n` +
 `  --allow-empty                Allow no changed files without warning.\n` +
@@ -166,7 +171,7 @@ function parseArgs(argv) {
     }
     die(`Unknown argument: ${a}`);
   }
-  if (!DEFAULT_RULES.modes[args.mode]) die(`Invalid --mode ${args.mode}. Use minimal, standard, or deep.`);
+  if (!DEFAULT_RULES.modes[args.mode]) die(`Invalid --mode ${args.mode}. Use quick, minimal, standard, daily, deep, fresh, audit, or full.`);
   if (!Number.isFinite(args.maxFileBytes) || args.maxFileBytes < 10000) die('--max-file-bytes must be a number >= 10000.');
   if (!Number.isFinite(args.maxDiffBytes) || args.maxDiffBytes < 10000) die('--max-diff-bytes must be a number >= 10000.');
   return args;
