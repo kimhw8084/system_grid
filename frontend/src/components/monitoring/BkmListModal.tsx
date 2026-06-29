@@ -5,7 +5,6 @@ import { WorkspaceModal } from '../shared/WorkspaceModal'
 import { 
   WorkspaceSplitView, 
   WorkspaceEmptyState,
-  useEscapeDismiss, 
   useBodyModalFlag 
 } from '../shared/OperationalWorkspacePrimitives'
 import { ToolbarButton } from '../shared/LayoutPrimitives'
@@ -18,7 +17,6 @@ import { formatAppDate } from '../../utils/dateUtils'
 
 
 export function BkmListModal({ docs, monitorId, onOpenBkm, onClose }: { docs: any[]; monitorId: number; onOpenBkm: (id: number) => void; onClose: () => void }) {
-  useEscapeDismiss(onClose)
   useBodyModalFlag()
   const [isMaximized, setIsMaximized] = useState(false)
   const queryClient = useQueryClient()
@@ -100,6 +98,7 @@ export function BkmListModal({ docs, monitorId, onOpenBkm, onClose }: { docs: an
     <WorkspaceModal
       isOpen={true}
       onClose={onClose}
+      isDirty={isDirty}
       size="wide"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}

@@ -3601,13 +3601,12 @@ const isNetworkFieldRequired = (fieldName: string) => NETWORK_REQUIRED_FIELD_NAM
 const networkInputClass = (error?: string) => getWorkspaceInputClass(error)
 
 function NetworkConnectionForm({ item, devices, onClose, onSuccess, linkPurposeOptions, farmOptions, cableTypeOptions }: any) {
-  useEscapeDismiss(onClose)
   useBodyModalFlag()
   const queryClient = useQueryClient()
   const [isSaving, setIsSaving] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
-  const [formData, setFormData] = useState(() => ({
+  const initialFormState = useMemo(() => ({
     source_device_id: item?.source_device_id ?? '',
     source_port: item?.source_port ?? '',
     source_ip: item?.source_ip ?? '',
@@ -3627,7 +3626,13 @@ function NetworkConnectionForm({ item, devices, onClose, onSuccess, linkPurposeO
     status: item?.status || 'Active',
     farm: item?.farm || '',
     request_link: item?.request_link || '',
-  }))
+  }), [item])
+  const [formData, setFormData] = useState(initialFormState)
+  const initialDirtySnapshotRef = useRef(JSON.stringify(sanitizeNetworkConnectionPayload(initialFormState)))
+
+  const isDirty = useMemo(() => (
+    JSON.stringify(sanitizeNetworkConnectionPayload(formData)) !== initialDirtySnapshotRef.current
+  ), [formData])
 
   const deviceOptions = useMemo(() => (devices || []).map((device: any) => ({ value: String(device.id), label: device.name })), [devices])
   const mergedLinkPurposeOptions = useMemo(() => {
@@ -3748,6 +3753,7 @@ function NetworkConnectionForm({ item, devices, onClose, onSuccess, linkPurposeO
     <WorkspaceModal
       isOpen={true}
       onClose={onClose}
+      isDirty={isDirty}
       size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}

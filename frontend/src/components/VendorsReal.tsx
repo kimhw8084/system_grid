@@ -1390,7 +1390,6 @@ function VendorCreateForm({ item, onClose, onSuccess }: any) {
 // VENDOR DETAIL PANEL — WorkspaceModal shell + full VendorDetails tab content
 // ===========================================================================
 function VendorDetailPanel({ vendor, devices, systems, onClose, onDelete, deleteConfirm }: any) {
-  useEscapeDismiss(onClose)
   useBodyModalFlag()
   const queryClient = useQueryClient()
   const [isMaximized, setIsMaximized]           = useState(false)
@@ -1450,6 +1449,7 @@ function VendorDetailPanel({ vendor, devices, systems, onClose, onDelete, delete
     <WorkspaceModal
       isOpen={true}
       onClose={onClose}
+      isDirty={hasChanges}
       size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
