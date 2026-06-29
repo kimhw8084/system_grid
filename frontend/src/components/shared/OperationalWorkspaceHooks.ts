@@ -81,6 +81,39 @@ export function useWorkspaceDismissHandlers({
   }, [active, onDismiss, shouldDismiss])
 }
 
+export type WorkspaceOverlayKey = 'display' | 'views' | 'bulk' | 'rowAction'
+
+export function useWorkspaceOverlayController() {
+  const [activeOverlay, setActiveOverlay] = useState<WorkspaceOverlayKey | null>(null)
+
+  const isOverlayOpen = useCallback((key: WorkspaceOverlayKey) => activeOverlay === key, [activeOverlay])
+
+  const openOverlay = useCallback((key: WorkspaceOverlayKey) => {
+    setActiveOverlay(key)
+  }, [])
+
+  const toggleOverlay = useCallback((key: WorkspaceOverlayKey) => {
+    setActiveOverlay((current) => (current === key ? null : key))
+  }, [])
+
+  const closeOverlay = useCallback((key: WorkspaceOverlayKey) => {
+    setActiveOverlay((current) => (current === key ? null : current))
+  }, [])
+
+  const dismissOverlays = useCallback(() => {
+    setActiveOverlay(null)
+  }, [])
+
+  return {
+    activeOverlay,
+    isOverlayOpen,
+    openOverlay,
+    toggleOverlay,
+    closeOverlay,
+    dismissOverlays,
+  }
+}
+
 export function useOperationalGridLayout(
   initialLayout: any[],
   hasSavedViewWidths: boolean

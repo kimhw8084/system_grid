@@ -1,9 +1,9 @@
 import React from 'react'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import { Link, createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 
-import { useOperationalDetailRoute } from './OperationalWorkspaceHooks'
+import { useOperationalDetailRoute, useWorkspaceOverlayController } from './OperationalWorkspaceHooks'
 import { WorkspaceModal } from './WorkspaceModal'
 
 function DirtyModalHarness({ isDirty }: { isDirty: boolean }) {
@@ -116,6 +116,42 @@ describe('useOperationalDirtyGuard navigation protection', () => {
 
     expect(await screen.findByText('Other page')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/prev')
+  })
+})
+
+describe('useWorkspaceOverlayController', () => {
+  it('keeps one top-level overlay active at a time and supports dismissing all', () => {
+    const { result } = renderHook(() => useWorkspaceOverlayController())
+
+    act(() => {
+      result.current.toggleOverlay('display')
+    })
+    expect(result.current.activeOverlay).toBe('display')
+    expect(result.current.isOverlayOpen('display')).toBe(true)
+
+    act(() => {
+      result.current.toggleOverlay('views')
+    })
+    expect(result.current.activeOverlay).toBe('views')
+    expect(result.current.isOverlayOpen('display')).toBe(false)
+    expect(result.current.isOverlayOpen('views')).toBe(true)
+
+    act(() => {
+      result.current.openOverlay('rowAction')
+    })
+    expect(result.current.activeOverlay).toBe('rowAction')
+    expect(result.current.isOverlayOpen('rowAction')).toBe(true)
+
+    act(() => {
+      result.current.toggleOverlay('rowAction')
+    })
+    expect(result.current.activeOverlay).toBe(null)
+
+    act(() => {
+      result.current.openOverlay('bulk')
+      result.current.dismissOverlays()
+    })
+    expect(result.current.activeOverlay).toBe(null)
   })
 })
 

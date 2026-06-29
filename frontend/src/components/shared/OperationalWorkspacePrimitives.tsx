@@ -8,6 +8,7 @@ export type WorkspaceModalSize = 'compact' | 'standard' | 'wide' | 'workspace' |
 export const WORKSPACE_LAYER_Z = {
   modal: 3500,
   floatingPanel: 3600,
+  rowActionMenu: 3610,
   floatingBackdrop: 3590,
   fullscreen: 4000,
 } as const

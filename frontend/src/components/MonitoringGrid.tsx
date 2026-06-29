@@ -65,6 +65,7 @@ import {
   useOperationalGridRuntime,
   useOperationalWorkspaceController,
   usePersistentJsonState,
+  useWorkspaceOverlayController,
   useWorkspaceSessionValue,
   useOperationalDetailRoute,
   useOperationalSelection,
@@ -496,8 +497,6 @@ export default function MonitoringGrid() {
   // --- STYLE LABORATORY STATE ---
   const [fontSize, setFontSize] = useState(persistedUiState?.fontSize ?? 11)
   const [rowDensity, setRowDensity] = useState(persistedUiState?.rowDensity ?? 8)
-  const [showDisplayMenu, setShowDisplayMenu] = useState(false)
-  const [showViewsMenu, setShowViewsMenu] = useState(false)
   const [showRegistry, setShowRegistry] = useState(false)
   const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedUiState?.hiddenColumns ?? ['created_at', 'updated_at'])
   const [activeTab, setActiveTab] = useState<'active' | 'deleted'>(persistedUiState?.activeTab === 'deleted' ? 'deleted' : 'active')
@@ -526,13 +525,24 @@ export default function MonitoringGrid() {
     hasSelection,
     selectedCount,
   } = useOperationalSelection([])
-  const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'severity' | 'notification' | null>(null)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [detailDeleteConfirm, setDetailDeleteConfirm] = useState(false)
   const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<number | null>(null)
   const [rowActionMenu, setRowActionMenu] = useState<{ item: any; point: { x: number; y: number } } | null>(null)
+  const {
+    activeOverlay,
+    isOverlayOpen,
+    openOverlay,
+    toggleOverlay,
+    closeOverlay,
+    dismissOverlays,
+  } = useWorkspaceOverlayController()
+  const showDisplayMenu = isOverlayOpen('display')
+  const showViewsMenu = isOverlayOpen('views')
+  const showBulkMenu = isOverlayOpen('bulk')
+  const hasRowActionMenu = activeOverlay === 'rowAction' && !!rowActionMenu
   const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
   const {
     filterModel: gridFilterModel,
@@ -809,7 +819,8 @@ export default function MonitoringGrid() {
   const { handleCellContextMenu, openRowActionMenuAtPoint } = useOperationalContextMenu({
     onOpenRowActionMenu: useCallback((item, point) => {
       setRowActionMenu({ item, point })
-    }, [])
+      openOverlay('rowAction')
+    }, [openOverlay])
   })
 
   const autoSizeMonitoringColumns = useCallback(() => {
@@ -898,22 +909,7 @@ export default function MonitoringGrid() {
   }
 
   const togglePanel = (panel: 'display' | 'views' | 'bulk') => {
-    if (panel === 'display') {
-      setShowDisplayMenu(curr => !curr)
-      setShowViewsMenu(false)
-      setShowBulkMenu(false)
-      setRowActionMenu(null)
-    } else if (panel === 'views') {
-      setShowViewsMenu(curr => !curr)
-      setShowDisplayMenu(false)
-      setShowBulkMenu(false)
-      setRowActionMenu(null)
-    } else if (panel === 'bulk') {
-      setShowBulkMenu(curr => !curr)
-      setShowDisplayMenu(false)
-      setShowViewsMenu(false)
-      setRowActionMenu(null)
-    }
+    toggleOverlay(panel)
   }
 
   const toggleFavorite = useCallback((monitorId: number) => {
@@ -1183,17 +1179,26 @@ export default function MonitoringGrid() {
   }
 
   const dismissWorkspaceMenus = useCallback(() => {
-    setShowBulkMenu(false)
+    dismissOverlays()
     setExpandedBulkSection(null)
     setBulkDeleteConfirm(false)
-    setShowDisplayMenu(false)
-    setShowViewsMenu(false)
-    setRowActionMenu(null)
     setRowDeleteConfirmId(null)
-  }, [])
+  }, [dismissOverlays])
+
+  useEffect(() => {
+    if (activeOverlay !== 'rowAction' && rowActionMenu) {
+      setRowActionMenu(null)
+    }
+  }, [activeOverlay, rowActionMenu])
+
+  useEffect(() => {
+    if (activeOverlay === 'rowAction' && !rowActionMenu) {
+      dismissOverlays()
+    }
+  }, [activeOverlay, dismissOverlays, rowActionMenu])
 
   useOperationalDismissController({
-    active: showBulkMenu || showDisplayMenu || showViewsMenu || !!rowActionMenu,
+    active: showBulkMenu || showDisplayMenu || showViewsMenu || hasRowActionMenu,
     onDismiss: dismissWorkspaceMenus,
     allTriggerRefs: [bulkMenuButtonRef, displayMenuButtonRef, viewsMenuButtonRef],
     bulkMenuButtonRef,
@@ -1205,7 +1210,7 @@ export default function MonitoringGrid() {
     showBulkMenu,
     showDisplayMenu,
     showViewsMenu,
-    hasRowActionMenu: !!rowActionMenu
+    hasRowActionMenu
   })
 
 
@@ -1463,10 +1468,10 @@ export default function MonitoringGrid() {
 
   useEffect(() => {
     if (!hasSelection()) {
-      setShowBulkMenu(false)
+      closeOverlay('bulk')
       setExpandedBulkSection(null)
     }
-  }, [hasSelection])
+  }, [closeOverlay, hasSelection])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -1635,7 +1640,7 @@ export default function MonitoringGrid() {
       idsToUse.forEach((id: number) => {
         queryClient.invalidateQueries({ queryKey: ['monitoring-history', id] })
       })
-      setShowBulkMenu(false)
+      closeOverlay('bulk')
       setExpandedBulkSection(null)
       setBulkDraft({ status: '', severity: '', notification_method: '' })
       const totalSelected = idsToUse.length
@@ -2082,7 +2087,7 @@ export default function MonitoringGrid() {
             isOpen={showDisplayMenu}
             panelRef={displayMenuPanelRef}
             panelStyle={displayMenuStyle}
-            onClose={() => setShowDisplayMenu(false)}
+            onClose={dismissWorkspaceMenus}
             fontSize={fontSize}
             onFontSizeChange={setFontSize}
             rowDensity={rowDensity}
@@ -2189,7 +2194,7 @@ export default function MonitoringGrid() {
             </WorkspaceFloatingPanel>
           </OperationalAnchoredPanel>
 
-{rowActionMenu && (() => {
+{hasRowActionMenu && rowActionMenu && (() => {
               const item = rowActionMenu.item
               const sections: OperationalRowActionSectionModel[] = [
                 {

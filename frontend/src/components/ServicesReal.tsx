@@ -50,7 +50,7 @@ import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shar
 import { StatusPill } from './shared/StatusPill'
 import { parseCommaSeparatedValues } from '../utils/dataParsers'
 import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
-import { useOperationalDetailRoute, useOperationalGridRuntime, usePersistentJsonState, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
+import { useOperationalDetailRoute, useOperationalGridRuntime, usePersistentJsonState, useWorkspaceOverlayController, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
 import {
   useOperationalRowInteractions,
   useOperationalContextMenu,
@@ -512,14 +512,7 @@ export default function ServicesReal() {
   // --- STYLE LABORATORY STATE ---
   const [fontSize, setFontSize] = useState(persistedUiState?.fontSize ?? 11)
   const [rowDensity, setRowDensity] = useState(persistedUiState?.rowDensity ?? 8)
-  const [showDisplayMenu, setShowDisplayMenu] = useState(false)
-  const [showViewsMenu, setShowViewsMenu] = useState(false)
-  const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [showRegistry, setShowRegistry] = useState(false)
-  
-  const { triggerRef: displayMenuButtonRef, panelRef: displayMenuPanelRef, panelStyle: displayMenuStyle } = useWorkspaceAnchoredLayer(showDisplayMenu, { minWidth: 320 })
-  const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
-  const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
   const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedUiState?.hiddenColumns ?? ['created_at', 'updated_at'])
   const [activeTab, setActiveTab] = useState<'active' | 'deleted'>(persistedUiState?.activeTab === 'deleted' ? 'deleted' : 'active')
   const [showFilterBar, setShowFilterBar] = useState<boolean>(persistedUiState?.showFilterBar ?? true)
@@ -541,6 +534,18 @@ export default function ServicesReal() {
   const [detailDeleteConfirm, setDetailDeleteConfirm] = useState(false)
   const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<number | null>(null)
   const [rowActionMenu, setRowActionMenu] = useState<{ item: any; point: { x: number; y: number } } | null>(null)
+  const {
+    activeOverlay,
+    isOverlayOpen,
+    openOverlay,
+    toggleOverlay,
+    closeOverlay,
+    dismissOverlays,
+  } = useWorkspaceOverlayController()
+  const showDisplayMenu = isOverlayOpen('display')
+  const showViewsMenu = isOverlayOpen('views')
+  const showBulkMenu = isOverlayOpen('bulk')
+  const hasRowActionMenu = activeOverlay === 'rowAction' && !!rowActionMenu
   const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
   const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
   const [gridSortModel, setGridSortModel] = useState<any[]>([{ colId: 'favorite', sort: 'desc' }])
@@ -562,6 +567,9 @@ export default function ServicesReal() {
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
   const [pendingIds, setPendingIds] = useState<number[]>([])
   // Removed redundant refs and styles. Anchoring is now handled by useWorkspaceAnchoredLayer.
+  const { triggerRef: displayMenuButtonRef, panelRef: displayMenuPanelRef, panelStyle: displayMenuStyle } = useWorkspaceAnchoredLayer(showDisplayMenu, { minWidth: 320 })
+  const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
+  const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
   const lastUndoRef = useRef<any>(null)
   const [newViewName, setNewViewName] = useState('')
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
@@ -771,7 +779,8 @@ export default function ServicesReal() {
   const { handleCellContextMenu, openRowActionMenuAtPoint } = useOperationalContextMenu({
     onOpenRowActionMenu: useCallback((item, point) => {
       setRowActionMenu({ item, point })
-    }, [])
+      openOverlay('rowAction')
+    }, [openOverlay])
   })
 
   const autoSizeServiceColumns = useCallback(() => {
@@ -839,22 +848,7 @@ export default function ServicesReal() {
   }
 
   const togglePanel = (panel: 'display' | 'views' | 'bulk') => {
-    if (panel === 'display') {
-      setShowDisplayMenu(curr => !curr)
-      setShowViewsMenu(false)
-      setShowBulkMenu(false)
-      setRowActionMenu(null)
-    } else if (panel === 'views') {
-      setShowViewsMenu(curr => !curr)
-      setShowDisplayMenu(false)
-      setShowBulkMenu(false)
-      setRowActionMenu(null)
-    } else if (panel === 'bulk') {
-      setShowBulkMenu(curr => !curr)
-      setShowDisplayMenu(false)
-      setShowViewsMenu(false)
-      setRowActionMenu(null)
-    }
+    toggleOverlay(panel)
   }
 
   const toggleFavorite = useCallback((monitorId: number) => {
@@ -1084,16 +1078,25 @@ export default function ServicesReal() {
   }
 
   const dismissWorkspaceMenus = useCallback(() => {
-    setShowBulkMenu(false)
+    dismissOverlays()
     setBulkDeleteConfirm(false)
-    setShowDisplayMenu(false)
-    setShowViewsMenu(false)
-    setRowActionMenu(null)
     setRowDeleteConfirmId(null)
-  }, [])
+  }, [dismissOverlays])
+
+  useEffect(() => {
+    if (activeOverlay !== 'rowAction' && rowActionMenu) {
+      setRowActionMenu(null)
+    }
+  }, [activeOverlay, rowActionMenu])
+
+  useEffect(() => {
+    if (activeOverlay === 'rowAction' && !rowActionMenu) {
+      dismissOverlays()
+    }
+  }, [activeOverlay, dismissOverlays, rowActionMenu])
 
   useOperationalDismissController({
-    active: showBulkMenu || showDisplayMenu || showViewsMenu || !!rowActionMenu,
+    active: showBulkMenu || showDisplayMenu || showViewsMenu || hasRowActionMenu,
     onDismiss: dismissWorkspaceMenus,
     allTriggerRefs: [bulkMenuButtonRef, displayMenuButtonRef, viewsMenuButtonRef],
     bulkMenuButtonRef,
@@ -1105,21 +1108,8 @@ export default function ServicesReal() {
     showBulkMenu,
     showDisplayMenu,
     showViewsMenu,
-    hasRowActionMenu: !!rowActionMenu
+    hasRowActionMenu
   })
-
-  useEffect(() => {
-    const handleContextMenu = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null
-      if (!target) return
-      if (target.closest('.ag-root-wrapper') || target.closest('.row-action-menu-container')) {
-        event.preventDefault()
-      }
-    }
-
-    document.addEventListener('contextmenu', handleContextMenu)
-    return () => document.removeEventListener('contextmenu', handleContextMenu)
-  }, [])
 
   // Removed manual menu position updates as they are now handled by useWorkspaceAnchoredLayer.
 
@@ -1389,9 +1379,9 @@ export default function ServicesReal() {
 
   useEffect(() => {
     if (selectedIds.length === 0) {
-      setShowBulkMenu(false)
+      closeOverlay('bulk')
     }
-  }, [selectedIds.length])
+  }, [closeOverlay, selectedIds.length])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -1536,7 +1526,7 @@ export default function ServicesReal() {
     },
     onSuccess: ({ result, action, payload, idsToUse, previousSnapshots }: any) => {
       queryClient.invalidateQueries({ queryKey: ['logical-services'] })
-      setShowBulkMenu(false)
+      closeOverlay('bulk')
       setExpandedBulkSection(null)
       setBulkDraft({ status: '', service_type: '', environment: '' })
       setIsBulkStatusOpen(false)
@@ -1947,7 +1937,7 @@ export default function ServicesReal() {
             isOpen={showDisplayMenu}
             panelRef={displayMenuPanelRef}
             panelStyle={displayMenuStyle}
-            onClose={() => setShowDisplayMenu(false)}
+            onClose={dismissWorkspaceMenus}
             fontSize={fontSize}
             onFontSizeChange={setFontSize}
             rowDensity={rowDensity}
@@ -1971,7 +1961,7 @@ export default function ServicesReal() {
             panelRef={viewsMenuPanelRef}
             panelStyle={viewsMenuStyle}
             entityLabel="Services"
-            onClose={() => setShowViewsMenu(false)}
+            onClose={dismissWorkspaceMenus}
             activeViewId={activeViewId}
             currentViewName={activeViewId ? savedViews.find((view) => view.id === activeViewId)?.name || 'Unsaved working view' : 'Unsaved working view'}
             newViewName={newViewName}
@@ -2124,7 +2114,7 @@ export default function ServicesReal() {
             </WorkspaceFloatingPanel>
           </OperationalAnchoredPanel>
 
-          {rowActionMenu && (
+          {hasRowActionMenu && rowActionMenu && (
             <OperationalRowActionMenu
               cursorX={rowActionMenu.point.x}
               cursorY={rowActionMenu.point.y}

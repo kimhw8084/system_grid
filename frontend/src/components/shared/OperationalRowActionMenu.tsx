@@ -1,7 +1,7 @@
 import React, { useRef, useState, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { WorkspaceFloatingPanel } from "./OperationalWorkspacePrimitives";
+import { WORKSPACE_LAYER_Z, WorkspaceFloatingPanel } from "./OperationalWorkspacePrimitives";
 import { computeRowActionGeometry } from "./OperationalRowActionGeometry";
 import { estimateRowActionHeaderTextWidth } from "./OperationalBulkContract";
 import { OperationalDisabledActionTooltip } from "./OperationalDisabledActionTooltip";
@@ -92,7 +92,7 @@ export function OperationalRowActionMenu({
         className="row-action-menu-container"
         style={{ 
             position: "fixed", 
-            zIndex: 1115, 
+            zIndex: WORKSPACE_LAYER_Z.rowActionMenu,
             visibility: measuredHeight === null ? "hidden" : "visible",
             ...geometry.style 
         }}

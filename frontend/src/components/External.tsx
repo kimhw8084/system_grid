@@ -39,7 +39,7 @@ import {
   OPERATIONAL_GRID_LAYOUT_POLICIES,
   useOperationalGridRuntime,
   usePersistentJsonState,
-  useWorkspaceDismissHandlers,
+  useWorkspaceOverlayController,
   useOperationalDetailRoute,
 } from './shared/OperationalWorkspaceHooks'
 import { useWorkspaceAnchoredLayer, WorkspaceEmptyState, useEscapeDismiss, useBodyModalFlag, WorkspaceFloatingPanel, WorkspaceSplitView } from './shared/OperationalWorkspacePrimitives'
@@ -1465,8 +1465,6 @@ export default function External() {
   const [persistedUiState, setPersistedUiState] = usePersistentJsonState(externalUiStateKey, () => normalizeExternalWorkspaceState(null))
   const [fontSize, setFontSize] = useState(persistedUiState.fontSize)
   const [rowDensity, setRowDensity] = useState(persistedUiState.rowDensity)
-  const [showDisplayMenu, setShowDisplayMenu] = useState(false)
-  const [showViewsMenu, setShowViewsMenu] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
   const [showFilterBar, setShowFilterBar] = useState(persistedUiState.showFilterBar ?? true)
   const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
@@ -1497,7 +1495,6 @@ export default function External() {
   const normalizedFavoriteIds = useMemo(() => favoriteIds.map(Number), [favoriteIds])
   const normalizedWatchIds = useMemo(() => watchIds.map(Number), [watchIds])
   const [compareOpen, setCompareOpen] = useState(false)
-  const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
   const [isBulkEnvOpen, setIsBulkEnvOpen] = useState(false)
   const [isBulkCriticalityOpen, setIsBulkCriticalityOpen] = useState(false)
@@ -1507,6 +1504,17 @@ export default function External() {
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [rowActionMenu, setRowActionMenu] = useState<{ item: any; point: { x: number; y: number } } | null>(null)
   const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<number | null>(null)
+  const {
+    activeOverlay,
+    isOverlayOpen,
+    openOverlay,
+    toggleOverlay,
+    dismissOverlays,
+  } = useWorkspaceOverlayController()
+  const showDisplayMenu = isOverlayOpen('display')
+  const showViewsMenu = isOverlayOpen('views')
+  const showBulkMenu = isOverlayOpen('bulk')
+  const hasRowActionMenu = activeOverlay === 'rowAction' && !!rowActionMenu
 
   const [quickFilters, setQuickFilters] = useState(persistedUiState.quickFilters || {
     status: [] as string[],
@@ -1676,19 +1684,28 @@ export default function External() {
         variant: 'warning',
         onConfirm: () => {
           setNewViewName('')
-          setShowViewsMenu(false)
+          dismissOverlays()
         }
       })
       return
     }
-    setShowBulkMenu(false)
-    setShowDisplayMenu(false)
-    setShowViewsMenu(false)
-    setRowActionMenu(null)
-  }, [showViewsMenu, newViewName])
+    dismissOverlays()
+  }, [dismissOverlays, showViewsMenu, newViewName])
+
+  useEffect(() => {
+    if (activeOverlay !== 'rowAction' && rowActionMenu) {
+      setRowActionMenu(null)
+    }
+  }, [activeOverlay, rowActionMenu])
+
+  useEffect(() => {
+    if (activeOverlay === 'rowAction' && !rowActionMenu) {
+      dismissOverlays()
+    }
+  }, [activeOverlay, dismissOverlays, rowActionMenu])
 
   useOperationalDismissController({
-    active: showBulkMenu || showDisplayMenu || showViewsMenu || !!rowActionMenu,
+    active: showBulkMenu || showDisplayMenu || showViewsMenu || hasRowActionMenu,
     onDismiss: dismissWorkspaceMenus,
     allTriggerRefs: [bulkMenuButtonRef, displayMenuButtonRef, viewsMenuButtonRef],
     bulkMenuButtonRef,
@@ -1700,13 +1717,14 @@ export default function External() {
     showBulkMenu,
     showDisplayMenu,
     showViewsMenu,
-    hasRowActionMenu: !!rowActionMenu
+    hasRowActionMenu
   })
 
   const { handleCellContextMenu, openRowActionMenuAtPoint } = useOperationalContextMenu({
     onOpenRowActionMenu: useCallback((item, point) => {
       setRowActionMenu({ item, point })
-    }, [])
+      openOverlay('rowAction')
+    }, [openOverlay])
   })
 
   const entities = useMemo(() => {
@@ -1997,7 +2015,7 @@ export default function External() {
   const applySystemDefault = () => {
     applyWorkspaceConfig(normalizeExternalWorkspaceState(null), null)
     setGroupBy('raw')
-    setShowViewsMenu(false)
+    dismissOverlays()
   }
 
   const createViewFromCurrent = () => {
@@ -2014,7 +2032,7 @@ export default function External() {
     setSavedViews([...normalizedSavedViews, nextView])
     setActiveViewId(nextView.id)
     setNewViewName('')
-    setShowViewsMenu(false)
+    dismissOverlays()
     showWorkspaceToast('External workspace view saved')
   }
 
@@ -2037,7 +2055,7 @@ export default function External() {
     const previousViews = normalizedSavedViews
     setSavedViews(normalizedSavedViews.filter((view: any) => view.id !== viewId))
     if (activeViewId === viewId) setActiveViewId(null)
-    setShowViewsMenu(false)
+    dismissOverlays()
     showWorkspaceRevertToast('External workspace view removed', () => {
       setSavedViews(previousViews)
       setActiveViewId(activeViewId)
@@ -2048,7 +2066,7 @@ export default function External() {
     const view = normalizedSavedViews.find((entry: any) => entry.id === viewId)
     if (!view) return
     applyWorkspaceConfig(view.config, view.id)
-    setShowViewsMenu(false)
+    dismissOverlays()
   }
 
   useEffect(() => {
@@ -2149,22 +2167,7 @@ export default function External() {
   }
 
   const togglePanel = (panel: 'display' | 'views' | 'bulk') => {
-    if (panel === 'display') {
-      setShowDisplayMenu(curr => !curr)
-      setShowViewsMenu(false)
-      setShowBulkMenu(false)
-      setRowActionMenu(null)
-    } else if (panel === 'views') {
-      setShowViewsMenu(curr => !curr)
-      setShowDisplayMenu(false)
-      setShowBulkMenu(false)
-      setRowActionMenu(null)
-    } else if (panel === 'bulk') {
-      setShowBulkMenu(curr => !curr)
-      setShowDisplayMenu(false)
-      setShowViewsMenu(false)
-      setRowActionMenu(null)
-    }
+    toggleOverlay(panel)
   }
 
   // Backend currently uses PUT for entity updates; this helper sends required stable fields plus intended changed fields while avoiding unrelated legacy invalid enum values.
@@ -2275,7 +2278,7 @@ export default function External() {
       const hasFailures = failed > 0
       if (!hasFailures) {
         setSelectedIds([])
-        setShowBulkMenu(false)
+        dismissOverlays()
         setBulkDraft({ status: '', environment: '', criticality: '', risk_rating: '' })
         setExpandedBulkSection(null)
       }
@@ -2933,7 +2936,7 @@ export default function External() {
             isOpen={showDisplayMenu}
             panelStyle={displayMenuStyle}
             panelRef={displayMenuPanelRef}
-            onClose={() => setShowDisplayMenu(false)}
+            onClose={dismissOverlays}
             fontSize={fontSize}
             onFontSizeChange={setFontSize}
             rowDensity={rowDensity}
@@ -3149,7 +3152,7 @@ export default function External() {
             </WorkspaceFloatingPanel>
           </OperationalAnchoredPanel>
 
-            {rowActionMenu && (() => {
+            {hasRowActionMenu && rowActionMenu && (() => {
               const item = rowActionMenu.item
               const deletedItemPurgeable = activeTab !== 'deleted' || isExternalEntityPurgeable(item)
               const deletedItemPurgeReason = activeTab === 'deleted' ? getExternalEntityPurgeReason(item) : undefined
