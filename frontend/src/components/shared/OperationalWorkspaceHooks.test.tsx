@@ -153,6 +153,48 @@ describe('useWorkspaceOverlayController', () => {
     })
     expect(result.current.activeOverlay).toBe(null)
   })
+
+  it('opening Display then Views leaves only Views active', () => {
+    const { result } = renderHook(() => useWorkspaceOverlayController())
+    act(() => { result.current.openOverlay('display') })
+    expect(result.current.isOverlayOpen('display')).toBe(true)
+    act(() => { result.current.openOverlay('views') })
+    expect(result.current.isOverlayOpen('display')).toBe(false)
+    expect(result.current.isOverlayOpen('views')).toBe(true)
+  })
+
+  it('opening Views then Display leaves only Display active', () => {
+    const { result } = renderHook(() => useWorkspaceOverlayController())
+    act(() => { result.current.openOverlay('views') })
+    expect(result.current.isOverlayOpen('views')).toBe(true)
+    act(() => { result.current.openOverlay('display') })
+    expect(result.current.isOverlayOpen('views')).toBe(false)
+    expect(result.current.isOverlayOpen('display')).toBe(true)
+  })
+
+  it('opening Bulk closes Display and Views', () => {
+    const { result } = renderHook(() => useWorkspaceOverlayController())
+    act(() => { result.current.openOverlay('display') })
+    act(() => { result.current.openOverlay('bulk') })
+    expect(result.current.isOverlayOpen('display')).toBe(false)
+    expect(result.current.isOverlayOpen('bulk')).toBe(true)
+  })
+
+  it('opening rowAction closes Display, Views, and Bulk', () => {
+    const { result } = renderHook(() => useWorkspaceOverlayController())
+    act(() => { result.current.openOverlay('bulk') })
+    act(() => { result.current.openOverlay('rowAction') })
+    expect(result.current.isOverlayOpen('bulk')).toBe(false)
+    expect(result.current.isOverlayOpen('rowAction')).toBe(true)
+  })
+
+  it('dismiss clears active top-level overlay', () => {
+    const { result } = renderHook(() => useWorkspaceOverlayController())
+    act(() => { result.current.openOverlay('display') })
+    act(() => { result.current.dismissOverlays() })
+    expect(result.current.activeOverlay).toBeNull()
+    expect(result.current.isOverlayOpen('display')).toBe(false)
+  })
 })
 
 describe('useOperationalDetailRoute history sync', () => {

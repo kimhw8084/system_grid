@@ -132,7 +132,7 @@ export function OperationalAnchoredPanel({
 }) {
   return (
     <AnimatePresence>
-      {isOpen && style.position === 'fixed' && style.top !== -9999 && (
+      {isOpen && (
         <motion.div
           key={panelKey}
           ref={panelRef}

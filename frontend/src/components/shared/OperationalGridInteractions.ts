@@ -354,6 +354,8 @@ export function useOperationalDismissController({
     onDismiss,
     shouldDismiss: (target) => {
       if (target.closest("[data-workspace-panel]")) return false;
+      if (target.closest(".row-action-trigger")) return false;
+      if (target.closest(".row-action-menu-container")) return false;
       if (allTriggerRefs.some((ref) => ref.current?.contains(target))) return false;
       if (panels.showBulkMenu && !panels.bulkMenuButtonRef.current?.contains(target) && !panels.bulkMenuPanelRef.current?.contains(target)) return true;
       if (panels.showDisplayMenu && !panels.displayMenuButtonRef.current?.contains(target) && !panels.displayMenuPanelRef.current?.contains(target)) return true;
