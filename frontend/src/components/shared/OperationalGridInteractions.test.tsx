@@ -2,6 +2,8 @@ import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import {
+  getVisibleLogicalRowIds,
+  normalizeSelectedNodeIds,
   shouldIgnoreRowSelection,
   useOperationalGroupedSelection,
   useOperationalRowInteractions,
@@ -11,70 +13,149 @@ describe('OperationalGridInteractions', () => {
   it('selects only the clicked row for a plain click', () => {
     const { result } = renderHook(() => useOperationalRowInteractions())
     const deselectAll = vi.fn()
-    const setSelected = vi.fn()
+    const targetSetSelected = vi.fn()
+    const duplicateSetSelected = vi.fn()
+    const otherSetSelected = vi.fn()
+    const forEachNodeAfterFilterAndSort = vi.fn((callback: (node: any) => void) => {
+      ;[
+        { data: { id: 41 }, setSelected: targetSetSelected },
+        { data: { id: 41 }, setSelected: duplicateSetSelected },
+        { data: { id: 99 }, setSelected: otherSetSelected },
+      ].forEach(callback)
+    })
 
     act(() => {
       result.current.handleRowClicked({
         node: {
           rowIndex: 4,
+          data: { id: 41 },
           isSelected: () => false,
-          setSelected,
+          setSelected: targetSetSelected,
         },
-        api: { deselectAll },
+        api: { deselectAll, forEachNodeAfterFilterAndSort },
         event: { target: document.createElement('div') },
         data: { id: 41 },
       })
     })
 
     expect(deselectAll).toHaveBeenCalledTimes(1)
-    expect(setSelected).toHaveBeenCalledWith(true)
+    expect(targetSetSelected).toHaveBeenCalledWith(true)
+    expect(duplicateSetSelected).toHaveBeenCalledWith(true)
+    expect(otherSetSelected).not.toHaveBeenCalled()
   })
 
   it('toggles the clicked row for ctrl/meta selection', () => {
     const { result } = renderHook(() => useOperationalRowInteractions())
     const deselectAll = vi.fn()
-    const setSelected = vi.fn()
+    const targetSetSelected = vi.fn()
+    const duplicateSetSelected = vi.fn()
+    const otherSetSelected = vi.fn()
+    const forEachNodeAfterFilterAndSort = vi.fn((callback: (node: any) => void) => {
+      ;[
+        { data: { id: 9 }, setSelected: targetSetSelected },
+        { data: { id: 9 }, setSelected: duplicateSetSelected },
+        { data: { id: 12 }, setSelected: otherSetSelected },
+      ].forEach(callback)
+    })
 
     act(() => {
       result.current.handleRowClicked({
         node: {
           rowIndex: 2,
+          data: { id: 9 },
           isSelected: () => true,
-          setSelected,
+          setSelected: targetSetSelected,
         },
-        api: { deselectAll },
+        api: {
+          deselectAll,
+          forEachNodeAfterFilterAndSort,
+          getSelectedNodes: () => [{ data: { id: 9 } }, { data: { id: 9 } }],
+        },
         event: { ctrlKey: true, target: document.createElement('div') },
         data: { id: 9 },
       })
     })
 
     expect(deselectAll).not.toHaveBeenCalled()
-    expect(setSelected).toHaveBeenCalledWith(false)
+    expect(targetSetSelected).toHaveBeenCalledWith(false)
+    expect(duplicateSetSelected).toHaveBeenCalledWith(false)
+    expect(otherSetSelected).not.toHaveBeenCalled()
   })
 
-  it('selects a contiguous visible range for shift click', () => {
+  it('adds exactly one logical row for ctrl/meta selection when duplicates exist', () => {
     const { result } = renderHook(() => useOperationalRowInteractions())
-    const anchorSetSelected = vi.fn()
+    const firstDuplicate = vi.fn()
+    const secondDuplicate = vi.fn()
+    const forEachNodeAfterFilterAndSort = vi.fn((callback: (node: any) => void) => {
+      ;[
+        { data: { id: 21 }, setSelected: firstDuplicate },
+        { data: { id: 21 }, setSelected: secondDuplicate },
+        { data: { id: 22 }, setSelected: vi.fn() },
+      ].forEach(callback)
+    })
 
     act(() => {
       result.current.handleRowClicked({
         node: {
           rowIndex: 1,
+          data: { id: 21 },
           isSelected: () => false,
-          setSelected: anchorSetSelected,
+          setSelected: firstDuplicate,
         },
-        api: { deselectAll: vi.fn() },
+        api: {
+          deselectAll: vi.fn(),
+          forEachNodeAfterFilterAndSort,
+          getSelectedNodes: () => [{ data: { id: 18 } }],
+        },
+        event: { metaKey: true, target: document.createElement('div') },
+        data: { id: 21 },
+      })
+    })
+
+    expect(firstDuplicate).toHaveBeenCalledWith(true)
+    expect(secondDuplicate).toHaveBeenCalledWith(true)
+  })
+
+  it('selects a contiguous visible range for shift click', () => {
+    const { result } = renderHook(() => useOperationalRowInteractions())
+    const anchorNodes = [
+      { rowIndex: 0, data: { id: 11 }, setSelected: vi.fn() },
+      { rowIndex: 1, data: { id: 11 }, setSelected: vi.fn() },
+      { rowIndex: 2, data: { id: 12 }, setSelected: vi.fn() },
+      { rowIndex: 3, data: { id: 13 }, setSelected: vi.fn() },
+      { rowIndex: 4, data: { id: 13 }, setSelected: vi.fn() },
+      { rowIndex: 5, data: { id: 14 }, setSelected: vi.fn() },
+    ]
+    const anchorForEachNodeAfterFilterAndSort = vi.fn((callback: (node: any) => void) => {
+      anchorNodes.forEach(callback)
+    })
+
+    act(() => {
+      result.current.handleRowClicked({
+        node: {
+          rowIndex: 0,
+          data: { id: 11 },
+          isSelected: () => false,
+          setSelected: anchorNodes[0].setSelected,
+        },
+        api: {
+          deselectAll: vi.fn(),
+          forEachNodeAfterFilterAndSort: anchorForEachNodeAfterFilterAndSort,
+        },
         event: { target: document.createElement('div') },
         data: { id: 11 },
       })
     })
 
     const deselectAll = vi.fn()
-    const nodes = [0, 1, 2, 3, 4].map((rowIndex) => ({
-      rowIndex,
-      data: { id: rowIndex + 100 },
-      setSelected: vi.fn(),
-    }))
+    const nodes = [
+      { rowIndex: 0, data: { id: 11 }, setSelected: vi.fn() },
+      { rowIndex: 1, data: { id: 11 }, setSelected: vi.fn() },
+      { rowIndex: 2, data: { id: 12 }, setSelected: vi.fn() },
+      { rowIndex: 3, data: { id: 13 }, setSelected: vi.fn() },
+      { rowIndex: 4, data: { id: 13 }, setSelected: vi.fn() },
+      { rowIndex: 5, data: { id: 14 }, setSelected: vi.fn() },
+    ]
     const forEachNodeAfterFilterAndSort = vi.fn((callback: (node: any) => void) => {
       nodes.forEach(callback)
     })
@@ -83,6 +164,7 @@ describe('OperationalGridInteractions', () => {
       result.current.handleRowClicked({
         node: {
           rowIndex: 3,
+          data: { id: 13 },
           isSelected: () => false,
           setSelected: vi.fn(),
         },
@@ -93,12 +175,13 @@ describe('OperationalGridInteractions', () => {
     })
 
     expect(deselectAll).toHaveBeenCalledTimes(1)
-    expect(forEachNodeAfterFilterAndSort).toHaveBeenCalledTimes(1)
-    expect(nodes[0].setSelected).not.toHaveBeenCalled()
+    expect(forEachNodeAfterFilterAndSort).toHaveBeenCalledTimes(2)
+    expect(nodes[0].setSelected).toHaveBeenCalledWith(true)
     expect(nodes[1].setSelected).toHaveBeenCalledWith(true)
     expect(nodes[2].setSelected).toHaveBeenCalledWith(true)
     expect(nodes[3].setSelected).toHaveBeenCalledWith(true)
-    expect(nodes[4].setSelected).not.toHaveBeenCalled()
+    expect(nodes[4].setSelected).toHaveBeenCalledWith(true)
+    expect(nodes[5].setSelected).not.toHaveBeenCalled()
   })
 
   it('ignores interactive row targets', () => {
@@ -111,6 +194,7 @@ describe('OperationalGridInteractions', () => {
       result.current.handleRowClicked({
         node: {
           rowIndex: 0,
+          data: { id: 17 },
           isSelected: () => false,
           setSelected,
         },
@@ -154,6 +238,33 @@ describe('OperationalGridInteractions', () => {
     })
 
     expect(setSelectedIds).toHaveBeenLastCalledWith([1, 2, 3])
+  })
+
+  it('deduplicates repeated AG Grid selected nodes before publishing ids', () => {
+    expect(
+      normalizeSelectedNodeIds([
+        { data: { id: 7 } },
+        { data: { id: 7 } },
+        { data: { id: 8 } },
+        { data: { id: null } },
+      ])
+    ).toEqual([7, 8])
+  })
+
+  it('derives visible logical row order without duplicate ids', () => {
+    const api = {
+      forEachNodeAfterFilterAndSort: (callback: (node: any) => void) => {
+        ;[
+          { data: { id: 1 } },
+          { data: { id: 1 } },
+          { data: { id: 2 } },
+          { data: { id: 3 } },
+          { data: { id: 3 } },
+        ].forEach(callback)
+      },
+    }
+
+    expect(getVisibleLogicalRowIds(api)).toEqual([1, 2, 3])
   })
 
   it('clears grouped selections when the selection scope changes', () => {
@@ -230,6 +341,7 @@ describe('OperationalGridInteractions', () => {
       result.current.handleRowClicked({
         node: {
           rowIndex: 0,
+          data: { id: 1 },
           isSelected: () => false,
           setSelected: vi.fn(),
         },
@@ -242,23 +354,27 @@ describe('OperationalGridInteractions', () => {
     rerender({ selectionScopeKey: 'deleted:raw:4,5,6' })
 
     const deselectAll = vi.fn()
-    const forEachNodeAfterFilterAndSort = vi.fn()
     const setSelected = vi.fn()
+    const rowNode = {
+      rowIndex: 2,
+      data: { id: 5 },
+      isSelected: () => false,
+      setSelected,
+    }
+    const forEachNodeAfterFilterAndSort = vi.fn((callback: (node: any) => void) => {
+      callback(rowNode)
+    })
 
     act(() => {
       result.current.handleRowClicked({
-        node: {
-          rowIndex: 2,
-          isSelected: () => false,
-          setSelected,
-        },
+        node: rowNode,
         api: { deselectAll, forEachNodeAfterFilterAndSort },
         event: { shiftKey: true, target: document.createElement('div') },
         data: { id: 5 },
       })
     })
 
-    expect(forEachNodeAfterFilterAndSort).not.toHaveBeenCalled()
+    expect(forEachNodeAfterFilterAndSort).toHaveBeenCalledTimes(1)
     expect(deselectAll).toHaveBeenCalledTimes(1)
     expect(setSelected).toHaveBeenCalledWith(true)
   })

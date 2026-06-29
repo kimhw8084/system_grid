@@ -2196,6 +2196,7 @@ export default function ServicesReal() {
             fontSize={fontSize}
             rowDensity={rowDensity}
             context={gridContext}
+            selectionScopeKey={selectionScopeKey}
             getRowId={handleRowId}
             onSelectionChanged={(e) => handleSelectionChanged(e, 'raw')}
             getRowClass={getRowClass}
@@ -2265,6 +2266,7 @@ export default function ServicesReal() {
                       fontSize={fontSize}
                       rowDensity={rowDensity}
                       context={gridContext}
+                      selectionScopeKey={selectionScopeKey}
                       getRowId={handleRowId}
                       onSelectionChanged={(e) => handleSelectionChanged(e, section.key)}
                       getRowClass={getRowClass}

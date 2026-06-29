@@ -41,6 +41,7 @@ interface OperationalDataGridProps {
   onRowDataUpdated?: (event: any) => void
   getRowId?: (params: any) => string
   getRowClass?: (params: any) => string
+  selectionScopeKey?: string | number | null
   context?: any
   quickFilterText?: string
   fontSize?: number
@@ -66,6 +67,7 @@ export function OperationalDataGrid({
   onRowDataUpdated,
   getRowId,
   getRowClass,
+  selectionScopeKey,
   context,
   quickFilterText,
   fontSize = 11,
@@ -118,6 +120,7 @@ export function OperationalDataGrid({
         quickFilterText={quickFilterText}
         getRowId={getRowId}
         getRowClass={getRowClass}
+        selectionScopeKey={selectionScopeKey}
         onGridReady={runtime.handleGridReady}
         onSelectionChanged={onSelectionChanged}
         onColumnResized={runtime.handleColumnResized}

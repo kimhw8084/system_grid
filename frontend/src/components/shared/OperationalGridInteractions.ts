@@ -75,6 +75,55 @@ export function shouldIgnoreRowSelection(target: EventTarget | null) {
   );
 }
 
+function toLogicalRowId(value: any): number | null {
+  const id = Number(value?.data?.id ?? value?.id);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+function forEachGridNode(api: any, callback: (node: any) => void) {
+  if (typeof api?.forEachNodeAfterFilterAndSort === "function") {
+    api.forEachNodeAfterFilterAndSort(callback);
+    return true;
+  }
+  if (typeof api?.forEachNode === "function") {
+    api.forEachNode(callback);
+    return true;
+  }
+  return false;
+}
+
+export function normalizeSelectedNodeIds(selectedNodes: any[]): number[] {
+  const uniqueIds = new Set<number>();
+  selectedNodes.forEach((node) => {
+    const id = toLogicalRowId(node);
+    if (id !== null) uniqueIds.add(id);
+  });
+  return Array.from(uniqueIds);
+}
+
+export function getVisibleLogicalRowIds(api: any, pendingIds: number[] = []): number[] {
+  const pendingIdSet = new Set(pendingIds.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0));
+  const orderedIds: number[] = [];
+  const seenIds = new Set<number>();
+
+  forEachGridNode(api, (node: any) => {
+    const id = toLogicalRowId(node);
+    if (id === null || pendingIdSet.has(id) || seenIds.has(id)) return;
+    seenIds.add(id);
+    orderedIds.push(id);
+  });
+
+  return orderedIds;
+}
+
+function setLogicalRowSelection(api: any, logicalIds: Set<number>, selected: boolean) {
+  return forEachGridNode(api, (node: any) => {
+    const id = toLogicalRowId(node);
+    if (id === null || !logicalIds.has(id)) return;
+    node.setSelected(selected);
+  });
+}
+
 export const getAnchoredFloatingStyle = ({
   rect,
   width,
@@ -163,33 +212,39 @@ export function useOperationalRowInteractions({
   const handleRowClicked = useCallback((event: any) => {
     if (!event?.node || shouldIgnoreRowSelection(event.event?.target)) return;
     if (event.data && pendingIds.includes(Number(event.data.id))) return;
+    const clickedId = toLogicalRowId(event.node);
+    if (clickedId === null) return;
     const mouseEvent = event.event as MouseEvent | undefined;
     const isToggleSelection = Boolean(mouseEvent?.metaKey || mouseEvent?.ctrlKey);
     const isRangeSelection = Boolean(mouseEvent?.shiftKey);
 
     if (isRangeSelection && selectionAnchorRef.current !== null) {
-      const currentIndex = event.node.rowIndex;
-      if (currentIndex === null || currentIndex === undefined) return;
+      const visibleIds = getVisibleLogicalRowIds(event.api, pendingIds);
+      const anchorIndex = visibleIds.indexOf(selectionAnchorRef.current);
+      const clickedIndex = visibleIds.indexOf(clickedId);
 
-      const start = Math.min(selectionAnchorRef.current, currentIndex);
-      const end = Math.max(selectionAnchorRef.current, currentIndex);
-      event.api.deselectAll();
-      event.api.forEachNodeAfterFilterAndSort((node: any) => {
-        if (node.rowIndex !== null && node.rowIndex >= start && node.rowIndex <= end) {
-          if (!node.data || !pendingIds.includes(Number(node.data.id))) {
-            node.setSelected(true);
-          }
-        }
-      });
-    } else {
-      if (isToggleSelection) {
-        event.node.setSelected(!event.node.isSelected());
-      } else {
+      if (anchorIndex !== -1 && clickedIndex !== -1) {
+        const start = Math.min(anchorIndex, clickedIndex);
+        const end = Math.max(anchorIndex, clickedIndex);
+        const rangeIds = new Set(visibleIds.slice(start, end + 1));
         event.api.deselectAll();
-        event.node.setSelected(true);
+        setLogicalRowSelection(event.api, rangeIds, true);
+        return;
       }
-      selectionAnchorRef.current = event.node.rowIndex;
     }
+
+    if (isToggleSelection) {
+      const currentlySelectedIds = normalizeSelectedNodeIds(event.api?.getSelectedNodes?.() || []);
+      const shouldSelect = !currentlySelectedIds.includes(clickedId);
+      const updated = setLogicalRowSelection(event.api, new Set([clickedId]), shouldSelect);
+      if (!updated) event.node.setSelected(shouldSelect);
+    } else {
+      event.api.deselectAll();
+      const updated = setLogicalRowSelection(event.api, new Set([clickedId]), true);
+      if (!updated) event.node.setSelected(true);
+    }
+
+    selectionAnchorRef.current = clickedId;
   }, [pendingIds]);
 
   const handleRowDoubleClicked = useCallback((event: any) => {
@@ -219,11 +274,7 @@ export function useOperationalGroupedSelection({
   const groupSelectionsRef = useRef<Record<string, number[]>>({});
 
   const handleSelectionChanged = useCallback((event: any, groupKey: string = "raw") => {
-    const selectedNodes = event?.api?.getSelectedNodes?.() || [];
-    const ids = selectedNodes
-      .map((node: any) => Number(node.data?.id))
-      .filter((id: number) => Number.isFinite(id) && id > 0);
-
+    const ids = normalizeSelectedNodeIds(event?.api?.getSelectedNodes?.() || []);
     groupSelectionsRef.current[groupKey] = ids;
     setSelectedIds(Array.from(new Set(Object.values(groupSelectionsRef.current).flat())));
   }, [setSelectedIds]);

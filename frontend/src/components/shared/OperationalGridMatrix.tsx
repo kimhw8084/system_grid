@@ -12,6 +12,7 @@ export const OperationalGridMatrix = React.memo(({
   rowDensity,
   context,
   getRowId,
+  selectionScopeKey,
   onGridReady,
   onSelectionChanged,
   onColumnResized,
@@ -48,6 +49,10 @@ export const OperationalGridMatrix = React.memo(({
       apiRef.current.refreshCells({ force: true })
     }
   }, [context])
+
+  useEffect(() => {
+    apiRef.current?.deselectAll?.()
+  }, [selectionScopeKey])
 
   return (
     <AgGridReact
@@ -102,7 +107,8 @@ export const OperationalGridMatrix = React.memo(({
     prev.fontSize === next.fontSize &&
     prev.rowDensity === next.rowDensity &&
     prev.context === next.context &&
-    prev.quickFilterText === next.quickFilterText
+    prev.quickFilterText === next.quickFilterText &&
+    prev.selectionScopeKey === next.selectionScopeKey
 })
 
 OperationalGridMatrix.displayName = 'OperationalGridMatrix'

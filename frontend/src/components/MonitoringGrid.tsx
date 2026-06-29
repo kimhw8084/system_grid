@@ -2260,6 +2260,7 @@ export default function MonitoringGrid() {
           onFirstDataRendered={handleGridDataUpdated}
           onRowDataUpdated={handleGridDataUpdated}
           context={gridContext}
+          selectionScopeKey={selectionScopeKey}
           getRowId={handleRowId}
           getRowClass={getRowClass}
           fontSize={fontSize}
@@ -2327,6 +2328,7 @@ export default function MonitoringGrid() {
                     onFirstDataRendered={handleGridDataUpdated}
                     onRowDataUpdated={handleGridDataUpdated}
                     context={gridContext}
+                    selectionScopeKey={selectionScopeKey}
                     getRowId={handleRowId}
                     getRowClass={getRowClass}
                     fontSize={fontSize}

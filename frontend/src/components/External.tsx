@@ -3289,6 +3289,7 @@ export default function External() {
           onRowDataUpdated={handleGridDataUpdated}
           context={gridContext}
           quickFilterText={searchTerm}
+          selectionScopeKey={selectionScopeKey}
           getRowId={getExternalRowId}
           getRowClass={getRowClass}
           fontSize={fontSize}
@@ -3356,6 +3357,7 @@ export default function External() {
                     onFirstDataRendered={handleGridDataUpdated}
                     onRowDataUpdated={handleGridDataUpdated}
                     context={gridContext}
+                    selectionScopeKey={selectionScopeKey}
                     getRowId={getExternalRowId}
                     getRowClass={getRowClass}
                     fontSize={fontSize}
