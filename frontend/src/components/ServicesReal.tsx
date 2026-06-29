@@ -38,7 +38,6 @@ import {
   WorkspacePanelSubtitle as PanelSubtitle,
   WorkspacePanelTitle as PanelTitle,
   WorkspaceSectionCard,
-  WorkspaceValidationBanner,
   getWorkspaceModalFrameClass,
   getWorkspaceModalShellClass,
   getWorkspaceInputClass,
@@ -2831,10 +2830,12 @@ function ServiceRecordForm({ item, devices, options, onClose, onSuccess }: any) 
   const [isMaximized, setIsMaximized] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const [backendFieldErrors, setBackendFieldErrors] = useState<Record<string, string>>({})
+  const [backendGeneralError, setBackendGeneralError] = useState('')
   const dirtyRef = useRef(false)
 
   useEffect(() => {
     setBackendFieldErrors({})
+    setBackendGeneralError('')
   }, [item?.id])
 
   const mutation = useMutation({
@@ -2849,12 +2850,14 @@ function ServiceRecordForm({ item, devices, options, onClose, onSuccess }: any) 
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['logical-services'] })
       setBackendFieldErrors({})
+      setBackendGeneralError('')
       onSuccess?.()
     },
     onError: (e: any) => {
       const { fieldErrors, generalError } = parseOperationalApiValidationError(e)
       setBackendFieldErrors(fieldErrors)
       const message = generalError || e.message || 'Failed to save service record'
+      setBackendGeneralError(message)
       showWorkspaceToast(message, { type: 'error' })
     },
   })
@@ -2908,6 +2911,7 @@ function ServiceRecordForm({ item, devices, options, onClose, onSuccess }: any) 
             options={options}
             devices={devices}
             backendFieldErrors={backendFieldErrors}
+            backendGeneralError={backendGeneralError}
             clearBackendFieldError={(field: string) => {
               setBackendFieldErrors((current) => {
                 if (!current[field]) return current
@@ -2915,6 +2919,7 @@ function ServiceRecordForm({ item, devices, options, onClose, onSuccess }: any) 
                 delete next[field]
                 return next
               })
+              setBackendGeneralError('')
             }}
             dirtyRef={dirtyRef}
             onDirtyChange={setIsDirty}

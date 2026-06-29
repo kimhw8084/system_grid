@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from "react"
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Layers, X, Search, Edit2, Trash2, RefreshCcw, AlertCircle, Plus, LayoutGrid, Monitor, Database, Globe, Box, Settings, MoreVertical, FileJson, List, Sliders, Tag, Check, ExternalLink, Shield, Package, Workflow, Cpu, Activity, Zap, Clipboard, FileText, Eye, Upload } from "lucide-react"
@@ -11,10 +11,12 @@ import { ToolbarButton } from "./shared/LayoutPrimitives"
 import { BulkImportModal } from "./shared/BulkImportModal"
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
+import { WorkspaceValidationBanner } from "./shared/OperationalWorkspacePrimitives"
 import { OPERATIONAL_GRID_AUTO_SIZE_STRATEGY } from './shared/OperationalGridSizing'
 import { StyledSelect } from "./shared/StyledSelect"
 import { AppDropdown } from "./shared/AppDropdown"
 import { mergeOperationalFieldErrors } from './shared/OperationalFieldValidation'
+import { useOperationalFormDirty } from './shared/OperationalFormContracts'
 
 const SERVICE_LICENSE_OPTIONS = ["One-time", "Subscription", "OEM", "Free"]
 const SERVICE_CURRENCY_OPTIONS = ["USD", "EUR", "KRW", "JPY", "GBP"]
@@ -353,10 +355,11 @@ export const ServiceForm = ({
   onDirtyChange,
   dirtyRef,
   backendFieldErrors = {},
+  backendGeneralError = '',
   clearBackendFieldError,
   renderActions = true,
 }: any) => {
-  const buildInitialFormData = (initialData: any = {}) => {
+  const buildInitialFormData = useCallback((initialData: any = {}) => {
     const nextData = {
       name: "",
       service_type: "Database",
@@ -382,16 +385,21 @@ export const ServiceForm = ({
     }
     nextData.status = canonicalizeServiceStatus(nextData.status)
     return nextData
-  }
+  }, [])
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
-  const [formData, setFormData] = useState(() => buildInitialFormData(initialData))
-  const initialDataNormalized = useMemo(() => buildInitialFormData(initialData), [initialData])
-  const initialDirtySnapshotRef = useRef(JSON.stringify(initialDataNormalized))
+  const [generalError, setGeneralError] = useState('')
+  const initialDataNormalized = useMemo(() => buildInitialFormData(initialData), [buildInitialFormData, initialData])
+  const {
+    value: formData,
+    isDirty,
+    patchValue,
+  } = useOperationalFormDirty(initialDataNormalized, buildInitialFormData, onDirtyChange)
   const fieldErrors = useMemo(
     () => mergeOperationalFieldErrors(backendFieldErrors || {}, validationErrors),
     [backendFieldErrors, validationErrors]
   )
+  const bannerMessage = backendGeneralError || generalError || metadataError || ''
 
   const getOptions = (category: string) => Array.isArray(options) ? options.filter((entry: any) => entry.category === category) : []
   const ensureCurrentOption = (entries: Array<{ value: string; label: string }>, currentValue: string) => {
@@ -428,18 +436,19 @@ export const ServiceForm = ({
     metadataKeys.forEach((key: string) => {
       nextConfig[key] = typeof formData.config_json?.[key] === 'string' ? formData.config_json[key] : ''
     })
-    setFormData((current: any) => ({ ...current, config_json: nextConfig }))
+    patchValue({ config_json: nextConfig })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.service_type, initialData.id, options])
 
   const updateField = (field: string, value: any) => {
-    setFormData((current: any) => ({ ...current, [field]: value }))
+    patchValue({ [field]: value })
     setValidationErrors((current) => {
       if (!current[field]) return current
       const next = { ...current }
       delete next[field]
       return next
     })
+    setGeneralError('')
     clearBackendFieldError?.(field)
   }
 
@@ -466,13 +475,16 @@ export const ServiceForm = ({
 
   const handleSave = () => {
     if (metadataError) {
+      setGeneralError('Fix metadata errors before saving')
       toast.error('Fix metadata errors before saving')
       return
     }
     if (!validate()) {
+      setGeneralError('Fix the highlighted service fields before saving')
       toast.error('Fix the highlighted service fields before saving')
       return
     }
+    setGeneralError('')
     onSave({
       ...formData,
       name: String(formData.name || '').trim(),
@@ -491,18 +503,9 @@ export const ServiceForm = ({
       logic_json: Array.isArray(formData.logic_json) ? formData.logic_json : [],
     })
   }
-
-  const isDirty = useMemo(
-    () => JSON.stringify(formData) !== JSON.stringify(initialDataNormalized),
-    [formData, initialDataNormalized]
-  )
   if (dirtyRef) {
     dirtyRef.current = isDirty
   }
-
-  useEffect(() => {
-    onDirtyChange?.(isDirty)
-  }, [isDirty, onDirtyChange])
 
   return (
     <form
@@ -513,6 +516,7 @@ export const ServiceForm = ({
       }}
       className="space-y-6 py-2"
     >
+      <WorkspaceValidationBanner message={bannerMessage} />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
         <section className="space-y-4 rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-5 shadow-inner">
           <div>
