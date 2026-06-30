@@ -5,11 +5,12 @@
 `PARTIAL`
 
 Reason:
-- External primary export no longer uses AG Grid viewport CSV.
-- External now calls the existing backend `external_entities` snapshot contract and validates import-profile/schema headers before download.
-- Root cause of the missing-profile runtime error was confirmed as CORS header exposure, not a missing snapshot header on the backend handler itself.
-- Source-backed round-trip compatibility is strong, and backend coverage already proves `schema -> template -> preview -> execute -> snapshot` for `external_entities`.
-- A human-eye browser export/import-preview run was not executed in this session, so this is not asserted as a runtime-verified pass.
+- Source and focused tests prove the app is configured to expose the required headers explicitly.
+- The currently running backend process on `127.0.0.1:8000` is not serving that updated middleware behavior.
+- Evidence points to runtime drift, not a remaining source-level contract bug:
+  - checked-in `backend/app/main.py` was modified on `June 30, 2026 07:24:46`
+  - the live `uvicorn` process listening on port `8000` started on `June 29, 2026 20:38:58`
+- Because browser retest against a refreshed backend process was not completed in this session, this cannot be upgraded to PASS.
 
 ## 2. Files changed summary
 
@@ -49,6 +50,25 @@ Actual runtime gap:
 
 Fix applied:
 - Added `expose_headers=["Content-Disposition", "X-SysGrid-Import-Profile", "X-SysGrid-Schema-Version"]` in `backend/app/main.py:75-79,124-130`
+
+Observed Iteration 03 runtime mismatch:
+- The live backend response on `http://127.0.0.1:8000/api/v1/import/snapshot/external_entities` still omitted `Access-Control-Expose-Headers` when queried with:
+
+```bash
+rtk proxy curl -si -H 'Origin: http://127.0.0.1:5173' -H 'X-User-Id: haewon.kim' -H 'X-Tenant-Id: 1' 'http://127.0.0.1:8000/api/v1/import/snapshot/external_entities'
+```
+
+- The same live response still included:
+  - `content-disposition: attachment; filename=SYSGRID_external_entities_Snapshot.csv`
+  - `x-sysgrid-schema-version: 2026-06-external-v1`
+  - `x-sysgrid-import-profile: external_entities`
+- But it did **not** include `access-control-expose-headers`.
+
+Why this is the most likely explanation:
+- Installed middleware supports `expose_headers`.
+- Source passes the explicit header names.
+- Focused tests pass against the app object.
+- The live process predates the file change, so the running server is very likely stale relative to source.
 
 ## 3. Existing import contract summary
 
@@ -156,6 +176,13 @@ Header behavior before/after:
   - Middleware now exposes `Content-Disposition`, `X-SysGrid-Import-Profile`, and `X-SysGrid-Schema-Version` to browser JS.
   - Focused endpoint test verifies the real response now includes `access-control-expose-headers` with those values: `backend/test_import_workflows.py:426-470`
 
+Live runtime evidence from Iteration 03:
+- Current live response from `127.0.0.1:8000` still omits `Access-Control-Expose-Headers`.
+- Current live process evidence:
+  - `backend/app/main.py` modified: `Jun 30 07:24:46 2026`
+  - listening `uvicorn` process start: `Mon Jun 29 20:38:58 2026`
+- This is the exact configured-app vs running-response mismatch for this iteration.
+
 ## 7. Round-trip proof
 
 Source-backed round-trip chain:
@@ -213,6 +240,31 @@ Result:
 - Passed
 - `4 passed`
 
+Command:
+
+```bash
+rtk proxy curl -si -H 'Origin: http://127.0.0.1:5173' -H 'X-User-Id: haewon.kim' -H 'X-Tenant-Id: 1' 'http://127.0.0.1:8000/api/v1/import/snapshot/external_entities'
+```
+
+Result:
+- Live runtime response included:
+  - `content-disposition`
+  - `x-sysgrid-import-profile`
+  - `x-sysgrid-schema-version`
+- Live runtime response did **not** include:
+  - `Access-Control-Expose-Headers`
+
+Command:
+
+```bash
+stat -f '%Sm %N' backend/app/main.py && rtk proxy ps -o lstart= -p <backend-pid>
+```
+
+Result:
+- `backend/app/main.py` modified: `Jun 30 07:24:46 2026`
+- live backend process start: `Mon Jun 29 20:38:58 2026`
+- Interpretation: the checked-in middleware fix is newer than the currently running backend process.
+
 ## 10. Human-eye validation checklist
 
 - [ ] Export External active entities.
@@ -222,6 +274,8 @@ Result:
   - `X-SysGrid-Schema-Version=2026-06-external-v1`
   - `Content-Disposition=attachment; filename=...`
   - `Access-Control-Expose-Headers` includes those names.
+- [ ] Confirm `Access-Control-Expose-Headers` is exactly explicit names, not empty, `*`, or `**`:
+  - `Content-Disposition, X-SysGrid-Import-Profile, X-SysGrid-Schema-Version`
 - [ ] Open External import and run import preview on the exported file.
 - [ ] Confirm the domain/profile is recognized as `external_entities`.
 - [ ] Confirm validation/preview messages are actionable if the file is modified into an invalid state.
@@ -246,5 +300,5 @@ The safe fix was not a new export format. The backend already had the correct `e
 ## 12. Next prompt rule
 
 If a follow-up is needed, keep it narrow:
-- either perform browser-side human validation of the new External export/import preview round-trip,
+- either restart the backend that actually serves `127.0.0.1:8000` and then perform browser-side human validation of the new External export/import preview round-trip,
 - or, if the product needs archived-entity export or link export, treat that as a separate contract decision and do not smuggle it into OUT-14 lock work.
