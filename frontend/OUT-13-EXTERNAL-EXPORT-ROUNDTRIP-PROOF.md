@@ -7,6 +7,7 @@
 Reason:
 - External primary export no longer uses AG Grid viewport CSV.
 - External now calls the existing backend `external_entities` snapshot contract and validates import-profile/schema headers before download.
+- Root cause of the missing-profile runtime error was confirmed as CORS header exposure, not a missing snapshot header on the backend handler itself.
 - Source-backed round-trip compatibility is strong, and backend coverage already proves `schema -> template -> preview -> execute -> snapshot` for `external_entities`.
 - A human-eye browser export/import-preview run was not executed in this session, so this is not asserted as a runtime-verified pass.
 
@@ -22,8 +23,32 @@ Reason:
   - Reused the shared downloader for template downloads.
 - `frontend/src/components/shared/OperationalImportExport.test.ts`
   - Added focused unit coverage for snapshot download success and missing-schema-header failure.
+- `backend/app/main.py`
+  - Exposes the download headers required by browser JavaScript: `Content-Disposition`, `X-SysGrid-Import-Profile`, and `X-SysGrid-Schema-Version`.
+- `backend/test_import_workflows.py`
+  - Added a focused real-endpoint test that verifies the External snapshot response includes the round-trip headers and exposes them through CORS.
 - `frontend/OUT-13-EXTERNAL-EXPORT-ROUNDTRIP-PROOF.md`
   - Added this proof artifact.
+
+## 2A. Root cause found
+
+`CORS_HEADER_EXPOSURE_ISSUE`
+
+Confirmed behavior:
+- The real snapshot handler already attached:
+  - `X-SysGrid-Import-Profile: external_entities`
+  - `X-SysGrid-Schema-Version: 2026-06-external-v1`
+  - `Content-Disposition: attachment; filename=...`
+- Source: `backend/app/api/import_engine.py:1553-1564`
+
+Actual runtime gap:
+- App middleware allowed origins, methods, and request headers, but did not expose download headers to browser JavaScript.
+- Before this iteration, `CORSMiddleware` was configured without `expose_headers`, so:
+  - the browser could complete the request and download the file,
+  - but `response.headers.get('X-SysGrid-Import-Profile')` and similar reads could still resolve as missing in frontend code on a cross-origin runtime path.
+
+Fix applied:
+- Added `expose_headers=["Content-Disposition", "X-SysGrid-Import-Profile", "X-SysGrid-Schema-Version"]` in `backend/app/main.py:75-79,124-130`
 
 ## 3. Existing import contract summary
 
@@ -78,6 +103,11 @@ Schema/profile metadata:
 - Frontend now requires the response to include:
   - `X-SysGrid-Import-Profile=external_entities`
   - `X-SysGrid-Schema-Version=<non-empty>`
+- Browser JavaScript can now read:
+  - `response.headers.get('X-SysGrid-Import-Profile')`
+  - `response.headers.get('X-SysGrid-Schema-Version')`
+  - `response.headers.get('Content-Disposition')`
+  because the backend CORS middleware now exposes those headers.
 - Missing or mismatched metadata throws an actionable error:
   - `Export returned import profile "..." instead of "external_entities"`
   - `Export did not include schema version metadata`
@@ -115,6 +145,16 @@ Why this is the correct contract:
 - It exports from backend model state, not grid viewport state.
 
 No new backend architecture was added in this iteration.
+
+Header behavior before/after:
+- Before:
+  - Snapshot handler sent the profile/version headers.
+  - Browser-visible JS header reads could fail on cross-origin runtime paths because `Access-Control-Expose-Headers` did not include those names.
+  - Resulting user-visible failure matched: `export returned import profile missing instead of external_entities`.
+- After:
+  - Snapshot handler still sends the same round-trip headers.
+  - Middleware now exposes `Content-Disposition`, `X-SysGrid-Import-Profile`, and `X-SysGrid-Schema-Version` to browser JS.
+  - Focused endpoint test verifies the real response now includes `access-control-expose-headers` with those values: `backend/test_import_workflows.py:426-470`
 
 ## 7. Round-trip proof
 
@@ -166,36 +206,38 @@ Result:
 Command:
 
 ```bash
-rtk pytest -q backend/test_import_workflows.py -k external_import_schema_template_preview_and_execute
+rtk pytest -q backend/test_import_workflows.py -k "external_import_schema_template_preview_and_execute or external_snapshot_export_exposes_round_trip_headers_for_browser_js"
 ```
 
 Result:
 - Passed
-- `2 passed`
-
-Command:
-
-```bash
-rtk npm run typecheck
-```
-
-Result:
-- Failed with existing repo blockers outside this change:
-  - `src/components/NetworkReal.tsx(956,22): error TS2345`
-  - `src/components/NetworkReal.tsx(2572,35): error TS2339`
-  - `src/components/VendorsReal.tsx(539,22): error TS2345`
-  - `src/components/VendorsReal.tsx(1158,167): error TS2339`
-- No new External-specific typecheck blocker was surfaced by this run.
+- `4 passed`
 
 ## 10. Human-eye validation checklist
 
 - [ ] Export External active entities.
-- [ ] Inspect the downloaded file headers/metadata and confirm backend response includes `X-SysGrid-Import-Profile=external_entities` and `X-SysGrid-Schema-Version=2026-06-external-v1`.
+- [ ] In browser DevTools Network, confirm the request path is `/api/v1/import/snapshot/external_entities`.
+- [ ] Inspect the response headers and confirm:
+  - `X-SysGrid-Import-Profile=external_entities`
+  - `X-SysGrid-Schema-Version=2026-06-external-v1`
+  - `Content-Disposition=attachment; filename=...`
+  - `Access-Control-Expose-Headers` includes those names.
 - [ ] Open External import and run import preview on the exported file.
 - [ ] Confirm the domain/profile is recognized as `external_entities`.
 - [ ] Confirm validation/preview messages are actionable if the file is modified into an invalid state.
 - [ ] Confirm existing import still opens and behaves normally.
 - [ ] Confirm the export button is disabled on Archived and Links tabs and that the tooltip/title explains why.
+
+## 10A. Explicit non-scope confirmation
+
+- No OUT-14 broad work
+- No saved-view Links-tab fix
+- No modal work
+- No table work
+- No floating-panel work
+- No lifecycle/data-state work
+- No route work
+- No other workspace work
 
 ## 11. Lesson learned
 

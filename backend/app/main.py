@@ -72,6 +72,12 @@ manager = ConnectionManager()
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan, redirect_slashes=False)
 standardize_validation_errors(app)
 
+EXPOSED_DOWNLOAD_HEADERS = [
+    "Content-Disposition",
+    "X-SysGrid-Import-Profile",
+    "X-SysGrid-Schema-Version",
+]
+
 # Make manager accessible to routers
 app.state.ws_manager = manager
 
@@ -121,6 +127,7 @@ app.add_middleware(
     allow_credentials=allow_creds,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=EXPOSED_DOWNLOAD_HEADERS,
 )
 
 app.include_router(tenants.router, prefix=settings.API_V1_STR)

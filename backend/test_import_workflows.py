@@ -424,6 +424,53 @@ async def test_external_import_schema_template_preview_and_execute(seeded_admin_
 
 
 @pytest.mark.anyio
+async def test_external_snapshot_export_exposes_round_trip_headers_for_browser_js(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    headers = {
+        "X-User-Id": "admin_root",
+        "X-Tenant-Id": str(seeded_admin_tenant["tenant_id"]),
+        "Origin": "http://localhost:5173",
+    }
+    await _ensure_admin(seeded_admin_tenant)
+
+    team_res = await client.post("/api/v1/settings/teams", json={"name": "External Export Ops"}, headers=headers)
+    assert team_res.status_code == 200, team_res.text
+    team = team_res.json()
+
+    entity_res = await client.post("/api/v1/intelligence/entities", json={
+        "name": "Export Header Entity",
+        "external_key": "export-header-entity",
+        "type": "API",
+        "ownership_mode": "team",
+        "internal_team_id": team["id"],
+        "status": "Active",
+        "environment": "Production",
+        "business_purpose": "Validate exposed snapshot headers",
+        "contacts_json": [
+            {
+                "role": "Primary",
+                "full_name": "Export Header Contact",
+                "email": "export.header@example.com",
+                "external_person_id": "export-header-contact",
+                "is_primary": True,
+                "is_escalation": False,
+            }
+        ],
+    }, headers=headers)
+    assert entity_res.status_code == 200, entity_res.text
+
+    snapshot_res = await client.get("/api/v1/import/snapshot/external_entities", headers=headers)
+    assert snapshot_res.status_code == 200, snapshot_res.text
+    assert snapshot_res.headers["x-sysgrid-import-profile"] == "external_entities"
+    assert snapshot_res.headers["x-sysgrid-schema-version"] == "2026-06-external-v1"
+    assert "attachment; filename=SYSGRID_external_entities_Snapshot.csv" in snapshot_res.headers["content-disposition"]
+    exposed_headers = snapshot_res.headers["access-control-expose-headers"].lower()
+    assert "x-sysgrid-import-profile" in exposed_headers
+    assert "x-sysgrid-schema-version" in exposed_headers
+    assert "content-disposition" in exposed_headers
+
+
+@pytest.mark.anyio
 async def test_monitoring_import_rejects_duplicate_rows_in_same_batch(seeded_admin_tenant):
     client = seeded_admin_tenant["client"]
     headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(seeded_admin_tenant["tenant_id"])}
