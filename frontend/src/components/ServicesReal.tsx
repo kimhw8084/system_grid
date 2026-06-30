@@ -2831,11 +2831,11 @@ function ServiceRecordForm({ item, devices, options, onClose, onSuccess }: any) 
   const [isDirty, setIsDirty] = useState(false)
   const [backendFieldErrors, setBackendFieldErrors] = useState<Record<string, string>>({})
   const [backendGeneralError, setBackendGeneralError] = useState('')
-  const dirtyRef = useRef(false)
 
   useEffect(() => {
     setBackendFieldErrors({})
     setBackendGeneralError('')
+    setIsDirty(false)
   }, [item?.id])
 
   const mutation = useMutation({
@@ -2871,7 +2871,6 @@ function ServiceRecordForm({ item, devices, options, onClose, onSuccess }: any) 
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
       isDirty={isDirty}
-      resolveIsDirty={() => dirtyRef.current}
       dirtyConfirmTitle="Discard Service Changes?"
       dirtyConfirmMessage="You have unsaved service changes. Close this window and discard them?"
       title={
@@ -2921,7 +2920,6 @@ function ServiceRecordForm({ item, devices, options, onClose, onSuccess }: any) 
               })
               setBackendGeneralError('')
             }}
-            dirtyRef={dirtyRef}
             onDirtyChange={setIsDirty}
             renderActions={false}
           />

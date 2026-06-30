@@ -353,7 +353,6 @@ export const ServiceForm = ({
   devices,
   formId,
   onDirtyChange,
-  dirtyRef,
   backendFieldErrors = {},
   backendGeneralError = '',
   clearBackendFieldError,
@@ -394,7 +393,8 @@ export const ServiceForm = ({
     value: formData,
     isDirty,
     patchValue,
-  } = useOperationalFormDirty(initialDataNormalized, buildInitialFormData, onDirtyChange)
+    normalize,
+  } = useOperationalFormDirty(initialDataNormalized, buildInitialFormData)
   const fieldErrors = useMemo(
     () => mergeOperationalFieldErrors(backendFieldErrors || {}, validationErrors),
     [backendFieldErrors, validationErrors]
@@ -436,9 +436,13 @@ export const ServiceForm = ({
     metadataKeys.forEach((key: string) => {
       nextConfig[key] = typeof formData.config_json?.[key] === 'string' ? formData.config_json[key] : ''
     })
-    patchValue({ config_json: nextConfig })
+    normalize({ ...formData, config_json: nextConfig })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.service_type, initialData.id, options])
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
 
   const updateField = (field: string, value: any) => {
     patchValue({ [field]: value })
@@ -503,10 +507,6 @@ export const ServiceForm = ({
       logic_json: Array.isArray(formData.logic_json) ? formData.logic_json : [],
     })
   }
-  if (dirtyRef) {
-    dirtyRef.current = isDirty
-  }
-
   return (
     <form
       id={formId}
