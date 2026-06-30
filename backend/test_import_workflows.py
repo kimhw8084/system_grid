@@ -464,7 +464,9 @@ async def test_external_snapshot_export_exposes_round_trip_headers_for_browser_j
     assert snapshot_res.headers["x-sysgrid-import-profile"] == "external_entities"
     assert snapshot_res.headers["x-sysgrid-schema-version"] == "2026-06-external-v1"
     assert "attachment; filename=SYSGRID_external_entities_Snapshot.csv" in snapshot_res.headers["content-disposition"]
-    exposed_headers = snapshot_res.headers["access-control-expose-headers"].lower()
+    exposed_headers = snapshot_res.headers["access-control-expose-headers"]
+    assert exposed_headers not in {"*", "**"}
+    exposed_headers = exposed_headers.lower()
     assert "x-sysgrid-import-profile" in exposed_headers
     assert "x-sysgrid-schema-version" in exposed_headers
     assert "content-disposition" in exposed_headers

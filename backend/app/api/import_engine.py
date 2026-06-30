@@ -28,6 +28,7 @@ router = APIRouter(prefix="/import", tags=["Intelligence Engine"])
 MONITORING_IMPORT_SCHEMA_VERSION = "2026-06-monitoring-v1"
 EXTERNAL_IMPORT_SCHEMA_VERSION = "2026-06-external-v1"
 NETWORK_IMPORT_SCHEMA_VERSION = "2026-06-network-v1"
+ROUND_TRIP_EXPOSE_HEADERS = "Content-Disposition, X-SysGrid-Import-Profile, X-SysGrid-Schema-Version"
 
 
 @dataclass
@@ -1433,6 +1434,20 @@ def resolve_template_fields(profile: ImportProfile, requested_columns: Optional[
     return [field_map[name] for name in ordered_names]
 
 
+def build_round_trip_download_headers(profile: ImportProfile, filename: str) -> dict[str, str]:
+    headers = {
+        "Content-Disposition": f"attachment; filename={filename}",
+        "Access-Control-Expose-Headers": ROUND_TRIP_EXPOSE_HEADERS,
+    }
+    if profile.key == "monitoring_items":
+        headers["X-SysGrid-Schema-Version"] = MONITORING_IMPORT_SCHEMA_VERSION
+        headers["X-SysGrid-Import-Profile"] = profile.key
+    elif profile.key == "external_entities":
+        headers["X-SysGrid-Schema-Version"] = EXTERNAL_IMPORT_SCHEMA_VERSION
+        headers["X-SysGrid-Import-Profile"] = profile.key
+    return headers
+
+
 @router.get("/schema/{table_name}")
 async def get_import_schema(table_name: str, db: AsyncSession = Depends(get_db)):
     profile = get_import_profile(table_name)
@@ -1495,13 +1510,7 @@ async def download_template(
     stream = io.BytesIO()
     df.to_csv(stream, index=False)
     stream.seek(0)
-    headers = {"Content-Disposition": f"attachment; filename=SYSGRID_{table_name}_Template.csv"}
-    if profile.key == "monitoring_items":
-        headers["X-SysGrid-Schema-Version"] = MONITORING_IMPORT_SCHEMA_VERSION
-        headers["X-SysGrid-Import-Profile"] = profile.key
-    elif profile.key == "external_entities":
-        headers["X-SysGrid-Schema-Version"] = EXTERNAL_IMPORT_SCHEMA_VERSION
-        headers["X-SysGrid-Import-Profile"] = profile.key
+    headers = build_round_trip_download_headers(profile, f"SYSGRID_{table_name}_Template.csv")
     return StreamingResponse(
         stream,
         media_type="text/csv",
@@ -1550,13 +1559,7 @@ async def download_snapshot(table_name: str, db: AsyncSession = Depends(get_db))
     stream = io.BytesIO()
     df.to_csv(stream, index=False)
     stream.seek(0)
-    headers = {"Content-Disposition": f"attachment; filename=SYSGRID_{table_name}_Snapshot.csv"}
-    if profile.key == "monitoring_items":
-        headers["X-SysGrid-Schema-Version"] = MONITORING_IMPORT_SCHEMA_VERSION
-        headers["X-SysGrid-Import-Profile"] = profile.key
-    elif profile.key == "external_entities":
-        headers["X-SysGrid-Schema-Version"] = EXTERNAL_IMPORT_SCHEMA_VERSION
-        headers["X-SysGrid-Import-Profile"] = profile.key
+    headers = build_round_trip_download_headers(profile, f"SYSGRID_{table_name}_Snapshot.csv")
     return StreamingResponse(
         stream,
         media_type="text/csv",
