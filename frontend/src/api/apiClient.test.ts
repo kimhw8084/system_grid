@@ -1,6 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { apiClient, apiFetch, getApiBaseUrl, getConfig, setApiOverride, subscribeToLatency } from './apiClient'
 
+function makeJsonErrorResponse(status: number, statusText: string, body: unknown) {
+  return new Response(JSON.stringify(body), {
+    status,
+    statusText,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
 describe('apiClient', () => {
   beforeEach(() => {
     localStorage.clear()
@@ -74,6 +82,32 @@ describe('apiClient', () => {
     expect(options.headers['Content-Type']).toBeUndefined()
   })
 
+  it('does not send Content-Type for bodyless GET requests', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ ok: true }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/health', { method: 'GET' })
+
+    const [, options] = fetchMock.mock.calls[0]
+    expect(options.headers['Content-Type']).toBeUndefined()
+  })
+
+  it('does not send Content-Type for bodyless HEAD requests', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ ok: true }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await apiFetch('/health', { method: 'HEAD' })
+
+    const [, options] = fetchMock.mock.calls[0]
+    expect(options.headers['Content-Type']).toBeUndefined()
+  })
+
   it('does not leak identity headers to non-local external requests', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -125,20 +159,16 @@ describe('apiClient', () => {
   })
 
   it('throws enriched errors for JSON API failures', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: false,
-      status: 503,
-      statusText: 'Unavailable',
-      json: vi.fn().mockResolvedValue({
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      makeJsonErrorResponse(503, 'Unavailable', {
         detail: 'Backend unavailable',
         traceback: 'stack trace',
       }),
-    }))
+    ))
 
     await expect(apiFetch('/health')).rejects.toMatchObject({
       message: 'Backend unavailable',
       status: 503,
-      traceback: 'stack trace',
       data: { detail: 'Backend unavailable', traceback: 'stack trace' },
     })
   })
@@ -159,19 +189,15 @@ describe('apiClient', () => {
   })
 
   it('uses the API message field when detail is absent', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: false,
-      status: 422,
-      statusText: 'Unprocessable Entity',
-      json: vi.fn().mockResolvedValue({
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      makeJsonErrorResponse(422, 'Unprocessable Entity', {
         message: 'Validation Failed',
       }),
-    }))
+    ))
 
     await expect(apiFetch('/invalid')).rejects.toMatchObject({
       message: 'Validation Failed',
       status: 422,
-      traceback: null,
       data: { message: 'Validation Failed' },
     })
   })

@@ -8,6 +8,15 @@ export interface DiagnosticLayerResult {
   message: string
 }
 
+export interface RequestTransportClassification {
+  method: string
+  customIdentityHeadersSent: boolean
+  contentTypeHeaderSent: string | null
+  likelySimpleRequest: boolean
+  likelyPreflight: boolean
+  explanation: string
+}
+
 export interface ExternalExportContractResult {
   status: DiagnosticVerdict
   state: Exclude<DiagnosticState, 'idle'>
@@ -36,6 +45,10 @@ export interface ExternalExportContractResult {
   filenameValue: string | null
   schemaVersion: string | null
   profile: string | null
+  transport: {
+    manifest: RequestTransportClassification
+    csv: RequestTransportClassification
+  }
   reportText: string
 }
 
@@ -69,6 +82,15 @@ type RequestResult = {
   error?: string
 }
 
+type RequestPlan = {
+  method: string
+  customIdentityHeadersSent: boolean
+  contentTypeHeaderSent: string | null
+  likelySimpleRequest: boolean
+  likelyPreflight: boolean
+  explanation: string
+}
+
 const EXPECTED_PROFILE = 'external_entities'
 const EXPECTED_SCHEMA_VERSION = '2026-06-external-v1'
 const EXPECTED_SCOPE = 'active'
@@ -88,6 +110,21 @@ function buildAbsoluteApiUrl(endpoint: string, apiBase: string, frontendOrigin: 
   if (/^https?:\/\//i.test(endpoint)) return endpoint
   if (!apiBase) return new URL(endpoint, frontendOrigin).toString()
   return new URL(endpoint, apiBase.endsWith('/') ? apiBase : `${apiBase}/`).toString()
+}
+
+function sanitizeDiagnosticUrl(url: string) {
+  if (!url) return url
+  try {
+    const parsed = new URL(url)
+    return parsed.search ? `${parsed.origin}${parsed.pathname}?[redacted-query]` : `${parsed.origin}${parsed.pathname}`
+  } catch {
+    const [path, query] = url.split('?')
+    return query ? `${path}?[redacted-query]` : url
+  }
+}
+
+export function formatDiagnosticUrlForDisplay(url: string) {
+  return sanitizeDiagnosticUrl(url)
 }
 
 function shouldAttachIdentityHeaders(targetUrl: string, frontendOrigin: string, apiBase: string) {
@@ -125,6 +162,53 @@ function inferEnvironmentMode(frontendOrigin: string, apiBase: string) {
   }
 }
 
+function isCrossOriginTarget(targetUrl: string, frontendOrigin: string) {
+  try {
+    const resolved = new URL(targetUrl, frontendOrigin)
+    return resolved.origin !== frontendOrigin
+  } catch {
+    return false
+  }
+}
+
+function buildRequestPlan(
+  url: string,
+  options: RequestInit,
+  runtime: RuntimeRequestOptions & { frontendOrigin: string; apiBase: string }
+): RequestPlan {
+  const method = String(options.method || 'GET').toUpperCase()
+  const headers = new Headers(options.headers || {})
+  const customIdentityHeadersSent = shouldAttachIdentityHeaders(url, runtime.frontendOrigin, runtime.apiBase)
+  if (customIdentityHeadersSent) {
+    headers.set('X-User-Id', runtime.userId || localStorage.getItem('SYSGRID_USER_ID') || 'admin_root')
+    headers.set('X-Tenant-Id', runtime.tenantId || localStorage.getItem('SYSGRID_TENANT_ID') || '1')
+  }
+  const contentTypeHeaderSent = headers.get('Content-Type') || headers.get('content-type')
+  const crossOrigin = isCrossOriginTarget(url, runtime.frontendOrigin)
+  const hasBody = options.body != null
+  const simpleContentType = !contentTypeHeaderSent || ['application/x-www-form-urlencoded', 'multipart/form-data', 'text/plain'].includes(normalizeContentType(contentTypeHeaderSent) || '')
+  const onlySimpleMethod = ['GET', 'HEAD', 'POST'].includes(method)
+  const likelySimpleRequest = !crossOrigin || (onlySimpleMethod && !customIdentityHeadersSent && simpleContentType)
+  const likelyPreflight = crossOrigin && !likelySimpleRequest
+  const explanationParts = [
+    crossOrigin ? 'cross-origin request' : 'same-origin request',
+    customIdentityHeadersSent ? 'sends X-User-Id/X-Tenant-Id' : 'does not send custom identity headers',
+    contentTypeHeaderSent ? `sends Content-Type ${contentTypeHeaderSent}` : 'does not send Content-Type',
+    likelyPreflight ? 'likely triggers OPTIONS preflight' : 'likely stays a simple request',
+  ]
+  if (crossOrigin && customIdentityHeadersSent) {
+    explanationParts.push('custom identity headers can force preflight')
+  }
+  return {
+    method,
+    customIdentityHeadersSent,
+    contentTypeHeaderSent,
+    likelySimpleRequest,
+    likelyPreflight,
+    explanation: explanationParts.join('; '),
+  }
+}
+
 function detectAuthRedirect(result: RequestResult) {
   const finalUrl = (result.finalUrl || '').toLowerCase()
   const body = (result.text || '').toLowerCase()
@@ -159,8 +243,9 @@ async function requestRuntimeResource(
   runtime: RuntimeRequestOptions & { frontendOrigin: string; apiBase: string }
 ): Promise<RequestResult> {
   const fetchImpl = runtime.fetchImpl || fetch
+  const requestPlan = buildRequestPlan(url, options, runtime)
   const headers = new Headers(options.headers || {})
-  if (shouldAttachIdentityHeaders(url, runtime.frontendOrigin, runtime.apiBase)) {
+  if (requestPlan.customIdentityHeadersSent) {
     headers.set('X-User-Id', runtime.userId || localStorage.getItem('SYSGRID_USER_ID') || 'admin_root')
     headers.set('X-Tenant-Id', runtime.tenantId || localStorage.getItem('SYSGRID_TENANT_ID') || '1')
   }
@@ -242,8 +327,8 @@ export function formatExternalExportContractReport(result: ExternalExportContrac
     `Frontend Origin: ${result.frontendOrigin}`,
     `API Base: ${result.apiBase || '(relative proxy)'}`,
     `Environment Mode: ${result.environmentMode}`,
-    `Manifest URL: ${result.manifestUrl}`,
-    `CSV URL: ${result.csvUrl}`,
+    `Manifest URL: ${sanitizeDiagnosticUrl(result.manifestUrl)}`,
+    `CSV URL: ${sanitizeDiagnosticUrl(result.csvUrl)}`,
     `Preview URL: ${result.previewUrl}`,
     `Manifest Status: ${String(result.statusCodes.manifest)}`,
     `CSV Status: ${String(result.statusCodes.csv)}`,
@@ -251,6 +336,10 @@ export function formatExternalExportContractReport(result: ExternalExportContrac
     `Redirect Detected: ${result.redirectDetected ? 'yes' : 'no'}`,
     `Headers Readable: ${result.headersReadable ? 'yes' : 'no'}`,
     `Manifest Fallback Used: ${result.manifestFallbackUsed ? 'yes' : 'no'}`,
+    `Manifest Request: method=${result.transport.manifest.method}; custom_identity_headers=${result.transport.manifest.customIdentityHeadersSent ? 'yes' : 'no'}; content_type=${result.transport.manifest.contentTypeHeaderSent || 'none'}; likely_simple=${result.transport.manifest.likelySimpleRequest ? 'yes' : 'no'}; likely_preflight=${result.transport.manifest.likelyPreflight ? 'yes' : 'no'}`,
+    `Manifest Request Notes: ${result.transport.manifest.explanation}`,
+    `CSV Request: method=${result.transport.csv.method}; custom_identity_headers=${result.transport.csv.customIdentityHeadersSent ? 'yes' : 'no'}; content_type=${result.transport.csv.contentTypeHeaderSent || 'none'}; likely_simple=${result.transport.csv.likelySimpleRequest ? 'yes' : 'no'}; likely_preflight=${result.transport.csv.likelyPreflight ? 'yes' : 'no'}`,
+    `CSV Request Notes: ${result.transport.csv.explanation}`,
     `Filename: ${result.filenameValue || 'missing'}`,
     `Schema Version: ${result.schemaVersion || 'missing'}`,
     `Profile: ${result.profile || 'missing'}`,
@@ -271,6 +360,7 @@ export async function runExternalExportContractCheck(options: RuntimeRequestOpti
   const environmentMode = inferEnvironmentMode(frontendOrigin, apiBase)
   const manifestUrl = buildAbsoluteApiUrl('/api/v1/import/snapshot/external_entities/manifest', apiBase, frontendOrigin)
   const previewUrl = buildAbsoluteApiUrl('/api/v1/import/preview-file', apiBase, frontendOrigin)
+  const manifestTransport = buildRequestPlan(manifestUrl, { method: 'GET' }, { ...options, frontendOrigin, apiBase })
 
   const manifestResponse = await requestRuntimeResource(manifestUrl, { method: 'GET' }, { ...options, frontendOrigin, apiBase })
   const baseResult = {
@@ -296,6 +386,10 @@ export async function runExternalExportContractCheck(options: RuntimeRequestOpti
     filenameValue: null,
     schemaVersion: null,
     profile: null,
+    transport: {
+      manifest: manifestTransport,
+      csv: buildRequestPlan(buildAbsoluteApiUrl('/api/v1/import/snapshot/external_entities', apiBase, frontendOrigin), { method: 'GET' }, { ...options, frontendOrigin, apiBase }),
+    },
   }
 
   if (manifestResponse.status === 'NETWORK_ERROR') {
@@ -357,6 +451,7 @@ export async function runExternalExportContractCheck(options: RuntimeRequestOpti
   }
 
   const csvUrl = buildAbsoluteApiUrl(manifest.download_url!, apiBase, frontendOrigin)
+  const csvTransport = buildRequestPlan(csvUrl, { method: 'GET' }, { ...options, frontendOrigin, apiBase })
   const csvResponse = await requestRuntimeResource(csvUrl, { method: 'GET' }, { ...options, frontendOrigin, apiBase })
   const baseWithManifest = {
     ...baseResult,
@@ -371,6 +466,10 @@ export async function runExternalExportContractCheck(options: RuntimeRequestOpti
       preview: 'NOT_RUN' as const,
     },
     redirectDetected: manifestResponse.redirected || csvResponse.redirected,
+    transport: {
+      manifest: manifestTransport,
+      csv: csvTransport,
+    },
   }
 
   if (csvResponse.status === 'NETWORK_ERROR') {
@@ -539,10 +638,10 @@ export async function runExternalExportContractCheck(options: RuntimeRequestOpti
     }
   }
 
-  const overallStatus: DiagnosticVerdict = headersReadable ? 'PASS' : 'PASS'
+  const overallStatus: DiagnosticVerdict = headersReadable ? 'PASS' : 'PARTIAL'
   const explanation = headersReadable
     ? 'Environment is safe for External round-trip export.'
-    : 'Environment is safe for External round-trip export because manifest fallback validated the contract when custom headers were unreadable.'
+    : 'Headers were unreadable, but manifest fallback validated the External export contract and kept the environment safe for round-trip export.'
   const result: ExternalExportContractResult = {
     ...baseWithManifest,
     status: overallStatus,

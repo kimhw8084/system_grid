@@ -1,30 +1,52 @@
 # OUT-13 External Export Round-Trip Proof
 
-## 1. Exact root cause
+## 1. Current status
 
-The first External export implementation depended exclusively on browser-readable download response headers:
+Status is still `PARTIAL`.
+
+Reason:
+
+- External export now uses a backend-owned manifest plus strict CSV/header validation.
+- Settings now includes an in-app `System Diagnostics` surface with an `External Export Contract` doctor.
+- Automated frontend/backend tests cover the source contract and browser-runtime diagnostics logic.
+- Real company-domain runtime proof is still pending until the user can run the diagnostics card from the work environment.
+
+`127.0.0.1` success is diagnostic only. It is not the final product contract.
+
+External remains the golden candidate before spreading the contract to Monitoring or Services.
+
+## 2. Root cause
+
+The original External export depended exclusively on browser-readable download response headers:
 
 - `X-SysGrid-Import-Profile`
 - `X-SysGrid-Schema-Version`
 - `Content-Disposition`
 
-That is fragile across company-domain proxy/OAuth routing. Direct local backend access proves the backend CSV contract can work, but it does not prove the deployed/company-domain runtime because proxy/auth layers may redirect, strip, overwrite, or fail to expose custom download headers to browser JavaScript.
+That is fragile across proxy/OAuth/company-domain routing because those layers may redirect, strip, overwrite, or fail to expose custom download headers to browser JavaScript.
 
-The product fix is therefore not `127.0.0.1`, not External data cleanup, and not Monitoring parity. The fix is an environment-resilient backend-owned export metadata contract.
+The product fix is an environment-resilient backend-owned export metadata contract:
 
-## 2. Final environment-resilient design
+- backend manifest endpoint for External
+- manifest-driven CSV download URL
+- strict frontend validation
+- readable headers used when available
+- manifest fallback used when headers are unreadable
+- explicit failure when metadata cannot be verified
+
+## 3. Environment-resilient design
 
 External snapshot export now has two coordinated validation paths:
 
-1. Primary path:
-   the CSV download response still returns
+1. Primary path
+   CSV response returns:
    - `Content-Disposition`
    - `X-SysGrid-Import-Profile`
    - `X-SysGrid-Schema-Version`
    - `Access-Control-Expose-Headers: Content-Disposition, X-SysGrid-Import-Profile, X-SysGrid-Schema-Version`
 
-2. Fallback path:
-   the backend now exposes `GET /api/v1/import/snapshot/external_entities/manifest`, which returns backend-owned metadata:
+2. Fallback path
+   `GET /api/v1/import/snapshot/external_entities/manifest` returns backend-owned metadata:
    - `profile`
    - `schema_version`
    - `filename`
@@ -32,166 +54,206 @@ External snapshot export now has two coordinated validation paths:
    - `content_type`
    - `download_url`
 
-The manifest `download_url` includes a backend-issued `export_token`, and the CSV endpoint uses that same token to emit the exact same filename in `Content-Disposition`. That removes the prior race where two independent requests could generate different timestamped filenames.
+The manifest `download_url` contains a backend-issued `export_token`, and the CSV route uses that same token to emit the same filename in `Content-Disposition`.
 
-Frontend behavior:
+## 4. How to run in-app diagnostics
 
-- fetch and validate manifest first
-- download from manifest `download_url`
-- if headers are readable, verify they match manifest/backend expectations
-- if headers are unreadable but manifest is valid, use manifest metadata and continue safely
-- if manifest fetch fails or metadata is invalid, block export with `Export metadata could not be verified.`
+Open:
 
-Deployment note:
+- `Settings`
+- `System Diagnostics`
+- click `Run All Checks`
+- click `Copy Report`
 
-- proxies should still preserve `Content-Disposition`, `X-SysGrid-Import-Profile`, `X-SysGrid-Schema-Version`, and `Access-Control-Expose-Headers`
-- the app no longer depends solely on those headers being browser-readable
+The External Export Contract card runs from the actual browser runtime and records:
 
-## 3. Files changed
+- frontend origin
+- configured API base
+- manifest URL
+- CSV URL
+- import preview URL
+- manifest status
+- CSV status
+- preview status
+- redirect detection
+- readable-header status
+- manifest fallback usage
+- transport classification
+  - whether custom identity headers are being sent
+  - whether `Content-Type` is being sent on bodyless `GET`
+  - whether the request is likely simple or likely preflighted
 
-- `backend/app/api/import_engine.py`
-- `backend/test_import_workflows.py`
-- `frontend/src/components/shared/OperationalImportExport.ts`
-- `frontend/src/components/shared/OperationalImportExport.test.ts`
-- `frontend/src/components/External.tsx`
-- `frontend/OUT-13-EXTERNAL-EXPORT-ROUNDTRIP-PROOF.md`
+## 5. What verdicts mean
 
-Monitoring remains out of scope. Services remains out of scope. No OUT-14 work was done.
+`PASS` means:
 
-## 4. Backend manifest proof
+- manifest is valid
+- CSV response is valid
+- profile/schema/filename contract is verified
+- import preview passes or otherwise returns a valid success signal
+- environment is safe for External round-trip export
 
-Backend source:
+`PARTIAL` means:
 
-- manifest route: `backend/app/api/import_engine.py`
-- manifest builder: `build_snapshot_manifest(...)`
-- token validation: `validate_snapshot_export_token(...)`
+- contract is still safe
+- one layer is degraded but not broken
+- the expected example is unreadable custom headers with valid manifest fallback
 
-Manifest contract for External:
+`FAIL` means:
 
-```json
-{
-  "profile": "external_entities",
-  "schema_version": "2026-06-external-v1",
-  "filename": "SysGrid_External_YYYY-MM-DD_HH-mm-ss.csv",
-  "scope": "active",
-  "content_type": "text/csv",
-  "download_url": "/api/v1/import/snapshot/external_entities?export_token=YYYY-MM-DD_HH-mm-ss"
-}
-```
+- backend contract could not be safely verified
+- or the request never reached the SysGrid backend contract
+- or the response content/profile/schema/filename contract is wrong
 
-Automated proof:
+## 6. Source and automated proof
 
-- `backend/test_import_workflows.py::test_external_snapshot_export_exposes_round_trip_headers_for_browser_js`
-- `backend/test_import_workflows.py::test_external_snapshot_manifest_and_csv_contract_stay_in_sync`
+Backend proof:
 
-Those tests assert:
+- manifest route and CSV route agree on profile/schema/filename
+- CSV route still emits explicit expose headers
+- app-generated direct backend expose headers are not `*` or `**`
+- exported CSV still previews through External Import
 
-- manifest profile is exactly `external_entities`
-- manifest schema is exactly `2026-06-external-v1`
-- manifest filename matches `SysGrid_External_YYYY-MM-DD_HH-mm-ss.csv`
-- manifest scope is `active`
-- manifest content type is `text/csv`
-- manifest `download_url` includes the export token
-- manifest filename matches CSV `Content-Disposition`
-- manifest profile/schema match CSV response headers
+Frontend proof:
 
-## 5. CSV endpoint proof
+- manifest-first export helper
+- External runtime wiring
+- in-app diagnostics runner for browser-runtime verification
+- in-app diagnostics panel tests
+- transport tests for bodyless `GET`/`HEAD`
 
-The CSV endpoint remains `GET /api/v1/import/snapshot/external_entities`.
-
-It still returns:
-
-- `X-SysGrid-Import-Profile: external_entities`
-- `X-SysGrid-Schema-Version: 2026-06-external-v1`
-- `Content-Disposition: attachment; filename=SysGrid_External_YYYY-MM-DD_HH-mm-ss.csv`
-- `Access-Control-Expose-Headers: Content-Disposition, X-SysGrid-Import-Profile, X-SysGrid-Schema-Version`
-
-Automated proof:
-
-- `backend/test_import_workflows.py::test_external_snapshot_export_exposes_round_trip_headers_for_browser_js`
-
-That test also rejects app-generated direct backend expose headers of `*` or `**`.
-
-## 6. Frontend validation proof
-
-Frontend source:
-
-- manifest-first helper: `frontend/src/components/shared/OperationalImportExport.ts`
-- External wiring: `frontend/src/components/External.tsx`
-
-Automated frontend proof:
-
-- `succeeds when manifest and readable headers are both valid`
-- `succeeds when headers are unreadable but manifest is valid`
-- `fails explicitly when headers are unreadable and manifest is missing`
-- `fails when manifest profile is wrong`
-- `fails when manifest schema is wrong`
-- `fails when manifest filename is invalid`
-- `still rejects readable header mismatches instead of weakening validation`
-
-Failure text when metadata cannot be verified:
+## 7. Sample PASS report
 
 ```text
-Export metadata could not be verified.
+External Export Contract: PASS
+
+Frontend Origin: https://frontend.example.com
+API Base: https://api.example.com
+Environment Mode: cross-origin company-domain proxy
+Manifest URL: https://api.example.com/api/v1/import/snapshot/external_entities/manifest
+CSV URL: https://api.example.com/api/v1/import/snapshot/external_entities?[redacted-query]
+Preview URL: https://api.example.com/api/v1/import/preview-file
+Manifest Status: 200
+CSV Status: 200
+Preview Status: 200
+Redirect Detected: no
+Headers Readable: yes
+Manifest Fallback Used: no
+Manifest Request: method=GET; custom_identity_headers=yes; content_type=none; likely_simple=no; likely_preflight=yes
+Manifest Request Notes: cross-origin request; sends X-User-Id/X-Tenant-Id; does not send Content-Type; likely triggers OPTIONS preflight; custom identity headers can force preflight
+CSV Request: method=GET; custom_identity_headers=yes; content_type=none; likely_simple=no; likely_preflight=yes
+CSV Request Notes: cross-origin request; sends X-User-Id/X-Tenant-Id; does not send Content-Type; likely triggers OPTIONS preflight; custom identity headers can force preflight
+Filename: SysGrid_External_2026-06-30_15-11-09.csv
+Schema Version: 2026-06-external-v1
+Profile: external_entities
+Layer: Verified
+Manifest: PASS — Manifest returned a valid backend-owned External export contract.
+CSV Download: PASS — CSV endpoint returned successful CSV content from the configured API base.
+Headers: PASS — Custom headers were readable and matched the backend contract.
+Filename Check: PASS — Filename validated as SysGrid_External_2026-06-30_15-11-09.csv.
+Import Preview: PASS — Exported CSV previewed successfully through External Import.
+Overall: PASS — Environment is safe for External round-trip export.
+Recommended Fix: No fix required.
 ```
 
-## 7. Direct local proof
+## 8. Sample PARTIAL report
 
-Local direct backend remains secondary proof only.
-
-Targeted automated backend run:
+This is the expected safe fallback case when custom headers are unreadable but manifest validation is still valid.
 
 ```text
-rtk pytest -q backend/test_import_workflows.py -k "external_snapshot_export_exposes_round_trip_headers_for_browser_js or external_snapshot_manifest_and_csv_contract_stay_in_sync or external_snapshot_export_previews_successfully_on_round_trip or monitoring_snapshot_export_uses_round_trip_import_contract"
+External Export Contract: PARTIAL
+
+Frontend Origin: https://frontend.example.com
+API Base: https://api.example.com
+Environment Mode: cross-origin company-domain proxy
+Manifest URL: https://api.example.com/api/v1/import/snapshot/external_entities/manifest
+CSV URL: https://api.example.com/api/v1/import/snapshot/external_entities?[redacted-query]
+Preview URL: https://api.example.com/api/v1/import/preview-file
+Manifest Status: 200
+CSV Status: 200
+Preview Status: 200
+Redirect Detected: no
+Headers Readable: no
+Manifest Fallback Used: yes
+Manifest Request: method=GET; custom_identity_headers=yes; content_type=none; likely_simple=no; likely_preflight=yes
+Manifest Request Notes: cross-origin request; sends X-User-Id/X-Tenant-Id; does not send Content-Type; likely triggers OPTIONS preflight; custom identity headers can force preflight
+CSV Request: method=GET; custom_identity_headers=yes; content_type=none; likely_simple=no; likely_preflight=yes
+CSV Request Notes: cross-origin request; sends X-User-Id/X-Tenant-Id; does not send Content-Type; likely triggers OPTIONS preflight; custom identity headers can force preflight
+Filename: SysGrid_External_2026-06-30_15-11-09.csv
+Schema Version: 2026-06-external-v1
+Profile: external_entities
+Layer: Headers / manifest fallback
+Manifest: PASS — Manifest returned a valid backend-owned External export contract.
+CSV Download: PASS — CSV endpoint returned successful CSV content from the configured API base.
+Headers: PARTIAL — Custom headers were unreadable; manifest fallback was used.
+Filename Check: PASS — Filename validated as SysGrid_External_2026-06-30_15-11-09.csv.
+Import Preview: PASS — Exported CSV previewed successfully through External Import.
+Overall: PARTIAL — Headers were unreadable, but manifest fallback validated the External export contract and kept the environment safe for round-trip export.
+Recommended Fix: Proxy should still preserve and expose the custom export headers, but the manifest fallback is currently protecting the contract.
 ```
 
-Result:
+## 9. Sample FAIL report
+
+OAuth/proxy redirect example:
 
 ```text
-Pytest: 8 passed
+External Export Contract: FAIL
+
+Frontend Origin: https://frontend.example.com
+API Base: https://api.example.com
+Environment Mode: cross-origin company-domain proxy
+Manifest URL: https://api.example.com/api/v1/import/snapshot/external_entities/manifest
+CSV URL: https://api.example.com/api/v1/import/snapshot/external_entities
+Preview URL: https://api.example.com/api/v1/import/preview-file
+Manifest Status: 200
+CSV Status: NOT_RUN
+Preview Status: NOT_RUN
+Redirect Detected: yes
+Headers Readable: no
+Manifest Fallback Used: no
+Manifest Request: method=GET; custom_identity_headers=yes; content_type=none; likely_simple=no; likely_preflight=yes
+Manifest Request Notes: cross-origin request; sends X-User-Id/X-Tenant-Id; does not send Content-Type; likely triggers OPTIONS preflight; custom identity headers can force preflight
+CSV Request: method=GET; custom_identity_headers=yes; content_type=none; likely_simple=no; likely_preflight=yes
+CSV Request Notes: cross-origin request; sends X-User-Id/X-Tenant-Id; does not send Content-Type; likely triggers OPTIONS preflight; custom identity headers can force preflight
+Filename: missing
+Schema Version: missing
+Profile: missing
+Layer: Auth / proxy routing
+Manifest: FAIL — Manifest request redirected before valid JSON contract was returned.
+CSV Download: PARTIAL — Skipped because manifest failed.
+Headers: PARTIAL — Skipped because manifest failed.
+Filename Check: PARTIAL — Skipped because manifest failed.
+Import Preview: PARTIAL — Import preview not run.
+Overall: FAIL — Manifest request was redirected to OAuth or a login page before reaching the SysGrid JSON contract.
+Recommended Fix: Ensure the authenticated browser session can access the API route, or configure proxy/API base so the app can reach the backend manifest endpoint.
 ```
 
-This proves:
+## 10. Transport / preflight note
 
-- manifest and CSV contract agree
-- CSV still emits explicit headers
-- External snapshot still round-trips into External Import preview
+The diagnostics report now states whether each manifest/CSV request is likely simple or likely preflighted.
 
-## 8. Browser/company-domain proof
+Current behavior:
 
-Company-domain/proxy browser proof is still required and is not claimed complete from CLI-only verification.
+- bodyless `GET` and `HEAD` no longer send `Content-Type: application/json`
+- diagnostics still classify that `X-User-Id` and `X-Tenant-Id` may force OPTIONS preflight in cross-origin environments
+- identity headers were not removed globally in this iteration
 
-Reason:
+## 11. Company-domain runtime proof
 
-- unauthenticated terminal `curl` reaching GitLab OAuth is not backend failure
-- company-domain truth must come from an authenticated browser session or browser Network `Copy as cURL`
+Company-domain proof is still pending.
 
-Required manual verification still pending:
+That is expected in this iteration because the user cannot currently test in the work environment.
 
-- authenticated browser
-- company-domain frontend/backend path
-- `External -> Active -> Export`
-- no missing-profile toast
-- download succeeds with backend-owned filename
+When work access is available again, the intended source of truth is:
 
-## 9. External Import preview proof
+- `Settings`
+- `System Diagnostics`
+- `Run All Checks`
+- `Copy Report`
 
-Automated round-trip proof:
+The copied report should then be attached as the runtime proof artifact.
 
-```text
-backend/test_import_workflows.py::test_external_snapshot_export_previews_successfully_on_round_trip
-```
-
-That test exports External snapshot CSV from backend, uploads it to `POST /api/v1/import/preview-file`, and asserts:
-
-- `table_name == external_entities`
-- `valid_rows == 1`
-- `invalid_rows == 0`
-- first row preview status is `VALID`
-
-So the exported CSV remains compatible with External Import preview.
-
-## 10. Test runs
+## 12. Test runs
 
 Backend:
 
@@ -202,25 +264,24 @@ Pytest: 8 passed
 Frontend:
 
 ```text
-rtk npm run test:unit -- src/components/shared/OperationalImportExport.test.ts
-Test Files  1 passed
-Tests       7 passed
+rtk npm run test:unit -- src/components/settings/externalExportDiagnostics.test.ts src/components/settings/SystemDiagnosticsPanel.test.tsx src/components/shared/OperationalImportExport.test.ts src/api/apiClient.test.ts
+Test Files  4 passed
+Tests       39 passed
 ```
 
-## 11. Remaining risk
+Frontend build:
 
-The remaining open risk is environment verification, not source-contract coverage.
+```text
+rtk npm run build
+vite build: success
+```
 
-- The source now no longer depends only on browser-readable custom headers.
-- The remaining required proof is authenticated browser verification through the real company-domain/proxy/OAuth path.
-- If that path rewrites the response into non-CSV content, frontend now blocks export explicitly instead of silently inventing metadata.
+## 13. Final status
 
-## 12. Status
-
-Still PARTIAL.
+Still `PARTIAL`.
 
 Reason:
 
-- code and targeted tests are green
-- direct local round-trip is proven
-- authenticated browser/company-domain verification is still required before PASS
+- source and in-app diagnostics are materially hardened
+- direct local and mocked browser-runtime proof are in place
+- real company-domain `System Diagnostics -> Copy Report` evidence is still pending

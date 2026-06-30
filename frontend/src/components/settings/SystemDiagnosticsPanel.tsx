@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { Activity, CheckCircle2, Clipboard, Clock3, Globe, Play, ShieldAlert, Wrench } from 'lucide-react'
 import { ToolbarButton } from '../shared/LayoutPrimitives'
 import { showWorkspaceToast } from '../shared/WorkspaceToast'
-import { runExternalExportContractCheck, type DiagnosticState, type DiagnosticVerdict, type ExternalExportContractResult } from './externalExportDiagnostics'
+import { formatDiagnosticUrlForDisplay, runExternalExportContractCheck, type DiagnosticState, type DiagnosticVerdict, type ExternalExportContractResult } from './externalExportDiagnostics'
 
 function VerdictBadge({ verdict }: { verdict: DiagnosticVerdict }) {
   const tone = verdict === 'PASS'
@@ -78,6 +78,24 @@ export function SystemDiagnosticsPanel() {
         filenameValue: null,
         schemaVersion: null,
         profile: null,
+        transport: {
+          manifest: {
+            method: 'GET',
+            customIdentityHeadersSent: false,
+            contentTypeHeaderSent: null,
+            likelySimpleRequest: true,
+            likelyPreflight: false,
+            explanation: 'Diagnostics runner failed before request classification completed.',
+          },
+          csv: {
+            method: 'GET',
+            customIdentityHeadersSent: false,
+            contentTypeHeaderSent: null,
+            likelySimpleRequest: true,
+            likelyPreflight: false,
+            explanation: 'Diagnostics runner failed before request classification completed.',
+          },
+        },
         reportText: '',
       }
       setResult(fallback)
@@ -105,7 +123,7 @@ export function SystemDiagnosticsPanel() {
             <div>
               <h3 className="text-[11px] font-black uppercase tracking-[0.18em] text-white">System Diagnostics</h3>
               <p className="mt-1 text-[10px] font-semibold text-slate-400">
-                Browser-runtime contract verification for the External export flow. Uses the current frontend origin and configured API base. No secrets, cookies, tokens, or env dumps are displayed.
+                Browser-runtime contract verification for the External export flow. Uses the current frontend origin and configured API base. No secrets or sensitive session data are displayed.
               </p>
             </div>
           </div>
@@ -182,9 +200,11 @@ export function SystemDiagnosticsPanel() {
             </div>
 
             <div className="grid gap-3 lg:grid-cols-2">
-              <LayerRow label="Manifest URL" value={result.manifestUrl} />
-              <LayerRow label="CSV URL" value={result.csvUrl} />
-              <LayerRow label="Preview URL" value={result.previewUrl} />
+              <LayerRow label="Manifest URL" value={formatDiagnosticUrlForDisplay(result.manifestUrl)} />
+              <LayerRow label="CSV URL" value={formatDiagnosticUrlForDisplay(result.csvUrl)} />
+              <LayerRow label="Manifest Transport" value={result.transport.manifest.explanation} />
+              <LayerRow label="CSV Transport" value={result.transport.csv.explanation} />
+              <LayerRow label="Preview URL" value={formatDiagnosticUrlForDisplay(result.previewUrl)} />
               <LayerRow label="Filename" value={result.filenameValue || 'missing'} />
               <LayerRow label="Schema Version" value={result.schemaVersion || 'missing'} />
               <LayerRow label="Profile" value={result.profile || 'missing'} />

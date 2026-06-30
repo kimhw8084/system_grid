@@ -112,6 +112,7 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     : `${baseUrl.replace(/\/$/, '')}/${normalizedEndpoint.replace(/^\//, '')}`;
   
   const headers: Record<string, string> = { ...options.headers } as any;
+  const method = String(options.method || 'GET').toUpperCase()
   
   // Only attach explicit browser user identity on same-origin requests.
   if (shouldAttachUserIdHeader(url)) {
@@ -119,7 +120,10 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     headers['X-Tenant-Id'] = getCurrentTenantId();
   }
 
-  if (!(options.body instanceof FormData) && !headers['Content-Type']) {
+  const hasBody = options.body != null
+  const isBodylessReadRequest = (method === 'GET' || method === 'HEAD') && !hasBody
+
+  if (!isBodylessReadRequest && !(options.body instanceof FormData) && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
 
