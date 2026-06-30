@@ -46,7 +46,7 @@ import {
 import { useWorkspaceAnchoredLayer, WorkspaceEmptyState, useEscapeDismiss, useBodyModalFlag, WorkspaceFloatingPanel, WorkspaceSplitView } from './shared/OperationalWorkspacePrimitives'
 import { OperationalAnchoredPanel, OperationalDisplayPanel, OperationalGroupedGridSection, OperationalGroupedGridView, OperationalSavedViewsPanel, OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'
 import { OperationalImportModal } from './shared/OperationalImportModal'
-import { downloadOperationalImportFile } from './shared/OperationalImportExport'
+import { buildOperationalExportFileName, downloadOperationalImportFile } from './shared/OperationalImportExport'
 // (Removed duplicate imports)
 import { EXTERNAL_WORKSPACE_STANDARD } from './shared/OperationalWorkspace'
 import { WorkspaceModal } from './shared/WorkspaceModal'
@@ -2151,6 +2151,7 @@ export default function External() {
         expectedProfile: 'external_entities',
         requireSchemaHeaders: true,
         fallbackFileName: 'SYSGRID_external_entities_Snapshot.csv',
+        downloadFileName: buildOperationalExportFileName('External'),
       })
       showWorkspaceToast(
         `Exported ${download.fileName}. Includes active external entities only; archived rows, links, selection, filters, and hidden viewport columns are not part of this snapshot.`

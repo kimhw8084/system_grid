@@ -4,7 +4,7 @@ vi.mock('../../api/apiClient', () => ({
   apiFetch: vi.fn(),
 }))
 
-import { downloadOperationalImportFile } from './OperationalImportExport'
+import { buildOperationalExportFileName, downloadOperationalImportFile } from './OperationalImportExport'
 import { apiFetch } from '../../api/apiClient'
 
 describe('downloadOperationalImportFile', () => {
@@ -33,7 +33,13 @@ describe('downloadOperationalImportFile', () => {
     }) as typeof document.createElement)
   })
 
-  it('downloads the backend snapshot and validates round-trip headers', async () => {
+  it('builds the golden workspace export filename with seconds', () => {
+    expect(buildOperationalExportFileName('External', new Date(2026, 5, 30, 8, 21, 47))).toBe(
+      'SysGrid_External_2026-06-30_08-21-47.csv'
+    )
+  })
+
+  it('downloads the backend snapshot, validates round-trip headers, and prefers the golden filename', async () => {
     apiFetchMock.mockResolvedValue(new Response('name,type\nA,API\n', {
       status: 200,
       headers: {
@@ -48,6 +54,7 @@ describe('downloadOperationalImportFile', () => {
       kind: 'snapshot',
       expectedProfile: 'external_entities',
       requireSchemaHeaders: true,
+      downloadFileName: 'SysGrid_External_2026-06-30_08-21-47.csv',
     })
 
     expect(apiFetchMock).toHaveBeenCalledWith('/api/v1/import/snapshot/external_entities', { method: 'GET' })
@@ -56,7 +63,7 @@ describe('downloadOperationalImportFile', () => {
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:sysgrid')
     expect(result).toEqual({
       endpoint: '/api/v1/import/snapshot/external_entities',
-      fileName: 'SYSGRID_external_entities_Snapshot.csv',
+      fileName: 'SysGrid_External_2026-06-30_08-21-47.csv',
       importProfile: 'external_entities',
       schemaVersion: '2026-06-external-v1',
     })
