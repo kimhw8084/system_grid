@@ -362,3 +362,147 @@ Reason:
 - If the next iteration continues this thread, keep it verification-focused first:
   - validate the new External diagnostics in the live app on entity and links failures,
   - then only address the `links`-tab vocabulary gap if the reviewer explicitly wants shared empty-state taxonomy work.
+
+## Iteration 03 Recovery / Cleanup / Validation
+
+### 1. Final changed-file list
+
+Tracked final changed-file list for this Iteration 03 recovery pass:
+
+- `frontend/OUT-9-LIFECYCLE-DATA-STATE-CONTRACT-PROOF.md`
+
+Tracked audit commands:
+
+```bash
+rtk git status --short --untracked-files=no
+rtk git diff --name-status
+rtk git diff --name-status --cached
+```
+
+Recovery result:
+
+- No tracked deletions were present.
+- No tracked unrelated modifications were present.
+- The current OUT-9 implementation files were already clean in the working tree at audit time.
+- Iteration 03 therefore only updates this proof artifact to document the clean review boundary and validation evidence.
+
+### 2. Confirmation that unrelated OUT-8 / OUT-10 / OUT-11 / OUT-12 / RUN3 proof deletions are not present in the final diff
+
+- Confirmed: no unrelated proof/history files are present as tracked deletions in the final diff.
+- `rtk git diff --name-status` returned no tracked file deletions before the Iteration 03 proof update.
+- The repo does contain unrelated untracked proof files such as `frontend/OUT-10-*`, `frontend/OUT-11-*`, `frontend/OUT-12-*`, `frontend/OUT-8-*`, and `frontend/RUN3-*` in `git status --short`, but they are untracked and therefore outside the tracked OUT-9 diff.
+- Per prompt constraints, these untracked project-memory/proof artifacts were not deleted to “clean” the repo.
+
+### 3. External entity diagnostics behavior
+
+- External entity failures on `Active` / `Archived` still flow through `externalDataState` `query-error`.
+  Source: `frontend/src/components/External.tsx:1889-1906`.
+- When the active tab is not `links`, `activeExternalQueryError` resolves to `entityError`.
+  Source: `frontend/src/components/External.tsx:1923-1925`.
+- The diagnostic detail payload for entity failures is built with:
+  - `endpoint: '/api/v1/intelligence/entities?include_deleted=true'`
+  - `fallbackMessage: 'The external entities request failed.'`
+  Source: `frontend/src/components/External.tsx:1927-1935`.
+- The existing header action area now shows `DiagnosticStatusPill` and opens `DataDiagnosticModal` when that active entity query error exists.
+  Source: `frontend/src/components/External.tsx:2727-2754`.
+
+### 4. External links diagnostics behavior
+
+- Links failures still flow through the existing `externalDataState` `query-error` path when `activeTab === 'links'`.
+  Source: `frontend/src/components/External.tsx:1891-1905`.
+- When the active tab is `links`, `activeExternalQueryError` resolves to `linkError`.
+  Source: `frontend/src/components/External.tsx:1923-1924`.
+- The diagnostic detail payload for links failures is built with:
+  - `endpoint: '/api/v1/intelligence/links'`
+  - `fallbackMessage: 'The external links request failed.'`
+  Source: `frontend/src/components/External.tsx:1927-1935`.
+- The same pill/modal affordance is reused in the header while preserving the existing scope switch.
+  Source: `frontend/src/components/External.tsx:2729-2754`.
+
+### 5. Monitoring behavior preservation
+
+- Monitoring changed only to reuse the shared diagnostic-detail helper.
+- Monitoring still renders the same `DiagnosticStatusPill` and `DataDiagnosticModal` only on `isError`.
+- Monitoring endpoint and fallback message remain `/api/v1/monitoring?include_deleted=true` and `The monitoring registry request failed.`
+  Source: `frontend/src/components/MonitoringGrid.tsx:1904-1918`.
+- No Monitoring resolver, lifecycle, grid, history, or purge behavior was changed in this cleanup pass.
+
+### 6. Shared helper contract and test coverage
+
+- Shared helper: `buildOperationalDiagnosticDetail`
+  Source: `frontend/src/components/shared/OperationalDataStatus.tsx:46-73`.
+- Contract:
+  - preserve available `apiFetch` error fields: `status`, `statusText`, `url`, `message`, `rawBody`, `data`;
+  - provide honest fallback text `Unavailable from current error object` when the error object lacks `status`, `statusText`, or `url`;
+  - default `userId` / `tenantId` from local storage when available.
+- Test coverage:
+  - preserves available fields
+  - uses honest fallbacks for missing fields
+  Source: `frontend/src/components/shared/OperationalDataStatus.test.ts:5-55`.
+
+### 7. Tests run and exact results
+
+Command run:
+
+```bash
+rtk npm run test:unit -- src/components/shared/OperationalDataStatus.test.ts src/components/shared/OperationalDataState.test.ts src/components/shared/OperationalDataGrid.contract.test.ts src/components/shared/OperationalBulkContract.test.ts src/components/shared/OperationalLifecycleToasts.test.ts
+```
+
+Exact result:
+
+- Passed: 5 test files, 25 tests.
+- Duration: 1.26s test run, with existing Vite `esbuild` / `oxc` deprecation warnings only.
+
+### 8. Human-eye validation checklist or result
+
+Human-eye checklist:
+
+- Break `/api/v1/intelligence/entities?include_deleted=true` on `Active`; verify:
+  - grid still shows entity query-error copy;
+  - header pill appears;
+  - modal endpoint is `/api/v1/intelligence/entities?include_deleted=true`.
+- Repeat on `Archived`; verify:
+  - same entity endpoint;
+  - scope switch still works;
+  - no Links-specific wording appears.
+- Break `/api/v1/intelligence/links` on `Links`; verify:
+  - grid still shows links query-error copy;
+  - header pill appears;
+  - modal endpoint is `/api/v1/intelligence/links`.
+- Verify missing detail fields render `Unavailable from current error object` instead of guessed values.
+- Verify Monitoring still shows its diagnostic pill/modal on monitoring query error.
+
+Result:
+
+- Manual browser validation was not run in this Iteration 03 cleanup pass.
+- Source review plus focused tests support the contract behavior.
+
+### 9. Verdict recommendation
+
+- Recommended verdict: `PASS`
+
+Reason:
+
+- The OUT-9 implementation remains narrow and correct.
+- No tracked unrelated deletions remain in the final diff.
+- External diagnostics are tab-aware and source-backed.
+- The required focused test suite passes.
+
+### 10. Score recommendation
+
+- Recommended score: `9/10`
+
+Reason:
+
+- Recovery goal is satisfied for tracked diff cleanliness.
+- Remaining gap is live human-eye validation only, not source contract correctness.
+
+### 11. Lesson learned
+
+- Cleanup prompts need a tracked-vs-untracked audit first. In this repo state, the real recovery issue was not tracked deletions but a noisy untracked proof inventory that should be excluded from the review capsule rather than deleted.
+
+### 12. Next prompt rule
+
+- If another recovery/validation pass is requested, require the prompt to specify whether the review capsule should be based on:
+  - tracked diff only, or
+  - full working-tree status including unrelated untracked artifacts.
