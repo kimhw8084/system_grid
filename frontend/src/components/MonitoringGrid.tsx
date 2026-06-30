@@ -1,5 +1,5 @@
 import { BkmListModal, BkmDetailModal, MonitoringForm } from './monitoring/Modals'
-import DiagnosticStatusPill, { DataDiagnosticModal, classifyDataStatus, normalizeOperationalListResponse } from './shared/OperationalDataStatus'
+import DiagnosticStatusPill, { DataDiagnosticModal, buildOperationalDiagnosticDetail, classifyDataStatus, normalizeOperationalListResponse } from './shared/OperationalDataStatus'
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
@@ -1911,16 +1911,11 @@ export default function MonitoringGrid() {
                 <DataDiagnosticModal 
                     isOpen={showMonitoringDataDiagnostic} 
                     onClose={() => setShowMonitoringDataDiagnostic(false)} 
-                    errorDetail={{
+                    errorDetail={buildOperationalDiagnosticDetail({
                         endpoint: '/api/v1/monitoring?include_deleted=true',
-                        status: (error as any)?.status,
-                        statusText: (error as any)?.statusText,
-                        url: (error as any)?.url,
-                        message: (error as any)?.message,
-                        rawBody: (error as any)?.rawBody,
-                        userId: localStorage.getItem('SYSGRID_USER_ID') || 'admin_root',
-                        tenantId: localStorage.getItem('SYSGRID_TENANT_ID') || '1'
-                    }} 
+                        error,
+                        fallbackMessage: 'The monitoring registry request failed.',
+                    })} 
                 />
               </>
             )}

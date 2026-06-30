@@ -3,6 +3,19 @@ import { AlertCircle, X, Copy } from 'lucide-react'
 import { WorkspaceModal } from './WorkspaceModal'
 
 export type DataStatus = 'healthy' | 'loading' | 'error' | 'filtered' | 'empty'
+export type OperationalDiagnosticDetail = {
+    endpoint: string
+    status: number | string
+    statusText: string
+    url: string
+    userId: string
+    tenantId: string
+    message: string
+    rawBody?: string
+    data?: any
+}
+
+const UNAVAILABLE_DETAIL = 'Unavailable from current error object'
 
 export function normalizeOperationalListResponse(data: any) {
     if (Array.isArray(data)) return data;
@@ -28,6 +41,35 @@ export function classifyDataStatus(
     if (totalCount === 0) return { status: 'empty' };
     if (filteredCount === 0) return { status: 'filtered' };
     return { status: 'healthy' };
+}
+
+export function buildOperationalDiagnosticDetail({
+    endpoint,
+    error,
+    fallbackMessage = 'The request failed.',
+    userId,
+    tenantId,
+}: {
+    endpoint: string
+    error: any
+    fallbackMessage?: string
+    userId?: string
+    tenantId?: string
+}): OperationalDiagnosticDetail {
+    const safeUserId = userId || (typeof localStorage !== 'undefined' ? localStorage.getItem('SYSGRID_USER_ID') || 'admin_root' : 'admin_root')
+    const safeTenantId = tenantId || (typeof localStorage !== 'undefined' ? localStorage.getItem('SYSGRID_TENANT_ID') || '1' : '1')
+
+    return {
+        endpoint,
+        status: error?.status ?? UNAVAILABLE_DETAIL,
+        statusText: error?.statusText || UNAVAILABLE_DETAIL,
+        url: error?.url || UNAVAILABLE_DETAIL,
+        userId: safeUserId,
+        tenantId: safeTenantId,
+        message: error?.message || fallbackMessage,
+        rawBody: typeof error?.rawBody === 'string' && error.rawBody.trim() ? error.rawBody : undefined,
+        data: error?.data,
+    }
 }
 
 export default function DataStatusPill({ status, errorDetail, onClick }: { status: string, errorDetail?: any, onClick: () => void }) {
@@ -67,12 +109,12 @@ export function DataDiagnosticModal({ isOpen, onClose, errorDetail }: { isOpen: 
         <WorkspaceModal isOpen={isOpen} onClose={onClose} title="Diagnostic Information">
             <div className="p-4 text-[12px] text-slate-300 font-mono space-y-2">
                 <p><strong>Endpoint:</strong> {errorDetail?.endpoint || '/api/v1/monitoring?include_deleted=true'}</p>
-                <p><strong>Status:</strong> {errorDetail?.status}</p>
-                <p><strong>Status Text:</strong> {errorDetail?.statusText}</p>
-                <p><strong>URL:</strong> {errorDetail?.url}</p>
+                <p><strong>Status:</strong> {errorDetail?.status ?? UNAVAILABLE_DETAIL}</p>
+                <p><strong>Status Text:</strong> {errorDetail?.statusText || UNAVAILABLE_DETAIL}</p>
+                <p><strong>URL:</strong> {errorDetail?.url || UNAVAILABLE_DETAIL}</p>
                 <p><strong>User ID:</strong> {errorDetail?.userId || 'admin_root'}</p>
                 <p><strong>Tenant ID:</strong> {errorDetail?.tenantId || '1'}</p>
-                <p><strong>Message:</strong> {errorDetail?.message}</p>
+                <p><strong>Message:</strong> {errorDetail?.message || 'The request failed.'}</p>
                 <div className="bg-slate-900 p-2 rounded overflow-x-auto">
                     <pre>{typeof errorDetail?.rawBody === 'string' ? errorDetail.rawBody : JSON.stringify(errorDetail?.data || errorDetail, null, 2)}</pre>
                 </div>

@@ -34,6 +34,7 @@ import { WorkspaceCompareShell } from './shared/WorkspaceModalShells'
 import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shared/WorkspaceFlyout'
 import { showWorkspaceRevertToast, showWorkspaceToast } from './shared/WorkspaceToast'
 import { mergeOperationalFieldErrors, parseOperationalApiValidationError } from './shared/OperationalFieldValidation'
+import DiagnosticStatusPill, { DataDiagnosticModal, buildOperationalDiagnosticDetail } from './shared/OperationalDataStatus'
 import { resolveOperationalDataState } from './shared/OperationalDataState'
 import {
   OPERATIONAL_GRID_LAYOUT_POLICIES,
@@ -1482,6 +1483,7 @@ export default function External() {
   const [activeModalBackendFieldErrors, setActiveModalBackendFieldErrors] = useState<Record<string, string>>({})
   const [activeDetails, setActiveDetails] = useState<any>(null)
   const [showLinkModal, setShowLinkModal] = useState(false)
+  const [showExternalDataDiagnostic, setShowExternalDataDiagnostic] = useState(false)
   const [linkSeedEntityId, setLinkSeedEntityId] = useState<number | null>(null)
   const [editingLink, setEditingLink] = useState<any>(null)
   const [isWorkspaceMaximized, setIsWorkspaceMaximized] = useState(false)
@@ -1917,6 +1919,26 @@ export default function External() {
       links,
     ]
   )
+
+  const activeExternalQueryError = activeTab === 'links'
+    ? (isLinkError ? linkError : null)
+    : (isEntityError ? entityError : null)
+
+  const externalDiagnosticDetail = useMemo(() => buildOperationalDiagnosticDetail({
+    endpoint: activeTab === 'links'
+      ? '/api/v1/intelligence/links'
+      : '/api/v1/intelligence/entities?include_deleted=true',
+    error: activeExternalQueryError,
+    fallbackMessage: activeTab === 'links'
+      ? 'The external links request failed.'
+      : 'The external entities request failed.',
+  }), [activeExternalQueryError, activeTab])
+
+  useEffect(() => {
+    if (!activeExternalQueryError) {
+      setShowExternalDataDiagnostic(false)
+    }
+  }, [activeExternalQueryError])
 
   const shouldRenderRawGrid = groupBy === 'raw' || externalDataState.kind !== 'ready'
 
@@ -2703,20 +2725,36 @@ export default function External() {
         ),
         subtitle: `${externalRegistryLabel} and dependency intelligence`,
         actions: (
-          <HeaderScopeSwitch
-            label="Registry Scope"
-            summary={`${registryCounts.active} active · ${registryCounts.archived} archived · ${registryCounts.links} links`}
-            value={activeTab}
-            onChange={(value) => {
-              setActiveTab(value as 'active' | 'deleted' | 'links')
-              setSelectedIds([])
-            }}
-            options={[
-              { label: 'Active', value: 'active' },
-              { label: 'Archived', value: 'deleted' },
-              { label: 'Links', value: 'links' }
-            ]}
-          />
+          <>
+            <HeaderScopeSwitch
+              label="Registry Scope"
+              summary={`${registryCounts.active} active · ${registryCounts.archived} archived · ${registryCounts.links} links`}
+              value={activeTab}
+              onChange={(value) => {
+                setActiveTab(value as 'active' | 'deleted' | 'links')
+                setSelectedIds([])
+              }}
+              options={[
+                { label: 'Active', value: 'active' },
+                { label: 'Archived', value: 'deleted' },
+                { label: 'Links', value: 'links' }
+              ]}
+            />
+            {activeExternalQueryError && (
+              <>
+                <DiagnosticStatusPill
+                  status="error"
+                  errorDetail={{ status: (activeExternalQueryError as any)?.status }}
+                  onClick={() => setShowExternalDataDiagnostic(true)}
+                />
+                <DataDiagnosticModal
+                  isOpen={showExternalDataDiagnostic}
+                  onClose={() => setShowExternalDataDiagnostic(false)}
+                  errorDetail={externalDiagnosticDetail}
+                />
+              </>
+            )}
+          </>
         ),
       }}
       toolbarSearch={(
