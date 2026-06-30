@@ -25,6 +25,7 @@ import { WorkspaceEmptyState, WorkspaceFloatingPanel, WorkspaceSelectField, useW
 import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from "./shared/WorkspaceFlyout"
 import { WorkspaceModal } from "./shared/WorkspaceModal"
 import { WorkspaceHistoryShell } from "./shared/WorkspaceModalShells"
+import { SystemDiagnosticsPanel } from "./settings/SystemDiagnosticsPanel"
 
 const PERMISSION_COMMIT_DEBOUNCE_MS = 900
 
@@ -687,13 +688,13 @@ function PermissionHistoryModal({ versions, allViews, onClose }: { versions: any
 import { ConfigSection } from "./ConfigRegistry"
 
 export default function SettingsPage() {
-  const [topTab, setTopTab] = useState<'environments' | 'permissions' | 'groups' | 'system' | 'tenants' | 'standards' | 'metadata'>('environments')
+  const [topTab, setTopTab] = useState<'environments' | 'permissions' | 'groups' | 'system' | 'diagnostics' | 'tenants' | 'standards' | 'metadata'>('environments')
   
   // Use URL search params to set the initial tab if provided
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
-    if (tab && ['environments', 'permissions', 'groups', 'system', 'tenants', 'standards', 'metadata'].includes(tab)) {
+    if (tab && ['environments', 'permissions', 'groups', 'system', 'diagnostics', 'tenants', 'standards', 'metadata'].includes(tab)) {
       setTopTab(tab as any);
     }
   }, []);
@@ -1142,6 +1143,12 @@ export default function SettingsPage() {
       return res.json();
     }
   });
+
+  useEffect(() => {
+    if (topTab === 'diagnostics' && !userProfile?.is_admin) {
+      setTopTab('environments')
+    }
+  }, [topTab, userProfile?.is_admin])
 
   const operatorMutation = useMutation({
     mutationFn: async (op: any) => {
@@ -1724,6 +1731,7 @@ export default function SettingsPage() {
           { label: 'Groups', value: 'groups' },
           { label: 'Metadata', value: 'metadata' },
           { label: 'Analysis', value: 'system' },
+          ...(userProfile?.is_admin ? [{ label: 'System Diagnostics', value: 'diagnostics' as const }] : []),
           { label: 'Tenants', value: 'tenants' },
           { label: 'Standards', value: 'standards' }
         ]}
@@ -3064,6 +3072,12 @@ export default function SettingsPage() {
                   </div>
                 </div>
              </motion.div>
+          )}
+
+          {topTab === 'diagnostics' && userProfile?.is_admin && (
+            <motion.div key="diagnostics" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <SystemDiagnosticsPanel />
+            </motion.div>
           )}
 
           {topTab === 'standards' && (
