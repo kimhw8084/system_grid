@@ -487,6 +487,57 @@ async def test_external_snapshot_export_exposes_round_trip_headers_for_browser_j
 
 
 @pytest.mark.anyio
+async def test_external_snapshot_export_previews_successfully_on_round_trip(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(seeded_admin_tenant["tenant_id"])}
+    await _ensure_admin(seeded_admin_tenant)
+
+    team_res = await client.post("/api/v1/settings/teams", json={"name": "External Round Trip Ops"}, headers=headers)
+    assert team_res.status_code == 200, team_res.text
+    team = team_res.json()
+
+    entity_res = await client.post("/api/v1/intelligence/entities", json={
+        "name": "External Round Trip Entity",
+        "external_key": "external-round-trip-entity",
+        "type": "API",
+        "ownership_mode": "team",
+        "internal_team_id": team["id"],
+        "status": "Active",
+        "environment": "Production",
+        "business_purpose": "Validate export preview round trip",
+        "contacts_json": [
+            {
+                "role": "Primary",
+                "full_name": "Round Trip Contact",
+                "email": "round.trip@example.com",
+                "external_person_id": "round-trip-contact",
+                "is_primary": True,
+                "is_escalation": False,
+            }
+        ],
+    }, headers=headers)
+    assert entity_res.status_code == 200, entity_res.text
+
+    snapshot_res = await client.get("/api/v1/import/snapshot/external_entities", headers=headers)
+    assert snapshot_res.status_code == 200, snapshot_res.text
+
+    preview_res = await client.post(
+        "/api/v1/import/preview-file",
+        files={"file": ("external-roundtrip.csv", snapshot_res.content, "text/csv")},
+        data={"table_name": "external_entities"},
+        headers=headers,
+    )
+    assert preview_res.status_code == 200, preview_res.text
+    preview = preview_res.json()
+
+    assert preview["total_rows"] == 1
+    assert preview["valid_rows"] == 1
+    assert preview["invalid_rows"] == 0
+    assert preview["results"][0]["status"] == "VALID"
+    assert preview["results"][0]["normalized"]["external_key"] == "external-round-trip-entity"
+
+
+@pytest.mark.anyio
 async def test_monitoring_import_rejects_duplicate_rows_in_same_batch(seeded_admin_tenant):
     client = seeded_admin_tenant["client"]
     headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(seeded_admin_tenant["tenant_id"])}

@@ -1,217 +1,226 @@
 # OUT-13 External Export Round-Trip Proof
 
-## Verdict
+## Runtime ownership proof
 
-`PATCHED`
+Repo root:
 
-Scope:
-- backend export response contract only
-- frontend filename masking removed only for strict round-trip exports
-- no OUT-14 or unrelated workspace changes
+`/Users/haewonkim/home/development/sysgrid`
 
-## Changed files
+Git SHA:
+
+`3aa88d7c9f74cc3f640ae7ca554424acedd76069`
+
+Direct module import proof:
+
+```text
+MAIN_FILE= /Users/haewonkim/home/development/sysgrid/backend/app/main.py
+CWD= /Users/haewonkim/home/development/sysgrid/backend
+EXPOSED_DOWNLOAD_HEADERS= ['Content-Disposition', 'X-SysGrid-Import-Profile', 'X-SysGrid-Schema-Version']
+ROUND_TRIP_EXPOSE_HEADER_NAMES= ('Content-Disposition', 'X-SysGrid-Import-Profile', 'X-SysGrid-Schema-Version')
+```
+
+Exact local start command used for proof on this machine:
+
+```text
+./scripts/start-local.sh --skip-typecheck
+```
+
+Script-owned backend launch:
+
+```text
+cd "$BACKEND_DIR"
+PYTHONPATH=. "$BACKEND_DIR/venv/bin/python" -m uvicorn app.main:app --host "$BACKEND_HOST" --port "$BACKEND_PORT"
+```
+
+Resolved runtime env:
+
+```text
+API Base: http://127.0.0.1:8000
+Frontend Origin Allowed: http://127.0.0.1:5173
+backend/.env.local.runtime -> BACKEND_CORS_ORIGINS=http://127.0.0.1:5173,http://localhost:5173
+frontend/.env.local -> VITE_API_BASE_URL=http://127.0.0.1:8000
+```
+
+Live backend process:
+
+```text
+PID: 50508
+Command: Python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+Listener: 127.0.0.1:8000
+Repo path: /Users/haewonkim/home/development/sysgrid
+```
+
+Temporary route ownership proof during audit:
+
+```text
+GET /__out13_probe -> 200
+{"probe":"main-py-loaded","exposed":["Content-Disposition","X-SysGrid-Import-Profile","X-SysGrid-Schema-Version"]}
+```
+
+Temporary route removed in final code:
+
+```text
+GET /__out13_probe -> 404 Not Found
+```
+
+## Exact root cause
+
+Primary root cause:
+
+- the edited backend code path was correct locally, so the earlier `Access-Control-Expose-Headers: **` result was not caused by the current `backend/app/main.py`
+- the failure mode was runtime ownership mismatch or stale runtime outside the patched local repo path
+
+Secondary contract bugs found during full local round-trip proof:
+
+- External snapshot export was still using the generic raw-table dump instead of the import-contract serializer
+- exported CSV rows leaked legacy enum values and ownership-field combinations that External import preview rejected
+- uploaded CSV preview also leaked `NaN` values from pandas into JSON responses
+
+## Exact files changed
 
 - `backend/app/api/import_engine.py`
 - `backend/app/main.py`
 - `backend/test_import_workflows.py`
-- `frontend/src/components/shared/OperationalImportExport.ts`
-- `frontend/src/components/shared/OperationalImportExport.test.ts`
 - `frontend/OUT-13-EXTERNAL-EXPORT-ROUNDTRIP-PROOF.md`
 
-## Exact backend code that creates the filename
+## Exact fix made
 
 In `backend/app/api/import_engine.py`:
 
-```python
-def build_snapshot_filename(profile: ImportProfile) -> str:
-    if profile.key == "external_entities":
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        return f"SysGrid_External_{timestamp}.csv"
-    return f"SYSGRID_{profile.key}_Snapshot.csv"
-```
+- kept the explicit round-trip header contract
+- fixed `rows_from_dataframe(...)` so uploaded CSV preview does not emit `NaN`
+- fixed External team/operator ID resolution so int-like snapshot IDs such as `1.0` round-trip correctly
+- changed External snapshot export to use the import-contract serializer instead of the raw model dump
+- normalized legacy External snapshot values on export:
+  - `Elevated -> High`
+  - `Moderate -> Medium`
+  - `Pending -> In Progress`
+  - `Review Needed -> Required`
+- normalized exported ownership fields so only the ownership-mode-consistent ID column is populated
+- allowed preview-time identity validation to treat an exact existing entity match as a round-trip preview instead of a duplicate-create failure
 
-The snapshot route uses that helper directly:
+In `backend/test_import_workflows.py`:
 
-```python
-headers = build_round_trip_download_headers(profile, build_snapshot_filename(profile))
-return StreamingResponse(
-    stream,
-    media_type="text/csv",
-    headers=headers
-)
-```
+- kept the explicit expose-header and filename assertions
+- added an External snapshot export -> `preview-file` round-trip test
 
-Expected contract:
+In `backend/app/main.py`:
 
-```text
-Content-Disposition: attachment; filename=SysGrid_External_YYYY-MM-DD_HH-mm-ss.csv
-```
+- no final probe code remains
 
-## Exact backend code that exposes headers
+## Final curl proof
 
-Header names remain defined once in `backend/app/api/import_engine.py`:
-
-```python
-ROUND_TRIP_EXPOSE_HEADER_NAMES = (
-    "Content-Disposition",
-    "X-SysGrid-Import-Profile",
-    "X-SysGrid-Schema-Version",
-)
-ROUND_TRIP_EXPOSE_HEADERS = ", ".join(ROUND_TRIP_EXPOSE_HEADER_NAMES)
-```
-
-The final successful response is normalized in `backend/app/main.py`:
-
-```python
-@app.middleware("http")
-async def normalize_round_trip_export_headers(request: Request, call_next):
-    response = await call_next(request)
-    if response.status_code == 200:
-        response_header_names = {key.lower() for key in response.headers.keys()}
-        if {
-            "content-disposition",
-            "x-sysgrid-import-profile",
-            "x-sysgrid-schema-version",
-        }.issubset(response_header_names):
-            response.headers["Access-Control-Expose-Headers"] = ROUND_TRIP_EXPOSE_HEADERS
-    return response
-```
-
-FastAPI CORS middleware also advertises the same explicit list:
-
-```python
-EXPOSED_DOWNLOAD_HEADERS = list(ROUND_TRIP_EXPOSE_HEADER_NAMES)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=allow_creds,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=EXPOSED_DOWNLOAD_HEADERS,
-)
-```
-
-Result:
+Command used:
 
 ```text
-Access-Control-Expose-Headers: Content-Disposition, X-SysGrid-Import-Profile, X-SysGrid-Schema-Version
+curl -i -H "Origin: http://127.0.0.1:5173" "http://127.0.0.1:8000/api/v1/import/snapshot/external_entities"
 ```
 
-Forbidden results:
+Observed final headers:
+
+```text
+HTTP/1.1 200 OK
+content-disposition: attachment; filename=SysGrid_External_2026-06-30_11-56-19.csv
+x-sysgrid-schema-version: 2026-06-external-v1
+x-sysgrid-import-profile: external_entities
+access-control-expose-headers: Content-Disposition, X-SysGrid-Import-Profile, X-SysGrid-Schema-Version
+access-control-allow-origin: http://127.0.0.1:5173
+```
+
+Forbidden final values not present:
 
 ```text
 Access-Control-Expose-Headers: *
 Access-Control-Expose-Headers: **
-Access-Control-Expose-Headers:
 ```
 
-## Frontend filename ownership
+## Final browser proof
 
-`frontend/src/components/shared/OperationalImportExport.ts` no longer silently masks a missing backend filename during strict round-trip exports.
+Browser-runtime proof used a real Chromium page on `http://127.0.0.1:5173`.
 
-Strict round-trip validation now fails if `Content-Disposition` is unreadable:
+Equivalent console snippet:
 
-```ts
-if ((expectedProfile || requireSchemaHeaders) && !fileName) {
-  throw new Error('Export did not include Content-Disposition metadata')
-}
+```js
+const r = await fetch("http://127.0.0.1:8000/api/v1/import/snapshot/external_entities", { credentials: "include" });
+console.log("status:", r.status);
+console.log("profile:", r.headers.get("X-SysGrid-Import-Profile"));
+console.log("schema:", r.headers.get("X-SysGrid-Schema-Version"));
+console.log("content-disposition:", r.headers.get("Content-Disposition"));
 ```
 
-That keeps backend `Content-Disposition` as the filename owner for External snapshot export instead of falling back to a frontend-only name.
-
-## Automated proof
-
-Backend tests:
-
-- `backend/test_import_workflows.py::test_external_snapshot_export_exposes_round_trip_headers_for_browser_js`
-- `backend/test_import_workflows.py::test_monitoring_snapshot_export_uses_round_trip_import_contract`
-
-Backend assertions now prove:
-
-- the response returns exactly one `Content-Disposition` header
-- the response returns exactly one `Access-Control-Expose-Headers` header
-- `Access-Control-Expose-Headers` equals `Content-Disposition, X-SysGrid-Import-Profile, X-SysGrid-Schema-Version`
-- `Access-Control-Expose-Headers` is not `*`
-- `Access-Control-Expose-Headers` is not `**`
-- `Content-Disposition` is not `attachment; filename=SYSGRID_external_entities_Snapshot.csv`
-- `Content-Disposition` matches `attachment; filename=SysGrid_External_YYYY-MM-DD_HH-mm-ss.csv`
-
-Focused backend run:
+Observed browser result:
 
 ```text
-rtk pytest -q backend/test_import_workflows.py -k "external_snapshot_export_exposes_round_trip_headers_for_browser_js or monitoring_snapshot_export_uses_round_trip_import_contract or external_import_schema_template_preview_execute_and_snapshot"
+status: 200
+profile: external_entities
+schema: 2026-06-external-v1
+content-disposition: attachment; filename=SysGrid_External_2026-06-30_11-56-32.csv
+```
+
+## Downloaded filename proof
+
+Example final backend-owned filename:
+
+```text
+SysGrid_External_2026-06-30_11-56-19.csv
+```
+
+Backend and browser both read the same `Content-Disposition` contract.
+
+## External Import preview proof
+
+Command used:
+
+```text
+curl -X POST \
+  -F "table_name=external_entities" \
+  -F "file=@/private/tmp/out13_final_external.csv;type=text/csv" \
+  http://127.0.0.1:8000/api/v1/import/preview-file
+```
+
+Observed summary:
+
+```text
+table_name: external_entities
+total_rows: 28
+valid_rows: 28
+invalid_rows: 0
+first_result_status: VALID
+```
+
+This proves the exported External snapshot CSV now previews successfully through External Import on the same local runtime.
+
+## Tests run
+
+Backend:
+
+```text
+rtk pytest -q backend/test_import_workflows.py -k "external_snapshot_export_exposes_round_trip_headers_for_browser_js or external_snapshot_export_previews_successfully_on_round_trip or monitoring_snapshot_export_uses_round_trip_import_contract"
 ```
 
 Result:
 
 ```text
-4 passed
+Pytest: 6 passed
 ```
 
-Frontend test:
-
-- `frontend/src/components/shared/OperationalImportExport.test.ts`
-
-Frontend assertions prove:
-
-- strict export uses backend `Content-Disposition` for the filename
-- strict export still fails if schema metadata is missing
-- strict export now fails if backend `Content-Disposition` is missing instead of masking it with a frontend fallback
-
-Focused frontend run:
+Frontend:
 
 ```text
-rtk npm run test:unit -- src/components/shared/OperationalImportExport.test.ts
+cd frontend && npm run test:unit -- src/components/shared/OperationalImportExport.test.ts
 ```
 
 Result:
 
 ```text
-1 file passed, 3 tests passed
+Test Files  1 passed
+Tests       3 passed
 ```
 
-## Live HTTP proof after restart
+## Scope confirmation
 
-Restarted backend locally and verified the real `8000` response with an `Origin` header:
-
-```text
-rtk curl -si \
-  -H 'Origin: http://localhost:5173' \
-  -H 'X-User-Id: haewon.kim' \
-  -H 'X-Tenant-Id: 1' \
-  http://127.0.0.1:8000/api/v1/import/snapshot/external_entities
-```
-
-Observed 200 response headers:
-
-```text
-content-disposition: attachment; filename=SysGrid_External_2026-06-30_10-46-06.csv
-x-sysgrid-schema-version: 2026-06-external-v1
-x-sysgrid-import-profile: external_entities
-access-control-expose-headers: Content-Disposition, X-SysGrid-Import-Profile, X-SysGrid-Schema-Version
-access-control-allow-origin: http://localhost:5173
-```
-
-This confirms the live backend no longer emits wildcard expose headers on the successful External snapshot export path.
-
-## Browser retest status
-
-Not completed in this session.
-
-Reason:
-
-- the in-app browser runtime is unavailable here
-- browser discovery returned `[]`
-- no browser-console fetch or toast inspection could be automated honestly
-
-Manual browser retest still required after restart:
-
-1. Trigger External export from the frontend running at `http://localhost:5173`.
-2. Confirm there is no missing-profile toast.
-3. In browser console, run `fetch` against `http://127.0.0.1:8000/api/v1/import/snapshot/external_entities` and confirm:
-   - `response.headers.get('X-SysGrid-Import-Profile') === 'external_entities'`
-   - `response.headers.get('X-SysGrid-Schema-Version') === '2026-06-external-v1'`
-   - `response.headers.get('Content-Disposition')` returns the backend filename
-4. Confirm the downloaded filename includes hour, minute, and second:
-   - `SysGrid_External_YYYY-MM-DD_HH-mm-ss.csv`
+- Monitoring remains out of scope for this issue
+- no Monitoring migration was used as the golden method
+- no frontend validation was weakened
+- no `response.headers.get(...)` checks were removed
+- temporary probe code was removed from final backend code

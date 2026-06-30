@@ -131,8 +131,11 @@ def split_multi_value(value: Any) -> list[str]:
 
 
 def rows_from_dataframe(df: pd.DataFrame) -> list[dict[str, Any]]:
-    normalized = df.where(pd.notnull(df), None)
-    return [dict(row) for _, row in normalized.iterrows()]
+    records = df.to_dict(orient="records")
+    return [
+        {key: normalize_scalar(value) for key, value in record.items()}
+        for record in records
+    ]
 
 
 def load_dataframe_from_upload(file: UploadFile, content: bytes) -> pd.DataFrame:
@@ -628,12 +631,44 @@ def _parse_bool_value(value: Any, *, field_name: str) -> Optional[bool]:
     raise HTTPException(status_code=400, detail=f"{field_name} must be a boolean value")
 
 
+def _normalize_external_export_risk_rating(value: Optional[str]) -> str:
+    normalized = (value or "").strip()
+    if normalized in {"Critical", "High", "Medium", "Low"}:
+        return normalized
+    if normalized == "Elevated":
+        return "High"
+    if normalized == "Moderate":
+        return "Medium"
+    return "Low"
+
+
+def _normalize_external_export_assessment_status(value: Optional[str]) -> Optional[str]:
+    normalized = (value or "").strip()
+    if not normalized:
+        return None
+    if normalized in {"Required", "In Progress", "Approved", "Rejected", "Not Required"}:
+        return normalized
+    if normalized == "Pending":
+        return "In Progress"
+    if normalized == "Review Needed":
+        return "Required"
+    if normalized == "Complete":
+        return "Approved"
+    if normalized == "Not Started":
+        return "Required"
+    return None
+
+
 async def _resolve_team_id(db: AsyncSession, value: Any) -> Optional[int]:
     normalized = normalize_scalar(value)
     if normalized is None:
         return None
-    if str(normalized).isdigit():
-        team = await db.get(models.Team, int(normalized))
+    try:
+        team_identifier = _parse_int_like(normalized)
+    except ValueError:
+        team_identifier = None
+    if team_identifier is not None:
+        team = await db.get(models.Team, team_identifier)
         if team and not team.is_archived:
             return team.id
     res = await db.execute(
@@ -652,8 +687,12 @@ async def _resolve_operator_id(db: AsyncSession, value: Any) -> Optional[int]:
     normalized = normalize_scalar(value)
     if normalized is None:
         return None
-    if str(normalized).isdigit():
-        operator = await db.get(models.Operator, int(normalized))
+    try:
+        operator_identifier = _parse_int_like(normalized)
+    except ValueError:
+        operator_identifier = None
+    if operator_identifier is not None:
+        operator = await db.get(models.Operator, operator_identifier)
         if operator:
             return operator.id
     res = await db.execute(
@@ -672,6 +711,7 @@ async def _resolve_operator_id(db: AsyncSession, value: Any) -> Optional[int]:
 
 
 async def serialize_external_example_row(db: AsyncSession, entity: models.ExternalEntity) -> dict[str, Any]:
+    ownership_mode = "individual" if entity.internal_operator_id else "team"
     return {
         "name": entity.name or "",
         "external_key": entity.external_key or "",
@@ -680,9 +720,9 @@ async def serialize_external_example_row(db: AsyncSession, entity: models.Extern
         "subtype": entity.subtype or "",
         "owner_organization": entity.owner_organization or "",
         "owner_team": entity.owner_team or "",
-        "ownership_mode": entity.ownership_mode or ("individual" if entity.internal_operator_id else "team"),
-        "internal_team_id": entity.internal_team_id or "",
-        "internal_operator_id": entity.internal_operator_id or "",
+        "ownership_mode": ownership_mode,
+        "internal_team_id": entity.internal_team_id if ownership_mode == "team" else "",
+        "internal_operator_id": entity.internal_operator_id if ownership_mode == "individual" else "",
         "status": entity.status or "",
         "environment": entity.environment or "",
         "description": entity.description or "",
@@ -701,12 +741,12 @@ async def serialize_external_example_row(db: AsyncSession, entity: models.Extern
         "supports_outbound": "true" if entity.supports_outbound else "false",
         "source_system": entity.source_system or "",
         "source_record_id": entity.source_record_id or "",
-        "risk_rating": entity.risk_rating or "",
+        "risk_rating": _normalize_external_export_risk_rating(entity.risk_rating),
         "contains_customer_data": "true" if entity.contains_customer_data else "false",
         "contains_credentials": "true" if entity.contains_credentials else "false",
         "stores_pii": "true" if entity.stores_pii else "false",
         "internet_exposed": "true" if entity.internet_exposed else "false",
-        "third_party_assessment_status": entity.third_party_assessment_status or "",
+        "third_party_assessment_status": _normalize_external_export_assessment_status(entity.third_party_assessment_status) or "",
         "contacts_json": json.dumps(entity.contacts_json or []),
         "metadata_json": json.dumps(entity.metadata_json or {}),
     }
@@ -781,7 +821,8 @@ async def preview_external_rows(db: AsyncSession, rows: list[dict[str, Any]]) ->
         normalized_row: dict[str, Any] = {}
         try:
             candidate = await build_external_import_row(db, raw_row)
-            await _validate_external_import_identity(db, candidate)
+            existing_entity_id = await _find_matching_external_entity_id(db, candidate)
+            await _validate_external_import_identity(db, candidate, entity_id=existing_entity_id)
             fingerprint = (
                 (candidate.get("name") or "").strip().lower(),
                 candidate.get("type"),
@@ -817,6 +858,33 @@ async def preview_external_rows(db: AsyncSession, rows: list[dict[str, Any]]) ->
         "total_errors": sum(len(result["errors"]) for result in invalid),
         "results": results,
     }
+
+
+async def _find_matching_external_entity_id(db: AsyncSession, payload: dict[str, Any]) -> Optional[int]:
+    external_key = (payload.get("external_key") or "").strip() if payload.get("external_key") else None
+    if external_key:
+        existing_entity_id = await db.scalar(
+            select(models.ExternalEntity.id).where(models.ExternalEntity.external_key == external_key)
+        )
+        if existing_entity_id is not None:
+            return existing_entity_id
+
+    name = (payload.get("name") or "").strip()
+    entity_type = (payload.get("type") or "").strip()
+    owner_organization = (payload.get("owner_organization") or "").strip().lower() or None
+    if not name or not entity_type:
+        return None
+
+    query = select(models.ExternalEntity.id).where(
+        func.lower(models.ExternalEntity.name) == name.lower(),
+        models.ExternalEntity.type == entity_type,
+        models.ExternalEntity.is_deleted == False,
+    )
+    if owner_organization is None:
+        query = query.where(or_(models.ExternalEntity.owner_organization == None, models.ExternalEntity.owner_organization == ""))
+    else:
+        query = query.where(func.lower(models.ExternalEntity.owner_organization) == owner_organization)
+    return await db.scalar(query)
 
 
 async def _validate_external_import_identity(db: AsyncSession, payload: dict[str, Any], entity_id: Optional[int] = None) -> None:
@@ -1534,19 +1602,21 @@ async def download_template(
 async def download_snapshot(table_name: str, db: AsyncSession = Depends(get_db)):
     profile = get_import_profile(table_name)
     model = profile.model
-    if profile.key == "monitoring_items":
+    if profile.serialize_example_row:
         fields = [field for field in profile.fields]
         columns = [field.name for field in fields]
-        result = await db.execute(
-            select(models.MonitoringItem)
-            .options(joinedload(models.MonitoringItem.owners).joinedload(models.MonitoringOwner.operator))
-            .where(models.MonitoringItem.is_deleted == False)
-            .order_by(models.MonitoringItem.updated_at.desc(), models.MonitoringItem.id.desc())
-        )
+        query = select(model).order_by(model.updated_at.desc(), model.id.desc())
+        if profile.key == "monitoring_items":
+            query = query.options(
+                joinedload(models.MonitoringItem.owners).joinedload(models.MonitoringOwner.operator)
+            )
+        if hasattr(model, "is_deleted"):
+            query = query.where(model.is_deleted == False)
+        result = await db.execute(query)
         records = result.unique().scalars().all()
         data = []
         for record in records:
-            serialized = await serialize_monitoring_example_row(db, record)
+            serialized = await profile.serialize_example_row(db, record)
             data.append({column: serialized.get(column, "") for column in columns})
         df = pd.DataFrame(data, columns=columns)
     else:
