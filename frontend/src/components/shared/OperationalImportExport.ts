@@ -23,10 +23,10 @@ function buildImportDownloadUrl(
   return `/api/v1/import/${kind}/${tableName}${query ? `?${query}` : ''}`
 }
 
-function getDownloadFileName(response: Response, fallbackFileName: string) {
+function parseDownloadFileName(response: Response) {
   const contentDisposition = response.headers.get('Content-Disposition') || response.headers.get('content-disposition')
   const match = contentDisposition?.match(/filename="?([^"]+)"?/)
-  return match?.[1] || fallbackFileName
+  return match?.[1] || null
 }
 
 function validateRoundTripHeaders(
@@ -38,12 +38,16 @@ function validateRoundTripHeaders(
 
   const profile = response.headers.get('X-SysGrid-Import-Profile') || response.headers.get('x-sysgrid-import-profile')
   const schemaVersion = response.headers.get('X-SysGrid-Schema-Version') || response.headers.get('x-sysgrid-schema-version')
+  const fileName = parseDownloadFileName(response)
 
   if (expectedProfile && profile !== expectedProfile) {
     throw new Error(`Export returned import profile "${profile || 'missing'}" instead of "${expectedProfile}"`)
   }
   if (requireSchemaHeaders && !schemaVersion) {
     throw new Error('Export did not include schema version metadata')
+  }
+  if ((expectedProfile || requireSchemaHeaders) && !fileName) {
+    throw new Error('Export did not include Content-Disposition metadata')
   }
 }
 
@@ -63,10 +67,7 @@ export async function downloadOperationalImportFile({
   const objectUrl = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = objectUrl
-  link.download = getDownloadFileName(
-    response,
-    fallbackFileName || `SYSGRID_${tableName}_${kind === 'snapshot' ? 'Snapshot' : 'Template'}.csv`
-  )
+  link.download = parseDownloadFileName(response) || fallbackFileName || `SYSGRID_${tableName}_${kind === 'snapshot' ? 'Snapshot' : 'Template'}.csv`
   link.click()
   URL.revokeObjectURL(objectUrl)
 

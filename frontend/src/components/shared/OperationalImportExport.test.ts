@@ -66,6 +66,7 @@ describe('downloadOperationalImportFile', () => {
     apiFetchMock.mockResolvedValue(new Response('name,type\nA,API\n', {
       status: 200,
       headers: {
+        'Content-Disposition': 'attachment; filename=SysGrid_External_2026-06-30_08-21-47.csv',
         'X-SysGrid-Import-Profile': 'external_entities',
       },
     }))
@@ -76,5 +77,22 @@ describe('downloadOperationalImportFile', () => {
       expectedProfile: 'external_entities',
       requireSchemaHeaders: true,
     })).rejects.toThrow('Export did not include schema version metadata')
+  })
+
+  it('throws instead of masking a missing backend filename on strict round-trip exports', async () => {
+    apiFetchMock.mockResolvedValue(new Response('name,type\nA,API\n', {
+      status: 200,
+      headers: {
+        'X-SysGrid-Import-Profile': 'external_entities',
+        'X-SysGrid-Schema-Version': '2026-06-external-v1',
+      },
+    }))
+
+    await expect(downloadOperationalImportFile({
+      tableName: 'external_entities',
+      kind: 'snapshot',
+      expectedProfile: 'external_entities',
+      requireSchemaHeaders: true,
+    })).rejects.toThrow('Export did not include Content-Disposition metadata')
   })
 })

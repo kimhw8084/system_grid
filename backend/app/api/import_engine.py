@@ -1443,7 +1443,6 @@ def resolve_template_fields(profile: ImportProfile, requested_columns: Optional[
 def build_round_trip_download_headers(profile: ImportProfile, filename: str) -> dict[str, str]:
     headers = {
         "Content-Disposition": f"attachment; filename={filename}",
-        "Access-Control-Expose-Headers": ROUND_TRIP_EXPOSE_HEADERS,
     }
     if profile.key == "monitoring_items":
         headers["X-SysGrid-Schema-Version"] = MONITORING_IMPORT_SCHEMA_VERSION

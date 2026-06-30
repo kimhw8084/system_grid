@@ -464,13 +464,17 @@ async def test_external_snapshot_export_exposes_round_trip_headers_for_browser_j
     assert snapshot_res.status_code == 200, snapshot_res.text
     assert snapshot_res.headers["x-sysgrid-import-profile"] == "external_entities"
     assert snapshot_res.headers["x-sysgrid-schema-version"] == "2026-06-external-v1"
-    content_disposition = snapshot_res.headers["content-disposition"]
+    content_disposition_values = snapshot_res.headers.get_list("content-disposition")
+    assert content_disposition_values and len(content_disposition_values) == 1
+    content_disposition = content_disposition_values[0]
     assert content_disposition != "attachment; filename=SYSGRID_external_entities_Snapshot.csv"
     assert re.fullmatch(
         r'attachment; filename=SysGrid_External_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.csv',
         content_disposition,
     )
-    exposed_headers = snapshot_res.headers["access-control-expose-headers"]
+    exposed_header_values = snapshot_res.headers.get_list("access-control-expose-headers")
+    assert exposed_header_values == ["Content-Disposition, X-SysGrid-Import-Profile, X-SysGrid-Schema-Version"]
+    exposed_headers = exposed_header_values[0]
     assert exposed_headers.strip()
     assert exposed_headers not in {"*", "**"}
     assert exposed_headers == "Content-Disposition, X-SysGrid-Import-Profile, X-SysGrid-Schema-Version"

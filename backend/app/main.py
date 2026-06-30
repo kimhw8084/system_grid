@@ -5,7 +5,7 @@ from sqlalchemy import select, text
 from .database import engine, Base
 from .models import models
 from .api import devices, import_engine, networks, security, dashboard, racks, audit, sites, maintenance, logical_services, settings as settings_api, monitoring, troubleshoot, data_flows, intelligence, rca, investigations, far, projects, vendors, knowledge, tenants
-from .api.import_engine import ROUND_TRIP_EXPOSE_HEADER_NAMES
+from .api.import_engine import ROUND_TRIP_EXPOSE_HEADER_NAMES, ROUND_TRIP_EXPOSE_HEADERS
 from .api.error_utils import standardize_validation_errors
 
 from .core.config import settings
@@ -77,6 +77,20 @@ EXPOSED_DOWNLOAD_HEADERS = list(ROUND_TRIP_EXPOSE_HEADER_NAMES)
 
 # Make manager accessible to routers
 app.state.ws_manager = manager
+
+
+@app.middleware("http")
+async def normalize_round_trip_export_headers(request: Request, call_next):
+    response = await call_next(request)
+    if response.status_code == 200:
+        response_header_names = {key.lower() for key in response.headers.keys()}
+        if {
+            "content-disposition",
+            "x-sysgrid-import-profile",
+            "x-sysgrid-schema-version",
+        }.issubset(response_header_names):
+            response.headers["Access-Control-Expose-Headers"] = ROUND_TRIP_EXPOSE_HEADERS
+    return response
 
 @app.websocket(f"{settings.API_V1_STR}/ws/sync")
 async def websocket_endpoint(websocket: WebSocket):
