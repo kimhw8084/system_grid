@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 import io
 import json
 from typing import Any, Awaitable, Callable, Dict, List, Optional
@@ -28,7 +29,12 @@ router = APIRouter(prefix="/import", tags=["Intelligence Engine"])
 MONITORING_IMPORT_SCHEMA_VERSION = "2026-06-monitoring-v1"
 EXTERNAL_IMPORT_SCHEMA_VERSION = "2026-06-external-v1"
 NETWORK_IMPORT_SCHEMA_VERSION = "2026-06-network-v1"
-ROUND_TRIP_EXPOSE_HEADERS = "Content-Disposition, X-SysGrid-Import-Profile, X-SysGrid-Schema-Version"
+ROUND_TRIP_EXPOSE_HEADER_NAMES = (
+    "Content-Disposition",
+    "X-SysGrid-Import-Profile",
+    "X-SysGrid-Schema-Version",
+)
+ROUND_TRIP_EXPOSE_HEADERS = ", ".join(ROUND_TRIP_EXPOSE_HEADER_NAMES)
 
 
 @dataclass
@@ -1448,6 +1454,13 @@ def build_round_trip_download_headers(profile: ImportProfile, filename: str) -> 
     return headers
 
 
+def build_snapshot_filename(profile: ImportProfile) -> str:
+    if profile.key == "external_entities":
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        return f"SysGrid_External_{timestamp}.csv"
+    return f"SYSGRID_{profile.key}_Snapshot.csv"
+
+
 @router.get("/schema/{table_name}")
 async def get_import_schema(table_name: str, db: AsyncSession = Depends(get_db)):
     profile = get_import_profile(table_name)
@@ -1559,7 +1572,7 @@ async def download_snapshot(table_name: str, db: AsyncSession = Depends(get_db))
     stream = io.BytesIO()
     df.to_csv(stream, index=False)
     stream.seek(0)
-    headers = build_round_trip_download_headers(profile, f"SYSGRID_{table_name}_Snapshot.csv")
+    headers = build_round_trip_download_headers(profile, build_snapshot_filename(profile))
     return StreamingResponse(
         stream,
         media_type="text/csv",

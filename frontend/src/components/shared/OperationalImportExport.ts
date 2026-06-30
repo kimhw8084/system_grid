@@ -7,7 +7,6 @@ interface DownloadOperationalImportFileOptions {
   expectedProfile?: string
   requireSchemaHeaders?: boolean
   fallbackFileName?: string
-  downloadFileName?: string
 }
 
 function buildImportDownloadUrl(
@@ -28,24 +27,6 @@ function getDownloadFileName(response: Response, fallbackFileName: string) {
   const contentDisposition = response.headers.get('Content-Disposition') || response.headers.get('content-disposition')
   const match = contentDisposition?.match(/filename="?([^"]+)"?/)
   return match?.[1] || fallbackFileName
-}
-
-function formatExportTimestampPart(value: number) {
-  return String(value).padStart(2, '0')
-}
-
-export function buildOperationalExportFileName(viewName: string, date: Date = new Date()) {
-  const timestamp = [
-    date.getFullYear(),
-    formatExportTimestampPart(date.getMonth() + 1),
-    formatExportTimestampPart(date.getDate()),
-  ].join('-')
-  const time = [
-    formatExportTimestampPart(date.getHours()),
-    formatExportTimestampPart(date.getMinutes()),
-    formatExportTimestampPart(date.getSeconds()),
-  ].join('-')
-  return `SysGrid_${viewName}_${timestamp}_${time}.csv`
 }
 
 function validateRoundTripHeaders(
@@ -73,7 +54,6 @@ export async function downloadOperationalImportFile({
   expectedProfile,
   requireSchemaHeaders = false,
   fallbackFileName,
-  downloadFileName,
 }: DownloadOperationalImportFileOptions) {
   const endpoint = buildImportDownloadUrl(tableName, kind, params)
   const response = await apiFetch(endpoint, { method: 'GET' })
@@ -83,7 +63,7 @@ export async function downloadOperationalImportFile({
   const objectUrl = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = objectUrl
-  link.download = downloadFileName || getDownloadFileName(
+  link.download = getDownloadFileName(
     response,
     fallbackFileName || `SYSGRID_${tableName}_${kind === 'snapshot' ? 'Snapshot' : 'Template'}.csv`
   )

@@ -1,6 +1,7 @@
 import csv
 import io
 import json
+import re
 import pytest
 from app.api.settings import ensure_tenant_admin_async
 from app.models.config import Tenant
@@ -463,10 +464,16 @@ async def test_external_snapshot_export_exposes_round_trip_headers_for_browser_j
     assert snapshot_res.status_code == 200, snapshot_res.text
     assert snapshot_res.headers["x-sysgrid-import-profile"] == "external_entities"
     assert snapshot_res.headers["x-sysgrid-schema-version"] == "2026-06-external-v1"
-    assert "attachment; filename=SYSGRID_external_entities_Snapshot.csv" in snapshot_res.headers["content-disposition"]
+    content_disposition = snapshot_res.headers["content-disposition"]
+    assert content_disposition != "attachment; filename=SYSGRID_external_entities_Snapshot.csv"
+    assert re.fullmatch(
+        r'attachment; filename=SysGrid_External_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.csv',
+        content_disposition,
+    )
     exposed_headers = snapshot_res.headers["access-control-expose-headers"]
     assert exposed_headers.strip()
     assert exposed_headers not in {"*", "**"}
+    assert exposed_headers == "Content-Disposition, X-SysGrid-Import-Profile, X-SysGrid-Schema-Version"
     exposed_headers_normalized = {header.strip().lower() for header in exposed_headers.split(",") if header.strip()}
     assert exposed_headers_normalized == {
         "content-disposition",
