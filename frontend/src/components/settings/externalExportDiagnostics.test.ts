@@ -122,6 +122,7 @@ describe('runExternalExportContractCheck', () => {
     expect(result.transport.manifest.customIdentityHeadersSent).toBe(true)
     expect(result.transport.manifest.contentTypeHeaderSent).toBeNull()
     expect(result.transport.manifest.likelyPreflight).toBe(true)
+    expect(result.wildcardExposeHeadersDetected).toBe(false)
   })
 
   it('returns PARTIAL when manifest fallback is valid but custom headers are unreadable', async () => {
@@ -236,6 +237,22 @@ describe('runExternalExportContractCheck', () => {
     expect(result.headers.verdict).toBe('FAIL')
     expect(result.profile).toBe('wrong_profile')
   })
+
+  it('fails when expose headers uses a wildcard value', async () => {
+    const result = await runCheck(createFetchImpl({
+      csvHeaders: {
+        'Content-Type': 'text/csv',
+        'Content-Disposition': `attachment; filename=${validManifest.filename}`,
+        'X-SysGrid-Import-Profile': 'external_entities',
+        'X-SysGrid-Schema-Version': '2026-06-external-v1',
+        'Access-Control-Expose-Headers': '*',
+      },
+    }))
+
+    expect(result.status).toBe('FAIL')
+    expect(result.layer).toBe('CORS expose headers')
+    expect(result.wildcardExposeHeadersDetected).toBe(true)
+  })
 })
 
 describe('formatExternalExportContractReport', () => {
@@ -264,6 +281,8 @@ describe('formatExternalExportContractReport', () => {
       filenameValue: 'SysGrid_External_2026-06-30_15-11-09.csv',
       schemaVersion: '2026-06-external-v1',
       profile: 'external_entities',
+      exposeHeadersValue: 'Content-Disposition, X-SysGrid-Import-Profile, X-SysGrid-Schema-Version',
+      wildcardExposeHeadersDetected: false,
       transport: {
         manifest: {
           method: 'GET',
@@ -293,6 +312,8 @@ describe('formatExternalExportContractReport', () => {
     expect(text).toContain('Manifest Status: 200')
     expect(text).toContain('Redirect Detected: no')
     expect(text).toContain('Manifest Fallback Used: yes')
+    expect(text).toContain('Expose Headers: Content-Disposition, X-SysGrid-Import-Profile, X-SysGrid-Schema-Version')
+    expect(text).toContain('Wildcard Expose Headers: no')
     expect(text).toContain('Manifest Request: method=GET; custom_identity_headers=yes; content_type=none; likely_simple=no; likely_preflight=yes')
     expect(text).toContain('Overall: PASS')
   })

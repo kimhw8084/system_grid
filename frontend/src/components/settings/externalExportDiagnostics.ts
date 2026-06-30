@@ -45,6 +45,8 @@ export interface ExternalExportContractResult {
   filenameValue: string | null
   schemaVersion: string | null
   profile: string | null
+  exposeHeadersValue: string | null
+  wildcardExposeHeadersDetected: boolean
   transport: {
     manifest: RequestTransportClassification
     csv: RequestTransportClassification
@@ -343,6 +345,8 @@ export function formatExternalExportContractReport(result: ExternalExportContrac
     `Filename: ${result.filenameValue || 'missing'}`,
     `Schema Version: ${result.schemaVersion || 'missing'}`,
     `Profile: ${result.profile || 'missing'}`,
+    `Expose Headers: ${result.exposeHeadersValue || 'missing'}`,
+    `Wildcard Expose Headers: ${result.wildcardExposeHeadersDetected ? 'yes' : 'no'}`,
     `Layer: ${result.layer}`,
     `Manifest: ${result.manifest.verdict} — ${result.manifest.message}`,
     `CSV Download: ${result.csvDownload.verdict} — ${result.csvDownload.message}`,
@@ -386,6 +390,8 @@ export async function runExternalExportContractCheck(options: RuntimeRequestOpti
     filenameValue: null,
     schemaVersion: null,
     profile: null,
+    exposeHeadersValue: null,
+    wildcardExposeHeadersDetected: false,
     transport: {
       manifest: manifestTransport,
       csv: buildRequestPlan(buildAbsoluteApiUrl('/api/v1/import/snapshot/external_entities', apiBase, frontendOrigin), { method: 'GET' }, { ...options, frontendOrigin, apiBase }),
@@ -525,7 +531,24 @@ export async function runExternalExportContractCheck(options: RuntimeRequestOpti
   const headerProfile = csvResponse.headers?.get('x-sysgrid-import-profile') || csvResponse.headers?.get('X-SysGrid-Import-Profile') || null
   const headerSchema = csvResponse.headers?.get('x-sysgrid-schema-version') || csvResponse.headers?.get('X-SysGrid-Schema-Version') || null
   const headerFileName = parseFileNameFromContentDisposition(csvResponse.headers?.get('content-disposition') || csvResponse.headers?.get('Content-Disposition'))
+  const exposeHeadersValue = csvResponse.headers?.get('access-control-expose-headers') || csvResponse.headers?.get('Access-Control-Expose-Headers') || null
+  const wildcardExposeHeadersDetected = Boolean(exposeHeadersValue && exposeHeadersValue.split(',').map((value) => value.trim()).includes('*'))
   const headersReadable = Boolean(headerProfile || headerSchema || headerFileName)
+
+  if (wildcardExposeHeadersDetected) {
+    return buildFailureResult({
+      ...baseWithManifest,
+      headersReadable,
+      exposeHeadersValue,
+      wildcardExposeHeadersDetected,
+      layer: 'CORS expose headers',
+      explanation: 'CSV response exposed headers with a wildcard value instead of an explicit allowlist.',
+      recommendedFix: 'Return explicit Access-Control-Expose-Headers values for Content-Disposition, X-SysGrid-Import-Profile, and X-SysGrid-Schema-Version.',
+      csvDownload: { verdict: 'PASS', message: 'CSV endpoint returned successful CSV content.' },
+      headers: { verdict: 'FAIL', message: `Expose headers value was "${exposeHeadersValue}".` },
+      filename: { verdict: 'PARTIAL', message: 'Filename validation stopped because the expose-header contract was unsafe.' },
+    })
+  }
 
   if (headerProfile && headerProfile !== EXPECTED_PROFILE) {
     return buildFailureResult({
@@ -538,6 +561,8 @@ export async function runExternalExportContractCheck(options: RuntimeRequestOpti
       headers: { verdict: 'FAIL', message: `Readable profile header was "${headerProfile}".` },
       filename: { verdict: 'PARTIAL', message: 'Filename check skipped because profile validation failed.' },
       profile: headerProfile,
+      exposeHeadersValue,
+      wildcardExposeHeadersDetected,
     })
   }
 
@@ -552,6 +577,8 @@ export async function runExternalExportContractCheck(options: RuntimeRequestOpti
       headers: { verdict: 'FAIL', message: `Readable schema header was "${headerSchema}".` },
       filename: { verdict: 'PARTIAL', message: 'Filename check skipped because schema validation failed.' },
       schemaVersion: headerSchema,
+      exposeHeadersValue,
+      wildcardExposeHeadersDetected,
     })
   }
 
@@ -566,6 +593,8 @@ export async function runExternalExportContractCheck(options: RuntimeRequestOpti
       headers: { verdict: 'FAIL', message: `Readable Content-Disposition filename was "${headerFileName}".` },
       filename: { verdict: 'FAIL', message: `Filename mismatch: manifest "${manifest.filename}" vs CSV "${headerFileName}".` },
       filenameValue: headerFileName,
+      exposeHeadersValue,
+      wildcardExposeHeadersDetected,
     })
   }
 
@@ -588,6 +617,8 @@ export async function runExternalExportContractCheck(options: RuntimeRequestOpti
       filenameValue: effectiveFileName,
       profile: effectiveProfile,
       schemaVersion: effectiveSchemaVersion,
+      exposeHeadersValue,
+      wildcardExposeHeadersDetected,
       layer: 'Filename validation',
       explanation: 'Neither readable headers nor manifest provided a valid External export filename.',
       recommendedFix: 'Ensure the backend manifest and CSV response expose the SysGrid_External_YYYY-MM-DD_HH-mm-ss.csv filename contract.',
@@ -622,6 +653,8 @@ export async function runExternalExportContractCheck(options: RuntimeRequestOpti
         filenameValue: effectiveFileName,
         profile: effectiveProfile,
         schemaVersion: effectiveSchemaVersion,
+        exposeHeadersValue,
+        wildcardExposeHeadersDetected,
         statusCodes: {
           manifest: manifestResponse.status,
           csv: csvResponse.status,
@@ -656,6 +689,8 @@ export async function runExternalExportContractCheck(options: RuntimeRequestOpti
     filenameValue: effectiveFileName,
     profile: effectiveProfile,
     schemaVersion: effectiveSchemaVersion,
+    exposeHeadersValue,
+    wildcardExposeHeadersDetected,
     csvDownload: { verdict: 'PASS', message: 'CSV endpoint returned successful CSV content from the configured API base.' },
     headers: headersVerdict,
     filename: filenameVerdict,

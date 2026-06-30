@@ -9,6 +9,11 @@ from ..database import get_db, get_config_db, Base
 from ..models import models
 from ..models.config import Tenant, UserTenantAccess, GlobalSetting
 from ..core.config import settings
+from ..runtime_diagnostics import (
+    build_import_export_contract_summary,
+    frontend_build_version_hint,
+    infer_sanitized_environment_mode,
+)
 from .utils import filter_valid_columns, get_current_user_id, normalize_json_list, normalize_json_object
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
@@ -1015,6 +1020,7 @@ async def get_startup_check(request: Request, config_db: AsyncSession = Depends(
       },
       "runtime": {
         "environment": settings.ENVIRONMENT,
+        "environment_mode": infer_sanitized_environment_mode(),
         "project_name": settings.PROJECT_NAME,
         "default_user_id": settings.DEFAULT_USER_ID,
         "user_id_env_var": settings.USER_ID_ENV_VAR,
@@ -1023,7 +1029,9 @@ async def get_startup_check(request: Request, config_db: AsyncSession = Depends(
         "auto_admin_user_ids": sorted(settings.auto_admin_user_ids),
         "public_readonly_enabled": settings.PUBLIC_READONLY_ENABLED,
         "public_readonly_tenant_name": settings.PUBLIC_READONLY_TENANT_NAME,
+        "frontend_build_version_hint": frontend_build_version_hint(),
       },
+      "contracts": build_import_export_contract_summary(),
       "storage": {
         "database_url": settings.DATABASE_URL,
         "config_database_url": settings.CONFIG_DATABASE_URL,

@@ -10,7 +10,22 @@ async def test_read_main(client):
 async def test_health_check(client):
     response = await client.get("/api/v1/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "online"}
+    payload = response.json()
+    assert payload["status"] == "online"
+    assert payload["alive"] is True
+    assert payload["api_prefix"] == "/api/v1"
+
+
+@pytest.mark.anyio
+async def test_readiness_check(client):
+    response = await client.get("/api/v1/readiness")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ready"
+    assert payload["alive"] is True
+    assert payload["api_prefix"] == "/api/v1"
+    assert payload["import_export_contract"]["external_contract_available"] is True
+    assert payload["import_export_contract"]["external_schema_version"] == "2026-06-external-v1"
 
 @pytest.mark.anyio
 async def test_provision_asset_full_flow(seeded_admin_tenant):

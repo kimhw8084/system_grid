@@ -101,6 +101,9 @@ async def test_settings_user_profile_env_and_global_edges(seeded_admin_tenant, s
     assert startup_res.status_code == 200, startup_res.text
     startup_payload = startup_res.json()
     assert startup_payload["api"]["request_origin"] == "http://frontend.example.com"
+    assert startup_payload["runtime"]["environment_mode"]
+    assert startup_payload["runtime"]["frontend_build_version_hint"]
+    assert startup_payload["contracts"]["external_profile"] == "external_entities"
     assert startup_payload["tenant"]["selected_tenant"]
     assert isinstance(startup_payload["warnings"], list)
 

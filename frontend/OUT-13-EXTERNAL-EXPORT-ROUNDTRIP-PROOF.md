@@ -9,6 +9,11 @@ Reason:
 - External export now uses a backend-owned manifest plus strict CSV/header validation.
 - Settings now includes an in-app `System Diagnostics` surface with an `External Export Contract` doctor.
 - Automated frontend/backend tests cover the source contract and browser-runtime diagnostics logic.
+- Deployment-readiness hardening now adds:
+  - environment matrix documentation
+  - backend `/api/v1/readiness`
+  - startup/runtime validation for API base, origin mismatch, redirect/login HTML, wildcard expose headers, and stale bundle risk
+  - upgraded multi-card System Diagnostics reporting
 - Real company-domain runtime proof is still pending until the user can run the diagnostics card from the work environment.
 
 `127.0.0.1` success is diagnostic only. It is not the final product contract.
@@ -63,9 +68,16 @@ Open:
 - `Settings`
 - `System Diagnostics`
 - click `Run All Checks`
-- click `Copy Report`
+- click `Copy Full Report`
 
-The External Export Contract card runs from the actual browser runtime and records:
+The diagnostics surface now records:
+
+- Environment Summary
+- Backend Reachability
+- External Export Contract
+- Transport / Preflight Risk
+
+The External Export Contract card still runs from the actual browser runtime and records:
 
 - frontend origin
 - configured API base
@@ -82,6 +94,15 @@ The External Export Contract card runs from the actual browser runtime and recor
   - whether custom identity headers are being sent
   - whether `Content-Type` is being sent on bodyless `GET`
   - whether the request is likely simple or likely preflighted
+  - whether wildcard expose headers were returned
+
+The new Environment Summary and Backend Reachability cards also record:
+
+- API base URL validity
+- frontend origin mismatch
+- readiness/startup-check reachability
+- redirect/login HTML where JSON was expected
+- stale frontend bundle risk when backend version hint is available
 
 ## 5. What verdicts mean
 
@@ -237,8 +258,32 @@ Current behavior:
 - bodyless `GET` and `HEAD` no longer send `Content-Type: application/json`
 - diagnostics still classify that `X-User-Id` and `X-Tenant-Id` may force OPTIONS preflight in cross-origin environments
 - identity headers were not removed globally in this iteration
+- diagnostics now also fail if the runtime returns wildcard `Access-Control-Expose-Headers`
 
-## 11. Company-domain runtime proof
+## 11. Deploy-readiness status
+
+Deploy-readiness remains `PARTIAL`, but it is materially improved.
+
+Current source-level readiness now includes:
+
+- deployment environment matrix
+- safe health/readiness endpoints
+- runtime API-base and frontend-origin validation
+- backend JSON redirect/login detection
+- stale frontend bundle mismatch detection when backend hint is available
+- pilot-focused diagnostics copy/export flow
+- pilot checklist, rollback plan, and deployment risk register
+
+## 12. Environment matrix summary
+
+- Local direct:
+  supported when frontend and backend are both local and the browser can reach the backend directly or through a local proxy.
+- Company-domain dev:
+  supported when the API base points to a real company-routed backend or same-origin proxy, not loopback.
+- Production-like:
+  supported in source contract terms, but still waiting on real work-domain runtime proof.
+
+## 13. Company-domain runtime proof
 
 Company-domain proof is still pending.
 
@@ -249,11 +294,30 @@ When work access is available again, the intended source of truth is:
 - `Settings`
 - `System Diagnostics`
 - `Run All Checks`
-- `Copy Report`
+- `Copy Full Report`
 
 The copied report should then be attached as the runtime proof artifact.
 
-## 12. Test runs
+## 14. What remains blocked only by real work-domain test
+
+Only these final proof points remain blocked on the real work environment:
+
+- exact company-domain frontend origin seen by the browser
+- exact backend/API routing shape after company proxy rules
+- whether OAuth or login redirect occurs on readiness/startup-check/export routes
+- whether the company route preserves explicit expose headers or relies on manifest fallback
+- whether the deployed frontend/backend build versions match in the live environment
+
+## 15. Exact next user action when back at work
+
+1. Open the real company-domain SysGrid URL in the work browser.
+2. Go to `Settings -> System Diagnostics`.
+3. Click `Run All Checks`.
+4. Click `Copy Full Report`.
+5. Save the copied report and one screenshot of the diagnostics cards.
+6. If External export is being verified at the same time, run one export/import-preview round trip and attach the result with the report.
+
+## 16. Test runs
 
 Backend:
 

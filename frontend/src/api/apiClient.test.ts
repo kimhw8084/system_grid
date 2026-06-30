@@ -37,10 +37,12 @@ describe('apiClient', () => {
     localStorage.setItem('SYSGRID_USER_ID', 'pw-user')
     localStorage.setItem('SYSGRID_TENANT_ID', '42')
 
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue({ ok: true }),
-    })
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
     vi.stubGlobal('fetch', fetchMock)
 
     await apiClient.post('/settings/?tab=general', { enabled: true })
@@ -205,10 +207,10 @@ describe('apiClient', () => {
   it('supports the convenience get, put, delete, and patch helpers', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue({ method: 'get' }) })
-      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue({ method: 'put' }) })
-      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue({ method: 'delete' }) })
-      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue({ method: 'patch' }) })
+      .mockResolvedValueOnce(new Response(JSON.stringify({ method: 'get' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ method: 'put' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ method: 'delete' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ method: 'patch' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(apiClient.get('/one')).resolves.toEqual({ method: 'get' })
@@ -233,5 +235,29 @@ describe('apiClient', () => {
 
     const [, options] = fetchMock.mock.calls[0]
     expect(options.credentials).toBe('same-origin')
+  })
+
+  it('fails fast for an invalid configured API base URL', async () => {
+    localStorage.setItem('SYSGRID_OVERRIDE_API_URL', 'backend.internal')
+
+    await expect(apiFetch('/health')).rejects.toMatchObject({
+      message: expect.stringContaining('Configured API base "backend.internal" is invalid'),
+      status: 0,
+    })
+  })
+
+  it('rejects OAuth or login HTML where JSON was expected', async () => {
+    const redirectedResponse = new Response('<html>Sign in</html>', {
+      status: 200,
+      headers: { 'Content-Type': 'text/html' },
+    })
+    Object.defineProperty(redirectedResponse, 'redirected', { value: true })
+    Object.defineProperty(redirectedResponse, 'url', { value: 'https://gitlab.example.com/oauth/authorize' })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(redirectedResponse))
+
+    await expect(apiClient.get('/api/v1/settings/bootstrap')).rejects.toMatchObject({
+      message: 'Backend JSON request was redirected to OAuth or a login page.',
+      status: 200,
+    })
   })
 })

@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -9,6 +11,7 @@ from .api.import_engine import ROUND_TRIP_EXPOSE_HEADER_NAMES, ROUND_TRIP_EXPOSE
 from .api.error_utils import standardize_validation_errors
 
 from .core.config import settings
+from .runtime_diagnostics import build_readiness_payload
 
 async def run_migrations():
     import asyncio
@@ -166,7 +169,17 @@ app.include_router(knowledge.router, prefix=settings.API_V1_STR)
 
 @app.get(f"{settings.API_V1_STR}/health")
 def health_check():
-    return {"status": "online"}
+    return {
+        "status": "online",
+        "alive": True,
+        "api_prefix": settings.API_V1_STR,
+        "server_timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.get(f"{settings.API_V1_STR}/readiness")
+def readiness_check():
+    return build_readiness_payload()
 
 @app.get("/")
 def read_root():
