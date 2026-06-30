@@ -5,10 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { AlertCircle, CheckSquare, Clipboard, Download, FileSpreadsheet, FileUp, Plus, Trash2, Upload, X, RefreshCcw, Terminal, Database } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { showWorkspaceToast } from './WorkspaceToast'
-import { apiFetch, getApiBaseUrl } from '../../api/apiClient'
+import { apiFetch } from '../../api/apiClient'
 import { AppDropdown } from './AppDropdown'
 import { WorkspaceModal } from './WorkspaceModal'
 import { ToolbarButton } from './LayoutPrimitives'
+import { downloadOperationalImportFile } from './OperationalImportExport'
 import {
   WorkspaceEmptyState,
   WorkspaceFieldLabel,
@@ -491,29 +492,17 @@ export function OperationalImportModal({
       .filter((field) => !field.required)
       .map((field) => field.name)
       .join(',')
-    const baseUrl = getApiBaseUrl()
-    const params = new URLSearchParams()
-    if (includedColumns) params.set('columns', includedColumns)
-    params.set('mode', templateMode)
-    if (templateMode === 'example' && exampleRecordId != null) {
-      params.set('example_id', String(exampleRecordId))
-    }
-    const url = `${baseUrl.replace(/\/$/, '')}/api/v1/import/template/${tableName}?${params.toString()}`
 
     try {
-      const response = await fetch(url, {
-        headers: {
-          'X-User-Id': localStorage.getItem('SYSGRID_USER_ID') || 'admin_root',
+      await downloadOperationalImportFile({
+        tableName,
+        kind: 'template',
+        params: {
+          columns: includedColumns || undefined,
+          mode: templateMode,
+          example_id: templateMode === 'example' && exampleRecordId != null ? exampleRecordId : undefined,
         },
       })
-      if (!response.ok) throw new Error(`Template download failed: ${response.status}`)
-      const blob = await response.blob()
-      const objectUrl = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = objectUrl
-      link.download = `SYSGRID_${tableName}_Template.csv`
-      link.click()
-      URL.revokeObjectURL(objectUrl)
     } catch (error: any) {
       showWorkspaceToast(error.message || 'Template download failed', { type: 'error' })
     }

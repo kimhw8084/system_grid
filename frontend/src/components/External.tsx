@@ -46,6 +46,7 @@ import {
 import { useWorkspaceAnchoredLayer, WorkspaceEmptyState, useEscapeDismiss, useBodyModalFlag, WorkspaceFloatingPanel, WorkspaceSplitView } from './shared/OperationalWorkspacePrimitives'
 import { OperationalAnchoredPanel, OperationalDisplayPanel, OperationalGroupedGridSection, OperationalGroupedGridView, OperationalSavedViewsPanel, OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'
 import { OperationalImportModal } from './shared/OperationalImportModal'
+import { downloadOperationalImportFile } from './shared/OperationalImportExport'
 // (Removed duplicate imports)
 import { EXTERNAL_WORKSPACE_STANDARD } from './shared/OperationalWorkspace'
 import { WorkspaceModal } from './shared/WorkspaceModal'
@@ -2142,13 +2143,20 @@ export default function External() {
     handleSortChanged,
   ])
 
-  const handleExportCSV = () => {
-    if (gridRef.current?.api) {
-      gridRef.current.api.exportDataAsCsv({
-        fileName: `SysGrid_External_${activeTab}_${new Date().toISOString().split('T')[0]}.csv`,
-        allColumns: false,
-        onlySelected: false
+  const handleExportSnapshot = async () => {
+    try {
+      const download = await downloadOperationalImportFile({
+        tableName: 'external_entities',
+        kind: 'snapshot',
+        expectedProfile: 'external_entities',
+        requireSchemaHeaders: true,
+        fallbackFileName: 'SYSGRID_external_entities_Snapshot.csv',
       })
+      showWorkspaceToast(
+        `Exported ${download.fileName}. Includes active external entities only; archived rows, links, selection, filters, and hidden viewport columns are not part of this snapshot.`
+      )
+    } catch (error: any) {
+      showWorkspaceToast(error.message || 'External export failed', { type: 'error' })
     }
   }
 
@@ -2166,6 +2174,12 @@ export default function External() {
       }
     }
   }
+
+  const exportSnapshotTitle = activeTab === 'active'
+    ? 'Export round-trip external entity snapshot'
+    : activeTab === 'deleted'
+      ? 'Snapshot export is limited to active external entities. Archived rows are not included.'
+      : 'Snapshot export is limited to active external entities. Link rows are not included.'
 
   const toggleFavorite = useCallback((entityId: number) => {
     const id = Number(entityId)
@@ -2783,7 +2797,11 @@ export default function External() {
                 </span>
               </ToolbarButton>
             </div>
-            <ToolbarIconButton onClick={handleExportCSV} title="Export Manifest">
+            <ToolbarIconButton
+              onClick={handleExportSnapshot}
+              title={exportSnapshotTitle}
+              disabled={activeTab !== 'active'}
+            >
               <FileText size={16} />
             </ToolbarIconButton>
             <ToolbarIconButton onClick={handleCopyToClipboard} title="Secure Copy">
