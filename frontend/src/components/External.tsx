@@ -2150,6 +2150,14 @@ export default function External() {
         kind: 'snapshot',
         expectedProfile: 'external_entities',
         requireSchemaHeaders: true,
+        metadataContract: {
+          manifestEndpoint: '/api/v1/import/snapshot/external_entities/manifest',
+          expectedProfile: 'external_entities',
+          expectedSchemaVersion: '2026-06-external-v1',
+          expectedFilenamePattern: /^SysGrid_External_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.csv$/,
+          expectedScope: 'active',
+          expectedContentType: 'text/csv',
+        },
       })
       showWorkspaceToast(
         `Exported ${download.fileName}. Includes active external entities only; archived rows, links, selection, filters, and hidden viewport columns are not part of this snapshot.`

@@ -460,7 +460,23 @@ async def test_external_snapshot_export_exposes_round_trip_headers_for_browser_j
     }, headers=headers)
     assert entity_res.status_code == 200, entity_res.text
 
-    snapshot_res = await client.get("/api/v1/import/snapshot/external_entities", headers=headers)
+    manifest_res = await client.get("/api/v1/import/snapshot/external_entities/manifest", headers=headers)
+    assert manifest_res.status_code == 200, manifest_res.text
+    manifest = manifest_res.json()
+    assert manifest["profile"] == "external_entities"
+    assert manifest["schema_version"] == "2026-06-external-v1"
+    assert manifest["scope"] == "active"
+    assert manifest["content_type"] == "text/csv"
+    assert re.fullmatch(
+        r"SysGrid_External_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.csv",
+        manifest["filename"],
+    )
+    assert re.fullmatch(
+        r"/api/v1/import/snapshot/external_entities\?export_token=\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}",
+        manifest["download_url"],
+    )
+
+    snapshot_res = await client.get(manifest["download_url"], headers=headers)
     assert snapshot_res.status_code == 200, snapshot_res.text
     assert snapshot_res.headers["x-sysgrid-import-profile"] == "external_entities"
     assert snapshot_res.headers["x-sysgrid-schema-version"] == "2026-06-external-v1"
@@ -472,6 +488,7 @@ async def test_external_snapshot_export_exposes_round_trip_headers_for_browser_j
         r'attachment; filename=SysGrid_External_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.csv',
         content_disposition,
     )
+    assert content_disposition == f'attachment; filename={manifest["filename"]}'
     exposed_header_values = snapshot_res.headers.get_list("access-control-expose-headers")
     assert exposed_header_values == ["Content-Disposition, X-SysGrid-Import-Profile, X-SysGrid-Schema-Version"]
     exposed_headers = exposed_header_values[0]
@@ -484,6 +501,49 @@ async def test_external_snapshot_export_exposes_round_trip_headers_for_browser_j
         "x-sysgrid-import-profile",
         "x-sysgrid-schema-version",
     }
+
+
+@pytest.mark.anyio
+async def test_external_snapshot_manifest_and_csv_contract_stay_in_sync(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(seeded_admin_tenant["tenant_id"])}
+    await _ensure_admin(seeded_admin_tenant)
+
+    team_res = await client.post("/api/v1/settings/teams", json={"name": "External Manifest Sync Ops"}, headers=headers)
+    assert team_res.status_code == 200, team_res.text
+    team = team_res.json()
+
+    entity_res = await client.post("/api/v1/intelligence/entities", json={
+        "name": "Manifest Sync Entity",
+        "external_key": "manifest-sync-entity",
+        "type": "API",
+        "ownership_mode": "team",
+        "internal_team_id": team["id"],
+        "status": "Active",
+        "environment": "Production",
+        "business_purpose": "Keep manifest and CSV export metadata aligned",
+        "contacts_json": [
+            {
+                "role": "Primary",
+                "full_name": "Manifest Sync Contact",
+                "email": "manifest.sync@example.com",
+                "external_person_id": "manifest-sync-contact",
+                "is_primary": True,
+                "is_escalation": False,
+            }
+        ],
+    }, headers=headers)
+    assert entity_res.status_code == 200, entity_res.text
+
+    manifest_res = await client.get("/api/v1/import/snapshot/external_entities/manifest", headers=headers)
+    assert manifest_res.status_code == 200, manifest_res.text
+    manifest = manifest_res.json()
+
+    snapshot_res = await client.get(manifest["download_url"], headers=headers)
+    assert snapshot_res.status_code == 200, snapshot_res.text
+    assert snapshot_res.headers["x-sysgrid-import-profile"] == manifest["profile"]
+    assert snapshot_res.headers["x-sysgrid-schema-version"] == manifest["schema_version"]
+    assert snapshot_res.headers["content-disposition"] == f'attachment; filename={manifest["filename"]}'
 
 
 @pytest.mark.anyio

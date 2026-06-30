@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 import io
 import json
+import re
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 import pandas as pd
@@ -35,6 +36,7 @@ ROUND_TRIP_EXPOSE_HEADER_NAMES = (
     "X-SysGrid-Schema-Version",
 )
 ROUND_TRIP_EXPOSE_HEADERS = ", ".join(ROUND_TRIP_EXPOSE_HEADER_NAMES)
+EXTERNAL_SNAPSHOT_EXPORT_TOKEN_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$")
 
 
 @dataclass
@@ -1521,11 +1523,46 @@ def build_round_trip_download_headers(profile: ImportProfile, filename: str) -> 
     return headers
 
 
-def build_snapshot_filename(profile: ImportProfile) -> str:
+def build_snapshot_export_token() -> str:
+    return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+
+def validate_snapshot_export_token(export_token: Optional[str]) -> Optional[str]:
+    if export_token is None:
+        return None
+    if not EXTERNAL_SNAPSHOT_EXPORT_TOKEN_PATTERN.fullmatch(export_token):
+        raise HTTPException(status_code=400, detail="Invalid export token")
+    return export_token
+
+
+def build_snapshot_filename(profile: ImportProfile, export_token: Optional[str] = None) -> str:
     if profile.key == "external_entities":
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        timestamp = validate_snapshot_export_token(export_token) or build_snapshot_export_token()
         return f"SysGrid_External_{timestamp}.csv"
     return f"SYSGRID_{profile.key}_Snapshot.csv"
+
+
+def build_snapshot_manifest(profile: ImportProfile, export_token: Optional[str] = None) -> dict[str, Any]:
+    filename = build_snapshot_filename(profile, export_token=export_token)
+    manifest: dict[str, Any] = {
+        "profile": profile.key,
+        "filename": filename,
+        "download_url": f"/api/v1/import/snapshot/{profile.key}",
+        "content_type": "text/csv",
+    }
+    if profile.key == "monitoring_items":
+        manifest["schema_version"] = MONITORING_IMPORT_SCHEMA_VERSION
+    elif profile.key == "external_entities":
+        token = validate_snapshot_export_token(export_token) or filename.removeprefix("SysGrid_External_").removesuffix(".csv")
+        manifest["schema_version"] = EXTERNAL_IMPORT_SCHEMA_VERSION
+        manifest["scope"] = "active"
+        manifest["export_token"] = token
+        manifest["download_url"] = f"/api/v1/import/snapshot/{profile.key}?export_token={token}"
+    elif profile.key == "port_connections":
+        manifest["schema_version"] = NETWORK_IMPORT_SCHEMA_VERSION
+    else:
+        manifest["schema_version"] = None
+    return manifest
 
 
 @router.get("/schema/{table_name}")
@@ -1599,8 +1636,9 @@ async def download_template(
 
 
 @router.get("/snapshot/{table_name}")
-async def download_snapshot(table_name: str, db: AsyncSession = Depends(get_db)):
+async def download_snapshot(table_name: str, export_token: Optional[str] = None, db: AsyncSession = Depends(get_db)):
     profile = get_import_profile(table_name)
+    export_contract = build_snapshot_manifest(profile, export_token=export_token if profile.key == "external_entities" else None)
     model = profile.model
     if profile.serialize_example_row:
         fields = [field for field in profile.fields]
@@ -1641,12 +1679,20 @@ async def download_snapshot(table_name: str, db: AsyncSession = Depends(get_db))
     stream = io.BytesIO()
     df.to_csv(stream, index=False)
     stream.seek(0)
-    headers = build_round_trip_download_headers(profile, build_snapshot_filename(profile))
+    headers = build_round_trip_download_headers(profile, export_contract["filename"])
     return StreamingResponse(
         stream,
         media_type="text/csv",
         headers=headers
     )
+
+
+@router.get("/snapshot/{table_name}/manifest")
+async def get_snapshot_manifest(table_name: str):
+    profile = get_import_profile(table_name)
+    if profile.key != "external_entities":
+        raise HTTPException(status_code=404, detail="Snapshot manifest not found")
+    return build_snapshot_manifest(profile)
 
 
 @router.post("/preview-file")
