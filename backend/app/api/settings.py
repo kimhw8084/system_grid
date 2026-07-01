@@ -1,6 +1,7 @@
 import json
 import os
 from copy import deepcopy
+from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy import select, delete, update
@@ -35,14 +36,21 @@ def parse_env_file_to_map(path: str | None) -> dict[str, str]:
     return env_map
 
 
-def normalize_api_origin(url: str | None) -> str:
+def sanitize_api_origin(url: str | None) -> tuple[str | None, bool]:
     cleaned = normalize_string(url)
     if not cleaned:
-        return ""
-    cleaned = cleaned.rstrip("/")
-    if cleaned.lower().endswith("/api/v1"):
-        cleaned = cleaned[:-7]
-    return cleaned.rstrip("/")
+        return None, False
+    try:
+        parsed = urlparse(cleaned)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            return None, False
+        host = parsed.hostname
+        if ":" in host and not host.startswith("["):
+            host = f"[{host}]"
+        port = f":{parsed.port}" if parsed.port is not None else ""
+        return f"{parsed.scheme}://{host}{port}", True
+    except ValueError:
+        return None, False
 
 
 def serialize_user_preference_value(value):
@@ -973,12 +981,12 @@ async def get_startup_check(request: Request, config_db: AsyncSession = Depends(
     user_id = get_current_user_id(request)
     configured_identity_value = os.getenv(settings.USER_ID_ENV_VAR, "")
     frontend_env = parse_env_file_to_map(settings.FRONTEND_ENV_FILE_PATH)
-    configured_api_origin = normalize_api_origin(frontend_env.get("VITE_API_BASE_URL"))
+    vite_api_base_url_raw = frontend_env.get("VITE_API_BASE_URL", "").strip()
+    configured_api_origin, configured_api_origin_valid = sanitize_api_origin(vite_api_base_url_raw)
     request_origin = request.headers.get("origin", "")
     cors_origins = settings.cors_origins
     allows_request_origin = "*" in cors_origins or not request_origin or request_origin in cors_origins
     request_base_origin = str(request.base_url).rstrip("/")
-    vite_api_base_url_raw = frontend_env.get("VITE_API_BASE_URL", "").strip()
     vite_api_base_url_includes_api_v1 = vite_api_base_url_raw.lower().endswith("/api/v1")
 
     warnings: list[str] = []
@@ -986,8 +994,10 @@ async def get_startup_check(request: Request, config_db: AsyncSession = Depends(
       warnings.append("VITE_API_BASE_URL should be the backend origin only and must not include /api/v1.")
     if request_origin and not allows_request_origin:
       warnings.append(f"BACKEND_CORS_ORIGINS does not include the request origin: {request_origin}")
-    if not configured_api_origin:
+    if not vite_api_base_url_raw:
       warnings.append("VITE_API_BASE_URL is blank. This is fine only when the frontend can reach the backend on the same origin.")
+    elif not configured_api_origin_valid:
+      warnings.append("VITE_API_BASE_URL is configured but invalid. Use a valid http/https origin only.")
     if settings.DEFAULT_USER_ID == "admin_root":
       warnings.append("DEFAULT_USER_ID is still using the default admin_root fallback.")
 
@@ -1010,7 +1020,8 @@ async def get_startup_check(request: Request, config_db: AsyncSession = Depends(
       "status": "ok" if not warnings else "warning",
       "api": {
         "configured_origin": configured_api_origin,
-        "vite_api_base_url_configured": bool(configured_api_origin),
+        "configured_api_origin_valid": configured_api_origin_valid,
+        "vite_api_base_url_configured": bool(vite_api_base_url_raw),
         "vite_api_base_url_includes_api_v1": vite_api_base_url_includes_api_v1,
         "request_origin": request_origin,
         "request_base_origin": request_base_origin,

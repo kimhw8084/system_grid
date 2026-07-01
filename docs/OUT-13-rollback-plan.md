@@ -2,6 +2,8 @@
 
 Use this only if the pilot deployment is failing and the issue cannot be corrected safely in place.
 
+This document supports the temporary conclusion state of `OUT-13`. It is a pilot-safety artifact, not proof that work-domain verification is complete.
+
 ## Stop the App
 
 1. Stop the frontend static host or revert its active build directory.

@@ -2,6 +2,12 @@
 
 Only narrow deploy-breaking or pilot-breaking risks are tracked here.
 
+Current issue stance:
+
+- `OUT-13` is temporarily concluded for deployment transition.
+- Remaining closure gate is the copied work-domain diagnostics report.
+- Broader deployment/data-durability work belongs to the next dedicated goal.
+
 ## Open Risks
 
 | ID | Severity | Risk | Current Status | Current Mitigation | Next Action |

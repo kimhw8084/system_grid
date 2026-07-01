@@ -2,6 +2,8 @@
 
 Status target: `PARTIAL`, but deploy-ready enough for a controlled 2 to 4 day pilot.
 
+This checklist supports the temporary conclusion state of `OUT-13`. It does not mark `OUT-13` Done; the remaining gate is the copied work-domain diagnostics report.
+
 ## Start or Deploy
 
 1. Start the backend with the intended `.env` and confirm `/api/v1/health` and `/api/v1/readiness` respond.
@@ -81,3 +83,4 @@ For every deployment issue, collect:
 - Final company-domain proof is still pending until a real work-environment browser run is completed.
 - `PARTIAL` may still appear for cross-origin preflight risk even when the External contract is otherwise safe.
 - No Monitoring or Services migration is included in this iteration.
+- Deployment/data durability implementation is intentionally deferred to the next dedicated goal.

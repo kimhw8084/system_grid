@@ -2,8 +2,10 @@ import pytest
 from sqlalchemy import select
 import json
 import re
+from pathlib import Path
 
 from app.api.settings import ensure_tenant_admin_async
+from app.core.config import settings
 from app.models.config import Tenant
 
 
@@ -19,6 +21,54 @@ def _collect_keys(value):
             keys.update(_collect_keys(nested))
         return keys
     return set()
+
+
+def _set_frontend_env_file(monkeypatch, tmp_path: Path, api_base_value: str):
+    env_file = tmp_path / "frontend-test.env"
+    env_file.write_text(f'VITE_API_BASE_URL={api_base_value}\n', encoding="utf-8")
+    monkeypatch.setattr(settings, "FRONTEND_ENV_FILE_PATH", str(env_file))
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("api_base_value", "expected_origin", "expected_valid"),
+    [
+        ("https://api.example.com/api/v1", "https://api.example.com", True),
+        ("https://api.example.com:8443/api/v1", "https://api.example.com:8443", True),
+        ("https://user:pass@api.example.com/api/v1?token=abc#frag", "https://api.example.com", True),
+        ("https://api.example.com/api/v1?token=abc#frag", "https://api.example.com", True),
+        ("not a valid url", None, False),
+    ],
+)
+async def test_startup_check_strictly_sanitizes_configured_origin(
+    seeded_admin_tenant,
+    setup_db,
+    monkeypatch,
+    tmp_path,
+    api_base_value,
+    expected_origin,
+    expected_valid,
+):
+    client = seeded_admin_tenant["client"]
+    tenant_id = seeded_admin_tenant["tenant_id"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(tenant_id), "Origin": "https://frontend.example.com"}
+    await _ensure_admin(seeded_admin_tenant, setup_db)
+    _set_frontend_env_file(monkeypatch, tmp_path, api_base_value)
+
+    response = await client.get("/api/v1/settings/startup-check", headers=headers)
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    serialized = json.dumps(payload)
+
+    assert payload["api"]["configured_origin"] == expected_origin
+    assert payload["api"]["configured_api_origin_valid"] is expected_valid
+    assert payload["api"]["vite_api_base_url_configured"] is True
+
+    assert "user:pass@" not in serialized
+    assert "token=abc" not in serialized
+    assert "#frag" not in serialized
+    assert "not a valid url" not in serialized
+    assert "api/v1?token" not in serialized
 
 
 async def _ensure_admin(seeded_admin_tenant, setup_db):
@@ -121,6 +171,7 @@ async def test_settings_user_profile_env_and_global_edges(seeded_admin_tenant, s
     assert startup_payload["api"]["request_origin"] == "http://frontend.example.com"
     assert startup_payload["api"]["api_prefix"] == "/api/v1"
     assert "configured_origin" in startup_payload["api"]
+    assert "configured_api_origin_valid" in startup_payload["api"]
     assert "request_base_origin" in startup_payload["api"]
     assert isinstance(startup_payload["api"]["vite_api_base_url_configured"], bool)
     assert isinstance(startup_payload["api"]["vite_api_base_url_includes_api_v1"], bool)
@@ -154,6 +205,7 @@ async def test_settings_user_profile_env_and_global_edges(seeded_admin_tenant, s
         r"/home/",
         r"C:\\\\",
         r"\.env",
+        r"https?://[^/\"]+:[^/\"]+@",
     ]
     for pattern in forbidden_patterns:
         assert re.search(pattern, serialized_startup_payload, flags=re.IGNORECASE) is None
