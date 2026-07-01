@@ -977,9 +977,12 @@ async def get_startup_check(request: Request, config_db: AsyncSession = Depends(
     request_origin = request.headers.get("origin", "")
     cors_origins = settings.cors_origins
     allows_request_origin = "*" in cors_origins or not request_origin or request_origin in cors_origins
+    request_base_origin = str(request.base_url).rstrip("/")
+    vite_api_base_url_raw = frontend_env.get("VITE_API_BASE_URL", "").strip()
+    vite_api_base_url_includes_api_v1 = vite_api_base_url_raw.lower().endswith("/api/v1")
 
     warnings: list[str] = []
-    if frontend_env.get("VITE_API_BASE_URL", "").strip().lower().endswith("/api/v1"):
+    if vite_api_base_url_includes_api_v1:
       warnings.append("VITE_API_BASE_URL should be the backend origin only and must not include /api/v1.")
     if request_origin and not allows_request_origin:
       warnings.append(f"BACKEND_CORS_ORIGINS does not include the request origin: {request_origin}")
@@ -995,60 +998,41 @@ async def get_startup_check(request: Request, config_db: AsyncSession = Depends(
         .where(UserTenantAccess.user_id == user_id)
       )
     ).all()
-    selected_tenant_name = None
-    selected_tenant_db_url = None
+    selected_tenant_present = False
     for access, tenant in access_rows:
       if access.is_selected:
-        selected_tenant_name = tenant.name
-        selected_tenant_db_url = tenant.db_url
+        selected_tenant_present = True
         break
-    if not selected_tenant_name:
-      warnings.append(f"No selected tenant access found for current user '{user_id}'.")
+    if not selected_tenant_present:
+      warnings.append("No selected tenant access found for the current runtime user.")
 
     return {
       "status": "ok" if not warnings else "warning",
       "api": {
-        "frontend_env_path": settings.FRONTEND_ENV_FILE_PATH,
         "configured_origin": configured_api_origin,
+        "vite_api_base_url_configured": bool(configured_api_origin),
+        "vite_api_base_url_includes_api_v1": vite_api_base_url_includes_api_v1,
         "request_origin": request_origin,
-        "request_base_url": str(request.base_url).rstrip("/"),
+        "request_base_origin": request_base_origin,
         "api_prefix": settings.API_V1_STR,
       },
       "cors": {
-        "configured_origins": cors_origins,
         "allows_request_origin": allows_request_origin,
+        "configured_origin_count": len(cors_origins),
+        "wildcard_origin_enabled": "*" in cors_origins,
       },
       "runtime": {
-        "environment": settings.ENVIRONMENT,
         "environment_mode": infer_sanitized_environment_mode(),
-        "project_name": settings.PROJECT_NAME,
-        "default_user_id": settings.DEFAULT_USER_ID,
-        "user_id_env_var": settings.USER_ID_ENV_VAR,
+        "default_user_id_is_fallback": settings.DEFAULT_USER_ID == "admin_root",
         "user_id_env_value_present": bool(configured_identity_value),
-        "resolved_runtime_user_id": user_id,
-        "auto_admin_user_ids": sorted(settings.auto_admin_user_ids),
         "public_readonly_enabled": settings.PUBLIC_READONLY_ENABLED,
-        "public_readonly_tenant_name": settings.PUBLIC_READONLY_TENANT_NAME,
+        "public_readonly_tenant_configured": bool(settings.PUBLIC_READONLY_TENANT_NAME),
         "frontend_build_version_hint": frontend_build_version_hint(),
       },
       "contracts": build_import_export_contract_summary(),
-      "storage": {
-        "database_url": settings.DATABASE_URL,
-        "config_database_url": settings.CONFIG_DATABASE_URL,
-        "tenant_storage_root": settings.TENANT_STORAGE_ROOT,
-        "backend_env_file_path": settings.BACKEND_ENV_FILE_PATH,
-      },
       "tenant": {
-        "selected_tenant": selected_tenant_name,
-        "selected_tenant_db_url": selected_tenant_db_url,
-        "accessible_tenants": [
-          {
-            "name": tenant.name,
-            "role": access.role,
-            "is_selected": bool(access.is_selected),
-          }
-          for access, tenant in access_rows
-        ],
+        "selected_tenant_present": selected_tenant_present,
+        "accessible_tenant_count": len(access_rows),
       },
       "warnings": warnings,
     }

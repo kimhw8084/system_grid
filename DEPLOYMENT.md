@@ -8,6 +8,7 @@ Reason:
 
 - Local and source-level deployment hardening is in place.
 - Runtime diagnostics, readiness, and External export contract checks are now deploy-focused.
+- `startup-check` is now sanitized for team-pilot safety and does not return raw DB URLs, file paths, tenant DB URLs, or sensitive identity values.
 - Final company-domain proof is still blocked on a real work-environment browser run.
 
 ## Deployment Environment Matrix
@@ -76,6 +77,23 @@ Serve `frontend/dist/` through the intended company route or local static hostin
 - sanitized environment mode
 - frontend build version hint when detectable
 
+`/api/v1/settings/startup-check` now reports only sanitized deployment facts:
+
+- API prefix
+- request origin and request base origin
+- whether the request origin is allowed by CORS
+- configured CORS origin count
+- whether `VITE_API_BASE_URL` is configured
+- whether `VITE_API_BASE_URL` incorrectly includes `/api/v1`
+- sanitized configured API origin
+- whether the default user is still the fallback
+- whether the identity env value is present
+- whether a selected tenant is present
+- accessible tenant count
+- frontend build version hint
+- import/export contract summary
+- warning list
+
 ## Team-Pilot Operator Flow
 
 1. Open the deployed app in the target browser.
@@ -90,6 +108,7 @@ Serve `frontend/dist/` through the intended company route or local static hostin
 
 ## Known Readiness Limits
 
+- Startup diagnostics are now safe for a team pilot, but OUT-13 remains `PARTIAL` until a copied work-domain diagnostics report is attached.
 - Real company-domain proof is not yet attached.
 - Cross-origin company deployments may still show `PARTIAL` transport risk when custom identity headers force preflight.
 - Large frontend bundle warnings still exist at build time, but they are not currently blocking the pilot.

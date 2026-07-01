@@ -381,9 +381,6 @@ const Bootstrap = () => {
 
   if (error) {
     const backendWarnings = Array.isArray(backendDiagnostics?.data?.warnings) ? backendDiagnostics.data.warnings : []
-    const accessibleTenants = Array.isArray(backendDiagnostics?.data?.tenant?.accessible_tenants)
-      ? backendDiagnostics.data.tenant.accessible_tenants
-      : []
 
     return (
       <div className="min-h-screen w-full bg-[var(--bg-primary)] text-[var(--accent-primary)] font-mono">
@@ -530,30 +527,32 @@ const Bootstrap = () => {
                     <>
                       <p><span className="text-slate-500">Backend-configured API Origin</span><br /><span className="text-slate-200">{backendDiagnostics.data.api.configured_origin || '<blank>'}</span></p>
                       <p><span className="text-slate-500">Request Origin</span><br /><span className="text-slate-200">{backendDiagnostics.data.api.request_origin || '<none>'}</span></p>
+                      <p><span className="text-slate-500">Request Base Origin</span><br /><span className="text-slate-200">{backendDiagnostics.data.api.request_base_origin || '<none>'}</span></p>
+                      <p><span className="text-slate-500">API Base Configured</span><br /><span className="text-slate-200">{backendDiagnostics.data.api.vite_api_base_url_configured ? 'yes' : 'no'}</span></p>
+                      <p><span className="text-slate-500">API Base Includes /api/v1</span><br /><span className="text-slate-200">{backendDiagnostics.data.api.vite_api_base_url_includes_api_v1 ? 'yes' : 'no'}</span></p>
                     </>
                   )}
                   {backendDiagnostics.data?.cors && (
-                    <p><span className="text-slate-500">Request Origin Allowed</span><br /><span className="text-slate-200">{backendDiagnostics.data.cors.allows_request_origin ? 'yes' : 'no'}</span></p>
+                    <>
+                      <p><span className="text-slate-500">Request Origin Allowed</span><br /><span className="text-slate-200">{backendDiagnostics.data.cors.allows_request_origin ? 'yes' : 'no'}</span></p>
+                      <p><span className="text-slate-500">Configured CORS Origin Count</span><br /><span className="text-slate-200">{String(backendDiagnostics.data.cors.configured_origin_count ?? 0)}</span></p>
+                      <p><span className="text-slate-500">Wildcard CORS Enabled</span><br /><span className="text-slate-200">{backendDiagnostics.data.cors.wildcard_origin_enabled ? 'yes' : 'no'}</span></p>
+                    </>
                   )}
                   {backendDiagnostics.data?.runtime && (
                     <>
-                      <p><span className="text-slate-500">Backend Default User</span><br /><span className="text-slate-200">{backendDiagnostics.data.runtime.default_user_id || '<blank>'}</span></p>
-                      <p><span className="text-slate-500">User ID Env Var</span><br /><span className="text-slate-200">{backendDiagnostics.data.runtime.user_id_env_var || '<blank>'}</span></p>
-                      <p><span className="text-slate-500">Auto Admin IDs</span><br /><span className="text-slate-200">{Array.isArray(backendDiagnostics.data.runtime.auto_admin_user_ids) ? backendDiagnostics.data.runtime.auto_admin_user_ids.join(', ') || '<none>' : '<unavailable>'}</span></p>
-                      <p><span className="text-slate-500">Public Read-Only</span><br /><span className="text-slate-200">{backendDiagnostics.data.runtime.public_readonly_enabled ? `enabled (${backendDiagnostics.data.runtime.public_readonly_tenant_name || 'default tenant'})` : 'disabled'}</span></p>
+                      <p><span className="text-slate-500">Environment Mode</span><br /><span className="text-slate-200">{backendDiagnostics.data.runtime.environment_mode || '<blank>'}</span></p>
+                      <p><span className="text-slate-500">Default User Still Fallback</span><br /><span className="text-slate-200">{backendDiagnostics.data.runtime.default_user_id_is_fallback ? 'yes' : 'no'}</span></p>
+                      <p><span className="text-slate-500">Identity Env Value Present</span><br /><span className="text-slate-200">{backendDiagnostics.data.runtime.user_id_env_value_present ? 'yes' : 'no'}</span></p>
+                      <p><span className="text-slate-500">Public Read-Only</span><br /><span className="text-slate-200">{backendDiagnostics.data.runtime.public_readonly_enabled ? 'enabled' : 'disabled'}</span></p>
+                      <p><span className="text-slate-500">Public Read-Only Tenant Configured</span><br /><span className="text-slate-200">{backendDiagnostics.data.runtime.public_readonly_tenant_configured ? 'yes' : 'no'}</span></p>
+                      <p><span className="text-slate-500">Frontend Build Hint</span><br /><span className="text-slate-200">{backendDiagnostics.data.runtime.frontend_build_version_hint || '<blank>'}</span></p>
                     </>
                   )}
                   {backendDiagnostics.data?.tenant && (
                     <>
-                      <p><span className="text-slate-500">Selected Tenant</span><br /><span className="text-slate-200">{backendDiagnostics.data.tenant.selected_tenant || '<none>'}</span></p>
-                      <p><span className="text-slate-500">Selected Tenant DB</span><br /><span className="text-slate-200">{backendDiagnostics.data.tenant.selected_tenant_db_url || '<none>'}</span></p>
-                      <p><span className="text-slate-500">Accessible Tenants</span><br /><span className="text-slate-200">{accessibleTenants.map((entry: any) => `${entry.name}${entry.is_selected ? ' (selected)' : ''}`).join(', ') || '<none>'}</span></p>
-                    </>
-                  )}
-                  {backendDiagnostics.data?.storage && (
-                    <>
-                      <p><span className="text-slate-500">Config DB</span><br /><span className="text-slate-200">{backendDiagnostics.data.storage.config_database_url || '<blank>'}</span></p>
-                      <p><span className="text-slate-500">Tenant Storage Root</span><br /><span className="text-slate-200">{backendDiagnostics.data.storage.tenant_storage_root || '<blank>'}</span></p>
+                      <p><span className="text-slate-500">Selected Tenant Present</span><br /><span className="text-slate-200">{backendDiagnostics.data.tenant.selected_tenant_present ? 'yes' : 'no'}</span></p>
+                      <p><span className="text-slate-500">Accessible Tenant Count</span><br /><span className="text-slate-200">{String(backendDiagnostics.data.tenant.accessible_tenant_count ?? 0)}</span></p>
                     </>
                   )}
                   {Array.isArray(backendDiagnostics.data?.warnings) && backendDiagnostics.data.warnings.length > 0 ? (

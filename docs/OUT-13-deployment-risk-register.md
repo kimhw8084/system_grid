@@ -13,6 +13,12 @@ Only narrow deploy-breaking or pilot-breaking risks are tracked here.
 | DR-05 | P1 | A stale frontend bundle may be served after a backend refresh. | Mitigated | Diagnostics now compare frontend bundle version to backend frontend-version hint when available. | Confirm versions match after the first real deployment. |
 | DR-06 | P1 | Frontend build chunk size remains large and may affect slower environments. | Open | Build currently succeeds; no emergency refactor was done in this iteration. | Keep under observation during the pilot; address separately if runtime load pain is confirmed. |
 
+## Closed In Iteration 13
+
+| ID | Severity | Risk | Resolution |
+| --- | --- | --- | --- |
+| DR-00 | P0 | `startup-check` exposed deployment-sensitive internals such as raw DB URLs, tenant DB URLs, file paths, env paths, and sensitive identity configuration. | Closed. `startup-check` now returns only sanitized deployment facts, and tests assert forbidden keys and forbidden value patterns are absent. |
+
 ## Audit Notes
 
 ### Reviewed
@@ -32,6 +38,7 @@ Only narrow deploy-breaking or pilot-breaking risks are tracked here.
 - JSON client surfaces redirect/login HTML as a clear runtime error
 - readiness endpoint added
 - startup-check now carries deployment-safe version and contract hints
+- startup-check no longer exposes raw DB URLs, file paths, storage roots, tenant DB URLs, or sensitive identity configuration
 - diagnostics now report wildcard expose-header failure
 
 ### Explicitly Deferred

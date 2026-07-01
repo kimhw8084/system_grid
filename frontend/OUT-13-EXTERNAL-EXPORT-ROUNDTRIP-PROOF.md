@@ -14,6 +14,9 @@ Reason:
   - backend `/api/v1/readiness`
   - startup/runtime validation for API base, origin mismatch, redirect/login HTML, wildcard expose headers, and stale bundle risk
   - upgraded multi-card System Diagnostics reporting
+- Iteration 13 removes the diagnostics exposure P0:
+  - `startup-check` is now sanitized and safe-by-design for a team pilot
+  - no raw DB URLs, tenant DB URLs, file paths, env paths, or sensitive identity values are returned
 - Real company-domain runtime proof is still pending until the user can run the diagnostics card from the work environment.
 
 `127.0.0.1` success is diagnostic only. It is not the final product contract.
@@ -103,6 +106,14 @@ The new Environment Summary and Backend Reachability cards also record:
 - readiness/startup-check reachability
 - redirect/login HTML where JSON was expected
 - stale frontend bundle risk when backend version hint is available
+
+The backend `startup-check` payload is now limited to safe deployment facts:
+
+- booleans
+- counts
+- sanitized origins
+- warning list
+- import/export contract summary
 
 ## 5. What verdicts mean
 
@@ -273,6 +284,7 @@ Current source-level readiness now includes:
 - stale frontend bundle mismatch detection when backend hint is available
 - pilot-focused diagnostics copy/export flow
 - pilot checklist, rollback plan, and deployment risk register
+- sanitized startup-check payload safe for team-pilot diagnostics capture
 
 ## 12. Environment matrix summary
 
@@ -307,6 +319,8 @@ Only these final proof points remain blocked on the real work environment:
 - whether OAuth or login redirect occurs on readiness/startup-check/export routes
 - whether the company route preserves explicit expose headers or relies on manifest fallback
 - whether the deployed frontend/backend build versions match in the live environment
+
+The remaining blocker is no longer diagnostics exposure. That P0 is fixed. The remaining blocker is real work-domain runtime proof.
 
 ## 15. Exact next user action when back at work
 
@@ -347,5 +361,6 @@ Still `PARTIAL`.
 Reason:
 
 - source and in-app diagnostics are materially hardened
+- startup-check diagnostics are now sanitized and safe for team pilot exposure
 - direct local and mocked browser-runtime proof are in place
-- real company-domain `System Diagnostics -> Copy Report` evidence is still pending
+- real company-domain `System Diagnostics -> Copy Full Report` evidence is still pending

@@ -1,8 +1,24 @@
 import pytest
 from sqlalchemy import select
+import json
+import re
 
 from app.api.settings import ensure_tenant_admin_async
 from app.models.config import Tenant
+
+
+def _collect_keys(value):
+    if isinstance(value, dict):
+        keys = set(value.keys())
+        for nested in value.values():
+            keys.update(_collect_keys(nested))
+        return keys
+    if isinstance(value, list):
+        keys = set()
+        for nested in value:
+            keys.update(_collect_keys(nested))
+        return keys
+    return set()
 
 
 async def _ensure_admin(seeded_admin_tenant, setup_db):
@@ -100,12 +116,47 @@ async def test_settings_user_profile_env_and_global_edges(seeded_admin_tenant, s
     )
     assert startup_res.status_code == 200, startup_res.text
     startup_payload = startup_res.json()
+    serialized_startup_payload = json.dumps(startup_payload)
+    startup_keys = _collect_keys(startup_payload)
     assert startup_payload["api"]["request_origin"] == "http://frontend.example.com"
+    assert startup_payload["api"]["api_prefix"] == "/api/v1"
+    assert "configured_origin" in startup_payload["api"]
+    assert "request_base_origin" in startup_payload["api"]
+    assert isinstance(startup_payload["api"]["vite_api_base_url_configured"], bool)
+    assert isinstance(startup_payload["api"]["vite_api_base_url_includes_api_v1"], bool)
+    assert startup_payload["cors"]["allows_request_origin"] is True
+    assert isinstance(startup_payload["cors"]["configured_origin_count"], int)
     assert startup_payload["runtime"]["environment_mode"]
     assert startup_payload["runtime"]["frontend_build_version_hint"]
-    assert startup_payload["contracts"]["external_profile"] == "external_entities"
-    assert startup_payload["tenant"]["selected_tenant"]
+    assert isinstance(startup_payload["runtime"]["default_user_id_is_fallback"], bool)
+    assert isinstance(startup_payload["runtime"]["user_id_env_value_present"], bool)
+    assert startup_payload["contracts"]["external_schema_version"] == "2026-06-external-v1"
+    assert startup_payload["tenant"]["selected_tenant_present"] is True
+    assert startup_payload["tenant"]["accessible_tenant_count"] >= 1
     assert isinstance(startup_payload["warnings"], list)
+    forbidden_keys = {
+        "database_url",
+        "config_database_url",
+        "selected_tenant_db_url",
+        "tenant_storage_root",
+        "backend_env_file_path",
+        "frontend_env_file_path",
+        "db_url",
+    }
+    assert forbidden_keys.isdisjoint(startup_keys)
+    forbidden_patterns = [
+        r"sqlite:///",
+        r"postgres://",
+        r"postgresql://",
+        r"mysql://",
+        r"mssql://",
+        r"/Users/",
+        r"/home/",
+        r"C:\\\\",
+        r"\.env",
+    ]
+    for pattern in forbidden_patterns:
+        assert re.search(pattern, serialized_startup_payload, flags=re.IGNORECASE) is None
 
 
 @pytest.mark.anyio
