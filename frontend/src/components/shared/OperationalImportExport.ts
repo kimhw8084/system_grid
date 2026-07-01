@@ -7,6 +7,7 @@ interface DownloadOperationalImportFileOptions {
   expectedProfile?: string
   requireSchemaHeaders?: boolean
   fallbackFileName?: string
+  preferredFileName?: string
   metadataContract?: ExportMetadataContract
 }
 
@@ -148,6 +149,7 @@ export async function downloadOperationalImportFile({
   expectedProfile,
   requireSchemaHeaders = false,
   fallbackFileName,
+  preferredFileName,
   metadataContract,
 }: DownloadOperationalImportFileOptions) {
   const manifest = await fetchAndValidateManifest(metadataContract)
@@ -166,7 +168,7 @@ export async function downloadOperationalImportFile({
   const objectUrl = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = objectUrl
-  link.download = parseDownloadFileName(response) || manifest?.filename || fallbackFileName || `SYSGRID_${tableName}_${kind === 'snapshot' ? 'Snapshot' : 'Template'}.csv`
+  link.download = preferredFileName || parseDownloadFileName(response) || manifest?.filename || fallbackFileName || `SYSGRID_${tableName}_${kind === 'snapshot' ? 'Snapshot' : 'Template'}.csv`
   link.click()
   URL.revokeObjectURL(objectUrl)
 

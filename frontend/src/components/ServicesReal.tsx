@@ -59,8 +59,10 @@ import {
 import { WorkspaceCompareShell, WorkspaceDossierShell } from './shared/WorkspaceModalShells'
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
 import { OperationalImportModal } from './shared/OperationalImportModal'
+import { downloadOperationalImportFile } from './shared/OperationalImportExport'
 import { OperationalDataGrid } from './shared/OperationalDataGrid'
 import { resolveOperationalDataState } from './shared/OperationalDataState'
+import DiagnosticStatusPill, { DataDiagnosticModal, buildOperationalDiagnosticDetail } from './shared/OperationalDataStatus'
 import { OPERATIONAL_ACTION_LABELS } from './shared/OperationalActionLabels'
 import { OperationalDisabledActionTooltip } from './shared/OperationalDisabledActionTooltip'
 import {
@@ -339,8 +341,7 @@ const slugifyViewId = (value: string) =>
 // Removed stale floating panel positioning helpers.
 
 // Isolated component to prevent UI state changes (menus) from triggering AgGrid recalculations
-const getMonitorGroupValue = (item: any, field: string) => {
-  if (field === 'notification_method') return item.notification_method || 'No notification path'
+const getServiceGroupValue = (item: any, field: string) => {
   return item[field] || 'Unspecified'
 }
 
@@ -348,37 +349,22 @@ const readServiceUiState = () => {
   return readServiceWorkspaceStateFromLocalStorage()?.uiState ?? null
 }
 
-const SERVICE_STATUSES = STATUSES.map((status) => status.value)
 const SERVICE_PURCHASE_TYPES = ['One-time', 'Subscription', 'OEM', 'Free']
+const SERVICE_CURRENCY_OPTIONS = ['USD', 'EUR', 'KRW', 'JPY', 'GBP']
 const getServiceTitle = (service: any) => service?.name || `Service ${service?.id ?? 'Unknown'}`
-const NETWORK_STATUSES = SERVICE_STATUSES
-const NETWORK_LINK_TYPES = ['Database', 'Application', 'OS', 'Middleware', 'API']
-const NETWORK_DIRECTIONS = ['Production', 'Stage', 'Development', 'Lab']
-const NETWORK_UNITS = ['USD', 'EUR', 'KRW', 'JPY', 'GBP']
 
 const normalizeServiceRecord = (service: any) => {
   const status = canonicalizeServiceStatus(service?.status)
   const serviceType = service?.service_type || 'Service'
   const environment = service?.environment || 'Production'
-  const title = getServiceTitle(service)
   const hostName = service?.device_name || 'Floating'
-  const configKeys = Object.keys(service?.config_json || {})
 
   return {
     ...service,
-    title,
-    category: serviceType,
     status,
-    severity: environment,
-    platform: environment,
-    type: serviceType,
+    service_type: serviceType,
+    environment,
     device_name: hostName,
-    monitored_service_names: configKeys,
-    impact: service?.supplier || '',
-    notification_method: service?.purchase_type || '',
-    notification_recipients: [],
-    owners: service?.device_id ? [{ operator_id: Number(service.device_id), role: 'Host', name: hostName, external_id: String(service.device_id) }] : [],
-    owner_team: environment,
     is_active: !service?.is_deleted,
     is_deleted: Boolean(service?.is_deleted),
     secret_count: Number(service?.secret_count || service?.secrets?.length || 0),
@@ -523,6 +509,7 @@ export default function ServicesReal() {
   const [showImportModal, setShowImportModal] = useState(false)
   const [compareOpen, setCompareOpen] = useState(false)
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
+  const [showServicesDataDiagnostic, setShowServicesDataDiagnostic] = useState(false)
   
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
@@ -614,7 +601,7 @@ export default function ServicesReal() {
     setGridSortModel,
     onGridApiReady: (params) => {
       if (typeof window !== 'undefined') {
-        ;(window as any).__DEBUG_NETWORK_GRID_API__ = params.api
+        ;(window as any).__DEBUG_SERVICES_GRID_API__ = params.api
       }
       if (columnLayoutState.length > 0) {
         applyOperationalColumnState(params.api, columnLayoutState, preserveExplicitColumnWidths)
@@ -912,13 +899,19 @@ export default function ServicesReal() {
     )
   }
 
-  const handleExportCSV = () => {
-    if (gridRef.current?.api) {
-      gridRef.current.api.exportDataAsCsv({
-        fileName: `SysGrid_Services_${new Date().toISOString().split('T')[0]}.csv`,
-        allColumns: false,
-        onlySelected: false
+  const handleExportCSV = async () => {
+    const exportDate = new Date().toISOString().split('T')[0]
+    try {
+      const download = await downloadOperationalImportFile({
+        tableName: 'logical_services',
+        kind: 'snapshot',
+        preferredFileName: `SysGrid_Services_${exportDate}.csv`,
       })
+      showWorkspaceToast(
+        `Exported ${download.fileName}. Includes active services only; archived rows, selection, filters, and hidden viewport columns are not part of this snapshot.`
+      )
+    } catch (error: any) {
+      showWorkspaceToast(error.message || 'Services export failed', { type: 'error' })
     }
   }
 
@@ -1153,16 +1146,6 @@ export default function ServicesReal() {
       .filter((item: any) => activeTab === 'active' ? !item.is_deleted : item.is_deleted)
   }, [allItems, activeTab])
 
-  const platformOptions = useMemo(() => {
-    const values = Array.from(new Set((items || []).map((item: any) => item.platform).filter(Boolean)))
-    return values.sort().map((value) => ({ value, label: value }))
-  }, [items])
-
-  const ownerOptions = useMemo(() => {
-    const values = Array.from(new Set((items || []).flatMap((item: any) => (item.owners || []).map((owner: any) => owner.name)).filter(Boolean)))
-    return values.sort().map((value) => ({ value, label: value }))
-  }, [items])
-
   useEffect(() => {
     if (gridRef.current?.api) {
       gridRef.current.api.refreshCells({ columns: ['favorite', 'watch'], force: true })
@@ -1271,6 +1254,20 @@ export default function ServicesReal() {
     [activeTab, allItems, displayedItemsInOrder.length, error, isError, isLoading, items.length]
   )
 
+  const activeServicesQueryError = isError ? error : null
+
+  const servicesDiagnosticDetail = useMemo(() => buildOperationalDiagnosticDetail({
+    endpoint: '/api/v1/logical-services/?include_deleted=true',
+    error: activeServicesQueryError,
+    fallbackMessage: 'The services registry request failed.',
+  }), [activeServicesQueryError])
+
+  useEffect(() => {
+    if (!activeServicesQueryError) {
+      setShowServicesDataDiagnostic(false)
+    }
+  }, [activeServicesQueryError])
+
   const shouldRenderRawGrid = groupBy === 'raw' || servicesDataState.kind !== 'ready'
 
   const { handleRowClicked, handleRowDoubleClicked } = useOperationalRowInteractions({
@@ -1297,7 +1294,7 @@ export default function ServicesReal() {
   const groupedSections = useMemo(() => {
     if (groupBy === 'raw') return []
     const sections = sortedItemsForGrouped.reduce((acc: Array<{ key: string; label: string; items: any[] }>, item: any) => {
-      const label = String(getMonitorGroupValue(item, groupBy))
+      const label = String(getServiceGroupValue(item, groupBy))
       const existing = acc.find((section) => section.key === label)
       if (existing) {
         existing.items.push(item)
@@ -1384,7 +1381,7 @@ export default function ServicesReal() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    ;(window as any).__DEBUG_SET_NETWORK_COLUMN_WIDTH__ = (colId: string, width: number) => {
+    ;(window as any).__DEBUG_SET_SERVICES_COLUMN_WIDTH__ = (colId: string, width: number) => {
       if (!gridRef.current?.api) return
       gridRef.current.api.applyColumnState({
         state: [{ colId, width }],
@@ -1394,7 +1391,7 @@ export default function ServicesReal() {
       syncColumnLayoutState(gridRef.current.api, true)
     }
     return () => {
-      delete (window as any).__DEBUG_SET_NETWORK_COLUMN_WIDTH__
+      delete (window as any).__DEBUG_SET_SERVICES_COLUMN_WIDTH__
     }
   }, [setTransientManualColumnWidths, syncColumnLayoutState])
 
@@ -1761,19 +1758,35 @@ export default function ServicesReal() {
         ),
         subtitle: "Centralized logical service registry and operational ownership view",
         actions: (
-          <HeaderScopeSwitch
-            label="Service Scope"
-            summary={`${lifecycleCounts.existing} active · ${lifecycleCounts.archived} deleted`}
-            value={activeTab}
-            onChange={(next) => {
-              setActiveTab(next as 'active' | 'deleted')
-              setSelectedIds([])
-            }}
-            options={[
-              { label: 'Active', value: 'active' },
-              { label: 'Deleted', value: 'deleted' }
-            ]}
-          />
+          <>
+            <HeaderScopeSwitch
+              label="Service Scope"
+              summary={`${lifecycleCounts.existing} active · ${lifecycleCounts.archived} deleted`}
+              value={activeTab}
+              onChange={(next) => {
+                setActiveTab(next as 'active' | 'deleted')
+                setSelectedIds([])
+              }}
+              options={[
+                { label: 'Active', value: 'active' },
+                { label: 'Deleted', value: 'deleted' }
+              ]}
+            />
+            {activeServicesQueryError && (
+              <>
+                <DiagnosticStatusPill
+                  status="error"
+                  errorDetail={{ status: (activeServicesQueryError as any)?.status }}
+                  onClick={() => setShowServicesDataDiagnostic(true)}
+                />
+                <DataDiagnosticModal
+                  isOpen={showServicesDataDiagnostic}
+                  onClose={() => setShowServicesDataDiagnostic(false)}
+                  errorDetail={servicesDiagnosticDetail}
+                />
+              </>
+            )}
+          </>
         ),
       }}
       toolbarSearch={(
@@ -2118,7 +2131,7 @@ export default function ServicesReal() {
               cursorX={rowActionMenu.point.x}
               cursorY={rowActionMenu.point.y}
               onClose={() => setRowActionMenu(null)}
-              meta={`ID ${rowActionMenu.item.id} · ${rowActionMenu.item.type || 'Service'}`}
+              meta={`ID ${rowActionMenu.item.id} · ${rowActionMenu.item.service_type || 'Service'}`}
               title={rowActionMenu.item.name}
               sections={[
                 {
@@ -2339,8 +2352,9 @@ export default function ServicesReal() {
           <BulkEditTableModal
             key={`services-bulk-edit-${selectedItems.filter(Boolean).map((item) => item.id).join('-') || 'empty'}`}
             items={selectedItems}
-            linkPurposeOptions={serviceTypeOptions}
-            cableTypeOptions={purchaseTypeOptions}
+            serviceTypeOptions={serviceTypeOptions}
+            environmentOptions={environmentOptions}
+            purchaseTypeOptions={purchaseTypeOptions}
             onClose={() => setShowBulkEditModal(false)}
             onSuccess={() => {
               queryClient.invalidateQueries({ queryKey: ['logical-services'] })
@@ -2379,7 +2393,7 @@ function CompareServicesModal({ items, onClose }: any) {
   const fields = useMemo(() => [
     { label: 'Status', getValue: (item: any) => item.status || 'Unknown' },
     { label: 'Host', getValue: (item: any) => item.device_name || 'Floating' },
-    { label: 'Type', getValue: (item: any) => item.service_type || item.type || 'N/A' },
+    { label: 'Type', getValue: (item: any) => item.service_type || 'N/A' },
     { label: 'Environment', getValue: (item: any) => item.environment || 'N/A' },
     { label: 'Version', getValue: (item: any) => item.version || 'N/A' },
     { label: 'Manufacturer', getValue: (item: any) => item.manufacturer || 'N/A' },
@@ -2426,9 +2440,9 @@ function CompareServicesModal({ items, onClose }: any) {
               <div key={item.id} className="rounded-lg border border-white/5 bg-black/40 p-5 shadow-inner">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-[9px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20">ID {item.id}</span>
-                  <StatusPill value={item.severity} />
+                  <StatusPill value={item.status} />
                 </div>
-                <h4 className="text-sm font-black text-white truncate mb-1">{item.title}</h4>
+                <h4 className="text-sm font-black text-white truncate mb-1">{getServiceTitle(item)}</h4>
                 <p className="text-[9px] font-bold text-slate-500 tracking-widest truncate">{item.device_name || 'No Target Asset'}</p>
                 
                 <div className="mt-6 space-y-2.5">
@@ -2522,22 +2536,22 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
         )
     }
 
-    if (isSeverityOpen) {
-        return (
+	    if (isSeverityOpen) {
+	        return (
           <WorkspaceModal
             isOpen={true}
-            onClose={onClose}
-            size="compact"
-            title="Update Type"
-            subtitle="Recalibrate the connection type for selection."
-            icon={<Shield size={20} />}
+	            onClose={onClose}
+	            size="compact"
+	            title="Update Type"
+	            subtitle="Apply a service type change to selection."
+	            icon={<Shield size={20} />}
             footerRight={
               <div className="flex items-center gap-3">
                 <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
-                <ToolbarButton 
-                  disabled={!val} 
-                  onClick={() => onApply('link_type', val)} 
-                  variant="danger"
+	                <ToolbarButton 
+	                  disabled={!val} 
+	                  onClick={() => onApply('service_type', val)} 
+	                  variant="danger"
                 >
                   Apply Type
                 </ToolbarButton>
@@ -2545,48 +2559,48 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
             }
           >
             <div className="p-2">
-              <AppDropdown
-                value={val}
-                onChange={v => setVal(v)}
-                options={NETWORK_LINK_TYPES.map((value) => ({ value, label: value }))}
-                placeholder="Select Type..."
-                label="Target Type"
-              />
+	              <AppDropdown
+	                value={val}
+	                onChange={v => setVal(v)}
+	                options={['Database', 'Application', 'OS', 'Middleware', 'API'].map((value) => ({ value, label: value }))}
+	                placeholder="Select Type..."
+	                label="Target Type"
+	              />
             </div>
           </WorkspaceModal>
         )
     }
 
-    if (isNotifyOpen) {
-        return (
+	    if (isNotifyOpen) {
+	        return (
           <WorkspaceModal
             isOpen={true}
-            onClose={onClose}
-            size="compact"
-            title="Update Direction"
-            subtitle="Reroute the connection direction for selection."
-            icon={<Bell size={20} />}
+	            onClose={onClose}
+	            size="compact"
+	            title="Update Environment"
+	            subtitle="Apply an environment change to selection."
+	            icon={<Bell size={20} />}
             footerRight={
               <div className="flex items-center gap-3">
                 <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
-                <ToolbarButton 
-                  disabled={!val} 
-                  onClick={() => onApply('direction', val)} 
-                  variant="primary"
-                >
-                  Apply Direction
-                </ToolbarButton>
+	                <ToolbarButton 
+	                  disabled={!val} 
+	                  onClick={() => onApply('environment', val)} 
+	                  variant="primary"
+	                >
+	                  Apply Environment
+	                </ToolbarButton>
               </div>
             }
           >
             <div className="p-2">
-              <AppDropdown
-                value={val}
-                onChange={v => setVal(v)}
-                options={NETWORK_DIRECTIONS.map((value) => ({ value, label: value }))}
-                placeholder="Select Direction..."
-                label="Target Direction"
-              />
+	              <AppDropdown
+	                value={val}
+	                onChange={v => setVal(v)}
+	                options={['Production', 'Stage', 'Development', 'Lab'].map((value) => ({ value, label: value }))}
+	                placeholder="Select Environment..."
+	                label="Target Environment"
+	              />
             </div>
           </WorkspaceModal>
         )
@@ -2595,20 +2609,19 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
     return null;
 }
 
-function BulkEditTableModal({ items, linkPurposeOptions, cableTypeOptions, onClose, onSuccess }: any) {
+function BulkEditTableModal({ items, serviceTypeOptions, environmentOptions, purchaseTypeOptions, onClose, onSuccess }: any) {
   const [rows, setRows] = useState(() => items.map((item: any) => ({
     id: item.id,
-    title: item.name || `Service ${item.id}`,
+    name: item.name || `Service ${item.id}`,
     status: item.status || '',
-    link_type: item.service_type || item.type || item.category || '',
-    direction: item.environment || '',
-    farm: item.device_name || '',
+    service_type: item.service_type || '',
+    environment: item.environment || '',
+    device_name: item.device_name || '',
     purpose: item.purpose || '',
-    speed_gbps: item.cost ?? '',
-    unit: item.currency || 'USD',
-    cable_type: item.purchase_type || '',
-    request_link: item.installation_date ? String(item.installation_date).split('T')[0] : '',
-    is_active: item.is_active !== false,
+    cost: item.cost ?? '',
+    currency: item.currency || 'USD',
+    purchase_type: item.purchase_type || '',
+    installation_date: item.installation_date ? String(item.installation_date).split('T')[0] : '',
   })))
   const [isMaximized, setIsMaximized] = useState(false)
   const initialDirtySnapshot = useMemo(() => JSON.stringify(rows), [])
@@ -2628,13 +2641,13 @@ function BulkEditTableModal({ items, linkPurposeOptions, cableTypeOptions, onClo
       for (const row of rows) {
         const payload = {
           status: row.status,
-          service_type: row.link_type || 'Database',
-          environment: row.direction || 'Production',
+          service_type: row.service_type || 'Database',
+          environment: row.environment || 'Production',
           purpose: row.purpose || null,
-          cost: row.speed_gbps === '' ? 0 : Number(row.speed_gbps),
-          currency: row.unit || 'USD',
-          purchase_type: row.cable_type || 'One-time',
-          installation_date: row.request_link || null,
+          cost: row.cost === '' ? 0 : Number(row.cost),
+          currency: row.currency || 'USD',
+          purchase_type: row.purchase_type || 'One-time',
+          installation_date: row.installation_date || null,
         }
         const res = await apiFetch(`/api/v1/logical-services/${row.id}`, {
           method: 'PUT',
@@ -2696,31 +2709,21 @@ function BulkEditTableModal({ items, linkPurposeOptions, cableTypeOptions, onClo
                 <th className="min-w-[110px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Currency</th>
                 <th className="min-w-[160px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">License Type</th>
                 <th className="min-w-[220px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Deployed</th>
-                <th className="min-w-[120px] px-4 py-3 text-left text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Control</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {rows.map((row: any) => (
                 <tr key={row.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="px-4 py-3 text-[10px] font-bold text-slate-200">{row.title}</td>
+                  <td className="px-4 py-3 text-[10px] font-bold text-slate-200">{row.name}</td>
                   <td className="px-2 py-2"><AppDropdown value={row.status} onChange={(value) => updateRow(row.id, 'status', value)} options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))} placeholder="Status" /></td>
-                  <td className="px-2 py-2"><AppDropdown value={row.link_type} onChange={(value) => updateRow(row.id, 'link_type', value)} options={mergeOptionsWithCurrentValue(linkPurposeOptions, row.link_type)} placeholder="Type" /></td>
-                  <td className="px-2 py-2"><AppDropdown value={row.direction} onChange={(value) => updateRow(row.id, 'direction', value)} options={NETWORK_DIRECTIONS.map((value) => ({ value, label: value }))} placeholder="Environment" /></td>
-                  <td className="px-4 py-3 text-[10px] font-bold text-slate-200">{row.farm || 'Unassigned'}</td>
+                  <td className="px-2 py-2"><AppDropdown value={row.service_type} onChange={(value) => updateRow(row.id, 'service_type', value)} options={mergeOptionsWithCurrentValue(serviceTypeOptions, row.service_type)} placeholder="Type" /></td>
+                  <td className="px-2 py-2"><AppDropdown value={row.environment} onChange={(value) => updateRow(row.id, 'environment', value)} options={mergeOptionsWithCurrentValue(environmentOptions, row.environment)} placeholder="Environment" /></td>
+                  <td className="px-4 py-3 text-[10px] font-bold text-slate-200">{row.device_name || 'Unassigned'}</td>
                   <td className="px-2 py-2"><input value={row.purpose} onChange={(event) => updateRow(row.id, 'purpose', event.target.value)} placeholder="Purpose" className={`${serviceInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
-                  <td className="px-2 py-2"><input type="number" value={row.speed_gbps} onChange={(event) => updateRow(row.id, 'speed_gbps', event.target.value)} placeholder="Cost" className={`${serviceInputClass()} h-[42px] px-3 py-2 text-[10px] [appearance:textfield]`} /></td>
-                  <td className="px-2 py-2"><AppDropdown value={row.unit} onChange={(value) => updateRow(row.id, 'unit', value)} options={NETWORK_UNITS.map((value) => ({ value, label: value }))} placeholder="Currency" /></td>
-                  <td className="px-2 py-2"><AppDropdown value={row.cable_type} onChange={(value) => updateRow(row.id, 'cable_type', value)} options={mergeOptionsWithCurrentValue(cableTypeOptions, row.cable_type)} placeholder="License type" /></td>
-                  <td className="px-2 py-2"><input type="date" value={row.request_link} onChange={(event) => updateRow(row.id, 'request_link', event.target.value)} placeholder="Deployment date" className={`${serviceInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
-                  <td className="px-4 py-2">
-                    <button
-                      type="button"
-                      onClick={() => updateRow(row.id, 'is_active', !row.is_active)}
-                      className={`w-full rounded-lg border px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${row.is_active ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400' : 'border-white/10 bg-black/20 text-slate-500'}`}
-                    >
-                      {row.is_active ? 'Active' : 'Paused'}
-                    </button>
-                  </td>
+                  <td className="px-2 py-2"><input type="number" value={row.cost} onChange={(event) => updateRow(row.id, 'cost', event.target.value)} placeholder="Cost" className={`${serviceInputClass()} h-[42px] px-3 py-2 text-[10px] [appearance:textfield]`} /></td>
+                  <td className="px-2 py-2"><AppDropdown value={row.currency} onChange={(value) => updateRow(row.id, 'currency', value)} options={SERVICE_CURRENCY_OPTIONS.map((value) => ({ value, label: value }))} placeholder="Currency" /></td>
+                  <td className="px-2 py-2"><AppDropdown value={row.purchase_type} onChange={(value) => updateRow(row.id, 'purchase_type', value)} options={mergeOptionsWithCurrentValue(purchaseTypeOptions, row.purchase_type)} placeholder="License type" /></td>
+                  <td className="px-2 py-2"><input type="date" value={row.installation_date} onChange={(event) => updateRow(row.id, 'installation_date', event.target.value)} placeholder="Deployment date" className={`${serviceInputClass()} h-[42px] px-3 py-2 text-[10px]`} /></td>
                 </tr>
               ))}
             </tbody>
