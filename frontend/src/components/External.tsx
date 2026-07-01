@@ -188,6 +188,8 @@ const EXTERNAL_DEFAULT_GROUP_OPTIONS = [
   { value: 'environment', label: 'Environment' },
   { value: 'criticality', label: 'Criticality' },
 ]
+const EXTERNAL_ACTIVE_TABS = ['active', 'deleted', 'links'] as const
+type ExternalActiveTab = (typeof EXTERNAL_ACTIVE_TABS)[number]
 const EXTERNAL_PERSISTED_COLUMN_IDS = new Set([
   'select',
   'id',
@@ -216,6 +218,9 @@ const normalizeExternalHiddenColumns = (value: any) =>
     ? value.filter((entry) => typeof entry === 'string' && EXTERNAL_PERSISTED_COLUMN_IDS.has(entry))
     : []
 
+export const normalizeExternalActiveTab = (value: unknown): ExternalActiveTab =>
+  EXTERNAL_ACTIVE_TABS.includes(value as ExternalActiveTab) ? (value as ExternalActiveTab) : 'active'
+
 const normalizeExternalQuickFilters = (value: any) => ({
   status: Array.isArray(value?.status) ? value.status.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [] as string[],
   type: Array.isArray(value?.type) ? value.type.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [] as string[],
@@ -225,14 +230,14 @@ const normalizeExternalQuickFilters = (value: any) => ({
   protocol: Array.isArray(value?.protocol) ? value.protocol.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [] as string[],
 })
 
-const sanitizeExternalViewConfig = (config: any) => {
+export const sanitizeExternalViewConfig = (config: any) => {
   const safeConfig = config && typeof config === 'object' ? config : {}
   return {
     fontSize: Number.isFinite(safeConfig.fontSize) ? safeConfig.fontSize : 11,
     rowDensity: Number.isFinite(safeConfig.rowDensity) ? safeConfig.rowDensity : 8,
     hiddenColumns: normalizeExternalHiddenColumns(safeConfig.hiddenColumns),
     groupBy: typeof safeConfig.groupBy === 'string' ? safeConfig.groupBy : 'raw',
-    activeTab: (safeConfig.activeTab === 'deleted' ? 'deleted' : 'active') as 'active' | 'deleted',
+    activeTab: normalizeExternalActiveTab(safeConfig.activeTab),
     searchTerm: typeof safeConfig.searchTerm === 'string' ? safeConfig.searchTerm : '',
     showFilterBar: safeConfig.showFilterBar !== false,
     quickFilters: normalizeExternalQuickFilters(safeConfig.quickFilters),
@@ -262,6 +267,16 @@ const normalizeExternalWorkspaceState = (value: any) => {
   return {
     ...normalized,
   }
+}
+
+export const describeExternalSavedView = (view: any) => {
+  const activeTab = normalizeExternalActiveTab(view?.config?.activeTab)
+  const tabLabel = activeTab === 'deleted' ? 'Archive' : activeTab === 'links' ? 'Links' : 'Registry'
+  const groupLabel = view?.config?.groupBy && view.config.groupBy !== 'raw'
+    ? `Grouped by ${EXTERNAL_DEFAULT_GROUP_OPTIONS.find((option) => option.value === view.config.groupBy)?.label || view.config.groupBy}`
+    : 'Raw Table'
+
+  return `${tabLabel} · ${groupLabel} · ${view?.config?.searchTerm ? 'Scoped search' : 'Full workspace'}`
 }
 
 const normalizeLegacyContacts = (entity: any) => {
@@ -1478,7 +1493,7 @@ export default function External() {
   })
   const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedUiState.hiddenColumns ?? ['created_at', 'updated_at'])
   const [showConfig, setShowConfig] = useState(false)
-  const [activeTab, setActiveTab] = useState<'active' | 'deleted' | 'links'>(persistedUiState.activeTab === 'deleted' ? 'deleted' : 'active')
+  const [activeTab, setActiveTab] = useState<ExternalActiveTab>(normalizeExternalActiveTab(persistedUiState.activeTab))
   const [activeModal, setActiveModal] = useState<any>(null)
   const [isActiveModalDirty, setIsActiveModalDirty] = useState(false)
   const [activeModalBackendFieldErrors, setActiveModalBackendFieldErrors] = useState<Record<string, string>>({})
@@ -3034,13 +3049,7 @@ export default function External() {
             onApplyView={applySavedView}
             onOverwriteView={saveCurrentToView}
             onDeleteView={deleteView}
-            describeView={(view: any) => {
-              const tabLabel = view.config?.activeTab === 'deleted' ? 'Archive' : 'Registry'
-              const groupLabel = view.config?.groupBy && view.config.groupBy !== 'raw'
-                ? `Grouped by ${EXTERNAL_DEFAULT_GROUP_OPTIONS.find((o) => o.value === view.config.groupBy)?.label || view.config.groupBy}`
-                : 'Raw Table'
-              return `${tabLabel} · ${groupLabel} · ${view.config?.searchTerm ? 'Scoped search' : 'Full workspace'}`
-            }}
+            describeView={describeExternalSavedView}
           />
 
           <OperationalAnchoredPanel
