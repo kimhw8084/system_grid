@@ -18,6 +18,7 @@ import { WorkspaceModal } from "./shared/WorkspaceModal"
 import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch, ToolbarSegmented } from "./shared/LayoutPrimitives"
 import { OperationalWorkspaceShell } from "./shared/OperationalWorkspaceShells"
 import { OperationalDataGrid } from "./shared/OperationalDataGrid"
+import { resolveOperationalDataState } from "./shared/OperationalDataState"
 import { OperationalRowActionMenu } from "./shared/OperationalRowActionMenu"
 import { useOperationalFormDirty } from "./shared/OperationalFormContracts"
 import { StyledSelect } from "./shared/StyledSelect"
@@ -1513,7 +1514,7 @@ export default function Assets() {
     queryKey: ['asset-user-profile'],
     queryFn: async () => (await apiFetch('/api/v1/settings/user/profile')).json()
   })
-  const { data: devices, isLoading } = useQuery({
+  const { data: devices, isLoading, isError, error } = useQuery({
     queryKey: ['devices'],
     queryFn: async () => (await (await apiFetch('/api/v1/devices?include_deleted=true')).json())
   })
@@ -1634,6 +1635,22 @@ export default function Assets() {
   const quickLookAsset = useMemo(
     () => devices?.find((asset: any) => asset.id === quickLookId) ?? null,
     [devices, quickLookId]
+  )
+  const assetDataState = useMemo(
+    () => resolveOperationalDataState({
+      loading: isLoading,
+      error: isError ? error : null,
+      totalCount: Array.isArray(devices) ? devices.length : 0,
+      tabCount: assets.length,
+      visibleCount: visibleAssets.length,
+      emptyLabel: 'No assets found',
+      filteredLabel: 'No assets match the current search or scope',
+      tabEmptyKind: activeTab === 'deleted' ? 'deleted-empty' : 'active-empty',
+      tabEmptyLabel: activeTab === 'deleted' ? 'No deleted assets found' : 'No active assets found',
+      errorTitle: 'Asset registry could not be loaded',
+      errorDescription: 'The asset registry request failed.',
+    }),
+    [activeTab, assets.length, devices, error, isError, isLoading, visibleAssets.length]
   )
 
   useEffect(() => {
@@ -2389,6 +2406,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
             loading={isLoading}
             loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
             loadingLabel={<p className="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-400">Syncing asset registry...</p>}
+            dataState={assetDataState}
             suppressRowClickSelection={false}
             className="shadow-2xl border border-white/5"
           />
