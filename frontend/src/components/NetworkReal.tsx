@@ -58,6 +58,7 @@ import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHa
 import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } from './shared/WorkspaceModalShells'
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
 import { OperationalImportModal } from './shared/OperationalImportModal'
+import { downloadOperationalImportFile } from './shared/OperationalImportExport'
 import { OperationalGridMatrix } from './shared/OperationalGridMatrix'
 import {
   OperationalAnchoredPanel,
@@ -80,6 +81,7 @@ import {
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
 import { OPERATIONAL_ACTION_LABELS } from './shared/OperationalActionLabels'
+import DiagnosticStatusPill, { DataDiagnosticModal, buildOperationalDiagnosticDetail } from './shared/OperationalDataStatus'
 
 const NETWORK_VIEW_STORAGE_KEY = 'sysgrid_network_views_v1'
 const NETWORK_ACTIVE_VIEW_KEY = 'sysgrid_network_active_view_v1'
@@ -530,7 +532,6 @@ const normalizeNetworkConnection = (connection: any) => {
     status,
     severity: linkType,
     platform: connection?.farm || direction || unit,
-    monitoring_url: requestLink,
     type: linkType,
     purpose: connection?.purpose || '',
     impact: connection?.cable_type || '',
@@ -701,6 +702,7 @@ export default function NetworkReal() {
   const [detailItem, setDetailItem] = useState<any>(null)
   const [historyItem, setHistoryItem] = useState<any>(null)
   const [showImportModal, setShowImportModal] = useState(false)
+  const [showNetworkDataDiagnostic, setShowNetworkDataDiagnostic] = useState(false)
   const [compareOpen, setCompareOpen] = useState(false)
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
   
@@ -746,10 +748,10 @@ export default function NetworkReal() {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
   const autoSizeFrameRef = useRef<number | null>(null)
   const autoSizeTimeoutRef = useRef<number | null>(null)
-  const monitoringPreferenceHydratedRef = useRef(false)
-  const monitoringPreferenceMigratedRef = useRef(false)
-  const monitoringPreferenceSyncRef = useRef<string | null>(null)
-  const monitoringPreferenceSyncTimeoutRef = useRef<number | null>(null)
+  const networkPreferenceHydratedRef = useRef(false)
+  const networkPreferenceMigratedRef = useRef(false)
+  const networkPreferenceSyncRef = useRef<string | null>(null)
+  const networkPreferenceSyncTimeoutRef = useRef<number | null>(null)
   const preserveExplicitColumnWidthsRef = useRef(false)
   const {
     columnLayoutState,
@@ -816,11 +818,11 @@ export default function NetworkReal() {
   useEffect(() => clearPendingAutoSize, [clearPendingAutoSize])
 
   useEffect(() => {
-    if (remoteWorkspaceState && !monitoringPreferenceHydratedRef.current) {
-      monitoringPreferenceHydratedRef.current = true
+    if (remoteWorkspaceState && !networkPreferenceHydratedRef.current) {
+      networkPreferenceHydratedRef.current = true
       const payload = initialWorkspaceState ?? normalizeNetworkWorkspaceState(remoteWorkspaceState)
       const serialized = JSON.stringify(payload)
-      monitoringPreferenceSyncRef.current = serialized
+      networkPreferenceSyncRef.current = serialized
       setSavedViews(payload?.savedViews ?? normalizeNetworkSavedViews([]))
       setActiveViewId(payload?.activeViewId ?? null)
       setFavoriteIds(hasStoredFavoriteIds ? (localWorkspaceState?.favoriteIds ?? []) : (payload?.favoriteIds ?? []))
@@ -837,12 +839,12 @@ export default function NetworkReal() {
       return
     }
 
-    if (hasUserSettings && !remoteWorkspaceState && !monitoringPreferenceMigratedRef.current) {
-      monitoringPreferenceMigratedRef.current = true
+    if (hasUserSettings && !remoteWorkspaceState && !networkPreferenceMigratedRef.current) {
+      networkPreferenceMigratedRef.current = true
       const localPayload = buildNetworkWorkspacePreferencePayload()
       if (!localPayload) return
       const serialized = JSON.stringify(localPayload)
-      monitoringPreferenceSyncRef.current = serialized
+      networkPreferenceSyncRef.current = serialized
       apiFetch('/api/v1/settings/user/settings', {
         method: 'PATCH',
         body: JSON.stringify({ [NETWORK_WORKSPACE_PREFERENCE_KEY]: localPayload })
@@ -868,24 +870,24 @@ export default function NetworkReal() {
     const payload = buildNetworkWorkspacePreferencePayload()
     if (!payload) return
     const serialized = JSON.stringify(payload)
-    if (monitoringPreferenceSyncRef.current === serialized) return
-    if (monitoringPreferenceSyncTimeoutRef.current !== null) {
-      window.clearTimeout(monitoringPreferenceSyncTimeoutRef.current)
+    if (networkPreferenceSyncRef.current === serialized) return
+    if (networkPreferenceSyncTimeoutRef.current !== null) {
+      window.clearTimeout(networkPreferenceSyncTimeoutRef.current)
     }
-    monitoringPreferenceSyncTimeoutRef.current = window.setTimeout(() => {
+    networkPreferenceSyncTimeoutRef.current = window.setTimeout(() => {
       apiFetch('/api/v1/settings/user/settings', {
         method: 'PATCH',
         body: JSON.stringify({ [NETWORK_WORKSPACE_PREFERENCE_KEY]: payload })
       })
         .then(() => {
-          monitoringPreferenceSyncRef.current = serialized
+          networkPreferenceSyncRef.current = serialized
         })
         .catch(() => {})
     }, 500)
     return () => {
-      if (monitoringPreferenceSyncTimeoutRef.current !== null) {
-        window.clearTimeout(monitoringPreferenceSyncTimeoutRef.current)
-        monitoringPreferenceSyncTimeoutRef.current = null
+      if (networkPreferenceSyncTimeoutRef.current !== null) {
+        window.clearTimeout(networkPreferenceSyncTimeoutRef.current)
+        networkPreferenceSyncTimeoutRef.current = null
       }
     }
   }, [buildNetworkWorkspacePreferencePayload, hasUserSettings])
@@ -1185,13 +1187,19 @@ export default function NetworkReal() {
     )
   }
 
-  const handleExportCSV = () => {
-    if (gridRef.current?.api) {
-      gridRef.current.api.exportDataAsCsv({
-        fileName: `SysGrid_Network_${new Date().toISOString().split('T')[0]}.csv`,
-        allColumns: false,
-        onlySelected: false
+  const handleExportCSV = async () => {
+    const exportDate = new Date().toISOString().split('T')[0]
+    try {
+      const download = await downloadOperationalImportFile({
+        tableName: 'port_connections',
+        kind: 'snapshot',
+        preferredFileName: `SysGrid_Network_${exportDate}.csv`,
       })
+      showWorkspaceToast(
+        `Exported ${download.fileName}. Includes active network connections only; deleted rows, selection, filters, and hidden viewport columns are not part of this snapshot.`
+      )
+    } catch (error: any) {
+      showWorkspaceToast(error.message || 'Network export failed', { type: 'error' })
     }
   }
 
@@ -1419,10 +1427,24 @@ export default function NetworkReal() {
     }
   }, [showBulkMenu, showDisplayMenu, showViewsMenu])
 
-  const { data: allItems, isLoading } = useQuery({
+  const { data: allItems, isLoading, isError, error } = useQuery({
     queryKey: ['network-connections'],
     queryFn: async () => (await apiFetch('/api/v1/networks/connections?include_deleted=true')).json()
   })
+
+  const activeNetworkQueryError = isError ? error : null
+
+  const networkDiagnosticDetail = useMemo(() => buildOperationalDiagnosticDetail({
+    endpoint: '/api/v1/networks/connections?include_deleted=true',
+    error: activeNetworkQueryError,
+    fallbackMessage: 'The network registry request failed.',
+  }), [activeNetworkQueryError])
+
+  useEffect(() => {
+    if (!activeNetworkQueryError) {
+      setShowNetworkDataDiagnostic(false)
+    }
+  }, [activeNetworkQueryError])
 
   const lifecycleCounts = useMemo(() => {
     if (!Array.isArray(allItems)) return { existing: 0, archived: 0 }
@@ -2239,19 +2261,35 @@ export default function NetworkReal() {
         ),
         subtitle: "Centralized network connection registry and operational status",
         actions: (
-          <HeaderScopeSwitch
-            label="Connection Scope"
-            summary={`${lifecycleCounts.existing} active · ${lifecycleCounts.archived} deleted`}
-            value={activeTab}
-            onChange={(next) => {
-              setActiveTab(next as 'active' | 'deleted')
-              setSelectedIds([])
-            }}
-            options={[
-              { label: 'Active', value: 'active' },
-              { label: 'Deleted', value: 'deleted' }
-            ]}
-          />
+          <>
+            <HeaderScopeSwitch
+              label="Connection Scope"
+              summary={`${lifecycleCounts.existing} active · ${lifecycleCounts.archived} deleted`}
+              value={activeTab}
+              onChange={(next) => {
+                setActiveTab(next as 'active' | 'deleted')
+                setSelectedIds([])
+              }}
+              options={[
+                { label: 'Active', value: 'active' },
+                { label: 'Deleted', value: 'deleted' }
+              ]}
+            />
+            {activeNetworkQueryError && (
+              <>
+                <DiagnosticStatusPill
+                  status="error"
+                  errorDetail={{ status: (activeNetworkQueryError as any)?.status }}
+                  onClick={() => setShowNetworkDataDiagnostic(true)}
+                />
+                <DataDiagnosticModal
+                  isOpen={showNetworkDataDiagnostic}
+                  onClose={() => setShowNetworkDataDiagnostic(false)}
+                  errorDetail={networkDiagnosticDetail}
+                />
+              </>
+            )}
+          </>
         ),
       }}
       toolbarSearch={(
@@ -3281,7 +3319,7 @@ function NetworkDetailModal({ item, onClose, onEdit, onDelete, onOpenAsset, onOp
   const detailTitle = getNetworkConnectionTitle(item)
 
   const { data: suggestedKnowledge } = useQuery({
-    queryKey: ['monitoring-knowledge-suggestions', item.id, item.device_id],
+    queryKey: ['network-knowledge-suggestions', item.id, item.device_id],
     queryFn: async () => {
       const params = new URLSearchParams()
       if (item.device_id) params.append('device_id', String(item.device_id))
@@ -3557,8 +3595,6 @@ function NetworkDetailModal({ item, onClose, onEdit, onDelete, onOpenAsset, onOp
   )
 }
 
-// Shared monitoring form constants and types are declared at the top of this module.
-
 const stringifyOwnerUserIds = (owners: NetworkOwner[] = []) =>
   owners
     .map((owner) => owner.external_id || owner.name || String(owner.operator_id))
@@ -3566,44 +3602,6 @@ const stringifyOwnerUserIds = (owners: NetworkOwner[] = []) =>
     .join(', ')
 
 const isNetworkFieldRequired = (fieldName: string) => NETWORK_REQUIRED_FIELD_NAMES.has(fieldName)
-
-/*
-  const unsafeUrlPattern = /[<>"']|javascript:|data:|vbscript:/i // verified match
-
-  if (isNetworkFieldRequired('title') && !formData.title?.trim()) errors.title = 'Title is required.'
-  if (isNetworkFieldRequired('category') && !formData.category) errors.category = 'Category is required.'
-  if (isNetworkFieldRequired('status') && !formData.status) errors.status = 'Status is required.'
-  if (isNetworkFieldRequired('severity') && !formData.severity) errors.severity = 'Severity is required.'
-
-  if (formData.monitoring_url) {
-    try {
-      const parsed = new URL(formData.monitoring_url)
-      if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname) {
-        errors.monitoring_url = 'Request link must use http/https and include a host.'
-      }
-    } catch {
-      errors.monitoring_url = 'Request link must be a valid http/https URL.'
-    }
-    if (unsafeUrlPattern.test(formData.monitoring_url)) {
-      errors.monitoring_url = 'Request link contains unsafe content.'
-    }
-  }
-
-  if (Number.isNaN(formData.check_interval) || formData.check_interval < CHECK_INTERVAL_MIN || formData.check_interval > CHECK_INTERVAL_MAX) {
-    errors.check_interval = `Check interval must be between ${CHECK_INTERVAL_MIN} and ${CHECK_INTERVAL_MAX} seconds.`
-  }
-  if (Number.isNaN(formData.alert_duration) || formData.alert_duration < ALERT_DURATION_MIN || formData.alert_duration > ALERT_DURATION_MAX) {
-    errors.alert_duration = `Alert duration must be between ${ALERT_DURATION_MIN} and ${ALERT_DURATION_MAX} seconds.`
-  }
-  if (Number.isNaN(formData.notification_throttle) || formData.notification_throttle < NOTIFICATION_THROTTLE_MIN || formData.notification_throttle > NOTIFICATION_THROTTLE_MAX) {
-    errors.notification_throttle = `Notification throttle must be between ${NOTIFICATION_THROTTLE_MIN} and ${NOTIFICATION_THROTTLE_MAX} seconds.`
-  }
-
-  if (formData.severity === 'Critical' && !formData.recovery_docs?.length) {
-    errors.recovery_docs = 'Critical connections require at least one linked reference.'
-  }
-*/
-
 
 const networkInputClass = (error?: string) => getWorkspaceInputClass(error)
 
