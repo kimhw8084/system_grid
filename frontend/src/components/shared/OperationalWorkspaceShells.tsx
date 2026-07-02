@@ -238,13 +238,15 @@ export function OperationalDisplayPanel({
   onFontSizeChange: (value: number) => void
   rowDensity: number
   onRowDensityChange: (value: number) => void
-  groupBy: string
-  onGroupByChange: (value: string) => void
-  groupOptions: Array<{ value: string; label: string }>
+  groupBy?: string
+  onGroupByChange?: (value: string) => void
+  groupOptions?: Array<{ value: string; label: string }>
   columns: Array<{ field?: string; headerName?: string; lockVisible?: boolean }>
   hiddenColumns: string[]
   onToggleColumn: (field: string) => void
 }) {
+  const showGrouping = Boolean(groupOptions?.length && groupBy != null && onGroupByChange)
+
   return (
     <OperationalAnchoredPanel
       isOpen={isOpen}
@@ -296,14 +298,16 @@ export function OperationalDisplayPanel({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <AppDropdown
-              value={groupBy}
-              onChange={onGroupByChange}
-              options={groupOptions}
-              label="Group By"
-            />
-          </div>
+          {showGrouping ? (
+            <div className="space-y-2">
+              <AppDropdown
+                value={groupBy as string}
+                onChange={onGroupByChange as (value: string | string[]) => void}
+                options={groupOptions as Array<{ value: string; label: string }>}
+                label="Group By"
+              />
+            </div>
+          ) : null}
 
           <div className="space-y-2">
             <span className="text-[10px] font-semibold text-slate-400">Columns</span>

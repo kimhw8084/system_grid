@@ -6,7 +6,7 @@ import ForceGraph2D from 'react-force-graph-2d'
 import { createPortal } from 'react-dom'
 import { AssetDetailsView } from './assets/AssetDetailsView'
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
-import { WorkspaceEmptyState, WorkspaceFloatingPanel, WorkspacePanelSubtitle, WorkspacePanelTitle, WorkspaceSectionBadge, useEscapeDismiss } from "./shared/OperationalWorkspacePrimitives";
+import { WorkspaceEmptyState, WorkspaceFloatingPanel, WorkspacePanelSubtitle, WorkspacePanelTitle, WorkspaceSectionBadge, useEscapeDismiss, useWorkspaceAnchoredLayer } from "./shared/OperationalWorkspacePrimitives";
 import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Clipboard, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Network, Server, ExternalLink, Share2, ZoomIn, ZoomOut, Maximize2, Minimize2, Shield, Zap, Save, Upload, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, Book } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
@@ -16,14 +16,52 @@ import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { ConnectionForensicsModal } from "./shared/ConnectionForensicsModal"
 import { WorkspaceModal } from "./shared/WorkspaceModal"
 import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch, ToolbarSegmented } from "./shared/LayoutPrimitives"
-import { OperationalWorkspaceShell } from "./shared/OperationalWorkspaceShells"
+import { OperationalDisplayPanel, OperationalSavedViewsPanel, OperationalWorkspaceShell } from "./shared/OperationalWorkspaceShells"
 import { OperationalDataGrid } from "./shared/OperationalDataGrid"
 import { resolveOperationalDataState } from "./shared/OperationalDataState"
+import { usePersistentJsonState, useWorkspaceDismissHandlers } from "./shared/OperationalWorkspaceHooks"
 import { OperationalRowActionMenu } from "./shared/OperationalRowActionMenu"
 import { useOperationalFormDirty } from "./shared/OperationalFormContracts"
 import { StyledSelect } from "./shared/StyledSelect"
 import { WorkspaceFlyoutActionCard } from "./shared/WorkspaceFlyout"
 import { ServiceDetailsView, ServiceForm } from "./ServiceRegistry"
+
+const ASSET_SAVED_VIEW_STORAGE_KEY = 'sysgrid_assets_saved_views_v1'
+const DEFAULT_ASSET_VIEW_IDS = new Set<string>()
+const ASSET_LENS_OPTIONS = [
+  { id: 'all', label: 'All' },
+  { id: 'mine', label: 'My Systems' },
+  { id: 'team', label: 'Team' },
+  { id: 'unowned', label: 'Unowned' },
+  { id: 'degraded', label: 'Degraded' },
+  { id: 'at_risk', label: 'At Risk' },
+  { id: 'needs_docs', label: 'Needs Docs' },
+] as const
+
+type AssetLens = typeof ASSET_LENS_OPTIONS[number]['id']
+type AssetTab = 'inventory' | 'deleted'
+type AssetSavedView = {
+  id: string
+  name: string
+  config?: {
+    groupBy?: string
+    fontSize?: number
+    rowDensity?: number
+    hiddenColumns?: string[]
+    activeLens?: AssetLens
+    activeTab?: AssetTab
+    searchTerm?: string
+  }
+}
+
+const slugifyAssetViewId = (value: string) => {
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return slug || `asset-view-${Date.now()}`
+}
 
 const SharedServiceModals = ({ 
   activeDetails, 
@@ -1434,20 +1472,23 @@ export default function Assets() {
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'report' | 'map' | 'compare'>('grid')
   const [selectedIds, setSelectedIds] = useState<number[]>([])
-  const [showStyleLab, setShowStyleLab] = useState(false)
-  const [showColumnPicker, setShowColumnPicker] = useState(false)
+  const [showDisplayMenu, setShowDisplayMenu] = useState(false)
+  const [showViewsMenu, setShowViewsMenu] = useState(false)
   const [showConfig, setShowConfig] = useState(false)
   const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
   const [isBulkEnvOpen, setIsBulkEnvOpen] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
-  const [fontSize] = useState(10)
-  const [rowDensity] = useState(16)
+  const [fontSize, setFontSize] = useState(10)
+  const [rowDensity, setRowDensity] = useState(16)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
   const [searchParams, setSearchParams] = useSearchParams()
   const gridRef = React.useRef<any>(null)
   const [gridApi, setGridApi] = useState<any>(null)
   const [isAssetModalDirty, setIsAssetModalDirty] = useState(false)
+  const [savedViews, setSavedViews] = usePersistentJsonState<AssetSavedView[]>(ASSET_SAVED_VIEW_STORAGE_KEY, [])
+  const [activeViewId, setActiveViewId] = useState<string | null>(null)
+  const [newViewName, setNewViewName] = useState('')
   
   const idParam = searchParams.get('id')
   const searchParam = searchParams.get('search')
@@ -1468,6 +1509,26 @@ export default function Assets() {
     setIsAssetModalDirty(false)
   }, [])
 
+  const { triggerRef: displayMenuButtonRef, panelRef: displayMenuPanelRef, panelStyle: displayMenuStyle } = useWorkspaceAnchoredLayer(showDisplayMenu, { minWidth: 320 })
+  const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
+
+  const dismissViewMenus = useCallback(() => {
+    setShowDisplayMenu(false)
+    setShowViewsMenu(false)
+  }, [])
+
+  useWorkspaceDismissHandlers({
+    active: showDisplayMenu || showViewsMenu,
+    onDismiss: dismissViewMenus,
+    shouldDismiss: (target) => {
+      if (displayMenuButtonRef.current?.contains(target)) return false
+      if (displayMenuPanelRef.current?.contains(target)) return false
+      if (viewsMenuButtonRef.current?.contains(target)) return false
+      if (viewsMenuPanelRef.current?.contains(target)) return false
+      return true
+    },
+  })
+
   // --- Synchronization Hooks ---
   useEffect(() => {
     if (allEntities && idParam && !activeDetails) {
@@ -1485,13 +1546,117 @@ export default function Assets() {
   const [activeServiceEdit, setActiveServiceEdit] = useState<any>(null)
   const [selectedConnection, setSelectedConnection] = useState<any>(null)
   const [activeNetworkEdit, setActiveNetworkEdit] = useState<any>(null)
-  const [activeLens, setActiveLens] = useState<'all' | 'mine' | 'team' | 'unowned' | 'degraded' | 'at_risk' | 'needs_docs'>('all')
-  const [activeTab, setActiveTab] = useState<'inventory' | 'deleted'>('inventory')
+  const [activeLens, setActiveLens] = useState<AssetLens>('all')
+  const [activeTab, setActiveTab] = useState<AssetTab>('inventory')
   const [compareSnapshotIds, setCompareSnapshotIds] = useState<number[]>([])
 
   const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
     setConfirmModal({ isOpen: true, title, message, onConfirm, variant })
   }
+
+  const buildCurrentViewConfig = useCallback(() => ({
+    groupBy: 'raw',
+    fontSize,
+    rowDensity,
+    hiddenColumns,
+    activeLens,
+    activeTab,
+    searchTerm,
+  }), [activeLens, activeTab, fontSize, hiddenColumns, rowDensity, searchTerm])
+
+  const resetAssetWorkspaceView = useCallback(() => {
+    setFontSize(10)
+    setRowDensity(16)
+    setHiddenColumns([])
+    setActiveLens('all')
+    setActiveTab('inventory')
+    setSearchTerm('')
+    setSelectedAssetId(null)
+    setSelectedIds([])
+    setQuickLookId(null)
+    gridRef.current?.api?.deselectAll?.()
+  }, [])
+
+  const applyAssetWorkspaceView = useCallback((config?: AssetSavedView['config']) => {
+    setFontSize(config?.fontSize ?? 10)
+    setRowDensity(config?.rowDensity ?? 16)
+    setHiddenColumns(config?.hiddenColumns ?? [])
+    setActiveLens(config?.activeLens ?? 'all')
+    setActiveTab(config?.activeTab ?? 'inventory')
+    setSearchTerm(config?.searchTerm ?? '')
+    setSelectedAssetId(null)
+    setSelectedIds([])
+    setQuickLookId(null)
+    gridRef.current?.api?.deselectAll?.()
+  }, [])
+
+  const createViewFromCurrent = useCallback(() => {
+    const trimmed = newViewName.trim()
+    if (!trimmed) {
+      toast.error('Enter a name for the new asset view')
+      return
+    }
+
+    const nextIdBase = slugifyAssetViewId(trimmed)
+    let nextId = nextIdBase
+    let suffix = 2
+    while (savedViews.some((view) => view.id === nextId)) {
+      nextId = `${nextIdBase}-${suffix++}`
+    }
+
+    const nextViews = [
+      ...savedViews,
+      {
+        id: nextId,
+        name: trimmed,
+        config: buildCurrentViewConfig(),
+      },
+    ]
+
+    setSavedViews(nextViews)
+    setActiveViewId(nextId)
+    setNewViewName('')
+    toast.success(`Saved asset view ${trimmed}`)
+  }, [buildCurrentViewConfig, newViewName, savedViews, setSavedViews])
+
+  const applySavedView = useCallback((viewId: string) => {
+    const nextView = savedViews.find((view) => view.id === viewId)
+    if (!nextView) return
+    applyAssetWorkspaceView(nextView.config)
+    setActiveViewId(viewId)
+    dismissViewMenus()
+    toast.success(`Loaded asset view ${nextView.name}`)
+  }, [applyAssetWorkspaceView, dismissViewMenus, savedViews])
+
+  const overwriteSavedView = useCallback((viewId: string) => {
+    const nextViews = savedViews.map((view) => (
+      view.id === viewId
+        ? { ...view, config: buildCurrentViewConfig() }
+        : view
+    ))
+    const updatedView = nextViews.find((view) => view.id === viewId)
+    setSavedViews(nextViews)
+    setActiveViewId(viewId)
+    toast.success(`Updated asset view ${updatedView?.name || 'view'}`)
+  }, [buildCurrentViewConfig, savedViews, setSavedViews])
+
+  const deleteSavedView = useCallback((viewId: string) => {
+    const nextView = savedViews.find((view) => view.id === viewId)
+    if (!nextView) return
+    const nextViews = savedViews.filter((view) => view.id !== viewId)
+    setSavedViews(nextViews)
+    if (activeViewId === viewId) {
+      setActiveViewId(null)
+    }
+    toast.success(`Deleted asset view ${nextView.name}`)
+  }, [activeViewId, savedViews, setSavedViews])
+
+  const applySystemDefaultView = useCallback(() => {
+    setActiveViewId(null)
+    resetAssetWorkspaceView()
+    dismissViewMenus()
+    toast.success('Restored default asset workspace view')
+  }, [dismissViewMenus, resetAssetWorkspaceView])
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -1508,6 +1673,12 @@ export default function Assets() {
       return () => document.removeEventListener('click', handleClickOutside)
     }
   }, [showBulkMenu, rowActionMenu])
+
+  useEffect(() => {
+    if (viewMode !== 'grid') {
+      dismissViewMenus()
+    }
+  }, [dismissViewMenus, viewMode])
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
   const { data: userProfile } = useQuery({
@@ -2238,18 +2409,10 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
       )}
       secondaryToolbar={viewMode === 'grid' ? (
         <div className="flex flex-wrap items-center gap-2">
-          {[
-            { id: 'all', label: 'All' },
-            { id: 'mine', label: 'My Systems' },
-            { id: 'team', label: 'Team' },
-            { id: 'unowned', label: 'Unowned' },
-            { id: 'degraded', label: 'Degraded' },
-            { id: 'at_risk', label: 'At Risk' },
-            { id: 'needs_docs', label: 'Needs Docs' }
-          ].map((lens) => (
+          {ASSET_LENS_OPTIONS.map((lens) => (
             <ToolbarButton
               key={lens.id}
-              onClick={() => setActiveLens(lens.id as any)}
+              onClick={() => setActiveLens(lens.id)}
               active={activeLens === lens.id}
             >
               {lens.label}
@@ -2260,10 +2423,26 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
       toolbarActions={viewMode === 'grid' ? (
         <>
           <ToolbarGroup>
-            <ToolbarIconButton onClick={() => setShowStyleLab(!showStyleLab)} active={showStyleLab} title="Toggle style lab">
-              <Activity size={16} />
+            <ToolbarIconButton
+              ref={viewsMenuButtonRef as any}
+              onClick={() => {
+                setShowViewsMenu((current) => !current)
+                setShowDisplayMenu(false)
+              }}
+              active={showViewsMenu}
+              title="Saved asset views"
+            >
+              <Save size={16} />
             </ToolbarIconButton>
-            <ToolbarIconButton onClick={() => setShowColumnPicker(!showColumnPicker)} active={showColumnPicker} title="Column picker">
+            <ToolbarIconButton
+              ref={displayMenuButtonRef as any}
+              onClick={() => {
+                setShowDisplayMenu((current) => !current)
+                setShowViewsMenu(false)
+              }}
+              active={showDisplayMenu}
+              title="Display options"
+            >
               <Sliders size={16} />
             </ToolbarIconButton>
             <ToolbarIconButton onClick={handleExportCSV} title="Export CSV">
@@ -2372,6 +2551,50 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
       ) : undefined}
       floatingPanels={(
         <AnimatePresence>
+          <OperationalDisplayPanel
+            isOpen={showDisplayMenu}
+            panelRef={displayMenuPanelRef}
+            panelStyle={displayMenuStyle}
+            title="Display options"
+            onClose={dismissViewMenus}
+            fontSize={fontSize}
+            onFontSizeChange={setFontSize}
+            rowDensity={rowDensity}
+            onRowDensityChange={setRowDensity}
+            columns={columnDefs}
+            hiddenColumns={hiddenColumns}
+            onToggleColumn={(field) => {
+              if (hiddenColumns.includes(field)) {
+                setHiddenColumns(hiddenColumns.filter((entry) => entry !== field))
+              } else {
+                setHiddenColumns([...hiddenColumns, field])
+              }
+            }}
+          />
+          <OperationalSavedViewsPanel
+            isOpen={showViewsMenu}
+            panelRef={viewsMenuPanelRef}
+            panelStyle={viewsMenuStyle}
+            entityLabel="Assets"
+            onClose={dismissViewMenus}
+            activeViewId={activeViewId}
+            currentViewName={activeViewId ? savedViews.find((view) => view.id === activeViewId)?.name || 'Unsaved working view' : 'Unsaved working view'}
+            newViewName={newViewName}
+            onNewViewNameChange={setNewViewName}
+            onCreateView={createViewFromCurrent}
+            onApplySystemDefault={applySystemDefaultView}
+            savedViews={savedViews}
+            defaultViewIds={DEFAULT_ASSET_VIEW_IDS}
+            onApplyView={applySavedView}
+            onOverwriteView={overwriteSavedView}
+            onDeleteView={deleteSavedView}
+            describeView={(view) => {
+              const scopeLabel = ASSET_LENS_OPTIONS.find((option) => option.id === (view.config?.activeLens ?? 'all'))?.label || 'All'
+              const tabLabel = (view.config?.activeTab ?? 'inventory') === 'deleted' ? 'Purged' : 'Existing'
+              const searchLabel = view.config?.searchTerm?.trim() ? 'filtered search' : 'full registry'
+              return `${tabLabel} · ${scopeLabel} · ${searchLabel}`
+            }}
+          />
           {quickLookAsset ? (
             <QuickLookPanel
               asset={quickLookAsset}
@@ -2420,50 +2643,6 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
               onClose={() => setRowActionMenu(null)}
             />
           )}
-          <AnimatePresence>
-            {showColumnPicker && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl"
-              >
-                <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-blue-400 flex items-center space-x-2">
-                    <Sliders size={14} /> <span>Toggle Columns</span>
-                  </h3>
-                  <button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button>
-                </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
-                  {columnDefs.filter((c: any) => c.field && !c.lockVisible).map((col: any) => (
-                    <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
-                      <div className="relative flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={!hiddenColumns.includes(col.field)}
-                          onChange={() => {
-                            if (hiddenColumns.includes(col.field)) {
-                              setHiddenColumns(hiddenColumns.filter(f => f !== col.field))
-                            } else {
-                              setHiddenColumns([...hiddenColumns, col.field])
-                            }
-                          }}
-                          className="sr-only"
-                        />
-                        <div className={`w-4 h-4 rounded-lg border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>
-                           {!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}
-                        </div>
-                      </div>
-                      <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
-                    </label>
-                  ))}
-                </div>
-                <div className="p-4 border-t border-white/5">
-                   <button onClick={() => setHiddenColumns([])} className="w-full py-2 text-[9px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Show All Columns</button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       ) : viewMode === 'report' ? (
         <AssetReportView
