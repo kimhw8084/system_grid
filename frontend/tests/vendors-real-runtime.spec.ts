@@ -131,28 +131,28 @@ function getGlassPanelByHeading(page: Page, heading: string) {
   })
 }
 
-async function openVendorBySearch(page: Page, vendorName: string) {
-  await gotoView(page, '/vendors-real', 'Vendors')
+async function openVendorBySearch(page: Page, routePath: string, vendorName: string) {
+  await gotoView(page, routePath, 'Vendors')
   await fillGridSearch(page, 'Search vendors...', vendorName)
   await expect(getPrimaryGrid(page)).toContainText(vendorName)
 }
 
-async function openVendorByDeepLink(page: Page, vendorId: number, vendorName: string) {
-  await gotoView(page, `/vendors-real?id=${vendorId}`, 'Vendors')
+async function openVendorByDeepLink(page: Page, routePath: string, vendorId: number, vendorName: string) {
+  await gotoView(page, `${routePath}?id=${vendorId}`, 'Vendors')
   const detailDialog = getDetailDialog(page, vendorName)
   await expect(detailDialog).toBeVisible()
   return detailDialog
 }
 
-test.describe('VendorsReal candidate runtime', () => {
+test.describe('VendorsReal canonical runtime', () => {
   test.use({ viewport: { width: 1920, height: 1080 } })
 
-  test('preserves shell actions, import/export/copy, row actions, context menu, and details on /vendors-real', async ({ page, request, context }) => {
+  test('preserves shell actions, import/export/copy, row actions, context menu, and details on /vendors', async ({ page, request, context }) => {
     await resetBrowserState(page)
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     const scenario = await createVendorCandidateScenario(request)
 
-    await openVendorBySearch(page, scenario.vendorName)
+    await openVendorBySearch(page, '/vendors', scenario.vendorName)
     await expect(page.getByRole('button', { name: 'Views' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Display' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Import' })).toBeVisible()
@@ -208,10 +208,10 @@ test.describe('VendorsReal candidate runtime', () => {
     await expect(detailDialog).toContainText(scenario.personnelName)
   })
 
-  test('preserves deep-link dossier and personnel accounts/pcs behavior on /vendors-real', async ({ page, request }) => {
+  test('preserves /vendors?id= deep-link dossier and personnel accounts/pcs behavior', async ({ page, request }) => {
     await resetBrowserState(page)
     const scenario = await createVendorCandidateScenario(request)
-    const detailDialog = await openVendorByDeepLink(page, scenario.vendor.id, scenario.vendorName)
+    const detailDialog = await openVendorByDeepLink(page, '/vendors', scenario.vendor.id, scenario.vendorName)
 
     await expect(detailDialog.getByText(`Partner ID: ${scenario.vendor.id}`, { exact: false })).toBeVisible()
     await clickResilientButton(page, 'Personnel')
@@ -235,11 +235,11 @@ test.describe('VendorsReal candidate runtime', () => {
     await expect(personnelModal).toContainText(scenario.laptopName)
   })
 
-  test('registers a contract and preserves rich contract detail behavior on /vendors-real', async ({ page, request }) => {
+  test('registers a contract and preserves rich contract detail behavior on /vendors', async ({ page, request }) => {
     await resetBrowserState(page)
     const scenario = await createVendorCandidateScenario(request)
     const newContractTitle = `PW-NEW-CONTRACT-${scenario.vendor.id}`
-    const detailDialog = await openVendorByDeepLink(page, scenario.vendor.id, scenario.vendorName)
+    const detailDialog = await openVendorByDeepLink(page, '/vendors', scenario.vendor.id, scenario.vendorName)
 
     await clickResilientButton(page, 'Contracts')
     await expect(detailDialog).toContainText(scenario.richContractTitle)
@@ -285,5 +285,18 @@ test.describe('VendorsReal candidate runtime', () => {
     await expect(contractDetailsModal).toContainText('4h')
     await expect(contractDetailsModal).toContainText('Stabilize patch operations')
     await expect(contractDetailsModal).toContainText('Expanded scope for')
+  })
+
+  test('retains /vendors-real alias as a VendorsReal smoke route', async ({ page, request }) => {
+    await resetBrowserState(page)
+    const scenario = await createVendorCandidateScenario(request)
+
+    await openVendorBySearch(page, '/vendors-real', scenario.vendorName)
+    await expect(page.getByRole('button', { name: 'Import' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Bulk Actions' })).toBeVisible()
+    await expect(page.getByTitle('Export CSV')).toBeVisible()
+
+    const detailDialog = await openVendorByDeepLink(page, '/vendors-real', scenario.vendor.id, scenario.vendorName)
+    await expect(detailDialog.getByText(`Partner ID: ${scenario.vendor.id}`, { exact: false })).toBeVisible()
   })
 })

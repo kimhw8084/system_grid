@@ -730,7 +730,7 @@ function MainLayout() {
               <Route path="/research" element={<ProtectedRoute view="research" userProfile={userProfile}><Research /></ProtectedRoute>} />
               <Route path="/far" element={<ProtectedRoute view="far" userProfile={userProfile}><FAR /></ProtectedRoute>} />
               <Route path="/monitoring" element={<ProtectedRoute view="monitoring" userProfile={userProfile}><MonitoringGrid /></ProtectedRoute>} />
-              <Route path="/vendors" element={<ProtectedRoute view="vendors" userProfile={userProfile}><Vendor /></ProtectedRoute>} />
+              <Route path="/vendors" element={<ProtectedRoute view="vendors" userProfile={userProfile}><VendorsReal /></ProtectedRoute>} />
               <Route path="/vendors-real" element={<ProtectedRoute view="vendors" userProfile={userProfile}><VendorsReal /></ProtectedRoute>} />
               <Route path="/knowledge" element={<ProtectedRoute view="knowledge" userProfile={userProfile}><Knowledge /></ProtectedRoute>} />
               <Route path="/logs" element={<ProtectedRoute view="logs" userProfile={userProfile}><AuditLogs /></ProtectedRoute>} />
