@@ -955,6 +955,7 @@ export default function NetworkReal() {
   const openRowActionMenuAtPoint = useCallback((item: any, x: number, y: number) => {
     setRowActionMenu({
       item,
+      point: { x, y },
     })
   }, [])
 
@@ -2569,7 +2570,13 @@ export default function NetworkReal() {
           <OperationalAnchoredPanel
             isOpen={!!rowActionMenu}
             panelKey="row-action-menu"
-            style={rowActionMenu?.style ?? { position: 'fixed', top: -9999, left: -9999 }}
+            style={rowActionMenu ? getPointFloatingStyle({
+              x: rowActionMenu.point.x,
+              y: rowActionMenu.point.y,
+              width: 320,
+              height: 420,
+              zIndex: 1110,
+            }) : { position: 'fixed', top: -9999, left: -9999 }}
             className="row-action-menu-container"
           >
             {rowActionMenu ? (
