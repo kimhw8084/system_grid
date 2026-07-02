@@ -18,7 +18,9 @@ import { WorkspaceModal } from "./shared/WorkspaceModal"
 import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch, ToolbarSegmented } from "./shared/LayoutPrimitives"
 import { OperationalWorkspaceShell } from "./shared/OperationalWorkspaceShells"
 import { OperationalDataGrid } from "./shared/OperationalDataGrid"
+import { OperationalRowActionMenu } from "./shared/OperationalRowActionMenu"
 import { StyledSelect } from "./shared/StyledSelect"
+import { WorkspaceFlyoutActionCard } from "./shared/WorkspaceFlyout"
 import { ServiceDetailsView, ServiceForm } from "./ServiceRegistry"
 
 const SharedServiceModals = ({ 
@@ -1425,6 +1427,7 @@ export default function Assets() {
   const queryClient = useQueryClient()
   const [showImportModal, setShowImportModal] = useState(false)
   const [showBulkMenu, setShowBulkMenu] = useState(false)
+  const [rowActionMenu, setRowActionMenu] = useState<{ asset: any, cursorX: number, cursorY: number } | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'report' | 'map' | 'compare'>('grid')
@@ -1482,12 +1485,15 @@ export default function Assets() {
       if (showBulkMenu && !target.closest('.bulk-menu-container')) {
         setShowBulkMenu(false)
       }
+      if (rowActionMenu && !target.closest('.row-action-menu-container') && !target.closest('.row-action-trigger')) {
+        setRowActionMenu(null)
+      }
     }
-    if (showBulkMenu) {
+    if (showBulkMenu || rowActionMenu) {
       document.addEventListener('click', handleClickOutside)
       return () => document.removeEventListener('click', handleClickOutside)
     }
-  }, [showBulkMenu])
+  }, [showBulkMenu, rowActionMenu])
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
   const { data: userProfile } = useQuery({
@@ -1707,6 +1713,91 @@ export default function Assets() {
     onError: (e: any) => toast.error(`Operation failed: ${e.message}`)
   })
 
+  const openRowActionMenu = (asset: any, event: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    setRowActionMenu({
+      asset,
+      cursorX: rect.right,
+      cursorY: rect.bottom + 8,
+    })
+  }
+
+  const rowActionSections = useMemo(() => {
+    if (!rowActionMenu?.asset) return []
+
+    const asset = rowActionMenu.asset
+    const consoleUrl = getAssetConsoleUrl(asset)
+
+    return [
+      {
+        id: 'quickAccess',
+        columns: 1,
+        items: [
+          {
+            id: 'asset-console',
+            label: 'Quick Console Access',
+            icon: Terminal,
+            tone: 'info',
+            onClick: () => {
+              if (!consoleUrl) return
+              window.open(consoleUrl, '_blank')
+              setRowActionMenu(null)
+            },
+            disabled: !consoleUrl,
+            disabledReason: 'No management endpoint configured',
+          },
+          {
+            id: 'asset-details',
+            label: 'View Details',
+            icon: Eye,
+            tone: 'info',
+            onClick: () => {
+              setActiveDetails(asset)
+              setRowActionMenu(null)
+            },
+          },
+          {
+            id: 'asset-edit',
+            label: 'Edit Configuration',
+            icon: Edit2,
+            tone: 'success',
+            onClick: () => {
+              setActiveModal(asset)
+              setRowActionMenu(null)
+            },
+          },
+        ],
+      },
+      {
+        id: 'archive',
+        columns: 1,
+        items: [
+          activeTab !== 'deleted'
+            ? {
+                id: 'asset-delete',
+                label: 'Soft Delete',
+                icon: Trash2,
+                tone: 'danger',
+                onClick: () => {
+                  openConfirm('Soft Delete', 'Move this asset to deleted?', () => bulkMutation.mutate({ action: 'delete', ids: [asset.id] }))
+                  setRowActionMenu(null)
+                },
+              }
+            : {
+                id: 'asset-purge',
+                label: 'Purge',
+                icon: Trash2,
+                tone: 'danger',
+                onClick: () => {
+                  openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [asset.id] }))
+                  setRowActionMenu(null)
+                },
+              },
+        ],
+      },
+    ]
+  }, [activeTab, bulkMutation, rowActionMenu])
+
   const columnDefs = useMemo(() => [
     { 
       headerName: "", 
@@ -1895,28 +1986,22 @@ export default function Assets() {
     { field: "power_max_w", headerName: "Max W", width: 80, minWidth: 80, cellClass: "text-center font-bold", headerClass: 'text-center', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value ? `${p.value.toFixed(0)}W` : '–'}</span>, hide: hiddenColumns.includes("power_max_w") },
     {
       headerName: "Action",
-      width: 120,
-      minWidth: 120,
+      width: 84,
+      minWidth: 84,
       pinned: 'right',
       cellClass: 'text-center',
       headerClass: 'text-center',
       resizable: false,
       cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center space-x-1 h-full">
-           <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
-               <button onClick={() => {
-                 const url = getAssetConsoleUrl(p.data)
-                 if (!url) return toast.error("No management endpoint configured")
-                 window.open(url, '_blank')
-               }} title="Quick Console Access" className="p-1.5 text-indigo-400 hover:text-indigo-200 transition-all border-r border-white/5"><Terminal size={14}/></button>
-               <button onClick={() => setActiveDetails(p.data)} title="View Details" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all"><Eye size={14}/></button>
-               <button onClick={() => setActiveModal(p.data)} title="Edit Configuration" className="p-1.5 text-emerald-400 hover:text-emerald-200 transition-all"><Edit2 size={14}/></button>
-               {activeTab !== 'deleted' ? (
-                 <button onClick={() => openConfirm('Soft Delete', 'Move this asset to deleted?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="Soft Delete" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
-               ) : (
-                 <button onClick={() => openConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge', ids: [p.data.id] }))} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
-               )}
-           </div>
+        <div className="flex items-center justify-center h-full">
+          <button
+            type="button"
+            onClick={(event) => openRowActionMenu(p.data, event)}
+            title="Asset row actions"
+            className="row-action-trigger inline-flex items-center justify-center rounded-lg border border-white/10 bg-slate-950 px-2.5 py-1.5 text-slate-300 transition-all hover:border-white/20 hover:bg-slate-900 hover:text-white"
+          >
+            <MoreVertical size={14} />
+          </button>
         </div>
       ),
       lockVisible: true
@@ -2156,34 +2241,77 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
             </ToolbarIconButton>
             <AnimatePresence>
               {showBulkMenu && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-50 p-2 space-y-1">
-                   <p className="px-3 py-2 text-[8px] font-bold text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">{selectedIds.length} Assets Selected</p>
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 z-50 w-72 rounded-lg border border-white/10 bg-slate-900 p-3 shadow-2xl">
+                   <p className="border-b border-white/5 px-1 pb-3 text-[8px] font-bold uppercase tracking-widest text-slate-500">{selectedIds.length} Assets Selected</p>
+                   <div className="mt-3 space-y-2">
                    {activeTab === 'deleted' ? (
-                     <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
+                     <>
+                       <WorkspaceFlyoutActionCard
+                         title="Restore Selected"
+                         active={false}
+                         onClick={() => bulkMutation.mutate({ action: 'restore' })}
+                       />
+                       <WorkspaceFlyoutActionCard
+                         title="Bulk Purge"
+                         active={false}
+                         onClick={() => {
+                           openConfirm('Purge Assets', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge' }))
+                           setShowBulkMenu(false)
+                         }}
+                       />
+                     </>
                    ) : (
                      <>
                         {selectedIds.length >= 2 && (
-                          <button onClick={() => { setCompareSnapshotIds(selectedIds); setViewMode('compare'); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-indigo-400 transition-all flex items-center justify-between">
-                             <span>Compare Selected</span>
-                             <ArrowRightLeft size={12} />
-                          </button>
+                          <WorkspaceFlyoutActionCard
+                            title="Compare Selected"
+                            active={false}
+                            onClick={() => {
+                              setCompareSnapshotIds(selectedIds)
+                              setViewMode('compare')
+                              setShowBulkMenu(false)
+                            }}
+                          />
                         )}
                         {selectedIds.length < 2 && compareCandidateIds.length >= 2 && (
-                          <button onClick={() => { setSelectedIds(compareCandidateIds); setCompareSnapshotIds(compareCandidateIds); setViewMode('compare'); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-sky-400 transition-all flex items-center justify-between">
-                             <span>Compare Visible</span>
-                             <ArrowRightLeft size={12} />
-                          </button>
+                          <WorkspaceFlyoutActionCard
+                            title="Compare Visible"
+                            active={false}
+                            onClick={() => {
+                              setSelectedIds(compareCandidateIds)
+                              setCompareSnapshotIds(compareCandidateIds)
+                              setViewMode('compare')
+                              setShowBulkMenu(false)
+                            }}
+                          />
                         )}
-                        <button onClick={() => { setIsBulkStatusOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-blue-400 transition-all">Set Status...</button>
-                        <button onClick={() => { setIsBulkEnvOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-slate-400 transition-all">Set Environment...</button>
+                        <WorkspaceFlyoutActionCard
+                          title="Set Status..."
+                          active={false}
+                          onClick={() => {
+                            setIsBulkStatusOpen(true)
+                            setShowBulkMenu(false)
+                          }}
+                        />
+                        <WorkspaceFlyoutActionCard
+                          title="Set Environment..."
+                          active={false}
+                          onClick={() => {
+                            setIsBulkEnvOpen(true)
+                            setShowBulkMenu(false)
+                          }}
+                        />
+                        <WorkspaceFlyoutActionCard
+                          title="Bulk Delete"
+                          active={false}
+                          onClick={() => {
+                            openConfirm('Soft Delete', 'Soft-delete assets?', () => bulkMutation.mutate({ action: 'delete' }))
+                            setShowBulkMenu(false)
+                          }}
+                        />
                      </>
                    )}
-                   <div className="h-px bg-white/5 mx-2 my-1" />
-                   <button onClick={() => { 
-                       const title = activeTab === 'deleted' ? 'Purge Assets' : 'Soft Delete'
-                       const msg = activeTab === 'deleted' ? 'PURGE PERMANENTLY?' : 'Soft-delete assets?'
-                       openConfirm(title, msg, () => bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' }))
-                    }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">{activeTab === 'deleted' ? 'Bulk Purge' : 'Bulk Delete'}</button>
+                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -2219,6 +2347,16 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
             suppressRowClickSelection={false}
             className="shadow-2xl border border-white/5"
           />
+          {rowActionMenu && (
+            <OperationalRowActionMenu
+              meta={rowActionMenu.asset?.system || 'Asset'}
+              title={rowActionMenu.asset?.name || 'Asset Row Actions'}
+              sections={rowActionSections as any}
+              cursorX={rowActionMenu.cursorX}
+              cursorY={rowActionMenu.cursorY}
+              onClose={() => setRowActionMenu(null)}
+            />
+          )}
 
           <AnimatePresence>
             {quickLookId && (
