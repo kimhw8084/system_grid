@@ -19,7 +19,6 @@ import Maintenance from "./components/Maintenance"
 import MonitoringGrid from "./components/MonitoringGrid"
 import Research from "./components/Research"
 import NetworkReal from "./components/NetworkReal"
-import AssetReal from "./components/AssetReal"
 import VendorsReal from "./components/VendorsReal"
 import Knowledge from "./components/Knowledge"
 import FAR from "./components/FAR"
@@ -263,6 +262,11 @@ const ProtectedRoute = ({ children, view, userProfile }: any) => {
 const LegacyNetworkRedirect = () => {
   const location = useLocation()
   return <Navigate to={`/network${location.search || ''}`} replace />
+}
+
+const LegacyAssetRedirect = () => {
+  const location = useLocation()
+  return <Navigate to={`/asset${location.search || ''}`} replace />
 }
 
 const PatchNotesModal = ({ onClose }: any) => {
@@ -597,7 +601,6 @@ function MainLayout() {
 
           <SidebarGroup label="INFRASTRUCTURE" isSidebarOpen={isSidebarOpen}>
             <SidebarItem icon={Server} label="Assets" path="/asset" active={location.pathname === "/asset"} isOpen={isSidebarOpen} isSubItem disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "assets") < 1} />
-            <SidebarItem icon={Server} label="Asset-Real" path="/asset-real" active={location.pathname.startsWith("/asset-real")} isOpen={isSidebarOpen} isSubItem disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "assets") < 1} />
             <SidebarItem icon={Package} label="Racks" path="/racks" active={location.pathname === "/racks"} isOpen={isSidebarOpen} isSubItem disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "racks") < 1} />
             <SidebarItem icon={Layers} label="Services" path="/services" active={location.pathname === "/services"} isOpen={isSidebarOpen} isSubItem disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "services") < 1} />
             <SidebarItem icon={Share2} label="External" path="/external" active={location.pathname === "/external"} isOpen={isSidebarOpen} isSubItem disabled={userProfile && !userProfile.is_admin && getPermLevel(userProfile.permissions, "external") < 1} />
@@ -720,7 +723,7 @@ function MainLayout() {
               <Route path="/projects" element={<ProtectedRoute view="projects" userProfile={userProfile}><Projects /></ProtectedRoute>} />
               <Route path="/racks" element={<ProtectedRoute view="racks" userProfile={userProfile}><Racks /></ProtectedRoute>} />
               <Route path="/asset" element={<ProtectedRoute view="assets" userProfile={userProfile}><Assets /></ProtectedRoute>} />
-              <Route path="/asset-real" element={<ProtectedRoute view="assets" userProfile={userProfile}><AssetReal /></ProtectedRoute>} />
+              <Route path="/asset-real" element={<ProtectedRoute view="assets" userProfile={userProfile}><LegacyAssetRedirect /></ProtectedRoute>} />
               <Route path="/services" element={<ProtectedRoute view="services" userProfile={userProfile}><ServicesReal /></ProtectedRoute>} />
               <Route path="/external" element={<ProtectedRoute view="external" userProfile={userProfile}><External /></ProtectedRoute>} />
               <Route path="/network" element={<ProtectedRoute view="network" userProfile={userProfile}><NetworkReal /></ProtectedRoute>} />

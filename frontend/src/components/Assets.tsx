@@ -16,7 +16,7 @@ import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { ConnectionForensicsModal } from "./shared/ConnectionForensicsModal"
 import { WorkspaceModal } from "./shared/WorkspaceModal"
-import { ToolbarButton } from "./shared/LayoutPrimitives"
+import { HeaderScopeSwitch, ToolbarButton } from "./shared/LayoutPrimitives"
 import { StyledSelect } from "./shared/StyledSelect"
 import { ServiceDetailsView, ServiceForm } from "./ServiceRegistry"
 
@@ -2043,14 +2043,19 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
            </div>
 
            {viewMode === 'grid' && (
-             <div className="flex bg-white/5 p-1 rounded-lg border border-white/5">
-                  <button onClick={() => { setActiveTab('inventory'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'inventory' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                      Existing
-                  </button>
-                  <button onClick={() => { setActiveTab('deleted'); setSelectedIds([]) }} className={`px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'deleted' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                      Purged
-                  </button>
-             </div>
+             <HeaderScopeSwitch
+               label="Asset Scope"
+               summary={`${inventoryAssets.length} active · ${deletedAssets.length} deleted`}
+               value={activeTab}
+               onChange={(next) => {
+                 setActiveTab(next as 'inventory' | 'deleted')
+                 setSelectedIds([])
+               }}
+               options={[
+                 { label: 'Existing', value: 'inventory' },
+                 { label: 'Purged', value: 'deleted' },
+               ]}
+             />
            )}
         </div>
 
