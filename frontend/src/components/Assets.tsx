@@ -19,6 +19,7 @@ import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, Tool
 import { OperationalWorkspaceShell } from "./shared/OperationalWorkspaceShells"
 import { OperationalDataGrid } from "./shared/OperationalDataGrid"
 import { OperationalRowActionMenu } from "./shared/OperationalRowActionMenu"
+import { useOperationalFormDirty } from "./shared/OperationalFormContracts"
 import { StyledSelect } from "./shared/StyledSelect"
 import { WorkspaceFlyoutActionCard } from "./shared/WorkspaceFlyout"
 import { ServiceDetailsView, ServiceForm } from "./ServiceRegistry"
@@ -1445,6 +1446,7 @@ export default function Assets() {
   const [searchParams, setSearchParams] = useSearchParams()
   const gridRef = React.useRef<any>(null)
   const [gridApi, setGridApi] = useState<any>(null)
+  const [isAssetModalDirty, setIsAssetModalDirty] = useState(false)
   
   const idParam = searchParams.get('id')
   const searchParam = searchParams.get('search')
@@ -1460,6 +1462,11 @@ export default function Assets() {
   const [activeModal, setActiveModal] = useState<any>(null)
   const [activeDetails, setActiveDetails] = useState<any>(null)
 
+  const closeActiveModal = useCallback(() => {
+    setActiveModal(null)
+    setIsAssetModalDirty(false)
+  }, [])
+
   // --- Synchronization Hooks ---
   useEffect(() => {
     if (allEntities && idParam && !activeDetails) {
@@ -1467,6 +1474,12 @@ export default function Assets() {
       if (entity) setActiveDetails(entity)
     }
   }, [allEntities, idParam, activeDetails])
+
+  useEffect(() => {
+    if (!activeModal) {
+      setIsAssetModalDirty(false)
+    }
+  }, [activeModal])
   const [activeServiceDetails, setActiveServiceDetails] = useState<any>(null)
   const [activeServiceEdit, setActiveServiceEdit] = useState<any>(null)
   const [selectedConnection, setSelectedConnection] = useState<any>(null)
@@ -1618,6 +1631,10 @@ export default function Assets() {
     () => assets.filter((asset: any) => compareSnapshotIds.includes(asset.id)),
     [assets, compareSnapshotIds]
   )
+  const quickLookAsset = useMemo(
+    () => devices?.find((asset: any) => asset.id === quickLookId) ?? null,
+    [devices, quickLookId]
+  )
 
   useEffect(() => {
     setSelectedIds((current) => current.filter((id) => visibleAssets.some((asset: any) => asset.id === id)))
@@ -1674,7 +1691,7 @@ export default function Assets() {
       queryClient.invalidateQueries({ queryKey: ['devices'] })
       queryClient.invalidateQueries({ queryKey: ['racks-all'] })
       toast.success('System Registry Updated')
-      setActiveModal(null)
+      closeActiveModal()
     },
     onError: (e: any) => {
       if (e.message === 'DUPLICATE_HOSTNAME') toast.error('ERROR: Hostname already exists in registry')
@@ -2048,7 +2065,6 @@ export default function Assets() {
   }, [activeTab, searchTerm])
 
 const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
-  if (!asset) return null
   useEscapeDismiss(onClose, true)
 
   const statusTone =
@@ -2339,9 +2355,9 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
       ) : undefined}
       floatingPanels={(
         <AnimatePresence>
-          {quickLookId ? (
+          {quickLookAsset ? (
             <QuickLookPanel
-              asset={devices?.find((d:any) => d.id === quickLookId)}
+              asset={quickLookAsset}
               onClose={() => { setQuickLookId(null); gridRef.current?.api?.deselectAll(); }}
               onEdit={(a: any) => { setQuickLookId(null); setActiveModal(a); }}
               options={options}
@@ -2490,18 +2506,26 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
 
       <WorkspaceModal
         isOpen={!!activeModal}
-        onClose={() => setActiveModal(null)}
+        onClose={closeActiveModal}
         size="workspace"
         isMaximized={isMaximized}
         onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+        isDirty={isAssetModalDirty}
+        dirtyConfirmTitle="Discard Asset Changes?"
+        dirtyConfirmMessage="You have unsaved asset changes. Close this window and discard them?"
+        dirtyConfirmText="Discard Asset Changes"
         title={activeModal?.id ? 'Modify Asset Configuration' : 'New Asset Registration'}
         subtitle="Asset Identity, Classification & Life-cycle"
         icon={<Package size={20}/>}
-        footerRight={
-          <ToolbarButton onClick={() => setActiveModal(null)}>Close</ToolbarButton>
-        }
       >
-        <AssetForm initialData={activeModal} onSave={mutation.mutate} options={options} isSaving={mutation.isPending} devices={devices} />
+        <AssetForm
+          initialData={activeModal}
+          onSave={mutation.mutate}
+          onDirtyChange={setIsAssetModalDirty}
+          options={options}
+          isSaving={mutation.isPending}
+          devices={devices}
+        />
       </WorkspaceModal>
 
       <WorkspaceModal
@@ -3941,29 +3965,25 @@ const ENVIRONMENT_ITEMS = [
     { value: 'Legacy', label: 'Legacy' }
 ]
 
-const AssetForm = ({ initialData, onSave, options, isSaving, devices }: any) => {
+const AssetForm = ({ initialData, onSave, options, isSaving, devices, onDirtyChange }: any) => {
   const [activeSubTab, setActiveSubTab] = useState('config')
   const [metadataError, setMetadataError] = useState<string | null>(null)
-  const [formData, setFormData] = useState({
-    name: '', system: '', type: 'Physical', status: 'Active', environment: 'Production',
-    owner: '', business_unit: '', manufacturer: '', model: '', serial_number: '', asset_tag: '',
-    os_name: '', os_version: '', primary_ip: '', management_ip: '', management_url: '',
-    purchase_date: '', install_date: '', warranty_end: '', eol_date: '',
-    power_typical_w: 0, power_max_w: 0,
-    metadata_json: {}, ...initialData
-  })
-
-  // Sync form data when initialData changes
-  React.useEffect(() => {
-    setFormData({
+  const buildInitialFormData = useCallback((nextInitialData: any = {}) => ({
       name: '', system: '', type: 'Physical', status: 'Active', environment: 'Production',
       owner: '', business_unit: '', manufacturer: '', model: '', serial_number: '', asset_tag: '',
       os_name: '', os_version: '', primary_ip: '', management_ip: '', management_url: '',
       purchase_date: '', install_date: '', warranty_end: '', eol_date: '',
       power_typical_w: 0, power_max_w: 0,
-      metadata_json: {}, ...initialData
-    })
-  }, [JSON.stringify(initialData)])
+      metadata_json: {}, ...nextInitialData
+  }), [])
+  const initialDataNormalized = useMemo(
+    () => buildInitialFormData(initialData),
+    [buildInitialFormData, initialData]
+  )
+  const {
+    value: formData,
+    setValue: setFormData,
+  } = useOperationalFormDirty(initialDataNormalized, buildInitialFormData, onDirtyChange)
 
   const getOptions = (cat: string) => Array.isArray(options) ? options.filter((o: any) => o.category === cat) : []
 
