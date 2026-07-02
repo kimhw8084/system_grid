@@ -6,7 +6,7 @@ import ForceGraph2D from 'react-force-graph-2d'
 import { createPortal } from 'react-dom'
 import { AssetDetailsView } from './assets/AssetDetailsView'
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
-import { WorkspaceEmptyState } from "./shared/OperationalWorkspacePrimitives";
+import { WorkspaceEmptyState, WorkspaceFloatingPanel, WorkspacePanelSubtitle, WorkspacePanelTitle, WorkspaceSectionBadge, useEscapeDismiss } from "./shared/OperationalWorkspacePrimitives";
 import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Clipboard, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Network, Server, ExternalLink, Share2, ZoomIn, ZoomOut, Maximize2, Minimize2, Shield, Zap, Save, Upload, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, Book } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
@@ -2049,73 +2049,89 @@ export default function Assets() {
 
 const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
   if (!asset) return null
+  useEscapeDismiss(onClose, true)
+
+  const statusTone =
+    asset.status === 'Active'
+      ? 'emerald'
+      : asset.status === 'Maintenance' || asset.status === 'Planned'
+        ? 'amber'
+        : 'rose'
+
   return (
     <motion.div
-      initial={{ x: '100%' }}
-      animate={{ x: 0 }}
-      exit={{ x: '100%' }}
+      initial={{ opacity: 0, x: 32 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 32 }}
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="absolute top-0 right-0 bottom-0 w-[450px] bg-slate-950 border-l border-blue-500/30 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] z-[100] flex flex-col backdrop-blur-2xl"
+      className="fixed inset-y-4 right-4 z-[3600] w-[min(460px,calc(100vw-2rem))]"
     >
-       <div className="p-8 border-b border-white/5 flex items-center justify-between bg-blue-600/5">
-          <div className="flex items-center gap-4">
-             <div className="p-3 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/20">
-                <Search size={24} />
-             </div>
-             <div>
-                <h3 className="text-xl font-black text-white uppercase tracking-tight">{asset.name}</h3>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{asset.system} // {asset.type}</p>
-             </div>
+      <WorkspaceFloatingPanel kind="detail" className="flex h-full flex-col overflow-hidden border border-white/10">
+        <div className="border-b border-white/5 bg-blue-500/5 px-6 py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex items-start gap-4">
+              <div className="rounded-lg border border-blue-500/20 bg-blue-600/15 p-3 text-blue-400">
+                <Search size={20} />
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <WorkspacePanelTitle>{asset.name}</WorkspacePanelTitle>
+                  <WorkspaceSectionBadge tone={statusTone as any}>{asset.status || 'Unknown'}</WorkspaceSectionBadge>
+                </div>
+                <WorkspacePanelSubtitle>{asset.system} // {asset.type}</WorkspacePanelSubtitle>
+              </div>
+            </div>
+            <button onClick={onClose} className="rounded-lg border border-white/10 bg-black/20 p-2 text-slate-500 transition-all hover:border-white/20 hover:text-white">
+              <X size={18} />
+            </button>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-white transition-all">
-             <X size={24} />
+        </div>
+
+        <div className="flex-1 space-y-6 overflow-y-auto p-6 custom-scrollbar">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border border-white/5 bg-black/20 p-4">
+              <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500">Status</p>
+              <div className="flex items-center gap-2">
+                <div className={`h-2 w-2 rounded-full ${asset.status === 'Active' ? 'bg-emerald-500' : asset.status === 'Maintenance' || asset.status === 'Planned' ? 'bg-amber-500' : 'bg-rose-500'}`} />
+                <span className={`text-xs font-black uppercase ${asset.status === 'Active' ? 'text-emerald-400' : asset.status === 'Maintenance' || asset.status === 'Planned' ? 'text-amber-400' : 'text-rose-400'}`}>{asset.status}</span>
+              </div>
+            </div>
+            <div className="rounded-lg border border-white/5 bg-black/20 p-4">
+              <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500">Environment</p>
+              <span className="text-xs font-black uppercase text-blue-400">{asset.environment || 'N/A'}</span>
+            </div>
+          </div>
+
+          <section className="space-y-3 rounded-lg border border-white/5 bg-black/10 p-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">Network Vector</p>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-4 border-b border-white/[0.04] py-2">
+                <span className="text-[10px] font-bold uppercase text-slate-400">Primary IP</span>
+                <span className="text-[11px] font-mono font-bold text-white">{asset.primary_ip || 'N/A'}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4 border-b border-white/[0.04] py-2">
+                <span className="text-[10px] font-bold uppercase text-slate-400">Mgmt URL</span>
+                <span className="max-w-[220px] truncate text-[11px] font-mono font-bold text-blue-400">{asset.management_url || 'N/A'}</span>
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-3 rounded-lg border border-white/5 bg-black/10 p-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">Hardware Registry</p>
+            <p className="text-xs font-bold uppercase italic leading-relaxed text-slate-300">"{asset.hardware_summary || 'No hardware description captured.'}"</p>
+          </section>
+        </div>
+
+        <div className="border-t border-white/5 bg-black/10 p-6">
+          <button 
+            onClick={() => onEdit(asset)}
+            className="flex w-full items-center justify-center gap-3 rounded-lg bg-blue-600 py-4 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-500"
+          >
+            <Edit2 size={16} />
+            Engage Full Configuration
           </button>
-       </div>
-
-       <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-8">
-          <div className="grid grid-cols-2 gap-4">
-             <div className="p-4 bg-black/40 border border-white/5 rounded-lg">
-                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Status</p>
-                <div className="flex items-center gap-2">
-                   <div className={`w-2 h-2 rounded-full ${asset.status === 'Active' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                   <span className={`text-xs font-black uppercase ${asset.status === 'Active' ? 'text-emerald-400' : 'text-amber-400'}`}>{asset.status}</span>
-                </div>
-             </div>
-             <div className="p-4 bg-black/40 border border-white/5 rounded-lg">
-                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Environment</p>
-                <span className="text-xs font-black uppercase text-blue-400">{asset.environment}</span>
-             </div>
-          </div>
-
-          <div className="space-y-4">
-             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] border-b border-white/5 pb-2">Network Vector</h4>
-             <div className="space-y-3">
-                <div className="flex justify-between items-center py-2 border-b border-white/[0.02]">
-                   <span className="text-[10px] font-bold text-slate-400 uppercase">Primary IP</span>
-                   <span className="text-[11px] font-mono font-bold text-white">{asset.primary_ip || 'N/A'}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-white/[0.02]">
-                   <span className="text-[10px] font-bold text-slate-400 uppercase">Mgmt URL</span>
-                   <span className="text-[11px] font-mono font-bold text-blue-400 truncate max-w-[200px]">{asset.management_url || 'N/A'}</span>
-                </div>
-             </div>
-          </div>
-
-          <div className="space-y-4">
-             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] border-b border-white/5 pb-2">Hardware Registry</h4>
-             <p className="text-xs font-bold text-slate-300 leading-relaxed uppercase italic">"{asset.hardware_summary || 'No hardware description captured.'}"</p>
-          </div>
-
-          <div className="pt-8">
-             <button 
-               onClick={() => onEdit(asset)}
-               className="w-full py-4 bg-blue-600 text-white rounded-lg font-black uppercase text-[11px] tracking-widest shadow-lg shadow-blue-500/20 hover:bg-blue-500 transition-all flex items-center justify-center gap-3"
-             >
-                <Edit2 size={16} />
-                Engage Full Configuration
-             </button>
-          </div>
-       </div>
+        </div>
+      </WorkspaceFloatingPanel>
     </motion.div>
   )
 }
@@ -2321,6 +2337,19 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
           </ToolbarButton>
         </>
       ) : undefined}
+      floatingPanels={(
+        <AnimatePresence>
+          {quickLookId ? (
+            <QuickLookPanel
+              asset={devices?.find((d:any) => d.id === quickLookId)}
+              onClose={() => { setQuickLookId(null); gridRef.current?.api?.deselectAll(); }}
+              onEdit={(a: any) => { setQuickLookId(null); setActiveModal(a); }}
+              options={options}
+              devices={devices}
+            />
+          ) : null}
+        </AnimatePresence>
+      )}
     >
       {viewMode === 'grid' && <AssetInsightBar assets={devices || []} />}
 
@@ -2357,16 +2386,6 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
               onClose={() => setRowActionMenu(null)}
             />
           )}
-
-          <AnimatePresence>
-            {quickLookId && (
-              <QuickLookPanel 
-                asset={devices?.find((d:any) => d.id === quickLookId)} 
-                onClose={() => { setQuickLookId(null); gridRef.current?.api?.deselectAll(); }} 
-                onEdit={(a: any) => { setQuickLookId(null); setActiveModal(a); }}
-              />
-            )}
-          </AnimatePresence>
           <AnimatePresence>
             {showColumnPicker && (
               <motion.div
