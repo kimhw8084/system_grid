@@ -907,7 +907,7 @@ export default function VendorsReal() {
 
   // Deep-link support
   useEffect(() => {
-    if (!idParam || !Array.isArray(processedVendors)) return
+    if (!idParam || allVendors === undefined || !Array.isArray(processedVendors)) return
     const target = processedVendors.find((v: any) => String(v.id) === idParam)
     if (!target) {
       setDetailItem((current: any) => (current && String(current.id) === idParam ? null : current))
@@ -916,7 +916,7 @@ export default function VendorsReal() {
       return
     }
     setDetailItem(target)
-  }, [processedVendors, idParam, navigate, searchParams])
+  }, [allVendors, processedVendors, idParam, navigate, searchParams])
 
   // --- BULK MUTATION ---
   const bulkMutation = useMutation({
