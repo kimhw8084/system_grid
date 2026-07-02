@@ -16,7 +16,6 @@ import {
   Undo2, List, LayoutGrid, Upload, HistoryIcon, Shield, Eye, EyeOff, Phone,
   ShieldCheck, ArrowRight, Server, Key, Terminal, Flag, Check as CheckIcon
 } from 'lucide-react'
-import { History as HistoryIcon2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { showWorkspaceToast } from './shared/WorkspaceToast'
@@ -60,7 +59,7 @@ import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shar
 import { StatusPill } from './shared/StatusPill'
 import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
 import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
-import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } from './shared/WorkspaceModalShells'
+import { WorkspaceDossierShell } from './shared/WorkspaceModalShells'
 import { OperationalImportModal } from './shared/OperationalImportModal'
 import { OperationalGridMatrix } from './shared/OperationalGridMatrix'
 import { OperationalDisplayPanel, OperationalGridSurface, OperationalSavedViewsPanel, OperationalWorkspaceFrame } from './shared/OperationalWorkspaceShells'
@@ -394,7 +393,6 @@ export default function VendorsReal() {
   const [editingItem,      setEditingItem]      = useState<any>(null)
   const [detailItem,       setDetailItem]       = useState<any>(null)
   const [showImportModal,  setShowImportModal]  = useState(false)
-  const [compareOpen,      setCompareOpen]      = useState(false)
   const [confirmModal,     setConfirmModal]     = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {}, variant: 'info' })
   const [detailDeleteConfirm, setDetailDeleteConfirm] = useState(false)
 
@@ -538,6 +536,7 @@ export default function VendorsReal() {
   const openRowActionMenuAtPoint = useCallback((item: any, x: number, y: number) => {
     setRowActionMenu({
       item,
+      point: { x, y },
     })
   }, [])
 
@@ -1078,6 +1077,12 @@ export default function VendorsReal() {
               <ToolbarIconButton onClick={() => setShowRegistry(true)} title="Registry configuration"><Settings size={16} /></ToolbarIconButton>
             </ToolbarGroup>
             <ToolbarGroup>
+              <ToolbarButton onClick={() => setShowImportModal(true)} title="Import vendor rows">
+                <span className="flex items-center gap-2">
+                  <Upload size={14} />
+                  Import
+                </span>
+              </ToolbarButton>
               <ToolbarButton active={showFilterBar} onClick={() => setShowFilterBar((c) => !c)} title={showFilterBar ? 'Hide filters' : 'Show filters'}>
                 <span className="flex items-center gap-2">{showFilterBar ? <EyeOff size={14} /> : <Eye size={14} />}Filters</span>
               </ToolbarButton>
@@ -1155,7 +1160,20 @@ export default function VendorsReal() {
 
           <AnimatePresence>
             {rowActionMenu && (
-              <motion.div key="vendor-row-action-menu" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} style={rowActionMenu.style} className="row-action-menu-container">
+              <motion.div
+                key="vendor-row-action-menu"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                style={getPointFloatingStyle({
+                  x: rowActionMenu.point.x,
+                  y: rowActionMenu.point.y,
+                  width: 320,
+                  height: 360,
+                  zIndex: 1110,
+                })}
+                className="row-action-menu-container"
+              >
                 <WorkspaceFloatingPanel kind="context" className="overflow-hidden">
                   <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
                     <div className="min-w-0">
