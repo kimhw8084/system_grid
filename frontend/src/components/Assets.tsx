@@ -16,7 +16,8 @@ import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { ConnectionForensicsModal } from "./shared/ConnectionForensicsModal"
 import { WorkspaceModal } from "./shared/WorkspaceModal"
-import { HeaderScopeSwitch, ToolbarButton } from "./shared/LayoutPrimitives"
+import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch, ToolbarSegmented } from "./shared/LayoutPrimitives"
+import { OperationalWorkspaceShell } from "./shared/OperationalWorkspaceShells"
 import { StyledSelect } from "./shared/StyledSelect"
 import { ServiceDetailsView, ServiceForm } from "./ServiceRegistry"
 
@@ -2022,146 +2023,166 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
 }
 
   return (
-    <div className="h-full flex flex-col space-y-4 relative overflow-hidden">
-      <div className="flex items-center justify-between shrink-0">
-        <div className="flex items-center space-x-6">
-           <div>
-              <h1 className="text-3xl font-black uppercase tracking-tighter text-white">Infrastructure <span className="text-blue-500">Registry</span></h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-[0.4em] font-black mt-1 italic">Central Global Asset Inventory</p>
-           </div>
-
-           <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 ml-2">
-                <button onClick={() => setViewMode('grid')} className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center space-x-2 ${viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                    <LayoutGrid size={14}/> <span>Table</span>
-                </button>
-                <button onClick={() => setViewMode('report')} className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center space-x-2 ${viewMode === 'report' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                    <FileText size={14}/> <span>List</span>
-                </button>
-                <button onClick={() => setViewMode('map')} className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center space-x-2 ${viewMode === 'map' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}>
-                    <Globe size={14}/> <span>Map</span>
-                </button>
-           </div>
-
-           {viewMode === 'grid' && (
-             <HeaderScopeSwitch
-               label="Asset Scope"
-               summary={`${inventoryAssets.length} active · ${deletedAssets.length} deleted`}
-               value={activeTab}
-               onChange={(next) => {
-                 setActiveTab(next as 'inventory' | 'deleted')
-                 setSelectedIds([])
-               }}
-               options={[
-                 { label: 'Existing', value: 'inventory' },
-                 { label: 'Purged', value: 'deleted' },
-               ]}
-             />
-           )}
-        </div>
-
-        {viewMode === 'grid' && (
-          <div className="flex items-center space-x-3">
-            <div className="relative">
-               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-               <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search assets..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold outline-none focus:border-blue-500/50 w-64 transition-all" />
-            </div>
-
-            <div className="flex items-center gap-1 rounded-lg border border-white/5 bg-white/5 p-1">
-              {[
-                { id: 'all', label: 'All' },
-                { id: 'mine', label: 'My Systems' },
-                { id: 'team', label: 'Team' },
-                { id: 'unowned', label: 'Unowned' },
-                { id: 'degraded', label: 'Degraded' },
-                { id: 'at_risk', label: 'At Risk' },
-                { id: 'needs_docs', label: 'Needs Docs' }
-              ].map((lens) => (
-                <button
-                  key={lens.id}
-                  onClick={() => setActiveLens(lens.id as any)}
-                  className={`rounded-lg px-3 py-2 text-[9px] font-bold uppercase tracking-widest transition-all ${
-                    activeLens === lens.id
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                      : 'text-slate-500 hover:bg-white/10 hover:text-slate-200'
-                  }`}
-                >
-                  {lens.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">
-               <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Toggle Style Lab">
-                  <Activity size={16} />
-               </button>
-               <button onClick={() => setShowColumnPicker(!showColumnPicker)} className={`p-1.5 hover:bg-white/10 ${showColumnPicker ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Column Picker">
-                  <Sliders size={16} />
-               </button>
-               <button onClick={handleExportCSV} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-emerald-400 rounded-lg transition-all" title="Export CSV">
-                  <FileText size={16} />
-               </button>
-               <button onClick={() => setShowImportModal(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Import Bulk Data">
-                  <Upload size={16} />
-               </button>
-               <button onClick={handleCopyToClipboard} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Copy to Clipboard">
-                  <Clipboard size={16} />
-               </button>
-               <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Registry Config">
-                  <Settings size={16} />
-               </button>
-            </div>
-
-            <div className="relative bulk-menu-container">
-              <button
-                onClick={() => setShowBulkMenu(!showBulkMenu)}
-                disabled={selectedIds.length === 0 && compareCandidateIds.length < 2}
-                className={`p-1.5 rounded-lg border transition-all ${selectedIds.length > 0 || compareCandidateIds.length >= 2 ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/5 text-slate-700 cursor-not-allowed'}`}
-              >
-                <MoreVertical size={18}/>
-              </button>
-              <AnimatePresence>
-                {showBulkMenu && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-50 p-2 space-y-1">
-                     <p className="px-3 py-2 text-[8px] font-bold text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">{selectedIds.length} Assets Selected</p>
-                     {activeTab === 'deleted' ? (
-                       <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
-                     ) : (
-                       <>
-                          {selectedIds.length >= 2 && (
-                            <button onClick={() => { setCompareSnapshotIds(selectedIds); setViewMode('compare'); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-indigo-400 transition-all flex items-center justify-between">
-                               <span>Compare Selected</span>
-                               <ArrowRightLeft size={12} />
-                            </button>
-                          )}
-                          {selectedIds.length < 2 && compareCandidateIds.length >= 2 && (
-                            <button onClick={() => { setSelectedIds(compareCandidateIds); setCompareSnapshotIds(compareCandidateIds); setViewMode('compare'); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-sky-400 transition-all flex items-center justify-between">
-                               <span>Compare Visible</span>
-                               <ArrowRightLeft size={12} />
-                            </button>
-                          )}
-                          <button onClick={() => { setIsBulkStatusOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-blue-400 transition-all">Set Status...</button>
-                          <button onClick={() => { setIsBulkEnvOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-slate-400 transition-all">Set Environment...</button>
-                       </>
-                     )}
-                     <div className="h-px bg-white/5 mx-2 my-1" />
-                     <button onClick={() => { 
-                         const title = activeTab === 'deleted' ? 'Purge Assets' : 'Soft Delete'
-                         const msg = activeTab === 'deleted' ? 'PURGE PERMANENTLY?' : 'Soft-delete assets?'
-                         openConfirm(title, msg, () => bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' }))
-                      }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">{activeTab === 'deleted' ? 'Bulk Purge' : 'Bulk Delete'}</button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            <button onClick={() => setActiveModal({})} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all">+ Add Asset</button>
+    <>
+    <OperationalWorkspaceShell
+      className="relative overflow-hidden"
+      header={{
+        eyebrow: "Infrastructure",
+        title: (
+          <div className="flex items-center gap-3">
+            <Server className="text-blue-500" size={18} />
+            <span>Asset Registry</span>
           </div>
-        )}
-      </div>
+        ),
+        subtitle: "Central global asset inventory, topology context, and operational ownership",
+        meta: (
+          <>
+            <span className="rounded-lg border border-white/10 bg-black/30 px-2.5 py-1 text-[9px] font-semibold text-slate-300">
+              {inventoryAssets.length} active
+            </span>
+            <span className="rounded-lg border border-white/10 bg-black/30 px-2.5 py-1 text-[9px] font-semibold text-slate-300">
+              {deletedAssets.length} deleted
+            </span>
+            {viewMode === 'grid' ? (
+              <span className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[9px] font-semibold text-blue-300">
+                {visibleAssets.length} visible
+              </span>
+            ) : null}
+          </>
+        ),
+      }}
+      toolbarSearch={viewMode === 'grid' ? (
+        <ToolbarSearch
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search assets, systems, owners, addresses, and tags..."
+          className="max-w-lg"
+        />
+      ) : undefined}
+      toolbarControls={(
+        <>
+          <ToolbarGroup>
+            <ToolbarSegmented
+              options={[
+                { label: 'Table', value: 'grid' },
+                { label: 'List', value: 'report' },
+                { label: 'Map', value: 'map' },
+              ]}
+              value={viewMode === 'compare' ? 'grid' : viewMode}
+              onChange={(next) => setViewMode(next as 'grid' | 'report' | 'map')}
+            />
+          </ToolbarGroup>
+          {viewMode === 'grid' ? (
+            <HeaderScopeSwitch
+              label="Asset Scope"
+              summary={`${inventoryAssets.length} active · ${deletedAssets.length} deleted`}
+              value={activeTab}
+              onChange={(next) => {
+                setActiveTab(next as 'inventory' | 'deleted')
+                setSelectedIds([])
+              }}
+              options={[
+                { label: 'Existing', value: 'inventory' },
+                { label: 'Purged', value: 'deleted' },
+              ]}
+            />
+          ) : null}
+        </>
+      )}
+      secondaryToolbar={viewMode === 'grid' ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {[
+            { id: 'all', label: 'All' },
+            { id: 'mine', label: 'My Systems' },
+            { id: 'team', label: 'Team' },
+            { id: 'unowned', label: 'Unowned' },
+            { id: 'degraded', label: 'Degraded' },
+            { id: 'at_risk', label: 'At Risk' },
+            { id: 'needs_docs', label: 'Needs Docs' }
+          ].map((lens) => (
+            <ToolbarButton
+              key={lens.id}
+              onClick={() => setActiveLens(lens.id as any)}
+              active={activeLens === lens.id}
+            >
+              {lens.label}
+            </ToolbarButton>
+          ))}
+        </div>
+      ) : undefined}
+      toolbarActions={viewMode === 'grid' ? (
+        <>
+          <ToolbarGroup>
+            <ToolbarIconButton onClick={() => setShowStyleLab(!showStyleLab)} active={showStyleLab} title="Toggle style lab">
+              <Activity size={16} />
+            </ToolbarIconButton>
+            <ToolbarIconButton onClick={() => setShowColumnPicker(!showColumnPicker)} active={showColumnPicker} title="Column picker">
+              <Sliders size={16} />
+            </ToolbarIconButton>
+            <ToolbarIconButton onClick={handleExportCSV} title="Export CSV">
+              <FileText size={16} />
+            </ToolbarIconButton>
+            <ToolbarIconButton onClick={() => setShowImportModal(true)} title="Import bulk data">
+              <Upload size={16} />
+            </ToolbarIconButton>
+            <ToolbarIconButton onClick={handleCopyToClipboard} title="Copy to clipboard">
+              <Clipboard size={16} />
+            </ToolbarIconButton>
+            <ToolbarIconButton onClick={() => setShowConfig(true)} title="Registry configuration">
+              <Settings size={16} />
+            </ToolbarIconButton>
+          </ToolbarGroup>
+          <div className="relative bulk-menu-container">
+            <ToolbarIconButton
+              onClick={() => setShowBulkMenu(!showBulkMenu)}
+              disabled={selectedIds.length === 0 && compareCandidateIds.length < 2}
+              active={showBulkMenu}
+              title="Asset bulk actions"
+            >
+              <MoreVertical size={18} />
+            </ToolbarIconButton>
+            <AnimatePresence>
+              {showBulkMenu && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-50 p-2 space-y-1">
+                   <p className="px-3 py-2 text-[8px] font-bold text-slate-500 uppercase tracking-widest border-b border-white/5 mb-1">{selectedIds.length} Assets Selected</p>
+                   {activeTab === 'deleted' ? (
+                     <button onClick={() => bulkMutation.mutate({ action: 'restore' })} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-emerald-400 transition-all">Restore Selected</button>
+                   ) : (
+                     <>
+                        {selectedIds.length >= 2 && (
+                          <button onClick={() => { setCompareSnapshotIds(selectedIds); setViewMode('compare'); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-indigo-400 transition-all flex items-center justify-between">
+                             <span>Compare Selected</span>
+                             <ArrowRightLeft size={12} />
+                          </button>
+                        )}
+                        {selectedIds.length < 2 && compareCandidateIds.length >= 2 && (
+                          <button onClick={() => { setSelectedIds(compareCandidateIds); setCompareSnapshotIds(compareCandidateIds); setViewMode('compare'); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-sky-400 transition-all flex items-center justify-between">
+                             <span>Compare Visible</span>
+                             <ArrowRightLeft size={12} />
+                          </button>
+                        )}
+                        <button onClick={() => { setIsBulkStatusOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-blue-400 transition-all">Set Status...</button>
+                        <button onClick={() => { setIsBulkEnvOpen(true); setShowBulkMenu(false); }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-white/5 rounded-lg text-slate-400 transition-all">Set Environment...</button>
+                     </>
+                   )}
+                   <div className="h-px bg-white/5 mx-2 my-1" />
+                   <button onClick={() => { 
+                       const title = activeTab === 'deleted' ? 'Purge Assets' : 'Soft Delete'
+                       const msg = activeTab === 'deleted' ? 'PURGE PERMANENTLY?' : 'Soft-delete assets?'
+                       openConfirm(title, msg, () => bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' }))
+                    }} className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-rose-500/20 rounded-lg text-rose-500 transition-all">{activeTab === 'deleted' ? 'Bulk Purge' : 'Bulk Delete'}</button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          <ToolbarButton onClick={() => setActiveModal({})} variant="primary" className="px-6">
+            + Add Asset
+          </ToolbarButton>
+        </>
+      ) : undefined}
+    >
+      {viewMode === 'grid' && <AssetInsightBar assets={devices || []} />}
 
-        {viewMode === 'grid' && <AssetInsightBar assets={devices || []} />}
-
-      {/* STYLE LABORATORY BAR REMOVED AND MOVED TO SIDEBAR */}
       {viewMode === 'grid' ? (
         <div className="flex-1 w-full glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative shadow-2xl border border-white/5">
           {isLoading && (
@@ -2277,6 +2298,8 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
            />
         </div>
       )}
+    </OperationalWorkspaceShell>
+
       <StatusBulkUpdateModal
         isOpen={isBulkStatusOpen}
         onClose={() => setIsBulkStatusOpen(false)}
@@ -2434,7 +2457,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
         .ag-filter-wrapper { background-color: #141721 !important; border: 1px solid rgba(255,255,255,0.1) !important; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4) !important; border-radius: 12px !important; opacity: 1 !important; }
         .ag-filter-body { background-color: #141721 !important; padding: 12px !important; }
       `}</style>
-    </div>
+    </>
   )
 }
 
