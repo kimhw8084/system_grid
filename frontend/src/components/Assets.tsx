@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import ForceGraph2D from 'react-force-graph-2d'
@@ -18,6 +17,7 @@ import { ConnectionForensicsModal } from "./shared/ConnectionForensicsModal"
 import { WorkspaceModal } from "./shared/WorkspaceModal"
 import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch, ToolbarSegmented } from "./shared/LayoutPrimitives"
 import { OperationalWorkspaceShell } from "./shared/OperationalWorkspaceShells"
+import { OperationalDataGrid } from "./shared/OperationalDataGrid"
 import { StyledSelect } from "./shared/StyledSelect"
 import { ServiceDetailsView, ServiceForm } from "./ServiceRegistry"
 
@@ -1442,7 +1442,6 @@ export default function Assets() {
   const [searchParams, setSearchParams] = useSearchParams()
   const gridRef = React.useRef<any>(null)
   const [gridApi, setGridApi] = useState<any>(null)
-  const [gridColumnApi, setGridColumnApi] = useState<any>(null)
   
   const idParam = searchParams.get('id')
   const searchParam = searchParams.get('search')
@@ -1949,6 +1948,20 @@ export default function Assets() {
     }
   }
 
+  const assetGridRuntime = useMemo(() => ({
+    handleGridReady: (params: any) => {
+      setGridApi(params.api)
+      if (statusParam) {
+        params.api.setFilterModel({ status: { filterType: 'text', type: 'equals', filter: statusParam } })
+      }
+    },
+  }), [statusParam])
+
+  const assetGridNoRowsLabel = useMemo(() => {
+    if (searchTerm.trim()) return 'No assets match the current search or scope'
+    return activeTab === 'deleted' ? 'No deleted assets found' : 'No assets found'
+  }, [activeTab, searchTerm])
+
 const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
   if (!asset) return null
   return (
@@ -2184,34 +2197,27 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
       {viewMode === 'grid' && <AssetInsightBar assets={devices || []} />}
 
       {viewMode === 'grid' ? (
-        <div className="flex-1 w-full glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative shadow-2xl border border-white/5">
-          {isLoading && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
-               <RefreshCcw size={32} className="animate-spin" />
-               <p className="text-[10px] font-bold uppercase tracking-[0.3em]">Syncing asset registry...</p>
-            </div>
-          )}
-          <AgGridReact
-            ref={gridRef}
-            rowData={visibleAssets || []}
+        <div className="relative flex-1 min-h-0 w-full">
+          <OperationalDataGrid
+            gridRef={gridRef}
+            rows={visibleAssets || []}
             columnDefs={columnDefs}
-            rowSelection="multiple"
-            headerHeight={fontSize + rowDensity + 10}
-            rowHeight={fontSize + rowDensity + 10}
-            onGridReady={(params) => {
-              setGridApi(params.api)
-              setGridColumnApi(params.columnApi)
-              if (statusParam) {
-                params.api.setFilterModel({ status: { filterType: 'text', type: 'equals', filter: statusParam } })
-              }
-            }}
+            runtime={assetGridRuntime}
             onSelectionChanged={(e) => {
-              const nodes = e?.api?.getSelectedNodes() || []
+              const nodes = e?.api?.getSelectedNodes?.() || []
               setSelectedIds(nodes.map((n: any) => n.data?.id).filter(Boolean))
               if (nodes.length === 1) setQuickLookId(nodes[0].data?.id)
               else setQuickLookId(null)
             }}
-            enableCellTextSelection={true}
+            getRowId={(params: any) => String(params.data?.id)}
+            fontSize={fontSize}
+            rowDensity={rowDensity + 6}
+            noRowsLabel={assetGridNoRowsLabel}
+            loading={isLoading}
+            loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
+            loadingLabel={<p className="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-400">Syncing asset registry...</p>}
+            suppressRowClickSelection={false}
+            className="shadow-2xl border border-white/5"
           />
 
           <AnimatePresence>

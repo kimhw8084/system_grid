@@ -30,6 +30,7 @@ export const OperationalGridMatrix = React.memo(({
   onRowDataUpdated,
   quickFilterText,
   noRowsLabel = 'No data found',
+  suppressRowClickSelection = true,
 }: any) => {
   const apiRef = useRef<any>(null)
 
@@ -94,7 +95,7 @@ export const OperationalGridMatrix = React.memo(({
       onRowDataUpdated={onRowDataUpdated}
       suppressScrollOnNewData={true}
       suppressCellFocus={true}
-      suppressRowClickSelection={true}
+      suppressRowClickSelection={suppressRowClickSelection}
       enableCellTextSelection={true}
       suppressMovableColumns={false}
       ensureDomOrder={false}

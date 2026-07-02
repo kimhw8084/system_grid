@@ -53,6 +53,7 @@ interface OperationalDataGridProps {
   dataState?: OperationalDataState
   className?: string
   height?: string
+  suppressRowClickSelection?: boolean
 }
 
 export function OperationalDataGrid({
@@ -79,6 +80,7 @@ export function OperationalDataGrid({
   dataState,
   className = '',
   height,
+  suppressRowClickSelection = true,
 }: OperationalDataGridProps) {
   const autoSizeStrategy = useMemo(
     () => (runtime?.preserveExplicitColumnWidths ? undefined : OPERATIONAL_GRID_AUTO_SIZE_STRATEGY),
@@ -136,6 +138,7 @@ export function OperationalDataGrid({
         onFirstDataRendered={onFirstDataRendered}
         onRowDataUpdated={onRowDataUpdated}
         noRowsLabel={dataState?.noRowsLabel || noRowsLabel}
+        suppressRowClickSelection={suppressRowClickSelection}
       />
     </OperationalGridSurface>
   )
