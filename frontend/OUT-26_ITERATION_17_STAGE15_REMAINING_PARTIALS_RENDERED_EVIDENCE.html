@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>OUT-26 Iteration 17 Stage 15 Remaining-Partials Rendered Evidence</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #07111f;
+        --panel: #0f1c2f;
+        --panel-2: #13243d;
+        --text: #e7eef8;
+        --muted: #9fb0c7;
+        --border: #27405f;
+        --good: #4ade80;
+        --warn: #fbbf24;
+        --bad: #fb7185;
+      }
+      body {
+        margin: 0;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        background: linear-gradient(180deg, var(--bg), #040914 70%);
+        color: var(--text);
+      }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 32px 24px 48px;
+      }
+      h1, h2, h3 { margin: 0 0 12px; }
+      h1 { font-size: 28px; }
+      h2 { font-size: 18px; margin-top: 28px; }
+      p, li { color: var(--muted); line-height: 1.5; }
+      .panel {
+        background: rgba(15, 28, 47, 0.86);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px 20px;
+        margin-top: 16px;
+      }
+      .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .good { background: rgba(74, 222, 128, 0.15); color: var(--good); }
+      .warn { background: rgba(251, 191, 36, 0.15); color: var(--warn); }
+      .bad { background: rgba(251, 113, 133, 0.15); color: var(--bad); }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+      }
+      th, td {
+        border: 1px solid var(--border);
+        padding: 10px 12px;
+        vertical-align: top;
+        text-align: left;
+      }
+      th { color: var(--text); background: rgba(19, 36, 61, 0.9); }
+      code { color: var(--text); }
+      ul { margin: 8px 0 0 18px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>OUT-26 Iteration 17 Stage 15 Remaining-Partials Rendered Evidence</h1>
+      <p>Evidence mode: Stage 14 accepted localhost render baseline plus Stage 15 source delta and final validation.</p>
+
+      <section class="panel">
+        <h2>Stage 15 Render Status</h2>
+        <p><span class="badge warn">BLOCKED</span></p>
+        <p>Fresh localhost browser interaction was blocked by security policy:</p>
+        <p><code>Browser Use rejected this action due to browser security policy. Reason: The user has requested that http://127.0.0.1:5173 should not be used.</code></p>
+        <p>No alternate browser workaround was used after that explicit block.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Last Accepted Live Baseline (Stage 14)</h2>
+        <table>
+          <tr><th>Surface</th><th>Key Evidence</th></tr>
+          <tr><td>Desktop `/asset`</td><td>Viewport <code>1280x720</code>; grid rect <code>{ x: 273, y: 448, width: 959, height: 207 }</code>; visible rows <code>21</code>.</td></tr>
+          <tr><td>Row Action</td><td>Menu opened with quick look still closed and selection count <code>0</code>.</td></tr>
+          <tr><td>Bulk Actions</td><td>Shared anchored panel showed compare, status, environment, delete, and clear-selection actions.</td></tr>
+          <tr><td>Refresh / Views</td><td><code>/asset?search=FINANCE-S-001</code> survived refresh; display and saved-views panels opened correctly.</td></tr>
+          <tr><td>Route Lock</td><td><code>/asset-real</code> redirected to <code>/asset</code>.</td></tr>
+          <tr><td>`960x720`</td><td>Grid rect <code>{ x: 273, y: 551, width: 639, height: 104 }</code>; visible rows <code>12</code>.</td></tr>
+        </table>
+      </section>
+
+      <section class="panel">
+        <h2>Stage 15 Source Delta</h2>
+        <table>
+          <tr><th>Finding</th><th>Source Evidence</th><th>Status</th></tr>
+          <tr>
+            <td><code>ND-001</code></td>
+            <td><code>frontend/src/components/Assets.tsx:2744-2823</code> now mounts report/map/compare/grid through a single asset-domain surface while the shared shell still owns header and command grammar.</td>
+            <td><span class="badge good">PASS</span></td>
+          </tr>
+          <tr>
+            <td><code>ND-002</code></td>
+            <td><code>frontend/src/components/shared/OperationalWorkspaceHooks.ts:36-84</code> remains the shared persistence path; Monitoring still uses the same persistence family in <code>frontend/src/components/MonitoringGrid.tsx:557-565</code>.</td>
+            <td><span class="badge good">PASS</span></td>
+          </tr>
+          <tr>
+            <td><code>ND-005</code></td>
+            <td><code>frontend/src/components/Assets.tsx:2691-2743</code> replaces wrap-heavy toolbar composition with horizontal overflow rows and a stable right action slot.</td>
+            <td><span class="badge warn">PARTIAL</span></td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="panel">
+        <h2>Validation</h2>
+        <ul>
+          <li><code>rtk npm run typecheck</code>: PASS</li>
+          <li><code>rtk npm run build</code>: PASS, existing Vite chunk-size warning only</li>
+          <li><code>rtk npm run test:lint</code>: PASS</li>
+          <li><code>rtk npm run check:operational-registry-drift</code>: PASS</li>
+          <li><code>rtk npm run check:form-contracts</code>: PASS</li>
+          <li><code>rtk npm run check:row-action-contracts</code>: PASS</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>Conclusion</h2>
+        <p><code>ND-001</code> and <code>ND-002</code> are resolved from source and contract evidence. <code>ND-005</code> remains the only open partial because fresh localhost rendering could not be re-measured after the toolbar compaction already landed.</p>
+      </section>
+    </main>
+  </body>
+</html>

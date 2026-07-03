@@ -2042,7 +2042,6 @@ export default function Assets() {
     }),
     [activeTab, assets.length, devices, error, isError, isLoading, visibleAssets.length]
   )
-
   useEffect(() => {
     setSelectedIds((current) => current.filter((id) => visibleAssets.some((asset: any) => asset.id === id)))
   }, [visibleAssets])
@@ -2611,6 +2610,221 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
   )
 }
 
+  const primaryToolbarControls = (
+    <ToolbarGroup className="min-w-max flex-nowrap">
+      <ToolbarSegmented
+        options={[
+          { label: 'Table', value: 'grid' },
+          { label: 'List', value: 'report' },
+          { label: 'Map', value: 'map' },
+        ]}
+        value={viewMode === 'compare' ? 'grid' : viewMode}
+        onChange={(next) => setViewMode(next as 'grid' | 'report' | 'map')}
+      />
+      <ToolbarIconButton
+        ref={viewsMenuButtonRef as any}
+        onClick={() => toggleOverlay('views')}
+        active={showViewsMenu}
+        title="Saved asset views"
+      >
+        <Save size={16} />
+      </ToolbarIconButton>
+      <ToolbarIconButton
+        ref={displayMenuButtonRef as any}
+        onClick={() => toggleOverlay('display')}
+        active={showDisplayMenu}
+        title="Display options"
+      >
+        <Sliders size={16} />
+      </ToolbarIconButton>
+    </ToolbarGroup>
+  )
+  const importExportToolbarControls = (
+    <ToolbarGroup className="min-w-max flex-nowrap">
+      <ToolbarButton
+        onClick={() => handleDownloadImportArtifact('template')}
+        disabled={activeImportExportAction !== null}
+        title="Download the existing asset import template"
+      >
+        {activeImportExportAction === 'template' ? <RefreshCcw className="animate-spin" size={14} /> : <Download size={14} />}
+        <span>Template</span>
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => handleDownloadImportArtifact('snapshot')}
+        disabled={activeImportExportAction !== null}
+        title="Download the existing asset import snapshot"
+      >
+        {activeImportExportAction === 'snapshot' ? <RefreshCcw className="animate-spin" size={14} /> : <Download size={14} />}
+        <span>Snapshot</span>
+      </ToolbarButton>
+      <OperationalDisabledActionTooltip
+        disabled={!gridApi || visibleAssets.length === 0}
+        reason={!gridApi ? 'Asset table is still loading and cannot export yet.' : 'No assets are available in the current scope to export.'}
+      >
+        <span className="inline-flex">
+          <ToolbarButton
+            onClick={handleExportCSV}
+            disabled={!gridApi || visibleAssets.length === 0}
+            title="Export the current asset table view as CSV"
+          >
+            <FileText size={14} />
+            <span>Export CSV</span>
+          </ToolbarButton>
+        </span>
+      </OperationalDisabledActionTooltip>
+      <ToolbarButton onClick={() => setShowImportModal(true)} title="Open the existing asset bulk import workflow">
+        <Upload size={14} />
+        <span>Import Data</span>
+      </ToolbarButton>
+    </ToolbarGroup>
+  )
+  const utilityToolbarControls = (
+    <ToolbarGroup className="min-w-max flex-nowrap">
+      <ToolbarIconButton onClick={handleCopyToClipboard} title="Copy to clipboard">
+        <Clipboard size={16} />
+      </ToolbarIconButton>
+      <ToolbarIconButton onClick={() => setShowConfig(true)} title="Registry configuration">
+        <Settings size={16} />
+      </ToolbarIconButton>
+    </ToolbarGroup>
+  )
+  const shellToolbarLeft = (
+    <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {viewMode === 'grid' ? (
+        <ToolbarSearch
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search assets, systems, owners, addresses, and tags..."
+          className="w-[220px] max-w-none shrink-0 sm:w-[280px] xl:max-w-lg"
+        />
+      ) : null}
+      {primaryToolbarControls}
+      {viewMode !== 'grid' ? importExportToolbarControls : null}
+      {viewMode !== 'grid' ? utilityToolbarControls : null}
+    </div>
+  )
+  const shellSecondaryToolbar = viewMode === 'grid' ? (
+    <div className="flex min-w-0 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {ASSET_LENS_OPTIONS.map((lens) => (
+        <ToolbarButton
+          key={lens.id}
+          onClick={() => setActiveLens(lens.id)}
+          active={activeLens === lens.id}
+        >
+          {lens.label}
+        </ToolbarButton>
+      ))}
+      <div className="mx-1 h-5 w-px shrink-0 bg-white/5" />
+      {importExportToolbarControls}
+      {utilityToolbarControls}
+    </div>
+  ) : undefined
+  const shellToolbarActions = viewMode === 'grid' ? (
+    <div className="flex shrink-0 items-center gap-2">
+      <ToolbarButton
+        ref={bulkMenuButtonRef as any}
+        onClick={() => toggleOverlay('bulk')}
+        disabled={activeTab === 'deleted'
+          ? selectedIds.length === 0
+          : selectedIds.length === 0 && compareCandidateIds.length < 2}
+        active={showBulkMenu}
+        title="Asset bulk actions"
+        className="bulk-menu-trigger"
+      >
+        <span className="flex items-center gap-2">
+          <Zap size={14} />
+          Bulk Actions
+        </span>
+      </ToolbarButton>
+      <ToolbarButton onClick={() => setActiveModal({})} variant="primary" className="px-6">
+        + Add Asset
+      </ToolbarButton>
+    </div>
+  ) : undefined
+  // The shared shell owns the page header and command bars. This switch mounts only asset-domain surfaces.
+  const assetWorkspaceSurface = viewMode === 'grid' ? (
+    <div className="relative flex flex-1 min-h-0 w-full">
+      <OperationalDataGrid
+        gridRef={gridRef}
+        rows={visibleAssets || []}
+        columnDefs={columnDefs}
+        runtime={assetGridRuntime}
+        rowInteractions={assetRowInteractions}
+        onSelectionChanged={(e) => {
+          if (restoringRowActionSelectionRef.current) {
+            restoringRowActionSelectionRef.current = false
+            return
+          }
+          const nodes = e?.api?.getSelectedNodes?.() || []
+          const nextIds = nodes.map((n: any) => n.data?.id).filter(Boolean)
+          const guardedIds = rowActionSelectionGuardRef.current
+          if (guardedIds) {
+            rowActionSelectionGuardRef.current = null
+            setSelectedIds(guardedIds)
+            setQuickLookId(null)
+            requestAnimationFrame(() => restoreGridSelection(guardedIds))
+            return
+          }
+          setSelectedIds(nextIds)
+          if (nextIds.length === 0) {
+            setQuickLookId(null)
+          }
+        }}
+        getRowId={(params: any) => String(params.data?.id)}
+        fontSize={fontSize}
+        rowDensity={rowDensity + 6}
+        noRowsLabel={assetGridNoRowsLabel}
+        loading={isLoading}
+        loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
+        loadingLabel={<p className="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-400">Syncing asset registry...</p>}
+        dataState={assetDataState}
+        suppressRowClickSelection={true}
+        className="shadow-2xl border border-white/5"
+      />
+      {rowActionMenu && (
+        <OperationalRowActionMenu
+          meta={rowActionMenu.asset?.system || 'Asset'}
+          title={rowActionMenu.asset?.name || 'Asset Row Actions'}
+          sections={rowActionSections as any}
+          cursorX={rowActionMenu.cursorX}
+          cursorY={rowActionMenu.cursorY}
+          onClose={() => {
+            setRowActionMenu(null)
+            closeOverlay('rowAction')
+          }}
+        />
+      )}
+    </div>
+  ) : viewMode === 'report' ? (
+    <AssetReportView
+      assets={visibleAssets}
+      selectedId={selectedAssetId}
+      onSelect={setSelectedAssetId}
+      options={options}
+      onEdit={(a: any) => setActiveModal(a)}
+      onViewServiceDetails={(s: any) => setActiveServiceDetails(s)}
+      onEditService={(s: any) => setActiveServiceEdit(s)}
+      devices={devices}
+      onViewAssetDetails={setActiveDetails}
+    />
+  ) : viewMode === 'compare' ? (
+    <AssetComparisonView
+      assets={compareAssets}
+      selectedIds={compareSnapshotIds}
+      onBack={() => { setViewMode('grid'); setCompareSnapshotIds([]) }}
+      onSync={(key, value, ids) => bulkMutation.mutate({ action: 'update', payload: { [key]: value }, ids })}
+    />
+  ) : (
+    <div className="flex-1 glass-panel rounded-lg overflow-hidden relative border-white/5 bg-slate-950">
+      <AssetMap
+        assets={visibleAssets}
+        connections={allConnections || []}
+        relationships={allRelationships || []}
+        systemsList={options?.filter((o:any)=>o.category==='LogicalSystem').map((o:any)=>o.value) || []}
+      />
+    </div>
+  )
+
   return (
     <>
     <OperationalWorkspaceShell
@@ -2641,125 +2855,9 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
           </>
         ),
       }}
-      toolbarSearch={viewMode === 'grid' ? (
-        <ToolbarSearch
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search assets, systems, owners, addresses, and tags..."
-          className="max-w-full xl:max-w-lg"
-        />
-      ) : undefined}
-      toolbarControls={(
-        <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:flex-nowrap">
-          <ToolbarGroup className="min-w-0">
-            <ToolbarSegmented
-              options={[
-                { label: 'Table', value: 'grid' },
-                { label: 'List', value: 'report' },
-                { label: 'Map', value: 'map' },
-              ]}
-              value={viewMode === 'compare' ? 'grid' : viewMode}
-              onChange={(next) => setViewMode(next as 'grid' | 'report' | 'map')}
-            />
-            <ToolbarIconButton
-              ref={viewsMenuButtonRef as any}
-              onClick={() => toggleOverlay('views')}
-              active={showViewsMenu}
-              title="Saved asset views"
-            >
-              <Save size={16} />
-            </ToolbarIconButton>
-            <ToolbarIconButton
-              ref={displayMenuButtonRef as any}
-              onClick={() => toggleOverlay('display')}
-              active={showDisplayMenu}
-              title="Display options"
-            >
-              <Sliders size={16} />
-            </ToolbarIconButton>
-          </ToolbarGroup>
-          <ToolbarGroup className="w-full sm:w-auto">
-            <ToolbarButton
-              onClick={() => handleDownloadImportArtifact('template')}
-              disabled={activeImportExportAction !== null}
-              title="Download the existing asset import template"
-            >
-              {activeImportExportAction === 'template' ? <RefreshCcw className="animate-spin" size={14} /> : <Download size={14} />}
-              <span>Template</span>
-            </ToolbarButton>
-            <ToolbarButton
-              onClick={() => handleDownloadImportArtifact('snapshot')}
-              disabled={activeImportExportAction !== null}
-              title="Download the existing asset import snapshot"
-            >
-              {activeImportExportAction === 'snapshot' ? <RefreshCcw className="animate-spin" size={14} /> : <Download size={14} />}
-              <span>Snapshot</span>
-            </ToolbarButton>
-            <OperationalDisabledActionTooltip
-              disabled={!gridApi || visibleAssets.length === 0}
-              reason={!gridApi ? 'Asset table is still loading and cannot export yet.' : 'No assets are available in the current scope to export.'}
-            >
-              <span className="inline-flex">
-                <ToolbarButton
-                  onClick={handleExportCSV}
-                  disabled={!gridApi || visibleAssets.length === 0}
-                  title="Export the current asset table view as CSV"
-                >
-                  <FileText size={14} />
-                  <span>Export CSV</span>
-                </ToolbarButton>
-              </span>
-            </OperationalDisabledActionTooltip>
-            <ToolbarButton onClick={() => setShowImportModal(true)} title="Open the existing asset bulk import workflow">
-              <Upload size={14} />
-              <span>Import Data</span>
-            </ToolbarButton>
-          </ToolbarGroup>
-          <ToolbarGroup className="w-full sm:w-auto sm:justify-end xl:w-auto">
-            <ToolbarIconButton onClick={handleCopyToClipboard} title="Copy to clipboard">
-              <Clipboard size={16} />
-            </ToolbarIconButton>
-            <ToolbarIconButton onClick={() => setShowConfig(true)} title="Registry configuration">
-              <Settings size={16} />
-            </ToolbarIconButton>
-          </ToolbarGroup>
-        </div>
-      )}
-      secondaryToolbar={viewMode === 'grid' ? (
-        <div className="flex w-full items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {ASSET_LENS_OPTIONS.map((lens) => (
-            <ToolbarButton
-              key={lens.id}
-              onClick={() => setActiveLens(lens.id)}
-              active={activeLens === lens.id}
-            >
-              {lens.label}
-            </ToolbarButton>
-          ))}
-        </div>
-      ) : undefined}
-      toolbarActions={viewMode === 'grid' ? (
-        <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto lg:flex-nowrap">
-          <ToolbarButton
-              ref={bulkMenuButtonRef as any}
-              onClick={() => toggleOverlay('bulk')}
-              disabled={activeTab === 'deleted'
-                ? selectedIds.length === 0
-                : selectedIds.length === 0 && compareCandidateIds.length < 2}
-              active={showBulkMenu}
-              title="Asset bulk actions"
-              className="bulk-menu-trigger"
-            >
-              <span className="flex items-center gap-2">
-                <Zap size={14} />
-                Bulk Actions
-              </span>
-            </ToolbarButton>
-          <ToolbarButton onClick={() => setActiveModal({})} variant="primary" className="px-6">
-            + Add Asset
-          </ToolbarButton>
-        </div>
-      ) : undefined}
+      toolbarSearch={shellToolbarLeft}
+      secondaryToolbar={shellSecondaryToolbar}
+      toolbarActions={shellToolbarActions}
       floatingPanels={(
         <AnimatePresence>
           <OperationalDisplayPanel
@@ -2918,89 +3016,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
         </AnimatePresence>
       )}
     >
-      {viewMode === 'grid' ? (
-        <div className="relative flex flex-1 min-h-0 w-full">
-          <OperationalDataGrid
-            gridRef={gridRef}
-            rows={visibleAssets || []}
-            columnDefs={columnDefs}
-            runtime={assetGridRuntime}
-            rowInteractions={assetRowInteractions}
-            onSelectionChanged={(e) => {
-              if (restoringRowActionSelectionRef.current) {
-                restoringRowActionSelectionRef.current = false
-                return
-              }
-              const nodes = e?.api?.getSelectedNodes?.() || []
-              const nextIds = nodes.map((n: any) => n.data?.id).filter(Boolean)
-              const guardedIds = rowActionSelectionGuardRef.current
-              if (guardedIds) {
-                rowActionSelectionGuardRef.current = null
-                setSelectedIds(guardedIds)
-                setQuickLookId(null)
-                requestAnimationFrame(() => restoreGridSelection(guardedIds))
-                return
-              }
-              setSelectedIds(nextIds)
-              if (nextIds.length === 0) {
-                setQuickLookId(null)
-              }
-            }}
-            getRowId={(params: any) => String(params.data?.id)}
-            fontSize={fontSize}
-            rowDensity={rowDensity + 6}
-            noRowsLabel={assetGridNoRowsLabel}
-            loading={isLoading}
-            loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
-            loadingLabel={<p className="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-400">Syncing asset registry...</p>}
-            dataState={assetDataState}
-            suppressRowClickSelection={true}
-            className="shadow-2xl border border-white/5"
-          />
-          {rowActionMenu && (
-            <OperationalRowActionMenu
-              meta={rowActionMenu.asset?.system || 'Asset'}
-              title={rowActionMenu.asset?.name || 'Asset Row Actions'}
-              sections={rowActionSections as any}
-              cursorX={rowActionMenu.cursorX}
-              cursorY={rowActionMenu.cursorY}
-              onClose={() => {
-                setRowActionMenu(null)
-                closeOverlay('rowAction')
-              }}
-            />
-          )}
-        </div>
-      ) : viewMode === 'report' ? (
-        <AssetReportView
-           assets={visibleAssets}
-           selectedId={selectedAssetId}
-           onSelect={setSelectedAssetId}
-           options={options}
-           onEdit={(a: any) => setActiveModal(a)}
-           onViewServiceDetails={(s: any) => setActiveServiceDetails(s)}
-           onEditService={(s: any) => setActiveServiceEdit(s)}
-           devices={devices}
-           onViewAssetDetails={setActiveDetails}
-        />
-      ) : viewMode === 'compare' ? (
-        <AssetComparisonView
-          assets={compareAssets}
-          selectedIds={compareSnapshotIds}
-          onBack={() => { setViewMode('grid'); setCompareSnapshotIds([]) }}
-          onSync={(key, value, ids) => bulkMutation.mutate({ action: 'update', payload: { [key]: value }, ids })}
-        />
-
-      ) : (
-        <div className="flex-1 glass-panel rounded-lg overflow-hidden relative border-white/5 bg-slate-950">
-           <AssetMap 
-             assets={visibleAssets} 
-             connections={allConnections || []}
-             relationships={allRelationships || []}
-             systemsList={options?.filter((o:any)=>o.category==='LogicalSystem').map((o:any)=>o.value) || []}
-           />
-        </div>
-      )}
+      {assetWorkspaceSurface}
     </OperationalWorkspaceShell>
 
       <StatusBulkUpdateModal
