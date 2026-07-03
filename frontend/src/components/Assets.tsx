@@ -2509,19 +2509,20 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
           </div>
         ),
         subtitle: "Central global asset inventory, topology context, and operational ownership",
-        meta: (
+        actions: (
           <>
-            <span className="rounded-lg border border-white/10 bg-black/30 px-2.5 py-1 text-[9px] font-semibold text-slate-300">
-              {inventoryAssets.length} active
-            </span>
-            <span className="rounded-lg border border-white/10 bg-black/30 px-2.5 py-1 text-[9px] font-semibold text-slate-300">
-              {deletedAssets.length} deleted
-            </span>
-            {viewMode === 'grid' ? (
-              <span className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[9px] font-semibold text-blue-300">
-                {visibleAssets.length} visible
-              </span>
-            ) : null}
+            <HeaderScopeSwitch
+              label="Asset Scope"
+              value={activeTab}
+              onChange={(next) => {
+                setActiveTab(next as 'inventory' | 'deleted')
+                setSelectedIds([])
+              }}
+              options={[
+                { label: 'Existing', value: 'inventory' },
+                { label: 'Purged', value: 'deleted' },
+              ]}
+            />
           </>
         ),
       }}
@@ -2545,40 +2546,6 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
               value={viewMode === 'compare' ? 'grid' : viewMode}
               onChange={(next) => setViewMode(next as 'grid' | 'report' | 'map')}
             />
-          </ToolbarGroup>
-          {viewMode === 'grid' ? (
-            <HeaderScopeSwitch
-              label="Asset Scope"
-              summary={`${inventoryAssets.length} active · ${deletedAssets.length} deleted`}
-              value={activeTab}
-              onChange={(next) => {
-                setActiveTab(next as 'inventory' | 'deleted')
-                setSelectedIds([])
-              }}
-              options={[
-                { label: 'Existing', value: 'inventory' },
-                { label: 'Purged', value: 'deleted' },
-              ]}
-            />
-          ) : null}
-        </>
-      )}
-      secondaryToolbar={viewMode === 'grid' ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {ASSET_LENS_OPTIONS.map((lens) => (
-            <ToolbarButton
-              key={lens.id}
-              onClick={() => setActiveLens(lens.id)}
-              active={activeLens === lens.id}
-            >
-              {lens.label}
-            </ToolbarButton>
-          ))}
-        </div>
-      ) : undefined}
-      toolbarActions={viewMode === 'grid' ? (
-        <>
-          <ToolbarGroup>
             <ToolbarIconButton
               ref={viewsMenuButtonRef as any}
               onClick={() => {
@@ -2647,6 +2614,23 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
               <Settings size={16} />
             </ToolbarIconButton>
           </ToolbarGroup>
+        </>
+      )}
+      secondaryToolbar={viewMode === 'grid' ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {ASSET_LENS_OPTIONS.map((lens) => (
+            <ToolbarButton
+              key={lens.id}
+              onClick={() => setActiveLens(lens.id)}
+              active={activeLens === lens.id}
+            >
+              {lens.label}
+            </ToolbarButton>
+          ))}
+        </div>
+      ) : undefined}
+      toolbarActions={viewMode === 'grid' ? (
+        <>
           <div className="relative bulk-menu-container">
             <ToolbarIconButton
               onClick={() => setShowBulkMenu(!showBulkMenu)}
@@ -2796,10 +2780,8 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
         </AnimatePresence>
       )}
     >
-      {viewMode === 'grid' && <AssetInsightBar assets={devices || []} />}
-
       {viewMode === 'grid' ? (
-        <div className="relative flex-1 min-h-0 w-full">
+        <div className="relative flex flex-1 min-h-0 w-full">
           <OperationalDataGrid
             gridRef={gridRef}
             rows={visibleAssets || []}
