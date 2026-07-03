@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>OUT-26 Iteration 15 Stage 13 Rendered Evidence</title>
+  <style>
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: #0b1222; color: #e5e7eb; margin: 0; padding: 24px; line-height: 1.5; }
+    h1, h2 { margin: 0 0 12px; }
+    h1 { font-size: 24px; }
+    h2 { font-size: 18px; margin-top: 28px; }
+    p, li { font-size: 13px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+    th, td { border: 1px solid #334155; padding: 8px; vertical-align: top; font-size: 12px; text-align: left; }
+    th { background: #111827; }
+    .card { border: 1px solid #334155; background: #111827; border-radius: 10px; padding: 16px; margin-top: 16px; }
+    .pass { color: #34d399; }
+    .partial { color: #fbbf24; }
+    .fail { color: #f87171; }
+    .unknown { color: #93c5fd; }
+    pre { white-space: pre-wrap; word-break: break-word; background: #020617; border: 1px solid #1e293b; padding: 12px; border-radius: 8px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>OUT-26 Iteration 15 Stage 13 Rendered Evidence</h1>
+  <div class="card">
+    <p>Worker result: <span class="fail">FAIL</span></p>
+    <p>No-deviation verdict: <span class="fail">Not no-deviation ready</span></p>
+    <p>Environment: existing frontend dev server at <code>http://127.0.0.1:5173/asset</code>, inspected with the Codex in-app browser.</p>
+  </div>
+
+  <h2>Baseline Geometry</h2>
+  <table>
+    <tr><th>Metric</th><th>Value</th></tr>
+    <tr><td>Header rect</td><td><code>x=272 y=108 w=961 h=61</code></td></tr>
+    <tr><td>Scope rect</td><td><code>x=944.16 y=108 w=288.84 h=60</code></td></tr>
+    <tr><td>Grid rect</td><td><code>x=273 y=400 w=959 h=255</code></td></tr>
+    <tr><td>Row count in DOM</td><td><code>39</code></td></tr>
+    <tr><td>Visible rows</td><td><code>19</code></td></tr>
+    <tr><td>Random badge under title</td><td><code>false</code></td></tr>
+  </table>
+
+  <h2>Visible Row Samples</h2>
+  <pre>ID Name
+System Type Status Env Owner Make
+Action
+1 FINANCE-S-001
+2 MANUFACTURING-S-002
+3 BI-ANALYTICS-P-003
+4 MANUFACTURING-P-004
+5 MANUFACTURING-P-005
+6 MANUFACTURING-P-006
+7 MES-P-007</pre>
+
+  <h2>Search and Filter</h2>
+  <table>
+    <tr><th>Action</th><th>Result</th></tr>
+    <tr><td>Search <code>FINANCE-S-001</code></td><td>Filtered to <code>5</code> visible rows</td></tr>
+    <tr><td>Search <code>zzzz-no-match</code></td><td>Rendered truthful filtered-empty state</td></tr>
+    <tr><td>Clear search</td><td>Restored to <code>19</code> visible rows after explicit select-all/backspace</td></tr>
+  </table>
+  <pre>No assets are available in the current scope to export.
+No assets match the current search or scope</pre>
+
+  <h2>Overlay Evidence</h2>
+  <table>
+    <tr><th>Surface</th><th>Status</th><th>Evidence</th></tr>
+    <tr><td>Display panel</td><td class="pass">PASS</td><td><code>x=948 y=247 w=320 h=415</code>, visible: Display options / Font / Rows / Columns</td></tr>
+    <tr><td>Saved views panel</td><td class="pass">PASS</td><td><code>x=848 y=247 w=420 h=285.5</code>, visible: Saved views / Unsaved working view / System default</td></tr>
+    <tr><td>Row action menu</td><td class="partial">PARTIAL</td><td><code>x=686 y=250 w=578 h=224.5</code>, visible: Quick Console Access / View Details / Edit Configuration / Soft Delete</td></tr>
+    <tr><td>Bulk action state</td><td class="partial">PARTIAL</td><td>Visible: <code>2 ASSETS SELECTED</code>, <code>Compare Selected</code>, <code>Set Status...</code>, <code>Set Environment...</code>, <code>Bulk Delete</code></td></tr>
+    <tr><td>Quick look</td><td class="pass">PASS</td><td>Visible: asset name, status, environment, primary IP, management URL, Engage Full Configuration</td></tr>
+    <tr><td>Create modal</td><td class="pass">PASS</td><td>Visible: New Asset Registration, Base Config, Relationships, metadata, Save Asset, Close</td></tr>
+    <tr><td>Dirty-state confirmation</td><td class="unknown">UNKNOWN</td><td>Shared source contract exists; rendered discard prompt not conclusively re-driven</td></tr>
+  </table>
+
+  <h2>Row Action Side Effect</h2>
+  <pre>Row actions
+FINANCE
+FINANCE-S-001
+Quick access
+Quick Console Access
+View Details
+Edit Configuration
+Soft Delete
+
+FINANCE-S-001
+Maintenance
+FINANCE // Switch
+STATUS
+MAINTENANCE
+ENVIRONMENT
+STAGING
+NETWORK VECTOR
+PRIMARY IP
+10.125.114.36
+MGMT URL
+https://console-001.sysgrid.local
+ENGAGE FULL CONFIGURATION</pre>
+  <p>This is the strongest rendered sign that row-action interaction is still drifting from the no-deviation contract.</p>
+
+  <h2>Route-State Evidence</h2>
+  <table>
+    <tr><th>Action</th><th>URL</th></tr>
+    <tr><td>Default load</td><td><code>/asset</code></td></tr>
+    <tr><td>Purged scope</td><td><code>/asset?tab=deleted</code></td></tr>
+    <tr><td>Map in deleted scope</td><td><code>/asset?tab=deleted&amp;view=map</code></td></tr>
+    <tr><td>Invalid params</td><td><code>/asset?search=foo</code> after sanitization</td></tr>
+    <tr><td>Browser back</td><td><code>/asset?search=FINANCE-S-001</code></td></tr>
+  </table>
+
+  <h2>Responsive Evidence at 960x720</h2>
+  <table>
+    <tr><th>Metric</th><th>Value</th></tr>
+    <tr><td>Header rect</td><td><code>x=272 y=108 w=641 h=76</code></td></tr>
+    <tr><td>Command bar rect</td><td><code>x=272 y=200 w=641 h=260</code></td></tr>
+    <tr><td>Treegrid rect</td><td><code>x=273 y=599 w=639 h=56</code></td></tr>
+  </table>
+  <p class="fail">This is a major no-deviation failure. The command bar consumes too much height and leaves the table barely usable.</p>
+
+  <h2>Console Inventory</h2>
+  <pre>Repeated React duplicate-key warning under AnimatePresence, OperationalWorkspaceShells.tsx, and Assets.tsx.</pre>
+
+  <h2>Verdict</h2>
+  <p class="fail">Visible baseline recovery is real, but no-deviation golden conformance is not proven.</p>
+  <p>Major gaps remain in local layout ownership, persistence contract, row-action behavior, bulk grammar, and responsive layout.</p>
+</body>
+</html>
