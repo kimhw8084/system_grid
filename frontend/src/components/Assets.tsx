@@ -157,9 +157,6 @@ const SharedServiceModals = ({
         title="Modify Service Configuration"
         subtitle="Logical Service Identity & Environment"
         icon={<Layers size={20}/>}
-        footerRight={
-          <ToolbarButton onClick={closeServiceEdit}>Close</ToolbarButton>
-        }
       >
         <div className="pt-6">
           <ServiceForm
@@ -298,7 +295,6 @@ const SharedNetworkModals = ({
       icon={<LinkIcon size={20}/>}
       footerRight={
         <div className="flex items-center gap-3">
-          <ToolbarButton onClick={closeNetworkEdit}>Close</ToolbarButton>
           <ToolbarButton 
             onClick={() => {
               if(!connData.device_a_id || !connData.port_a || !connData.device_b_id || !connData.port_b) {
