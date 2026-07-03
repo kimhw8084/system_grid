@@ -10,6 +10,7 @@ import { WorkspaceEmptyState, WorkspaceFloatingPanel, WorkspacePanelSubtitle, Wo
 import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Clipboard, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Network, Server, ExternalLink, Share2, ZoomIn, ZoomOut, Maximize2, Minimize2, Shield, Zap, Save, Upload, Download, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, Book } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
+import { isDeepEqual } from "../utils/dataParsers"
 import { BulkImportModal } from "./shared/BulkImportModal"
 import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
@@ -70,6 +71,24 @@ const slugifyAssetViewId = (value: string) => {
   return slug || `asset-view-${Date.now()}`
 }
 
+const normalizeNetworkEditDraft = (activeEdit: any = {}) => ({
+  ...activeEdit,
+  device_a_id: activeEdit.source_device_id ?? activeEdit.device_a_id ?? '',
+  device_b_id: activeEdit.target_device_id ?? activeEdit.device_b_id ?? '',
+  port_a: activeEdit.source_port ?? activeEdit.port_a ?? '',
+  port_b: activeEdit.target_port ?? activeEdit.port_b ?? '',
+  source_ip: activeEdit.source_ip ?? '',
+  source_vlan: activeEdit.source_vlan ?? '',
+  source_mac: activeEdit.source_mac ?? '',
+  direction: activeEdit.direction ?? '',
+  target_ip: activeEdit.target_ip ?? '',
+  target_vlan: activeEdit.target_vlan ?? '',
+  target_mac: activeEdit.target_mac ?? '',
+  link_type: activeEdit.link_type ?? '',
+  purpose: activeEdit.purpose ?? '',
+  speed_gbps: activeEdit.speed_gbps ?? 0,
+})
+
 const SharedServiceModals = ({ 
   activeDetails, 
   setActiveDetails, 
@@ -81,6 +100,31 @@ const SharedServiceModals = ({
 }: any) => {
   const queryClient = useQueryClient()
   const [isMaximized, setIsMaximized] = useState(false)
+  const [isServiceEditDirty, setIsServiceEditDirty] = useState(false)
+
+  const closeServiceEdit = useCallback(() => {
+    setActiveEdit(null)
+    setIsServiceEditDirty(false)
+    setIsMaximized(false)
+  }, [setActiveEdit])
+
+  const closeServiceDetails = useCallback(() => {
+    setActiveDetails(null)
+    setIsMaximized(false)
+  }, [setActiveDetails])
+
+  useEffect(() => {
+    if (!activeEdit) {
+      setIsServiceEditDirty(false)
+    }
+  }, [activeEdit])
+
+  useEffect(() => {
+    if (!activeEdit && !activeDetails) {
+      setIsMaximized(false)
+    }
+  }, [activeDetails, activeEdit])
+
   const mutation = useMutation({
     mutationFn: async (data: any) => {
       const url = `/api/v1/logical-services/${data.id}`
@@ -92,7 +136,7 @@ const SharedServiceModals = ({
       queryClient.invalidateQueries({ queryKey: ["logical-services"] })
       queryClient.invalidateQueries({ queryKey: ["device-services"] })
       toast.success("Service Registry Updated")
-      setActiveEdit(null)
+      closeServiceEdit()
       onServiceUpdate?.()
     },
     onError: (e: any) => toast.error(e.message)
@@ -102,25 +146,35 @@ const SharedServiceModals = ({
     <>
       <WorkspaceModal
         isOpen={!!activeEdit}
-        onClose={() => setActiveEdit(null)}
+        onClose={closeServiceEdit}
         size="workspace"
         isMaximized={isMaximized}
         onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+        isDirty={isServiceEditDirty}
+        dirtyConfirmTitle="Discard Service Changes?"
+        dirtyConfirmMessage="You have unsaved service changes. Close this window and discard them?"
+        dirtyConfirmText="Discard Service Changes"
         title="Modify Service Configuration"
         subtitle="Logical Service Identity & Environment"
         icon={<Layers size={20}/>}
         footerRight={
-          <ToolbarButton onClick={() => setActiveEdit(null)}>Close</ToolbarButton>
+          <ToolbarButton onClick={closeServiceEdit}>Close</ToolbarButton>
         }
       >
         <div className="pt-6">
-          <ServiceForm initialData={activeEdit} onSave={mutation.mutate} options={options} devices={devices} />
+          <ServiceForm
+            initialData={activeEdit}
+            onSave={mutation.mutate}
+            options={options}
+            devices={devices}
+            onDirtyChange={setIsServiceEditDirty}
+          />
         </div>
       </WorkspaceModal>
 
       <WorkspaceModal
         isOpen={!!activeDetails}
-        onClose={() => setActiveDetails(null)}
+        onClose={closeServiceDetails}
         size="workspace"
         isMaximized={isMaximized}
         onMaximizeToggle={() => setIsMaximized(!isMaximized)}
@@ -128,7 +182,7 @@ const SharedServiceModals = ({
         subtitle={`${activeDetails?.service_type} // ${activeDetails?.environment}`}
         icon={<Eye size={20}/>}
         footerRight={
-          <ToolbarButton onClick={() => setActiveDetails(null)}>Close</ToolbarButton>
+          <ToolbarButton onClick={closeServiceDetails}>Close</ToolbarButton>
         }
       >
         <div className="pt-6">
@@ -183,15 +237,30 @@ const SharedNetworkModals = ({
   const [connData, setConnData] = useState<any>({})
   const [isMaximized, setIsMaximized] = useState(false)
 
+  const closeNetworkEdit = useCallback(() => {
+    setActiveEdit(null)
+    setConnData({})
+    setIsMaximized(false)
+  }, [setActiveEdit])
+
+  const resolveNetworkDirty = useCallback(() => {
+    if (!activeEdit) return false
+    return !isDeepEqual(
+      normalizeNetworkEditDraft(connData),
+      normalizeNetworkEditDraft(activeEdit)
+    )
+  }, [activeEdit, connData])
+
   useEffect(() => {
     if (activeEdit) {
-      setConnData({
-        ...activeEdit,
-        device_a_id: activeEdit.source_device_id,
-        device_b_id: activeEdit.target_device_id,
-        port_a: activeEdit.source_port || activeEdit.port_a,
-        port_b: activeEdit.target_port || activeEdit.port_b
-      })
+      setConnData(normalizeNetworkEditDraft(activeEdit))
+    }
+  }, [activeEdit])
+
+  useEffect(() => {
+    if (!activeEdit) {
+      setConnData({})
+      setIsMaximized(false)
     }
   }, [activeEdit])
 
@@ -206,7 +275,7 @@ const SharedNetworkModals = ({
     },
     onSuccess: () => {
       onUpdate()
-      setActiveEdit(null)
+      closeNetworkEdit()
       toast.success('Link Matrix Updated')
     },
     onError: (e: any) => toast.error(e.message)
@@ -215,16 +284,21 @@ const SharedNetworkModals = ({
   return (
     <WorkspaceModal
       isOpen={!!activeEdit}
-      onClose={() => setActiveEdit(null)}
+      onClose={closeNetworkEdit}
       size="standard"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
+      resolveIsDirty={resolveNetworkDirty}
+      isDirty={false}
+      dirtyConfirmTitle="Discard Connectivity Changes?"
+      dirtyConfirmMessage="You have unsaved connectivity changes. Close this window and discard them?"
+      dirtyConfirmText="Discard Connectivity Changes"
       title="Modify Connectivity"
       subtitle="Network Interface & Peer Parameters"
       icon={<LinkIcon size={20}/>}
       footerRight={
         <div className="flex items-center gap-3">
-          <ToolbarButton onClick={() => setActiveEdit(null)}>Close</ToolbarButton>
+          <ToolbarButton onClick={closeNetworkEdit}>Close</ToolbarButton>
           <ToolbarButton 
             onClick={() => {
               if(!connData.device_a_id || !connData.port_a || !connData.device_b_id || !connData.port_b) {
