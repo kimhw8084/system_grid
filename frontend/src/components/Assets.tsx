@@ -2861,6 +2861,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
       floatingPanels={(
         <AnimatePresence>
           <OperationalDisplayPanel
+            key="asset-display-menu-panel"
             isOpen={showDisplayMenu}
             panelRef={displayMenuPanelRef}
             panelStyle={displayMenuStyle}
@@ -2881,6 +2882,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
             }}
           />
           <OperationalSavedViewsPanel
+            key="asset-saved-views-panel"
             isOpen={showViewsMenu}
             panelRef={viewsMenuPanelRef}
             panelStyle={viewsMenuStyle}
@@ -2905,6 +2907,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
             }}
           />
           <OperationalAnchoredPanel
+            key="asset-bulk-menu-panel"
             isOpen={showBulkMenu}
             panelRef={bulkMenuPanelRef}
             style={bulkMenuStyle}
@@ -3006,6 +3009,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
           </OperationalAnchoredPanel>
           {quickLookAsset ? (
             <QuickLookPanel
+              key={`asset-quick-look-panel-${quickLookAsset.id}`}
               asset={quickLookAsset}
               onClose={() => { setQuickLookId(null); gridRef.current?.api?.deselectAll(); }}
               onEdit={(a: any) => { setQuickLookId(null); setActiveModal(a); }}

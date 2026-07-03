@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>OUT-26 Iteration 20 Stage 18 Duplicate-Key Evidence</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #08111a;
+        --panel: #0e1b28;
+        --border: #29425a;
+        --text: #ecf1f7;
+        --muted: #a8b3c2;
+        --pass: #4ade80;
+        --warn: #fbbf24;
+      }
+      body {
+        margin: 0;
+        background: linear-gradient(180deg, #08111a, #050a10 75%);
+        color: var(--text);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      main {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 32px 24px 48px;
+      }
+      .panel {
+        margin-top: 16px;
+        padding: 18px 20px;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        background: rgba(14, 27, 40, 0.92);
+      }
+      .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .pass { color: var(--pass); background: rgba(74, 222, 128, 0.14); }
+      .warn { color: var(--warn); background: rgba(251, 191, 36, 0.14); }
+      table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+      th, td { border: 1px solid var(--border); padding: 10px 12px; text-align: left; vertical-align: top; }
+      th { background: rgba(21, 40, 57, 0.95); }
+      p, li { color: var(--muted); line-height: 1.5; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>OUT-26 Iteration 20 Stage 18 Duplicate-Key Evidence</h1>
+      <div class="panel">
+        <p><span class="badge warn">PARTIAL</span></p>
+        <p>Duplicate-key warnings were removed on canonical <code>/asset</code> with a narrow direct-child key fix in the overlay subtree. Static validation passed. A stale focused Assets Playwright expectation still prevents a full clean validation pass.</p>
+      </div>
+      <div class="panel">
+        <h2>Console</h2>
+        <table>
+          <tr><th>Field</th><th>Before</th><th>After</th></tr>
+          <tr><td>Duplicate-key warnings</td><td>76</td><td><span class="badge pass">0</span></td></tr>
+          <tr><td>Page errors</td><td>0</td><td><span class="badge pass">0</span></td></tr>
+          <tr><td>Primary stack</td><td><code>AnimatePresence → OperationalWorkspaceShell → Assets</code></td><td><span class="badge pass">absent</span></td></tr>
+        </table>
+      </div>
+      <div class="panel">
+        <h2>Regression Snapshot</h2>
+        <table>
+          <tr><th>Area</th><th>Status</th><th>Evidence</th></tr>
+          <tr><td>Desktop baseline</td><td><span class="badge pass">PASS</span></td><td>Grid height 297px, 14 visible rows, Existing/Purged top-right.</td></tr>
+          <tr><td>Responsive 960x720</td><td><span class="badge pass">PASS</span></td><td>Grid height 282px, 13 visible rows, no collapse.</td></tr>
+          <tr><td>Row actions</td><td><span class="badge pass">PASS</span></td><td>Menu opens without opening quick look.</td></tr>
+          <tr><td>Bulk actions</td><td><span class="badge pass">PASS</span></td><td>Anchored panel renders asset actions; clear selection works.</td></tr>
+          <tr><td>Golden divergence guard</td><td><span class="badge pass">PASS</span></td><td>Current grid view remains visually aligned with the shared shell and command grammar.</td></tr>
+          <tr><td>Focused Assets Playwright spec</td><td><span class="badge warn">STALE</span></td><td>Still expects heading <code>Infrastructure Registry</code> instead of current canonical <code>Asset Registry</code>.</td></tr>
+        </table>
+      </div>
+    </main>
+  </body>
+</html>
