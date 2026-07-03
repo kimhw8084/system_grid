@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>OUT-26 Iteration 18 Stage 16 Render-Only Evidence</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #061018;
+        --panel: #0c1a28;
+        --panel-2: #13283c;
+        --text: #ebf2fb;
+        --muted: #a3b4c7;
+        --border: #29445f;
+        --pass: #4ade80;
+        --warn: #fbbf24;
+      }
+      body {
+        margin: 0;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        background: linear-gradient(180deg, #061018, #03070c 75%);
+        color: var(--text);
+      }
+      main {
+        max-width: 1160px;
+        margin: 0 auto;
+        padding: 32px 24px 48px;
+      }
+      h1, h2 { margin: 0 0 12px; }
+      h1 { font-size: 28px; }
+      h2 { font-size: 18px; margin-top: 28px; }
+      p, li { color: var(--muted); line-height: 1.5; }
+      .panel {
+        background: rgba(12, 26, 40, 0.9);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px 20px;
+        margin-top: 16px;
+      }
+      .badge {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .pass { background: rgba(74, 222, 128, 0.14); color: var(--pass); }
+      .warn { background: rgba(251, 191, 36, 0.14); color: var(--warn); }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+      th, td {
+        border: 1px solid var(--border);
+        padding: 10px 12px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th { background: rgba(19, 40, 60, 0.9); }
+      code { color: var(--text); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>OUT-26 Iteration 18 Stage 16 Render-Only Evidence</h1>
+      <p>Fresh rendered verification of the current Stage 15 source delta against the live local app.</p>
+
+      <section class="panel">
+        <h2>Final Verdict</h2>
+        <p><span class="badge pass">PASS</span></p>
+        <p>Fresh render succeeded, the Stage 12 baseline remained intact, row-action and bulk-action regressions stayed fixed, and the `960x720` grid height cleared the Stage 16 threshold.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Desktop Measurements</h2>
+        <table>
+          <tr><th>Field</th><th>Value</th></tr>
+          <tr><td>Viewport</td><td><code>1280x720</code></td></tr>
+          <tr><td>URL</td><td><code>/asset</code></td></tr>
+          <tr><td>Grid</td><td>Visible</td></tr>
+          <tr><td>DOM rows</td><td><code>14</code></td></tr>
+          <tr><td>Visible rows</td><td><code>14</code></td></tr>
+          <tr><td>Header rect</td><td><code>{ x: 272, y: 108, width: 961, height: 61 }</code></td></tr>
+          <tr><td>Command rect</td><td><code>{ x: 289, y: 203, width: 1239, height: 123 }</code></td></tr>
+          <tr><td>Grid rect</td><td><code>{ x: 272, y: 359, width: 961, height: 297 }</code></td></tr>
+          <tr><td>Existing/Purged</td><td><code>{ x: 1061, y: 120, width: 81, height: 36 }</code> / <code>{ x: 1146, y: 120, width: 75, height: 36 }</code></td></tr>
+          <tr><td>Random badge</td><td>Absent</td></tr>
+        </table>
+      </section>
+
+      <section class="panel">
+        <h2>`960x720` Measurements</h2>
+        <table>
+          <tr><th>Field</th><th>Value</th></tr>
+          <tr><td>Viewport</td><td><code>960x720</code></td></tr>
+          <tr><td>URL</td><td><code>/asset</code></td></tr>
+          <tr><td>Grid</td><td>Visible</td></tr>
+          <tr><td>DOM rows</td><td><code>13</code></td></tr>
+          <tr><td>Visible rows</td><td><code>13</code></td></tr>
+          <tr><td>Header rect</td><td><code>{ x: 272, y: 108, width: 641, height: 76 }</code></td></tr>
+          <tr><td>Command rect</td><td><code>{ x: 289, y: 218, width: 1239, height: 123 }</code></td></tr>
+          <tr><td>Grid rect</td><td><code>{ x: 272, y: 374, width: 641, height: 282 }</code></td></tr>
+          <tr><td>Threshold check</td><td><code>282 >= 180</code> and <code>282 >= 193.2</code> with <code>13 >= 8</code></td></tr>
+          <tr><td>Controls usable</td><td>Yes</td></tr>
+        </table>
+      </section>
+
+      <section class="panel">
+        <h2>Regression Checks</h2>
+        <table>
+          <tr><th>Target</th><th>Evidence</th><th>Verdict</th></tr>
+          <tr><td>Stage 12 baseline</td><td>Grid visible, rows visible, top-right Existing/Purged, no badge</td><td><span class="badge pass">PASS</span></td></tr>
+          <tr><td>`ND-003`</td><td>Row-action menu opened; quick look stayed closed; selected rows after trigger <code>0</code>; row-body click still opened quick look</td><td><span class="badge pass">PASS</span></td></tr>
+          <tr><td>`ND-004`</td><td>Bulk flyout rendered as <code>.bulk-menu-container</code> with clear selection and asset-specific actions; clear selection worked</td><td><span class="badge pass">PASS</span></td></tr>
+          <tr><td>Route lock</td><td><code>/asset-real</code> redirected to <code>/asset</code></td><td><span class="badge pass">PASS</span></td></tr>
+        </table>
+      </section>
+
+      <section class="panel">
+        <h2>Rich Slots</h2>
+        <table>
+          <tr><th>Slot</th><th>Evidence</th><th>Verdict</th></tr>
+          <tr><td>Quick look</td><td>Quick look opened from row-body path</td><td><span class="badge pass">PASS</span></td></tr>
+          <tr><td>Map</td><td>URL changed to <code>/asset?view=map</code>; map surface left grid mode and rendered non-grid SVG content</td><td><span class="badge pass">PASS</span></td></tr>
+          <tr><td>Details/forms</td><td><code>+ Add Asset</code> opened the asset form surface</td><td><span class="badge pass">PASS</span></td></tr>
+          <tr><td>History/compare/report</td><td>URL changed to <code>/asset?view=report</code>; bulk flyout exposed <code>Compare Selected</code></td><td><span class="badge pass">PASS</span></td></tr>
+          <tr><td>Security/hardware</td><td>Quick look showed <code>Hardware Registry</code></td><td><span class="badge pass">PASS</span></td></tr>
+          <tr><td>Import/export</td><td><code>Template</code>, <code>Snapshot</code>, <code>Export CSV</code>, <code>Import Data</code> all visible</td><td><span class="badge pass">PASS</span></td></tr>
+          <tr><td>Display/saved views</td><td>Both panel surfaces opened</td><td><span class="badge pass">PASS</span></td></tr>
+          <tr><td>Relationships/service-network deep panels</td><td>Not conclusively surfaced without broader modal walking</td><td><span class="badge warn">UNKNOWN</span></td></tr>
+        </table>
+      </section>
+
+      <section class="panel">
+        <h2>Console Inventory</h2>
+        <table>
+          <tr><th>Metric</th><th>Value</th></tr>
+          <tr><td>Total console entries</td><td><code>102</code></td></tr>
+          <tr><td>Duplicate-key React warnings surfaced as errors</td><td><code>76</code></td></tr>
+          <tr><td>React Router future-flag warnings</td><td><code>2</code></td></tr>
+          <tr><td>Router blocker warnings</td><td><code>0</code></td></tr>
+          <tr><td>AG Grid destroyed-api warnings</td><td><code>0</code></td></tr>
+          <tr><td>Page errors</td><td><code>0</code></td></tr>
+        </table>
+        <p>Console result: <span class="badge pass">PASS with non-blocking warnings</span></p>
+      </section>
+    </main>
+  </body>
+</html>
