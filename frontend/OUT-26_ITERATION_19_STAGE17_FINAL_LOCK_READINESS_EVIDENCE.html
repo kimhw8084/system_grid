@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>OUT-26 Iteration 19 Stage 17 Final Lock-Readiness Evidence</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #071018;
+        --panel: #0d1b29;
+        --border: #29425a;
+        --text: #ebf0f7;
+        --muted: #a7b4c5;
+        --pass: #4ade80;
+        --warn: #fbbf24;
+        --block: #fb7185;
+      }
+      body {
+        margin: 0;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        background: linear-gradient(180deg, #071018, #04080d 75%);
+        color: var(--text);
+      }
+      main {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 32px 24px 48px;
+      }
+      h1, h2 { margin: 0 0 12px; }
+      h1 { font-size: 28px; }
+      h2 { font-size: 18px; margin-top: 28px; }
+      p, li { color: var(--muted); line-height: 1.5; }
+      .panel {
+        background: rgba(13, 27, 41, 0.9);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px 20px;
+        margin-top: 16px;
+      }
+      .badge {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .pass { background: rgba(74, 222, 128, 0.14); color: var(--pass); }
+      .warn { background: rgba(251, 191, 36, 0.14); color: var(--warn); }
+      .block { background: rgba(251, 113, 133, 0.14); color: var(--block); }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+      th, td {
+        border: 1px solid var(--border);
+        padding: 10px 12px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th { background: rgba(21, 40, 57, 0.95); }
+      code { color: var(--text); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>OUT-26 Iteration 19 Stage 17 Final Lock-Readiness Evidence</h1>
+      <p>Final acceptance review of canonical `/asset` under the user’s zero-deviation lock standard.</p>
+
+      <section class="panel">
+        <h2>Overall Status</h2>
+        <p><span class="badge block">FAIL</span></p>
+        <p>Functional and responsive verification passed, but final lock-readiness is blocked by repeated active-route duplicate-key warnings in the canonical Assets overlay shell path.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Acceptance Snapshot</h2>
+        <table>
+          <tr><th>Area</th><th>Status</th><th>Notes</th></tr>
+          <tr><td>Stage 12 baseline</td><td><span class="badge pass">PASS</span></td><td>Grid visible, rows visible, Existing/Purged top-right, badge absent.</td></tr>
+          <tr><td>`ND-001`</td><td><span class="badge pass">PASS</span></td><td>Shell boundary materially aligned behind the shared operational shell.</td></tr>
+          <tr><td>`ND-002`</td><td><span class="badge warn">ACCEPTED LIMIT</span></td><td>Accepted current shared frontend persistence contract for this run.</td></tr>
+          <tr><td>`ND-003`</td><td><span class="badge pass">PASS</span></td><td>Row-action isolation preserved.</td></tr>
+          <tr><td>`ND-004`</td><td><span class="badge pass">PASS</span></td><td>Bulk grammar preserved.</td></tr>
+          <tr><td>`ND-005`</td><td><span class="badge pass">PASS</span></td><td>`960x720` grid height measured at <code>282px</code>.</td></tr>
+          <tr><td>Route lock</td><td><span class="badge pass">PASS</span></td><td>`/asset` canonical, `/asset-real` redirect-only.</td></tr>
+          <tr><td>Rich behavior</td><td><span class="badge pass">PASS</span></td><td>Core surfaces preserved; some deep nested panels remain non-critical unknowns.</td></tr>
+          <tr><td>Duplicate-key warnings</td><td><span class="badge block">BLOCKER</span></td><td>Active on `/asset`; repeated in the live render session; not proven harmless.</td></tr>
+        </table>
+      </section>
+
+      <section class="panel">
+        <h2>Warning Decision</h2>
+        <p>Decision: <span class="badge block">B. Lock blocker requiring narrow cleanup</span></p>
+        <p>The warning stream is active in the canonical route, originates in the shared overlay identity path, and React explicitly treats non-unique keys as a duplication/omission risk. Under the user’s zero-divergence standard, this cannot be accepted as harmless noise.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Next Action</h2>
+        <p>Narrow duplicate-key-warning cleanup only. Preserve all accepted Stage 16 behavior and rerun fresh render verification focused on warning absence plus regression retention.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Review Stamp</h2>
+        <p>Review date: <code>2026-07-03</code></p>
+        <p>Validation rerun in Stage 17: typecheck, build, lint, operational registry drift, form contracts, and row-action contracts all passed. Focused assets Playwright was not rerun in this review because Stage 16 already provides the accepted live render baseline.</p>
+      </section>
+    </main>
+  </body>
+</html>
