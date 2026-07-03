@@ -33,6 +33,57 @@ export function usePersistentJsonState<T>(
   return [value, setValue] as const
 }
 
+export function useOperationalWorkspaceViewState<TSavedView, TWorkingState>({
+  savedViewsStorageKey,
+  activeViewStorageKey,
+  sessionKey,
+  workingStateStorageKey,
+  initialSavedViews,
+  initialWorkingState,
+}: {
+  savedViewsStorageKey: string
+  activeViewStorageKey: string
+  sessionKey: string
+  workingStateStorageKey: string
+  initialSavedViews: TSavedView[] | (() => TSavedView[])
+  initialWorkingState: TWorkingState | (() => TWorkingState)
+}) {
+  const [savedViews, setSavedViews] = usePersistentJsonState<TSavedView[]>(
+    savedViewsStorageKey,
+    initialSavedViews
+  )
+  const [workingState, setWorkingState] = usePersistentJsonState<TWorkingState>(
+    workingStateStorageKey,
+    initialWorkingState
+  )
+  const [activeViewId, setActiveViewId] = useWorkspaceSessionValue<string | null>(
+    sessionKey,
+    null,
+    () => {
+      if (typeof window === 'undefined') return null
+      return window.localStorage.getItem(activeViewStorageKey)
+    }
+  )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (activeViewId) {
+      window.localStorage.setItem(activeViewStorageKey, activeViewId)
+      return
+    }
+    window.localStorage.removeItem(activeViewStorageKey)
+  }, [activeViewId, activeViewStorageKey])
+
+  return {
+    savedViews,
+    setSavedViews,
+    activeViewId,
+    setActiveViewId,
+    workingState,
+    setWorkingState,
+  } as const
+}
+
 export function useWorkspaceSessionValue<T>(
   sessionKey: string,
   initialValue: T,

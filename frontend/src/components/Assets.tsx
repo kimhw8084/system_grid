@@ -17,12 +17,13 @@ import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { ConnectionForensicsModal } from "./shared/ConnectionForensicsModal"
 import { WorkspaceModal } from "./shared/WorkspaceModal"
 import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch, ToolbarSegmented } from "./shared/LayoutPrimitives"
-import { OperationalDisplayPanel, OperationalSavedViewsPanel, OperationalWorkspaceShell } from "./shared/OperationalWorkspaceShells"
+import { OperationalAnchoredPanel, OperationalDisplayPanel, OperationalSavedViewsPanel, OperationalWorkspaceShell } from "./shared/OperationalWorkspaceShells"
 import { OperationalDataGrid } from "./shared/OperationalDataGrid"
 import { resolveOperationalDataState } from "./shared/OperationalDataState"
 import { OperationalDisabledActionTooltip } from "./shared/OperationalDisabledActionTooltip"
 import { downloadOperationalImportFile } from "./shared/OperationalImportExport"
-import { usePersistentJsonState, useWorkspaceDismissHandlers } from "./shared/OperationalWorkspaceHooks"
+import { useOperationalWorkspaceViewState, useWorkspaceOverlayController } from "./shared/OperationalWorkspaceHooks"
+import { useOperationalDismissController } from "./shared/OperationalGridInteractions"
 import { OperationalRowActionMenu } from "./shared/OperationalRowActionMenu"
 import { useOperationalFormDirty } from "./shared/OperationalFormContracts"
 import { StyledSelect } from "./shared/StyledSelect"
@@ -30,6 +31,9 @@ import { WorkspaceFlyoutActionCard } from "./shared/WorkspaceFlyout"
 import { ServiceDetailsView, ServiceForm } from "./ServiceRegistry"
 
 const ASSET_SAVED_VIEW_STORAGE_KEY = 'sysgrid_assets_saved_views_v1'
+const ASSET_ACTIVE_VIEW_STORAGE_KEY = 'sysgrid_assets_active_view_v1'
+const ASSET_WORKING_VIEW_STORAGE_KEY = 'sysgrid_assets_working_view_v1'
+const ASSET_VIEW_SESSION_KEY = 'sysgrid_assets_session_init_v1'
 const DEFAULT_ASSET_VIEW_IDS = new Set<string>()
 const ASSET_LENS_OPTIONS = [
   { id: 'all', label: 'All' },
@@ -44,23 +48,36 @@ const ASSET_LENS_OPTIONS = [
 type AssetLens = typeof ASSET_LENS_OPTIONS[number]['id']
 type AssetTab = 'inventory' | 'deleted'
 type PersistedAssetViewMode = 'grid' | 'report' | 'map'
+type AssetWorkspaceViewConfig = {
+  groupBy?: string
+  fontSize?: number
+  rowDensity?: number
+  hiddenColumns?: string[]
+  activeLens?: AssetLens
+  activeTab?: AssetTab
+  searchTerm?: string
+}
+type AssetWorkingViewState = AssetWorkspaceViewConfig & {
+  viewMode?: PersistedAssetViewMode
+}
 type AssetSavedView = {
   id: string
   name: string
-  config?: {
-    groupBy?: string
-    fontSize?: number
-    rowDensity?: number
-    hiddenColumns?: string[]
-    activeLens?: AssetLens
-    activeTab?: AssetTab
-    searchTerm?: string
-  }
+  config?: AssetWorkspaceViewConfig
 }
 
 const ASSET_ROUTE_TAB_VALUES = new Set<AssetTab>(['inventory', 'deleted'])
 const ASSET_ROUTE_VIEW_VALUES = new Set<PersistedAssetViewMode>(['grid', 'report', 'map'])
 const ASSET_ROUTE_LENS_VALUES = new Set<AssetLens>(ASSET_LENS_OPTIONS.map((option) => option.id))
+const DEFAULT_ASSET_WORKING_VIEW_STATE: AssetWorkingViewState = {
+  fontSize: 10,
+  rowDensity: 16,
+  hiddenColumns: [],
+  activeLens: 'all',
+  activeTab: 'inventory',
+  searchTerm: '',
+  viewMode: 'grid',
+}
 
 const slugifyAssetViewId = (value: string) => {
   const slug = value
@@ -1542,38 +1559,70 @@ const AssetInsightBar = ({ assets }: any) => {
 export default function Assets() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [showImportModal, setShowImportModal] = useState(false)
-  const [showBulkMenu, setShowBulkMenu] = useState(false)
-  const [rowActionMenu, setRowActionMenu] = useState<{ asset: any, cursorX: number, cursorY: number } | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
-  const [viewMode, setViewMode] = useState<'grid' | 'report' | 'map' | 'compare'>('grid')
-  const [selectedIds, setSelectedIds] = useState<number[]>([])
-  const [showDisplayMenu, setShowDisplayMenu] = useState(false)
-  const [showViewsMenu, setShowViewsMenu] = useState(false)
-  const [showConfig, setShowConfig] = useState(false)
-  const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
-  const [isBulkEnvOpen, setIsBulkEnvOpen] = useState(false)
-  const [isMaximized, setIsMaximized] = useState(false)
-  const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
-  const [fontSize, setFontSize] = useState(10)
-  const [rowDensity, setRowDensity] = useState(16)
-  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
   const [searchParams, setSearchParams] = useSearchParams()
-  const gridRef = React.useRef<any>(null)
-  const [gridApi, setGridApi] = useState<any>(null)
-  const [isAssetModalDirty, setIsAssetModalDirty] = useState(false)
-  const [activeImportExportAction, setActiveImportExportAction] = useState<'template' | 'snapshot' | null>(null)
-  const [savedViews, setSavedViews] = usePersistentJsonState<AssetSavedView[]>(ASSET_SAVED_VIEW_STORAGE_KEY, [])
-  const [activeViewId, setActiveViewId] = useState<string | null>(null)
-  const [newViewName, setNewViewName] = useState('')
-  
+  const {
+    savedViews,
+    setSavedViews,
+    activeViewId,
+    setActiveViewId,
+    workingState: persistedWorkspaceState,
+    setWorkingState: setPersistedWorkspaceState,
+  } = useOperationalWorkspaceViewState<AssetSavedView, AssetWorkingViewState>({
+    savedViewsStorageKey: ASSET_SAVED_VIEW_STORAGE_KEY,
+    activeViewStorageKey: ASSET_ACTIVE_VIEW_STORAGE_KEY,
+    sessionKey: ASSET_VIEW_SESSION_KEY,
+    workingStateStorageKey: ASSET_WORKING_VIEW_STORAGE_KEY,
+    initialSavedViews: [],
+    initialWorkingState: DEFAULT_ASSET_WORKING_VIEW_STATE,
+  })
   const idParam = searchParams.get('id')
   const searchParam = searchParams.get('search')
   const statusParam = searchParams.get('status')
   const tabParam = searchParams.get('tab')
   const lensParam = searchParams.get('lens')
   const viewParam = searchParams.get('view')
+  const initialActiveTab: AssetTab = tabParam && ASSET_ROUTE_TAB_VALUES.has(tabParam as AssetTab)
+    ? (tabParam as AssetTab)
+    : (persistedWorkspaceState.activeTab ?? 'inventory')
+  const initialActiveLens: AssetLens = lensParam && ASSET_ROUTE_LENS_VALUES.has(lensParam as AssetLens)
+    ? (lensParam as AssetLens)
+    : (persistedWorkspaceState.activeLens ?? 'all')
+  const initialViewMode: PersistedAssetViewMode = viewParam && ASSET_ROUTE_VIEW_VALUES.has(viewParam as PersistedAssetViewMode)
+    ? (viewParam as PersistedAssetViewMode)
+    : (persistedWorkspaceState.viewMode ?? 'grid')
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [rowActionMenu, setRowActionMenu] = useState<{ asset: any, cursorX: number, cursorY: number } | null>(null)
+  const {
+    activeOverlay,
+    isOverlayOpen,
+    openOverlay,
+    toggleOverlay,
+    closeOverlay,
+    dismissOverlays,
+  } = useWorkspaceOverlayController()
+  const showDisplayMenu = isOverlayOpen('display')
+  const showViewsMenu = isOverlayOpen('views')
+  const showBulkMenu = isOverlayOpen('bulk')
+  const hasRowActionMenu = activeOverlay === 'rowAction' && !!rowActionMenu
+  const [searchTerm, setSearchTerm] = useState(searchParam ?? persistedWorkspaceState.searchTerm ?? '')
+  const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
+  const [viewMode, setViewMode] = useState<'grid' | 'report' | 'map' | 'compare'>(initialViewMode)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [showConfig, setShowConfig] = useState(false)
+  const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
+  const [isBulkEnvOpen, setIsBulkEnvOpen] = useState(false)
+  const [isMaximized, setIsMaximized] = useState(false)
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedWorkspaceState.hiddenColumns ?? [])
+  const [fontSize, setFontSize] = useState(persistedWorkspaceState.fontSize ?? 10)
+  const [rowDensity, setRowDensity] = useState(persistedWorkspaceState.rowDensity ?? 16)
+  const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
+  const gridRef = React.useRef<any>(null)
+  const rowActionSelectionGuardRef = useRef<number[] | null>(null)
+  const restoringRowActionSelectionRef = useRef(false)
+  const [gridApi, setGridApi] = useState<any>(null)
+  const [isAssetModalDirty, setIsAssetModalDirty] = useState(false)
+  const [activeImportExportAction, setActiveImportExportAction] = useState<'template' | 'snapshot' | null>(null)
+  const [newViewName, setNewViewName] = useState('')
 
   const [quickLookId, setQuickLookId] = useState<number | null>(null)
 
@@ -1592,22 +1641,26 @@ export default function Assets() {
 
   const { triggerRef: displayMenuButtonRef, panelRef: displayMenuPanelRef, panelStyle: displayMenuStyle } = useWorkspaceAnchoredLayer(showDisplayMenu, { minWidth: 320 })
   const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
+  const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
 
-  const dismissViewMenus = useCallback(() => {
-    setShowDisplayMenu(false)
-    setShowViewsMenu(false)
-  }, [])
+  const dismissWorkspaceMenus = useCallback(() => {
+    dismissOverlays()
+  }, [dismissOverlays])
 
-  useWorkspaceDismissHandlers({
-    active: showDisplayMenu || showViewsMenu,
-    onDismiss: dismissViewMenus,
-    shouldDismiss: (target) => {
-      if (displayMenuButtonRef.current?.contains(target)) return false
-      if (displayMenuPanelRef.current?.contains(target)) return false
-      if (viewsMenuButtonRef.current?.contains(target)) return false
-      if (viewsMenuPanelRef.current?.contains(target)) return false
-      return true
-    },
+  useOperationalDismissController({
+    active: showBulkMenu || showDisplayMenu || showViewsMenu || hasRowActionMenu,
+    onDismiss: dismissWorkspaceMenus,
+    allTriggerRefs: [bulkMenuButtonRef, displayMenuButtonRef, viewsMenuButtonRef],
+    bulkMenuButtonRef,
+    bulkMenuPanelRef,
+    displayMenuButtonRef,
+    displayMenuPanelRef,
+    viewsMenuButtonRef,
+    viewsMenuPanelRef,
+    showBulkMenu,
+    showDisplayMenu,
+    showViewsMenu,
+    hasRowActionMenu,
   })
 
   // --- Synchronization Hooks ---
@@ -1627,16 +1680,28 @@ export default function Assets() {
   const [activeServiceEdit, setActiveServiceEdit] = useState<any>(null)
   const [selectedConnection, setSelectedConnection] = useState<any>(null)
   const [activeNetworkEdit, setActiveNetworkEdit] = useState<any>(null)
-  const [activeLens, setActiveLens] = useState<AssetLens>('all')
-  const [activeTab, setActiveTab] = useState<AssetTab>('inventory')
+  const [activeLens, setActiveLens] = useState<AssetLens>(initialActiveLens)
+  const [activeTab, setActiveTab] = useState<AssetTab>(initialActiveTab)
   const [compareSnapshotIds, setCompareSnapshotIds] = useState<number[]>([])
 
   const openConfirm = (title: string, message: string, onConfirm: () => void, variant: any = 'danger') => {
     setConfirmModal({ isOpen: true, title, message, onConfirm, variant })
   }
 
-  const buildCurrentViewConfig = useCallback(() => ({
-    groupBy: 'raw',
+  const restoreGridSelection = useCallback((ids: number[]) => {
+    const api = gridRef.current?.api
+    if (!api) return
+    restoringRowActionSelectionRef.current = true
+    api.deselectAll?.()
+    if (ids.length === 0) return
+    api.forEachNode?.((node: any) => {
+      if (ids.includes(node.data?.id)) {
+        node.setSelected(true)
+      }
+    })
+  }, [])
+
+  const buildCurrentViewConfig = useCallback<() => AssetWorkspaceViewConfig>(() => ({
     fontSize,
     rowDensity,
     hiddenColumns,
@@ -1705,9 +1770,9 @@ export default function Assets() {
     if (!nextView) return
     applyAssetWorkspaceView(nextView.config)
     setActiveViewId(viewId)
-    dismissViewMenus()
+    dismissWorkspaceMenus()
     toast.success(`Loaded asset view ${nextView.name}`)
-  }, [applyAssetWorkspaceView, dismissViewMenus, savedViews])
+  }, [applyAssetWorkspaceView, dismissWorkspaceMenus, savedViews, setActiveViewId])
 
   const overwriteSavedView = useCallback((viewId: string) => {
     const nextViews = savedViews.map((view) => (
@@ -1735,31 +1800,27 @@ export default function Assets() {
   const applySystemDefaultView = useCallback(() => {
     setActiveViewId(null)
     resetAssetWorkspaceView()
-    dismissViewMenus()
+    dismissWorkspaceMenus()
     toast.success('Restored default asset workspace view')
-  }, [dismissViewMenus, resetAssetWorkspaceView])
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      if (showBulkMenu && !target.closest('.bulk-menu-container')) {
-        setShowBulkMenu(false)
-      }
-      if (rowActionMenu && !target.closest('.row-action-menu-container') && !target.closest('.row-action-trigger')) {
-        setRowActionMenu(null)
-      }
-    }
-    if (showBulkMenu || rowActionMenu) {
-      document.addEventListener('click', handleClickOutside)
-      return () => document.removeEventListener('click', handleClickOutside)
-    }
-  }, [showBulkMenu, rowActionMenu])
+  }, [dismissWorkspaceMenus, resetAssetWorkspaceView, setActiveViewId])
 
   useEffect(() => {
     if (viewMode !== 'grid') {
-      dismissViewMenus()
+      dismissWorkspaceMenus()
     }
-  }, [dismissViewMenus, viewMode])
+  }, [dismissWorkspaceMenus, viewMode])
+
+  useEffect(() => {
+    if (activeOverlay !== 'rowAction' && rowActionMenu) {
+      setRowActionMenu(null)
+    }
+  }, [activeOverlay, rowActionMenu])
+
+  useEffect(() => {
+    if (activeOverlay === 'rowAction' && !rowActionMenu) {
+      dismissOverlays()
+    }
+  }, [activeOverlay, dismissOverlays, rowActionMenu])
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) })
   const { data: userProfile } = useQuery({
@@ -1772,29 +1833,29 @@ export default function Assets() {
   })
 
   useEffect(() => {
-    setSearchTerm(searchParam ?? '')
-  }, [searchParam])
+    setSearchTerm(searchParam ?? persistedWorkspaceState.searchTerm ?? '')
+  }, [persistedWorkspaceState.searchTerm, searchParam])
 
   useEffect(() => {
     const nextTab: AssetTab = tabParam && ASSET_ROUTE_TAB_VALUES.has(tabParam as AssetTab)
       ? (tabParam as AssetTab)
-      : 'inventory'
+      : (persistedWorkspaceState.activeTab ?? 'inventory')
     setActiveTab((current) => current === nextTab ? current : nextTab)
-  }, [tabParam])
+  }, [persistedWorkspaceState.activeTab, tabParam])
 
   useEffect(() => {
     const nextLens: AssetLens = lensParam && ASSET_ROUTE_LENS_VALUES.has(lensParam as AssetLens)
       ? (lensParam as AssetLens)
-      : 'all'
+      : (persistedWorkspaceState.activeLens ?? 'all')
     setActiveLens((current) => current === nextLens ? current : nextLens)
-  }, [lensParam])
+  }, [lensParam, persistedWorkspaceState.activeLens])
 
   useEffect(() => {
     const nextView: PersistedAssetViewMode = viewParam && ASSET_ROUTE_VIEW_VALUES.has(viewParam as PersistedAssetViewMode)
       ? (viewParam as PersistedAssetViewMode)
-      : 'grid'
+      : (persistedWorkspaceState.viewMode ?? 'grid')
     setViewMode((current) => current === nextView ? current : nextView)
-  }, [viewParam])
+  }, [persistedWorkspaceState.viewMode, viewParam])
 
   useEffect(() => {
     if (!idParam || !devices) return
@@ -1845,6 +1906,30 @@ export default function Assets() {
       setSearchParams(nextParams, { replace: true })
     }
   }, [activeLens, activeTab, searchParams, searchTerm, setSearchParams, viewMode])
+
+  useEffect(() => {
+    const nextWorkingState: AssetWorkingViewState = {
+      fontSize,
+      rowDensity,
+      hiddenColumns,
+      activeLens,
+      activeTab,
+      searchTerm,
+      viewMode: viewMode === 'compare' ? 'grid' : viewMode,
+    }
+    setPersistedWorkspaceState((current) => (
+      isDeepEqual(current, nextWorkingState) ? current : nextWorkingState
+    ))
+  }, [
+    activeLens,
+    activeTab,
+    fontSize,
+    hiddenColumns,
+    rowDensity,
+    searchTerm,
+    setPersistedWorkspaceState,
+    viewMode,
+  ])
 
   useEffect(() => {
     const api = gridRef.current?.api
@@ -2037,8 +2122,9 @@ export default function Assets() {
       if (viewMode !== 'compare') {
         setSelectedIds([])
       }
-      setShowBulkMenu(false)
+      closeOverlay('bulk')
       setIsBulkStatusOpen(false)
+      setIsBulkEnvOpen(false)
       if (variables.action === 'restore') {
         if (data.conflicts?.length > 0) {
             toast.error(`Restored ${data.restored.length} assets. ${data.conflicts.length} failed due to hostname conflict.`)
@@ -2053,11 +2139,21 @@ export default function Assets() {
   })
 
   const openRowActionMenu = (asset: any, event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
     const rect = event.currentTarget.getBoundingClientRect()
+    rowActionSelectionGuardRef.current = [...selectedIds]
+    setQuickLookId(null)
+    openOverlay('rowAction')
     setRowActionMenu({
       asset,
       cursorX: rect.right,
       cursorY: rect.bottom + 8,
+    })
+    requestAnimationFrame(() => {
+      if (!restoringRowActionSelectionRef.current) {
+        rowActionSelectionGuardRef.current = null
+      }
     })
   }
 
@@ -2335,6 +2431,10 @@ export default function Assets() {
         <div className="flex items-center justify-center h-full">
           <button
             type="button"
+            onMouseDown={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+            }}
             onClick={(event) => openRowActionMenu(p.data, event)}
             title="Asset row actions"
             className="row-action-trigger inline-flex items-center justify-center rounded-lg border border-white/10 bg-slate-950 px-2.5 py-1.5 text-slate-300 transition-all hover:border-white/20 hover:bg-slate-900 hover:text-white"
@@ -2402,6 +2502,21 @@ export default function Assets() {
       }
     },
   }), [statusParam])
+
+  const assetRowInteractions = useMemo(() => ({
+    handleRowClicked: (event: any) => {
+      if (!event?.node || !event?.data) return
+      const target = event.event?.target as HTMLElement | null
+      if (target?.closest('.row-action-trigger, button, a, input, textarea, select, label')) {
+        return
+      }
+      event.api?.deselectAll?.()
+      event.node.setSelected(true)
+      setSelectedIds([event.data.id])
+      setSelectedAssetId(event.data.id)
+      setQuickLookId(event.data.id)
+    },
+  }), [])
 
   const assetGridNoRowsLabel = useMemo(() => {
     if (searchTerm.trim()) return 'No assets match the current search or scope'
@@ -2531,12 +2646,12 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Search assets, systems, owners, addresses, and tags..."
-          className="max-w-lg"
+          className="max-w-full xl:max-w-lg"
         />
       ) : undefined}
       toolbarControls={(
-        <>
-          <ToolbarGroup>
+        <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:flex-nowrap">
+          <ToolbarGroup className="min-w-0">
             <ToolbarSegmented
               options={[
                 { label: 'Table', value: 'grid' },
@@ -2548,10 +2663,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
             />
             <ToolbarIconButton
               ref={viewsMenuButtonRef as any}
-              onClick={() => {
-                setShowViewsMenu((current) => !current)
-                setShowDisplayMenu(false)
-              }}
+              onClick={() => toggleOverlay('views')}
               active={showViewsMenu}
               title="Saved asset views"
             >
@@ -2559,17 +2671,14 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
             </ToolbarIconButton>
             <ToolbarIconButton
               ref={displayMenuButtonRef as any}
-              onClick={() => {
-                setShowDisplayMenu((current) => !current)
-                setShowViewsMenu(false)
-              }}
+              onClick={() => toggleOverlay('display')}
               active={showDisplayMenu}
               title="Display options"
             >
               <Sliders size={16} />
             </ToolbarIconButton>
           </ToolbarGroup>
-          <ToolbarGroup>
+          <ToolbarGroup className="w-full sm:w-auto">
             <ToolbarButton
               onClick={() => handleDownloadImportArtifact('template')}
               disabled={activeImportExportAction !== null}
@@ -2606,7 +2715,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
               <span>Import Data</span>
             </ToolbarButton>
           </ToolbarGroup>
-          <ToolbarGroup>
+          <ToolbarGroup className="w-full sm:w-auto sm:justify-end xl:w-auto">
             <ToolbarIconButton onClick={handleCopyToClipboard} title="Copy to clipboard">
               <Clipboard size={16} />
             </ToolbarIconButton>
@@ -2614,10 +2723,10 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
               <Settings size={16} />
             </ToolbarIconButton>
           </ToolbarGroup>
-        </>
+        </div>
       )}
       secondaryToolbar={viewMode === 'grid' ? (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {ASSET_LENS_OPTIONS.map((lens) => (
             <ToolbarButton
               key={lens.id}
@@ -2630,97 +2739,26 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
         </div>
       ) : undefined}
       toolbarActions={viewMode === 'grid' ? (
-        <>
-          <div className="relative bulk-menu-container">
-            <ToolbarIconButton
-              onClick={() => setShowBulkMenu(!showBulkMenu)}
-              disabled={selectedIds.length === 0 && compareCandidateIds.length < 2}
+        <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto lg:flex-nowrap">
+          <ToolbarButton
+              ref={bulkMenuButtonRef as any}
+              onClick={() => toggleOverlay('bulk')}
+              disabled={activeTab === 'deleted'
+                ? selectedIds.length === 0
+                : selectedIds.length === 0 && compareCandidateIds.length < 2}
               active={showBulkMenu}
               title="Asset bulk actions"
+              className="bulk-menu-trigger"
             >
-              <MoreVertical size={18} />
-            </ToolbarIconButton>
-            <AnimatePresence>
-              {showBulkMenu && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 z-50 w-72 rounded-lg border border-white/10 bg-slate-900 p-3 shadow-2xl">
-                   <p className="border-b border-white/5 px-1 pb-3 text-[8px] font-bold uppercase tracking-widest text-slate-500">{selectedIds.length} Assets Selected</p>
-                   <div className="mt-3 space-y-2">
-                   {activeTab === 'deleted' ? (
-                     <>
-                       <WorkspaceFlyoutActionCard
-                         title="Restore Selected"
-                         active={false}
-                         onClick={() => bulkMutation.mutate({ action: 'restore' })}
-                       />
-                       <WorkspaceFlyoutActionCard
-                         title="Bulk Purge"
-                         active={false}
-                         onClick={() => {
-                           openConfirm('Purge Assets', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge' }))
-                           setShowBulkMenu(false)
-                         }}
-                       />
-                     </>
-                   ) : (
-                     <>
-                        {selectedIds.length >= 2 && (
-                          <WorkspaceFlyoutActionCard
-                            title="Compare Selected"
-                            active={false}
-                            onClick={() => {
-                              setCompareSnapshotIds(selectedIds)
-                              setViewMode('compare')
-                              setShowBulkMenu(false)
-                            }}
-                          />
-                        )}
-                        {selectedIds.length < 2 && compareCandidateIds.length >= 2 && (
-                          <WorkspaceFlyoutActionCard
-                            title="Compare Visible"
-                            active={false}
-                            onClick={() => {
-                              setSelectedIds(compareCandidateIds)
-                              setCompareSnapshotIds(compareCandidateIds)
-                              setViewMode('compare')
-                              setShowBulkMenu(false)
-                            }}
-                          />
-                        )}
-                        <WorkspaceFlyoutActionCard
-                          title="Set Status..."
-                          active={false}
-                          onClick={() => {
-                            setIsBulkStatusOpen(true)
-                            setShowBulkMenu(false)
-                          }}
-                        />
-                        <WorkspaceFlyoutActionCard
-                          title="Set Environment..."
-                          active={false}
-                          onClick={() => {
-                            setIsBulkEnvOpen(true)
-                            setShowBulkMenu(false)
-                          }}
-                        />
-                        <WorkspaceFlyoutActionCard
-                          title="Bulk Delete"
-                          active={false}
-                          onClick={() => {
-                            openConfirm('Soft Delete', 'Soft-delete assets?', () => bulkMutation.mutate({ action: 'delete' }))
-                            setShowBulkMenu(false)
-                          }}
-                        />
-                     </>
-                   )}
-                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+              <span className="flex items-center gap-2">
+                <Zap size={14} />
+                Bulk Actions
+              </span>
+            </ToolbarButton>
           <ToolbarButton onClick={() => setActiveModal({})} variant="primary" className="px-6">
             + Add Asset
           </ToolbarButton>
-        </>
+        </div>
       ) : undefined}
       floatingPanels={(
         <AnimatePresence>
@@ -2729,7 +2767,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
             panelRef={displayMenuPanelRef}
             panelStyle={displayMenuStyle}
             title="Display options"
-            onClose={dismissViewMenus}
+            onClose={dismissWorkspaceMenus}
             fontSize={fontSize}
             onFontSizeChange={setFontSize}
             rowDensity={rowDensity}
@@ -2749,7 +2787,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
             panelRef={viewsMenuPanelRef}
             panelStyle={viewsMenuStyle}
             entityLabel="Assets"
-            onClose={dismissViewMenus}
+            onClose={dismissWorkspaceMenus}
             activeViewId={activeViewId}
             currentViewName={activeViewId ? savedViews.find((view) => view.id === activeViewId)?.name || 'Unsaved working view' : 'Unsaved working view'}
             newViewName={newViewName}
@@ -2768,6 +2806,106 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
               return `${tabLabel} · ${scopeLabel} · ${searchLabel}`
             }}
           />
+          <OperationalAnchoredPanel
+            isOpen={showBulkMenu}
+            panelRef={bulkMenuPanelRef}
+            style={bulkMenuStyle}
+            panelKey="asset-bulk-menu"
+            className="bulk-menu-container"
+            yOffset={10}
+          >
+            <WorkspaceFloatingPanel kind="context" className="max-h-[560px] overflow-y-auto custom-scrollbar p-3">
+              <div className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-400">Bulk actions</p>
+                  <p className="pt-1 text-[12px] font-semibold text-slate-100">
+                    {selectedIds.length > 0 ? `${selectedIds.length} assets selected` : `${compareCandidateIds.length} visible assets available`}
+                  </p>
+                </div>
+                <ToolbarButton
+                  variant="quiet"
+                  onClick={() => {
+                    setSelectedIds([])
+                    setCompareSnapshotIds([])
+                    gridRef.current?.api?.deselectAll?.()
+                    closeOverlay('bulk')
+                  }}
+                  disabled={selectedIds.length === 0}
+                >
+                  Clear Selection
+                </ToolbarButton>
+              </div>
+              <div className="space-y-2">
+                {activeTab === 'deleted' ? (
+                  <>
+                    <WorkspaceFlyoutActionCard
+                      title="Restore Selected"
+                      active={false}
+                      onClick={() => bulkMutation.mutate({ action: 'restore' })}
+                    />
+                    <WorkspaceFlyoutActionCard
+                      title="Bulk Purge"
+                      active={false}
+                      onClick={() => {
+                        openConfirm('Purge Assets', 'PURGE PERMANENTLY?', () => bulkMutation.mutate({ action: 'purge' }))
+                        closeOverlay('bulk')
+                      }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    {selectedIds.length >= 2 && (
+                      <WorkspaceFlyoutActionCard
+                        title="Compare Selected"
+                        active={false}
+                        onClick={() => {
+                          setCompareSnapshotIds(selectedIds)
+                          setViewMode('compare')
+                          closeOverlay('bulk')
+                        }}
+                      />
+                    )}
+                    {selectedIds.length < 2 && compareCandidateIds.length >= 2 && (
+                      <WorkspaceFlyoutActionCard
+                        title="Compare Visible"
+                        active={false}
+                        onClick={() => {
+                          setSelectedIds(compareCandidateIds)
+                          setCompareSnapshotIds(compareCandidateIds)
+                          setViewMode('compare')
+                          closeOverlay('bulk')
+                        }}
+                      />
+                    )}
+                    <WorkspaceFlyoutActionCard
+                      title="Set Status..."
+                      active={false}
+                      onClick={() => {
+                        setIsBulkStatusOpen(true)
+                        closeOverlay('bulk')
+                      }}
+                    />
+                    <WorkspaceFlyoutActionCard
+                      title="Set Environment..."
+                      active={false}
+                      onClick={() => {
+                        setIsBulkEnvOpen(true)
+                        closeOverlay('bulk')
+                      }}
+                    />
+                    <WorkspaceFlyoutActionCard
+                      title="Bulk Delete"
+                      active={false}
+                      onClick={() => {
+                        openConfirm('Soft Delete', 'Soft-delete assets?', () => bulkMutation.mutate({ action: 'delete' }))
+                        closeOverlay('bulk')
+                      }}
+                    />
+                  </>
+                )}
+              </div>
+            </WorkspaceFloatingPanel>
+          </OperationalAnchoredPanel>
           {quickLookAsset ? (
             <QuickLookPanel
               asset={quickLookAsset}
@@ -2787,11 +2925,26 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
             rows={visibleAssets || []}
             columnDefs={columnDefs}
             runtime={assetGridRuntime}
+            rowInteractions={assetRowInteractions}
             onSelectionChanged={(e) => {
+              if (restoringRowActionSelectionRef.current) {
+                restoringRowActionSelectionRef.current = false
+                return
+              }
               const nodes = e?.api?.getSelectedNodes?.() || []
-              setSelectedIds(nodes.map((n: any) => n.data?.id).filter(Boolean))
-              if (nodes.length === 1) setQuickLookId(nodes[0].data?.id)
-              else setQuickLookId(null)
+              const nextIds = nodes.map((n: any) => n.data?.id).filter(Boolean)
+              const guardedIds = rowActionSelectionGuardRef.current
+              if (guardedIds) {
+                rowActionSelectionGuardRef.current = null
+                setSelectedIds(guardedIds)
+                setQuickLookId(null)
+                requestAnimationFrame(() => restoreGridSelection(guardedIds))
+                return
+              }
+              setSelectedIds(nextIds)
+              if (nextIds.length === 0) {
+                setQuickLookId(null)
+              }
             }}
             getRowId={(params: any) => String(params.data?.id)}
             fontSize={fontSize}
@@ -2801,7 +2954,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
             loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
             loadingLabel={<p className="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-400">Syncing asset registry...</p>}
             dataState={assetDataState}
-            suppressRowClickSelection={false}
+            suppressRowClickSelection={true}
             className="shadow-2xl border border-white/5"
           />
           {rowActionMenu && (
@@ -2811,7 +2964,10 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
               sections={rowActionSections as any}
               cursorX={rowActionMenu.cursorX}
               cursorY={rowActionMenu.cursorY}
-              onClose={() => setRowActionMenu(null)}
+              onClose={() => {
+                setRowActionMenu(null)
+                closeOverlay('rowAction')
+              }}
             />
           )}
         </div>
