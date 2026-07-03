@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom'
 import { AssetDetailsView } from './assets/AssetDetailsView'
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
 import { WorkspaceEmptyState, WorkspaceFloatingPanel, WorkspacePanelSubtitle, WorkspacePanelTitle, WorkspaceSectionBadge, useEscapeDismiss, useWorkspaceAnchoredLayer } from "./shared/OperationalWorkspacePrimitives";
-import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Clipboard, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Network, Server, ExternalLink, Share2, ZoomIn, ZoomOut, Maximize2, Minimize2, Shield, Zap, Save, Upload, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, Book } from 'lucide-react'
+import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Clipboard, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Network, Server, ExternalLink, Share2, ZoomIn, ZoomOut, Maximize2, Minimize2, Shield, Zap, Save, Upload, Download, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, Book } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
 import { BulkImportModal } from "./shared/BulkImportModal"
@@ -19,6 +19,8 @@ import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, Tool
 import { OperationalDisplayPanel, OperationalSavedViewsPanel, OperationalWorkspaceShell } from "./shared/OperationalWorkspaceShells"
 import { OperationalDataGrid } from "./shared/OperationalDataGrid"
 import { resolveOperationalDataState } from "./shared/OperationalDataState"
+import { OperationalDisabledActionTooltip } from "./shared/OperationalDisabledActionTooltip"
+import { downloadOperationalImportFile } from "./shared/OperationalImportExport"
 import { usePersistentJsonState, useWorkspaceDismissHandlers } from "./shared/OperationalWorkspaceHooks"
 import { OperationalRowActionMenu } from "./shared/OperationalRowActionMenu"
 import { useOperationalFormDirty } from "./shared/OperationalFormContracts"
@@ -1491,6 +1493,7 @@ export default function Assets() {
   const gridRef = React.useRef<any>(null)
   const [gridApi, setGridApi] = useState<any>(null)
   const [isAssetModalDirty, setIsAssetModalDirty] = useState(false)
+  const [activeImportExportAction, setActiveImportExportAction] = useState<'template' | 'snapshot' | null>(null)
   const [savedViews, setSavedViews] = usePersistentJsonState<AssetSavedView[]>(ASSET_SAVED_VIEW_STORAGE_KEY, [])
   const [activeViewId, setActiveViewId] = useState<string | null>(null)
   const [newViewName, setNewViewName] = useState('')
@@ -2284,6 +2287,28 @@ export default function Assets() {
     }
   }
 
+  const handleDownloadImportArtifact = useCallback(async (kind: 'template' | 'snapshot') => {
+    try {
+      setActiveImportExportAction(kind)
+      const result = await downloadOperationalImportFile({
+        tableName: 'devices',
+        kind,
+        fallbackFileName: kind === 'template'
+          ? 'SYSGRID_devices_Template.csv'
+          : 'SYSGRID_devices_Snapshot.csv',
+      })
+      toast.success(
+        kind === 'template'
+          ? `Downloaded asset import template${result.fileName ? `: ${result.fileName}` : ''}`
+          : `Downloaded asset import snapshot${result.fileName ? `: ${result.fileName}` : ''}`
+      )
+    } catch (error: any) {
+      toast.error(error?.message || `Failed to download asset ${kind}`)
+    } finally {
+      setActiveImportExportAction(null)
+    }
+  }, [])
+
   const handleCopyToClipboard = () => {
     if (gridApi) {
       const csvData = gridApi.getDataAsCsv({
@@ -2506,12 +2531,45 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
             >
               <Sliders size={16} />
             </ToolbarIconButton>
-            <ToolbarIconButton onClick={handleExportCSV} title="Export CSV">
-              <FileText size={16} />
-            </ToolbarIconButton>
-            <ToolbarIconButton onClick={() => setShowImportModal(true)} title="Import bulk data">
-              <Upload size={16} />
-            </ToolbarIconButton>
+          </ToolbarGroup>
+          <ToolbarGroup>
+            <ToolbarButton
+              onClick={() => handleDownloadImportArtifact('template')}
+              disabled={activeImportExportAction !== null}
+              title="Download the existing asset import template"
+            >
+              {activeImportExportAction === 'template' ? <RefreshCcw className="animate-spin" size={14} /> : <Download size={14} />}
+              <span>Template</span>
+            </ToolbarButton>
+            <ToolbarButton
+              onClick={() => handleDownloadImportArtifact('snapshot')}
+              disabled={activeImportExportAction !== null}
+              title="Download the existing asset import snapshot"
+            >
+              {activeImportExportAction === 'snapshot' ? <RefreshCcw className="animate-spin" size={14} /> : <Download size={14} />}
+              <span>Snapshot</span>
+            </ToolbarButton>
+            <OperationalDisabledActionTooltip
+              disabled={!gridApi || visibleAssets.length === 0}
+              reason={!gridApi ? 'Asset table is still loading and cannot export yet.' : 'No assets are available in the current scope to export.'}
+            >
+              <span className="inline-flex">
+                <ToolbarButton
+                  onClick={handleExportCSV}
+                  disabled={!gridApi || visibleAssets.length === 0}
+                  title="Export the current asset table view as CSV"
+                >
+                  <FileText size={14} />
+                  <span>Export CSV</span>
+                </ToolbarButton>
+              </span>
+            </OperationalDisabledActionTooltip>
+            <ToolbarButton onClick={() => setShowImportModal(true)} title="Open the existing asset bulk import workflow">
+              <Upload size={14} />
+              <span>Import Data</span>
+            </ToolbarButton>
+          </ToolbarGroup>
+          <ToolbarGroup>
             <ToolbarIconButton onClick={handleCopyToClipboard} title="Copy to clipboard">
               <Clipboard size={16} />
             </ToolbarIconButton>
