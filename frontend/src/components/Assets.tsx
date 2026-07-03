@@ -40,6 +40,7 @@ const ASSET_LENS_OPTIONS = [
 
 type AssetLens = typeof ASSET_LENS_OPTIONS[number]['id']
 type AssetTab = 'inventory' | 'deleted'
+type PersistedAssetViewMode = 'grid' | 'report' | 'map'
 type AssetSavedView = {
   id: string
   name: string
@@ -53,6 +54,10 @@ type AssetSavedView = {
     searchTerm?: string
   }
 }
+
+const ASSET_ROUTE_TAB_VALUES = new Set<AssetTab>(['inventory', 'deleted'])
+const ASSET_ROUTE_VIEW_VALUES = new Set<PersistedAssetViewMode>(['grid', 'report', 'map'])
+const ASSET_ROUTE_LENS_VALUES = new Set<AssetLens>(ASSET_LENS_OPTIONS.map((option) => option.id))
 
 const slugifyAssetViewId = (value: string) => {
   const slug = value
@@ -1493,6 +1498,9 @@ export default function Assets() {
   const idParam = searchParams.get('id')
   const searchParam = searchParams.get('search')
   const statusParam = searchParams.get('status')
+  const tabParam = searchParams.get('tab')
+  const lensParam = searchParams.get('lens')
+  const viewParam = searchParams.get('view')
 
   const [quickLookId, setQuickLookId] = useState<number | null>(null)
 
@@ -1691,10 +1699,29 @@ export default function Assets() {
   })
 
   useEffect(() => {
-    if (searchParam) {
-      setSearchTerm(searchParam)
-    }
+    setSearchTerm(searchParam ?? '')
   }, [searchParam])
+
+  useEffect(() => {
+    const nextTab: AssetTab = tabParam && ASSET_ROUTE_TAB_VALUES.has(tabParam as AssetTab)
+      ? (tabParam as AssetTab)
+      : 'inventory'
+    setActiveTab((current) => current === nextTab ? current : nextTab)
+  }, [tabParam])
+
+  useEffect(() => {
+    const nextLens: AssetLens = lensParam && ASSET_ROUTE_LENS_VALUES.has(lensParam as AssetLens)
+      ? (lensParam as AssetLens)
+      : 'all'
+    setActiveLens((current) => current === nextLens ? current : nextLens)
+  }, [lensParam])
+
+  useEffect(() => {
+    const nextView: PersistedAssetViewMode = viewParam && ASSET_ROUTE_VIEW_VALUES.has(viewParam as PersistedAssetViewMode)
+      ? (viewParam as PersistedAssetViewMode)
+      : 'grid'
+    setViewMode((current) => current === nextView ? current : nextView)
+  }, [viewParam])
 
   useEffect(() => {
     if (!idParam || !devices) return
@@ -1711,6 +1738,40 @@ export default function Assets() {
     setViewMode('grid')
     if (!searchParam) setSearchTerm(asset.name)
   }, [idParam, devices, searchParam])
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams(searchParams)
+
+    if (searchTerm.trim()) {
+      nextParams.set('search', searchTerm)
+    } else {
+      nextParams.delete('search')
+    }
+
+    if (activeTab !== 'inventory') {
+      nextParams.set('tab', activeTab)
+    } else {
+      nextParams.delete('tab')
+    }
+
+    if (activeLens !== 'all') {
+      nextParams.set('lens', activeLens)
+    } else {
+      nextParams.delete('lens')
+    }
+
+    if (viewMode !== 'grid' && viewMode !== 'compare') {
+      nextParams.set('view', viewMode)
+    } else {
+      nextParams.delete('view')
+    }
+
+    const currentParams = searchParams.toString()
+    const nextParamsString = nextParams.toString()
+    if (currentParams !== nextParamsString) {
+      setSearchParams(nextParams, { replace: true })
+    }
+  }, [activeLens, activeTab, searchParams, searchTerm, setSearchParams, viewMode])
 
   useEffect(() => {
     const api = gridRef.current?.api
