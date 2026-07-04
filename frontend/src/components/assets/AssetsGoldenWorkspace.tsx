@@ -29,6 +29,7 @@ import { useOperationalFormDirty } from "../shared/OperationalFormContracts"
 import { StyledSelect } from "../shared/StyledSelect"
 import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from "../shared/WorkspaceFlyout"
 import { ServiceDetailsView, ServiceForm } from "../ServiceRegistry"
+import { buildAssetGoldenColumns } from "./assetGoldenColumns"
 
 const ASSET_SAVED_VIEW_STORAGE_KEY = 'sysgrid_assets_saved_views_v1'
 const ASSET_ACTIVE_VIEW_STORAGE_KEY = 'sysgrid_assets_active_view_v1'
@@ -2361,219 +2362,24 @@ export default function Assets() {
     ]
   }, [activeTab, bulkMutation, rowActionMenu])
 
-  const columnDefs = useMemo(() => [
-    { 
-      headerName: "", 
-      width: 50,
-      minWidth: 50,
-      maxWidth: 50,
-      checkboxSelection: true, 
-      headerCheckboxSelection: true, 
-      pinned: 'left', 
-      cellClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
-      headerClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
-      suppressSizeToFit: true,
-      resizable: false,
-      sortable: false,
-      filter: false,
-      lockVisible: true
-    },
-    { 
-      field: "id", 
-      headerName: "ID", 
-      width: 70,
-      minWidth: 70,
-      pinned: 'left',
-      cellClass: 'text-center font-bold text-slate-500',
-      headerClass: 'text-center',
-      filter: 'agNumberColumnFilter',
-    },
-    { 
-      field: "name", 
-      headerName: "Name", 
-      pinned: 'left',
-      width: 180,
-      minWidth: 180,
-      cellClass: 'text-left font-bold uppercase text-blue-400',
-      headerClass: 'text-left',
-      filter: 'agTextColumnFilter',
-      hide: hiddenColumns.includes("name")
-    },
-    { field: "system", headerName: "System", minWidth: 100, flex: 1, cellClass: 'text-center font-bold text-slate-400 uppercase', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("system") },
-    { 
-      field: "type", 
-      headerName: "Type", 
-      width: 100,
-      minWidth: 100,
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => {
-        const colors: any = {
-          Physical: 'text-emerald-400',
-          Virtual: 'text-blue-400',
-          Storage: 'text-amber-400',
-          Switch: 'text-rose-400',
-          Firewall: 'text-orange-400',
-          'Load Balancer': 'text-purple-400'
-        }
-        return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold uppercase ${colors[p.value] || 'text-slate-500'}`}>{p.value || 'N/A'}</span>
-      },
-      hide: hiddenColumns.includes("type")
-    },
-    { 
-      field: "status", 
-      headerName: "Status", 
-      width: 110,
-      minWidth: 110,
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => {
-        const colors: any = {
-          Active: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/20',
-          Maintenance: 'text-amber-400 border-amber-500/40 bg-amber-500/20',
-          Decommissioned: 'text-rose-400 border-rose-500/40 bg-rose-500/20',
-          Planned: 'text-blue-400 border-blue-500/40 bg-blue-500/20',
-          Standby: 'text-sky-400 border-sky-500/40 bg-sky-500/20',
-          Offline: 'text-slate-400 border-white/20 bg-white/10'
-        }
-        return (
-          <div className="flex items-center justify-center h-full w-full">
-            <div className={`flex items-center justify-center w-24 h-5 rounded-lg border shadow-sm ${colors[p.value] || 'text-slate-400 border-white/10 bg-white/5'}`}>
-              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">
-                {p.value || 'Unknown'}
-              </span>
-            </div>
-          </div>
-        )
-      },
-      hide: hiddenColumns.includes("status")
-    },
+  const isRecentChange = useCallback((asset: any) => {
+    const timestamp = asset?.updated_at || asset?.created_at
+    if (!timestamp) return false
+    const parsed = new Date(timestamp).getTime()
+    if (!Number.isFinite(parsed)) return false
+    return Date.now() - parsed < 1000 * 60 * 60 * 24
+  }, [])
 
-    { field: "environment", headerName: "Env", width: 80, minWidth: 80, cellClass: 'text-center font-bold text-slate-500 uppercase', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("environment") },
-    { field: "owner", headerName: "Owner", width: 90, minWidth: 90, cellClass: 'text-center font-bold text-slate-400', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("owner") },
-    { field: "manufacturer", headerName: "Make", width: 80, minWidth: 80, cellClass: 'text-center font-bold text-slate-500', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("manufacturer") },
-    { field: "model", headerName: "Model", width: 90, minWidth: 90, cellClass: 'text-center font-bold text-slate-400', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("model") },
-    { field: "os_name", headerName: "OS", width: 80, minWidth: 80, cellClass: 'text-center font-bold text-blue-400', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("os_name") },
-    { field: "os_version", headerName: "Ver", width: 60, minWidth: 60, cellClass: 'text-center font-bold text-slate-500', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("os_version") },
-    { 
-      field: "primary_ip", headerName: "Primary IP", width: 110, minWidth: 110, cellClass: 'text-center font-bold text-blue-400', headerClass: 'text-center', filter: 'agTextColumnFilter', 
-      cellRenderer: (p: any) => p.value ? (
-        <div className="flex items-center justify-center space-x-1">
-          <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
-          <CopyButton value={p.value} label="IP" />
-        </div>
-      ) : <span className="text-slate-500 uppercase">N/A</span>,
-      hide: hiddenColumns.includes("primary_ip")
-    },
-    { 
-      field: "management_ip", headerName: "Mgmt IP", width: 110, minWidth: 110, cellClass: 'text-center font-bold text-indigo-400', headerClass: 'text-center', filter: 'agTextColumnFilter', 
-      cellRenderer: (p: any) => p.value ? (
-        <div className="flex items-center justify-center space-x-1">
-          <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>
-          <CopyButton value={p.value} label="IP" />
-        </div>
-      ) : <span className="text-slate-500 uppercase">N/A</span>,
-      hide: hiddenColumns.includes("management_ip")
-    },
-    { 
-      field: "hardware_summary", 
-      headerName: "Resources", 
-      minWidth: 120,
-      flex: 1,
-      cellClass: 'text-center font-bold uppercase text-slate-400',
-      headerClass: 'text-center',
-      filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
-      hide: hiddenColumns.includes("hardware_summary")
-    },
-    { 
-      field: "hardware_age", 
-      headerName: "Age", 
-      width: 80,
-      minWidth: 80,
-      cellClass: 'text-center font-bold text-slate-500',
-      headerClass: 'text-center',
-      filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>,
-      hide: hiddenColumns.includes("hardware_age")
-    },
-    { 
-      field: "open_incident_count", 
-      headerName: "Health", 
-      width: 60,
-      minWidth: 60,
-      cellClass: 'text-center font-bold',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => p.value > 0 ? (
-        <div className="flex items-center justify-center h-full w-full">
-           <div className="flex items-center space-x-1 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded-lg text-rose-500">
-              <AlertCircle size={10} className="animate-pulse" />
-              <span style={{ fontSize: `${fontSize}px` }} className="font-bold">{p.value}</span>
-           </div>
-        </div>
-      ) : (
-        <div className="flex items-center justify-center h-full text-emerald-500/30"><Check size={12}/></div>
-      ),
-      hide: hiddenColumns.includes("open_incident_count")
-    },
-
-    { field: "site_name", headerName: "Site", width: 100, minWidth: 100, cellClass: 'text-center font-bold text-slate-400', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("site_name") },
-    { field: "rack_name", headerName: "Rack", width: 100, minWidth: 100, cellClass: 'text-center font-bold text-slate-400', headerClass: 'text-center', filter: 'agTextColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("rack_name") },
-    { 
-      field: "depth", 
-      headerName: "Depth", 
-      width: 80,
-      minWidth: 80,
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }} className="font-bold text-slate-500 uppercase">{p.value || 'N/A'}</span>,
-      hide: hiddenColumns.includes("depth")
-    },
-    { 
-      field: "mount_orientation", 
-      headerName: "Mount", 
-      width: 90,
-      minWidth: 90,
-      cellClass: 'text-center', 
-      headerClass: 'text-center', 
-      filter: 'agTextColumnFilter',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }} className="font-bold text-slate-500 uppercase">{p.value || 'N/A'}</span>,
-      hide: hiddenColumns.includes("mount_orientation")
-    },
-    { field: "u_start", headerName: "U Pos", width: 60, minWidth: 60, cellClass: "text-center font-bold", headerClass: 'text-center', filter: 'agNumberColumnFilter', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold uppercase">N/A</span>, hide: hiddenColumns.includes("u_start") },
-    { field: "size_u", headerName: "Size", width: 60, minWidth: 60, cellClass: "text-center font-bold", headerClass: 'text-center', filter: 'agNumberColumnFilter', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value}</span>, hide: hiddenColumns.includes("size_u") },
-    { field: "power_typical_w", headerName: "Avg W", width: 80, minWidth: 80, cellClass: "text-center font-bold", headerClass: 'text-center', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value ? `${p.value.toFixed(0)}W` : '–'}</span>, hide: hiddenColumns.includes("power_typical_w") },
-    { field: "power_max_w", headerName: "Max W", width: 80, minWidth: 80, cellClass: "text-center font-bold", headerClass: 'text-center', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value ? `${p.value.toFixed(0)}W` : '–'}</span>, hide: hiddenColumns.includes("power_max_w") },
-    {
-      headerName: "Action",
-      width: 84,
-      minWidth: 84,
-      pinned: 'right',
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      resizable: false,
-      cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center h-full">
-          <button
-            type="button"
-            onMouseDown={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-            }}
-            onClick={(event) => openRowActionMenu(p.data, event)}
-            title="Asset row actions"
-            className="row-action-trigger inline-flex items-center justify-center rounded-lg border border-white/10 bg-slate-950 px-2.5 py-1.5 text-slate-300 transition-all hover:border-white/20 hover:bg-slate-900 hover:text-white"
-          >
-            <MoreVertical size={14} />
-          </button>
-        </div>
-      ),
-      lockVisible: true
-    }
-  ], [activeTab, hiddenColumns, fontSize]) as any
+  const columnDefs = useMemo(() => buildAssetGoldenColumns({
+    activeTab,
+    hiddenColumns,
+    fontSize,
+    isRecentChange,
+    onOpenQuickLook: (asset) => setQuickLookId(asset.id),
+    onOpenDetails: (asset) => setActiveDetails(asset),
+    onOpenEdit: (asset) => setActiveModal(asset),
+    onOpenRowActions: openRowActionMenu,
+  }), [activeTab, fontSize, hiddenColumns, isRecentChange]) as any
 
   const handleExportCSV = () => {
     if (gridApi) {
@@ -2812,6 +2618,17 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
         </ToolbarIconButton>
       </ToolbarGroup>
       <ToolbarGroup>
+        <ToolbarButton active={viewMode === 'grid' || viewMode === 'compare'} onClick={() => setViewMode('grid')}>
+          Table
+        </ToolbarButton>
+        <ToolbarButton active={viewMode === 'report'} onClick={() => setViewMode('report')}>
+          List
+        </ToolbarButton>
+        <ToolbarButton active={viewMode === 'map'} onClick={() => setViewMode('map')}>
+          Map
+        </ToolbarButton>
+      </ToolbarGroup>
+      <ToolbarGroup>
         <ToolbarButton onClick={() => setShowImportModal(true)} title="Open the existing asset bulk import workflow">
           <span className="flex items-center gap-2">
             <Upload size={14} />
@@ -2828,43 +2645,34 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
             Filters
           </span>
         </ToolbarButton>
-      </ToolbarGroup>
-      <ToolbarGroup className="min-w-max flex-nowrap">
-        {ASSET_LENS_OPTIONS.map((lens) => (
-          <ToolbarButton
-            key={lens.id}
-            active={activeLens === lens.id}
-            onClick={() => setActiveLens(lens.id)}
-            title={`Filter asset workspace to ${lens.label}`}
-          >
-            {lens.label}
-          </ToolbarButton>
-        ))}
+        <ToolbarButton
+          onClick={() => handleDownloadImportArtifact('template')}
+          disabled={activeImportExportAction !== null}
+          title="Download asset import template"
+        >
+          {activeImportExportAction === 'template' ? <RefreshCcw className="animate-spin" size={14} /> : <Download size={14} />}
+          <span>Template</span>
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => handleDownloadImportArtifact('snapshot')}
+          disabled={activeImportExportAction !== null}
+          title="Download asset registry snapshot"
+        >
+          {activeImportExportAction === 'snapshot' ? <RefreshCcw className="animate-spin" size={14} /> : <Download size={14} />}
+          <span>Snapshot</span>
+        </ToolbarButton>
       </ToolbarGroup>
     </>
   )
-  const importExportToolbarControls = (
-    <ToolbarGroup className="min-w-max flex-nowrap">
-      <ToolbarButton
-        onClick={() => handleDownloadImportArtifact('template')}
-        disabled={activeImportExportAction !== null}
-        title="Download the existing asset import template"
-      >
-        {activeImportExportAction === 'template' ? <RefreshCcw className="animate-spin" size={14} /> : <Download size={14} />}
-        <span>Template</span>
-      </ToolbarButton>
-      <ToolbarButton
-        onClick={() => handleDownloadImportArtifact('snapshot')}
-        disabled={activeImportExportAction !== null}
-        title="Download the existing asset import snapshot"
-      >
-        {activeImportExportAction === 'snapshot' ? <RefreshCcw className="animate-spin" size={14} /> : <Download size={14} />}
-        <span>Snapshot</span>
-      </ToolbarButton>
-    </ToolbarGroup>
-  )
   const shellSecondaryToolbar = showFilterBar ? (
-    <div className="grid w-full gap-3 md:grid-cols-4">
+    <div className="grid w-full gap-3 md:grid-cols-5">
+        <AppDropdown
+          value={activeLens}
+          onChange={(value) => setActiveLens(value as AssetLens)}
+          options={ASSET_LENS_OPTIONS.map((lens) => ({ value: lens.id, label: lens.label }))}
+          label="Lens"
+          placeholder="All assets"
+        />
         <AppDropdown
           multi
           value={quickFilters.status}
@@ -2901,18 +2709,6 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
   ) : undefined
   const shellToolbarActions = (
     <div className="flex shrink-0 items-center gap-2">
-      <ToolbarGroup className="min-w-max flex-nowrap">
-        <ToolbarButton active={viewMode === 'grid' || viewMode === 'compare'} onClick={() => setViewMode('grid')}>
-          Table
-        </ToolbarButton>
-        <ToolbarButton active={viewMode === 'report'} onClick={() => setViewMode('report')}>
-          List
-        </ToolbarButton>
-        <ToolbarButton active={viewMode === 'map'} onClick={() => setViewMode('map')}>
-          Map
-        </ToolbarButton>
-      </ToolbarGroup>
-      {importExportToolbarControls}
       {viewMode === 'grid' ? (
         <ToolbarButton
           onClick={() => {

@@ -1,0 +1,279 @@
+import React from 'react'
+import { Edit2, Maximize2, MoreVertical } from 'lucide-react'
+import {
+  type OperationalColumnConfig,
+  OPERATIONAL_GRID_WIDTHS,
+} from '../shared/OperationalGridContract'
+import {
+  buildOperationalGridColumnDefinitions,
+  renderOperationalActionButtons,
+} from '../shared/OperationalGridStandard'
+
+const ASSET_STATUS_COLORS: Record<string, string> = {
+  Active: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  Planned: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+  Maintenance: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+  Offline: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+  Failed: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+  Retired: 'bg-slate-500/20 text-slate-300 border-white/15',
+  Deleted: 'bg-slate-800 text-slate-400 border-white/5',
+}
+
+const ASSET_TYPE_COLORS: Record<string, string> = {
+  Physical: 'text-emerald-400',
+  Virtual: 'text-blue-400',
+  Storage: 'text-amber-400',
+  Switch: 'text-rose-400',
+  Firewall: 'text-orange-400',
+  'Load Balancer': 'text-violet-400',
+}
+
+type BuildAssetGoldenColumnsArgs = {
+  activeTab: 'inventory' | 'deleted'
+  hiddenColumns: string[]
+  fontSize: number
+  columnLayoutState?: any[]
+  preserveExplicitColumnWidths?: boolean
+  isRecentChange: (asset: any) => boolean
+  onOpenQuickLook: (asset: any) => void
+  onOpenDetails: (asset: any) => void
+  onOpenEdit: (asset: any) => void
+  onOpenRowActions: (asset: any, event: React.MouseEvent<HTMLButtonElement>) => void
+}
+
+export function buildAssetGoldenColumns({
+  activeTab,
+  hiddenColumns,
+  fontSize,
+  columnLayoutState = [],
+  preserveExplicitColumnWidths = false,
+  isRecentChange,
+  onOpenQuickLook,
+  onOpenDetails,
+  onOpenEdit,
+  onOpenRowActions,
+}: BuildAssetGoldenColumnsArgs) {
+  const columnConfigs: OperationalColumnConfig[] = [
+    {
+      kind: 'identity',
+      field: 'name',
+      headerName: 'Asset',
+      width: 220,
+      minWidth: 180,
+      maxWidth: 320,
+      hide: hiddenColumns.includes('name'),
+      onActivate: onOpenQuickLook,
+      buttonTitle: 'Open quick look',
+    },
+    {
+      kind: 'plain',
+      field: 'system',
+      headerName: 'System',
+      width: 150,
+      hide: hiddenColumns.includes('system'),
+      emptyValue: 'Unassigned',
+    },
+    {
+      kind: 'mappedText',
+      field: 'type',
+      headerName: 'Type',
+      width: 120,
+      fontSize,
+      colorMap: ASSET_TYPE_COLORS,
+      hide: hiddenColumns.includes('type'),
+      emptyValue: 'Unknown',
+    },
+    {
+      kind: 'mappedBadge',
+      field: 'status',
+      headerName: 'Status',
+      width: 128,
+      fontSize,
+      colorMap: ASSET_STATUS_COLORS,
+      knownValues: Object.keys(ASSET_STATUS_COLORS),
+      hide: hiddenColumns.includes('status'),
+      emptyValue: 'Unknown',
+    },
+    {
+      kind: 'plain',
+      field: 'environment',
+      headerName: 'Env',
+      width: 100,
+      hide: hiddenColumns.includes('environment'),
+    },
+    {
+      kind: 'plain',
+      field: 'owner',
+      headerName: 'Owner',
+      width: 130,
+      hide: hiddenColumns.includes('owner'),
+      emptyValue: 'Unowned',
+    },
+    {
+      kind: 'plain',
+      field: 'manufacturer',
+      headerName: 'Make',
+      width: 120,
+      hide: hiddenColumns.includes('manufacturer'),
+    },
+    {
+      kind: 'plain',
+      field: 'model',
+      headerName: 'Model',
+      width: 130,
+      hide: hiddenColumns.includes('model'),
+    },
+    {
+      kind: 'plain',
+      field: 'os_name',
+      headerName: 'OS',
+      width: 120,
+      hide: hiddenColumns.includes('os_name'),
+    },
+    {
+      kind: 'plain',
+      field: 'primary_ip',
+      headerName: 'Primary IP',
+      width: 140,
+      hide: hiddenColumns.includes('primary_ip'),
+    },
+    {
+      kind: 'plain',
+      field: 'management_ip',
+      headerName: 'Mgmt IP',
+      width: 140,
+      hide: hiddenColumns.includes('management_ip'),
+    },
+    {
+      kind: 'prose',
+      field: 'hardware_summary',
+      headerName: 'Hardware',
+      width: 220,
+      proseMode: 'compact',
+      hide: hiddenColumns.includes('hardware_summary'),
+      emptyValue: 'No hardware summary',
+    },
+    {
+      kind: 'plain',
+      field: 'open_incident_count',
+      headerName: 'Incidents',
+      width: 110,
+      hide: hiddenColumns.includes('open_incident_count'),
+      formatValue: (value) => (value == null ? '0' : String(value)),
+    },
+    {
+      kind: 'plain',
+      field: 'site_name',
+      headerName: 'Site',
+      width: 120,
+      hide: hiddenColumns.includes('site_name'),
+    },
+    {
+      kind: 'plain',
+      field: 'rack_name',
+      headerName: 'Rack',
+      width: 120,
+      hide: hiddenColumns.includes('rack_name'),
+    },
+    {
+      kind: 'plain',
+      field: 'u_start',
+      headerName: 'U Pos',
+      width: 90,
+      hide: hiddenColumns.includes('u_start'),
+      formatValue: (value) => value == null ? 'N/A' : String(value),
+    },
+    {
+      kind: 'plain',
+      field: 'size_u',
+      headerName: 'Size',
+      width: 90,
+      hide: hiddenColumns.includes('size_u'),
+      formatValue: (value) => value == null ? 'N/A' : `${value}U`,
+    },
+    {
+      kind: 'plain',
+      field: 'power_typical_w',
+      headerName: 'Avg W',
+      width: 100,
+      hide: hiddenColumns.includes('power_typical_w'),
+      formatValue: (value) => value == null ? 'N/A' : `${Number(value).toFixed(0)}W`,
+    },
+    {
+      kind: 'plain',
+      field: 'power_max_w',
+      headerName: 'Max W',
+      width: 100,
+      hide: hiddenColumns.includes('power_max_w'),
+      formatValue: (value) => value == null ? 'N/A' : `${Number(value).toFixed(0)}W`,
+    },
+    {
+      kind: 'activeDot',
+      field: 'is_deleted',
+      headerName: activeTab === 'deleted' ? 'Purged' : 'Live',
+      hide: hiddenColumns.includes('is_deleted'),
+      getIsDeleted: (params) => Boolean(params.data?.is_deleted),
+    },
+    {
+      kind: 'date',
+      field: 'updated_at',
+      headerName: 'Updated',
+      width: 180,
+      hide: hiddenColumns.includes('updated_at'),
+    },
+    {
+      kind: 'action',
+      width: OPERATIONAL_GRID_WIDTHS.compactAction,
+      renderActions: (asset) => renderOperationalActionButtons(
+        <>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              onOpenDetails(asset)
+            }}
+            title="Open details"
+            className="rounded-lg p-1 text-blue-400 transition-all hover:bg-blue-400/10 active:scale-90"
+          >
+            <Maximize2 size={13} />
+          </button>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              onOpenEdit(asset)
+            }}
+            title="Edit asset"
+            className="rounded-lg p-1 text-emerald-400 transition-all hover:bg-emerald-400/10 active:scale-90"
+          >
+            <Edit2 size={13} />
+          </button>
+          <button
+            type="button"
+            onClick={(event) => onOpenRowActions(asset, event)}
+            title="More actions"
+            className="rounded-lg p-1 text-slate-400 transition-all hover:bg-white/10 hover:text-white active:scale-90"
+          >
+            <MoreVertical size={13} />
+          </button>
+        </>
+      ),
+    },
+  ]
+
+  return buildOperationalGridColumnDefinitions({
+    utilityColumnsConfig: {
+      includeRecentChange: true,
+      includeFavorite: false,
+      includeWatch: false,
+      isIntelligenceExpanded: true,
+      isRecentChange,
+      onToggleFavorite: () => {},
+      onToggleWatch: () => {},
+      itemLabel: 'asset',
+    },
+    columnConfigs,
+    columnLayoutState,
+    preserveExplicitColumnWidths,
+  })
+}

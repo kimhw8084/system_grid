@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>OUT-26 Stage 24 Rendered Parity Evidence</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0f172a;
+        --panel: #111827;
+        --line: #334155;
+        --text: #e5e7eb;
+        --muted: #94a3b8;
+        --fail: #f87171;
+      }
+      body {
+        margin: 0;
+        padding: 32px;
+        background: radial-gradient(circle at top, #1e293b, var(--bg));
+        color: var(--text);
+        font: 14px/1.5 ui-sans-serif, system-ui, sans-serif;
+      }
+      h1, h2 { margin: 0 0 12px; }
+      .panel {
+        background: rgba(17, 24, 39, 0.9);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+      .fail { color: var(--fail); font-weight: 700; }
+      .muted { color: var(--muted); }
+      img {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        display: block;
+        margin-top: 12px;
+      }
+      code { color: #bfdbfe; }
+    </style>
+  </head>
+  <body>
+    <div class="panel">
+      <h1>OUT-26 Stage 24 Rendered Parity Evidence</h1>
+      <p class="fail">Result: FAIL</p>
+      <p>The implementation changed the asset workspace toward the shared golden grid contract, but the live route never rendered the actual workspace. The frontend stopped on the bootstrap failure surface at <code>/asset</code>.</p>
+      <p class="muted">Blocking live diagnosis: active user <code>admin_root</code>; local seed hint expects <code>haewon.kim</code>.</p>
+    </div>
+
+    <div class="panel">
+      <h2>Default Full-Page Capture</h2>
+      <p class="muted">Route: <code>/asset</code> · Screenshot: <code>1265x1630</code> · Document: <code>1265x1630</code></p>
+      <img src="./stage24-evidence/asset-bootstrap-blocked-full.png" alt="Bootstrap blocked full page evidence" />
+    </div>
+
+    <div class="panel">
+      <h2>960x720 Capture</h2>
+      <p class="muted">Route: <code>/asset</code> · Viewport: <code>960x720</code> · Screenshot: <code>960x720</code></p>
+      <img src="./stage24-evidence/asset-bootstrap-blocked-960x720.png" alt="Bootstrap blocked 960x720 evidence" />
+    </div>
+
+    <div class="panel">
+      <h2>Implementation Notes</h2>
+      <p>The grid ownership moved from a page-local custom column block into <code>frontend/src/components/assets/assetGoldenColumns.tsx</code> using <code>buildOperationalGridColumnDefinitions()</code>. Command controls were also rebalanced so view toggles live with the golden command grammar and the lens filter moved into the secondary toolbar.</p>
+    </div>
+  </body>
+</html>
