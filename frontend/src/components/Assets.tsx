@@ -2050,6 +2050,11 @@ export default function Assets() {
     () => assets.filter((asset: any) => compareSnapshotIds.includes(asset.id)),
     [assets, compareSnapshotIds]
   )
+  const visibleAssetIds = useMemo(
+    () => visibleAssets.map((asset: any) => asset.id).filter((id: any) => Number.isFinite(id)),
+    [visibleAssets]
+  )
+  const canCompareVisible = viewMode === 'grid' && visibleAssetIds.length >= 2 && visibleAssetIds.length <= 5
   const quickLookAsset = useMemo(
     () => devices?.find((asset: any) => asset.id === quickLookId) ?? null,
     [devices, quickLookId]
@@ -2824,6 +2829,18 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
           </span>
         </ToolbarButton>
       </ToolbarGroup>
+      <ToolbarGroup className="min-w-max flex-nowrap">
+        {ASSET_LENS_OPTIONS.map((lens) => (
+          <ToolbarButton
+            key={lens.id}
+            active={activeLens === lens.id}
+            onClick={() => setActiveLens(lens.id)}
+            title={`Filter asset workspace to ${lens.label}`}
+          >
+            {lens.label}
+          </ToolbarButton>
+        ))}
+      </ToolbarGroup>
     </>
   )
   const importExportToolbarControls = (
@@ -2847,15 +2864,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
     </ToolbarGroup>
   )
   const shellSecondaryToolbar = showFilterBar ? (
-    <div className="space-y-3">
-      <div className="grid w-full gap-3 md:grid-cols-5">
-        <AppDropdown
-          value={activeLens}
-          onChange={(value) => setActiveLens((value || 'all') as AssetLens)}
-          options={ASSET_LENS_OPTIONS.map((lens) => ({ value: lens.id, label: lens.label }))}
-          label="Lens"
-          placeholder="All lenses"
-        />
+    <div className="grid w-full gap-3 md:grid-cols-4">
         <AppDropdown
           multi
           value={quickFilters.status}
@@ -2888,26 +2897,22 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
           label="Owner Filter"
           placeholder="All owners"
         />
-      </div>
-      <div className="flex min-w-0 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <ToolbarGroup className="min-w-max flex-nowrap">
-          <ToolbarButton active={viewMode === 'grid' || viewMode === 'compare'} onClick={() => setViewMode('grid')}>
-            Table
-          </ToolbarButton>
-          <ToolbarButton active={viewMode === 'report'} onClick={() => setViewMode('report')}>
-            List
-          </ToolbarButton>
-          <ToolbarButton active={viewMode === 'map'} onClick={() => setViewMode('map')}>
-            Map
-          </ToolbarButton>
-        </ToolbarGroup>
-        <div className="mx-1 h-5 w-px shrink-0 bg-white/5" />
-        {importExportToolbarControls}
-      </div>
     </div>
   ) : undefined
   const shellToolbarActions = (
     <div className="flex shrink-0 items-center gap-2">
+      <ToolbarGroup className="min-w-max flex-nowrap">
+        <ToolbarButton active={viewMode === 'grid' || viewMode === 'compare'} onClick={() => setViewMode('grid')}>
+          Table
+        </ToolbarButton>
+        <ToolbarButton active={viewMode === 'report'} onClick={() => setViewMode('report')}>
+          List
+        </ToolbarButton>
+        <ToolbarButton active={viewMode === 'map'} onClick={() => setViewMode('map')}>
+          Map
+        </ToolbarButton>
+      </ToolbarGroup>
+      {importExportToolbarControls}
       {viewMode === 'grid' ? (
         <ToolbarButton
           onClick={() => {
@@ -2928,7 +2933,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
         <ToolbarButton
           ref={bulkMenuButtonRef as any}
           onClick={() => toggleOverlay('bulk')}
-          disabled={selectedIds.length === 0}
+          disabled={selectedIds.length === 0 && !canCompareVisible}
           active={showBulkMenu}
           title="Asset bulk actions"
           className="bulk-menu-trigger"
@@ -2975,14 +2980,14 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
         }}
         getRowId={(params: any) => String(params.data?.id)}
         fontSize={fontSize}
-        rowDensity={rowDensity + 6}
+        rowDensity={rowDensity}
         noRowsLabel={assetGridNoRowsLabel}
         loading={isLoading}
         loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
         loadingLabel={<p className="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-400">Syncing asset registry...</p>}
         dataState={assetDataState}
         suppressRowClickSelection={true}
-        className="min-h-[220px] shadow-2xl border border-white/5"
+        className="min-h-[220px]"
       />
       {rowActionMenu && (
         <OperationalRowActionMenu
@@ -3161,6 +3166,17 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
                 </ToolbarButton>
               </div>
               <div className="space-y-2">
+                {canCompareVisible ? (
+                  <WorkspaceFlyoutActionCard
+                    title="Compare Visible"
+                    active={false}
+                    onClick={() => {
+                      setCompareSnapshotIds(visibleAssetIds)
+                      setViewMode('compare')
+                      closeOverlay('bulk')
+                    }}
+                  />
+                ) : null}
                 {activeTab === 'deleted' ? (
                   <>
                     <WorkspaceFlyoutActionCard

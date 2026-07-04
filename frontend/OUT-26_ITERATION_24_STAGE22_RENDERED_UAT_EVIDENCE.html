@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>OUT-26 Iteration 24 Stage 22 Rendered UAT Evidence</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 32px; color: #0f172a; }
+    h1, h2 { margin-bottom: 8px; }
+    p, li { line-height: 1.45; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0 24px; }
+    th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #e2e8f0; }
+    .pass { color: #166534; font-weight: 700; }
+    .partial { color: #92400e; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <h1>OUT-26 Iteration 24 Stage 22 Rendered UAT Evidence</h1>
+  <p><strong>Decision:</strong> Option A — Salvage current Assets.tsx</p>
+  <p><strong>Verdict:</strong> <span class="partial">PARTIAL</span></p>
+
+  <h2>Observed command-bar recovery</h2>
+  <ul>
+    <li>Lens controls were promoted into the primary command row.</li>
+    <li>Table/List/Map and Template/Snapshot controls were moved into the right action zone.</li>
+    <li>Grid row density was normalized to the shared operational baseline.</li>
+    <li>The shared bulk flyout regained the asset-specific Compare Visible path.</li>
+  </ul>
+
+  <h2>Focused Playwright DOM evidence</h2>
+  <table>
+    <tr><th>Area</th><th>Observed result</th></tr>
+    <tr><td>Header</td><td><code>Asset Registry</code> with header-right scope switch intact.</td></tr>
+    <tr><td>Command row</td><td>Search, Views, Display, Export CSV, Copy, Registry configuration, Import, Filters, and lens pills rendered together.</td></tr>
+    <tr><td>Right action zone</td><td><code>Table</code>, <code>List</code>, <code>Map</code>, <code>Template</code>, <code>Snapshot</code>, <code>Compare</code>, <code>Bulk Actions</code>, and <code>+ Add Asset</code> rendered together.</td></tr>
+    <tr><td>Grid workflow</td><td>Focused assets workflow test passed after restoring compare-visible behavior in the shared bulk flyout.</td></tr>
+  </table>
+
+  <h2>Validation</h2>
+  <table>
+    <tr><th>Command</th><th>Result</th></tr>
+    <tr><td><code>rtk npm run typecheck</code></td><td class="pass">PASS</td></tr>
+    <tr><td><code>rtk npm run build</code></td><td class="pass">PASS</td></tr>
+    <tr><td><code>rtk npm run test:lint</code></td><td class="pass">PASS</td></tr>
+    <tr><td>Focused asset Playwright workflow</td><td class="pass">PASS</td></tr>
+  </table>
+
+  <h2>Remaining proof gaps</h2>
+  <ul>
+    <li>No fresh side-by-side desktop measurement capture was produced in this pass.</li>
+    <li>No exact <code>960x720</code> responsive recapture was produced in this pass.</li>
+    <li>No standalone console inventory table was captured outside the focused Playwright run.</li>
+  </ul>
+</body>
+</html>
