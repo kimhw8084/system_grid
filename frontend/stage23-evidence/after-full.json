@@ -1,0 +1,209 @@
+{
+  "afterAsset": {
+    "route": "/asset",
+    "viewport": {
+      "width": 1440,
+      "height": 1200
+    },
+    "screenshotType": "full-page",
+    "screenshotPath": "/Users/haewonkim/home/development/sysgrid/frontend/stage23-evidence/after-asset-desktop.png",
+    "screenshotSize": {
+      "width": 1440,
+      "height": 1200
+    },
+    "documentSize": {
+      "width": 1425,
+      "height": 1200
+    },
+    "workspaceRoot": {
+      "x": 271,
+      "y": 101,
+      "width": 1122,
+      "height": 1035
+    },
+    "header": {
+      "x": 271,
+      "y": 117,
+      "width": 603,
+      "height": 28
+    },
+    "commandBar": {
+      "x": 288,
+      "y": 191,
+      "width": 252,
+      "height": 36
+    },
+    "table": {
+      "x": 272,
+      "y": 445,
+      "width": 1120,
+      "height": 690
+    },
+    "firstRow": {
+      "x": 596,
+      "y": 482,
+      "width": 2311,
+      "height": 30
+    },
+    "actionZone": {
+      "x": 1102,
+      "y": 285,
+      "width": 138,
+      "height": 36
+    },
+    "visibleTexts": [
+      "OPERATIONS",
+      "INFRASTRUCTURE",
+      "CONNECTIVITY",
+      "ANALYSIS",
+      "RESOURCES",
+      "Haewon KimID: 1",
+      "Dark",
+      "Light",
+      "Patch Notes",
+      "Search assets, projects, or incidents...⌘K",
+      "Active DatabaseLocal Demo",
+      "Asset Registry",
+      "Existing",
+      "Purged",
+      "Views",
+      "Display",
+      "Import",
+      "Filters",
+      "All",
+      "My Systems",
+      "Team",
+      "Unowned",
+      "Degraded",
+      "At Risk",
+      "Needs Docs",
+      "Table",
+      "List",
+      "Map",
+      "Template",
+      "Snapshot",
+      "Compare",
+      "Bulk Actions",
+      "+ Add Asset",
+      "ID",
+      "Name",
+      "System",
+      "Type",
+      "Status",
+      "Env",
+      "Owner",
+      "Make",
+      "Model",
+      "Action"
+    ],
+    "isFullWorkspaceCapture": true,
+    "consoleCounts": {
+      "warning": 1,
+      "error": 0,
+      "pageError": 0
+    }
+  },
+  "assetRealRedirect": {
+    "route": "/asset",
+    "viewport": {
+      "width": 1440,
+      "height": 1200
+    },
+    "screenshotType": "full-viewport",
+    "screenshotPath": "/Users/haewonkim/home/development/sysgrid/frontend/stage23-evidence/after-asset-desktop.png",
+    "screenshotSize": {
+      "width": 1440,
+      "height": 1200
+    },
+    "documentSize": {
+      "width": 1425,
+      "height": 1200
+    },
+    "workspaceRoot": {
+      "x": 249,
+      "y": 101,
+      "width": 1144,
+      "height": 1035
+    },
+    "header": {
+      "x": 249,
+      "y": 117,
+      "width": 603,
+      "height": 28
+    },
+    "commandBar": {
+      "x": 266,
+      "y": 191,
+      "width": 275,
+      "height": 36
+    },
+    "table": {
+      "x": 250,
+      "y": 445,
+      "width": 1142,
+      "height": 690
+    },
+    "firstRow": null,
+    "actionZone": {
+      "x": 1102,
+      "y": 285,
+      "width": 138,
+      "height": 36
+    },
+    "visibleTexts": [
+      "OPERATIONS",
+      "INFRASTRUCTURE",
+      "CONNECTIVITY",
+      "ANALYSIS",
+      "RESOURCES",
+      "OperatorID: 0000",
+      "Dark",
+      "Light",
+      "Patch Notes",
+      "Search assets, projects, or incidents...⌘K",
+      "Active DatabaseLoading...",
+      "Asset Registry",
+      "Existing",
+      "Purged",
+      "Views",
+      "Display",
+      "Import",
+      "Filters",
+      "All",
+      "My Systems",
+      "Team",
+      "Unowned",
+      "Degraded",
+      "At Risk",
+      "Needs Docs",
+      "Table",
+      "List",
+      "Map",
+      "Template",
+      "Snapshot",
+      "Compare",
+      "Bulk Actions",
+      "+ Add Asset",
+      "ID",
+      "Name",
+      "System",
+      "Type",
+      "Status",
+      "Env",
+      "Owner",
+      "Make",
+      "Model",
+      "OS",
+      "Ver",
+      "Primary IP",
+      "Mgmt IP",
+      "Action"
+    ],
+    "isFullWorkspaceCapture": true,
+    "consoleCounts": {
+      "warning": 2,
+      "error": 0,
+      "pageError": 0
+    }
+  }
+}

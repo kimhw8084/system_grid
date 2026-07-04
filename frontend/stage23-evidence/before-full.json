@@ -1,0 +1,196 @@
+{
+  "beforeAsset": {
+    "route": "/asset",
+    "viewport": {
+      "width": 1440,
+      "height": 1200
+    },
+    "screenshotType": "full-page",
+    "screenshotPath": "/Users/haewonkim/home/development/sysgrid/frontend/stage23-evidence/before-asset-fullpage.png",
+    "screenshotSize": {
+      "width": 1440,
+      "height": 1200
+    },
+    "documentSize": {
+      "width": 1425,
+      "height": 1200
+    },
+    "workspaceRoot": {
+      "x": 272,
+      "y": 101,
+      "width": 1121,
+      "height": 1035
+    },
+    "header": {
+      "x": 272,
+      "y": 117,
+      "width": 603,
+      "height": 28
+    },
+    "commandBar": {
+      "x": 289,
+      "y": 191,
+      "width": 252,
+      "height": 36
+    },
+    "table": {
+      "x": 273,
+      "y": 445,
+      "width": 1119,
+      "height": 690
+    },
+    "firstRow": null,
+    "actionZone": {
+      "x": 1102,
+      "y": 285,
+      "width": 138,
+      "height": 36
+    },
+    "visibleTexts": [
+      "OPERATIONS",
+      "INFRASTRUCTURE",
+      "CONNECTIVITY",
+      "ANALYSIS",
+      "RESOURCES",
+      "Haewon KimID: 1",
+      "Dark",
+      "Light",
+      "Patch Notes",
+      "Search assets, projects, or incidents...⌘K",
+      "Active DatabaseLocal Demo",
+      "Asset Registry",
+      "Existing",
+      "Purged",
+      "Views",
+      "Display",
+      "Import",
+      "Filters",
+      "All",
+      "My Systems",
+      "Team",
+      "Unowned",
+      "Degraded",
+      "At Risk",
+      "Needs Docs",
+      "Table",
+      "List",
+      "Map",
+      "Template",
+      "Snapshot",
+      "Compare",
+      "Bulk Actions",
+      "+ Add Asset",
+      "ID",
+      "Name",
+      "System",
+      "Type",
+      "Status",
+      "Env",
+      "Owner",
+      "Make",
+      "Model",
+      "OS",
+      "Ver",
+      "Primary IP",
+      "Mgmt IP",
+      "Action"
+    ],
+    "isFullWorkspaceCapture": true,
+    "consoleCounts": {
+      "warning": 1,
+      "error": 0,
+      "pageError": 0
+    }
+  },
+  "goldenReference": {
+    "route": "/monitoring",
+    "viewport": {
+      "width": 1440,
+      "height": 1200
+    },
+    "screenshotType": "full-page",
+    "screenshotPath": "/Users/haewonkim/home/development/sysgrid/frontend/stage23-evidence/golden-monitoring-fullpage.png",
+    "screenshotSize": {
+      "width": 1440,
+      "height": 1200
+    },
+    "documentSize": {
+      "width": 1425,
+      "height": 1200
+    },
+    "workspaceRoot": {
+      "x": 272,
+      "y": 101,
+      "width": 1121,
+      "height": 1035
+    },
+    "header": {
+      "x": 272,
+      "y": 117,
+      "width": 475,
+      "height": 28
+    },
+    "commandBar": null,
+    "table": {
+      "x": 273,
+      "y": 407,
+      "width": 1119,
+      "height": 728
+    },
+    "firstRow": {
+      "x": 770,
+      "y": 437,
+      "width": 1527,
+      "height": 23
+    },
+    "actionZone": {
+      "x": 1059,
+      "y": 215,
+      "width": 138,
+      "height": 36
+    },
+    "visibleTexts": [
+      "OPERATIONS",
+      "INFRASTRUCTURE",
+      "CONNECTIVITY",
+      "ANALYSIS",
+      "RESOURCES",
+      "Haewon KimID: 1",
+      "Dark",
+      "Light",
+      "Patch Notes",
+      "Search assets, projects, or incidents...⌘K",
+      "Active DatabaseLocal Demo",
+      "Monitoring",
+      "Existing",
+      "Archived",
+      "Views",
+      "Display",
+      "Import",
+      "Filters",
+      "Activity",
+      "Compare",
+      "Bulk Actions",
+      "+ Add Monitoring",
+      "All statuses",
+      "All severities",
+      "All platforms",
+      "All owners",
+      "ID",
+      "Fav",
+      "Title",
+      "Target Asset",
+      "Status",
+      "Owners",
+      "Category",
+      "Existing",
+      "Action"
+    ],
+    "isFullWorkspaceCapture": true,
+    "consoleCounts": {
+      "warning": 5,
+      "error": 0,
+      "pageError": 0
+    }
+  }
+}
