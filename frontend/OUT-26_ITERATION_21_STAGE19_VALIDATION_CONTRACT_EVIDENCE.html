@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OUT-26 Iteration 21 Stage 19 Validation Contract Evidence</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #09111d;
+      --panel: #0f1b2d;
+      --panel-2: #13233a;
+      --text: #e8eef8;
+      --muted: #95a5bd;
+      --ok: #47d18c;
+      --warn: #ffd166;
+      --line: #24354f;
+      --accent: #57b7ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(87, 183, 255, 0.12), transparent 28%),
+        linear-gradient(180deg, #06101c 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+    .hero, .panel {
+      background: linear-gradient(180deg, rgba(19, 35, 58, 0.96), rgba(15, 27, 45, 0.98));
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
+    }
+    .hero { margin-bottom: 18px; }
+    .eyebrow {
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-size: 12px;
+      color: var(--accent);
+      margin: 0 0 10px;
+      font-weight: 700;
+    }
+    h1, h2 {
+      margin: 0 0 10px;
+      line-height: 1.15;
+    }
+    h1 { font-size: 32px; }
+    h2 { font-size: 18px; }
+    p, li { color: var(--muted); line-height: 1.5; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin: 18px 0;
+    }
+    .card {
+      background: rgba(9, 17, 29, 0.72);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .label {
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+    .value {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    ul {
+      margin: 10px 0 0;
+      padding-left: 18px;
+    }
+    .panel + .panel { margin-top: 16px; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <p class="eyebrow">OUT-26 / Iteration 21 / Stage 19</p>
+      <h1>Validation Contract Recovery</h1>
+      <p>Overall result: <strong class="ok">PASS</strong>. The remaining blocker was stale validation contract drift, not an Assets product regression.</p>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <div class="label">Validation Result</div>
+        <div class="value ok">PASS</div>
+        <p>Focused Assets Playwright now passes.</p>
+      </div>
+      <div class="card">
+        <div class="label">Product Change</div>
+        <div class="value">None</div>
+        <p>Stage 19 changed test and proof files only.</p>
+      </div>
+      <div class="card">
+        <div class="label">Duplicate Keys</div>
+        <div class="value ok">Preserved</div>
+        <p>Stage 18 cleanup remains valid because product code stayed unchanged.</p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Stale Expectation Fix</h2>
+      <ul>
+        <li>Heading contract corrected from <code>Infrastructure Registry</code> to canonical <code>Asset Registry</code>.</li>
+        <li>Focused selectors updated to canonical Assets labels and entry points: <code>Asset row actions</code>, <code>View Details</code>, <code>Open Knowledge</code>, <code>FAR Risks</code>, <code>Audit</code>, <code>Bulk Actions</code>, and <code>Compare Visible</code>.</li>
+        <li>Final monitoring assertion corrected to canonical route behavior: navigation lands on <code>/monitoring</code> with the <code>Monitoring</code> heading visible.</li>
+      </ul>
+    </section>
+
+    <section class="panel">
+      <h2>Validation Summary</h2>
+      <ul>
+        <li><code>npx playwright test tests/assets-workflows.spec.ts --reporter=line</code>: PASS</li>
+        <li><code>npm run typecheck</code>: PASS</li>
+        <li><code>npm run build</code>: PASS with non-blocking chunk-size advisory</li>
+        <li><code>npm run test:lint</code>: PASS after focused spec locator-variable refactor</li>
+        <li><code>npm run check:operational-registry-drift</code>: PASS</li>
+        <li><code>npm run check:form-contracts</code>: PASS</li>
+        <li><code>npm run check:row-action-contracts</code>: PASS</li>
+      </ul>
+    </section>
+
+    <section class="panel">
+      <h2>Remaining Blockers</h2>
+      <p><strong class="ok">None in Stage 19 scope.</strong></p>
+      <p class="warn">Do not mark Done or claim final lock-readiness from this stage alone. The next action is controller re-review / validation acceptance only.</p>
+    </section>
+  </main>
+</body>
+</html>
