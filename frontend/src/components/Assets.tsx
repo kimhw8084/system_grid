@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom'
 import { AssetDetailsView } from './assets/AssetDetailsView'
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
 import { WorkspaceEmptyState, WorkspaceFloatingPanel, WorkspacePanelSubtitle, WorkspacePanelTitle, WorkspaceSectionBadge, useEscapeDismiss, useWorkspaceAnchoredLayer } from "./shared/OperationalWorkspacePrimitives";
-import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Clipboard, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Network, Server, ExternalLink, Share2, ZoomIn, ZoomOut, Maximize2, Minimize2, Shield, Zap, Save, Upload, Download, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, Book } from 'lucide-react'
+import { Plus, Trash2, Cpu, Package, X, RefreshCcw, Search, Edit2, LayoutGrid, List, FileJson, Check, MoreVertical, Settings, Sliders, Globe, Eye, EyeOff, ArrowRightLeft, Tag, AlertCircle, Layers, Terminal, FileText, Clipboard, Filter, Calendar, Activity, Link as LinkIcon, Database, HardDrive, Cpu as CpuIcon, Box, Network, Server, ExternalLink, Share2, ZoomIn, ZoomOut, Maximize2, Minimize2, Shield, Zap, Save, Upload, Download, RefreshCw, AlertTriangle, ChevronDown, ChevronRight, Book, GitCompare } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { apiFetch } from "../api/apiClient"
 import { isDeepEqual } from "../utils/dataParsers"
@@ -21,12 +21,13 @@ import { OperationalAnchoredPanel, OperationalDisplayPanel, OperationalSavedView
 import { OperationalDataGrid } from "./shared/OperationalDataGrid"
 import { resolveOperationalDataState } from "./shared/OperationalDataState"
 import { downloadOperationalImportFile } from "./shared/OperationalImportExport"
+import { AppDropdown } from './shared/AppDropdown'
 import { useOperationalWorkspaceViewState, useWorkspaceOverlayController } from "./shared/OperationalWorkspaceHooks"
 import { useOperationalDismissController } from "./shared/OperationalGridInteractions"
 import { OperationalRowActionMenu } from "./shared/OperationalRowActionMenu"
 import { useOperationalFormDirty } from "./shared/OperationalFormContracts"
 import { StyledSelect } from "./shared/StyledSelect"
-import { WorkspaceFlyoutActionCard } from "./shared/WorkspaceFlyout"
+import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from "./shared/WorkspaceFlyout"
 import { ServiceDetailsView, ServiceForm } from "./ServiceRegistry"
 
 const ASSET_SAVED_VIEW_STORAGE_KEY = 'sysgrid_assets_saved_views_v1'
@@ -63,6 +64,13 @@ type AssetSavedView = {
   id: string
   name: string
   config?: AssetWorkspaceViewConfig
+}
+
+type AssetQuickFilters = {
+  status: string[]
+  system: string[]
+  type: string[]
+  owner: string[]
 }
 
 const ASSET_ROUTE_TAB_VALUES = new Set<AssetTab>(['inventory', 'deleted'])
@@ -1608,8 +1616,6 @@ export default function Assets() {
   const [viewMode, setViewMode] = useState<'grid' | 'report' | 'map' | 'compare'>(initialViewMode)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showConfig, setShowConfig] = useState(false)
-  const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
-  const [isBulkEnvOpen, setIsBulkEnvOpen] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
   const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedWorkspaceState.hiddenColumns ?? [])
   const [fontSize, setFontSize] = useState(persistedWorkspaceState.fontSize ?? 10)
@@ -1622,9 +1628,18 @@ export default function Assets() {
   const [isAssetModalDirty, setIsAssetModalDirty] = useState(false)
   const [activeImportExportAction, setActiveImportExportAction] = useState<'template' | 'snapshot' | null>(null)
   const [newViewName, setNewViewName] = useState('')
-  const [showLensBar, setShowLensBar] = useState(true)
+  const [showFilterBar, setShowFilterBar] = useState(true)
+  const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'environment' | 'owner' | null>(null)
+  const [bulkDraft, setBulkDraft] = useState({ status: '', environment: '', owner: '' })
+  const [quickFilters, setQuickFilters] = useState<AssetQuickFilters>({
+    status: [],
+    system: [],
+    type: [],
+    owner: [],
+  })
 
   const [quickLookId, setQuickLookId] = useState<number | null>(null)
+  const selectionAnchorRef = useRef<number | null>(null)
 
   const { data: allEntities, isLoading: isEntitiesLoading } = useQuery({
     queryKey: ['external-entities', { include_deleted: true }],
@@ -1717,6 +1732,7 @@ export default function Assets() {
     setActiveLens('all')
     setActiveTab('inventory')
     setSearchTerm('')
+    setQuickFilters({ status: [], system: [], type: [], owner: [] })
     setSelectedAssetId(null)
     setSelectedIds([])
     setQuickLookId(null)
@@ -1730,6 +1746,7 @@ export default function Assets() {
     setActiveLens(config?.activeLens ?? 'all')
     setActiveTab(config?.activeTab ?? 'inventory')
     setSearchTerm(config?.searchTerm ?? '')
+    setQuickFilters({ status: [], system: [], type: [], owner: [] })
     setSelectedAssetId(null)
     setSelectedIds([])
     setQuickLookId(null)
@@ -1998,8 +2015,7 @@ export default function Assets() {
 
   const visibleAssets = useMemo(() => {
     const term = searchTerm.trim().toLowerCase()
-    if (!term) return displayedAssets
-
+    const hasQuickFilters = Object.values(quickFilters).some((entries) => entries.length > 0)
     const fields = [
       'name',
       'system',
@@ -2016,12 +2032,20 @@ export default function Assets() {
       'management_url'
     ]
 
-    return displayedAssets.filter((asset: any) =>
-      fields.some((field) => String(asset?.[field] || '').toLowerCase().includes(term))
-    )
-  }, [displayedAssets, searchTerm])
+    return displayedAssets.filter((asset: any) => {
+      const matchesSearch = !term || fields.some((field) => String(asset?.[field] || '').toLowerCase().includes(term))
+      if (!matchesSearch) return false
+      if (!hasQuickFilters) return true
 
-  const compareCandidateIds = useMemo(() => visibleAssets.map((asset: any) => asset.id), [visibleAssets])
+      const matchesStatus = quickFilters.status.length === 0 || quickFilters.status.includes(String(asset.status || ''))
+      const matchesSystem = quickFilters.system.length === 0 || quickFilters.system.includes(String(asset.system || ''))
+      const matchesType = quickFilters.type.length === 0 || quickFilters.type.includes(String(asset.type || ''))
+      const matchesOwner = quickFilters.owner.length === 0 || quickFilters.owner.includes(String(asset.owner || ''))
+
+      return matchesStatus && matchesSystem && matchesType && matchesOwner
+    })
+  }, [displayedAssets, quickFilters, searchTerm])
+
   const compareAssets = useMemo(
     () => assets.filter((asset: any) => compareSnapshotIds.includes(asset.id)),
     [assets, compareSnapshotIds]
@@ -2050,6 +2074,46 @@ export default function Assets() {
     setSelectedIds((current) => current.filter((id) => visibleAssets.some((asset: any) => asset.id === id)))
   }, [visibleAssets])
 
+  useEffect(() => {
+    setBulkDraft({ status: '', environment: '', owner: '' })
+    setExpandedBulkSection(null)
+  }, [activeTab, selectedIds])
+
+  const statusFilterOptions = useMemo<Array<{ value: string; label: string }>>(
+    () => Array.from<string>(new Set((assets || []).map((asset: any) => String(asset.status || '')).filter(Boolean)))
+      .sort()
+      .map((value) => ({ value, label: value })),
+    [assets]
+  )
+
+  const systemFilterOptions = useMemo<Array<{ value: string; label: string }>>(
+    () => Array.from<string>(new Set((assets || []).map((asset: any) => String(asset.system || '')).filter(Boolean)))
+      .sort()
+      .map((value) => ({ value, label: value })),
+    [assets]
+  )
+
+  const typeFilterOptions = useMemo<Array<{ value: string; label: string }>>(
+    () => Array.from<string>(new Set((assets || []).map((asset: any) => String(asset.type || '')).filter(Boolean)))
+      .sort()
+      .map((value) => ({ value, label: value })),
+    [assets]
+  )
+
+  const ownerFilterOptions = useMemo<Array<{ value: string; label: string }>>(
+    () => Array.from<string>(new Set((assets || []).map((asset: any) => String(asset.owner || '')).filter(Boolean)))
+      .sort()
+      .map((value) => ({ value, label: value })),
+    [assets]
+  )
+
+  const environmentFilterOptions = useMemo<Array<{ value: string; label: string }>>(
+    () => Array.from<string>(new Set((assets || []).map((asset: any) => String(asset.environment || '')).filter(Boolean)))
+      .sort()
+      .map((value) => ({ value, label: value })),
+    [assets]
+  )
+
   const activeFilterChips = useMemo(() => {
     const chips: Array<{ id: string; label: string; onRemove: () => void }> = []
     if (searchTerm.trim()) {
@@ -2067,6 +2131,34 @@ export default function Assets() {
         onRemove: () => setActiveLens('all'),
       })
     }
+    if (quickFilters.status.length > 0) {
+      chips.push({
+        id: 'status-filter',
+        label: `Status: ${quickFilters.status.length}`,
+        onRemove: () => setQuickFilters((current) => ({ ...current, status: [] })),
+      })
+    }
+    if (quickFilters.system.length > 0) {
+      chips.push({
+        id: 'system-filter',
+        label: `System: ${quickFilters.system.length}`,
+        onRemove: () => setQuickFilters((current) => ({ ...current, system: [] })),
+      })
+    }
+    if (quickFilters.type.length > 0) {
+      chips.push({
+        id: 'type-filter',
+        label: `Type: ${quickFilters.type.length}`,
+        onRemove: () => setQuickFilters((current) => ({ ...current, type: [] })),
+      })
+    }
+    if (quickFilters.owner.length > 0) {
+      chips.push({
+        id: 'owner-filter',
+        label: `Owner: ${quickFilters.owner.length}`,
+        onRemove: () => setQuickFilters((current) => ({ ...current, owner: [] })),
+      })
+    }
     if (viewMode !== 'grid' && viewMode !== 'compare') {
       const viewLabel = viewMode === 'report' ? 'List' : 'Map'
       chips.push({
@@ -2076,7 +2168,7 @@ export default function Assets() {
       })
     }
     return chips
-  }, [activeLens, searchTerm, viewMode])
+  }, [activeLens, quickFilters, searchTerm, viewMode])
 
   useEffect(() => {
     if (viewMode === 'compare' && compareSnapshotIds.length === 0) {
@@ -2154,8 +2246,8 @@ export default function Assets() {
         setSelectedIds([])
       }
       closeOverlay('bulk')
-      setIsBulkStatusOpen(false)
-      setIsBulkEnvOpen(false)
+      setExpandedBulkSection(null)
+      setBulkDraft({ status: '', environment: '', owner: '' })
       if (variables.action === 'restore') {
         if (data.conflicts?.length > 0) {
             toast.error(`Restored ${data.restored.length} assets. ${data.conflicts.length} failed due to hostname conflict.`)
@@ -2534,20 +2626,57 @@ export default function Assets() {
     },
   }), [statusParam])
 
+  const shouldIgnoreRowSelection = useCallback((target: EventTarget | null) => {
+    const element = target as HTMLElement | null
+    if (!element) return false
+    return Boolean(
+      element.closest('button, a, input, textarea, select, label') ||
+      element.closest('.ag-selection-checkbox') ||
+      element.closest('.ag-checkbox-input-wrapper') ||
+      element.closest('.row-action-trigger')
+    )
+  }, [])
+
   const assetRowInteractions = useMemo(() => ({
     handleRowClicked: (event: any) => {
-      if (!event?.node || !event?.data) return
-      const target = event.event?.target as HTMLElement | null
-      if (target?.closest('.row-action-trigger, button, a, input, textarea, select, label')) {
+      if (!event?.node || !event?.data || shouldIgnoreRowSelection(event.event?.target)) return
+
+      const mouseEvent = event.event as MouseEvent | undefined
+      const isToggleSelection = Boolean(mouseEvent?.metaKey || mouseEvent?.ctrlKey)
+      const isRangeSelection = Boolean(mouseEvent?.shiftKey)
+
+      if (isRangeSelection && selectionAnchorRef.current !== null) {
+        const currentIndex = event.node.rowIndex
+        if (currentIndex == null) return
+        const start = Math.min(selectionAnchorRef.current, currentIndex)
+        const end = Math.max(selectionAnchorRef.current, currentIndex)
+        event.api?.deselectAll?.()
+        event.api?.forEachNodeAfterFilterAndSort?.((node: any) => {
+          if (node.rowIndex >= start && node.rowIndex <= end) {
+            node.setSelected(true)
+          }
+        })
         return
       }
+
+      if (isToggleSelection) {
+        event.node.setSelected(!event.node.isSelected())
+        selectionAnchorRef.current = event.node.rowIndex
+        setSelectedAssetId(event.data.id)
+        return
+      }
+
       event.api?.deselectAll?.()
       event.node.setSelected(true)
-      setSelectedIds([event.data.id])
+      selectionAnchorRef.current = event.node.rowIndex
+      setSelectedAssetId(event.data.id)
+    },
+    handleRowDoubleClicked: (event: any) => {
+      if (!event?.data || shouldIgnoreRowSelection(event.event?.target)) return
       setSelectedAssetId(event.data.id)
       setQuickLookId(event.data.id)
     },
-  }), [])
+  }), [shouldIgnoreRowSelection])
 
   const assetGridNoRowsLabel = useMemo(() => {
     if (searchTerm.trim()) return 'No assets match the current search or scope'
@@ -2685,12 +2814,12 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
           </span>
         </ToolbarButton>
         <ToolbarButton
-          active={showLensBar}
-          onClick={() => setShowLensBar((current) => !current)}
-          title={showLensBar ? 'Hide scope filters' : 'Show scope filters'}
+          active={showFilterBar}
+          onClick={() => setShowFilterBar((current) => !current)}
+          title={showFilterBar ? 'Hide filters' : 'Show filters'}
         >
           <span className="flex items-center gap-2">
-            {showLensBar ? <EyeOff size={14} /> : <Eye size={14} />}
+            {showFilterBar ? <EyeOff size={14} /> : <Eye size={14} />}
             Filters
           </span>
         </ToolbarButton>
@@ -2717,42 +2846,89 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
       </ToolbarButton>
     </ToolbarGroup>
   )
-  const shellSecondaryToolbar = showLensBar ? (
-    <div className="flex min-w-0 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <ToolbarGroup className="min-w-max flex-nowrap">
-        <ToolbarButton active={viewMode === 'grid' || viewMode === 'compare'} onClick={() => setViewMode('grid')}>
-          Table
-        </ToolbarButton>
-        <ToolbarButton active={viewMode === 'report'} onClick={() => setViewMode('report')}>
-          List
-        </ToolbarButton>
-        <ToolbarButton active={viewMode === 'map'} onClick={() => setViewMode('map')}>
-          Map
-        </ToolbarButton>
-      </ToolbarGroup>
-      <div className="mx-1 h-5 w-px shrink-0 bg-white/5" />
-      {ASSET_LENS_OPTIONS.map((lens) => (
-        <ToolbarButton
-          key={lens.id}
-          onClick={() => setActiveLens(lens.id)}
-          active={activeLens === lens.id}
-        >
-          {lens.label}
-        </ToolbarButton>
-      ))}
-      <div className="mx-1 h-5 w-px shrink-0 bg-white/5" />
-      {importExportToolbarControls}
+  const shellSecondaryToolbar = showFilterBar ? (
+    <div className="space-y-3">
+      <div className="grid w-full gap-3 md:grid-cols-5">
+        <AppDropdown
+          value={activeLens}
+          onChange={(value) => setActiveLens((value || 'all') as AssetLens)}
+          options={ASSET_LENS_OPTIONS.map((lens) => ({ value: lens.id, label: lens.label }))}
+          label="Lens"
+          placeholder="All lenses"
+        />
+        <AppDropdown
+          multi
+          value={quickFilters.status}
+          onChange={(value) => setQuickFilters((current) => ({ ...current, status: value }))}
+          options={statusFilterOptions}
+          label="Status Filter"
+          placeholder="All statuses"
+        />
+        <AppDropdown
+          multi
+          value={quickFilters.system}
+          onChange={(value) => setQuickFilters((current) => ({ ...current, system: value }))}
+          options={systemFilterOptions}
+          label="System Filter"
+          placeholder="All systems"
+        />
+        <AppDropdown
+          multi
+          value={quickFilters.type}
+          onChange={(value) => setQuickFilters((current) => ({ ...current, type: value }))}
+          options={typeFilterOptions}
+          label="Type Filter"
+          placeholder="All types"
+        />
+        <AppDropdown
+          multi
+          value={quickFilters.owner}
+          onChange={(value) => setQuickFilters((current) => ({ ...current, owner: value }))}
+          options={ownerFilterOptions}
+          label="Owner Filter"
+          placeholder="All owners"
+        />
+      </div>
+      <div className="flex min-w-0 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ToolbarGroup className="min-w-max flex-nowrap">
+          <ToolbarButton active={viewMode === 'grid' || viewMode === 'compare'} onClick={() => setViewMode('grid')}>
+            Table
+          </ToolbarButton>
+          <ToolbarButton active={viewMode === 'report'} onClick={() => setViewMode('report')}>
+            List
+          </ToolbarButton>
+          <ToolbarButton active={viewMode === 'map'} onClick={() => setViewMode('map')}>
+            Map
+          </ToolbarButton>
+        </ToolbarGroup>
+        <div className="mx-1 h-5 w-px shrink-0 bg-white/5" />
+        {importExportToolbarControls}
+      </div>
     </div>
   ) : undefined
   const shellToolbarActions = (
     <div className="flex shrink-0 items-center gap-2">
       {viewMode === 'grid' ? (
         <ToolbarButton
+          onClick={() => {
+            if (selectedIds.length < 2 || selectedIds.length > 5) return
+            setCompareSnapshotIds(selectedIds)
+            setViewMode('compare')
+          }}
+          disabled={selectedIds.length < 2 || selectedIds.length > 5}
+          title="Compare selected assets"
+        >
+          <span className="flex items-center gap-2">
+            <GitCompare size={14} />
+            Compare
+          </span>
+        </ToolbarButton>
+      ) : null}
+      {viewMode === 'grid' ? (
+        <ToolbarButton
           ref={bulkMenuButtonRef as any}
           onClick={() => toggleOverlay('bulk')}
-          disabled={activeTab === 'deleted'
-            ? selectedIds.length === 0
-            : selectedIds.length === 0 && compareCandidateIds.length < 2}
+          disabled={selectedIds.length === 0}
           active={showBulkMenu}
           title="Asset bulk actions"
           className="bulk-menu-trigger"
@@ -2902,6 +3078,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
               onRemove: () => {
                 setSearchTerm('')
                 setActiveLens('all')
+                setQuickFilters({ status: [], system: [], type: [], owner: [] })
                 setViewMode('grid')
               },
             }]
@@ -2968,9 +3145,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
               <div className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
                 <div>
                   <p className="text-[10px] font-semibold text-slate-400">Bulk actions</p>
-                  <p className="pt-1 text-[12px] font-semibold text-slate-100">
-                    {selectedIds.length > 0 ? `${selectedIds.length} assets selected` : `${compareCandidateIds.length} visible assets available`}
-                  </p>
+                  <p className="pt-1 text-[12px] font-semibold text-slate-100">{selectedIds.length} assets selected</p>
                 </div>
                 <ToolbarButton
                   variant="quiet"
@@ -3004,45 +3179,60 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
                   </>
                 ) : (
                   <>
-                    {selectedIds.length >= 2 && (
-                      <WorkspaceFlyoutActionCard
-                        title="Compare Selected"
-                        active={false}
-                        onClick={() => {
-                          setCompareSnapshotIds(selectedIds)
-                          setViewMode('compare')
-                          closeOverlay('bulk')
-                        }}
-                      />
-                    )}
-                    {selectedIds.length < 2 && compareCandidateIds.length >= 2 && (
-                      <WorkspaceFlyoutActionCard
-                        title="Compare Visible"
-                        active={false}
-                        onClick={() => {
-                          setSelectedIds(compareCandidateIds)
-                          setCompareSnapshotIds(compareCandidateIds)
-                          setViewMode('compare')
-                          closeOverlay('bulk')
-                        }}
+                    <WorkspaceFlyoutActionCard
+                      title="Set Status"
+                      active={expandedBulkSection === 'status'}
+                      onClick={() => {
+                        setExpandedBulkSection((current) => current === 'status' ? null : 'status')
+                      }}
+                    />
+                    {expandedBulkSection === 'status' && (
+                      <WorkspaceFlyoutDropdownEditor
+                        value={bulkDraft.status}
+                        onChange={(value) => setBulkDraft((current) => ({ ...current, status: value }))}
+                        options={statusFilterOptions}
+                        placeholder="Choose status"
+                        actionLabel="Apply Status"
+                        onApply={() => bulkMutation.mutate({ action: 'update', payload: { status: bulkDraft.status } })}
+                        disabled={!bulkDraft.status || bulkMutation.isPending}
                       />
                     )}
                     <WorkspaceFlyoutActionCard
-                      title="Set Status..."
-                      active={false}
+                      title="Set Environment"
+                      active={expandedBulkSection === 'environment'}
                       onClick={() => {
-                        setIsBulkStatusOpen(true)
-                        closeOverlay('bulk')
+                        setExpandedBulkSection((current) => current === 'environment' ? null : 'environment')
                       }}
                     />
+                    {expandedBulkSection === 'environment' && (
+                      <WorkspaceFlyoutDropdownEditor
+                        value={bulkDraft.environment}
+                        onChange={(value) => setBulkDraft((current) => ({ ...current, environment: value }))}
+                        options={environmentFilterOptions}
+                        placeholder="Choose environment"
+                        actionLabel="Apply Environment"
+                        onApply={() => bulkMutation.mutate({ action: 'update', payload: { environment: bulkDraft.environment } })}
+                        disabled={!bulkDraft.environment || bulkMutation.isPending}
+                      />
+                    )}
                     <WorkspaceFlyoutActionCard
-                      title="Set Environment..."
-                      active={false}
+                      title="Set Owner"
+                      active={expandedBulkSection === 'owner'}
                       onClick={() => {
-                        setIsBulkEnvOpen(true)
-                        closeOverlay('bulk')
+                        setExpandedBulkSection((current) => current === 'owner' ? null : 'owner')
                       }}
                     />
+                    {expandedBulkSection === 'owner' && (
+                      <WorkspaceFlyoutDropdownEditor
+                        value={bulkDraft.owner}
+                        onChange={(value) => setBulkDraft((current) => ({ ...current, owner: value }))}
+                        options={ownerFilterOptions}
+                        placeholder="Choose owner"
+                        actionLabel="Apply Owner"
+                        onApply={() => bulkMutation.mutate({ action: 'update', payload: { owner: bulkDraft.owner } })}
+                        disabled={!bulkDraft.owner || bulkMutation.isPending}
+                      />
+                    )}
                     <WorkspaceFlyoutActionCard
                       title="Bulk Delete"
                       active={false}
@@ -3071,22 +3261,6 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
     >
       {assetWorkspaceSurface}
     </OperationalWorkspaceShell>
-
-      <StatusBulkUpdateModal
-        isOpen={isBulkStatusOpen}
-        onClose={() => setIsBulkStatusOpen(false)}
-        onApply={(s) => bulkMutation.mutate({ action: 'update', payload: { status: s } })}
-        options={options || []}
-        count={selectedIds.length}
-      />
-
-      <BulkEnvUpdateModal
-        isOpen={isBulkEnvOpen}
-        onClose={() => setIsBulkEnvOpen(false)}
-        onApply={(e) => bulkMutation.mutate({ action: 'update', payload: { environment: e } })}
-        options={options || []}
-        count={selectedIds.length}
-      />
 
       <ConfirmationModal 
         isOpen={confirmModal.isOpen}
