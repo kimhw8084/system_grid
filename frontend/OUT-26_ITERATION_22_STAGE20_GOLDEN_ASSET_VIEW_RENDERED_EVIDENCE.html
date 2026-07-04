@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>OUT-26 Iteration 22 Stage 20 Rendered Evidence</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+        margin: 0;
+        padding: 24px;
+      }
+      h1, h2 {
+        margin: 0 0 12px;
+      }
+      section {
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th, td {
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        padding: 8px 10px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: rgba(30, 41, 59, 0.85);
+      }
+      .partial {
+        color: #f59e0b;
+        font-weight: 700;
+      }
+      .pass {
+        color: #34d399;
+        font-weight: 700;
+      }
+      code {
+        color: #93c5fd;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>OUT-26 Iteration 22 Stage 20 Rendered Evidence</h1>
+
+    <section>
+      <h2>Verdict</h2>
+      <p class="partial">PARTIAL</p>
+      <p>`/asset` now follows the shared operational shell grammar much more closely, but it is still not fully visually indistinguishable from the locked Monitoring golden reference.</p>
+    </section>
+
+    <section>
+      <h2>Rendered Measurements</h2>
+      <table>
+        <tr><th>Viewport</th><th>Grid Height</th><th>Visible Rows</th><th>Result</th></tr>
+        <tr><td>1280x720</td><td>261px</td><td>13</td><td class="pass">PASS</td></tr>
+        <tr><td>960x720</td><td>218px</td><td>11</td><td class="pass">PASS</td></tr>
+      </table>
+    </section>
+
+    <section>
+      <h2>Console and Route</h2>
+      <table>
+        <tr><th>Check</th><th>Evidence</th><th>Result</th></tr>
+        <tr><td>Console warnings/errors</td><td>Captured browser issues for `/asset`: `[]`</td><td class="pass">PASS</td></tr>
+        <tr><td>Duplicate-key warnings</td><td>`0` observed</td><td class="pass">PASS</td></tr>
+        <tr><td>`/asset-real` redirect</td><td>Resolved to <code>http://127.0.0.1:5173/asset</code></td><td class="pass">PASS</td></tr>
+      </table>
+    </section>
+
+    <section>
+      <h2>Validation</h2>
+      <table>
+        <tr><th>Command</th><th>Result</th></tr>
+        <tr><td><code>rtk npm run typecheck</code></td><td class="pass">PASS</td></tr>
+        <tr><td><code>rtk npm run build</code></td><td class="pass">PASS</td></tr>
+        <tr><td><code>rtk npm run test:lint</code></td><td class="pass">PASS</td></tr>
+        <tr><td><code>rtk npm run check:operational-registry-drift</code></td><td class="pass">PASS</td></tr>
+        <tr><td><code>rtk npm run check:form-contracts</code></td><td class="pass">PASS</td></tr>
+        <tr><td><code>rtk npm run check:row-action-contracts</code></td><td class="pass">PASS</td></tr>
+        <tr><td><code>/bin/zsh -lc "cd frontend && PW_API_BASE=http://127.0.0.1:8001/api/v1 npx playwright test tests/assets-workflows.spec.ts"</code></td><td class="pass">PASS</td></tr>
+      </table>
+    </section>
+
+    <section>
+      <h2>Golden Comparison Notes</h2>
+      <ul>
+        <li>Pre-change `/asset` used a bespoke segmented primary toolbar with asset lenses in the main command grammar.</li>
+        <li>Post-change `/asset` uses native `Views`, `Display`, `Import`, and `Filters` controls in the primary shell row.</li>
+        <li>`Table/List/Map`, asset lenses, and import template/snapshot actions were moved into a secondary toolbar row.</li>
+        <li>The responsive grid height regression was corrected from roughly `139px` to `218px` at exact `960x720`.</li>
+      </ul>
+    </section>
+  </body>
+  </html>

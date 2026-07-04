@@ -16,11 +16,10 @@ import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { ConnectionForensicsModal } from "./shared/ConnectionForensicsModal"
 import { WorkspaceModal } from "./shared/WorkspaceModal"
-import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch, ToolbarSegmented } from "./shared/LayoutPrimitives"
+import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from "./shared/LayoutPrimitives"
 import { OperationalAnchoredPanel, OperationalDisplayPanel, OperationalSavedViewsPanel, OperationalWorkspaceShell } from "./shared/OperationalWorkspaceShells"
 import { OperationalDataGrid } from "./shared/OperationalDataGrid"
 import { resolveOperationalDataState } from "./shared/OperationalDataState"
-import { OperationalDisabledActionTooltip } from "./shared/OperationalDisabledActionTooltip"
 import { downloadOperationalImportFile } from "./shared/OperationalImportExport"
 import { useOperationalWorkspaceViewState, useWorkspaceOverlayController } from "./shared/OperationalWorkspaceHooks"
 import { useOperationalDismissController } from "./shared/OperationalGridInteractions"
@@ -1623,6 +1622,7 @@ export default function Assets() {
   const [isAssetModalDirty, setIsAssetModalDirty] = useState(false)
   const [activeImportExportAction, setActiveImportExportAction] = useState<'template' | 'snapshot' | null>(null)
   const [newViewName, setNewViewName] = useState('')
+  const [showLensBar, setShowLensBar] = useState(true)
 
   const [quickLookId, setQuickLookId] = useState<number | null>(null)
 
@@ -1950,6 +1950,10 @@ export default function Assets() {
       deletedAssets: devices.filter((a: any) => a.is_deleted)
     }
   }, [devices])
+  const lifecycleCounts = useMemo(() => ({
+    existing: inventoryAssets.length,
+    purged: deletedAssets.length,
+  }), [deletedAssets.length, inventoryAssets.length])
 
   const assets = activeTab === 'inventory' ? inventoryAssets : deletedAssets
 
@@ -2045,6 +2049,34 @@ export default function Assets() {
   useEffect(() => {
     setSelectedIds((current) => current.filter((id) => visibleAssets.some((asset: any) => asset.id === id)))
   }, [visibleAssets])
+
+  const activeFilterChips = useMemo(() => {
+    const chips: Array<{ id: string; label: string; onRemove: () => void }> = []
+    if (searchTerm.trim()) {
+      chips.push({
+        id: 'search',
+        label: `Search: ${searchTerm.trim()}`,
+        onRemove: () => setSearchTerm(''),
+      })
+    }
+    if (activeLens !== 'all') {
+      const activeLensLabel = ASSET_LENS_OPTIONS.find((lens) => lens.id === activeLens)?.label || activeLens
+      chips.push({
+        id: 'lens',
+        label: `Lens: ${activeLensLabel}`,
+        onRemove: () => setActiveLens('all'),
+      })
+    }
+    if (viewMode !== 'grid' && viewMode !== 'compare') {
+      const viewLabel = viewMode === 'report' ? 'List' : 'Map'
+      chips.push({
+        id: 'view',
+        label: `View: ${viewLabel}`,
+        onRemove: () => setViewMode('grid'),
+      })
+    }
+    return chips
+  }, [activeLens, searchTerm, viewMode])
 
   useEffect(() => {
     if (viewMode === 'compare' && compareSnapshotIds.length === 0) {
@@ -2611,33 +2643,59 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
 }
 
   const primaryToolbarControls = (
-    <ToolbarGroup className="min-w-max flex-nowrap">
-      <ToolbarSegmented
-        options={[
-          { label: 'Table', value: 'grid' },
-          { label: 'List', value: 'report' },
-          { label: 'Map', value: 'map' },
-        ]}
-        value={viewMode === 'compare' ? 'grid' : viewMode}
-        onChange={(next) => setViewMode(next as 'grid' | 'report' | 'map')}
-      />
-      <ToolbarIconButton
-        ref={viewsMenuButtonRef as any}
-        onClick={() => toggleOverlay('views')}
-        active={showViewsMenu}
-        title="Saved asset views"
-      >
-        <Save size={16} />
-      </ToolbarIconButton>
-      <ToolbarIconButton
-        ref={displayMenuButtonRef as any}
-        onClick={() => toggleOverlay('display')}
-        active={showDisplayMenu}
-        title="Display options"
-      >
-        <Sliders size={16} />
-      </ToolbarIconButton>
-    </ToolbarGroup>
+    <>
+      <ToolbarGroup>
+        <ToolbarButton
+          ref={viewsMenuButtonRef as any}
+          onClick={() => toggleOverlay('views')}
+          active={showViewsMenu}
+          title="Saved asset views"
+        >
+          <span className="flex items-center gap-2">
+            <LayoutGrid size={14} />
+            Views
+          </span>
+        </ToolbarButton>
+        <ToolbarButton
+          ref={displayMenuButtonRef as any}
+          onClick={() => toggleOverlay('display')}
+          active={showDisplayMenu}
+          title="Display options"
+        >
+          <span className="flex items-center gap-2">
+            <Sliders size={14} />
+            Display
+          </span>
+        </ToolbarButton>
+        <ToolbarIconButton onClick={handleExportCSV} disabled={!gridApi || visibleAssets.length === 0} title="Export CSV">
+          <FileText size={16} />
+        </ToolbarIconButton>
+        <ToolbarIconButton onClick={handleCopyToClipboard} title="Copy to clipboard">
+          <Clipboard size={16} />
+        </ToolbarIconButton>
+        <ToolbarIconButton onClick={() => setShowConfig(true)} title="Registry configuration">
+          <Settings size={16} />
+        </ToolbarIconButton>
+      </ToolbarGroup>
+      <ToolbarGroup>
+        <ToolbarButton onClick={() => setShowImportModal(true)} title="Open the existing asset bulk import workflow">
+          <span className="flex items-center gap-2">
+            <Upload size={14} />
+            Import
+          </span>
+        </ToolbarButton>
+        <ToolbarButton
+          active={showLensBar}
+          onClick={() => setShowLensBar((current) => !current)}
+          title={showLensBar ? 'Hide scope filters' : 'Show scope filters'}
+        >
+          <span className="flex items-center gap-2">
+            {showLensBar ? <EyeOff size={14} /> : <Eye size={14} />}
+            Filters
+          </span>
+        </ToolbarButton>
+      </ToolbarGroup>
+    </>
   )
   const importExportToolbarControls = (
     <ToolbarGroup className="min-w-max flex-nowrap">
@@ -2657,54 +2715,22 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
         {activeImportExportAction === 'snapshot' ? <RefreshCcw className="animate-spin" size={14} /> : <Download size={14} />}
         <span>Snapshot</span>
       </ToolbarButton>
-      <OperationalDisabledActionTooltip
-        disabled={!gridApi || visibleAssets.length === 0}
-        reason={!gridApi ? 'Asset table is still loading and cannot export yet.' : 'No assets are available in the current scope to export.'}
-      >
-        <span className="inline-flex">
-          <ToolbarButton
-            onClick={handleExportCSV}
-            disabled={!gridApi || visibleAssets.length === 0}
-            title="Export the current asset table view as CSV"
-          >
-            <FileText size={14} />
-            <span>Export CSV</span>
-          </ToolbarButton>
-        </span>
-      </OperationalDisabledActionTooltip>
-      <ToolbarButton onClick={() => setShowImportModal(true)} title="Open the existing asset bulk import workflow">
-        <Upload size={14} />
-        <span>Import Data</span>
-      </ToolbarButton>
     </ToolbarGroup>
   )
-  const utilityToolbarControls = (
-    <ToolbarGroup className="min-w-max flex-nowrap">
-      <ToolbarIconButton onClick={handleCopyToClipboard} title="Copy to clipboard">
-        <Clipboard size={16} />
-      </ToolbarIconButton>
-      <ToolbarIconButton onClick={() => setShowConfig(true)} title="Registry configuration">
-        <Settings size={16} />
-      </ToolbarIconButton>
-    </ToolbarGroup>
-  )
-  const shellToolbarLeft = (
-    <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {viewMode === 'grid' ? (
-        <ToolbarSearch
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search assets, systems, owners, addresses, and tags..."
-          className="w-[220px] max-w-none shrink-0 sm:w-[280px] xl:max-w-lg"
-        />
-      ) : null}
-      {primaryToolbarControls}
-      {viewMode !== 'grid' ? importExportToolbarControls : null}
-      {viewMode !== 'grid' ? utilityToolbarControls : null}
-    </div>
-  )
-  const shellSecondaryToolbar = viewMode === 'grid' ? (
+  const shellSecondaryToolbar = showLensBar ? (
     <div className="flex min-w-0 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <ToolbarGroup className="min-w-max flex-nowrap">
+        <ToolbarButton active={viewMode === 'grid' || viewMode === 'compare'} onClick={() => setViewMode('grid')}>
+          Table
+        </ToolbarButton>
+        <ToolbarButton active={viewMode === 'report'} onClick={() => setViewMode('report')}>
+          List
+        </ToolbarButton>
+        <ToolbarButton active={viewMode === 'map'} onClick={() => setViewMode('map')}>
+          Map
+        </ToolbarButton>
+      </ToolbarGroup>
+      <div className="mx-1 h-5 w-px shrink-0 bg-white/5" />
       {ASSET_LENS_OPTIONS.map((lens) => (
         <ToolbarButton
           key={lens.id}
@@ -2716,34 +2742,35 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
       ))}
       <div className="mx-1 h-5 w-px shrink-0 bg-white/5" />
       {importExportToolbarControls}
-      {utilityToolbarControls}
     </div>
   ) : undefined
-  const shellToolbarActions = viewMode === 'grid' ? (
+  const shellToolbarActions = (
     <div className="flex shrink-0 items-center gap-2">
-      <ToolbarButton
-        ref={bulkMenuButtonRef as any}
-        onClick={() => toggleOverlay('bulk')}
-        disabled={activeTab === 'deleted'
-          ? selectedIds.length === 0
-          : selectedIds.length === 0 && compareCandidateIds.length < 2}
-        active={showBulkMenu}
-        title="Asset bulk actions"
-        className="bulk-menu-trigger"
-      >
-        <span className="flex items-center gap-2">
-          <Zap size={14} />
-          Bulk Actions
-        </span>
-      </ToolbarButton>
+      {viewMode === 'grid' ? (
+        <ToolbarButton
+          ref={bulkMenuButtonRef as any}
+          onClick={() => toggleOverlay('bulk')}
+          disabled={activeTab === 'deleted'
+            ? selectedIds.length === 0
+            : selectedIds.length === 0 && compareCandidateIds.length < 2}
+          active={showBulkMenu}
+          title="Asset bulk actions"
+          className="bulk-menu-trigger"
+        >
+          <span className="flex items-center gap-2">
+            <Zap size={14} />
+            Bulk Actions
+          </span>
+        </ToolbarButton>
+      ) : null}
       <ToolbarButton onClick={() => setActiveModal({})} variant="primary" className="px-6">
         + Add Asset
       </ToolbarButton>
     </div>
-  ) : undefined
+  )
   // The shared shell owns the page header and command bars. This switch mounts only asset-domain surfaces.
   const assetWorkspaceSurface = viewMode === 'grid' ? (
-    <div className="relative flex flex-1 min-h-0 w-full">
+    <div className="relative flex flex-1 min-h-[220px] w-full">
       <OperationalDataGrid
         gridRef={gridRef}
         rows={visibleAssets || []}
@@ -2779,7 +2806,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
         loadingLabel={<p className="text-[10px] font-bold uppercase tracking-[0.3em] text-blue-400">Syncing asset registry...</p>}
         dataState={assetDataState}
         suppressRowClickSelection={true}
-        className="shadow-2xl border border-white/5"
+        className="min-h-[220px] shadow-2xl border border-white/5"
       />
       {rowActionMenu && (
         <OperationalRowActionMenu
@@ -2842,6 +2869,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
           <>
             <HeaderScopeSwitch
               label="Asset Scope"
+              summary={`${lifecycleCounts.existing} existing · ${lifecycleCounts.purged} purged`}
               value={activeTab}
               onChange={(next) => {
                 setActiveTab(next as 'inventory' | 'deleted')
@@ -2855,9 +2883,30 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
           </>
         ),
       }}
-      toolbarSearch={shellToolbarLeft}
+      toolbarSearch={(
+        <ToolbarSearch
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search assets, systems, owners, addresses, and tags..."
+        />
+      )}
+      toolbarControls={primaryToolbarControls}
       secondaryToolbar={shellSecondaryToolbar}
       toolbarActions={shellToolbarActions}
+      filterChips={[
+        ...activeFilterChips,
+        ...(activeFilterChips.length > 0
+          ? [{
+              id: 'clear-all',
+              label: 'Clear All',
+              onRemove: () => {
+                setSearchTerm('')
+                setActiveLens('all')
+                setViewMode('grid')
+              },
+            }]
+          : []),
+      ]}
       floatingPanels={(
         <AnimatePresence>
           <OperationalDisplayPanel
