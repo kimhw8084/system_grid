@@ -13,6 +13,7 @@ import {
   Plus,
   RefreshCcw,
   Settings2,
+  Zap,
 } from 'lucide-react'
 import { ToolbarButton, ToolbarGroup, ToolbarIconButton } from '../shared/LayoutPrimitives'
 import { OperationalDisplayPanel, OperationalSavedViewsPanel } from '../shared/OperationalWorkspaceShells'
@@ -48,6 +49,7 @@ export default function AssetGoldenOperationalWorkspace() {
   const [showSavedViewsPanel, setShowSavedViewsPanel] = useState(false)
   const [showFilterBar, setShowFilterBar] = useState(false)
   const [showCompareOpen, setShowCompareOpen] = useState(false)
+  const [showBulkModalOpen, setShowBulkModalOpen] = useState(false)
 
   const displayButtonRef = useRef<HTMLButtonElement | null>(null)
   const viewsButtonRef = useRef<HTMLButtonElement | null>(null)
@@ -255,9 +257,21 @@ export default function AssetGoldenOperationalWorkspace() {
               <Plus size={14} /> Register Asset
             </ToolbarButton>
             {selectedCount ? (
-              <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">
-                {selectedCount} selected
-              </div>
+              <>
+                <ToolbarButton
+                  onClick={() => setShowBulkModalOpen(true)}
+                  variant="primary"
+                  title="Bulk state mutations"
+                >
+                  <span className="flex items-center gap-2">
+                    <Zap size={14} />
+                    Bulk Actions
+                  </span>
+                </ToolbarButton>
+                <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">
+                  {selectedCount} selected
+                </div>
+              </>
             ) : null}
             <ToolbarButton onClick={workspace.refreshAll}>
               <RefreshCcw size={14} />
@@ -377,6 +391,15 @@ export default function AssetGoldenOperationalWorkspace() {
           onClose={() => setShowCompareOpen(false)}
         />
       )}
+
+      {showBulkModalOpen && (
+        <BulkActionsModal
+          selectedCount={selectedCount}
+          activeTab={workspace.activeTab}
+          onClose={() => setShowBulkModalOpen(false)}
+          onApply={(action, payload) => workspace.performBulkAction(action, undefined, payload)}
+        />
+      )}
     </>
   )
 }
@@ -485,5 +508,149 @@ function CompareRow({ label, value, multiline = false, colorIndex = -1 }: { labe
       </div>
       <p className={`pt-0.5 font-bold ${style.val} ${multiline ? 'leading-relaxed text-[11px] mt-1' : 'text-right text-[10px]'}`}>{value}</p>
     </div>
+  )
+}
+
+function BulkActionsModal({
+  selectedCount,
+  activeTab,
+  onClose,
+  onApply,
+}: {
+  selectedCount: number
+  activeTab: 'inventory' | 'deleted'
+  onClose: () => void
+  onApply: (action: string, payload?: any) => void
+}) {
+  const [selectedStatus, setSelectedStatus] = useState('')
+  const [selectedEnv, setSelectedEnv] = useState('')
+
+  return (
+    <WorkspaceModal
+      isOpen={true}
+      onClose={onClose}
+      size="compact"
+      title="Bulk Operations"
+      subtitle={`Mass-State Mutations · Altering state for ${selectedCount} selected assets`}
+      icon={<Zap size={20} className="text-amber-400" />}
+      footerRight={
+        <ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>
+      }
+    >
+      <div className="space-y-6 p-1">
+        <div className="rounded-lg border border-white/5 bg-black/40 p-4">
+          <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Selected Count</p>
+          <p className="pt-1 text-sm font-bold text-white">{selectedCount} assets targeted</p>
+        </div>
+
+        {activeTab === 'inventory' ? (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-white/5 p-4 space-y-3">
+              <p className="text-[10px] font-black uppercase tracking-wider text-blue-400">Bulk Update Status</p>
+              <div className="flex items-center gap-3">
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="flex-1 rounded-lg border border-white/10 bg-slate-950 p-2.5 text-xs text-slate-200 outline-none focus:border-blue-500/50"
+                >
+                  <option value="">Select status...</option>
+                  <option value="Active">Active</option>
+                  <option value="Offline">Offline</option>
+                  <option value="Failed">Failed</option>
+                  <option value="Retired">Retired</option>
+                </select>
+                <ToolbarButton
+                  disabled={!selectedStatus}
+                  onClick={() => {
+                    onApply('update', { status: selectedStatus })
+                    onClose()
+                  }}
+                  variant="primary"
+                >
+                  Apply
+                </ToolbarButton>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-white/5 p-4 space-y-3">
+              <p className="text-[10px] font-black uppercase tracking-wider text-indigo-400">Bulk Update Environment</p>
+              <div className="flex items-center gap-3">
+                <select
+                  value={selectedEnv}
+                  onChange={(e) => setSelectedEnv(e.target.value)}
+                  className="flex-1 rounded-lg border border-white/10 bg-slate-950 p-2.5 text-xs text-slate-200 outline-none focus:border-indigo-500/50"
+                >
+                  <option value="">Select environment...</option>
+                  <option value="Production">Production</option>
+                  <option value="Staging">Staging</option>
+                  <option value="Development">Development</option>
+                  <option value="Lab">Lab</option>
+                </select>
+                <ToolbarButton
+                  disabled={!selectedEnv}
+                  onClick={() => {
+                    onApply('update', { environment: selectedEnv })
+                    onClose()
+                  }}
+                  variant="primary"
+                >
+                  Apply
+                </ToolbarButton>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-wider text-rose-400">Registry Deallocation</p>
+                <p className="text-[11px] font-bold text-slate-400 mt-1">Move targeted assets to Purged Registry scope.</p>
+              </div>
+              <button
+                onClick={() => {
+                  onApply('delete')
+                  onClose()
+                }}
+                className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-400 hover:bg-rose-500/20 active:scale-95 transition-all"
+              >
+                Bulk Delete
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-wider text-emerald-400">Reallocate to Active Scope</p>
+                <p className="text-[11px] font-bold text-slate-400 mt-1">Restore targeted assets back to Existing Registry scope.</p>
+              </div>
+              <button
+                onClick={() => {
+                  onApply('restore')
+                  onClose()
+                }}
+                className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-400 hover:bg-emerald-500/20 active:scale-95 transition-all"
+              >
+                Bulk Restore
+              </button>
+            </div>
+
+            <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-wider text-rose-400">Permanent Registry Purge</p>
+                <p className="text-[11px] font-bold text-slate-400 mt-1">DESTROY selected assets permanently. This operation cannot be undone.</p>
+              </div>
+              <button
+                onClick={() => {
+                  onApply('purge')
+                  onClose()
+                }}
+                className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-rose-400 hover:bg-rose-500/20 active:scale-95 transition-all"
+              >
+                Bulk Purge
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </WorkspaceModal>
   )
 }
