@@ -54,7 +54,7 @@ import {
 } from './shared/OperationalWorkspacePrimitives'
 import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shared/WorkspaceFlyout'
 import { StatusPill } from './shared/StatusPill'
-import { parseCommaSeparatedValues } from '../utils/dataParsers'
+import { isDeepEqual, parseCommaSeparatedValues } from '../utils/dataParsers'
 import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
 import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
 import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } from './shared/WorkspaceModalShells'
@@ -3439,14 +3439,13 @@ function AssetRecordDetailModal({ item, onClose, onEdit, onDelete }: any) {
 }
 
 export function AssetRecordFormModal({ item, onClose, onSuccess }: any) {
-  useEscapeDismiss(onClose)
   useBodyModalFlag()
   const queryClient = useQueryClient()
   const [isMaximized, setIsMaximized] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
-  const [metadataJsonText, setMetadataJsonText] = useState(() => JSON.stringify(item?.metadata_json || {}, null, 2))
-  const [formData, setFormData] = useState(() => ({
+  const initialMetadataJsonText = useMemo(() => JSON.stringify(item?.metadata_json || {}, null, 2), [item])
+  const initialFormData = useMemo(() => ({
     name: item?.name || '',
     system: item?.system || '',
     type: item?.type || 'Physical',
@@ -3473,7 +3472,13 @@ export function AssetRecordFormModal({ item, onClose, onSuccess }: any) {
     install_date: item?.install_date ? String(item.install_date).split('T')[0] : '',
     warranty_end: item?.warranty_end ? String(item.warranty_end).split('T')[0] : '',
     eol_date: item?.eol_date ? String(item.eol_date).split('T')[0] : '',
-  }))
+  }), [item])
+  const [metadataJsonText, setMetadataJsonText] = useState(() => initialMetadataJsonText)
+  const [formData, setFormData] = useState(() => initialFormData)
+  const isDirty = useMemo(
+    () => !isDeepEqual(formData, initialFormData) || metadataJsonText !== initialMetadataJsonText,
+    [formData, initialFormData, initialMetadataJsonText, metadataJsonText]
+  )
 
   const updateField = useCallback((field: string, value: any) => {
     setFormData((current) => ({ ...current, [field]: value }))
@@ -3553,6 +3558,9 @@ export function AssetRecordFormModal({ item, onClose, onSuccess }: any) {
       }
       subtitle={item?.id ? `Asset ID ${item.id}` : 'Create a new asset'}
       icon={<Activity size={20} />}
+      isDirty={isDirty}
+      dirtyConfirmTitle="Discard Asset Changes?"
+      dirtyConfirmMessage="You have unsaved asset changes. Close this window and discard them?"
       status={
         <div className="flex items-center gap-2">
           <StatusPill value={formData.status || 'Active'} />
@@ -3561,7 +3569,6 @@ export function AssetRecordFormModal({ item, onClose, onSuccess }: any) {
       }
       footerRight={
         <div className="flex items-center gap-3">
-          <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
           <ToolbarButton onClick={handleSave} disabled={isSaving} variant="primary">
             {isSaving ? 'Saving...' : 'Save Asset'}
           </ToolbarButton>
