@@ -1,8 +1,8 @@
 import { test as base } from '@playwright/test';
-import { ChaosController } from './chaosController';
-import { InteractionChaos } from './chaosInteractions';
-import { NetworkChaos } from './chaosNetwork';
-import { StateChaos } from './chaosState';
+import { ChaosController } from './chaosController.ts';
+import { InteractionChaos } from './chaosInteractions.ts';
+import { NetworkChaos } from './chaosNetwork.ts';
+import { StateChaos } from './chaosState.ts';
 
 // Extend the base test to include a globally pre-configured API client and ChaosController
 export const test = base.extend<{ 

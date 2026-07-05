@@ -1,5 +1,5 @@
 import { Page } from '@playwright/test';
-import { ChaosTool } from './chaosController';
+import { ChaosTool } from './chaosController.ts';
 
 /**
  * StateChaos: Implements tools to simulate component unmounting during async operations.

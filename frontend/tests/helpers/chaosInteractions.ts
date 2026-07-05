@@ -1,5 +1,5 @@
 import { Page, Locator } from '@playwright/test';
-import { ChaosTool } from './chaosController';
+import { ChaosTool } from './chaosController.ts';
 
 /**
  * InteractionChaos: Implements tools to mimic erratic human behavior.

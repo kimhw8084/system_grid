@@ -1,5 +1,5 @@
 import { Page } from '@playwright/test';
-import { ChaosTool } from './chaosController';
+import { ChaosTool } from './chaosController.ts';
 
 /**
  * NetworkChaos: Implements tools to simulate unstable network conditions.

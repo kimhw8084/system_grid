@@ -1,0 +1,1681 @@
+{
+  "generatedAt": "2026-07-05T03:53:20.075Z",
+  "captures": {
+    "asset-desktop-fullpage": {
+      "routeKey": "asset",
+      "requestedPath": "/asset",
+      "finalUrl": "http://127.0.0.1:5173/asset?search=PW-ASSET-A-1783223584894-es1lp3",
+      "viewport": {
+        "width": 1440,
+        "height": 1200
+      },
+      "screenshotType": "full-page",
+      "screenshotPath": "/Users/haewonkim/home/development/sysgrid/frontend/stage28-evidence/asset-desktop-fullpage.png",
+      "screenshotSize": {
+        "width": 1440,
+        "height": 1200
+      },
+      "documentSize": {
+        "width": 1425,
+        "height": 1200
+      },
+      "visibleTexts": [
+        "OPERATIONS",
+        "INFRASTRUCTURE",
+        "CONNECTIVITY",
+        "ANALYSIS",
+        "RESOURCES",
+        "Haewon KimID: 1",
+        "Dark",
+        "Light",
+        "1.2.6",
+        "Patch Notes",
+        "Search assets, projects, or incidents...⌘K",
+        "Active DatabaseLocal Demo",
+        "Assets",
+        "Operational asset inventory, topology context, and ownership status",
+        "Registry Scope",
+        "230 existing · 0 purged",
+        "Existing",
+        "Purged",
+        "Views",
+        "Display",
+        "Import",
+        "Filters",
+        "Surfaces",
+        "Export",
+        "Compare",
+        "Bulk Actions",
+        "+ Add Asset",
+        "Search: PW-ASSET-A-1783223584894-es1lp3",
+        "Clear All",
+        "ID",
+        "Chg",
+        "Asset",
+        "System",
+        "Type",
+        "Status",
+        "Env",
+        "Owner",
+        "Make",
+        "Action",
+        "229",
+        "Recent Activity07/04/2026, 10:53:04 PM@System",
+        "Recent Activity",
+        "07/04/2026, 10:53:04 PM",
+        "@System",
+        "PW-ASSET-A-1783223584894-es1lp3",
+        "PW-SYS-1783223584894-es1lp3",
+        "Physical",
+        "Maintenance",
+        "N/A",
+        "Unowned",
+        "Row actions",
+        "Quick access",
+        "Quick Console Access",
+        "View Details",
+        "Edit Configuration",
+        "Soft Delete"
+      ],
+      "workspaceRoot": {
+        "selector": "div.h-full.min-h-0.flex",
+        "bounds": {
+          "x": 272,
+          "y": 101,
+          "width": 1121,
+          "height": 1035
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "header": {
+        "selector": "h1.text-xl.font-black.tracking-tighter",
+        "bounds": {
+          "x": 272,
+          "y": 117,
+          "width": 537,
+          "height": 28
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "actionStatusZone": {
+        "selector": "button[title=\"Asset bulk actions\"].h-9.inline-flex.items-center",
+        "bounds": {
+          "x": 1102,
+          "y": 215,
+          "width": 138,
+          "height": 36
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "commandRegion": {
+        "selector": "div.flex.min-w-0.flex-1",
+        "bounds": {
+          "x": 289,
+          "y": 191,
+          "width": 686,
+          "height": 84
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "table": {
+        "selector": "div[role=\"presentation\"].ag-center-cols-viewport",
+        "bounds": {
+          "x": 733,
+          "y": 387,
+          "width": 535,
+          "height": 748
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "firstRow": {
+        "selector": "div[role=\"row\"].ag-row-even.ag-row.ag-row-level-0",
+        "bounds": {
+          "x": 733,
+          "y": 387,
+          "width": 2526,
+          "height": 30
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "rowActionRegion": {
+        "selector": "button[title=\"More actions\"].rounded-lg.p-1.text-slate-400",
+        "bounds": {
+          "x": 1346,
+          "y": 388,
+          "width": 28,
+          "height": 28
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "detailPanel": {
+        "selector": "[role=\"dialog\"][aria-modal=\"true\"]",
+        "bounds": null,
+        "status": "null",
+        "failureReason": "Detail panel was not open or was not measurable."
+      },
+      "validity": {
+        "valid": true,
+        "rejectionReason": null
+      },
+      "detailPanelAttempts": [
+        "goto /asset?id=229&search=PW-ASSET-A-1783223584894-es1lp3&status=Maintenance",
+        "dialog not visible after direct detail route",
+        "goto /asset",
+        "fill search Scan asset matrix... => PW-ASSET-A-1783223584894-es1lp3",
+        "click [title=\"More actions\"]",
+        "button(View Details) not visible after row actions open",
+        "dialog still not visible after interactive attempts"
+      ],
+      "warningSummary": {
+        "warningCount": 13,
+        "errorCount": 0,
+        "pageErrorCount": 0,
+        "duplicateKeyCount": 0,
+        "entries": [
+          {
+            "route": "/asset",
+            "channel": "warning",
+            "exactMessage": "AG Grid: invalid colDef property 'operationalLockWidth' did you mean any of these: comparator, unSortIcon, onCellClicked, lockPosition, suppressNavigable, pivotComparator, onCellDoubleClicked, checkboxSelection",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "AG Grid colDef validation warning is pre-existing runtime noise; the grid still rendered and measured correctly."
+          },
+          {
+            "route": "/asset",
+            "channel": "warning",
+            "exactMessage": "AG Grid: invalid colDef property 'operationalSkipAutoSize' did you mean any of these: suppressNavigable, comparator, unSortIcon, enableValue, lockPosition, toolPanelClass, headerValueGetter, pivotComparator",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "AG Grid colDef validation warning is pre-existing runtime noise; the grid still rendered and measured correctly."
+          },
+          {
+            "route": "/asset",
+            "channel": "warning",
+            "exactMessage": "AG Grid: to see all the valid colDef properties please check: https://www.ag-grid.com/react-data-grid/column-properties/",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "Follow-on AG Grid documentation warning from the same colDef validation noise; it does not invalidate the capture."
+          },
+          {
+            "route": "/asset",
+            "channel": "warning",
+            "exactMessage": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=8d8d412a:4435",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "Known React Router development warning; it does not alter route render validity or geometry."
+          },
+          {
+            "route": "/asset",
+            "channel": "warning",
+            "exactMessage": "A router only supports one blocker at a time",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=8d8d412a:213",
+            "count": 1,
+            "classification": "accepted non-blocking",
+            "justification": "Triggered by repeated route hops during harness capture; unrelated to workspace render validity."
+          }
+        ],
+        "requestFailures": [
+          {
+            "route": "/asset",
+            "url": "http://127.0.0.1:8000/api/v1/devices?include_deleted=true",
+            "method": "GET",
+            "resourceType": "fetch",
+            "status": null,
+            "failureText": "net::ERR_ABORTED",
+            "count": 1,
+            "classification": "unrelated",
+            "justification": "Navigation and route transitions can abort in-flight GET requests after the target workspace has already rendered; the failure is captured but does not invalidate geometry or route proof."
+          },
+          {
+            "route": "/asset",
+            "url": "http://127.0.0.1:8000/api/v1/intelligence/entities?include_deleted=true",
+            "method": "GET",
+            "resourceType": "fetch",
+            "status": null,
+            "failureText": "net::ERR_ABORTED",
+            "count": 1,
+            "classification": "unrelated",
+            "justification": "Navigation and route transitions can abort in-flight GET requests after the target workspace has already rendered; the failure is captured but does not invalidate geometry or route proof."
+          }
+        ]
+      }
+    },
+    "asset-desktop-viewport": {
+      "routeKey": "asset",
+      "requestedPath": "/asset",
+      "finalUrl": "http://127.0.0.1:5173/asset?search=PW-ASSET-A-1783223584894-es1lp3",
+      "viewport": {
+        "width": 1440,
+        "height": 1200
+      },
+      "screenshotType": "full-viewport",
+      "screenshotPath": "/Users/haewonkim/home/development/sysgrid/frontend/stage28-evidence/asset-desktop-viewport.png",
+      "screenshotSize": {
+        "width": 1440,
+        "height": 1200
+      },
+      "documentSize": {
+        "width": 1425,
+        "height": 1200
+      },
+      "visibleTexts": [
+        "OPERATIONS",
+        "INFRASTRUCTURE",
+        "CONNECTIVITY",
+        "ANALYSIS",
+        "RESOURCES",
+        "Haewon KimID: 1",
+        "Dark",
+        "Light",
+        "1.2.6",
+        "Patch Notes",
+        "Search assets, projects, or incidents...⌘K",
+        "Active DatabaseLocal Demo",
+        "Assets",
+        "Operational asset inventory, topology context, and ownership status",
+        "Registry Scope",
+        "230 existing · 0 purged",
+        "Existing",
+        "Purged",
+        "Views",
+        "Display",
+        "Import",
+        "Filters",
+        "Surfaces",
+        "Export",
+        "Compare",
+        "Bulk Actions",
+        "+ Add Asset",
+        "Search: PW-ASSET-A-1783223584894-es1lp3",
+        "Clear All",
+        "ID",
+        "Chg",
+        "Asset",
+        "System",
+        "Type",
+        "Status",
+        "Env",
+        "Owner",
+        "Make",
+        "Action",
+        "229",
+        "Recent Activity07/04/2026, 10:53:04 PM@System",
+        "Recent Activity",
+        "07/04/2026, 10:53:04 PM",
+        "@System",
+        "PW-ASSET-A-1783223584894-es1lp3",
+        "PW-SYS-1783223584894-es1lp3",
+        "Physical",
+        "Maintenance",
+        "N/A",
+        "Unowned",
+        "Row actions",
+        "Quick access",
+        "Quick Console Access",
+        "View Details",
+        "Edit Configuration",
+        "Soft Delete"
+      ],
+      "workspaceRoot": {
+        "selector": "div.h-full.min-h-0.flex",
+        "bounds": {
+          "x": 272,
+          "y": 101,
+          "width": 1121,
+          "height": 1035
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "header": {
+        "selector": "h1.text-xl.font-black.tracking-tighter",
+        "bounds": {
+          "x": 272,
+          "y": 117,
+          "width": 537,
+          "height": 28
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "actionStatusZone": {
+        "selector": "button[title=\"Asset bulk actions\"].h-9.inline-flex.items-center",
+        "bounds": {
+          "x": 1102,
+          "y": 215,
+          "width": 138,
+          "height": 36
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "commandRegion": {
+        "selector": "div.flex.min-w-0.flex-1",
+        "bounds": {
+          "x": 289,
+          "y": 191,
+          "width": 686,
+          "height": 84
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "table": {
+        "selector": "div[role=\"presentation\"].ag-center-cols-viewport",
+        "bounds": {
+          "x": 733,
+          "y": 387,
+          "width": 535,
+          "height": 748
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "firstRow": {
+        "selector": "div[role=\"row\"].ag-row-even.ag-row.ag-row-level-0",
+        "bounds": {
+          "x": 733,
+          "y": 387,
+          "width": 2526,
+          "height": 30
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "rowActionRegion": {
+        "selector": "button[title=\"More actions\"].rounded-lg.p-1.text-slate-400",
+        "bounds": {
+          "x": 1346,
+          "y": 388,
+          "width": 28,
+          "height": 28
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "detailPanel": {
+        "selector": "[role=\"dialog\"][aria-modal=\"true\"]",
+        "bounds": null,
+        "status": "null",
+        "failureReason": "Detail panel was not open or was not measurable."
+      },
+      "validity": {
+        "valid": true,
+        "rejectionReason": null
+      },
+      "detailPanelAttempts": [
+        "goto /asset?id=229&search=PW-ASSET-A-1783223584894-es1lp3&status=Maintenance",
+        "dialog not visible after direct detail route",
+        "goto /asset",
+        "fill search Scan asset matrix... => PW-ASSET-A-1783223584894-es1lp3",
+        "click [title=\"More actions\"]",
+        "button(View Details) not visible after row actions open",
+        "dialog still not visible after interactive attempts"
+      ],
+      "warningSummary": {
+        "warningCount": 13,
+        "errorCount": 0,
+        "pageErrorCount": 0,
+        "duplicateKeyCount": 0,
+        "entries": [
+          {
+            "route": "/asset",
+            "channel": "warning",
+            "exactMessage": "AG Grid: invalid colDef property 'operationalLockWidth' did you mean any of these: comparator, unSortIcon, onCellClicked, lockPosition, suppressNavigable, pivotComparator, onCellDoubleClicked, checkboxSelection",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "AG Grid colDef validation warning is pre-existing runtime noise; the grid still rendered and measured correctly."
+          },
+          {
+            "route": "/asset",
+            "channel": "warning",
+            "exactMessage": "AG Grid: invalid colDef property 'operationalSkipAutoSize' did you mean any of these: suppressNavigable, comparator, unSortIcon, enableValue, lockPosition, toolPanelClass, headerValueGetter, pivotComparator",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "AG Grid colDef validation warning is pre-existing runtime noise; the grid still rendered and measured correctly."
+          },
+          {
+            "route": "/asset",
+            "channel": "warning",
+            "exactMessage": "AG Grid: to see all the valid colDef properties please check: https://www.ag-grid.com/react-data-grid/column-properties/",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "Follow-on AG Grid documentation warning from the same colDef validation noise; it does not invalidate the capture."
+          },
+          {
+            "route": "/asset",
+            "channel": "warning",
+            "exactMessage": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=8d8d412a:4435",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "Known React Router development warning; it does not alter route render validity or geometry."
+          },
+          {
+            "route": "/asset",
+            "channel": "warning",
+            "exactMessage": "A router only supports one blocker at a time",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=8d8d412a:213",
+            "count": 1,
+            "classification": "accepted non-blocking",
+            "justification": "Triggered by repeated route hops during harness capture; unrelated to workspace render validity."
+          }
+        ],
+        "requestFailures": [
+          {
+            "route": "/asset",
+            "url": "http://127.0.0.1:8000/api/v1/devices?include_deleted=true",
+            "method": "GET",
+            "resourceType": "fetch",
+            "status": null,
+            "failureText": "net::ERR_ABORTED",
+            "count": 1,
+            "classification": "unrelated",
+            "justification": "Navigation and route transitions can abort in-flight GET requests after the target workspace has already rendered; the failure is captured but does not invalidate geometry or route proof."
+          },
+          {
+            "route": "/asset",
+            "url": "http://127.0.0.1:8000/api/v1/intelligence/entities?include_deleted=true",
+            "method": "GET",
+            "resourceType": "fetch",
+            "status": null,
+            "failureText": "net::ERR_ABORTED",
+            "count": 1,
+            "classification": "unrelated",
+            "justification": "Navigation and route transitions can abort in-flight GET requests after the target workspace has already rendered; the failure is captured but does not invalidate geometry or route proof."
+          }
+        ]
+      }
+    },
+    "asset-960x720": {
+      "routeKey": "asset",
+      "requestedPath": "/asset",
+      "finalUrl": "http://127.0.0.1:5173/asset?search=PW-ASSET-A-1783223584894-es1lp3",
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "screenshotType": "full-viewport",
+      "screenshotPath": "/Users/haewonkim/home/development/sysgrid/frontend/stage28-evidence/asset-960x720.png",
+      "screenshotSize": {
+        "width": 960,
+        "height": 720
+      },
+      "documentSize": {
+        "width": 945,
+        "height": 720
+      },
+      "visibleTexts": [
+        "OPERATIONS",
+        "INFRASTRUCTURE",
+        "CONNECTIVITY",
+        "ANALYSIS",
+        "RESOURCES",
+        "Haewon KimID: 1",
+        "Dark",
+        "Light",
+        "1.2.6",
+        "Patch Notes",
+        "Search assets, projects, or incidents...⌘K",
+        "Active DatabaseLocal Demo",
+        "Assets",
+        "Operational asset inventory, topology context, and ownership status",
+        "Registry Scope",
+        "230 existing · 0 purged",
+        "Existing",
+        "Purged",
+        "Views",
+        "Display",
+        "Import",
+        "Filters",
+        "Surfaces",
+        "Export",
+        "Compare",
+        "Bulk Actions",
+        "+ Add Asset",
+        "Search: PW-ASSET-A-1783223584894-es1lp3",
+        "Clear All",
+        "ID",
+        "Chg",
+        "Asset",
+        "System",
+        "Type",
+        "Action",
+        "229",
+        "Recent Activity07/04/2026, 10:53:04 PM@System",
+        "Recent Activity",
+        "07/04/2026, 10:53:04 PM",
+        "@System",
+        "PW-ASSET-A-1783223584894-es1lp3",
+        "PW-SYS-1783223584894-es1lp3",
+        "Physical",
+        "Row actions",
+        "Quick access",
+        "Quick Console Access",
+        "View Details",
+        "Edit Configuration",
+        "Soft Delete"
+      ],
+      "workspaceRoot": {
+        "selector": "div.h-full.min-h-0.flex",
+        "bounds": {
+          "x": 272,
+          "y": 108,
+          "width": 641,
+          "height": 548
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "header": {
+        "selector": "h1.text-xl.font-black.tracking-tighter",
+        "bounds": {
+          "x": 272,
+          "y": 124,
+          "width": 288,
+          "height": 28
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "actionStatusZone": {
+        "selector": "button[title=\"Asset bulk actions\"].h-9.inline-flex.items-center",
+        "bounds": {
+          "x": 622,
+          "y": 342,
+          "width": 138,
+          "height": 36
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "commandRegion": {
+        "selector": "section.flex.flex-wrap.items-center",
+        "bounds": {
+          "x": 272,
+          "y": 215,
+          "width": 641,
+          "height": 290
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "table": {
+        "selector": "div[role=\"presentation\"].ag-center-cols-viewport",
+        "bounds": {
+          "x": 733,
+          "y": 604,
+          "width": 55,
+          "height": 181
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "firstRow": {
+        "selector": "div[role=\"row\"].ag-row-even.ag-row.ag-row-level-0",
+        "bounds": {
+          "x": 733,
+          "y": 604,
+          "width": 2523,
+          "height": 30
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "rowActionRegion": {
+        "selector": "button[title=\"More actions\"].rounded-lg.p-1.text-slate-400",
+        "bounds": {
+          "x": 866,
+          "y": 605,
+          "width": 28,
+          "height": 28
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "detailPanel": {
+        "selector": "[role=\"dialog\"][aria-modal=\"true\"]",
+        "bounds": null,
+        "status": "null",
+        "failureReason": "Detail panel was not open or was not measurable."
+      },
+      "validity": {
+        "valid": true,
+        "rejectionReason": null
+      },
+      "detailPanelAttempts": [
+        "goto /asset?id=229&search=PW-ASSET-A-1783223584894-es1lp3&status=Maintenance",
+        "dialog not visible after direct detail route",
+        "goto /asset",
+        "fill search Scan asset matrix... => PW-ASSET-A-1783223584894-es1lp3",
+        "click [title=\"More actions\"]",
+        "button(View Details) not visible after row actions open",
+        "dialog still not visible after interactive attempts"
+      ],
+      "warningSummary": {
+        "warningCount": 13,
+        "errorCount": 0,
+        "pageErrorCount": 0,
+        "duplicateKeyCount": 0,
+        "entries": [
+          {
+            "route": "/asset",
+            "channel": "warning",
+            "exactMessage": "AG Grid: invalid colDef property 'operationalLockWidth' did you mean any of these: comparator, unSortIcon, onCellClicked, lockPosition, suppressNavigable, pivotComparator, onCellDoubleClicked, checkboxSelection",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "AG Grid colDef validation warning is pre-existing runtime noise; the grid still rendered and measured correctly."
+          },
+          {
+            "route": "/asset",
+            "channel": "warning",
+            "exactMessage": "AG Grid: invalid colDef property 'operationalSkipAutoSize' did you mean any of these: suppressNavigable, comparator, unSortIcon, enableValue, lockPosition, toolPanelClass, headerValueGetter, pivotComparator",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "AG Grid colDef validation warning is pre-existing runtime noise; the grid still rendered and measured correctly."
+          },
+          {
+            "route": "/asset",
+            "channel": "warning",
+            "exactMessage": "AG Grid: to see all the valid colDef properties please check: https://www.ag-grid.com/react-data-grid/column-properties/",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "Follow-on AG Grid documentation warning from the same colDef validation noise; it does not invalidate the capture."
+          },
+          {
+            "route": "/asset",
+            "channel": "warning",
+            "exactMessage": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=8d8d412a:4435",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "Known React Router development warning; it does not alter route render validity or geometry."
+          },
+          {
+            "route": "/asset",
+            "channel": "warning",
+            "exactMessage": "A router only supports one blocker at a time",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=8d8d412a:213",
+            "count": 1,
+            "classification": "accepted non-blocking",
+            "justification": "Triggered by repeated route hops during harness capture; unrelated to workspace render validity."
+          }
+        ],
+        "requestFailures": [
+          {
+            "route": "/asset",
+            "url": "http://127.0.0.1:8000/api/v1/intelligence/entities?include_deleted=true",
+            "method": "GET",
+            "resourceType": "fetch",
+            "status": null,
+            "failureText": "net::ERR_ABORTED",
+            "count": 1,
+            "classification": "unrelated",
+            "justification": "Navigation and route transitions can abort in-flight GET requests after the target workspace has already rendered; the failure is captured but does not invalidate geometry or route proof."
+          },
+          {
+            "route": "/asset",
+            "url": "http://127.0.0.1:8000/api/v1/devices?include_deleted=true",
+            "method": "GET",
+            "resourceType": "fetch",
+            "status": null,
+            "failureText": "net::ERR_ABORTED",
+            "count": 1,
+            "classification": "unrelated",
+            "justification": "Navigation and route transitions can abort in-flight GET requests after the target workspace has already rendered; the failure is captured but does not invalidate geometry or route proof."
+          }
+        ]
+      }
+    },
+    "monitoring-desktop-fullpage": {
+      "routeKey": "monitoring",
+      "requestedPath": "/monitoring",
+      "finalUrl": "http://127.0.0.1:5173/monitoring",
+      "viewport": {
+        "width": 1440,
+        "height": 1200
+      },
+      "screenshotType": "full-page",
+      "screenshotPath": "/Users/haewonkim/home/development/sysgrid/frontend/stage28-evidence/monitoring-desktop-fullpage.png",
+      "screenshotSize": {
+        "width": 1440,
+        "height": 1200
+      },
+      "documentSize": {
+        "width": 1425,
+        "height": 1200
+      },
+      "visibleTexts": [
+        "OPERATIONS",
+        "INFRASTRUCTURE",
+        "CONNECTIVITY",
+        "ANALYSIS",
+        "RESOURCES",
+        "Haewon KimID: 1",
+        "Dark",
+        "Light",
+        "1.2.6",
+        "Patch Notes",
+        "Search assets, projects, or incidents...⌘K",
+        "Active DatabaseLocal Demo",
+        "Monitoring",
+        "Centralized monitoring configuration and operational status",
+        "Registry Scope",
+        "87 existing · 0 archived",
+        "Existing",
+        "Archived",
+        "Views",
+        "Display",
+        "Import",
+        "Filters",
+        "Activity",
+        "Compare",
+        "Bulk Actions",
+        "+ Add Monitoring",
+        "All statuses",
+        "All severities",
+        "All platforms",
+        "All owners",
+        "Search: PW-MON-1783223584894-es1lp3",
+        "Clear All",
+        "ID",
+        "Fav 1",
+        "Title",
+        "Target Asset",
+        "Status",
+        "Owners",
+        "Category",
+        "Action",
+        "87",
+        "PW-MON-1783223584894-es1lp3",
+        "PW-ASSET-A-1783223584894-es1lp3",
+        "N/A",
+        "Hardware"
+      ],
+      "workspaceRoot": {
+        "selector": "div.h-full.min-h-0.flex",
+        "bounds": {
+          "x": 272,
+          "y": 101,
+          "width": 1121,
+          "height": 1035
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "header": {
+        "selector": "h1.text-xl.font-black.tracking-tighter",
+        "bounds": {
+          "x": 272,
+          "y": 117,
+          "width": 475,
+          "height": 28
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "actionStatusZone": {
+        "selector": "button[title=\"Bulk actions\"].h-9.inline-flex.items-center",
+        "bounds": {
+          "x": 1059,
+          "y": 215,
+          "width": 138,
+          "height": 36
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "commandRegion": {
+        "selector": "div.flex.min-w-0.flex-1",
+        "bounds": {
+          "x": 289,
+          "y": 191,
+          "width": 639,
+          "height": 84
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "table": {
+        "selector": "div[role=\"presentation\"].ag-center-cols-viewport",
+        "bounds": {
+          "x": 728,
+          "y": 482,
+          "width": 456,
+          "height": 653
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "firstRow": {
+        "selector": "div[role=\"row\"].ag-row-even.ag-row-no-focus.ag-row",
+        "bounds": {
+          "x": 728,
+          "y": 482,
+          "width": 1587,
+          "height": 23
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "rowActionRegion": {
+        "selector": "button[title=\"More actions\"].row-action-trigger.row-action-menu-container.rounded-lg",
+        "bounds": {
+          "x": 1342,
+          "y": 479,
+          "width": 28,
+          "height": 28
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "detailPanel": {
+        "selector": "[role=\"dialog\"][aria-modal=\"true\"]",
+        "bounds": null,
+        "status": "null",
+        "failureReason": "Detail panel was not open or was not measurable."
+      },
+      "validity": {
+        "valid": true,
+        "rejectionReason": null
+      },
+      "detailPanelAttempts": [
+        "goto /monitoring?id=87",
+        "dialog not visible after direct detail route",
+        "goto /monitoring",
+        "fill search Scan matrix... => PW-MON-1783223584894-es1lp3",
+        "[title=\"View Details\"] not visible on /monitoring",
+        "dialog still not visible after interactive attempts"
+      ],
+      "warningSummary": {
+        "warningCount": 14,
+        "errorCount": 0,
+        "pageErrorCount": 0,
+        "duplicateKeyCount": 0,
+        "entries": [
+          {
+            "route": "/monitoring",
+            "channel": "warning",
+            "exactMessage": "AG Grid: invalid colDef property 'operationalLockWidth' did you mean any of these: comparator, unSortIcon, onCellClicked, lockPosition, suppressNavigable, pivotComparator, onCellDoubleClicked, checkboxSelection",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "AG Grid colDef validation warning is pre-existing runtime noise; the grid still rendered and measured correctly."
+          },
+          {
+            "route": "/monitoring",
+            "channel": "warning",
+            "exactMessage": "AG Grid: invalid colDef property 'operationalSkipAutoSize' did you mean any of these: suppressNavigable, comparator, unSortIcon, enableValue, lockPosition, toolPanelClass, headerValueGetter, pivotComparator",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "AG Grid colDef validation warning is pre-existing runtime noise; the grid still rendered and measured correctly."
+          },
+          {
+            "route": "/monitoring",
+            "channel": "warning",
+            "exactMessage": "AG Grid: to see all the valid colDef properties please check: https://www.ag-grid.com/react-data-grid/column-properties/",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "Follow-on AG Grid documentation warning from the same colDef validation noise; it does not invalidate the capture."
+          },
+          {
+            "route": "/monitoring",
+            "channel": "warning",
+            "exactMessage": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=8d8d412a:4435",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "Known React Router development warning; it does not alter route render validity or geometry."
+          },
+          {
+            "route": "/monitoring",
+            "channel": "warning",
+            "exactMessage": "AG Grid: Since v31, 'columnApi.getColumnState' is deprecated and moved to 'api.getColumnState'.",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 2,
+            "classification": "accepted non-blocking",
+            "justification": "AG Grid deprecation notice is noisy but non-blocking for the rendered workspace capture."
+          }
+        ],
+        "requestFailures": [
+          {
+            "route": "/monitoring",
+            "url": "http://127.0.0.1:8000/api/v1/settings/user/settings",
+            "method": "PATCH",
+            "resourceType": "fetch",
+            "status": null,
+            "failureText": "net::ERR_ABORTED",
+            "count": 1,
+            "classification": "unrelated",
+            "justification": "User-settings persistence requests can be aborted during route transitions and dialog-open attempts after the workspace already rendered; the abort is captured verbatim and treated as unrelated to route validity."
+          },
+          {
+            "route": "/monitoring",
+            "url": "http://127.0.0.1:8000/api/v1/devices",
+            "method": "GET",
+            "resourceType": "fetch",
+            "status": null,
+            "failureText": "net::ERR_ABORTED",
+            "count": 1,
+            "classification": "unrelated",
+            "justification": "Navigation and route transitions can abort in-flight GET requests after the target workspace has already rendered; the failure is captured but does not invalidate geometry or route proof."
+          }
+        ]
+      }
+    },
+    "monitoring-desktop-viewport": {
+      "routeKey": "monitoring",
+      "requestedPath": "/monitoring",
+      "finalUrl": "http://127.0.0.1:5173/monitoring",
+      "viewport": {
+        "width": 1440,
+        "height": 1200
+      },
+      "screenshotType": "full-viewport",
+      "screenshotPath": "/Users/haewonkim/home/development/sysgrid/frontend/stage28-evidence/monitoring-desktop-viewport.png",
+      "screenshotSize": {
+        "width": 1440,
+        "height": 1200
+      },
+      "documentSize": {
+        "width": 1425,
+        "height": 1200
+      },
+      "visibleTexts": [
+        "OPERATIONS",
+        "INFRASTRUCTURE",
+        "CONNECTIVITY",
+        "ANALYSIS",
+        "RESOURCES",
+        "Haewon KimID: 1",
+        "Dark",
+        "Light",
+        "1.2.6",
+        "Patch Notes",
+        "Search assets, projects, or incidents...⌘K",
+        "Active DatabaseLocal Demo",
+        "Monitoring",
+        "Centralized monitoring configuration and operational status",
+        "Registry Scope",
+        "87 existing · 0 archived",
+        "Existing",
+        "Archived",
+        "Views",
+        "Display",
+        "Import",
+        "Filters",
+        "Activity",
+        "Compare",
+        "Bulk Actions",
+        "+ Add Monitoring",
+        "All statuses",
+        "All severities",
+        "All platforms",
+        "All owners",
+        "Search: PW-MON-1783223584894-es1lp3",
+        "Clear All",
+        "ID",
+        "Fav 1",
+        "Title",
+        "Target Asset",
+        "Status",
+        "Owners",
+        "Category",
+        "Action",
+        "87",
+        "PW-MON-1783223584894-es1lp3",
+        "PW-ASSET-A-1783223584894-es1lp3",
+        "N/A",
+        "Hardware"
+      ],
+      "workspaceRoot": {
+        "selector": "div.h-full.min-h-0.flex",
+        "bounds": {
+          "x": 272,
+          "y": 101,
+          "width": 1121,
+          "height": 1035
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "header": {
+        "selector": "h1.text-xl.font-black.tracking-tighter",
+        "bounds": {
+          "x": 272,
+          "y": 117,
+          "width": 475,
+          "height": 28
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "actionStatusZone": {
+        "selector": "button[title=\"Bulk actions\"].h-9.inline-flex.items-center",
+        "bounds": {
+          "x": 1059,
+          "y": 215,
+          "width": 138,
+          "height": 36
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "commandRegion": {
+        "selector": "div.flex.min-w-0.flex-1",
+        "bounds": {
+          "x": 289,
+          "y": 191,
+          "width": 639,
+          "height": 84
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "table": {
+        "selector": "div[role=\"presentation\"].ag-center-cols-viewport",
+        "bounds": {
+          "x": 728,
+          "y": 482,
+          "width": 456,
+          "height": 653
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "firstRow": {
+        "selector": "div[role=\"row\"].ag-row-even.ag-row-no-focus.ag-row",
+        "bounds": {
+          "x": 728,
+          "y": 482,
+          "width": 1555,
+          "height": 23
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "rowActionRegion": {
+        "selector": "button[title=\"More actions\"].row-action-trigger.row-action-menu-container.rounded-lg",
+        "bounds": {
+          "x": 1342,
+          "y": 479,
+          "width": 28,
+          "height": 28
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "detailPanel": {
+        "selector": "[role=\"dialog\"][aria-modal=\"true\"]",
+        "bounds": null,
+        "status": "null",
+        "failureReason": "Detail panel was not open or was not measurable."
+      },
+      "validity": {
+        "valid": true,
+        "rejectionReason": null
+      },
+      "detailPanelAttempts": [
+        "goto /monitoring?id=87",
+        "dialog not visible after direct detail route",
+        "goto /monitoring",
+        "fill search Scan matrix... => PW-MON-1783223584894-es1lp3",
+        "[title=\"View Details\"] not visible on /monitoring",
+        "dialog still not visible after interactive attempts"
+      ],
+      "warningSummary": {
+        "warningCount": 15,
+        "errorCount": 0,
+        "pageErrorCount": 0,
+        "duplicateKeyCount": 0,
+        "entries": [
+          {
+            "route": "/monitoring",
+            "channel": "warning",
+            "exactMessage": "AG Grid: invalid colDef property 'operationalLockWidth' did you mean any of these: comparator, unSortIcon, onCellClicked, lockPosition, suppressNavigable, pivotComparator, onCellDoubleClicked, checkboxSelection",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "AG Grid colDef validation warning is pre-existing runtime noise; the grid still rendered and measured correctly."
+          },
+          {
+            "route": "/monitoring",
+            "channel": "warning",
+            "exactMessage": "AG Grid: invalid colDef property 'operationalSkipAutoSize' did you mean any of these: suppressNavigable, comparator, unSortIcon, enableValue, lockPosition, toolPanelClass, headerValueGetter, pivotComparator",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "AG Grid colDef validation warning is pre-existing runtime noise; the grid still rendered and measured correctly."
+          },
+          {
+            "route": "/monitoring",
+            "channel": "warning",
+            "exactMessage": "AG Grid: to see all the valid colDef properties please check: https://www.ag-grid.com/react-data-grid/column-properties/",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "Follow-on AG Grid documentation warning from the same colDef validation noise; it does not invalidate the capture."
+          },
+          {
+            "route": "/monitoring",
+            "channel": "warning",
+            "exactMessage": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=8d8d412a:4435",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "Known React Router development warning; it does not alter route render validity or geometry."
+          },
+          {
+            "route": "/monitoring",
+            "channel": "warning",
+            "exactMessage": "AG Grid: Since v31, 'columnApi.getColumnState' is deprecated and moved to 'api.getColumnState'.",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "AG Grid deprecation notice is noisy but non-blocking for the rendered workspace capture."
+          }
+        ],
+        "requestFailures": [
+          {
+            "route": "/monitoring",
+            "url": "http://127.0.0.1:8000/api/v1/settings/user/settings",
+            "method": "PATCH",
+            "resourceType": "fetch",
+            "status": null,
+            "failureText": "net::ERR_ABORTED",
+            "count": 1,
+            "classification": "unrelated",
+            "justification": "User-settings persistence requests can be aborted during route transitions and dialog-open attempts after the workspace already rendered; the abort is captured verbatim and treated as unrelated to route validity."
+          },
+          {
+            "route": "/monitoring",
+            "url": "http://127.0.0.1:8000/api/v1/devices",
+            "method": "GET",
+            "resourceType": "fetch",
+            "status": null,
+            "failureText": "net::ERR_ABORTED",
+            "count": 1,
+            "classification": "unrelated",
+            "justification": "Navigation and route transitions can abort in-flight GET requests after the target workspace has already rendered; the failure is captured but does not invalidate geometry or route proof."
+          }
+        ]
+      }
+    },
+    "monitoring-960x720": {
+      "routeKey": "monitoring",
+      "requestedPath": "/monitoring",
+      "finalUrl": "http://127.0.0.1:5173/monitoring",
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "screenshotType": "full-viewport",
+      "screenshotPath": "/Users/haewonkim/home/development/sysgrid/frontend/stage28-evidence/monitoring-960x720.png",
+      "screenshotSize": {
+        "width": 960,
+        "height": 720
+      },
+      "documentSize": {
+        "width": 945,
+        "height": 720
+      },
+      "visibleTexts": [
+        "OPERATIONS",
+        "INFRASTRUCTURE",
+        "CONNECTIVITY",
+        "ANALYSIS",
+        "RESOURCES",
+        "Haewon KimID: 1",
+        "Dark",
+        "Light",
+        "1.2.6",
+        "Patch Notes",
+        "Search assets, projects, or incidents...⌘K",
+        "Active DatabaseLocal Demo",
+        "3",
+        "Monitoring",
+        "Centralized monitoring configuration and operational status",
+        "Registry Scope",
+        "87 existing · 0 archived",
+        "Existing",
+        "Archived",
+        "Views",
+        "Display",
+        "Import",
+        "Filters",
+        "Activity",
+        "Compare",
+        "Bulk Actions",
+        "+ Add Monitoring",
+        "All statuses",
+        "All severities",
+        "All platforms",
+        "All owners",
+        "Search: PW-MON-1783223584894-es1lp3",
+        "Clear All",
+        "ID",
+        "Fav 1",
+        "Title",
+        "Target Asset",
+        "Status",
+        "Owners",
+        "Category",
+        "Services",
+        "Platform",
+        "Severity",
+        "Freq",
+        "Notify",
+        "Purpose",
+        "Action",
+        "87",
+        "PW-MON-1783223584894-es1lp3",
+        "PW-ASSET-A-1783223584894-es1lp3",
+        "N/A",
+        "Hardware",
+        "Zabbix",
+        "Critical",
+        "60s",
+        "Slack",
+        "Playwright validation"
+      ],
+      "workspaceRoot": {
+        "selector": "div.h-full.min-h-0.flex",
+        "bounds": {
+          "x": 272,
+          "y": 108,
+          "width": 641,
+          "height": 548
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "header": {
+        "selector": "h1.text-xl.font-black.tracking-tighter",
+        "bounds": {
+          "x": 272,
+          "y": 124,
+          "width": 277,
+          "height": 28
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "actionStatusZone": {
+        "selector": "button[title=\"Bulk actions\"].h-9.inline-flex.items-center",
+        "bounds": {
+          "x": 579,
+          "y": 364,
+          "width": 138,
+          "height": 36
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "commandRegion": {
+        "selector": "section.flex.flex-wrap.items-center",
+        "bounds": {
+          "x": 272,
+          "y": 215,
+          "width": 641,
+          "height": 334
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "table": {
+        "selector": "synthetic-table-from(first-row, workspace-root)",
+        "bounds": {
+          "x": 272,
+          "y": 711,
+          "width": 641,
+          "height": 59
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "firstRow": {
+        "selector": "div[role=\"row\"].ag-row-even.ag-row-no-focus.ag-row",
+        "bounds": {
+          "x": 728,
+          "y": 741,
+          "width": 1591,
+          "height": 23
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "rowActionRegion": {
+        "selector": "button[title=\"More actions\"].row-action-trigger.row-action-menu-container.rounded-lg",
+        "bounds": {
+          "x": 886,
+          "y": 738,
+          "width": 28,
+          "height": 28
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "detailPanel": {
+        "selector": "[role=\"dialog\"][aria-modal=\"true\"]",
+        "bounds": null,
+        "status": "null",
+        "failureReason": "Detail panel was not open or was not measurable."
+      },
+      "validity": {
+        "valid": true,
+        "rejectionReason": null
+      },
+      "detailPanelAttempts": [
+        "goto /monitoring?id=87",
+        "dialog not visible after direct detail route",
+        "goto /monitoring",
+        "fill search Scan matrix... => PW-MON-1783223584894-es1lp3",
+        "[title=\"View Details\"] not visible on /monitoring",
+        "dialog still not visible after interactive attempts"
+      ],
+      "warningSummary": {
+        "warningCount": 15,
+        "errorCount": 3,
+        "pageErrorCount": 0,
+        "duplicateKeyCount": 0,
+        "entries": [
+          {
+            "route": "/monitoring",
+            "channel": "error",
+            "exactMessage": "GLOBAL_ERROR_BEFORE_MOUNT: ResizeObserver loop completed with undelivered notifications. null",
+            "source": "http://127.0.0.1:5173/src/main.tsx?t=1783211801469:27",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "Known browser ResizeObserver noise during responsive reflow; the workspace still rendered and the page-error ledger remained zero."
+          },
+          {
+            "route": "/monitoring",
+            "channel": "warning",
+            "exactMessage": "AG Grid: invalid colDef property 'operationalLockWidth' did you mean any of these: comparator, unSortIcon, onCellClicked, lockPosition, suppressNavigable, pivotComparator, onCellDoubleClicked, checkboxSelection",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "AG Grid colDef validation warning is pre-existing runtime noise; the grid still rendered and measured correctly."
+          },
+          {
+            "route": "/monitoring",
+            "channel": "warning",
+            "exactMessage": "AG Grid: invalid colDef property 'operationalSkipAutoSize' did you mean any of these: suppressNavigable, comparator, unSortIcon, enableValue, lockPosition, toolPanelClass, headerValueGetter, pivotComparator",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "AG Grid colDef validation warning is pre-existing runtime noise; the grid still rendered and measured correctly."
+          },
+          {
+            "route": "/monitoring",
+            "channel": "warning",
+            "exactMessage": "AG Grid: to see all the valid colDef properties please check: https://www.ag-grid.com/react-data-grid/column-properties/",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "Follow-on AG Grid documentation warning from the same colDef validation noise; it does not invalidate the capture."
+          },
+          {
+            "route": "/monitoring",
+            "channel": "warning",
+            "exactMessage": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=8d8d412a:4435",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "Known React Router development warning; it does not alter route render validity or geometry."
+          },
+          {
+            "route": "/monitoring",
+            "channel": "warning",
+            "exactMessage": "AG Grid: Since v31, 'columnApi.getColumnState' is deprecated and moved to 'api.getColumnState'.",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "AG Grid deprecation notice is noisy but non-blocking for the rendered workspace capture."
+          }
+        ],
+        "requestFailures": []
+      }
+    },
+    "asset-real-desktop-viewport": {
+      "routeKey": "asset-real",
+      "requestedPath": "/asset-real",
+      "finalUrl": "http://127.0.0.1:5173/asset?search=PW-ASSET-A-1783223584894-es1lp3",
+      "viewport": {
+        "width": 1440,
+        "height": 1200
+      },
+      "screenshotType": "full-viewport",
+      "screenshotPath": "/Users/haewonkim/home/development/sysgrid/frontend/stage28-evidence/asset-real-desktop-viewport.png",
+      "screenshotSize": {
+        "width": 1440,
+        "height": 1200
+      },
+      "documentSize": {
+        "width": 1425,
+        "height": 1200
+      },
+      "visibleTexts": [
+        "OPERATIONS",
+        "INFRASTRUCTURE",
+        "CONNECTIVITY",
+        "ANALYSIS",
+        "RESOURCES",
+        "Haewon KimID: 1",
+        "Dark",
+        "Light",
+        "1.2.6",
+        "Patch Notes",
+        "Search assets, projects, or incidents...⌘K",
+        "Active DatabaseLocal Demo",
+        "3",
+        "Assets",
+        "Operational asset inventory, topology context, and ownership status",
+        "Registry Scope",
+        "230 existing · 0 purged",
+        "Existing",
+        "Purged",
+        "Views",
+        "Display",
+        "Import",
+        "Filters",
+        "Surfaces",
+        "Export",
+        "Compare",
+        "Bulk Actions",
+        "+ Add Asset",
+        "Search: PW-ASSET-A-1783223584894-es1lp3",
+        "Clear All",
+        "ID",
+        "Chg",
+        "Asset",
+        "System",
+        "Type",
+        "Status",
+        "Env",
+        "Owner",
+        "Make",
+        "Action",
+        "229",
+        "Recent Activity07/04/2026, 10:53:04 PM@System",
+        "Recent Activity",
+        "07/04/2026, 10:53:04 PM",
+        "@System",
+        "PW-ASSET-A-1783223584894-es1lp3",
+        "PW-SYS-1783223584894-es1lp3",
+        "Physical",
+        "Maintenance",
+        "N/A",
+        "Unowned"
+      ],
+      "workspaceRoot": {
+        "selector": "div.h-full.min-h-0.flex",
+        "bounds": {
+          "x": 272,
+          "y": 101,
+          "width": 1121,
+          "height": 1035
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "header": {
+        "selector": "h1.text-xl.font-black.tracking-tighter",
+        "bounds": {
+          "x": 272,
+          "y": 117,
+          "width": 537,
+          "height": 28
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "actionStatusZone": {
+        "selector": "button[title=\"Asset bulk actions\"].h-9.inline-flex.items-center",
+        "bounds": {
+          "x": 1102,
+          "y": 215,
+          "width": 138,
+          "height": 36
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "commandRegion": {
+        "selector": "div.flex.min-w-0.flex-1",
+        "bounds": {
+          "x": 289,
+          "y": 191,
+          "width": 686,
+          "height": 84
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "table": {
+        "selector": "div[role=\"presentation\"].ag-center-cols-viewport",
+        "bounds": {
+          "x": 733,
+          "y": 387,
+          "width": 535,
+          "height": 748
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "firstRow": {
+        "selector": "div[role=\"row\"].ag-row-even.ag-row-no-focus.ag-row",
+        "bounds": {
+          "x": 733,
+          "y": 387,
+          "width": 2519,
+          "height": 30
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "rowActionRegion": {
+        "selector": "button[title=\"More actions\"].rounded-lg.p-1.text-slate-400",
+        "bounds": {
+          "x": 1350,
+          "y": 388,
+          "width": 28,
+          "height": 28
+        },
+        "status": "non-null",
+        "failureReason": null
+      },
+      "detailPanel": {
+        "selector": "[role=\"dialog\"][aria-modal=\"true\"]",
+        "bounds": null,
+        "status": "null",
+        "failureReason": "Detail panel was not open or was not measurable."
+      },
+      "validity": {
+        "valid": true,
+        "rejectionReason": null
+      },
+      "detailPanelAttempts": [],
+      "warningSummary": {
+        "warningCount": 4,
+        "errorCount": 0,
+        "pageErrorCount": 0,
+        "duplicateKeyCount": 0,
+        "entries": [
+          {
+            "route": "/asset-real",
+            "channel": "warning",
+            "exactMessage": "⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/react-router-dom.js?v=8d8d412a:4435",
+            "count": 1,
+            "classification": "accepted non-blocking",
+            "justification": "Known React Router development warning; it does not alter route render validity or geometry."
+          },
+          {
+            "route": "/asset-real",
+            "channel": "warning",
+            "exactMessage": "AG Grid: invalid colDef property 'operationalLockWidth' did you mean any of these: comparator, unSortIcon, onCellClicked, lockPosition, suppressNavigable, pivotComparator, onCellDoubleClicked, checkboxSelection",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 1,
+            "classification": "accepted non-blocking",
+            "justification": "AG Grid colDef validation warning is pre-existing runtime noise; the grid still rendered and measured correctly."
+          },
+          {
+            "route": "/asset-real",
+            "channel": "warning",
+            "exactMessage": "AG Grid: invalid colDef property 'operationalSkipAutoSize' did you mean any of these: suppressNavigable, comparator, unSortIcon, enableValue, lockPosition, toolPanelClass, headerValueGetter, pivotComparator",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 1,
+            "classification": "accepted non-blocking",
+            "justification": "AG Grid colDef validation warning is pre-existing runtime noise; the grid still rendered and measured correctly."
+          },
+          {
+            "route": "/asset-real",
+            "channel": "warning",
+            "exactMessage": "AG Grid: to see all the valid colDef properties please check: https://www.ag-grid.com/react-data-grid/column-properties/",
+            "source": "http://127.0.0.1:5173/node_modules/.vite/deps/ag-grid-react.js?v=8d8d412a:11096",
+            "count": 1,
+            "classification": "accepted non-blocking",
+            "justification": "Follow-on AG Grid documentation warning from the same colDef validation noise; it does not invalidate the capture."
+          }
+        ],
+        "requestFailures": []
+      }
+    }
+  },
+  "hardChecks": {
+    "assetRedirectFinalUrl": "http://127.0.0.1:5173/asset?search=PW-ASSET-A-1783223584894-es1lp3",
+    "assetRedirectPathname": "/asset",
+    "assetCommandRegionsNonNull": [
+      "non-null",
+      "non-null",
+      "non-null"
+    ],
+    "monitoringCommandRegionsNonNull": [
+      "non-null",
+      "non-null",
+      "non-null"
+    ],
+    "assetDuplicateKeyCount": 0,
+    "assetPageErrorCount": 0
+  }
+}
