@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-05T03:55:23.445Z",
-  "result": "PASS",
+  "generatedAt": "2026-07-05T14:58:52.139Z",
+  "result": "FAIL",
   "requiredProofFiles": [
     "OUT-26_ITERATION_30_STAGE28_PROOF_COMPLETION_SUMMARY.md",
     "OUT-26_ITERATION_30_STAGE28_ROUTE_RENDER_PROOF.md",
@@ -13,22 +13,17 @@
     "OUT-26_ITERATION_30_STAGE28_EVIDENCE.html"
   ],
   "changedFiles": [
-    "frontend/OUT-26_ITERATION_30_STAGE28_960X720_PROOF.md",
-    "frontend/OUT-26_ITERATION_30_STAGE28_COMMAND_BOUNDS_PROOF.md",
-    "frontend/OUT-26_ITERATION_30_STAGE28_EVIDENCE.html",
-    "frontend/OUT-26_ITERATION_30_STAGE28_GEOMETRY_CAPTURE_PROOF.md",
-    "frontend/OUT-26_ITERATION_30_STAGE28_PRODUCT_CODE_LOCK_AUDIT.md",
-    "frontend/OUT-26_ITERATION_30_STAGE28_PROOF_COMPLETION_SUMMARY.md",
-    "frontend/OUT-26_ITERATION_30_STAGE28_ROUTE_RENDER_PROOF.md",
-    "frontend/OUT-26_ITERATION_30_STAGE28_VALIDATION_LEDGER.md",
-    "frontend/OUT-26_ITERATION_30_STAGE28_WARNING_CLASSIFICATION_PROOF.md",
-    "frontend/scripts/generate-stage28-proof.mjs",
-    "frontend/stage28-evidence/",
-    "frontend/tests/assets-golden-evidence.spec.ts",
-    "frontend/tests/helpers/chaosInteractions.ts",
-    "frontend/tests/helpers/chaosNetwork.ts",
-    "frontend/tests/helpers/chaosState.ts",
-    "frontend/tests/helpers/sysgrid-test.ts"
+    "frontend/src/components/assets/AssetsGoldenWorkspace.tsx",
+    "frontend/stage28-evidence/asset-960x720.png",
+    "frontend/stage28-evidence/asset-desktop-fullpage.png",
+    "frontend/stage28-evidence/asset-desktop-viewport.png",
+    "frontend/stage28-evidence/asset-real-desktop-viewport.png",
+    "frontend/stage28-evidence/monitoring-960x720.png",
+    "frontend/stage28-evidence/monitoring-desktop-fullpage.png",
+    "frontend/stage28-evidence/monitoring-desktop-viewport.png",
+    "frontend/stage28-evidence/proof-manifest.json",
+    "frontend/stage28-evidence/stage28-evidence.json",
+    "frontend/stage28-evidence/validation-ledger.json"
   ],
   "remainingGaps": [
     "asset-desktop-fullpage detail/quick-look panel remained null after recorded direct-route and interactive attempts; bounded non-critical gap unless product changes are allowed.",

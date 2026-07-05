@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-07-05T03:53:20.075Z",
+  "generatedAt": "2026-07-05T14:57:46.036Z",
   "captures": {
     "asset-desktop-fullpage": {
       "routeKey": "asset",
       "requestedPath": "/asset",
-      "finalUrl": "http://127.0.0.1:5173/asset?search=PW-ASSET-A-1783223584894-es1lp3",
+      "finalUrl": "http://127.0.0.1:5173/asset?search=PW-ASSET-A-1783263450257-oz4j5n",
       "viewport": {
         "width": 1440,
         "height": 1200
@@ -35,7 +35,7 @@
         "Assets",
         "Operational asset inventory, topology context, and ownership status",
         "Registry Scope",
-        "230 existing · 0 purged",
+        "232 existing · 0 purged",
         "Existing",
         "Purged",
         "Views",
@@ -47,7 +47,12 @@
         "Compare",
         "Bulk Actions",
         "+ Add Asset",
-        "Search: PW-ASSET-A-1783223584894-es1lp3",
+        "All",
+        "All statuses",
+        "All systems",
+        "All types",
+        "All owners",
+        "Search: PW-ASSET-A-1783263450257-oz4j5n",
         "Clear All",
         "ID",
         "Chg",
@@ -59,13 +64,13 @@
         "Owner",
         "Make",
         "Action",
-        "229",
-        "Recent Activity07/04/2026, 10:53:04 PM@System",
+        "231",
+        "Recent Activity07/05/2026, 09:57:30 AM@System",
         "Recent Activity",
-        "07/04/2026, 10:53:04 PM",
+        "07/05/2026, 09:57:30 AM",
         "@System",
-        "PW-ASSET-A-1783223584894-es1lp3",
-        "PW-SYS-1783223584894-es1lp3",
+        "PW-ASSET-A-1783263450257-oz4j5n",
+        "PW-SYS-1783263450257-oz4j5n",
         "Physical",
         "Maintenance",
         "N/A",
@@ -124,10 +129,10 @@
       "table": {
         "selector": "div[role=\"presentation\"].ag-center-cols-viewport",
         "bounds": {
-          "x": 733,
-          "y": 387,
-          "width": 535,
-          "height": 748
+          "x": 750,
+          "y": 482,
+          "width": 518,
+          "height": 653
         },
         "status": "non-null",
         "failureReason": null
@@ -135,10 +140,10 @@
       "firstRow": {
         "selector": "div[role=\"row\"].ag-row-even.ag-row.ag-row-level-0",
         "bounds": {
-          "x": 733,
-          "y": 387,
-          "width": 2526,
-          "height": 30
+          "x": 750,
+          "y": 482,
+          "width": 943,
+          "height": 23
         },
         "status": "non-null",
         "failureReason": null
@@ -147,7 +152,7 @@
         "selector": "button[title=\"More actions\"].rounded-lg.p-1.text-slate-400",
         "bounds": {
           "x": 1346,
-          "y": 388,
+          "y": 479,
           "width": 28,
           "height": 28
         },
@@ -165,10 +170,10 @@
         "rejectionReason": null
       },
       "detailPanelAttempts": [
-        "goto /asset?id=229&search=PW-ASSET-A-1783223584894-es1lp3&status=Maintenance",
+        "goto /asset?id=231&search=PW-ASSET-A-1783263450257-oz4j5n&status=Maintenance",
         "dialog not visible after direct detail route",
         "goto /asset",
-        "fill search Scan asset matrix... => PW-ASSET-A-1783223584894-es1lp3",
+        "fill search Scan asset matrix... => PW-ASSET-A-1783263450257-oz4j5n",
         "click [title=\"More actions\"]",
         "button(View Details) not visible after row actions open",
         "dialog still not visible after interactive attempts"
@@ -228,7 +233,7 @@
         "requestFailures": [
           {
             "route": "/asset",
-            "url": "http://127.0.0.1:8000/api/v1/devices?include_deleted=true",
+            "url": "http://127.0.0.1:8000/api/v1/intelligence/entities?include_deleted=true",
             "method": "GET",
             "resourceType": "fetch",
             "status": null,
@@ -239,7 +244,7 @@
           },
           {
             "route": "/asset",
-            "url": "http://127.0.0.1:8000/api/v1/intelligence/entities?include_deleted=true",
+            "url": "http://127.0.0.1:8000/api/v1/devices?include_deleted=true",
             "method": "GET",
             "resourceType": "fetch",
             "status": null,
@@ -254,7 +259,7 @@
     "asset-desktop-viewport": {
       "routeKey": "asset",
       "requestedPath": "/asset",
-      "finalUrl": "http://127.0.0.1:5173/asset?search=PW-ASSET-A-1783223584894-es1lp3",
+      "finalUrl": "http://127.0.0.1:5173/asset?search=PW-ASSET-A-1783263450257-oz4j5n",
       "viewport": {
         "width": 1440,
         "height": 1200
@@ -285,7 +290,7 @@
         "Assets",
         "Operational asset inventory, topology context, and ownership status",
         "Registry Scope",
-        "230 existing · 0 purged",
+        "232 existing · 0 purged",
         "Existing",
         "Purged",
         "Views",
@@ -297,7 +302,12 @@
         "Compare",
         "Bulk Actions",
         "+ Add Asset",
-        "Search: PW-ASSET-A-1783223584894-es1lp3",
+        "All",
+        "All statuses",
+        "All systems",
+        "All types",
+        "All owners",
+        "Search: PW-ASSET-A-1783263450257-oz4j5n",
         "Clear All",
         "ID",
         "Chg",
@@ -309,13 +319,13 @@
         "Owner",
         "Make",
         "Action",
-        "229",
-        "Recent Activity07/04/2026, 10:53:04 PM@System",
+        "231",
+        "Recent Activity07/05/2026, 09:57:30 AM@System",
         "Recent Activity",
-        "07/04/2026, 10:53:04 PM",
+        "07/05/2026, 09:57:30 AM",
         "@System",
-        "PW-ASSET-A-1783223584894-es1lp3",
-        "PW-SYS-1783223584894-es1lp3",
+        "PW-ASSET-A-1783263450257-oz4j5n",
+        "PW-SYS-1783263450257-oz4j5n",
         "Physical",
         "Maintenance",
         "N/A",
@@ -374,10 +384,10 @@
       "table": {
         "selector": "div[role=\"presentation\"].ag-center-cols-viewport",
         "bounds": {
-          "x": 733,
-          "y": 387,
-          "width": 535,
-          "height": 748
+          "x": 750,
+          "y": 482,
+          "width": 518,
+          "height": 653
         },
         "status": "non-null",
         "failureReason": null
@@ -385,10 +395,10 @@
       "firstRow": {
         "selector": "div[role=\"row\"].ag-row-even.ag-row.ag-row-level-0",
         "bounds": {
-          "x": 733,
-          "y": 387,
-          "width": 2526,
-          "height": 30
+          "x": 750,
+          "y": 482,
+          "width": 943,
+          "height": 23
         },
         "status": "non-null",
         "failureReason": null
@@ -397,7 +407,7 @@
         "selector": "button[title=\"More actions\"].rounded-lg.p-1.text-slate-400",
         "bounds": {
           "x": 1346,
-          "y": 388,
+          "y": 479,
           "width": 28,
           "height": 28
         },
@@ -415,10 +425,10 @@
         "rejectionReason": null
       },
       "detailPanelAttempts": [
-        "goto /asset?id=229&search=PW-ASSET-A-1783223584894-es1lp3&status=Maintenance",
+        "goto /asset?id=231&search=PW-ASSET-A-1783263450257-oz4j5n&status=Maintenance",
         "dialog not visible after direct detail route",
         "goto /asset",
-        "fill search Scan asset matrix... => PW-ASSET-A-1783223584894-es1lp3",
+        "fill search Scan asset matrix... => PW-ASSET-A-1783263450257-oz4j5n",
         "click [title=\"More actions\"]",
         "button(View Details) not visible after row actions open",
         "dialog still not visible after interactive attempts"
@@ -504,7 +514,7 @@
     "asset-960x720": {
       "routeKey": "asset",
       "requestedPath": "/asset",
-      "finalUrl": "http://127.0.0.1:5173/asset?search=PW-ASSET-A-1783223584894-es1lp3",
+      "finalUrl": "http://127.0.0.1:5173/asset?search=PW-ASSET-A-1783263450257-oz4j5n",
       "viewport": {
         "width": 960,
         "height": 720
@@ -535,7 +545,7 @@
         "Assets",
         "Operational asset inventory, topology context, and ownership status",
         "Registry Scope",
-        "230 existing · 0 purged",
+        "232 existing · 0 purged",
         "Existing",
         "Purged",
         "Views",
@@ -547,28 +557,28 @@
         "Compare",
         "Bulk Actions",
         "+ Add Asset",
-        "Search: PW-ASSET-A-1783223584894-es1lp3",
+        "All",
+        "All statuses",
+        "All systems",
+        "All types",
+        "All owners",
+        "Search: PW-ASSET-A-1783263450257-oz4j5n",
         "Clear All",
         "ID",
         "Chg",
         "Asset",
         "System",
         "Type",
-        "Action",
-        "229",
-        "Recent Activity07/04/2026, 10:53:04 PM@System",
+        "Status",
+        "231",
+        "Recent Activity07/05/2026, 09:57:30 AM@System",
         "Recent Activity",
-        "07/04/2026, 10:53:04 PM",
+        "07/05/2026, 09:57:30 AM",
         "@System",
-        "PW-ASSET-A-1783223584894-es1lp3",
-        "PW-SYS-1783223584894-es1lp3",
+        "PW-ASSET-A-1783263450257-oz4j5n",
+        "PW-SYS-1783263450257-oz4j5n",
         "Physical",
-        "Row actions",
-        "Quick access",
-        "Quick Console Access",
-        "View Details",
-        "Edit Configuration",
-        "Soft Delete"
+        "Maintenance"
       ],
       "workspaceRoot": {
         "selector": "div.h-full.min-h-0.flex",
@@ -586,7 +596,7 @@
         "bounds": {
           "x": 272,
           "y": 124,
-          "width": 288,
+          "width": 289,
           "height": 28
         },
         "status": "non-null",
@@ -617,35 +627,30 @@
       "table": {
         "selector": "div[role=\"presentation\"].ag-center-cols-viewport",
         "bounds": {
-          "x": 733,
-          "y": 604,
-          "width": 55,
-          "height": 181
+          "x": 750,
+          "y": 697,
+          "width": 162,
+          "height": 188
         },
         "status": "non-null",
         "failureReason": null
       },
       "firstRow": {
-        "selector": "div[role=\"row\"].ag-row-even.ag-row.ag-row-level-0",
+        "selector": "div[role=\"row\"].ag-row-even.ag-row-no-focus.ag-row",
         "bounds": {
-          "x": 733,
-          "y": 604,
-          "width": 2523,
-          "height": 30
+          "x": 750,
+          "y": 697,
+          "width": 1060,
+          "height": 23
         },
         "status": "non-null",
         "failureReason": null
       },
       "rowActionRegion": {
-        "selector": "button[title=\"More actions\"].rounded-lg.p-1.text-slate-400",
-        "bounds": {
-          "x": 866,
-          "y": 605,
-          "width": 28,
-          "height": 28
-        },
-        "status": "non-null",
-        "failureReason": null
+        "selector": "[title=\"More actions\"]",
+        "bounds": null,
+        "status": "null",
+        "failureReason": "Row action trigger was not measurable."
       },
       "detailPanel": {
         "selector": "[role=\"dialog\"][aria-modal=\"true\"]",
@@ -658,12 +663,11 @@
         "rejectionReason": null
       },
       "detailPanelAttempts": [
-        "goto /asset?id=229&search=PW-ASSET-A-1783223584894-es1lp3&status=Maintenance",
+        "goto /asset?id=231&search=PW-ASSET-A-1783263450257-oz4j5n&status=Maintenance",
         "dialog not visible after direct detail route",
         "goto /asset",
-        "fill search Scan asset matrix... => PW-ASSET-A-1783223584894-es1lp3",
-        "click [title=\"More actions\"]",
-        "button(View Details) not visible after row actions open",
+        "fill search Scan asset matrix... => PW-ASSET-A-1783263450257-oz4j5n",
+        "[title=\"More actions\"] not visible on /asset",
         "dialog still not visible after interactive attempts"
       ],
       "warningSummary": {
@@ -721,7 +725,7 @@
         "requestFailures": [
           {
             "route": "/asset",
-            "url": "http://127.0.0.1:8000/api/v1/intelligence/entities?include_deleted=true",
+            "url": "http://127.0.0.1:8000/api/v1/devices?include_deleted=true",
             "method": "GET",
             "resourceType": "fetch",
             "status": null,
@@ -732,7 +736,7 @@
           },
           {
             "route": "/asset",
-            "url": "http://127.0.0.1:8000/api/v1/devices?include_deleted=true",
+            "url": "http://127.0.0.1:8000/api/v1/intelligence/entities?include_deleted=true",
             "method": "GET",
             "resourceType": "fetch",
             "status": null,
@@ -778,7 +782,7 @@
         "Monitoring",
         "Centralized monitoring configuration and operational status",
         "Registry Scope",
-        "87 existing · 0 archived",
+        "88 existing · 0 archived",
         "Existing",
         "Archived",
         "Views",
@@ -793,7 +797,7 @@
         "All severities",
         "All platforms",
         "All owners",
-        "Search: PW-MON-1783223584894-es1lp3",
+        "Search: PW-MON-1783263450257-oz4j5n",
         "Clear All",
         "ID",
         "Fav 1",
@@ -803,9 +807,9 @@
         "Owners",
         "Category",
         "Action",
-        "87",
-        "PW-MON-1783223584894-es1lp3",
-        "PW-ASSET-A-1783223584894-es1lp3",
+        "88",
+        "PW-MON-1783263450257-oz4j5n",
+        "PW-ASSET-A-1783263450257-oz4j5n",
         "N/A",
         "Hardware"
       ],
@@ -869,7 +873,7 @@
         "bounds": {
           "x": 728,
           "y": 482,
-          "width": 1587,
+          "width": 1555,
           "height": 23
         },
         "status": "non-null",
@@ -897,10 +901,10 @@
         "rejectionReason": null
       },
       "detailPanelAttempts": [
-        "goto /monitoring?id=87",
+        "goto /monitoring?id=88",
         "dialog not visible after direct detail route",
         "goto /monitoring",
-        "fill search Scan matrix... => PW-MON-1783223584894-es1lp3",
+        "fill search Scan matrix... => PW-MON-1783263450257-oz4j5n",
         "[title=\"View Details\"] not visible on /monitoring",
         "dialog still not visible after interactive attempts"
       ],
@@ -1016,7 +1020,7 @@
         "Monitoring",
         "Centralized monitoring configuration and operational status",
         "Registry Scope",
-        "87 existing · 0 archived",
+        "88 existing · 0 archived",
         "Existing",
         "Archived",
         "Views",
@@ -1031,7 +1035,7 @@
         "All severities",
         "All platforms",
         "All owners",
-        "Search: PW-MON-1783223584894-es1lp3",
+        "Search: PW-MON-1783263450257-oz4j5n",
         "Clear All",
         "ID",
         "Fav 1",
@@ -1041,9 +1045,9 @@
         "Owners",
         "Category",
         "Action",
-        "87",
-        "PW-MON-1783223584894-es1lp3",
-        "PW-ASSET-A-1783223584894-es1lp3",
+        "88",
+        "PW-MON-1783263450257-oz4j5n",
+        "PW-ASSET-A-1783263450257-oz4j5n",
         "N/A",
         "Hardware"
       ],
@@ -1135,10 +1139,10 @@
         "rejectionReason": null
       },
       "detailPanelAttempts": [
-        "goto /monitoring?id=87",
+        "goto /monitoring?id=88",
         "dialog not visible after direct detail route",
         "goto /monitoring",
-        "fill search Scan matrix... => PW-MON-1783223584894-es1lp3",
+        "fill search Scan matrix... => PW-MON-1783263450257-oz4j5n",
         "[title=\"View Details\"] not visible on /monitoring",
         "dialog still not visible after interactive attempts"
       ],
@@ -1255,7 +1259,7 @@
         "Monitoring",
         "Centralized monitoring configuration and operational status",
         "Registry Scope",
-        "87 existing · 0 archived",
+        "88 existing · 0 archived",
         "Existing",
         "Archived",
         "Views",
@@ -1270,7 +1274,7 @@
         "All severities",
         "All platforms",
         "All owners",
-        "Search: PW-MON-1783223584894-es1lp3",
+        "Search: PW-MON-1783263450257-oz4j5n",
         "Clear All",
         "ID",
         "Fav 1",
@@ -1286,9 +1290,9 @@
         "Notify",
         "Purpose",
         "Action",
-        "87",
-        "PW-MON-1783223584894-es1lp3",
-        "PW-ASSET-A-1783223584894-es1lp3",
+        "88",
+        "PW-MON-1783263450257-oz4j5n",
+        "PW-ASSET-A-1783263450257-oz4j5n",
         "N/A",
         "Hardware",
         "Zabbix",
@@ -1313,7 +1317,7 @@
         "bounds": {
           "x": 272,
           "y": 124,
-          "width": 277,
+          "width": 276,
           "height": 28
         },
         "status": "non-null",
@@ -1385,10 +1389,10 @@
         "rejectionReason": null
       },
       "detailPanelAttempts": [
-        "goto /monitoring?id=87",
+        "goto /monitoring?id=88",
         "dialog not visible after direct detail route",
         "goto /monitoring",
-        "fill search Scan matrix... => PW-MON-1783223584894-es1lp3",
+        "fill search Scan matrix... => PW-MON-1783263450257-oz4j5n",
         "[title=\"View Details\"] not visible on /monitoring",
         "dialog still not visible after interactive attempts"
       ],
@@ -1398,15 +1402,6 @@
         "pageErrorCount": 0,
         "duplicateKeyCount": 0,
         "entries": [
-          {
-            "route": "/monitoring",
-            "channel": "error",
-            "exactMessage": "GLOBAL_ERROR_BEFORE_MOUNT: ResizeObserver loop completed with undelivered notifications. null",
-            "source": "http://127.0.0.1:5173/src/main.tsx?t=1783211801469:27",
-            "count": 3,
-            "classification": "accepted non-blocking",
-            "justification": "Known browser ResizeObserver noise during responsive reflow; the workspace still rendered and the page-error ledger remained zero."
-          },
           {
             "route": "/monitoring",
             "channel": "warning",
@@ -1451,15 +1446,36 @@
             "count": 3,
             "classification": "accepted non-blocking",
             "justification": "AG Grid deprecation notice is noisy but non-blocking for the rendered workspace capture."
+          },
+          {
+            "route": "/monitoring",
+            "channel": "error",
+            "exactMessage": "GLOBAL_ERROR_BEFORE_MOUNT: ResizeObserver loop completed with undelivered notifications. null",
+            "source": "http://127.0.0.1:5173/src/main.tsx?t=1783263391736:27",
+            "count": 3,
+            "classification": "accepted non-blocking",
+            "justification": "Known browser ResizeObserver noise during responsive reflow; the workspace still rendered and the page-error ledger remained zero."
           }
         ],
-        "requestFailures": []
+        "requestFailures": [
+          {
+            "route": "/monitoring",
+            "url": "http://127.0.0.1:8000/api/v1/devices",
+            "method": "GET",
+            "resourceType": "fetch",
+            "status": null,
+            "failureText": "net::ERR_ABORTED",
+            "count": 1,
+            "classification": "unrelated",
+            "justification": "Navigation and route transitions can abort in-flight GET requests after the target workspace has already rendered; the failure is captured but does not invalidate geometry or route proof."
+          }
+        ]
       }
     },
     "asset-real-desktop-viewport": {
       "routeKey": "asset-real",
       "requestedPath": "/asset-real",
-      "finalUrl": "http://127.0.0.1:5173/asset?search=PW-ASSET-A-1783223584894-es1lp3",
+      "finalUrl": "http://127.0.0.1:5173/asset?search=PW-ASSET-A-1783263450257-oz4j5n",
       "viewport": {
         "width": 1440,
         "height": 1200
@@ -1491,7 +1507,7 @@
         "Assets",
         "Operational asset inventory, topology context, and ownership status",
         "Registry Scope",
-        "230 existing · 0 purged",
+        "232 existing · 0 purged",
         "Existing",
         "Purged",
         "Views",
@@ -1503,7 +1519,12 @@
         "Compare",
         "Bulk Actions",
         "+ Add Asset",
-        "Search: PW-ASSET-A-1783223584894-es1lp3",
+        "All",
+        "All statuses",
+        "All systems",
+        "All types",
+        "All owners",
+        "Search: PW-ASSET-A-1783263450257-oz4j5n",
         "Clear All",
         "ID",
         "Chg",
@@ -1515,13 +1536,13 @@
         "Owner",
         "Make",
         "Action",
-        "229",
-        "Recent Activity07/04/2026, 10:53:04 PM@System",
+        "231",
+        "Recent Activity07/05/2026, 09:57:30 AM@System",
         "Recent Activity",
-        "07/04/2026, 10:53:04 PM",
+        "07/05/2026, 09:57:30 AM",
         "@System",
-        "PW-ASSET-A-1783223584894-es1lp3",
-        "PW-SYS-1783223584894-es1lp3",
+        "PW-ASSET-A-1783263450257-oz4j5n",
+        "PW-SYS-1783263450257-oz4j5n",
         "Physical",
         "Maintenance",
         "N/A",
@@ -1574,10 +1595,10 @@
       "table": {
         "selector": "div[role=\"presentation\"].ag-center-cols-viewport",
         "bounds": {
-          "x": 733,
-          "y": 387,
-          "width": 535,
-          "height": 748
+          "x": 750,
+          "y": 482,
+          "width": 518,
+          "height": 653
         },
         "status": "non-null",
         "failureReason": null
@@ -1585,10 +1606,10 @@
       "firstRow": {
         "selector": "div[role=\"row\"].ag-row-even.ag-row-no-focus.ag-row",
         "bounds": {
-          "x": 733,
-          "y": 387,
-          "width": 2519,
-          "height": 30
+          "x": 750,
+          "y": 482,
+          "width": 943,
+          "height": 23
         },
         "status": "non-null",
         "failureReason": null
@@ -1597,7 +1618,7 @@
         "selector": "button[title=\"More actions\"].rounded-lg.p-1.text-slate-400",
         "bounds": {
           "x": 1350,
-          "y": 388,
+          "y": 479,
           "width": 28,
           "height": 28
         },
@@ -1663,7 +1684,7 @@
     }
   },
   "hardChecks": {
-    "assetRedirectFinalUrl": "http://127.0.0.1:5173/asset?search=PW-ASSET-A-1783223584894-es1lp3",
+    "assetRedirectFinalUrl": "http://127.0.0.1:5173/asset?search=PW-ASSET-A-1783263450257-oz4j5n",
     "assetRedirectPathname": "/asset",
     "assetCommandRegionsNonNull": [
       "non-null",

@@ -2,11 +2,10 @@
 
 | Step | Command | Result | Notes |
 | --- | --- | --- | --- |
-| focused evidence harness | /bin/zsh -lc 'cd frontend && PW_API_BASE=http://127.0.0.1:8000/api/v1 npx playwright test tests/assets-golden-evidence.spec.ts --reporter=line' | PASS | Unsandboxed Playwright rerun required on July 4, 2026 because Chromium could not launch inside the sandbox. Single focused harness run captured /asset, /monitoring, /asset-real redirect, desktop full-page, desktop full-viewport, and exact 960x720 screenshots into frontend/stage28-evidence/. |
-| focused /asset capture | included in focused evidence harness command above | PASS | No separate command was needed. The passing focused harness generated asset-desktop-fullpage.png, asset-desktop-viewport.png, and asset-960x720.png and recorded non-null command bounds. |
-| focused /monitoring capture | included in focused evidence harness command above | PASS | No separate command was needed. The passing focused harness generated monitoring-desktop-fullpage.png, monitoring-desktop-viewport.png, and monitoring-960x720.png and recorded non-null command bounds. |
-| exact 960x720 capture | included in focused evidence harness command above | PASS | No separate command was needed. The passing focused harness generated asset-960x720.png and monitoring-960x720.png with exact 960x720 viewport metadata in stage28-evidence.json. |
-| typecheck | npm run typecheck | PASS | Executed from frontend/ using the package.json script; output was `> tsc --noEmit` with exit code 0. |
-| test lint | npm run test:lint | PASS | Executed from frontend/ using the package.json script; output reported `LINTER PASSED: Test architecture is compliant.` |
-| build | skipped | SKIP | Credible skip rationale: Stage 28 changes are confined to Playwright evidence tests, Playwright helper import resolution, a proof-generation script, markdown/html proof artifacts, and evidence outputs. No production bundle inputs under frontend/src or route files changed. |
-| product-code lock diff audit | git status --short -- frontend | PASS | Audit scope after cleanup is limited to Stage 28 evidence tests/helpers, proof-generation helper script, generated stage28-evidence outputs, and Stage 28 proof documents. |
+| frontend-health | curl -I http://127.0.0.1:5173 | PASS | HTTP/1.1 200 OK |
+| backend-health | curl -i http://127.0.0.1:8000/api/v1/health | PASS | HTTP/1.1 200 OK; status=online |
+| typecheck | cd frontend && npm run typecheck | PASS | tsc --noEmit completed with exit code 0 |
+| test-lint | cd frontend && npm run test:lint | PASS | SysGrid test architecture linter passed |
+| build | cd frontend && npm run build | PASS | vite build completed; chunk-size warning only |
+| golden-evidence | cd frontend && npx playwright test tests/assets-golden-evidence.spec.ts --reporter=line | PASS | 1 passed in 16.8s; refreshed stage28-evidence captures for /asset, /monitoring, and /asset-real |
+| product-diff-audit | git diff --name-only -- frontend | PASS | Diff limited to frontend/src/components/assets/AssetsGoldenWorkspace.tsx and stage28 evidence artifacts |

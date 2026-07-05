@@ -78,10 +78,25 @@ type AssetQuickFilters = {
 const ASSET_ROUTE_TAB_VALUES = new Set<AssetTab>(['inventory', 'deleted'])
 const ASSET_ROUTE_VIEW_VALUES = new Set<PersistedAssetViewMode>(['grid', 'report', 'map'])
 const ASSET_ROUTE_LENS_VALUES = new Set<AssetLens>(ASSET_LENS_OPTIONS.map((option) => option.id))
+const DEFAULT_ASSET_HIDDEN_COLUMNS = [
+  'model',
+  'os_name',
+  'primary_ip',
+  'management_ip',
+  'hardware_summary',
+  'site_name',
+  'rack_name',
+  'u_start',
+  'size_u',
+  'power_typical_w',
+  'power_max_w',
+  'is_deleted',
+  'updated_at',
+]
 const DEFAULT_ASSET_WORKING_VIEW_STATE: AssetWorkingViewState = {
-  fontSize: 10,
-  rowDensity: 16,
-  hiddenColumns: [],
+  fontSize: 11,
+  rowDensity: 8,
+  hiddenColumns: DEFAULT_ASSET_HIDDEN_COLUMNS,
   activeLens: 'all',
   activeTab: 'inventory',
   searchTerm: '',
@@ -1621,9 +1636,9 @@ export default function Assets() {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showConfig, setShowConfig] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
-  const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedWorkspaceState.hiddenColumns ?? [])
-  const [fontSize, setFontSize] = useState(persistedWorkspaceState.fontSize ?? 10)
-  const [rowDensity, setRowDensity] = useState(persistedWorkspaceState.rowDensity ?? 16)
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedWorkspaceState.hiddenColumns ?? DEFAULT_ASSET_HIDDEN_COLUMNS)
+  const [fontSize, setFontSize] = useState(persistedWorkspaceState.fontSize ?? DEFAULT_ASSET_WORKING_VIEW_STATE.fontSize!)
+  const [rowDensity, setRowDensity] = useState(persistedWorkspaceState.rowDensity ?? DEFAULT_ASSET_WORKING_VIEW_STATE.rowDensity!)
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
   const gridRef = React.useRef<any>(null)
   const rowActionSelectionGuardRef = useRef<number[] | null>(null)
@@ -1632,7 +1647,7 @@ export default function Assets() {
   const [isAssetModalDirty, setIsAssetModalDirty] = useState(false)
   const [activeImportExportAction, setActiveImportExportAction] = useState<'template' | 'snapshot' | null>(null)
   const [newViewName, setNewViewName] = useState('')
-  const [showFilterBar, setShowFilterBar] = useState(false)
+  const [showFilterBar, setShowFilterBar] = useState(true)
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'environment' | 'owner' | null>(null)
   const [bulkDraft, setBulkDraft] = useState({ status: '', environment: '', owner: '' })
   const [quickFilters, setQuickFilters] = useState<AssetQuickFilters>({
@@ -1738,9 +1753,9 @@ export default function Assets() {
   }), [activeLens, activeTab, fontSize, hiddenColumns, rowDensity, searchTerm])
 
   const resetAssetWorkspaceView = useCallback(() => {
-    setFontSize(10)
-    setRowDensity(16)
-    setHiddenColumns([])
+    setFontSize(DEFAULT_ASSET_WORKING_VIEW_STATE.fontSize!)
+    setRowDensity(DEFAULT_ASSET_WORKING_VIEW_STATE.rowDensity!)
+    setHiddenColumns(DEFAULT_ASSET_HIDDEN_COLUMNS)
     setActiveLens('all')
     setActiveTab('inventory')
     setSearchTerm('')
@@ -1752,9 +1767,9 @@ export default function Assets() {
   }, [])
 
   const applyAssetWorkspaceView = useCallback((config?: AssetSavedView['config']) => {
-    setFontSize(config?.fontSize ?? 10)
-    setRowDensity(config?.rowDensity ?? 16)
-    setHiddenColumns(config?.hiddenColumns ?? [])
+    setFontSize(config?.fontSize ?? DEFAULT_ASSET_WORKING_VIEW_STATE.fontSize!)
+    setRowDensity(config?.rowDensity ?? DEFAULT_ASSET_WORKING_VIEW_STATE.rowDensity!)
+    setHiddenColumns(config?.hiddenColumns ?? DEFAULT_ASSET_HIDDEN_COLUMNS)
     setActiveLens(config?.activeLens ?? 'all')
     setActiveTab(config?.activeTab ?? 'inventory')
     setSearchTerm(config?.searchTerm ?? '')
@@ -3256,20 +3271,6 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
           --ag-font-size: ${fontSize}px;
         }
         .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { 
-            font-weight: 700 !important; 
-            text-transform: uppercase !important; 
-            letter-spacing: 0.1em !important; 
-            font-size: ${fontSize}px !important; 
-            justify-content: center !important; 
-        }
-        .ag-cell { 
-            display: flex; 
-            align-items: center; 
-            justify-content: center !important; 
-            font-weight: 700 !important;
-            font-size: ${fontSize}px !important;
-        }
         
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
         .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
