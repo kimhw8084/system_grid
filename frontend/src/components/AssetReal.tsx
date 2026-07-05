@@ -3438,7 +3438,7 @@ function AssetRecordDetailModal({ item, onClose, onEdit, onDelete }: any) {
   )
 }
 
-function AssetRecordFormModal({ item, onClose, onSuccess }: any) {
+export function AssetRecordFormModal({ item, onClose, onSuccess }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
   const queryClient = useQueryClient()
@@ -4038,7 +4038,7 @@ const isMonitoringFieldRequired = (fieldName: string) => MONITORING_REQUIRED_FIE
 
 const monitoringInputClass = (error?: string) => getWorkspaceInputClass(error)
 
-function NetworkConnectionForm({ item, devices, onClose, onSuccess, linkPurposeOptions, farmOptions, cableTypeOptions }: any) {
+export function NetworkConnectionForm({ item, devices, onClose, onSuccess, linkPurposeOptions, farmOptions, cableTypeOptions }: any) {
   useEscapeDismiss(onClose)
   useBodyModalFlag()
   const queryClient = useQueryClient()
