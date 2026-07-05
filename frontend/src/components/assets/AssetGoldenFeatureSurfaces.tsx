@@ -210,6 +210,7 @@ function AssetMapSurface({
 }
 
 export function AssetGoldenFeatureSurfaces({
+  gridRef,
   columnDefs,
   contextMenu,
   dataState,
@@ -225,6 +226,7 @@ export function AssetGoldenFeatureSurfaces({
   relationships,
   onSelectionChanged,
 }: {
+  gridRef?: React.RefObject<any>
   columnDefs: any[]
   contextMenu: { handleCellContextMenu: (event: any) => void }
   dataState: any
@@ -250,6 +252,7 @@ export function AssetGoldenFeatureSurfaces({
 
   return (
     <OperationalDataGrid
+      gridRef={gridRef}
       rows={rows}
       columnDefs={columnDefs}
       runtime={runtime}

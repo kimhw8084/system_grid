@@ -16,6 +16,8 @@ type AssetGoldenShellScaffoldProps = {
   filterChips: Array<{ id: string; label: string; onRemove: () => void }>
   floatingPanels?: React.ReactNode
   children: React.ReactNode
+  viewMode: 'grid' | 'report' | 'map'
+  onViewModeChange: (mode: 'grid' | 'report' | 'map') => void
 }
 
 export default function AssetGoldenShellScaffold({
@@ -31,6 +33,8 @@ export default function AssetGoldenShellScaffold({
   filterChips,
   floatingPanels,
   children,
+  viewMode,
+  onViewModeChange,
 }: AssetGoldenShellScaffoldProps) {
   return (
     <OperationalWorkspaceShell
@@ -45,16 +49,28 @@ export default function AssetGoldenShellScaffold({
         ),
         subtitle: 'Operational asset inventory, topology context, and ownership status',
         actions: (
-          <HeaderScopeSwitch
-            label="Registry Scope"
-            summary={`${existingCount} existing · ${purgedCount} purged`}
-            value={activeTab}
-            onChange={(next) => onTabChange(next as 'inventory' | 'deleted')}
-            options={[
-              { label: 'Existing', value: 'inventory' },
-              { label: 'Purged', value: 'deleted' },
-            ]}
-          />
+          <div className="flex items-center gap-4">
+            <HeaderScopeSwitch
+              label={<span className="hidden lg:inline">View Surface</span>}
+              value={viewMode}
+              onChange={(next) => onViewModeChange(next as 'grid' | 'report' | 'map')}
+              options={[
+                { label: 'Grid', value: 'grid' },
+                { label: 'Report', value: 'report' },
+                { label: 'Map', value: 'map' },
+              ]}
+            />
+            <div className="h-8 w-px bg-white/5" />
+            <HeaderScopeSwitch
+              label={<span className="hidden lg:inline">Registry Scope</span>}
+              value={activeTab}
+              onChange={(next) => onTabChange(next as 'inventory' | 'deleted')}
+              options={[
+                { label: 'Existing', value: 'inventory' },
+                { label: 'Purged', value: 'deleted' },
+              ]}
+            />
+          </div>
         ),
       }}
       toolbarSearch={(

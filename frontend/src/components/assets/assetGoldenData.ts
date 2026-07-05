@@ -32,18 +32,7 @@ export type AssetQuickFilters = {
 
 const STORAGE_KEY = 'sysgrid_asset_golden_workspace_v32'
 const DEFAULT_HIDDEN_COLUMNS = [
-  'model',
-  'os_name',
-  'primary_ip',
-  'management_ip',
-  'hardware_summary',
-  'site_name',
-  'rack_name',
-  'u_start',
-  'size_u',
-  'power_typical_w',
-  'power_max_w',
-  'updated_at',
+  'is_deleted',
 ]
 
 const EMPTY_FILTERS: AssetQuickFilters = { status: [], system: [], type: [], owner: [] }
