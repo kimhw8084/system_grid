@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
-import toast from 'react-hot-toast'
 import { apiFetch } from '../../api/apiClient'
 import { downloadOperationalImportFile } from '../shared/OperationalImportExport'
 import { resolveOperationalDataState } from '../shared/OperationalDataState'
+import { showWorkspaceToast } from '../shared/WorkspaceToast'
 
 export type AssetTab = 'inventory' | 'deleted'
 export type AssetViewMode = 'grid' | 'report' | 'map'
@@ -15,6 +15,7 @@ export type AssetSavedView = {
   config: {
     activeTab: AssetTab
     viewMode: AssetViewMode
+    groupBy: string
     searchTerm: string
     activeLens: AssetLens
     hiddenColumns: string[]
@@ -123,6 +124,7 @@ export function useAssetGoldenWorkspace() {
 
   const [activeTab, setActiveTab] = useState<AssetTab>(stored?.activeTab === 'deleted' ? 'deleted' : 'inventory')
   const [viewMode, setViewMode] = useState<AssetViewMode>(stored?.viewMode || 'grid')
+  const [groupBy, setGroupBy] = useState(typeof stored?.groupBy === 'string' ? stored.groupBy : 'raw')
   const [searchTerm, setSearchTerm] = useState(stored?.searchTerm || '')
   const [activeLens, setActiveLens] = useState<AssetLens>(stored?.activeLens || 'all')
   const [hiddenColumns, setHiddenColumns] = useState<string[]>(Array.isArray(stored?.hiddenColumns) ? stored.hiddenColumns : DEFAULT_HIDDEN_COLUMNS)
@@ -251,6 +253,7 @@ export function useAssetGoldenWorkspace() {
     writeStorage({
       activeTab,
       viewMode,
+      groupBy,
       searchTerm,
       activeLens,
       hiddenColumns,
@@ -260,7 +263,7 @@ export function useAssetGoldenWorkspace() {
       savedViews,
       activeViewId,
     })
-  }, [activeLens, activeTab, activeViewId, filters, fontSize, hiddenColumns, rowDensity, savedViews, searchTerm, viewMode])
+  }, [activeLens, activeTab, activeViewId, filters, fontSize, groupBy, hiddenColumns, rowDensity, savedViews, searchTerm, viewMode])
 
   useEffect(() => {
     const routeId = Number(searchParams.get('id') || '')
@@ -299,9 +302,9 @@ export function useAssetGoldenWorkspace() {
       refreshAll()
       setRowActionMenu(null)
       setSelectedIds([])
-      toast.success(result?.summary || 'Asset action completed')
+      showWorkspaceToast(result?.summary || 'Asset action completed')
     },
-    onError: (error: any) => toast.error(error?.message || 'Asset action failed'),
+    onError: (error: any) => showWorkspaceToast(error?.message || 'Asset action failed', { type: 'error' }),
   })
 
   const openConfirm = useCallback((title: string, message: string, onConfirm: () => void) => {
@@ -311,7 +314,7 @@ export function useAssetGoldenWorkspace() {
   const performBulkAction = useCallback((action: string, ids?: number[], payload?: Record<string, any>) => {
     const targetIds = ids && ids.length ? ids : selectedIds
     if (!targetIds.length) {
-      toast.error('Select at least one asset first')
+      showWorkspaceToast('Select at least one asset first', { type: 'error' })
       return
     }
     bulkMutation.mutate({ action, ids: targetIds, payload })
@@ -326,6 +329,7 @@ export function useAssetGoldenWorkspace() {
       setActiveViewId(null)
       setActiveTab('inventory')
       setViewMode('grid')
+      setGroupBy('raw')
       setSearchTerm('')
       setActiveLens('all')
       setHiddenColumns(DEFAULT_HIDDEN_COLUMNS)
@@ -337,6 +341,7 @@ export function useAssetGoldenWorkspace() {
     setActiveViewId(view.id)
     setActiveTab(view.config.activeTab)
     setViewMode(view.config.viewMode)
+    setGroupBy(view.config.groupBy || 'raw')
     setSearchTerm(view.config.searchTerm)
     setActiveLens(view.config.activeLens)
     setHiddenColumns(view.config.hiddenColumns)
@@ -347,26 +352,26 @@ export function useAssetGoldenWorkspace() {
 
   const createSavedView = useCallback(() => {
     if (!newViewName.trim()) {
-      toast.error('Name the saved view first')
+      showWorkspaceToast('Name the saved view first', { type: 'error' })
       return
     }
     const view: AssetSavedView = {
       id: slugify(newViewName),
       name: newViewName.trim(),
-      config: { activeTab, viewMode, searchTerm, activeLens, hiddenColumns, fontSize, rowDensity, filters },
+      config: { activeTab, viewMode, groupBy, searchTerm, activeLens, hiddenColumns, fontSize, rowDensity, filters },
     }
     setSavedViews((current) => [...current.filter((entry) => entry.id !== view.id), view])
     setActiveViewId(view.id)
     setNewViewName('')
-  }, [activeLens, activeTab, filters, fontSize, hiddenColumns, newViewName, rowDensity, searchTerm, viewMode])
+  }, [activeLens, activeTab, filters, fontSize, groupBy, hiddenColumns, newViewName, rowDensity, searchTerm, viewMode])
 
   const overwriteSavedView = useCallback((id: string) => {
     setSavedViews((current) => current.map((view) => view.id === id ? ({
       ...view,
-      config: { activeTab, viewMode, searchTerm, activeLens, hiddenColumns, fontSize, rowDensity, filters },
+      config: { activeTab, viewMode, groupBy, searchTerm, activeLens, hiddenColumns, fontSize, rowDensity, filters },
     }) : view))
     setActiveViewId(id)
-  }, [activeLens, activeTab, filters, fontSize, hiddenColumns, rowDensity, searchTerm, viewMode])
+  }, [activeLens, activeTab, filters, fontSize, groupBy, hiddenColumns, rowDensity, searchTerm, viewMode])
 
   const deleteSavedView = useCallback((id: string) => {
     setSavedViews((current) => current.filter((view) => view.id !== id))
@@ -380,9 +385,9 @@ export function useAssetGoldenWorkspace() {
         kind: 'snapshot',
         fallbackFileName: `SysGrid_Assets_${new Date().toISOString().slice(0, 10)}.csv`,
       })
-      toast.success('Asset snapshot downloaded')
+      showWorkspaceToast('Asset snapshot downloaded')
     } catch (error: any) {
-      toast.error(error?.message || 'Export failed')
+      showWorkspaceToast(error?.message || 'Export failed', { type: 'error' })
     }
   }, [])
 
@@ -393,9 +398,9 @@ export function useAssetGoldenWorkspace() {
         kind: 'template',
         fallbackFileName: 'SysGrid_Assets_Template.csv',
       })
-      toast.success('Asset template downloaded')
+      showWorkspaceToast('Asset template downloaded')
     } catch (error: any) {
-      toast.error(error?.message || 'Template download failed')
+      showWorkspaceToast(error?.message || 'Template download failed', { type: 'error' })
     }
   }, [])
 
@@ -422,6 +427,7 @@ export function useAssetGoldenWorkspace() {
     filterOptions,
     filters,
     fontSize,
+    groupBy,
     getAssetConsoleUrl,
     hiddenColumns,
     lifecycleCounts,
@@ -451,6 +457,7 @@ export function useAssetGoldenWorkspace() {
     setEditingLink,
     setFilters,
     setFontSize,
+    setGroupBy,
     setHiddenColumns,
     setNewViewName,
     setQuickLookAsset,

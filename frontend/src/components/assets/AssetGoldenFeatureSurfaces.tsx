@@ -1,112 +1,10 @@
 import React, { useMemo } from 'react'
 import ForceGraph2D from 'react-force-graph-2d'
-import { Activity, ArrowRightLeft, Box, Network as NetworkIcon, Shield, Zap } from 'lucide-react'
+import { Box, X } from 'lucide-react'
 import { OperationalDataGrid } from '../shared/OperationalDataGrid'
 import { OperationalGroupedGridView, OperationalGroupedGridSection } from '../shared/OperationalWorkspaceShells'
 import { WorkspaceEmptyState } from '../shared/OperationalWorkspacePrimitives'
-
-function ReportMetric({ label, value, tone }: { label: string; value: string | number; tone: string }) {
-  return (
-    <div className="rounded-lg border border-white/5 bg-black/20 p-4">
-      <p className="text-[9px] font-black uppercase tracking-[0.24em] text-slate-500">{label}</p>
-      <p className={`mt-2 text-2xl font-black tracking-tight ${tone}`}>{value}</p>
-    </div>
-  )
-}
-
-function AssetReportSurface({
-  assets,
-  selectedIds,
-}: {
-  assets: any[]
-  selectedIds: number[]
-}) {
-  const selectedAssets = useMemo(
-    () => assets.filter((asset) => selectedIds.includes(asset.id)),
-    [assets, selectedIds]
-  )
-  const degraded = assets.filter((asset) => asset.status !== 'Active' || Number(asset.open_incident_count || 0) > 0)
-  const unowned = assets.filter((asset) => !String(asset.owner || '').trim())
-
-  return (
-    <OperationalGroupedGridView
-      summary={(
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Asset report surface</p>
-          <p className="pt-1 text-sm font-semibold text-slate-100">Golden template summary for lifecycle, risk, and ownership review.</p>
-        </div>
-      )}
-      sections={(
-        <>
-          <div className="grid gap-4 md:grid-cols-4">
-            <ReportMetric label="Visible Assets" value={assets.length} tone="text-blue-300" />
-            <ReportMetric label="Degraded" value={degraded.length} tone="text-amber-300" />
-            <ReportMetric label="Unowned" value={unowned.length} tone="text-rose-300" />
-            <ReportMetric label="Selected" value={selectedAssets.length} tone="text-emerald-300" />
-          </div>
-
-          <OperationalGroupedGridSection
-            labelMeta={<Activity size={14} className="text-blue-400" />}
-            label="Degraded lifecycle slice"
-            count={degraded.length}
-            countLabel="assets"
-            collapsed={false}
-            onToggle={() => {}}
-          >
-            <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
-              {degraded.slice(0, 9).map((asset) => (
-                <article key={asset.id} className="rounded-lg border border-white/5 bg-[#020617] p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-black text-slate-100">{asset.name}</p>
-                      <p className="pt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{asset.system} · {asset.type}</p>
-                    </div>
-                    <span className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-amber-300">
-                      {asset.status}
-                    </span>
-                  </div>
-                  <div className="mt-4 space-y-2 text-[11px] text-slate-300">
-                    <p>Owner: {asset.owner || 'Unowned'}</p>
-                    <p>Incidents: {asset.open_incident_count}</p>
-                    <p>Hardware: {asset.hardware_summary}</p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </OperationalGroupedGridSection>
-
-          <OperationalGroupedGridSection
-            labelMeta={<Shield size={14} className="text-rose-400" />}
-            label="Ownership and security queue"
-            count={unowned.length}
-            countLabel="assets"
-            collapsed={false}
-            onToggle={() => {}}
-          >
-            <div className="grid gap-3 p-4 md:grid-cols-2">
-              {unowned.slice(0, 6).map((asset) => (
-                <div key={asset.id} className="rounded-lg border border-white/5 bg-black/20 p-4">
-                  <p className="text-sm font-semibold text-slate-100">{asset.name}</p>
-                  <p className="pt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{asset.environment} · {asset.type}</p>
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-[11px] text-slate-300">
-                    <div>
-                      <p className="text-[9px] uppercase tracking-[0.16em] text-slate-500">Primary IP</p>
-                      <p>{asset.primary_ip || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] uppercase tracking-[0.16em] text-slate-500">Mgmt IP</p>
-                      <p>{asset.management_ip || 'N/A'}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </OperationalGroupedGridSection>
-        </>
-      )}
-    />
-  )
-}
+import { AssetLegacyReportSurface } from './AssetLegacyReportSurface'
 
 function AssetMapSurface({
   assets,
@@ -213,8 +111,20 @@ export function AssetGoldenFeatureSurfaces({
   gridRef,
   columnDefs,
   contextMenu,
+  devices,
   dataState,
   fontSize,
+  getRowClass,
+  getRowId,
+  groupBy,
+  groupOptions,
+  collapsedGroups,
+  onSetCollapsedGroups,
+  onCancelGrouping,
+  options,
+  onEditAsset,
+  onViewServiceDetails,
+  onEditService,
   rowDensity,
   rows,
   runtime,
@@ -225,12 +135,25 @@ export function AssetGoldenFeatureSurfaces({
   connections,
   relationships,
   onSelectionChanged,
+  isSelected,
 }: {
   gridRef?: React.RefObject<any>
   columnDefs: any[]
   contextMenu: { handleCellContextMenu: (event: any) => void }
+  devices: any[]
   dataState: any
   fontSize: number
+  getRowClass?: (params: any) => string
+  getRowId?: (params: any) => string
+  groupBy: string
+  groupOptions: Array<{ value: string; label: string }>
+  collapsedGroups: Record<string, boolean>
+  onSetCollapsedGroups: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
+  onCancelGrouping: () => void
+  options: any[]
+  onEditAsset: (asset: any) => void
+  onViewServiceDetails: (service: any) => void
+  onEditService: (service: any) => void
   rowDensity: number
   rows: any[]
   runtime: any
@@ -240,14 +163,101 @@ export function AssetGoldenFeatureSurfaces({
   selectedIds: number[]
   connections: any[]
   relationships: any[]
-  onSelectionChanged: (event: any) => void
+  onSelectionChanged: (event: any, groupKey?: string) => void
+  isSelected: (id: number) => boolean
 }) {
   if (viewMode === 'report') {
-    return <AssetReportSurface assets={rows} selectedIds={selectedIds} />
+    return (
+      <AssetLegacyReportSurface
+        assets={rows}
+        options={options}
+        devices={devices}
+        onEdit={onEditAsset}
+        onViewServiceDetails={onViewServiceDetails}
+        onEditService={onEditService}
+      />
+    )
   }
 
   if (viewMode === 'map') {
     return <AssetMapSurface assets={rows} connections={connections} relationships={relationships} />
+  }
+
+  const groupedSections = groupBy === 'raw'
+    ? []
+    : rows.reduce((acc: Array<{ key: string; label: string; items: any[] }>, item: any) => {
+        const label = String(item?.[groupBy] || 'Unassigned')
+        const existing = acc.find((section) => section.key === label)
+        if (existing) {
+          existing.items.push(item)
+        } else {
+          acc.push({ key: label, label, items: [item] })
+        }
+        return acc
+      }, []).sort((a, b) => a.label.localeCompare(b.label))
+
+  if (groupBy !== 'raw') {
+    return (
+      <OperationalGroupedGridView
+        summary={(
+          <div>
+            <p className="text-[10px] font-semibold text-slate-400">Grouped asset matrix</p>
+            <p className="pt-1 text-[12px] font-semibold text-slate-100">Sorted by {groupOptions.find((option) => option.value === groupBy)?.label || groupBy}</p>
+          </div>
+        )}
+        actions={(
+          <>
+            <button type="button" onClick={() => onSetCollapsedGroups(groupedSections.reduce((acc: any, section: any) => ({ ...acc, [section.key]: false }), {}))} className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[9px] font-semibold text-slate-400 transition-all hover:bg-white/10 hover:text-white">
+              Expand All
+            </button>
+            <button type="button" onClick={() => onSetCollapsedGroups(groupedSections.reduce((acc: any, section: any) => ({ ...acc, [section.key]: true }), {}))} className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[9px] font-semibold text-slate-400 transition-all hover:bg-white/10 hover:text-white">
+              Collapse All
+            </button>
+            <div className="mx-1 h-6 w-px bg-white/10" />
+            <button type="button" onClick={onCancelGrouping} className="flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-[9px] font-semibold text-rose-400 transition-all hover:bg-rose-500/20">
+              <X size={12} />
+              <span>Cancel</span>
+            </button>
+          </>
+        )}
+        sections={groupedSections.map((section) => {
+          const isCollapsed = collapsedGroups[section.key]
+          const selectedCountForSection = section.items.filter((item: any) => isSelected(Number(item.id))).length
+          return (
+            <OperationalGroupedGridSection
+              key={section.key}
+              labelMeta={<span className="text-[9px] font-semibold text-blue-400">{groupOptions.find((option) => option.value === groupBy)?.label}</span>}
+              label={section.label}
+              count={section.items.length}
+              countLabel="assets"
+              selectedCount={selectedCountForSection}
+              collapsed={Boolean(isCollapsed)}
+              onToggle={() => onSetCollapsedGroups((current) => ({ ...current, [section.key]: !current[section.key] }))}
+            >
+              {!isCollapsed ? (
+                <OperationalDataGrid
+                  rows={section.items}
+                  columnDefs={columnDefs}
+                  runtime={runtime}
+                  rowInteractions={rowInteractions}
+                  contextMenu={contextMenu}
+                  onSelectionChanged={(event: any) => onSelectionChanged(event, section.key)}
+                  selectionScopeKey={selectionScopeKey}
+                  getRowId={getRowId}
+                  getRowClass={getRowClass}
+                  fontSize={fontSize}
+                  rowDensity={rowDensity}
+                  noRowsLabel="No assets found"
+                  className="w-full"
+                  height={`${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px`}
+                  suppressRowClickSelection={false}
+                />
+              ) : null}
+            </OperationalGroupedGridSection>
+          )
+        })}
+      />
+    )
   }
 
   return (
@@ -258,8 +268,10 @@ export function AssetGoldenFeatureSurfaces({
       runtime={runtime}
       rowInteractions={rowInteractions}
       contextMenu={contextMenu}
-      onSelectionChanged={onSelectionChanged}
+      onSelectionChanged={(event: any) => onSelectionChanged(event, 'raw')}
       selectionScopeKey={selectionScopeKey}
+      getRowId={getRowId}
+      getRowClass={getRowClass}
       fontSize={fontSize}
       rowDensity={rowDensity}
       dataState={dataState}

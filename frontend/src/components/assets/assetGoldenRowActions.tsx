@@ -1,4 +1,4 @@
-import { Edit2, Eye, Terminal, Trash2 } from 'lucide-react'
+import { ArchiveRestore, Edit2, Eye, Terminal, Trash2 } from 'lucide-react'
 
 export function buildAssetGoldenRowActionSections({
   asset,
@@ -77,6 +77,17 @@ export function buildAssetGoldenRowActionSections({
               },
             }
           : {
+              id: 'asset-restore',
+              label: 'Restore',
+              icon: ArchiveRestore,
+              tone: 'success',
+              onClick: () => {
+                onOpenConfirm('Restore Asset', 'Return this asset to the active registry?', () => onBulkAction({ action: 'restore', ids: [asset.id] }))
+                onCloseMenu()
+              },
+            },
+        activeTab === 'deleted'
+          ? {
               id: 'asset-purge',
               label: 'Purge',
               icon: Trash2,
@@ -85,8 +96,12 @@ export function buildAssetGoldenRowActionSections({
                 onOpenConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => onBulkAction({ action: 'purge', ids: [asset.id] }))
                 onCloseMenu()
               },
-            },
+            }
+          : null,
       ],
     },
-  ]
+  ].map((section) => ({
+    ...section,
+    items: section.items.filter(Boolean),
+  }))
 }
