@@ -1,5 +1,5 @@
-import AssetsGoldenWorkspace from './assets/AssetsGoldenWorkspace'
+import AssetGoldenShellRoute from './assets/AssetGoldenShellRoute'
 
 export default function Assets() {
-  return <AssetsGoldenWorkspace />
+  return <AssetGoldenShellRoute />
 }

@@ -16,8 +16,8 @@ import { ConfigRegistryModal } from "../ConfigRegistry"
 import { ConfirmationModal } from "../shared/ConfirmationModal"
 import { ConnectionForensicsModal } from "../shared/ConnectionForensicsModal"
 import { WorkspaceModal } from "../shared/WorkspaceModal"
-import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from "../shared/LayoutPrimitives"
-import { OperationalAnchoredPanel, OperationalDisplayPanel, OperationalSavedViewsPanel, OperationalWorkspaceShell } from "../shared/OperationalWorkspaceShells"
+import { ToolbarButton, ToolbarGroup, ToolbarIconButton } from "../shared/LayoutPrimitives"
+import { OperationalAnchoredPanel, OperationalDisplayPanel, OperationalSavedViewsPanel } from "../shared/OperationalWorkspaceShells"
 import { OperationalDataGrid } from "../shared/OperationalDataGrid"
 import { resolveOperationalDataState } from "../shared/OperationalDataState"
 import { downloadOperationalImportFile } from "../shared/OperationalImportExport"
@@ -30,6 +30,7 @@ import { StyledSelect } from "../shared/StyledSelect"
 import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from "../shared/WorkspaceFlyout"
 import { ServiceDetailsView, ServiceForm } from "../ServiceRegistry"
 import { buildAssetGoldenColumns } from "./assetGoldenColumns"
+import AssetGoldenShellScaffold from './AssetGoldenShellScaffold'
 
 const ASSET_SAVED_VIEW_STORAGE_KEY = 'sysgrid_assets_saved_views_v1'
 const ASSET_ACTIVE_VIEW_STORAGE_KEY = 'sysgrid_assets_active_view_v1'
@@ -2836,42 +2837,16 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
 
   return (
     <>
-    <OperationalWorkspaceShell
-      className="relative overflow-hidden"
-      header={{
-        eyebrow: "Infrastructure",
-        title: (
-          <div className="flex items-center gap-3">
-            <Server className="text-blue-500" size={18} />
-            <span>Assets</span>
-          </div>
-        ),
-        subtitle: "Operational asset inventory, topology context, and ownership status",
-        actions: (
-          <>
-            <HeaderScopeSwitch
-              label="Registry Scope"
-              summary={`${lifecycleCounts.existing} existing · ${lifecycleCounts.purged} purged`}
-              value={activeTab}
-              onChange={(next) => {
-                setActiveTab(next as 'inventory' | 'deleted')
-                setSelectedIds([])
-              }}
-              options={[
-                { label: 'Existing', value: 'inventory' },
-                { label: 'Purged', value: 'deleted' },
-              ]}
-            />
-          </>
-        ),
+    <AssetGoldenShellScaffold
+      activeTab={activeTab}
+      existingCount={lifecycleCounts.existing}
+      purgedCount={lifecycleCounts.purged}
+      onTabChange={(next) => {
+        setActiveTab(next)
+        setSelectedIds([])
       }}
-      toolbarSearch={(
-        <ToolbarSearch
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Scan asset matrix..."
-        />
-      )}
+      searchTerm={searchTerm}
+      onSearchTermChange={(e) => setSearchTerm(e.target.value)}
       toolbarControls={primaryToolbarControls}
       secondaryToolbar={shellSecondaryToolbar}
       toolbarActions={shellToolbarActions}
@@ -3153,7 +3128,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
       )}
     >
       {assetWorkspaceSurface}
-    </OperationalWorkspaceShell>
+    </AssetGoldenShellScaffold>
 
       <ConfirmationModal 
         isOpen={confirmModal.isOpen}
