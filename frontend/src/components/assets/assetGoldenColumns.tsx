@@ -252,7 +252,7 @@ export function buildAssetGoldenColumns({
             type="button"
             onClick={(event) => onOpenRowActions(asset, event)}
             title="More actions"
-            className="rounded-lg p-1 text-slate-400 transition-all hover:bg-white/10 hover:text-white active:scale-90"
+            className="row-action-trigger row-action-menu-container rounded-lg p-1 text-slate-400 transition-all hover:bg-white/10 hover:text-white active:scale-90"
           >
             <MoreVertical size={13} />
           </button>

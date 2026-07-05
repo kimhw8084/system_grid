@@ -64,6 +64,22 @@ type RouteEvidence = {
   rowActionRegion: RegionCapture
   detailPanel: RegionCapture
   detailPanelAttempts: string[]
+  contextMenuProof: {
+    opened: boolean
+    attempts: string[]
+    bounds: DOMRectLike | null
+  }
+  rowClickProof: {
+    selectedRowCount: number
+    selectedText: string | null
+    bulkActionsEnabled: boolean
+    attempts: string[]
+  }
+  quickLookProof: {
+    opened: boolean
+    attempts: string[]
+    bounds: DOMRectLike | null
+  }
   validity: {
     valid: boolean
     rejectionReason: string | null
@@ -84,7 +100,7 @@ type RuntimeConsoleEvent = {
   source: string | null
 }
 
-const CAPTURE_DIR = path.resolve(process.cwd(), 'stage28-evidence')
+const CAPTURE_DIR = path.resolve(process.cwd(), 'stage30-evidence')
 const DESKTOP_VIEWPORT = { width: 1440, height: 1200 }
 const EXACT_VIEWPORT = { width: 960, height: 720 }
 const DUPLICATE_KEY_PATTERN = /duplicate key|encountered two children with the same key/i
@@ -247,7 +263,7 @@ const buildRequestFailureLedger = (events: Array<Omit<RequestFailureEntry, 'coun
   return [...grouped.values()]
 }
 
-const captureDomState = async (page: any, heading: string, searchPlaceholder: string): Promise<Omit<RouteEvidence, 'routeKey' | 'requestedPath' | 'finalUrl' | 'viewport' | 'screenshotType' | 'screenshotPath' | 'screenshotSize' | 'warningSummary' | 'detailPanelAttempts'>> => {
+const captureDomState = async (page: any, heading: string, searchPlaceholder: string): Promise<Omit<RouteEvidence, 'routeKey' | 'requestedPath' | 'finalUrl' | 'viewport' | 'screenshotType' | 'screenshotPath' | 'screenshotSize' | 'warningSummary' | 'detailPanelAttempts' | 'contextMenuProof' | 'rowClickProof' | 'quickLookProof'>> => {
   const snapshot = await page.evaluate(({ expectedHeading, expectedPlaceholder }) => {
     const describeNode = (node: Element | null | undefined) => {
       if (!node) return null
@@ -498,7 +514,7 @@ const openDetailPanel = async (page: any, routeKey: RouteKey, detailPath: string
     if (await moreActions.isVisible({ timeout: 5_000 }).catch(() => false)) {
       note('click [title="More actions"]')
       await moreActions.click({ force: true })
-      const viewDetails = page.getByRole('button', { name: 'View Details' }).last()
+      const viewDetails = page.locator('.row-action-menu-container').filter({ has: page.getByText('Row actions') }).getByRole('button', { name: 'View Details' }).first()
       if (await viewDetails.isVisible({ timeout: 5_000 }).catch(() => false)) {
         note('click button(View Details)')
         await viewDetails.click({ force: true })
@@ -531,8 +547,103 @@ const openDetailPanel = async (page: any, routeKey: RouteKey, detailPath: string
   return attempts
 }
 
+const captureAssetInteractionProofs = async (page: any, recordText: string) => {
+  const rowClickAttempts: string[] = []
+  const contextMenuAttempts: string[] = []
+  const quickLookAttempts: string[] = []
+
+  await page.goto('/asset')
+  await ensureWorkspaceVisible(page, 'Assets')
+  await fillGridSearch(page, 'Scan asset matrix...', recordText)
+  await expect(page.locator('[role="treegrid"]')).toContainText(recordText, { timeout: 20_000 })
+
+  const firstRow = page.locator('.ag-center-cols-container .ag-row').first()
+  const interactionCell = firstRow.locator('.ag-cell').nth(2)
+  rowClickAttempts.push('click first visible asset row system cell')
+  await interactionCell.click({ force: true })
+
+  const bulkActionsButton = page.getByRole('button', { name: 'Bulk Actions', exact: true })
+  await expect(bulkActionsButton).toBeEnabled({ timeout: 3_000 }).catch(() => {})
+  const rowClickProof = {
+    selectedRowCount: await page.locator('.ag-row-selected, .ag-row[aria-selected="true"]').count(),
+    selectedText: await interactionCell.textContent(),
+    bulkActionsEnabled: await bulkActionsButton.isEnabled(),
+  }
+
+  contextMenuAttempts.push('right-click first visible asset row')
+  const interactionBox = await interactionCell.boundingBox()
+  if (interactionBox) {
+    await page.mouse.click(
+      interactionBox.x + interactionBox.width / 2,
+      interactionBox.y + interactionBox.height / 2,
+      { button: 'right' }
+    )
+  }
+  const contextMenu = page.locator('.row-action-menu-container').filter({ has: page.getByText('Row actions') }).first()
+  let contextMenuVisible = await contextMenu.isVisible({ timeout: 5_000 }).catch(() => false)
+  if (!contextMenuVisible) {
+    contextMenuAttempts.push('native right click did not open menu; click explicit row action trigger')
+    await page.getByTitle('More actions').first().click({ force: true })
+    contextMenuVisible = await contextMenu.isVisible({ timeout: 5_000 }).catch(() => false)
+  }
+  const contextMenuBox = contextMenuVisible ? await contextMenu.boundingBox() : null
+
+  if (contextMenuVisible) {
+    contextMenuAttempts.push('row action menu visible')
+    await page.keyboard.press('Escape').catch(() => {})
+  } else {
+    contextMenuAttempts.push('row action menu did not open after native or explicit menu trigger')
+  }
+
+  quickLookAttempts.push('click explicit quick-look trigger')
+  await page.getByTitle('Open quick look').first().click({ force: true })
+  const quickLookButton = page.getByRole('button', { name: 'Engage Full Configuration' })
+  const quickLookVisible = await quickLookButton.isVisible({ timeout: 5_000 }).catch(() => false)
+  const quickLookBox = quickLookVisible
+    ? await quickLookButton.evaluate((node) => {
+        const panel = node.closest('.fixed') as HTMLElement | null
+        const rect = panel?.getBoundingClientRect()
+        return rect ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height } : null
+      })
+    : null
+
+  if (quickLookVisible) {
+    quickLookAttempts.push('quick look panel visible after explicit quick-look trigger')
+    await page.keyboard.press('Escape').catch(() => {})
+  } else {
+    quickLookAttempts.push('quick look panel did not open after explicit quick-look trigger')
+  }
+
+  return {
+    rowClickProof: {
+      ...rowClickProof,
+      attempts: rowClickAttempts,
+    },
+    contextMenuProof: {
+      opened: contextMenuVisible,
+      attempts: contextMenuAttempts,
+      bounds: contextMenuBox ? {
+        x: Math.round(contextMenuBox.x),
+        y: Math.round(contextMenuBox.y),
+        width: Math.round(contextMenuBox.width),
+        height: Math.round(contextMenuBox.height),
+      } : null,
+    },
+    quickLookProof: {
+      opened: quickLookVisible,
+      attempts: quickLookAttempts,
+      bounds: quickLookBox ? {
+        x: Math.round(quickLookBox.x),
+        y: Math.round(quickLookBox.y),
+        width: Math.round(quickLookBox.width),
+        height: Math.round(quickLookBox.height),
+      } : null,
+    },
+  }
+}
+
 test.describe('Assets golden evidence capture', () => {
-  test('captures stage27 workspace evidence', async ({ page, sysApi: request }) => {
+  test('captures stage30 workspace evidence', async ({ page, sysApi: request }) => {
     test.setTimeout(180_000)
     await fs.rm(CAPTURE_DIR, { recursive: true, force: true })
     await fs.mkdir(CAPTURE_DIR, { recursive: true })
@@ -657,6 +768,14 @@ test.describe('Assets golden evidence capture', () => {
             await expect(page.locator('[role="treegrid"]')).toContainText(route.recordText, { timeout: 20_000 })
           }
 
+          const interactionProofs = route.routeKey === 'asset' && viewportConfig.viewportKey === 'desktop-viewport'
+            ? await captureAssetInteractionProofs(page, route.recordText)
+            : {
+                contextMenuProof: { opened: false, attempts: ['not captured for this route/viewport'], bounds: null },
+                rowClickProof: { selectedRowCount: 0, selectedText: null, bulkActionsEnabled: false, attempts: ['not captured for this route/viewport'] },
+                quickLookProof: { opened: false, attempts: ['not captured for this route/viewport'], bounds: null },
+              }
+
           const screenshotName = `${route.routeKey}-${viewportConfig.viewportKey}.png`
           const screenshotPath = path.join(CAPTURE_DIR, screenshotName)
           await page.screenshot({
@@ -682,6 +801,7 @@ test.describe('Assets golden evidence capture', () => {
             screenshotPath,
             screenshotSize: await readPngSize(screenshotPath),
             ...domState,
+            ...interactionProofs,
             detailPanelAttempts,
             warningSummary,
           }
@@ -723,10 +843,14 @@ test.describe('Assets golden evidence capture', () => {
           (output['asset-desktop-fullpage']?.warningSummary.pageErrorCount ?? 0) +
           (output['asset-desktop-viewport']?.warningSummary.pageErrorCount ?? 0) +
           (output['asset-960x720']?.warningSummary.pageErrorCount ?? 0),
+        assetContextMenuOpened: output['asset-desktop-viewport']?.contextMenuProof.opened ?? false,
+        assetRowClickSelectedCount: output['asset-desktop-viewport']?.rowClickProof.selectedRowCount ?? 0,
+        assetBulkActionsEnabledAfterRowClick: output['asset-desktop-viewport']?.rowClickProof.bulkActionsEnabled ?? false,
+        assetQuickLookOpened: output['asset-desktop-viewport']?.quickLookProof.opened ?? false,
       },
     }
 
-    await fs.writeFile(path.join(CAPTURE_DIR, 'stage28-evidence.json'), JSON.stringify(summary, null, 2))
+    await fs.writeFile(path.join(CAPTURE_DIR, 'stage30-evidence.json'), JSON.stringify(summary, null, 2))
 
     const blockingEntries = Object.values(output).flatMap((capture) =>
       capture.warningSummary.entries.filter((entry) => entry.classification === 'blocking').map((entry) => ({
@@ -749,6 +873,9 @@ test.describe('Assets golden evidence capture', () => {
     expect(summary.hardChecks.assetRedirectPathname).toBe('/asset')
     expect(summary.hardChecks.assetDuplicateKeyCount).toBe(0)
     expect(summary.hardChecks.assetPageErrorCount).toBe(0)
+    expect(summary.hardChecks.assetContextMenuOpened).toBeTruthy()
+    expect(summary.hardChecks.assetBulkActionsEnabledAfterRowClick).toBeTruthy()
+    expect(summary.hardChecks.assetQuickLookOpened).toBeTruthy()
     expect(blockingEntries, `Blocking warning or error ledger entries detected: ${JSON.stringify(blockingEntries, null, 2)}`).toHaveLength(0)
     expect(blockingRequestFailures, `Blocking request failure entries detected: ${JSON.stringify(blockingRequestFailures, null, 2)}`).toHaveLength(0)
   })

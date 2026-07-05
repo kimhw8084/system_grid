@@ -23,7 +23,7 @@ import { resolveOperationalDataState } from "../shared/OperationalDataState"
 import { downloadOperationalImportFile } from "../shared/OperationalImportExport"
 import { AppDropdown } from '../shared/AppDropdown'
 import { useOperationalWorkspaceViewState, useWorkspaceOverlayController } from "../shared/OperationalWorkspaceHooks"
-import { useOperationalDismissController } from "../shared/OperationalGridInteractions"
+import { shouldIgnoreRowSelection, useOperationalContextMenu, useOperationalDismissController, useOperationalRowInteractions } from "../shared/OperationalGridInteractions"
 import { OperationalRowActionMenu } from "../shared/OperationalRowActionMenu"
 import { useOperationalFormDirty } from "../shared/OperationalFormContracts"
 import { StyledSelect } from "../shared/StyledSelect"
@@ -1658,7 +1658,6 @@ export default function Assets() {
   })
 
   const [quickLookId, setQuickLookId] = useState<number | null>(null)
-  const selectionAnchorRef = useRef<number | null>(null)
 
   const { data: allEntities, isLoading: isEntitiesLoading } = useQuery({
     queryKey: ['external-entities', { include_deleted: true }],
@@ -2293,23 +2292,32 @@ export default function Assets() {
     onError: (e: any) => toast.error(`Operation failed: ${e.message}`)
   })
 
-  const openRowActionMenu = (asset: any, event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
-    const rect = event.currentTarget.getBoundingClientRect()
+  const showAssetRowActionMenu = useCallback((asset: any, point: { x: number; y: number }) => {
     rowActionSelectionGuardRef.current = [...selectedIds]
     setQuickLookId(null)
     openOverlay('rowAction')
     setRowActionMenu({
       asset,
-      cursorX: rect.right,
-      cursorY: rect.bottom + 8,
+      cursorX: point.x,
+      cursorY: point.y,
     })
     requestAnimationFrame(() => {
       if (!restoringRowActionSelectionRef.current) {
         rowActionSelectionGuardRef.current = null
       }
     })
+  }, [openOverlay, selectedIds])
+
+  const { handleCellContextMenu, openRowActionMenuAtPoint } = useOperationalContextMenu({
+    onOpenRowActionMenu: useCallback((asset, point) => {
+      showAssetRowActionMenu(asset, point)
+    }, [showAssetRowActionMenu]),
+  })
+
+  const openRowActionMenu = (asset: any, event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    openRowActionMenuAtPoint(asset, event.clientX, event.clientY)
   }
 
   const rowActionSections = useMemo(() => {
@@ -2463,57 +2471,26 @@ export default function Assets() {
     },
   }), [statusParam])
 
-  const shouldIgnoreRowSelection = useCallback((target: EventTarget | null) => {
-    const element = target as HTMLElement | null
-    if (!element) return false
-    return Boolean(
-      element.closest('button, a, input, textarea, select, label') ||
-      element.closest('.ag-selection-checkbox') ||
-      element.closest('.ag-checkbox-input-wrapper') ||
-      element.closest('.row-action-trigger')
-    )
-  }, [])
+  const baseAssetRowInteractions = useOperationalRowInteractions({
+    onRowDoubleClick: (asset) => {
+      setSelectedAssetId(asset.id)
+      setQuickLookId(asset.id)
+    },
+    selectionScopeKey: `${activeTab}:${viewMode}:${searchTerm}`,
+  })
 
   const assetRowInteractions = useMemo(() => ({
     handleRowClicked: (event: any) => {
-      if (!event?.node || !event?.data || shouldIgnoreRowSelection(event.event?.target)) return
-
-      const mouseEvent = event.event as MouseEvent | undefined
-      const isToggleSelection = Boolean(mouseEvent?.metaKey || mouseEvent?.ctrlKey)
-      const isRangeSelection = Boolean(mouseEvent?.shiftKey)
-
-      if (isRangeSelection && selectionAnchorRef.current !== null) {
-        const currentIndex = event.node.rowIndex
-        if (currentIndex == null) return
-        const start = Math.min(selectionAnchorRef.current, currentIndex)
-        const end = Math.max(selectionAnchorRef.current, currentIndex)
-        event.api?.deselectAll?.()
-        event.api?.forEachNodeAfterFilterAndSort?.((node: any) => {
-          if (node.rowIndex >= start && node.rowIndex <= end) {
-            node.setSelected(true)
-          }
-        })
-        return
-      }
-
-      if (isToggleSelection) {
-        event.node.setSelected(!event.node.isSelected())
-        selectionAnchorRef.current = event.node.rowIndex
-        setSelectedAssetId(event.data.id)
-        return
-      }
-
-      event.api?.deselectAll?.()
-      event.node.setSelected(true)
-      selectionAnchorRef.current = event.node.rowIndex
-      setSelectedAssetId(event.data.id)
-    },
-    handleRowDoubleClicked: (event: any) => {
       if (!event?.data || shouldIgnoreRowSelection(event.event?.target)) return
+      baseAssetRowInteractions.handleRowClicked(event)
       setSelectedAssetId(event.data.id)
-      setQuickLookId(event.data.id)
     },
-  }), [shouldIgnoreRowSelection])
+    handleRowDoubleClicked: baseAssetRowInteractions.handleRowDoubleClicked,
+  }), [baseAssetRowInteractions])
+
+  const assetContextMenu = useMemo(() => ({
+    handleCellContextMenu,
+  }), [handleCellContextMenu])
 
   const assetGridNoRowsLabel = useMemo(() => {
     if (searchTerm.trim()) return 'No assets match the current search or scope'
@@ -2775,6 +2752,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
         columnDefs={columnDefs}
         runtime={assetGridRuntime}
         rowInteractions={assetRowInteractions}
+        contextMenu={assetContextMenu}
         onSelectionChanged={(e) => {
           if (restoringRowActionSelectionRef.current) {
             restoringRowActionSelectionRef.current = false
