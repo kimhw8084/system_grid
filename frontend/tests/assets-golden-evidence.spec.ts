@@ -100,7 +100,8 @@ type RuntimeConsoleEvent = {
   source: string | null
 }
 
-const CAPTURE_DIR = path.resolve(process.cwd(), 'stage30-evidence')
+const CAPTURE_DIR = path.resolve(process.cwd(), 'stage31-evidence')
+const HTML_EVIDENCE_PATH = path.resolve(process.cwd(), 'OUT-26_ITERATION_33_STAGE31_EVIDENCE.html')
 const DESKTOP_VIEWPORT = { width: 1440, height: 1200 }
 const EXACT_VIEWPORT = { width: 960, height: 720 }
 const DUPLICATE_KEY_PATTERN = /duplicate key|encountered two children with the same key/i
@@ -261,6 +262,49 @@ const buildRequestFailureLedger = (events: Array<Omit<RequestFailureEntry, 'coun
   }
 
   return [...grouped.values()]
+}
+
+const buildHtmlEvidence = async (captures: Record<string, RouteEvidence>) => {
+  const sections = await Promise.all(
+    Object.entries(captures).map(async ([key, capture]) => {
+      const imageData = capture.screenshotPath
+        ? `data:image/png;base64,${(await fs.readFile(capture.screenshotPath)).toString('base64')}`
+        : null
+
+      return `
+        <section class="capture">
+          <h2>${key}</h2>
+          <p><strong>Final URL:</strong> ${capture.finalUrl}</p>
+          <p><strong>Viewport:</strong> ${capture.viewport.width}x${capture.viewport.height}</p>
+          <p><strong>Command Bounds:</strong> ${capture.commandRegion.status === 'non-null' ? `${capture.commandRegion.bounds?.x}, ${capture.commandRegion.bounds?.y}, ${capture.commandRegion.bounds?.width}, ${capture.commandRegion.bounds?.height}` : 'null'}</p>
+          <p><strong>Context Proof:</strong> ${capture.contextMenuProof.attempts.join(' | ')}</p>
+          <p><strong>Row Click Proof:</strong> ${capture.rowClickProof.attempts.join(' | ')} | bulkActionsEnabled=${String(capture.rowClickProof.bulkActionsEnabled)}</p>
+          <p><strong>Quick Look Proof:</strong> ${capture.quickLookProof.attempts.join(' | ')}</p>
+          <p><strong>Detail Attempts:</strong> ${capture.detailPanelAttempts.join(' | ')}</p>
+          ${imageData ? `<img src="${imageData}" alt="${key}" />` : '<p>No screenshot.</p>'}
+        </section>
+      `
+    })
+  )
+
+  return `<!doctype html>
+  <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <title>OUT-26 Iteration 33 Stage 31 Evidence</title>
+      <style>
+        body { font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 24px; }
+        h1, h2 { margin: 0 0 12px; }
+        .capture { margin: 0 0 32px; padding: 20px; border: 1px solid #334155; border-radius: 16px; background: #111827; }
+        img { width: 100%; border-radius: 12px; border: 1px solid #475569; margin-top: 12px; }
+        p { margin: 6px 0; line-height: 1.4; }
+      </style>
+    </head>
+    <body>
+      <h1>OUT-26 Iteration 33 Stage 31 Evidence</h1>
+      ${sections.join('\n')}
+    </body>
+  </html>`
 }
 
 const captureDomState = async (page: any, heading: string, searchPlaceholder: string): Promise<Omit<RouteEvidence, 'routeKey' | 'requestedPath' | 'finalUrl' | 'viewport' | 'screenshotType' | 'screenshotPath' | 'screenshotSize' | 'warningSummary' | 'detailPanelAttempts' | 'contextMenuProof' | 'rowClickProof' | 'quickLookProof'>> => {
@@ -643,7 +687,7 @@ const captureAssetInteractionProofs = async (page: any, recordText: string) => {
 }
 
 test.describe('Assets golden evidence capture', () => {
-  test('captures stage30 workspace evidence', async ({ page, sysApi: request }) => {
+  test('captures stage31 workspace evidence', async ({ page, sysApi: request }) => {
     test.setTimeout(180_000)
     await fs.rm(CAPTURE_DIR, { recursive: true, force: true })
     await fs.mkdir(CAPTURE_DIR, { recursive: true })
@@ -850,7 +894,8 @@ test.describe('Assets golden evidence capture', () => {
       },
     }
 
-    await fs.writeFile(path.join(CAPTURE_DIR, 'stage30-evidence.json'), JSON.stringify(summary, null, 2))
+    await fs.writeFile(path.join(CAPTURE_DIR, 'stage31-evidence.json'), JSON.stringify(summary, null, 2))
+    await fs.writeFile(HTML_EVIDENCE_PATH, await buildHtmlEvidence(output))
 
     const blockingEntries = Object.values(output).flatMap((capture) =>
       capture.warningSummary.entries.filter((entry) => entry.classification === 'blocking').map((entry) => ({
