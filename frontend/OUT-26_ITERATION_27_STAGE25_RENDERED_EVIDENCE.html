@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>OUT-26 Iteration 27 Stage25 Rendered Evidence</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+      }
+      main {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 32px 24px 64px;
+      }
+      h1, h2 { margin: 0 0 12px; }
+      p, li { line-height: 1.5; }
+      section {
+        margin-top: 24px;
+        padding: 20px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 16px;
+        background: rgba(15, 23, 42, 0.85);
+      }
+      img {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        background: #111827;
+      }
+      code, pre {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      pre {
+        white-space: pre-wrap;
+        background: rgba(2, 6, 23, 0.9);
+        padding: 16px;
+        border-radius: 12px;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>OUT-26 Iteration 27 Stage25 Rendered Evidence</h1>
+      <p>Stage25 reused the existing evidence harness in <code>frontend/stage23-evidence</code>. This report points at those generated artifacts directly.</p>
+
+      <section>
+        <h2>Asset Desktop Full Page</h2>
+        <img src="/Users/haewonkim/home/development/sysgrid/frontend/stage23-evidence/after-asset-desktop.png" alt="Asset desktop full page" />
+      </section>
+
+      <section>
+        <h2>Asset 960x720</h2>
+        <img src="/Users/haewonkim/home/development/sysgrid/frontend/stage23-evidence/after-asset-960x720.png" alt="Asset 960x720 viewport" />
+      </section>
+
+      <section>
+        <h2>Monitoring Golden Reference</h2>
+        <img src="/Users/haewonkim/home/development/sysgrid/frontend/stage23-evidence/golden-monitoring-fullpage.png" alt="Monitoring golden reference" />
+      </section>
+
+      <section>
+        <h2>Post-Change Asset Evidence JSON</h2>
+        <pre>See /Users/haewonkim/home/development/sysgrid/frontend/stage23-evidence/after-full.json
+See /Users/haewonkim/home/development/sysgrid/frontend/stage23-evidence/after-960x720.json</pre>
+      </section>
+
+      <section>
+        <h2>Pre-Change Render Gate Note</h2>
+        <pre>The live pre-change route inventory was captured before the shell rewrite:
+Asset Registry / Asset Scope / Views / Display / Table / List / Map / Import / Filters / Template / Snapshot / Compare / Bulk Actions / + Add Asset.
+
+The persistent before PNG was written later after the in-app browser session reset, so it is not a true pre-change image.</pre>
+      </section>
+    </main>
+  </body>
+</html>

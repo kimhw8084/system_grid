@@ -11,24 +11,15 @@ test.describe('Assets workflows', () => {
     const { stamp, systemName, primary, secondary, monitoring, far } = await seedOperationalScenario(request)
 
     await page.goto('/asset')
-    await expect(page.getByRole('heading', { name: 'Asset Registry' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Assets' })).toBeVisible()
     await expect(page.getByText('Syncing asset registry...')).not.toBeVisible()
 
-    await page.getByPlaceholder('Search assets, systems, owners, addresses, and tags...').fill(systemName)
+    await page.getByPlaceholder('Scan asset matrix...').fill(systemName)
     await page.keyboard.press('Enter')
     await expect(page.locator('[role="treegrid"]')).toContainText(primary.name, { timeout: 15_000 })
-
-    await clickResilientButton(page, 'Unowned')
-    await expect(page.locator('[role="treegrid"]')).toContainText(primary.name, { timeout: 15_000 })
-
-    await clickResilientButton(page, 'All')
     await expect(page.locator('[role="treegrid"]')).toContainText(secondary.name, { timeout: 15_000 })
-    await expect(page.locator('[role="treegrid"]')).toContainText(primary.name, { timeout: 15_000 })
 
-    await clickResilientButton(page, 'Needs Docs')
-    await expect(page.locator('[role="treegrid"]')).toContainText(primary.name, { timeout: 15_000 })
-
-    const assetRowActions = page.getByRole('button', { name: 'Asset row actions' })
+    const assetRowActions = page.getByTitle('More actions')
     const viewDetailsButtons = page.getByRole('button', { name: 'View Details' })
     const openKnowledgeButton = page.getByRole('button', { name: 'Open Knowledge', exact: true })
     const farRisksButton = page.getByRole('button', { name: 'FAR Risks', exact: true })
@@ -50,7 +41,7 @@ test.describe('Assets workflows', () => {
     await expect(page).toHaveURL(new RegExp(`/knowledge\\?device_id=${primary.id}`))
 
     await page.goto('/asset')
-    await page.getByPlaceholder('Search assets, systems, owners, addresses, and tags...').fill(primary.name)
+    await page.getByPlaceholder('Scan asset matrix...').fill(primary.name)
     await assetRowActions.first().click()
     await viewDetailsButtons.last().click({ force: true })
 
@@ -59,7 +50,7 @@ test.describe('Assets workflows', () => {
     await expect(page).toHaveURL(new RegExp(`/far\\?id=${far.id}`))
 
     await page.goto('/asset')
-    await page.getByPlaceholder('Search assets, systems, owners, addresses, and tags...').fill(primary.name)
+    await page.getByPlaceholder('Scan asset matrix...').fill(primary.name)
     await assetRowActions.first().click()
     await viewDetailsButtons.last().click({ force: true })
     await auditButton.click({ force: true })
@@ -67,8 +58,7 @@ test.describe('Assets workflows', () => {
     await expect(page.getByText(`Scoped: devices // ${primary.id}`)).toBeVisible()
 
     await page.goto('/asset')
-    await clickResilientButton(page, 'All')
-    await page.getByPlaceholder('Search assets, systems, owners, addresses, and tags...').fill(systemName)
+    await page.getByPlaceholder('Scan asset matrix...').fill(systemName)
     const rows = page.locator('.ag-center-cols-container .ag-row')
     await expect(rows).toHaveCount(2, { timeout: 15_000 })
     await bulkActionsButton.click()
@@ -80,8 +70,7 @@ test.describe('Assets workflows', () => {
     await clickResilientButton(page, 'Apply Sync')
 
     await page.goto('/asset')
-    await page.getByPlaceholder('Search assets, systems, owners, addresses, and tags...').fill(secondary.name)
-    await clickResilientButton(page, 'All')
+    await page.getByPlaceholder('Scan asset matrix...').fill(secondary.name)
     await expect(page.locator('[role="treegrid"]')).toContainText(secondary.name)
 
     await page.goto(`/monitoring?id=${monitoring.id}`)

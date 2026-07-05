@@ -344,9 +344,15 @@ export function useOperationalDismissController({
   displayMenuPanelRef: React.RefObject<HTMLElement | null>;
   viewsMenuButtonRef: React.RefObject<HTMLElement | null>;
   viewsMenuPanelRef: React.RefObject<HTMLElement | null>;
+  surfaceMenuButtonRef?: React.RefObject<HTMLElement | null>;
+  surfaceMenuPanelRef?: React.RefObject<HTMLElement | null>;
+  exportMenuButtonRef?: React.RefObject<HTMLElement | null>;
+  exportMenuPanelRef?: React.RefObject<HTMLElement | null>;
   showBulkMenu: boolean;
   showDisplayMenu: boolean;
   showViewsMenu: boolean;
+  showSurfaceMenu?: boolean;
+  showExportMenu?: boolean;
   hasRowActionMenu: boolean;
 }) {
   useWorkspaceDismissHandlers({
@@ -360,6 +366,8 @@ export function useOperationalDismissController({
       if (panels.showBulkMenu && !panels.bulkMenuButtonRef.current?.contains(target) && !panels.bulkMenuPanelRef.current?.contains(target)) return true;
       if (panels.showDisplayMenu && !panels.displayMenuButtonRef.current?.contains(target) && !panels.displayMenuPanelRef.current?.contains(target)) return true;
       if (panels.showViewsMenu && !panels.viewsMenuButtonRef.current?.contains(target) && !panels.viewsMenuPanelRef.current?.contains(target)) return true;
+      if (panels.showSurfaceMenu && !panels.surfaceMenuButtonRef?.current?.contains(target) && !panels.surfaceMenuPanelRef?.current?.contains(target)) return true;
+      if (panels.showExportMenu && !panels.exportMenuButtonRef?.current?.contains(target) && !panels.exportMenuPanelRef?.current?.contains(target)) return true;
       if (panels.hasRowActionMenu && !target.closest(".row-action-menu-container")) return true;
       return false;
     },

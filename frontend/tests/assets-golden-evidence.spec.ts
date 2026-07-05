@@ -157,7 +157,7 @@ test.describe('Assets golden evidence capture', () => {
 
     if (phase === 'before') {
       await page.goto('/asset')
-      await ensureWorkspaceVisible(page, 'Asset Registry')
+      await ensureWorkspaceVisible(page, 'Assets')
       const assetFullPagePath = path.join(CAPTURE_DIR, 'before-asset-fullpage.png')
       await page.screenshot({ path: assetFullPagePath, fullPage: true })
       captures.beforeAsset = await captureMetrics(page, 'full-page', assetFullPagePath)
@@ -171,7 +171,7 @@ test.describe('Assets golden evidence capture', () => {
       captures.goldenReference.consoleCounts = { ...consoleCounts }
     } else {
       await page.goto('/asset')
-      await ensureWorkspaceVisible(page, 'Asset Registry')
+      await ensureWorkspaceVisible(page, 'Assets')
 
       const suffix = process.env.STAGE23_CAPTURE_VIEWPORT === '960x720' ? '960x720' : 'desktop'
       const screenshotType = process.env.STAGE23_CAPTURE_VIEWPORT === '960x720' ? 'full-viewport' : 'full-page'

@@ -132,7 +132,7 @@ export function useWorkspaceDismissHandlers({
   }, [active, onDismiss, shouldDismiss])
 }
 
-export type WorkspaceOverlayKey = 'display' | 'views' | 'bulk' | 'rowAction'
+export type WorkspaceOverlayKey = 'display' | 'views' | 'bulk' | 'rowAction' | 'surface' | 'export'
 
 export function useWorkspaceOverlayController() {
   const [activeOverlay, setActiveOverlay] = useState<WorkspaceOverlayKey | null>(null)

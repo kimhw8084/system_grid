@@ -1611,6 +1611,8 @@ export default function Assets() {
   const showDisplayMenu = isOverlayOpen('display')
   const showViewsMenu = isOverlayOpen('views')
   const showBulkMenu = isOverlayOpen('bulk')
+  const showSurfaceMenu = isOverlayOpen('surface')
+  const showExportMenu = isOverlayOpen('export')
   const hasRowActionMenu = activeOverlay === 'rowAction' && !!rowActionMenu
   const [searchTerm, setSearchTerm] = useState(searchParam ?? persistedWorkspaceState.searchTerm ?? '')
   const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null)
@@ -1658,24 +1660,32 @@ export default function Assets() {
   const { triggerRef: displayMenuButtonRef, panelRef: displayMenuPanelRef, panelStyle: displayMenuStyle } = useWorkspaceAnchoredLayer(showDisplayMenu, { minWidth: 320 })
   const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
   const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
+  const { triggerRef: surfaceMenuButtonRef, panelRef: surfaceMenuPanelRef, panelStyle: surfaceMenuStyle } = useWorkspaceAnchoredLayer(showSurfaceMenu, { minWidth: 280 })
+  const { triggerRef: exportMenuButtonRef, panelRef: exportMenuPanelRef, panelStyle: exportMenuStyle } = useWorkspaceAnchoredLayer(showExportMenu, { minWidth: 280 })
 
   const dismissWorkspaceMenus = useCallback(() => {
     dismissOverlays()
   }, [dismissOverlays])
 
   useOperationalDismissController({
-    active: showBulkMenu || showDisplayMenu || showViewsMenu || hasRowActionMenu,
+    active: showBulkMenu || showDisplayMenu || showViewsMenu || showSurfaceMenu || showExportMenu || hasRowActionMenu,
     onDismiss: dismissWorkspaceMenus,
-    allTriggerRefs: [bulkMenuButtonRef, displayMenuButtonRef, viewsMenuButtonRef],
+    allTriggerRefs: [bulkMenuButtonRef, displayMenuButtonRef, viewsMenuButtonRef, surfaceMenuButtonRef, exportMenuButtonRef],
     bulkMenuButtonRef,
     bulkMenuPanelRef,
     displayMenuButtonRef,
     displayMenuPanelRef,
     viewsMenuButtonRef,
     viewsMenuPanelRef,
+    surfaceMenuButtonRef,
+    surfaceMenuPanelRef,
+    exportMenuButtonRef,
+    exportMenuPanelRef,
     showBulkMenu,
     showDisplayMenu,
     showViewsMenu,
+    showSurfaceMenu,
+    showExportMenu,
     hasRowActionMenu,
   })
 
@@ -2618,17 +2628,6 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
         </ToolbarIconButton>
       </ToolbarGroup>
       <ToolbarGroup>
-        <ToolbarButton active={viewMode === 'grid' || viewMode === 'compare'} onClick={() => setViewMode('grid')}>
-          Table
-        </ToolbarButton>
-        <ToolbarButton active={viewMode === 'report'} onClick={() => setViewMode('report')}>
-          List
-        </ToolbarButton>
-        <ToolbarButton active={viewMode === 'map'} onClick={() => setViewMode('map')}>
-          Map
-        </ToolbarButton>
-      </ToolbarGroup>
-      <ToolbarGroup>
         <ToolbarButton onClick={() => setShowImportModal(true)} title="Open the existing asset bulk import workflow">
           <span className="flex items-center gap-2">
             <Upload size={14} />
@@ -2646,20 +2645,26 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
           </span>
         </ToolbarButton>
         <ToolbarButton
-          onClick={() => handleDownloadImportArtifact('template')}
-          disabled={activeImportExportAction !== null}
-          title="Download asset import template"
+          ref={surfaceMenuButtonRef as any}
+          onClick={() => toggleOverlay('surface')}
+          active={showSurfaceMenu || viewMode !== 'grid'}
+          title="Choose the active asset workspace surface"
         >
-          {activeImportExportAction === 'template' ? <RefreshCcw className="animate-spin" size={14} /> : <Download size={14} />}
-          <span>Template</span>
+          <span className="flex items-center gap-2">
+            {viewMode === 'map' ? <Globe size={14} /> : viewMode === 'report' ? <List size={14} /> : <LayoutGrid size={14} />}
+            Surfaces
+          </span>
         </ToolbarButton>
         <ToolbarButton
-          onClick={() => handleDownloadImportArtifact('snapshot')}
-          disabled={activeImportExportAction !== null}
-          title="Download asset registry snapshot"
+          ref={exportMenuButtonRef as any}
+          onClick={() => toggleOverlay('export')}
+          active={showExportMenu}
+          title="Open asset export actions"
         >
-          {activeImportExportAction === 'snapshot' ? <RefreshCcw className="animate-spin" size={14} /> : <Download size={14} />}
-          <span>Snapshot</span>
+          <span className="flex items-center gap-2">
+            <Download size={14} />
+            Export
+          </span>
         </ToolbarButton>
       </ToolbarGroup>
     </>
@@ -2838,14 +2843,14 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
         title: (
           <div className="flex items-center gap-3">
             <Server className="text-blue-500" size={18} />
-            <span>Asset Registry</span>
+            <span>Assets</span>
           </div>
         ),
-        subtitle: "Central global asset inventory, topology context, and operational ownership",
+        subtitle: "Operational asset inventory, topology context, and ownership status",
         actions: (
           <>
             <HeaderScopeSwitch
-              label="Asset Scope"
+              label="Registry Scope"
               summary={`${lifecycleCounts.existing} existing · ${lifecycleCounts.purged} purged`}
               value={activeTab}
               onChange={(next) => {
@@ -2864,7 +2869,7 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
         <ToolbarSearch
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search assets, systems, owners, addresses, and tags..."
+          placeholder="Scan asset matrix..."
         />
       )}
       toolbarControls={primaryToolbarControls}
@@ -2933,6 +2938,82 @@ const QuickLookPanel = ({ asset, onClose, onEdit, options, devices }: any) => {
               return `${tabLabel} · ${scopeLabel} · ${searchLabel}`
             }}
           />
+          <OperationalAnchoredPanel
+            key="asset-surface-menu-panel"
+            isOpen={showSurfaceMenu}
+            panelRef={surfaceMenuPanelRef}
+            style={surfaceMenuStyle}
+            panelKey="asset-surface-menu"
+            className="bulk-menu-container"
+            yOffset={10}
+          >
+            <WorkspaceFloatingPanel kind="context" className="max-h-[420px] overflow-y-auto custom-scrollbar p-3">
+              <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
+                <p className="text-[10px] font-semibold text-slate-400">Workspace surfaces</p>
+                <p className="pt-1 text-[12px] font-semibold text-slate-100">Switch between the asset table, list, and topology views</p>
+              </div>
+              <div className="space-y-2">
+                <WorkspaceFlyoutActionCard
+                  title="Registry Table"
+                  active={viewMode === 'grid' || viewMode === 'compare'}
+                  onClick={() => {
+                    setViewMode('grid')
+                    closeOverlay('surface')
+                  }}
+                />
+                <WorkspaceFlyoutActionCard
+                  title="Executive List"
+                  active={viewMode === 'report'}
+                  onClick={() => {
+                    setViewMode('report')
+                    closeOverlay('surface')
+                  }}
+                />
+                <WorkspaceFlyoutActionCard
+                  title="Topology Map"
+                  active={viewMode === 'map'}
+                  onClick={() => {
+                    setViewMode('map')
+                    closeOverlay('surface')
+                  }}
+                />
+              </div>
+            </WorkspaceFloatingPanel>
+          </OperationalAnchoredPanel>
+          <OperationalAnchoredPanel
+            key="asset-export-menu-panel"
+            isOpen={showExportMenu}
+            panelRef={exportMenuPanelRef}
+            style={exportMenuStyle}
+            panelKey="asset-export-menu"
+            className="bulk-menu-container"
+            yOffset={10}
+          >
+            <WorkspaceFloatingPanel kind="context" className="max-h-[420px] overflow-y-auto custom-scrollbar p-3">
+              <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
+                <p className="text-[10px] font-semibold text-slate-400">Export actions</p>
+                <p className="pt-1 text-[12px] font-semibold text-slate-100">Launch the existing asset export and import artifact workflows</p>
+              </div>
+              <div className="space-y-2">
+                <WorkspaceFlyoutActionCard
+                  title={activeImportExportAction === 'template' ? 'Downloading Template...' : 'Download Import Template'}
+                  active={activeImportExportAction === 'template'}
+                  onClick={() => {
+                    handleDownloadImportArtifact('template')
+                    closeOverlay('export')
+                  }}
+                />
+                <WorkspaceFlyoutActionCard
+                  title={activeImportExportAction === 'snapshot' ? 'Downloading Snapshot...' : 'Download Registry Snapshot'}
+                  active={activeImportExportAction === 'snapshot'}
+                  onClick={() => {
+                    handleDownloadImportArtifact('snapshot')
+                    closeOverlay('export')
+                  }}
+                />
+              </div>
+            </WorkspaceFloatingPanel>
+          </OperationalAnchoredPanel>
           <OperationalAnchoredPanel
             key="asset-bulk-menu-panel"
             isOpen={showBulkMenu}
