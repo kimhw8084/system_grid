@@ -32,12 +32,122 @@ export type AssetQuickFilters = {
   owner: string[]
 }
 
-const STORAGE_KEY = 'sysgrid_asset_golden_workspace_v34'
-const STORAGE_MIGRATION_KEYS = ['sysgrid_asset_golden_workspace_v33', 'sysgrid_asset_golden_workspace_v32']
-const STORAGE_SCHEMA_VERSION = 34
 const DEFAULT_HIDDEN_COLUMNS = [
   'is_deleted',
 ]
+
+const DEFAULT_ASSET_VIEWS: AssetSavedView[] = [
+  {
+    id: 'operations-overview',
+    name: 'Operations Overview',
+    config: {
+      activeTab: 'inventory',
+      viewMode: 'grid',
+      groupBy: 'system',
+      searchTerm: '',
+      activeLens: 'all',
+      hiddenColumns: ['is_deleted'],
+      fontSize: 11,
+      rowDensity: 8,
+      filters: { status: [], system: [], type: [], owner: [] },
+    },
+  },
+  {
+    id: 'security-exposure',
+    name: 'Security Exposure',
+    config: {
+      activeTab: 'inventory',
+      viewMode: 'grid',
+      groupBy: 'owner',
+      searchTerm: '',
+      activeLens: 'security',
+      hiddenColumns: ['is_deleted'],
+      fontSize: 11,
+      rowDensity: 8,
+      filters: { status: [], system: [], type: [], owner: [] },
+    },
+  },
+  {
+    id: 'hardware-inventory',
+    name: 'Hardware Inventory',
+    config: {
+      activeTab: 'inventory',
+      viewMode: 'grid',
+      groupBy: 'site_name',
+      searchTerm: '',
+      activeLens: 'all',
+      hiddenColumns: ['is_deleted'],
+      fontSize: 11,
+      rowDensity: 8,
+      filters: { status: [], system: [], type: ['Physical', 'Storage', 'Switch', 'Firewall', 'Load Balancer'], owner: [] },
+    },
+  },
+  {
+    id: 'dependency-map',
+    name: 'Dependency Map',
+    config: {
+      activeTab: 'inventory',
+      viewMode: 'map',
+      groupBy: 'raw',
+      searchTerm: '',
+      activeLens: 'network',
+      hiddenColumns: ['is_deleted'],
+      fontSize: 11,
+      rowDensity: 8,
+      filters: { status: [], system: [], type: [], owner: [] },
+    },
+  },
+  {
+    id: 'purged-registry',
+    name: 'Purged Registry',
+    config: {
+      activeTab: 'deleted',
+      viewMode: 'grid',
+      groupBy: 'status',
+      searchTerm: '',
+      activeLens: 'all',
+      hiddenColumns: ['is_deleted'],
+      fontSize: 11,
+      rowDensity: 8,
+      filters: { status: [], system: [], type: [], owner: [] },
+    },
+  },
+  {
+    id: 'monitoring-coverage',
+    name: 'Monitoring Coverage',
+    config: {
+      activeTab: 'inventory',
+      viewMode: 'report',
+      groupBy: 'raw',
+      searchTerm: '',
+      activeLens: 'degraded',
+      hiddenColumns: ['is_deleted'],
+      fontSize: 11,
+      rowDensity: 8,
+      filters: { status: [], system: [], type: [], owner: [] },
+    },
+  },
+  {
+    id: 'owner-environment-review',
+    name: 'Owner / Environment Review',
+    config: {
+      activeTab: 'inventory',
+      viewMode: 'grid',
+      groupBy: 'owner',
+      searchTerm: '',
+      activeLens: 'unowned',
+      hiddenColumns: ['is_deleted'],
+      fontSize: 11,
+      rowDensity: 8,
+      filters: { status: [], system: [], type: [], owner: [] },
+    },
+  },
+]
+const DEFAULT_ASSET_VIEW_IDS = new Set(DEFAULT_ASSET_VIEWS.map((view) => view.id))
+
+const STORAGE_KEY = 'sysgrid_asset_golden_workspace_v34'
+const STORAGE_MIGRATION_KEYS = ['sysgrid_asset_golden_workspace_v33', 'sysgrid_asset_golden_workspace_v32']
+const STORAGE_SCHEMA_VERSION = 34
 
 const EMPTY_FILTERS: AssetQuickFilters = { status: [], system: [], type: [], owner: [] }
 const VALID_TABS = new Set<AssetTab>(['inventory', 'deleted'])
@@ -62,8 +172,8 @@ const sanitizeFilters = (value: any): AssetQuickFilters => ({
 })
 
 const sanitizeSavedViews = (value: any): AssetSavedView[] => {
-  if (!Array.isArray(value)) return []
-  return value.flatMap((view: any) => {
+  const parsed = Array.isArray(value) ? value : []
+  const customViews = parsed.flatMap((view: any) => {
     if (!view || typeof view !== 'object' || typeof view.id !== 'string' || typeof view.name !== 'string') return []
     const config = view.config || {}
     return [{
@@ -82,6 +192,9 @@ const sanitizeSavedViews = (value: any): AssetSavedView[] => {
       },
     }]
   })
+  const customViewMap = new Map(customViews.filter((view) => !DEFAULT_ASSET_VIEW_IDS.has(view.id)).map((view) => [view.id, view]))
+  const defaultViews = DEFAULT_ASSET_VIEWS.map((view) => customViews.find((entry) => entry.id === view.id) || view)
+  return [...defaultViews, ...Array.from(customViewMap.values())]
 }
 
 const normalizeStoredWorkspace = (value: any) => {
@@ -508,6 +621,7 @@ export function useAssetGoldenWorkspace() {
   }, [])
 
   return {
+    defaultViewIds: DEFAULT_ASSET_VIEW_IDS,
     activeLens,
     activeTab,
     activeViewId,

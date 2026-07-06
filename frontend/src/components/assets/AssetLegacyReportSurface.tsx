@@ -195,8 +195,8 @@ export function AssetLegacyReportSurface({
   const getOptions = (category: string) => Array.isArray(options) ? options.filter((item: any) => item.category === category) : []
 
   return (
-    <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
-      <div className="flex w-80 flex-col overflow-hidden rounded-lg border border-white/5 bg-black/20">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden xl:flex-row">
+      <div className="flex max-h-[32rem] w-full flex-col overflow-hidden rounded-lg border border-white/5 bg-black/20 xl:max-h-none xl:w-80 xl:min-w-80">
         <div className="space-y-3 border-b border-white/5 bg-white/5 p-4">
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -260,26 +260,26 @@ export function AssetLegacyReportSurface({
         </div>
       </div>
 
-      <div className="custom-scrollbar flex-1 overflow-y-auto rounded-lg border border-white/5 bg-[#0a0c14]/40">
+      <div className="custom-scrollbar min-w-0 flex-1 overflow-y-auto rounded-lg border border-white/5 bg-[#0a0c14]/40">
         {selectedAsset ? (
-          <div className="space-y-12 p-12">
-            <div className="flex items-start justify-between">
-              <div className="space-y-6">
-                <div className="flex items-center space-x-6">
-                  <div className="rounded-lg bg-blue-600 p-3 text-white shadow-xl shadow-blue-500/20 ring-4 ring-blue-500/10">
+          <div className="space-y-10 p-6 lg:p-8 xl:p-10">
+            <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+              <div className="min-w-0 flex-1 space-y-6">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
+                  <div className="w-fit rounded-lg bg-blue-600 p-3 text-white shadow-xl shadow-blue-500/20 ring-4 ring-blue-500/10">
                     <Box size={48} />
                   </div>
-                  <div>
-                    <h1 className="text-5xl font-black uppercase tracking-tighter text-white">{selectedAsset.name}</h1>
-                    <div className="mt-2 flex items-center space-x-4">
+                  <div className="min-w-0">
+                    <h1 className="break-words text-3xl font-black uppercase tracking-tight text-white sm:text-4xl xl:text-5xl">{selectedAsset.name}</h1>
+                    <div className="mt-2 flex flex-wrap items-center gap-3 md:gap-4">
                       <span className="text-[14px] font-bold uppercase tracking-[0.3em] text-blue-400">{selectedAsset.system}</span>
                       <span className="h-1.5 w-1.5 rounded-full bg-white/10" />
-                      <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">{selectedAsset.type} // {selectedAsset.environment} // {selectedAsset.owner || 'NO OWNER'}</span>
+                      <span className="break-words text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">{selectedAsset.type} // {selectedAsset.environment} // {selectedAsset.owner || 'NO OWNER'}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-8 rounded-lg border border-white/5 bg-black/40 p-6">
+                <div className="grid gap-4 rounded-lg border border-white/5 bg-black/40 p-5 sm:grid-cols-2 xl:grid-cols-3">
                   <div className="flex flex-col">
                     <span className="mb-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">Operational State</span>
                     <span className={`w-fit rounded-lg border px-4 py-1 text-[11px] font-bold uppercase ${
@@ -288,32 +288,30 @@ export function AssetLegacyReportSurface({
                       'border-rose-500/20 bg-rose-500/5 text-rose-400'
                     }`}>{selectedAsset.status}</span>
                   </div>
-                  <div className="h-10 w-px bg-white/5" />
                   <div className="flex flex-col">
                     <span className="mb-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">Primary Network IP</span>
-                    <span className="text-xl font-bold text-blue-400">{selectedAsset.primary_ip || '---.---.---.---'}</span>
+                    <span className="break-all text-xl font-bold text-blue-400">{selectedAsset.primary_ip || '---.---.---.---'}</span>
                   </div>
-                  <div className="h-10 w-px bg-white/5" />
                   <div className="flex flex-col">
                     <span className="mb-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">Management OOB IP</span>
-                    <span className="text-xl font-bold text-indigo-400">{selectedAsset.management_ip || '---.---.---.---'}</span>
+                    <span className="break-all text-xl font-bold text-indigo-400">{selectedAsset.management_ip || '---.---.---.---'}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col items-end space-y-3">
-                <button type="button" onClick={() => onEdit(selectedAsset)} className="flex items-center space-x-3 rounded-lg bg-blue-600 px-6 py-3 text-[11px] font-bold uppercase tracking-widest text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-500">
+              <div className="flex w-full shrink-0 flex-col gap-3 xl:w-auto xl:items-end">
+                <button type="button" onClick={() => onEdit(selectedAsset)} className="flex w-full items-center justify-center space-x-3 rounded-lg bg-blue-600 px-6 py-3 text-[11px] font-bold uppercase tracking-widest text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-500 xl:w-auto">
                   <Edit2 size={16} />
                   <span>Modify Config</span>
                 </button>
-                <div className="text-right">
+                <div className="text-left xl:text-right">
                   <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600">Last Synced</p>
                   <p className="text-[10px] font-mono text-slate-400">{new Date().toLocaleString()}</p>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-6 gap-4 rounded-lg border border-white/5 bg-white/5 p-6">
+            <div className="grid gap-4 rounded-lg border border-white/5 bg-white/5 p-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
               <Metric label="Power Avg/Max" value={`${selectedAsset.power_typical_w || 0}W / ${selectedAsset.power_max_w || 0}W`} />
               <Metric label="Site Location" value={selectedAsset.site_name || 'UNPLACED'} tone="text-blue-400" />
               <Metric label="Rack ID" value={selectedAsset.rack_name || 'N/A'} />
@@ -322,10 +320,10 @@ export function AssetLegacyReportSurface({
               <Metric label="Asset Tag" value={selectedAsset.asset_tag || 'NO TAG'} tone="text-amber-500" />
             </div>
 
-            <div className="grid grid-cols-2 gap-8 items-stretch">
+            <div className="grid items-stretch gap-8 2xl:grid-cols-2">
               <div className="flex h-full flex-col space-y-6">
                 <SectionTitle icon={<CpuIcon size={16} className="text-amber-400" />} title="Hardware & System Architecture" />
-                <div className="grid flex-1 grid-cols-2 gap-x-12 gap-y-8 rounded-lg border border-white/5 bg-black/20 p-8">
+                <div className="grid flex-1 gap-x-12 gap-y-8 rounded-lg border border-white/5 bg-black/20 p-6 lg:grid-cols-2 xl:p-8">
                   <div>
                     <p className="mb-1 text-[8px] font-bold uppercase tracking-[0.2em] text-slate-500">Platform Identity</p>
                     <p className="text-sm font-bold uppercase text-white">{selectedAsset.manufacturer} {selectedAsset.model}</p>
@@ -347,12 +345,12 @@ export function AssetLegacyReportSurface({
 
               <div className="flex h-full flex-col space-y-6">
                 <SectionTitle icon={<Calendar size={16} className="text-rose-400" />} title="Lifecycle & Logistics Registry" />
-                <div className="grid flex-1 grid-cols-2 gap-8 rounded-lg border border-white/5 bg-black/20 p-8">
+                <div className="grid flex-1 gap-8 rounded-lg border border-white/5 bg-black/20 p-6 lg:grid-cols-2 xl:p-8">
                   <div className="space-y-8">
                     <MetricBlock label="Deployment Phase" value={formatAppDay(selectedAsset.install_date)} meta={`Total Uptime Age: ${selectedAsset.hardware_age || 'N/A'}`} />
                     <MetricBlock label="Warranty Coverage" value={selectedAsset.warranty_end ? formatAppDay(selectedAsset.warranty_end) : 'EXPIRED / NO TERM'} />
                   </div>
-                  <div className="space-y-8 text-right">
+                  <div className="space-y-8 lg:text-right">
                     <MetricBlock label="Acquisition Date" value={formatAppDay(selectedAsset.purchase_date)} />
                     <MetricBlock label="Retirement EOL" value={selectedAsset.eol_date ? formatAppDay(selectedAsset.eol_date) : 'ACTIVE REIGN'} tone="text-rose-400" />
                   </div>

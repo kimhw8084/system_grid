@@ -423,7 +423,7 @@ export default function AssetGoldenOperationalWorkspace() {
               onCreateView={workspace.createSavedView}
               onApplySystemDefault={() => workspace.applyView(null)}
               savedViews={workspace.savedViews}
-              defaultViewIds={new Set<string>()}
+              defaultViewIds={workspace.defaultViewIds}
               onApplyView={(id) => workspace.applyView(workspace.savedViews.find((view: any) => view.id === id) || null)}
               onOverwriteView={workspace.overwriteSavedView}
               onDeleteView={workspace.deleteSavedView}
