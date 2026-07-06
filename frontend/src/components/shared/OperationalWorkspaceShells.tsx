@@ -16,6 +16,7 @@ export const getOperationalGridSurfaceStyle = (
 ): React.CSSProperties => ({
   '--ag-font-size': `${fontSize}px`,
   '--ag-font-family': "'Inter', sans-serif",
+  minHeight: '350px',
   ...(height ? { height } : {}),
 } as React.CSSProperties)
 

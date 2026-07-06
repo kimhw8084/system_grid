@@ -105,6 +105,12 @@ export default function AssetGoldenOperationalWorkspace() {
   }, [activeOverlay, workspace])
 
   useEffect(() => {
+    if (gridRef.current?.api) {
+      gridRef.current.api.deselectAll()
+    }
+  }, [workspace.activeTab])
+
+  useEffect(() => {
     if (activeOverlay === 'rowAction' && !workspace.rowActionMenu) {
       dismissOverlays()
     }

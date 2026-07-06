@@ -91,23 +91,32 @@ export function AssetCompareModal({
                     </div>
                   ))}
                 </div>
-                {visibleFields.map((field) => {
-                  const hasDifference = diffMap[field.label]?.length > 1
-                  return (
-                    <div key={field.label} className={`grid border-b border-white/5 last:border-b-0 ${hasDifference ? 'bg-amber-500/[0.04]' : ''}`} style={{ gridTemplateColumns: `220px repeat(${items.length}, minmax(220px, 1fr))` }}>
-                      <div className="border-r border-white/5 px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
-                        {field.label}
-                      </div>
-                      {items.map((item) => (
-                        <div key={`${field.label}:${item.id}`} className="border-r border-white/5 px-4 py-3 text-[11px] text-slate-200 last:border-r-0">
-                          <div className={field.multiline ? 'whitespace-pre-wrap leading-relaxed' : ''}>
-                            {field.getValue(item)}
-                          </div>
+                {visibleFields.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+                    <p className="text-emerald-400 text-xs font-black uppercase tracking-[0.2em] mb-1.5 animate-pulse">No Differences Identified</p>
+                    <p className="text-slate-400 text-[11px] font-semibold max-w-md leading-relaxed">
+                      These selected assets are completely identical across all compared fields. Uncheck "Show Differences Only" in the header to view the full property alignment.
+                    </p>
+                  </div>
+                ) : (
+                  visibleFields.map((field) => {
+                    const hasDifference = diffMap[field.label]?.length > 1
+                    return (
+                      <div key={field.label} className={`grid border-b border-white/5 last:border-b-0 ${hasDifference ? 'bg-amber-500/[0.04]' : ''}`} style={{ gridTemplateColumns: `220px repeat(${items.length}, minmax(220px, 1fr))` }}>
+                        <div className="border-r border-white/5 px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
+                          {field.label}
                         </div>
-                      ))}
-                    </div>
-                  )
-                })}
+                        {items.map((item) => (
+                          <div key={`${field.label}:${item.id}`} className="border-r border-white/5 px-4 py-3 text-[11px] text-slate-200 last:border-r-0">
+                            <div className={field.multiline ? 'whitespace-pre-wrap leading-relaxed' : ''}>
+                              {field.getValue(item)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })
+                )}
               </div>
             </div>
           </div>
