@@ -62,12 +62,12 @@ export const PageToolbar = ({
 }) => (
   <section
     className={join(
-      'flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/5 bg-black/20 px-4 py-3 backdrop-blur-xl',
+      'flex items-center gap-3 overflow-x-auto rounded-lg border border-white/5 bg-black/20 px-4 py-3 backdrop-blur-xl lg:flex-wrap lg:justify-between lg:overflow-visible',
       className
     )}
   >
-    {left ? <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">{left}</div> : <div />}
-    {right && <div className="flex flex-wrap items-center justify-end gap-3">{right}</div>}
+    {left ? <div className="flex min-w-max flex-nowrap items-center gap-3 lg:min-w-0 lg:flex-1 lg:flex-wrap">{left}</div> : <div />}
+    {right && <div className="flex min-w-max flex-nowrap items-center justify-end gap-3 lg:flex-wrap">{right}</div>}
   </section>
 )
 

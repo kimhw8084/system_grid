@@ -1,30 +1,25 @@
 ## OUT-26 Asset Golden Proof Summary
 
-Date: 2026-07-05
-
-Scope completed in this run:
-
-- Reworked the `/asset` report dossier header and metric bands to use responsive wrapping/grid behavior instead of fixed horizontal rails.
-- Added canonical built-in Asset saved views:
-  - `Operations Overview`
-  - `Security Exposure`
-  - `Hardware Inventory`
-  - `Dependency Map`
-  - `Purged Registry`
-  - `Monitoring Coverage`
-  - `Owner / Environment Review`
-- Wired Asset saved-view defaults through the operational views panel so the presets are visible and first-class, not custom-only entries.
-
-Verification performed:
-
-- `frontend`: `npm run typecheck` passed.
-- Browser checked against local app on `http://127.0.0.1:5173/asset`.
-- Confirmed `/asset` grid renders live asset rows.
-- Confirmed `/asset` report keeps the dossier action rail visible on desktop after the responsive layout change.
-- Confirmed the Asset views menu exposes the new built-in presets.
-- Confirmed `/asset` map still renders the topology surface with selection controls intact.
-
-Notable residuals observed:
-
-- Existing AG Grid custom-column warnings are still present in console and predate this patch set.
-- The 960px-wide shell remains dense because of the global application sidebar/header footprint, but the Asset report regression addressed here is no longer clipping its primary dossier action off the viewport.
+- Iteration / stage / prompt type: continuation owner-mode workhorse run on 2026-07-06, product-code continuation rather than architecture or proof-only.
+- Files inspected: `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`, `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/assets/AssetLegacyReportSurface.tsx`, `frontend/src/components/assets/AssetLegacyMapSurface.tsx`, `frontend/src/components/shared/LayoutPrimitives.tsx`, `frontend/src/components/shared/OperationalWorkspaceShells.tsx`, `frontend/src/App.tsx`, `frontend/package.json`, `scripts/verify-app.sh`.
+- Files changed: `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/assets/AssetLegacyReportSurface.tsx`, `frontend/src/components/shared/LayoutPrimitives.tsx`.
+- Browser targets checked: `/asset` grid, Views panel, built-in `Dependency Map`, built-in `Monitoring Coverage`, reload persistence, custom saved-view create/delete path, v33 localStorage migration behavior, adjacent `/asset` grid after shell changes.
+- Major feature results:
+  - Views panel: PASS for built-in view visibility, saved-view labeling, dependency-map seeding, reload persistence, and old-storage migration protection for the new built-ins.
+  - Report view desktop: PASS for dossier selection seeding; report opens with a selected asset instead of a blank state.
+  - Report view 960x720: PARTIAL. Shared toolbar density improved, but the report dossier still sits too low and `Modify Config` remains below the fold.
+  - Map surface via built-in view: PASS for removing the immediate `Map filters required` failure after applying `Dependency Map`.
+  - Table / shell adjacency: PARTIAL. Grid still loads and command actions remain visible after the toolbar layout change, but full golden parity was not closed in this run.
+- Adjacent regression checks:
+  - After saved-view state changes, rechecked report and map view switching from `/asset`.
+  - After toolbar layout changes, rechecked `/asset` grid shell visibility and command-bar rendering at 960x720.
+- Validation commands / results:
+  - `npm run typecheck`: PASS.
+  - `npm run build`: PASS with existing large-chunk warning only.
+  - `npm run test:lint`: PASS.
+- Remaining visible issues:
+  - `/asset` report at 960x720 is still not deployable: the dossier panel height is too short and `Modify Config` remains below the fold.
+  - Full golden parity for Asset table chrome, context menu, bulk actions, and map polish was not completed in this run.
+- Forbidden-command statement: no destructive git reset/checkout/revert commands were used.
+- Unrelated-scope exclusion statement: preserved the prior built-in Asset saved views and report responsiveness work; no unrelated workspace behavior was removed or reverted.
+- Final worker result: PARTIAL.

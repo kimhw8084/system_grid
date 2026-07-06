@@ -195,8 +195,8 @@ export function AssetLegacyReportSurface({
   const getOptions = (category: string) => Array.isArray(options) ? options.filter((item: any) => item.category === category) : []
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden xl:flex-row">
-      <div className="flex max-h-[32rem] w-full flex-col overflow-hidden rounded-lg border border-white/5 bg-black/20 xl:max-h-none xl:w-80 xl:min-w-80">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden md:flex-row">
+      <div className="flex max-h-[22rem] w-full flex-col overflow-hidden rounded-lg border border-white/5 bg-black/20 md:max-h-none md:w-72 md:min-w-72 xl:w-80 xl:min-w-80">
         <div className="space-y-3 border-b border-white/5 bg-white/5 p-4">
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />

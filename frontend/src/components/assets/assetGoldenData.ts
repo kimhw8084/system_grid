@@ -197,6 +197,12 @@ const sanitizeSavedViews = (value: any): AssetSavedView[] => {
   return [...defaultViews, ...Array.from(customViewMap.values())]
 }
 
+const mergeSavedViewsForMigration = (value: any): AssetSavedView[] => {
+  const parsed = sanitizeSavedViews(value)
+  const customViews = parsed.filter((view) => !DEFAULT_ASSET_VIEW_IDS.has(view.id))
+  return [...DEFAULT_ASSET_VIEWS, ...customViews]
+}
+
 const normalizeStoredWorkspace = (value: any) => {
   const normalizedSavedViews = sanitizeSavedViews(value?.savedViews)
   const activeViewId = typeof value?.activeViewId === 'string' && normalizedSavedViews.some((view) => view.id === value.activeViewId)
@@ -228,12 +234,17 @@ const readStorage = () => {
       if (!raw) continue
       const parsed = JSON.parse(raw)
       const storedVersion = Number(parsed?.schemaVersion || 0)
-      if (key !== STORAGE_KEY || !VALID_STORAGE_VERSIONS.has(storedVersion)) {
+      if (key === STORAGE_KEY && !VALID_STORAGE_VERSIONS.has(storedVersion)) {
         window.localStorage.removeItem(key)
         continue
       }
-      const normalized = normalizeStoredWorkspace(parsed)
+      const normalized = normalizeStoredWorkspace(
+        key === STORAGE_KEY
+          ? parsed
+          : { ...parsed, savedViews: mergeSavedViewsForMigration(parsed?.savedViews) }
+      )
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
+      if (key !== STORAGE_KEY) window.localStorage.removeItem(key)
       return normalized
     }
     return null
@@ -461,6 +472,18 @@ export function useAssetGoldenWorkspace() {
     },
     [allAssets, optionsQuery.data]
   )
+
+  useEffect(() => {
+    if (viewMode !== 'report' && viewMode !== 'map') return
+    if (!filteredAssets.length) {
+      if (reportAssetId != null) setReportAssetId(null)
+      return
+    }
+    const hasSelectedVisibleAsset = reportAssetId != null && filteredAssets.some((asset) => asset.id === reportAssetId)
+    if (!hasSelectedVisibleAsset) {
+      setReportAssetId(filteredAssets[0].id)
+    }
+  }, [filteredAssets, reportAssetId, viewMode])
 
   useEffect(() => {
     writeStorage({
