@@ -175,8 +175,8 @@ const DevicePortGrid = ({ device, connections, onEditLink, onViewLink }: { devic
               </div>
               {hoveredPort.link && (
                 <div className="flex gap-2 text-[8px] justify-end border-t border-emerald-500/10 pt-1">
-                  <button onClick={() => onViewLink(hoveredPort.link)} className="text-blue-400 hover:text-blue-300 font-bold uppercase">View</button>
-                  <button onClick={() => onEditLink(hoveredPort.link)} className="text-emerald-400 hover:text-emerald-300 font-bold uppercase">Edit</button>
+                  <button onClick={() => onViewLink(hoveredPort.link)} title="View link detail" className="text-blue-400 hover:text-blue-300 font-bold uppercase">View</button>
+                  <button onClick={() => onEditLink(hoveredPort.link)} title="Edit link configuration" className="text-emerald-400 hover:text-emerald-300 font-bold uppercase">Edit</button>
                 </div>
               )}
             </div>

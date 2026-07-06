@@ -311,31 +311,35 @@ export function buildAssetGoldenColumns({
           >
             <Maximize2 size={13} />
           </button>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation()
-              onOpenEdit(asset)
-            }}
-            title="Edit asset"
-            className="rounded-lg p-1 text-emerald-400 transition-all hover:bg-emerald-400/10 active:scale-90"
-          >
-            <Edit2 size={13} />
-          </button>
-          {getConsoleUrl(asset) ? (
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation()
-                const consoleUrl = getConsoleUrl(asset)
-                if (!consoleUrl) return
-                window.open(consoleUrl, '_blank', 'noopener,noreferrer')
-              }}
-              title="Quick console"
-              className="rounded-lg p-1 text-indigo-400 transition-all hover:bg-indigo-400/10 active:scale-90"
-            >
-              <Terminal size={13} />
-            </button>
+          {activeTab !== 'deleted' ? (
+            <>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onOpenEdit(asset)
+                }}
+                title="Edit asset"
+                className="rounded-lg p-1 text-emerald-400 transition-all hover:bg-emerald-400/10 active:scale-90"
+              >
+                <Edit2 size={13} />
+              </button>
+              {getConsoleUrl(asset) ? (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    const consoleUrl = getConsoleUrl(asset)
+                    if (!consoleUrl) return
+                    window.open(consoleUrl, '_blank', 'noopener,noreferrer')
+                  }}
+                  title="Quick console"
+                  className="rounded-lg p-1 text-indigo-400 transition-all hover:bg-indigo-400/10 active:scale-90"
+                >
+                  <Terminal size={13} />
+                </button>
+              ) : null}
+            </>
           ) : null}
           <button
             type="button"
