@@ -86,6 +86,24 @@ export function OperationalDataGrid({
     () => (runtime?.preserveExplicitColumnWidths ? undefined : OPERATIONAL_GRID_AUTO_SIZE_STRATEGY),
     [runtime?.preserveExplicitColumnWidths]
   )
+  const noticeToneClass = dataState?.notice?.tone === 'error'
+    ? 'border-rose-500/30 bg-rose-500/10 text-rose-100'
+    : dataState?.notice?.tone === 'warning'
+      ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+      : 'border-blue-500/25 bg-blue-500/10 text-slate-100'
+  const notice = dataState?.notice ? (
+    <div className={`border-b px-4 py-3 ${noticeToneClass}`}>
+      <p className="text-[10px] font-black uppercase tracking-[0.14em]">{dataState.notice.title}</p>
+      {dataState.notice.description ? <p className="pt-1 text-[11px] text-slate-300">{dataState.notice.description}</p> : null}
+    </div>
+  ) : null
+  const shouldRenderEmptyState = Boolean(
+    dataState &&
+    dataState.kind !== 'ready' &&
+    dataState.kind !== 'loading' &&
+    dataState.kind !== 'query-error' &&
+    dataState.title
+  )
 
   if (dataState?.kind === 'query-error') {
     return (
@@ -94,10 +112,31 @@ export function OperationalDataGrid({
         style={getOperationalGridSurfaceStyle(fontSize, height)}
         loading={false}
       >
-        <WorkspaceEmptyState
-          title={dataState.title}
-          description={dataState.description}
-        />
+        {notice}
+        <div className="flex flex-1 items-center justify-center p-4">
+          <WorkspaceEmptyState
+            title={dataState.title}
+            description={dataState.description}
+          />
+        </div>
+      </OperationalGridSurface>
+    )
+  }
+
+  if (shouldRenderEmptyState) {
+    return (
+      <OperationalGridSurface
+        className={className}
+        style={getOperationalGridSurfaceStyle(fontSize, height)}
+        loading={false}
+      >
+        {notice}
+        <div className="flex flex-1 items-center justify-center p-4">
+          <WorkspaceEmptyState
+            title={dataState?.title || noRowsLabel}
+            description={dataState?.description}
+          />
+        </div>
       </OperationalGridSurface>
     )
   }
@@ -110,36 +149,39 @@ export function OperationalDataGrid({
       loadingIcon={loadingIcon}
       loadingLabel={loadingLabel}
     >
-      <OperationalGridMatrix
-        gridRef={gridRef}
-        rowData={rows}
-        columnDefs={columnDefs}
-        autoSizeStrategy={autoSizeStrategy}
-        colResizeDefault="normal"
-        fontSize={fontSize}
-        rowDensity={rowDensity}
-        context={context}
-        quickFilterText={quickFilterText}
-        getRowId={getRowId}
-        getRowClass={getRowClass}
-        selectionScopeKey={selectionScopeKey}
-        onGridReady={runtime.handleGridReady}
-        onSelectionChanged={onSelectionChanged}
-        onColumnResized={runtime.handleColumnResized}
-        onColumnMoved={runtime.handleColumnMoved}
-        onDragStopped={runtime.handleDragStopped}
-        onColumnPinned={runtime.handleColumnPinned}
-        onColumnVisible={runtime.handleColumnVisible}
-        onFilterChanged={runtime.handleFilterChanged}
-        onSortChanged={runtime.handleSortChanged}
-        onRowClicked={rowInteractions?.handleRowClicked}
-        onRowDoubleClicked={rowInteractions?.handleRowDoubleClicked}
-        onCellContextMenu={contextMenu?.handleCellContextMenu}
-        onFirstDataRendered={onFirstDataRendered}
-        onRowDataUpdated={onRowDataUpdated}
-        noRowsLabel={dataState?.noRowsLabel || noRowsLabel}
-        suppressRowClickSelection={suppressRowClickSelection}
-      />
+      {notice}
+      <div className="min-h-0 flex-1">
+        <OperationalGridMatrix
+          gridRef={gridRef}
+          rowData={rows}
+          columnDefs={columnDefs}
+          autoSizeStrategy={autoSizeStrategy}
+          colResizeDefault="normal"
+          fontSize={fontSize}
+          rowDensity={rowDensity}
+          context={context}
+          quickFilterText={quickFilterText}
+          getRowId={getRowId}
+          getRowClass={getRowClass}
+          selectionScopeKey={selectionScopeKey}
+          onGridReady={runtime.handleGridReady}
+          onSelectionChanged={onSelectionChanged}
+          onColumnResized={runtime.handleColumnResized}
+          onColumnMoved={runtime.handleColumnMoved}
+          onDragStopped={runtime.handleDragStopped}
+          onColumnPinned={runtime.handleColumnPinned}
+          onColumnVisible={runtime.handleColumnVisible}
+          onFilterChanged={runtime.handleFilterChanged}
+          onSortChanged={runtime.handleSortChanged}
+          onRowClicked={rowInteractions?.handleRowClicked}
+          onRowDoubleClicked={rowInteractions?.handleRowDoubleClicked}
+          onCellContextMenu={contextMenu?.handleCellContextMenu}
+          onFirstDataRendered={onFirstDataRendered}
+          onRowDataUpdated={onRowDataUpdated}
+          noRowsLabel={dataState?.noRowsLabel || noRowsLabel}
+          suppressRowClickSelection={suppressRowClickSelection}
+        />
+      </div>
     </OperationalGridSurface>
   )
 }

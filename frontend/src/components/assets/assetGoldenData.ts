@@ -387,6 +387,7 @@ export function useAssetGoldenWorkspace() {
   const hasIncludeDeletedAssetData = Array.isArray(devicesQuery.data)
   const liveAssets = Array.isArray(liveDevicesQuery.data) ? liveDevicesQuery.data : []
   const hasLiveAssetData = Array.isArray(liveDevicesQuery.data)
+  const isUsingLiveFallback = !hasIncludeDeletedAssetData && hasLiveAssetData
   const assetQueryFallbackError = !hasIncludeDeletedAssetData && !hasLiveAssetData
     ? (devicesQuery.error || liveDevicesQuery.error || null)
     : (!hasIncludeDeletedAssetData && includeDeletedAssets.length === 0 && liveAssets.length === 0)
@@ -452,7 +453,20 @@ export function useAssetGoldenWorkspace() {
     tabEmptyLabel: activeTab === 'deleted' ? 'No purged assets are available.' : 'No active assets are available.',
     errorTitle: 'Asset registry unavailable',
     errorDescription: 'The asset inventory request failed and no usable fallback rows are available.',
-  }), [activeTab, allAssets.length, assetQueryFallbackError, devicesQuery.isLoading, filteredAssets.length, liveDevicesQuery.isLoading, visiblePool.length])
+    emptyTitle: 'No assets registered',
+    emptyDescription: 'Import a registry snapshot or register an asset to populate the workspace.',
+    filteredTitle: 'No assets match the current working view',
+    filteredDescription: 'Clear filters, search terms, or apply a broader saved view to bring assets back into scope.',
+    tabEmptyTitle: activeTab === 'deleted' ? 'No purged assets in scope' : 'No active assets in scope',
+    tabEmptyDescription: activeTab === 'deleted'
+      ? 'The registry is loaded, but no purged assets are currently available.'
+      : 'The registry is loaded, but no active assets are currently available.',
+    degradedNotice: isUsingLiveFallback ? {
+      tone: 'warning',
+      title: 'Showing live fallback rows only',
+      description: 'The include-deleted asset request failed, so this workspace is using active inventory rows until the registry endpoint recovers.',
+    } : undefined,
+  }), [activeTab, allAssets.length, assetQueryFallbackError, devicesQuery.isLoading, filteredAssets.length, isUsingLiveFallback, liveDevicesQuery.isLoading, visiblePool.length])
 
   const linkPurposeOptions = useMemo(() => {
     const options = Array.isArray(optionsQuery.data) ? optionsQuery.data.filter((item: any) => item.category === 'LinkPurpose') : []

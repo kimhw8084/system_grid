@@ -99,7 +99,7 @@ export function OperationalGridSurface({
 }) {
   return (
     <div className={join(
-      'operational-grid-shell operational-grid flex-1 w-full min-h-0 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative',
+      'operational-grid-shell operational-grid flex flex-1 w-full min-h-0 flex-col glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative',
       className
     )} style={style}>
       {loading ? (

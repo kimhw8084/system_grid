@@ -141,6 +141,9 @@ export default function AssetGoldenOperationalWorkspace() {
   }), [isIntelligenceExpanded, openDetailAsset, openRowActionMenuAtPoint, workspace])
 
   const selectedCount = workspace.selectedIds.length
+  const hasVisibleRows = workspace.visibleAssets.length > 0
+  const hasRegistryRows = workspace.allAssets.length > 0
+  const isGridLoading = workspace.dataState?.kind === 'loading'
   const isSelected = useCallback((id: number) => workspace.selectedIds.includes(Number(id)), [workspace.selectedIds])
   const selectedAssets = useMemo(() => workspace.visibleAssets.filter((asset) => isSelected(asset.id)), [isSelected, workspace.visibleAssets])
   const compareItems = useMemo(() => {
@@ -350,7 +353,11 @@ export default function AssetGoldenOperationalWorkspace() {
               <ToolbarIconButton ref={exportMenuButtonRef as any} onClick={() => toggleOverlay('export')} title="Export asset data">
                 <Download size={16} />
               </ToolbarIconButton>
-              <ToolbarIconButton onClick={handleCopyToClipboard} title="Copy to clipboard">
+              <ToolbarIconButton
+                onClick={handleCopyToClipboard}
+                title={hasVisibleRows ? 'Copy to clipboard' : isGridLoading ? 'Grid is still loading' : 'No visible asset rows to copy'}
+                disabled={!hasVisibleRows || isGridLoading}
+              >
                 <Clipboard size={16} />
               </ToolbarIconButton>
               <ToolbarIconButton onClick={() => { dismissWorkspaceMenus(); workspace.setShowRegistryModal(true) }} title="Registry configuration">
@@ -457,16 +464,23 @@ export default function AssetGoldenOperationalWorkspace() {
             />
             {showExportMenu ? (
               <div ref={exportMenuPanelRef} style={exportMenuStyle} className="bulk-menu-container">
-                <WorkspaceFloatingPanel kind="context" className="max-h-[320px] overflow-y-auto custom-scrollbar p-3">
+                <WorkspaceFloatingPanel kind="context" className="p-3">
                   <div className="space-y-2">
                     <div className="rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
                       <p className="text-[10px] font-semibold text-slate-400">Export assets</p>
                       <p className="pt-1 text-[12px] font-semibold text-slate-100">Download a CSV export, template, or registry snapshot.</p>
                     </div>
-                    <button type="button" onClick={() => { handleExportCSV(); dismissWorkspaceMenus() }} className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-left transition-all hover:bg-white/[0.03]">
+                    <button
+                      type="button"
+                      onClick={() => { handleExportCSV(); dismissWorkspaceMenus() }}
+                      disabled={!hasRegistryRows || isGridLoading}
+                      className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-left transition-all hover:bg-white/[0.03] disabled:cursor-not-allowed disabled:opacity-45"
+                    >
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">Export CSV</p>
-                        <p className="pt-1 text-[11px] text-slate-500">Download the current asset import snapshot.</p>
+                        <p className="pt-1 text-[11px] text-slate-500">
+                          {hasRegistryRows ? 'Download the current asset import snapshot.' : 'Available once the asset registry has at least one row.'}
+                        </p>
                       </div>
                       <FileText size={16} className="text-blue-400" />
                     </button>
@@ -477,10 +491,17 @@ export default function AssetGoldenOperationalWorkspace() {
                       </div>
                       <Download size={16} className="text-emerald-400" />
                     </button>
-                    <button type="button" onClick={() => { workspace.exportSnapshot(); dismissWorkspaceMenus() }} className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-left transition-all hover:bg-white/[0.03]">
+                    <button
+                      type="button"
+                      onClick={() => { workspace.exportSnapshot(); dismissWorkspaceMenus() }}
+                      disabled={!hasRegistryRows || isGridLoading}
+                      className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-left transition-all hover:bg-white/[0.03] disabled:cursor-not-allowed disabled:opacity-45"
+                    >
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">Snapshot</p>
-                        <p className="pt-1 text-[11px] text-slate-500">Download the backend snapshot artifact for import/export recovery.</p>
+                        <p className="pt-1 text-[11px] text-slate-500">
+                          {hasRegistryRows ? 'Download the backend snapshot artifact for import/export recovery.' : 'Available once the asset registry has at least one row.'}
+                        </p>
                       </div>
                       <FileText size={16} className="text-amber-400" />
                     </button>
