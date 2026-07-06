@@ -307,6 +307,12 @@ export function useOperationalContextMenu({
     if (!e?.data || shouldIgnoreRowSelection(e.event?.target)) return;
     const mouseEvent = e.event as MouseEvent;
     mouseEvent?.preventDefault?.();
+    
+    // Auto-select the row on right click if not already selected to align visual focus with the opened context action menu
+    if (e.node && typeof e.node.setSelected === 'function' && !e.node.isSelected()) {
+      e.node.setSelected(true, true);
+    }
+    
     openRowActionMenuAtPoint(e.data, mouseEvent.clientX, mouseEvent.clientY);
   }, [openRowActionMenuAtPoint]);
 

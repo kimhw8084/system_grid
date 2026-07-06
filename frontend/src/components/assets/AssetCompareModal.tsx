@@ -11,6 +11,7 @@ export function AssetCompareModal({
   onClose: () => void
 }) {
   const [isMaximized, setIsMaximized] = useState(false)
+  const [showDiffsOnly, setShowDiffsOnly] = useState(false)
 
   const fields = useMemo(() => [
     { label: 'Status', getValue: (item: any) => item.status || 'Unknown' },
@@ -36,6 +37,14 @@ export function AssetCompareModal({
     return map
   }, [fields, items])
 
+  const visibleFields = useMemo(() => {
+    if (!showDiffsOnly) return fields
+    return fields.filter((field) => {
+      const hasDifference = diffMap[field.label]?.length > 1
+      return hasDifference
+    })
+  }, [fields, showDiffsOnly, diffMap])
+
   return (
     <WorkspaceModal
       isOpen
@@ -49,8 +58,25 @@ export function AssetCompareModal({
       hideFooterClose
     >
       <WorkspaceCompareShell
+        header={(
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-white/[0.02] border border-white/5 px-4 py-2.5 rounded-lg w-full justify-between select-none">
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Comparison Set:</span>
+              <span className="text-[11px] font-bold text-slate-300">{items.length} Assets Loaded</span>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showDiffsOnly}
+                onChange={(e) => setShowDiffsOnly(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-white/10 bg-black/40 text-blue-500 focus:ring-blue-500/20"
+              />
+              <span className="text-[9px] font-black uppercase tracking-widest text-blue-400">Show Differences Only</span>
+            </label>
+          </div>
+        )}
         body={(
-          <div className="grid min-h-0 flex-1 overflow-hidden">
+          <div className="grid min-h-0 flex-1 overflow-hidden mt-4">
             <div className="custom-scrollbar overflow-auto pr-1">
               <div className="min-w-[960px] rounded-lg border border-white/5 bg-black/20">
                 <div className="grid border-b border-white/5 bg-white/[0.03]" style={{ gridTemplateColumns: `220px repeat(${items.length}, minmax(220px, 1fr))` }}>
@@ -65,7 +91,7 @@ export function AssetCompareModal({
                     </div>
                   ))}
                 </div>
-                {fields.map((field) => {
+                {visibleFields.map((field) => {
                   const hasDifference = diffMap[field.label]?.length > 1
                   return (
                     <div key={field.label} className={`grid border-b border-white/5 last:border-b-0 ${hasDifference ? 'bg-amber-500/[0.04]' : ''}`} style={{ gridTemplateColumns: `220px repeat(${items.length}, minmax(220px, 1fr))` }}>

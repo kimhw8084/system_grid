@@ -1,5 +1,5 @@
 import React, { CSSProperties, useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronDown, Check } from 'lucide-react'
+import { ChevronDown, Check, Info } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { OPERATIONAL_WORKSPACE_VISUALS } from './OperationalWorkspace'
 
@@ -229,7 +229,11 @@ export function WorkspaceEmptyState({
         compact ? 'px-4 py-8 space-y-2' : 'px-6 py-12 space-y-4'
       )}
     >
-      {icon && <div className="text-slate-700">{icon}</div>}
+      {icon ? (
+        <div className="text-slate-700">{icon}</div>
+      ) : !compact ? (
+        <div className="text-slate-700/40"><Info size={20} /></div>
+      ) : null}
       <div className="space-y-1">
         <p className="text-[11px] font-semibold text-slate-300">{title}</p>
         {description && <p className="max-w-md text-[10px] font-semibold leading-relaxed text-slate-500">{description}</p>}
