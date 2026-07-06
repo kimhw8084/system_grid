@@ -32,6 +32,7 @@ type BuildAssetGoldenColumnsArgs = {
   activeTab: 'inventory' | 'deleted'
   hiddenColumns: string[]
   fontSize: number
+  isIntelligenceExpanded: boolean
   columnLayoutState?: any[]
   preserveExplicitColumnWidths?: boolean
   isRecentChange: (asset: any) => boolean
@@ -45,6 +46,7 @@ export function buildAssetGoldenColumns({
   activeTab,
   hiddenColumns,
   fontSize,
+  isIntelligenceExpanded,
   columnLayoutState = [],
   preserveExplicitColumnWidths = false,
   isRecentChange,
@@ -263,7 +265,7 @@ export function buildAssetGoldenColumns({
     },
     {
       kind: 'action',
-      width: OPERATIONAL_GRID_WIDTHS.compactAction,
+      width: 140,
       renderActions: (asset) => renderOperationalActionButtons(
         <>
           <button
@@ -303,10 +305,10 @@ export function buildAssetGoldenColumns({
 
   return buildOperationalGridColumnDefinitions({
     utilityColumnsConfig: {
-      includeRecentChange: true,
+      includeRecentChange: isIntelligenceExpanded,
       includeFavorite: false,
       includeWatch: false,
-      isIntelligenceExpanded: true,
+      isIntelligenceExpanded,
       isRecentChange,
       onToggleFavorite: () => {},
       onToggleWatch: () => {},

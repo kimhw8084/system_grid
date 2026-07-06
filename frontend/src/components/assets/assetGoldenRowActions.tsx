@@ -1,8 +1,10 @@
-import { ArchiveRestore, Edit2, Eye, Terminal, Trash2 } from 'lucide-react'
+import { ArchiveRestore, Clipboard, Edit2, Eye, FileText, Maximize2, Terminal, Trash2 } from 'lucide-react'
 
 export function buildAssetGoldenRowActionSections({
   asset,
   activeTab,
+  onOpenQuickLook,
+  onOpenReport,
   onOpenDetails,
   onOpenEdit,
   onCloseMenu,
@@ -12,6 +14,8 @@ export function buildAssetGoldenRowActionSections({
 }: {
   asset: any
   activeTab: 'inventory' | 'deleted'
+  onOpenQuickLook: (asset: any) => void
+  onOpenReport: (asset: any) => void
   onOpenDetails: (asset: any) => void
   onOpenEdit: (asset: any) => void
   onCloseMenu: () => void
@@ -27,22 +31,29 @@ export function buildAssetGoldenRowActionSections({
       columns: 1,
       items: [
         {
-          id: 'asset-console',
-          label: 'Quick Console Access',
-          icon: Terminal,
+          id: 'asset-report',
+          label: 'Open Report',
+          icon: FileText,
           tone: 'info',
           onClick: () => {
-            if (!consoleUrl) return
-            window.open(consoleUrl, '_blank')
+            onOpenReport(asset)
             onCloseMenu()
           },
-          disabled: !consoleUrl,
-          disabledReason: 'No management endpoint configured',
+        },
+        {
+          id: 'asset-quick-look',
+          label: 'Quick Look',
+          icon: Eye,
+          tone: 'info',
+          onClick: () => {
+            onOpenQuickLook(asset)
+            onCloseMenu()
+          },
         },
         {
           id: 'asset-details',
-          label: 'View Details',
-          icon: Eye,
+          label: 'Detail View',
+          icon: Maximize2,
           tone: 'info',
           onClick: () => {
             onOpenDetails(asset)
@@ -56,6 +67,29 @@ export function buildAssetGoldenRowActionSections({
           tone: 'success',
           onClick: () => {
             onOpenEdit(asset)
+            onCloseMenu()
+          },
+        },
+        {
+          id: 'asset-console',
+          label: 'Quick Console',
+          icon: Terminal,
+          tone: 'info',
+          onClick: () => {
+            if (!consoleUrl) return
+            window.open(consoleUrl, '_blank')
+            onCloseMenu()
+          },
+          disabled: !consoleUrl,
+          disabledReason: 'No management endpoint configured',
+        },
+        {
+          id: 'asset-copy',
+          label: 'Copy Asset ID',
+          icon: Clipboard,
+          tone: 'neutral',
+          onClick: () => {
+            navigator.clipboard.writeText(String(asset.id))
             onCloseMenu()
           },
         },

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Server } from 'lucide-react'
+import { FileText, Globe, LayoutGrid, Server } from 'lucide-react'
 import { HeaderScopeSwitch, ToolbarSearch } from '../shared/LayoutPrimitives'
 import { OperationalWorkspaceShell } from '../shared/OperationalWorkspaceShells'
 
@@ -55,9 +55,9 @@ export default function AssetGoldenShellScaffold({
               value={viewMode}
               onChange={(next) => onViewModeChange(next as 'grid' | 'report' | 'map')}
               options={[
-                { label: 'Grid', value: 'grid' },
-                { label: 'Report', value: 'report' },
-                { label: 'Map', value: 'map' },
+                { label: <span className="flex items-center gap-2"><LayoutGrid size={13} /> Grid</span>, value: 'grid' },
+                { label: <span className="flex items-center gap-2"><FileText size={13} /> Report</span>, value: 'report' },
+                { label: <span className="flex items-center gap-2"><Globe size={13} /> Map</span>, value: 'map' },
               ]}
             />
             <div className="h-8 w-px bg-white/5" />

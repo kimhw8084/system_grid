@@ -1,111 +1,9 @@
 import React, { useMemo } from 'react'
-import ForceGraph2D from 'react-force-graph-2d'
-import { Box, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { OperationalDataGrid } from '../shared/OperationalDataGrid'
 import { OperationalGroupedGridView, OperationalGroupedGridSection } from '../shared/OperationalWorkspaceShells'
-import { WorkspaceEmptyState } from '../shared/OperationalWorkspacePrimitives'
 import { AssetLegacyReportSurface } from './AssetLegacyReportSurface'
-
-function AssetMapSurface({
-  assets,
-  connections,
-  relationships,
-}: {
-  assets: any[]
-  connections: any[]
-  relationships: any[]
-}) {
-  const graph = useMemo(() => {
-    const nodeMap = new Map<number, any>()
-    assets.slice(0, 60).forEach((asset) => {
-      nodeMap.set(asset.id, {
-        id: asset.id,
-        label: asset.name,
-        status: asset.status,
-        system: asset.system,
-      })
-    })
-
-    const linkAccumulator: any[] = []
-    connections.forEach((link: any) => {
-      const source = Number(link.source_device_id)
-      const target = Number(link.target_device_id)
-      if (nodeMap.has(source) && nodeMap.has(target)) {
-        linkAccumulator.push({ source, target, kind: 'network', label: link.link_type || 'Network' })
-      }
-    })
-    relationships.forEach((link: any) => {
-      const source = Number(link.source_device_id || link.device_id)
-      const target = Number(link.target_device_id || link.related_device_id)
-      if (nodeMap.has(source) && nodeMap.has(target)) {
-        linkAccumulator.push({ source, target, kind: 'relationship', label: link.relationship_type || link.role || 'Relationship' })
-      }
-    })
-    return { nodes: Array.from(nodeMap.values()), links: linkAccumulator }
-  }, [assets, connections, relationships])
-
-  if (!graph.nodes.length) {
-    return <WorkspaceEmptyState title="No asset topology available" description="Add active assets with network or dependency links to populate the map surface." />
-  }
-
-  return (
-    <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="overflow-hidden rounded-lg border border-white/5 bg-[#020617]">
-        <ForceGraph2D
-          graphData={graph}
-          width={900}
-          height={620}
-          nodeRelSize={6}
-          linkDirectionalParticles={1}
-          linkDirectionalParticleWidth={1.5}
-          nodeCanvasObject={(node: any, ctx, scale) => {
-            const label = node.label
-            const size = 9
-            ctx.beginPath()
-            ctx.arc(node.x, node.y, size, 0, 2 * Math.PI, false)
-            ctx.fillStyle = node.status === 'Active' ? '#34d399' : '#f59e0b'
-            ctx.fill()
-            ctx.font = `${Math.max(10, 13 / scale)}px sans-serif`
-            ctx.fillStyle = '#e2e8f0'
-            ctx.fillText(label, node.x + 12, node.y + 4)
-          }}
-          linkColor={(link: any) => link.kind === 'network' ? 'rgba(59,130,246,0.45)' : 'rgba(244,114,182,0.45)'}
-        />
-      </div>
-      <div className="space-y-4 overflow-y-auto rounded-lg border border-white/5 bg-black/20 p-4 custom-scrollbar">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Topology dossier</p>
-          <p className="pt-1 text-sm font-semibold text-slate-100">Asset map with network edges and dependency links.</p>
-        </div>
-        <div className="grid gap-3">
-          <div className="rounded-lg border border-white/5 bg-[#020617] p-4">
-            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Nodes</p>
-            <p className="mt-2 text-2xl font-black text-blue-300">{graph.nodes.length}</p>
-          </div>
-          <div className="rounded-lg border border-white/5 bg-[#020617] p-4">
-            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Links</p>
-            <p className="mt-2 text-2xl font-black text-emerald-300">{graph.links.length}</p>
-          </div>
-          <div className="rounded-lg border border-white/5 bg-[#020617] p-4">
-            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Systems</p>
-            <p className="mt-2 text-2xl font-black text-violet-300">{new Set(graph.nodes.map((node: any) => node.system)).size}</p>
-          </div>
-        </div>
-        <div className="space-y-3">
-          {assets.slice(0, 8).map((asset) => (
-            <div key={asset.id} className="rounded-lg border border-white/5 bg-[#020617] p-3">
-              <div className="flex items-center gap-2">
-                <Box size={14} className="text-blue-400" />
-                <p className="text-[11px] font-semibold text-slate-100">{asset.name}</p>
-              </div>
-              <p className="pt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{asset.system} · {asset.status}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
+import { AssetLegacyMapSurface } from './AssetLegacyMapSurface'
 
 export function AssetGoldenFeatureSurfaces({
   gridRef,
@@ -121,6 +19,7 @@ export function AssetGoldenFeatureSurfaces({
   collapsedGroups,
   onSetCollapsedGroups,
   onCancelGrouping,
+  onSelectReportAsset,
   options,
   onEditAsset,
   onViewServiceDetails,
@@ -131,9 +30,10 @@ export function AssetGoldenFeatureSurfaces({
   rowInteractions,
   selectionScopeKey,
   viewMode,
-  selectedIds,
   connections,
   relationships,
+  reportAssetId,
+  systemsList,
   onSelectionChanged,
   isSelected,
 }: {
@@ -150,6 +50,7 @@ export function AssetGoldenFeatureSurfaces({
   collapsedGroups: Record<string, boolean>
   onSetCollapsedGroups: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
   onCancelGrouping: () => void
+  onSelectReportAsset: (asset: any) => void
   options: any[]
   onEditAsset: (asset: any) => void
   onViewServiceDetails: (service: any) => void
@@ -160,9 +61,10 @@ export function AssetGoldenFeatureSurfaces({
   rowInteractions: any
   selectionScopeKey: string
   viewMode: 'grid' | 'report' | 'map'
-  selectedIds: number[]
   connections: any[]
   relationships: any[]
+  reportAssetId?: number | null
+  systemsList: string[]
   onSelectionChanged: (event: any, groupKey?: string) => void
   isSelected: (id: number) => boolean
 }) {
@@ -172,6 +74,8 @@ export function AssetGoldenFeatureSurfaces({
         assets={rows}
         options={options}
         devices={devices}
+        selectedAssetId={reportAssetId}
+        onSelectAsset={onSelectReportAsset}
         onEdit={onEditAsset}
         onViewServiceDetails={onViewServiceDetails}
         onEditService={onEditService}
@@ -180,7 +84,7 @@ export function AssetGoldenFeatureSurfaces({
   }
 
   if (viewMode === 'map') {
-    return <AssetMapSurface assets={rows} connections={connections} relationships={relationships} />
+    return <AssetLegacyMapSurface assets={rows} connections={connections} relationships={relationships} systemsList={systemsList} />
   }
 
   const groupedSections = groupBy === 'raw'

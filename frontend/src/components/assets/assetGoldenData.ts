@@ -31,7 +31,8 @@ export type AssetQuickFilters = {
   owner: string[]
 }
 
-const STORAGE_KEY = 'sysgrid_asset_golden_workspace_v32'
+const STORAGE_KEY = 'sysgrid_asset_golden_workspace_v33'
+const STORAGE_MIGRATION_KEYS = ['sysgrid_asset_golden_workspace_v32']
 const DEFAULT_HIDDEN_COLUMNS = [
   'is_deleted',
 ]
@@ -41,8 +42,17 @@ const EMPTY_FILTERS: AssetQuickFilters = { status: [], system: [], type: [], own
 const readStorage = () => {
   if (typeof window === 'undefined') return null
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : null
+    const storageKeys = [STORAGE_KEY, ...STORAGE_MIGRATION_KEYS]
+    for (const key of storageKeys) {
+      const raw = window.localStorage.getItem(key)
+      if (!raw) continue
+      const parsed = JSON.parse(raw)
+      if (key !== STORAGE_KEY) {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed))
+      }
+      return parsed
+    }
+    return null
   } catch {
     return null
   }
@@ -135,6 +145,7 @@ export function useAssetGoldenWorkspace() {
   const [activeViewId, setActiveViewId] = useState<string | null>(stored?.activeViewId || null)
   const [newViewName, setNewViewName] = useState('')
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [reportAssetId, setReportAssetId] = useState<number | null>(null)
   const [quickLookAsset, setQuickLookAsset] = useState<any | null>(null)
   const [detailAsset, setDetailAsset] = useState<any | null>(null)
   const [editingAsset, setEditingAsset] = useState<any | null>(null)
@@ -168,10 +179,12 @@ export function useAssetGoldenWorkspace() {
     queryFn: async () => (await apiFetch('/api/v1/networks/connections')).json(),
   })
 
-  const allAssets = useMemo(
-    () => (Array.isArray(devicesQuery.data) ? devicesQuery.data : []).map(normalizeAsset),
-    [devicesQuery.data]
-  )
+  const allAssets = useMemo(() => {
+    const includeDeletedAssets = Array.isArray(devicesQuery.data) ? devicesQuery.data : []
+    const liveAssets = Array.isArray(liveDevicesQuery.data) ? liveDevicesQuery.data : []
+    const source = includeDeletedAssets.length > 0 ? includeDeletedAssets : liveAssets
+    return source.map(normalizeAsset)
+  }, [devicesQuery.data, liveDevicesQuery.data])
 
   const visiblePool = useMemo(
     () => allAssets.filter((asset) => activeTab === 'deleted' ? asset.is_deleted : !asset.is_deleted),
@@ -216,8 +229,8 @@ export function useAssetGoldenWorkspace() {
   }, [activeLens, filters])
 
   const dataState = useMemo(() => resolveOperationalDataState({
-    loading: devicesQuery.isLoading,
-    error: devicesQuery.error,
+    loading: devicesQuery.isLoading && liveDevicesQuery.isLoading,
+    error: allAssets.length > 0 ? null : (devicesQuery.error || liveDevicesQuery.error),
     totalCount: allAssets.length,
     tabCount: visiblePool.length,
     visibleCount: filteredAssets.length,
@@ -227,7 +240,7 @@ export function useAssetGoldenWorkspace() {
     tabEmptyLabel: activeTab === 'deleted' ? 'No purged assets are available.' : 'No active assets are available.',
     errorTitle: 'Asset registry unavailable',
     errorDescription: 'The asset inventory request failed.',
-  }), [activeTab, allAssets.length, devicesQuery.error, devicesQuery.isLoading, filteredAssets.length, visiblePool.length])
+  }), [activeTab, allAssets.length, devicesQuery.error, devicesQuery.isLoading, filteredAssets.length, liveDevicesQuery.error, liveDevicesQuery.isLoading, visiblePool.length])
 
   const linkPurposeOptions = useMemo(() => {
     const options = Array.isArray(optionsQuery.data) ? optionsQuery.data.filter((item: any) => item.category === 'LinkPurpose') : []
@@ -245,8 +258,13 @@ export function useAssetGoldenWorkspace() {
   }, [optionsQuery.data])
 
   const systemsList = useMemo(
-    () => (Array.isArray(optionsQuery.data) ? optionsQuery.data.filter((item: any) => item.category === 'LogicalSystem').map((item: any) => item.value) : []),
-    [optionsQuery.data]
+    () => {
+      const optionSystems = Array.isArray(optionsQuery.data)
+        ? optionsQuery.data.filter((item: any) => item.category === 'LogicalSystem').map((item: any) => item.value)
+        : []
+      return optionSystems.length > 0 ? optionSystems : uniqueValues(allAssets, 'system')
+    },
+    [allAssets, optionsQuery.data]
   )
 
   useEffect(() => {
@@ -269,7 +287,10 @@ export function useAssetGoldenWorkspace() {
     const routeId = Number(searchParams.get('id') || '')
     if (!routeId || !allAssets.length) return
     const match = allAssets.find((asset) => asset.id === routeId)
-    if (match) setDetailAsset(match)
+    if (match) {
+      setDetailAsset(match)
+      setReportAssetId(match.id)
+    }
   }, [allAssets, searchParams])
 
   const refreshAll = useCallback(() => {
@@ -438,6 +459,7 @@ export function useAssetGoldenWorkspace() {
     overwriteSavedView,
     performBulkAction,
     quickLookAsset,
+    reportAssetId,
     refreshAll,
     relationships: Array.isArray(relationshipsQuery.data) ? relationshipsQuery.data : [],
     rowActionMenu,
@@ -461,6 +483,7 @@ export function useAssetGoldenWorkspace() {
     setHiddenColumns,
     setNewViewName,
     setQuickLookAsset,
+    setReportAssetId,
     setRowActionMenu,
     setRowDensity,
     setSearchParams,

@@ -3,6 +3,7 @@ import {
   Clipboard,
   FileText,
   GitCompare,
+  Activity,
   Eye,
   EyeOff,
   LayoutGrid,
@@ -30,13 +31,11 @@ import {
   useOperationalRowInteractions,
 } from '../shared/OperationalGridInteractions'
 import { AppDropdown } from '../shared/AppDropdown'
-import { WorkspaceModal } from '../shared/WorkspaceModal'
-import { WorkspaceCompareShell } from '../shared/WorkspaceModalShells'
-import { StatusPill } from '../shared/StatusPill'
 import { showWorkspaceToast } from '../shared/WorkspaceToast'
 import { useWorkspaceOverlayController } from '../shared/OperationalWorkspaceHooks'
 import { useWorkspaceAnchoredLayer } from '../shared/OperationalWorkspacePrimitives'
 import { AssetBulkActionsPanel } from './AssetBulkActionsPanel'
+import { AssetCompareModal } from './AssetCompareModal'
 
 const GROUP_OPTIONS = [
   { value: 'raw', label: 'Raw Table' },
@@ -54,7 +53,7 @@ export default function AssetGoldenOperationalWorkspace() {
   const gridRef = useRef<any>(null)
   const [showFilterBar, setShowFilterBar] = useState(false)
   const [showCompareOpen, setShowCompareOpen] = useState(false)
-  const [isActivityExpanded, setIsActivityExpanded] = useState(false)
+  const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
 
   const {
@@ -115,6 +114,7 @@ export default function AssetGoldenOperationalWorkspace() {
     activeTab: workspace.activeTab,
     hiddenColumns: workspace.hiddenColumns,
     fontSize: workspace.fontSize,
+    isIntelligenceExpanded,
     isRecentChange: (asset) => {
       if (!asset?.updated_at) return false
       return Date.now() - new Date(asset.updated_at).getTime() < 1000 * 60 * 60 * 24
@@ -126,7 +126,7 @@ export default function AssetGoldenOperationalWorkspace() {
       event.stopPropagation()
       openRowActionMenuAtPoint(asset, event.clientX, event.clientY)
     },
-  }), [openDetailAsset, openRowActionMenuAtPoint, workspace])
+  }), [isIntelligenceExpanded, openDetailAsset, openRowActionMenuAtPoint, workspace])
 
   const selectedCount = workspace.selectedIds.length
   const isSelected = useCallback((id: number) => workspace.selectedIds.includes(Number(id)), [workspace.selectedIds])
@@ -135,6 +135,12 @@ export default function AssetGoldenOperationalWorkspace() {
   const rowActionSections = workspace.rowActionMenu ? buildAssetGoldenRowActionSections({
     asset: workspace.rowActionMenu.asset,
     activeTab: workspace.activeTab,
+    onOpenQuickLook: workspace.setQuickLookAsset,
+    onOpenReport: (asset) => {
+      workspace.setReportAssetId(asset.id)
+      workspace.setViewMode('report')
+      dismissWorkspaceMenus()
+    },
     onOpenDetails: openDetailAsset,
     onOpenEdit: workspace.setEditingAsset,
     onCloseMenu: dismissWorkspaceMenus,
@@ -230,7 +236,7 @@ export default function AssetGoldenOperationalWorkspace() {
     hasRowActionMenu,
   })
 
-  const secondaryToolbar = showFilterBar || isActivityExpanded ? (
+  const secondaryToolbar = showFilterBar ? (
     <div className="space-y-3">
       {showFilterBar ? (
         <div className="grid w-full gap-3 md:grid-cols-5">
@@ -239,35 +245,6 @@ export default function AssetGoldenOperationalWorkspace() {
           <AppDropdown multi value={workspace.filters.system} onChange={(value) => workspace.setFilters((current: any) => ({ ...current, system: value || [] }))} options={systemOptions} label="System Filter" placeholder="All systems" />
           <AppDropdown multi value={workspace.filters.type} onChange={(value) => workspace.setFilters((current: any) => ({ ...current, type: value || [] }))} options={typeOptions} label="Type Filter" placeholder="All types" />
           <AppDropdown multi value={workspace.filters.owner} onChange={(value) => workspace.setFilters((current: any) => ({ ...current, owner: value || [] }))} options={ownerOptions} label="Owner Filter" placeholder="All owners" />
-        </div>
-      ) : null}
-      {isActivityExpanded ? (
-        <div className="flex items-center justify-between rounded-lg border border-blue-500/20 bg-blue-600/10 p-4 backdrop-blur-md">
-          <div className="flex items-center space-x-12">
-            <div className="flex items-center space-x-3">
-              <Maximize2 size={16} className="text-blue-400" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">View Density Laboratory</span>
-            </div>
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-4">
-                <span className="text-[9px] font-bold uppercase text-slate-500">Font Size</span>
-                <div className="flex items-center space-x-2">
-                  <input type="range" min="8" max="14" step="1" value={workspace.fontSize} onChange={(event) => workspace.setFontSize(Number(event.target.value))} className="h-1.5 w-32 cursor-pointer appearance-none rounded-lg bg-slate-800 accent-blue-500" />
-                  <span className="w-8 text-[10px] font-bold text-white">{workspace.fontSize}px</span>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4 border-l border-white/10 pl-6">
-                <span className="text-[9px] font-bold uppercase text-slate-500">Row Density</span>
-                <div className="flex items-center space-x-2">
-                  <input type="range" min="8" max="28" step="2" value={workspace.rowDensity} onChange={(event) => workspace.setRowDensity(Number(event.target.value))} className="h-1.5 w-32 cursor-pointer appearance-none rounded-lg bg-slate-800 accent-indigo-500" />
-                  <span className="w-8 text-[10px] font-bold text-white">{workspace.rowDensity}px</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <button type="button" onClick={() => setIsActivityExpanded(false)} className="text-slate-500 transition-colors hover:text-white">
-            <Minimize2 size={16} />
-          </button>
         </div>
       ) : null}
     </div>
@@ -330,9 +307,9 @@ export default function AssetGoldenOperationalWorkspace() {
                   Filters
                 </span>
               </ToolbarButton>
-              <ToolbarButton active={isActivityExpanded} onClick={() => setIsActivityExpanded((current) => !current)} title={isActivityExpanded ? 'Hide Activity Controls' : 'Show Activity Controls'}>
+              <ToolbarButton active={isIntelligenceExpanded} onClick={() => setIsIntelligenceExpanded((current) => !current)} title={isIntelligenceExpanded ? 'Hide Activity Columns' : 'Show Activity Columns'}>
                 <span className="flex items-center gap-2">
-                  {isActivityExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                  {isIntelligenceExpanded ? <Minimize2 size={14} /> : <Activity size={14} />}
                   Activity
                 </span>
               </ToolbarButton>
@@ -435,6 +412,7 @@ export default function AssetGoldenOperationalWorkspace() {
           collapsedGroups={collapsedGroups}
           onSetCollapsedGroups={setCollapsedGroups}
           onCancelGrouping={() => workspace.setGroupBy('raw')}
+          onSelectReportAsset={(asset) => workspace.setReportAssetId(asset.id)}
           options={workspace.options}
           onEditAsset={workspace.setEditingAsset}
           onViewServiceDetails={workspace.setServiceDetails}
@@ -445,9 +423,10 @@ export default function AssetGoldenOperationalWorkspace() {
           rowInteractions={assetRowInteractions}
           selectionScopeKey={selectionScopeKey}
           viewMode={workspace.viewMode}
-          selectedIds={workspace.selectedIds}
           connections={workspace.connections}
           relationships={workspace.relationships}
+          reportAssetId={workspace.reportAssetId}
+          systemsList={workspace.systemsList}
           onSelectionChanged={handleSelectionChanged}
           isSelected={isSelected}
         />
@@ -490,102 +469,7 @@ export default function AssetGoldenOperationalWorkspace() {
         setConfirmState={workspace.setConfirmState}
       />
 
-      {showCompareOpen ? <CompareAssetsModal items={selectedAssets} onClose={() => setShowCompareOpen(false)} /> : null}
+      {showCompareOpen ? <AssetCompareModal items={selectedAssets} onClose={() => setShowCompareOpen(false)} /> : null}
     </>
-  )
-}
-
-function CompareAssetsModal({ items, onClose }: { items: any[]; onClose: () => void }) {
-  const [isMaximized, setIsMaximized] = useState(false)
-
-  const fields = useMemo(() => [
-    { label: 'Status', getValue: (item: any) => item.status || 'Unknown' },
-    { label: 'System', getValue: (item: any) => item.system || 'N/A' },
-    { label: 'Type', getValue: (item: any) => item.type || 'N/A' },
-    { label: 'Environment', getValue: (item: any) => item.environment || 'N/A' },
-    { label: 'Owner', getValue: (item: any) => item.owner || 'N/A' },
-    { label: 'Manufacturer', getValue: (item: any) => item.manufacturer || 'N/A' },
-    { label: 'Model', getValue: (item: any) => item.model || 'N/A' },
-    { label: 'Primary IP', getValue: (item: any) => item.primary_ip || 'N/A' },
-    { label: 'Mgmt IP', getValue: (item: any) => item.management_ip || 'N/A' },
-    { label: 'Rack', getValue: (item: any) => item.rack_name || 'N/A' },
-    { label: 'Site', getValue: (item: any) => item.site_name || 'N/A' },
-    { label: 'Resources', getValue: (item: any) => item.hardware_summary || 'N/A', multiline: true },
-  ], [])
-
-  const diffMap = useMemo(() => {
-    const map: Record<string, any[]> = {}
-    fields.forEach((field) => {
-      const values = items.map(field.getValue)
-      const unique = Array.from(new Set(values))
-      if (unique.length > 1) {
-        map[field.label] = unique
-      }
-    })
-    return map
-  }, [fields, items])
-
-  const gridCols = items.length === 2 ? 'md:grid-cols-2' : items.length === 3 ? 'md:grid-cols-3' : items.length === 4 ? 'md:grid-cols-4' : 'md:grid-cols-5'
-
-  return (
-    <WorkspaceModal
-      isOpen={true}
-      onClose={onClose}
-      size="workspace"
-      isMaximized={isMaximized}
-      onMaximizeToggle={() => setIsMaximized(!isMaximized)}
-      title="Compare Assets"
-      subtitle={`Temporal Variance Analysis · Comparing ${items.length} asset states for semantic drift`}
-      icon={<GitCompare size={20} />}
-      footerRight={<ToolbarButton onClick={onClose}>Dismiss</ToolbarButton>}
-    >
-      <WorkspaceCompareShell
-        body={(
-          <div className={`grid gap-4 ${gridCols}`}>
-            {items.map((item: any) => (
-              <div key={item.id} className="rounded-lg border border-white/5 bg-black/40 p-5 shadow-inner">
-                <div className="mb-4 flex items-center justify-between">
-                  <span className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[9px] font-black text-blue-400">ID {item.id}</span>
-                  <StatusPill value={item.status} />
-                </div>
-                <h4 className="mb-1 truncate text-sm font-black text-white">{item.name}</h4>
-                <p className="truncate text-[9px] font-bold tracking-widest text-slate-500">{item.system || 'No System'}</p>
-
-                <div className="mt-6 space-y-2.5">
-                  {fields.map((field) => {
-                    const value = field.getValue(item)
-                    const diffSet = diffMap[field.label]
-                    const colorIndex = diffSet ? diffSet.indexOf(value) : -1
-                    return <CompareRow key={field.label} label={field.label} value={value} multiline={field.multiline} colorIndex={colorIndex} />
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      />
-    </WorkspaceModal>
-  )
-}
-
-function CompareRow({ label, value, multiline = false, colorIndex = -1 }: { label: string; value: string; multiline?: boolean; colorIndex?: number }) {
-  const isDiff = colorIndex !== -1
-  const diffStyles = [
-    { border: 'border-amber-500/30', bg: 'bg-amber-500/5', text: 'text-amber-400', val: 'text-amber-200' },
-    { border: 'border-sky-500/30', bg: 'bg-sky-500/5', text: 'text-sky-400', val: 'text-sky-200' },
-    { border: 'border-emerald-500/30', bg: 'bg-emerald-500/5', text: 'text-emerald-400', val: 'text-emerald-200' },
-    { border: 'border-rose-500/30', bg: 'bg-rose-500/5', text: 'text-rose-400', val: 'text-rose-200' },
-    { border: 'border-purple-500/30', bg: 'bg-purple-500/5', text: 'text-purple-400', val: 'text-purple-200' },
-  ]
-  const style = isDiff ? diffStyles[colorIndex % diffStyles.length] : { border: 'border-white/5', bg: 'bg-black/20', text: 'text-slate-500', val: 'text-slate-300' }
-
-  return (
-    <div className={`rounded-lg border px-3 py-2.5 transition-all ${style.border} ${style.bg} ${isDiff ? 'shadow-lg' : ''} ${multiline ? '' : 'flex items-center justify-between gap-3'}`}>
-      <div className="flex items-center gap-2">
-        <p className={`text-[8px] font-black uppercase tracking-widest ${style.text}`}>{label}</p>
-        {isDiff ? <div className={`h-1 w-1 animate-pulse rounded-full ${style.text.replace('text-', 'bg-')}`} /> : null}
-      </div>
-      <p className={`pt-0.5 font-bold ${style.val} ${multiline ? 'mt-1 text-[11px] leading-relaxed' : 'text-right text-[10px]'}`}>{value}</p>
-    </div>
   )
 }

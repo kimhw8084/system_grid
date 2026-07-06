@@ -1,14 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Activity, Box, Calendar, Cpu as CpuIcon, Edit2, Layers, Search, Share2, Shield } from 'lucide-react'
 import { motion } from 'framer-motion'
+import ForceGraph2D from 'react-force-graph-2d'
+import { useQuery } from '@tanstack/react-query'
+import { apiFetch } from '../../api/apiClient'
 import { formatAppDay } from '../../utils/dateUtils'
 import { WorkspaceEmptyState } from '../shared/OperationalWorkspacePrimitives'
-import { AssetServicesTable, MiniMonitoringTable } from '../AssetGrid_Legacy'
+import { AssetServicesTable, MetadataViewer, MiniMonitoringTable } from '../AssetGrid_Legacy'
 
 type AssetLegacyReportSurfaceProps = {
   assets: any[]
   options: any[]
   devices: any[]
+  selectedAssetId?: number | null
+  onSelectAsset?: (asset: any) => void
   onEdit: (asset: any) => void
   onViewServiceDetails: (service: any) => void
   onEditService: (service: any) => void
@@ -40,20 +45,110 @@ const ASSET_TYPES = [
 ]
 
 function ConnectionMap({ deviceId, type, devices }: { deviceId: number; type: 'dependency' | 'network'; devices: any[] }) {
-  const peers = useMemo(() => devices.filter((device) => Number(device.id) !== Number(deviceId)).slice(0, 6), [deviceId, devices])
+  const { data: rels } = useQuery({
+    queryKey: ['asset-report-rel', deviceId],
+    queryFn: async () => (await apiFetch(`/api/v1/devices/${deviceId}/relationships`)).json(),
+    enabled: type === 'dependency' && !!deviceId,
+  })
+
+  const { data: conns } = useQuery({
+    queryKey: ['asset-report-conns', deviceId],
+    queryFn: async () => (await apiFetch(`/api/v1/networks/connections?device_id=${deviceId}`)).json(),
+    enabled: type === 'network' && !!deviceId,
+  })
+
+  const centerDevice = devices.find((device) => Number(device.id) === Number(deviceId))
+
+  const graphData = useMemo(() => {
+    const nodes = [{ id: deviceId, name: centerDevice?.name, isCenter: true, type: centerDevice?.type }]
+    const links: any[] = []
+
+    if (type === 'dependency' && Array.isArray(rels)) {
+      rels.forEach((rel: any) => {
+        const isSource = Number(rel.source_device_id) === Number(deviceId)
+        const peerId = isSource ? Number(rel.target_device_id) : Number(rel.source_device_id)
+        const peer = devices.find((device) => Number(device.id) === peerId)
+        if (!peer) return
+        nodes.push({ id: peerId, name: peer.name, isCenter: false, type: peer.type })
+        links.push({
+          source: isSource ? deviceId : peerId,
+          target: isSource ? peerId : deviceId,
+          label: rel.relationship_type,
+        })
+      })
+    } else if (type === 'network' && Array.isArray(conns)) {
+      conns.forEach((conn: any) => {
+        const isSource = Number(conn.src_device_id) === Number(deviceId)
+        const peerId = isSource ? Number(conn.dst_device_id) : Number(conn.src_device_id)
+        const peer = devices.find((device) => Number(device.id) === peerId)
+        if (!peer) return
+        nodes.push({ id: peerId, name: peer.name, isCenter: false, type: peer.type })
+        links.push({
+          source: isSource ? deviceId : peerId,
+          target: isSource ? peerId : deviceId,
+          label: conn.connection_type || 'Network',
+        })
+      })
+    }
+
+    return { nodes, links }
+  }, [centerDevice?.name, centerDevice?.type, conns, deviceId, devices, rels, type])
 
   return (
-    <div className="rounded-lg border border-white/5 bg-black/20 p-4">
-      <div className="grid gap-2">
-        {peers.length ? peers.map((peer) => (
-          <div key={`${type}:${peer.id}`} className="rounded-lg border border-white/5 bg-[#020617] px-3 py-2">
-            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-100">{peer.name}</p>
-            <p className="pt-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">{peer.system} · {peer.type}</p>
-          </div>
-        )) : (
-          <WorkspaceEmptyState compact title="No mapped connections" description="No related assets are available for this topology view." />
-        )}
-      </div>
+    <div className="h-[300px] w-full overflow-hidden rounded-lg border border-white/5 bg-black/20">
+      {graphData.nodes.length <= 1 ? (
+        <div className="flex h-full items-center justify-center text-[10px] font-bold uppercase tracking-widest text-slate-600">
+          No active {type} vectors identified
+        </div>
+      ) : (
+        <ForceGraph2D
+          graphData={graphData}
+          height={300}
+          width={500}
+          cooldownTicks={100}
+          nodeColor={(node: any) => node.isCenter ? '#3b82f6' : '#64748b'}
+          nodeLabel={(node: any) => `${node.name} [${node.type}]`}
+          linkColor={() => 'rgba(255, 255, 255, 0.15)'}
+          linkDirectionalArrowLength={4}
+          linkDirectionalArrowRelPos={1}
+          nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+            const label = node.name
+            const fontSize = node.isCenter ? 12 / globalScale : 10 / globalScale
+            ctx.font = `${fontSize}px Inter`
+            ctx.fillStyle = node.isCenter ? '#3b82f6' : '#1e293b'
+            ctx.beginPath()
+            ctx.arc(node.x, node.y, node.isCenter ? 6 : 4, 0, 2 * Math.PI, false)
+            ctx.fill()
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillStyle = node.isCenter ? '#fff' : '#94a3b8'
+            ctx.fillText(label, node.x, node.y + (node.isCenter ? 12 : 10))
+          }}
+          linkCanvasObjectMode={() => 'after'}
+          linkCanvasObject={(link: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+            const start = link.source
+            const end = link.target
+            if (typeof start !== 'object' || typeof end !== 'object') return
+            const text = String(link.label || '')
+            const fontSize = Math.min(8, 10 / globalScale)
+            ctx.font = `${fontSize}px Inter`
+            const textWidth = ctx.measureText(text).width
+            const dims = [textWidth, fontSize].map((value) => value + fontSize * 0.2) as [number, number]
+            const relLink = { x: end.x - start.x, y: end.y - start.y }
+            const textPos = { x: start.x + relLink.x * 0.5, y: start.y + relLink.y * 0.5 }
+            ctx.save()
+            ctx.translate(textPos.x, textPos.y)
+            ctx.rotate(Math.atan2(relLink.y, relLink.x))
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.8)'
+            ctx.fillRect(-dims[0] / 2, -dims[1] / 2, dims[0], dims[1])
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillStyle = type === 'dependency' ? '#818cf8' : '#34d399'
+            ctx.fillText(text, 0, 0)
+            ctx.restore()
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -62,11 +157,13 @@ export function AssetLegacyReportSurface({
   assets,
   options,
   devices,
+  selectedAssetId,
+  onSelectAsset,
   onEdit,
   onViewServiceDetails,
   onEditService,
 }: AssetLegacyReportSurfaceProps) {
-  const [selectedId, setSelectedId] = useState<number | null>(assets[0]?.id ?? null)
+  const [selectedId, setSelectedId] = useState<number | null>(selectedAssetId ?? assets[0]?.id ?? null)
   const [filter, setFilter] = useState({ name: '', system: '', type: '', status: '', env: '' })
 
   const filteredAssets = useMemo(() => {
@@ -90,6 +187,18 @@ export function AssetLegacyReportSurface({
       setSelectedId(selectedAsset.id)
     }
   }, [selectedAsset, selectedId])
+
+  useEffect(() => {
+    if (selectedAssetId && selectedAssetId !== selectedId) {
+      setSelectedId(selectedAssetId)
+    }
+  }, [selectedAssetId, selectedId])
+
+  useEffect(() => {
+    if (selectedAsset && onSelectAsset) {
+      onSelectAsset(selectedAsset)
+    }
+  }, [onSelectAsset, selectedAsset])
 
   const getOptions = (category: string) => Array.isArray(options) ? options.filter((item: any) => item.category === category) : []
 
@@ -299,7 +408,7 @@ export function AssetLegacyReportSurface({
               <div className="space-y-6">
                 <SectionTitle icon={<Box size={16} className="text-violet-400" />} title="Registry Metadata" />
                 <div className="rounded-lg border border-white/5 bg-black/20 p-8">
-                  <pre className="custom-scrollbar max-h-[280px] overflow-auto whitespace-pre-wrap text-[11px] leading-relaxed text-slate-300">{JSON.stringify(selectedAsset.metadata_json || {}, null, 2)}</pre>
+                  <MetadataViewer data={selectedAsset.metadata_json || {}} />
                 </div>
               </div>
             </div>

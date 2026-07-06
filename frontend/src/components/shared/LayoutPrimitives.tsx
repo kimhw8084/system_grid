@@ -195,7 +195,7 @@ export const ToolbarSegmented = ({
   value,
   onChange
 }: {
-  options: Array<{ label: string; value: string }>
+  options: Array<{ label: ReactNode; value: string }>
   value: string
   onChange: (value: string) => void
 }) => (
@@ -227,7 +227,7 @@ export const HeaderScopeSwitch = ({
 }: {
   label: ReactNode
   summary?: ReactNode
-  options: Array<{ label: string; value: string }>
+  options: Array<{ label: ReactNode; value: string }>
   value: string
   onChange: (value: string) => void
 }) => (
