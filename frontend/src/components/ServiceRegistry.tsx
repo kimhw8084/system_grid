@@ -394,7 +394,7 @@ export const ServiceForm = ({
     isDirty,
     patchValue,
     normalize,
-  } = useOperationalFormDirty(initialDataNormalized, buildInitialFormData)
+  } = useOperationalFormDirty(initialDataNormalized, buildInitialFormData, onDirtyChange)
   const fieldErrors = useMemo(
     () => mergeOperationalFieldErrors(backendFieldErrors || {}, validationErrors),
     [backendFieldErrors, validationErrors]

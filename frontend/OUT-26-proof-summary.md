@@ -1,8 +1,8 @@
 ## OUT-26 Asset Golden Proof Summary
 
 - Iteration / stage / prompt type: OUT-26 / Run 19 / TRUE FINAL SHARED-GOLDEN CLOSURE WORKHORSE.
-- Files inspected: `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`, `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/shared/OperationalDataGrid.tsx`, `frontend/src/components/shared/OperationalDataState.ts`, `frontend/src/components/shared/OperationalWorkspaceShells.tsx`, `frontend/src/components/assets/AssetGoldenQuickLookPanel.tsx`, `frontend/src/api/apiClient.ts`, `backend/app/database.py`, `seed.py`, `frontend/OUT-26-proof-summary.md`.
-- Files changed in this pass: `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`, `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/shared/OperationalDataGrid.tsx`, `frontend/src/components/shared/OperationalDataState.ts`, `frontend/src/components/shared/OperationalWorkspaceShells.tsx`, `frontend/OUT-26-proof-summary.md`.
+- Files inspected: `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`, `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/shared/OperationalDataGrid.tsx`, `frontend/src/components/shared/OperationalDataState.ts`, `frontend/src/components/shared/OperationalWorkspaceShells.tsx`, `frontend/src/components/assets/AssetGoldenQuickLookPanel.tsx`, `frontend/src/api/apiClient.ts`, `backend/app/database.py`, `seed.py`, `frontend/src/components/ServiceRegistry.tsx`, `frontend/OUT-26-proof-summary.md`.
+- Files changed in this pass: `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`, `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/shared/OperationalDataGrid.tsx`, `frontend/src/components/shared/OperationalDataState.ts`, `frontend/src/components/shared/OperationalWorkspaceShells.tsx`, `frontend/src/components/ServiceRegistry.tsx`, `frontend/OUT-26-proof-summary.md`.
 
 ### Golden Shared Primitive Compliance
 
@@ -13,6 +13,7 @@
 | `frontend/src/components/shared/OperationalWorkspaceShells.tsx` | `SHARED_GOLDEN_PRIMITIVE` | Made the shared grid surface explicitly flex-column so notices and empty states stack correctly above the grid body for all consumers. |
 | `frontend/src/components/assets/assetGoldenData.ts` | `DOMAIN_ADAPTER` | Fed Asset-specific empty/degraded copy into the shared data-state primitive and surfaced include-deleted fallback honestly. |
 | `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx` | `WORKSPACE_CONFIG` | Tightened Asset toolbar/export behavior with consumer-side disabled states and removed export flyout clipping; kept Asset-specific handlers and labels local. |
+| `frontend/src/components/ServiceRegistry.tsx` | `WORKSPACE_CONFIG` | Passed the `onDirtyChange` callback down to the shared dirty tracking primitives to satisfy testing contract constraints. |
 | `frontend/OUT-26-proof-summary.md` | pass record | Exact summary for this package only. |
 
 ### Lean View Compliance
