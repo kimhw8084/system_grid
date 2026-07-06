@@ -253,12 +253,20 @@ export function useAssetGoldenWorkspace() {
     queryFn: async () => (await apiFetch('/api/v1/networks/connections')).json(),
   })
 
+  const includeDeletedAssets = Array.isArray(devicesQuery.data) ? devicesQuery.data : []
+  const hasIncludeDeletedAssetData = Array.isArray(devicesQuery.data)
+  const liveAssets = Array.isArray(liveDevicesQuery.data) ? liveDevicesQuery.data : []
+  const hasLiveAssetData = Array.isArray(liveDevicesQuery.data)
+  const assetQueryFallbackError = !hasIncludeDeletedAssetData && !hasLiveAssetData
+    ? (devicesQuery.error || liveDevicesQuery.error || null)
+    : (!hasIncludeDeletedAssetData && includeDeletedAssets.length === 0 && liveAssets.length === 0)
+      ? (devicesQuery.error || null)
+      : null
+
   const allAssets = useMemo(() => {
-    const includeDeletedAssets = Array.isArray(devicesQuery.data) ? devicesQuery.data : []
-    const liveAssets = Array.isArray(liveDevicesQuery.data) ? liveDevicesQuery.data : []
     const source = includeDeletedAssets.length > 0 ? includeDeletedAssets : liveAssets
     return source.map(normalizeAsset)
-  }, [devicesQuery.data, liveDevicesQuery.data])
+  }, [includeDeletedAssets, liveAssets])
 
   const visiblePool = useMemo(
     () => allAssets.filter((asset) => activeTab === 'deleted' ? asset.is_deleted : !asset.is_deleted),
@@ -304,7 +312,7 @@ export function useAssetGoldenWorkspace() {
 
   const dataState = useMemo(() => resolveOperationalDataState({
     loading: devicesQuery.isLoading && liveDevicesQuery.isLoading,
-    error: allAssets.length > 0 ? null : (devicesQuery.error && liveDevicesQuery.error ? devicesQuery.error || liveDevicesQuery.error : null),
+    error: allAssets.length > 0 ? null : assetQueryFallbackError,
     totalCount: allAssets.length,
     tabCount: visiblePool.length,
     visibleCount: filteredAssets.length,
@@ -313,8 +321,8 @@ export function useAssetGoldenWorkspace() {
     tabEmptyKind: activeTab === 'deleted' ? 'deleted-empty' : 'active-empty',
     tabEmptyLabel: activeTab === 'deleted' ? 'No purged assets are available.' : 'No active assets are available.',
     errorTitle: 'Asset registry unavailable',
-    errorDescription: 'The asset inventory request failed.',
-  }), [activeTab, allAssets.length, devicesQuery.error, devicesQuery.isLoading, filteredAssets.length, liveDevicesQuery.error, liveDevicesQuery.isLoading, visiblePool.length])
+    errorDescription: 'The asset inventory request failed and no usable fallback rows are available.',
+  }), [activeTab, allAssets.length, assetQueryFallbackError, devicesQuery.isLoading, filteredAssets.length, liveDevicesQuery.isLoading, visiblePool.length])
 
   const linkPurposeOptions = useMemo(() => {
     const options = Array.isArray(optionsQuery.data) ? optionsQuery.data.filter((item: any) => item.category === 'LinkPurpose') : []
