@@ -40,6 +40,7 @@ export function buildAssetGoldenRowActionSections({
 }) {
   const consoleUrl = getConsoleUrl(asset)
   const isDeleteConfirming = deleteConfirmId === asset.id
+  const isDeletedScope = activeTab === 'deleted'
 
   return [
     {
@@ -56,7 +57,7 @@ export function buildAssetGoldenRowActionSections({
             onCloseMenu()
           },
         },
-        {
+        !isDeletedScope ? {
           id: 'asset-edit',
           label: 'Edit Configuration',
           icon: Edit2,
@@ -65,7 +66,7 @@ export function buildAssetGoldenRowActionSections({
             onOpenEdit(asset)
             onCloseMenu()
           },
-        },
+        } : null,
         {
           id: 'asset-quick-look',
           label: 'Quick Look',
@@ -76,7 +77,7 @@ export function buildAssetGoldenRowActionSections({
             onCloseMenu()
           },
         },
-        {
+        !isDeletedScope ? {
           id: 'asset-console',
           label: 'Quick Console',
           icon: Terminal,
@@ -88,7 +89,7 @@ export function buildAssetGoldenRowActionSections({
           },
           disabled: !consoleUrl,
           disabledReason: 'No management endpoint configured',
-        },
+        } : null,
         {
           id: 'asset-report',
           label: 'Open Report',
@@ -99,7 +100,7 @@ export function buildAssetGoldenRowActionSections({
             onCloseMenu()
           },
         },
-        {
+        !isDeletedScope ? {
           id: 'asset-compare',
           label: 'Compare / Add to Compare',
           icon: GitCompare,
@@ -108,8 +109,8 @@ export function buildAssetGoldenRowActionSections({
             onAddToCompare(asset)
             onCloseMenu()
           },
-        },
-      ],
+        } : null,
+      ].filter(Boolean),
     },
     {
       id: 'followOptions',
@@ -145,7 +146,7 @@ export function buildAssetGoldenRowActionSections({
             onCloseMenu()
           },
         },
-        {
+        !isDeletedScope ? {
           id: 'asset-services',
           label: 'Services',
           icon: Server,
@@ -154,8 +155,8 @@ export function buildAssetGoldenRowActionSections({
             onOpenReportSection(asset, 'services')
             onCloseMenu()
           },
-        },
-        {
+        } : null,
+        !isDeletedScope ? {
           id: 'asset-monitoring',
           label: 'Monitoring',
           icon: Activity,
@@ -164,8 +165,8 @@ export function buildAssetGoldenRowActionSections({
             onOpenReportSection(asset, 'monitoring')
             onCloseMenu()
           },
-        },
-        {
+        } : null,
+        !isDeletedScope ? {
           id: 'asset-relationships',
           label: 'Relationships',
           icon: Network,
@@ -174,8 +175,8 @@ export function buildAssetGoldenRowActionSections({
             onOpenReportSection(asset, 'relationships')
             onCloseMenu()
           },
-        },
-        {
+        } : null,
+        !isDeletedScope ? {
           id: 'asset-dependencies',
           label: 'Dependencies',
           icon: Network,
@@ -184,8 +185,8 @@ export function buildAssetGoldenRowActionSections({
             onOpenMap(asset)
             onCloseMenu()
           },
-        },
-        {
+        } : null,
+        !isDeletedScope ? {
           id: 'asset-hardware',
           label: 'Hardware',
           icon: Cpu,
@@ -194,8 +195,8 @@ export function buildAssetGoldenRowActionSections({
             onOpenReportSection(asset, 'hardware-summary')
             onCloseMenu()
           },
-        },
-        {
+        } : null,
+        !isDeletedScope ? {
           id: 'asset-secrets',
           label: 'Secrets / Security',
           icon: Shield,
@@ -204,8 +205,8 @@ export function buildAssetGoldenRowActionSections({
             onOpenReportSection(asset, 'security')
             onCloseMenu()
           },
-        },
-        {
+        } : null,
+        !isDeletedScope ? {
           id: 'asset-map',
           label: 'Locate in Map',
           icon: Map,
@@ -214,8 +215,8 @@ export function buildAssetGoldenRowActionSections({
             onOpenMap(asset)
             onCloseMenu()
           },
-        },
-      ],
+        } : null,
+      ].filter(Boolean),
     },
     {
       id: 'archive',

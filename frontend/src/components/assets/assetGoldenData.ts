@@ -5,6 +5,7 @@ import { apiFetch } from '../../api/apiClient'
 import { downloadOperationalImportFile } from '../shared/OperationalImportExport'
 import { resolveOperationalDataState } from '../shared/OperationalDataState'
 import { showWorkspaceToast } from '../shared/WorkspaceToast'
+import { resolveBulkFieldLabel, showOperationalBulkErrorToast, showOperationalBulkResultToast } from '../shared/OperationalBulkContract'
 import { ASSET_GOLDEN_ALLOWED_COLUMN_FIELDS } from './assetGoldenColumns'
 
 export type AssetTab = 'inventory' | 'deleted'
@@ -150,6 +151,10 @@ const STORAGE_MIGRATION_KEYS = ['sysgrid_asset_golden_workspace_v33', 'sysgrid_a
 const STORAGE_SCHEMA_VERSION = 34
 
 const EMPTY_FILTERS: AssetQuickFilters = { status: [], system: [], type: [], owner: [] }
+const ASSET_BULK_FIELD_LABELS: Record<string, string> = {
+  status: 'Status',
+  environment: 'Environment',
+}
 const VALID_TABS = new Set<AssetTab>(['inventory', 'deleted'])
 const VALID_VIEW_MODES = new Set<AssetViewMode>(['grid', 'report', 'map'])
 const VALID_LENSES = new Set<AssetLens>(['all', 'degraded', 'unowned', 'security', 'network'])
@@ -530,22 +535,57 @@ export function useAssetGoldenWorkspace() {
           })
           if (!response.ok) throw new Error(await response.text())
         }))
-        return { changed: ids.length, summary: `Updated ${ids.length} assets` }
+        return {
+          action,
+          ids,
+          payload,
+          changed: ids.length,
+          totalSelected: ids.length,
+          unchanged: 0,
+        }
       }
       const response = await apiFetch('/api/v1/devices/bulk-action', {
         method: 'POST',
         body: JSON.stringify({ action, ids }),
       })
       if (!response.ok) throw new Error(await response.text())
-      return response.json()
+      const result = await response.json()
+      return {
+        ...result,
+        action,
+        ids,
+        payload,
+        totalSelected: ids.length,
+        changed: Number(result?.changed ?? result?.count ?? ids.length),
+        unchanged: Number(result?.unchanged ?? 0),
+      }
     },
     onSuccess: (result: any) => {
       refreshAll()
       setRowActionMenu(null)
       setSelectedIds([])
+      if (result?.action === 'update') {
+        showOperationalBulkResultToast({
+          action: 'update',
+          totalSelected: Number(result?.totalSelected || 0),
+          changedCount: Number(result?.changed || 0),
+          unchangedCount: Number(result?.unchanged || 0),
+          fieldLabel: resolveBulkFieldLabel(result?.payload || {}, ASSET_BULK_FIELD_LABELS),
+        })
+        return
+      }
+      if (result?.action === 'delete' || result?.action === 'restore' || result?.action === 'purge') {
+        showOperationalBulkResultToast({
+          action: result.action,
+          totalSelected: Number(result?.totalSelected || 0),
+          changedCount: Number(result?.changed || 0),
+          unchangedCount: Number(result?.unchanged || 0),
+        })
+        return
+      }
       showWorkspaceToast(result?.summary || 'Asset action completed')
     },
-    onError: (error: any) => showWorkspaceToast(error?.message || 'Asset action failed', { type: 'error' }),
+    onError: (error: any) => showOperationalBulkErrorToast(error?.message || 'Asset action failed'),
   })
 
   const openConfirm = useCallback((title: string, message: string, onConfirm: () => void) => {

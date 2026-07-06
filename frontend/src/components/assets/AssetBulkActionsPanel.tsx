@@ -77,6 +77,7 @@ export function AssetBulkActionsPanel({
                   value={selectedStatus}
                   onChange={setSelectedStatus}
                   options={STATUS_OPTIONS.map((status) => ({ value: status, label: status }))}
+                  quickSelectOptions={STATUS_OPTIONS.map((status) => ({ value: status, label: status }))}
                   placeholder="Choose status"
                   actionLabel="Apply Status"
                   onApply={() => {
@@ -96,6 +97,7 @@ export function AssetBulkActionsPanel({
                   value={selectedEnv}
                   onChange={setSelectedEnv}
                   options={ENV_OPTIONS.map((env) => ({ value: env, label: env }))}
+                  quickSelectOptions={ENV_OPTIONS.map((env) => ({ value: env, label: env }))}
                   placeholder="Choose environment"
                   actionLabel="Apply Environment"
                   onApply={() => {

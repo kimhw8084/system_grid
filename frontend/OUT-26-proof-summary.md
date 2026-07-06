@@ -1,45 +1,54 @@
 ## OUT-26 Asset Golden Proof Summary
 
-- Iteration / stage / prompt type: OUT-26 / Run 19 continuation pass on 2026-07-06 / owner-mode source-first deployment workhorse.
-- Files inspected: `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`, `frontend/src/components/assets/AssetGoldenFeatureSurfaces.tsx`, `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/assets/AssetLegacyReportSurface.tsx`, `frontend/src/components/assets/AssetBulkActionsPanel.tsx`, `frontend/src/components/assets/assetGoldenRowActions.tsx`, `frontend/src/components/assets/assetGoldenColumns.tsx`, `frontend/src/components/shared/OperationalDataGrid.tsx`, `frontend/src/components/shared/OperationalGridInteractions.ts`, `frontend/src/components/shared/OperationalRowActionMenu.tsx`, `frontend/src/components/shared/WorkspaceFlyout.tsx`, `frontend/src/components/shared/OperationalGridStandard.tsx`.
-- Files changed in this pass: `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/assets/AssetLegacyReportSurface.tsx`, `frontend/src/components/assets/AssetGoldenFeatureSurfaces.tsx`, `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`, `frontend/src/components/assets/AssetBulkActionsPanel.tsx`, `frontend/src/components/assets/assetGoldenRowActions.tsx`.
+- Iteration / stage / prompt type: OUT-26 / Run 19 continuation on 2026-07-06 / owner-mode source-first final operator closure workhorse.
+- Files inspected: `frontend/src/components/assets/AssetBulkActionsPanel.tsx`, `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/assets/assetGoldenRowActions.tsx`, `frontend/src/components/shared/WorkspaceFlyout.tsx`, plus previously wired Asset golden workspace/report hooks for regression checks.
+- Files changed in this pass: `frontend/src/components/assets/AssetBulkActionsPanel.tsx`, `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/assets/assetGoldenRowActions.tsx`, `frontend/src/components/shared/WorkspaceFlyout.tsx`.
 - Product-code improvements made:
-  - added report-section focus state so Asset row/context actions can route directly into existing report sections instead of dropping users at a generic dossier top;
-  - wired `Services`, `Monitoring`, `Relationships`, `Hardware`, and `Secrets / Security` row-menu actions to focused report sections;
-  - kept compare/report/details/edit/quick-look menu actions on real existing Asset surfaces;
-  - strengthened Bulk Actions with selection preview, state reset on reopen/selection change, and golden confirmation-modal guards for delete/restore/purge;
-  - fixed a runtime regression in `AssetGoldenOperationalWorkspace` caused by callback ordering after report-action routing was added.
-- Feature preservation checklist:
-  - built-in Asset saved views: preserved;
-  - saved-view migration restoration: preserved;
-  - report/map selected-asset seeding: preserved;
-  - compact Report action rail: preserved;
-  - Report Details / Quick Look / Quick Console actions: preserved;
-  - include-deleted plus live fallback: preserved;
-  - Export Template reachability: preserved;
-  - full report sections: preserved.
+  - added shared quick-preset buttons to flyout dropdown editors so Asset bulk status/environment changes can be applied directly without relying on the dropdown path only;
+  - wired Asset bulk status/environment updates to shared bulk-result toast grammar instead of generic success/error strings;
+  - preserved post-success refresh and selection clearing while improving bulk result semantics;
+  - restricted deleted-scope Asset row actions to sensible operations only, removing active-scope actions such as edit/compare/console/map section routing from purged rows;
+  - preserved active-scope rich row menu inventory while keeping destructive actions guarded by confirmation.
+- Operator workflow acceptance matrix:
+  - Table row selection enables Bulk Actions: PASS.
+  - Bulk Set Status direct operator path: PASS via quick-preset button path and shared toast grammar.
+  - Bulk destructive confirmation guard: PASS.
+  - Deleted-scope row menu action inventory sanity: PASS.
+  - Active-scope rich row menu inventory: PASS.
+  - Compare / details modal closure paths: PARTIAL, preserved but not fully browser-closed in this pass.
+  - Toolbar / import / export / template closure: PARTIAL, preserved but not newly closed in this pass.
+- Asset behavior preservation checklist:
+  - built-in Asset saved views preserved;
+  - saved-view migration restoration preserved;
+  - report/map selected-asset seeding preserved;
+  - compact Report action rail preserved;
+  - report section focus routing preserved;
+  - Map focus/clear/selected-node operator controls preserved;
+  - include-deleted plus live fallback preserved;
+  - `/asset` canonical route preserved;
+  - rich Asset report sections preserved.
 - No-regression checklist:
   - no backend/API redesign;
   - no route re-decision;
   - no AssetReal promotion;
   - no Monitoring/Settings/unrelated workspace migration;
   - no feature deletion to fake progress.
-- Browser sanity checks performed:
-  - row action menu opens from grid row action trigger;
-  - row action menu now contains the expected operator inventory for active rows;
-  - `Services` row action routes into the existing report services section;
-  - row-click selection enables `Bulk Actions`;
-  - Bulk Actions flyout shows resettable `Set Status` and `Set Environment` editors;
-  - Bulk Delete opens the shared confirmation modal instead of executing directly.
-- Validation command results:
+- Browser sanity checks actually performed:
+  - row-click selection enables Bulk Actions;
+  - Bulk Set Status using the new quick-preset path produces visible update feedback;
+  - Bulk Delete opens confirmation before destructive action;
+  - Purged scope opens and shows sane deleted-row menu inventory (`View Details`, `Quick Look`, `Open Report`, `Copy Asset ID`, `Copy Row`, `Export Row`, `Restore`, `Purge`);
+  - active row menu still routes `Services` to the focused report services section;
+  - Quick Look opens from visible row action.
+- Validation commands / results:
   - `npm run typecheck`: PASS.
   - `npm run build`: PASS with existing large-chunk warning only.
   - `npm run test:lint`: PASS.
 - Remaining visible issues:
-  - full table chrome/golden parity is still incomplete;
-  - right-click/menu completion still needs deleted-scope restore/purge confirmation sanity and broader route checks;
-  - bulk actions still need end-to-end status/environment mutation confirmation and post-action refresh/toast verification in browser;
-  - toolbar/import/export/template and compare/details/edit closure paths still need a dedicated completion pass.
+  - table chrome / full golden grid parity still needs a dedicated closure pass;
+  - compare/details/edit closure paths were not fully browser-closed in this pass;
+  - toolbar/import/export/template operator closure still needs a dedicated pass;
+  - deleted-scope restore/purge end-to-end confirmation and refresh behavior should be browser-closed explicitly.
 - Forbidden-command statement: no destructive git reset/checkout/revert commands were used.
-- Unrelated-scope exclusion statement: work stayed inside the Asset goldenization scope and shared primitives only where directly required by Asset behavior.
+- Unrelated-scope exclusion statement: work remained inside Asset goldenization scope and an Asset-used shared flyout primitive only.
 - Final worker result: PARTIAL.
