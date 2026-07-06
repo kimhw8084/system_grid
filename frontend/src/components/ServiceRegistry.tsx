@@ -440,10 +440,6 @@ export const ServiceForm = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.service_type, initialData.id, options])
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty)
-  }, [isDirty, onDirtyChange])
-
   const updateField = (field: string, value: any) => {
     patchValue({ [field]: value })
     setValidationErrors((current) => {

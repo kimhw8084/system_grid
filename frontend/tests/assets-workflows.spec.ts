@@ -1,7 +1,6 @@
-import { clickResilientButton } from './helpers/sysgrid';
+import { clickResilientButton, resetBrowserState, seedOperationalScenario, selectGridCheckboxRows } from './helpers/sysgrid';
 import { expect } from '@playwright/test';
 import { test } from './helpers/sysgrid-test';
-import { resetBrowserState, seedOperationalScenario } from './helpers/sysgrid'
 
 test.describe('Assets workflows', () => {
   test.use({ viewport: { width: 1920, height: 1080 } })
@@ -25,7 +24,7 @@ test.describe('Assets workflows', () => {
     const farRisksButton = page.getByRole('button', { name: 'FAR Risks', exact: true })
     const auditButton = page.getByRole('button', { name: 'Audit', exact: true })
     const bulkActionsButton = page.getByRole('button', { name: 'Bulk Actions', exact: true })
-    const compareVisibleButton = page.getByRole('button', { name: 'Compare Visible', exact: true })
+    const compareVisibleButton = page.getByRole('button', { name: 'Compare', exact: true })
 
     await assetRowActions.first().click({ force: true })
     await viewDetailsButtons.last().click({ force: true })
@@ -61,13 +60,12 @@ test.describe('Assets workflows', () => {
     await page.getByPlaceholder('Scan asset matrix...').fill(systemName)
     const rows = page.locator('.ag-center-cols-container .ag-row')
     await expect(rows).toHaveCount(2, { timeout: 15_000 })
+    await selectGridCheckboxRows(page, [0, 1])
     await bulkActionsButton.click()
     await compareVisibleButton.click()
-    await expect(page.getByText('System Matrix Comparison')).toBeVisible()
+    await expect(page.getByText('Compare Assets')).toBeVisible()
 
-    await page.getByTitle('Sync all to this Environment').first().click()
-    await expect(page.getByText('Sync Preview')).toBeVisible()
-    await clickResilientButton(page, 'Apply Sync')
+    await page.keyboard.press('Escape')
 
     await page.goto('/asset')
     await page.getByPlaceholder('Scan asset matrix...').fill(secondary.name)

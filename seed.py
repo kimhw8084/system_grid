@@ -311,6 +311,7 @@ async def clear_domain_data(session: AsyncSession):
         models.VendorPersonnel,
         models.Vendor,
         models.Team,
+        models.SettingOption,
     ]
     association_tables = [
         models.far_mode_assets,
