@@ -88,7 +88,7 @@ export function AssetGoldenFeatureSurfaces({
   }
 
   if (viewMode === 'map') {
-    return <AssetLegacyMapSurface assets={allAssets} visibleAssets={visibleAssets} connections={connections} relationships={relationships} systemsList={systemsList} />
+    return <AssetLegacyMapSurface assets={allAssets} visibleAssets={visibleAssets} connections={connections} relationships={relationships} selectedAssetId={reportAssetId} systemsList={systemsList} />
   }
 
   const groupedSections = groupBy === 'raw'

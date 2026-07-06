@@ -9,12 +9,14 @@ export function AssetLegacyMapSurface({
   visibleAssets,
   connections,
   relationships,
+  selectedAssetId,
   systemsList,
 }: {
   assets: any[]
   visibleAssets: any[]
   connections: any[]
   relationships: any[]
+  selectedAssetId?: number | null
   systemsList: string[]
 }) {
   const [selectedSystems, setSelectedSystems] = useState<string[]>([])
@@ -27,6 +29,7 @@ export function AssetLegacyMapSurface({
   const [canvasSize, setCanvasSize] = useState({ width: 960, height: 680 })
   const fgRef = useRef<any>(null)
   const shellRef = useRef<HTMLDivElement | null>(null)
+  const lastSeededAssetIdRef = useRef<number | null>(null)
 
   const hasFilter = selectedSystems.length > 0 || selectedAssetIds.length > 0 || searchTerm.length >= 2
 
@@ -44,6 +47,20 @@ export function AssetLegacyMapSurface({
     observer.observe(node)
     return () => observer.disconnect()
   }, [])
+
+  useEffect(() => {
+    const normalizedSelectedAssetId = Number(selectedAssetId)
+    if (!Number.isFinite(normalizedSelectedAssetId) || normalizedSelectedAssetId <= 0) return
+    const existsInVisibleAssets = visibleAssets.some((asset: any) => Number(asset.id) === normalizedSelectedAssetId)
+    if (!existsInVisibleAssets) return
+    if (lastSeededAssetIdRef.current === normalizedSelectedAssetId && selectedAssetIds.includes(normalizedSelectedAssetId)) return
+
+    setSelectedAssetIds((current) => {
+      if (current.includes(normalizedSelectedAssetId)) return current
+      return [normalizedSelectedAssetId]
+    })
+    lastSeededAssetIdRef.current = normalizedSelectedAssetId
+  }, [selectedAssetId, selectedAssetIds, visibleAssets])
 
   const graphData = useMemo(() => {
     if (!hasFilter) return { nodes: [], links: [] }
