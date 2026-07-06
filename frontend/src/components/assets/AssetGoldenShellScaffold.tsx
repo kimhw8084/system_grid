@@ -66,8 +66,8 @@ export default function AssetGoldenShellScaffold({
               value={activeTab}
               onChange={(next) => onTabChange(next as 'inventory' | 'deleted')}
               options={[
-                { label: 'Existing', value: 'inventory' },
-                { label: 'Purged', value: 'deleted' },
+                { label: `Existing (${existingCount})`, value: 'inventory' },
+                { label: `Purged (${purgedCount})`, value: 'deleted' },
               ]}
             />
           </div>
