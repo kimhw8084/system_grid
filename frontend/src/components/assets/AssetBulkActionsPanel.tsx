@@ -9,6 +9,7 @@ type AssetBulkActionsPanelProps = {
   isOpen: boolean
   panelRef: React.RefObject<HTMLDivElement | null>
   panelStyle: React.CSSProperties
+  selectedCount: number
   onClose: () => void
   onApply: (action: string, payload?: Record<string, any>) => void
 }
@@ -21,12 +22,19 @@ export function AssetBulkActionsPanel({
   isOpen,
   panelRef,
   panelStyle,
+  selectedCount,
   onClose,
   onApply,
 }: AssetBulkActionsPanelProps) {
   const [selectedStatus, setSelectedStatus] = React.useState('')
   const [selectedEnv, setSelectedEnv] = React.useState('')
   const [expandedSection, setExpandedSection] = React.useState<'status' | 'environment' | null>(null)
+
+  React.useEffect(() => {
+    setSelectedStatus('')
+    setSelectedEnv('')
+    setExpandedSection(null)
+  }, [isOpen, selectedCount, activeTab])
 
   return (
     <OperationalAnchoredPanel
@@ -44,7 +52,7 @@ export function AssetBulkActionsPanel({
               <Zap size={14} className="text-blue-400" />
               <p className="text-[10px] font-semibold text-slate-400">Bulk actions</p>
             </div>
-            <p className="pt-1 text-[12px] font-semibold text-slate-100">Apply registry changes across the current selection.</p>
+            <p className="pt-1 text-[12px] font-semibold text-slate-100">{selectedCount} assets selected</p>
           </div>
 
           {activeTab === 'inventory' ? (

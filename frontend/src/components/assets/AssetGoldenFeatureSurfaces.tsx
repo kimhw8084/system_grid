@@ -7,9 +7,9 @@ import { AssetLegacyMapSurface } from './AssetLegacyMapSurface'
 
 export function AssetGoldenFeatureSurfaces({
   gridRef,
+  allAssets,
   columnDefs,
   contextMenu,
-  devices,
   dataState,
   fontSize,
   getRowClass,
@@ -26,6 +26,7 @@ export function AssetGoldenFeatureSurfaces({
   onEditService,
   rowDensity,
   rows,
+  visibleAssets,
   runtime,
   rowInteractions,
   selectionScopeKey,
@@ -38,9 +39,9 @@ export function AssetGoldenFeatureSurfaces({
   isSelected,
 }: {
   gridRef?: React.RefObject<any>
+  allAssets: any[]
   columnDefs: any[]
   contextMenu: { handleCellContextMenu: (event: any) => void }
-  devices: any[]
   dataState: any
   fontSize: number
   getRowClass?: (params: any) => string
@@ -57,6 +58,7 @@ export function AssetGoldenFeatureSurfaces({
   onEditService: (service: any) => void
   rowDensity: number
   rows: any[]
+  visibleAssets: any[]
   runtime: any
   rowInteractions: any
   selectionScopeKey: string
@@ -71,9 +73,11 @@ export function AssetGoldenFeatureSurfaces({
   if (viewMode === 'report') {
     return (
       <AssetLegacyReportSurface
-        assets={rows}
+        assets={visibleAssets}
         options={options}
-        devices={devices}
+        allAssets={allAssets}
+        connections={connections}
+        relationships={relationships}
         selectedAssetId={reportAssetId}
         onSelectAsset={onSelectReportAsset}
         onEdit={onEditAsset}
@@ -84,7 +88,7 @@ export function AssetGoldenFeatureSurfaces({
   }
 
   if (viewMode === 'map') {
-    return <AssetLegacyMapSurface assets={rows} connections={connections} relationships={relationships} systemsList={systemsList} />
+    return <AssetLegacyMapSurface assets={allAssets} visibleAssets={visibleAssets} connections={connections} relationships={relationships} systemsList={systemsList} />
   }
 
   const groupedSections = groupBy === 'raw'

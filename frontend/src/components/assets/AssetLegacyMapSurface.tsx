@@ -6,11 +6,13 @@ import { WorkspaceEmptyState } from '../shared/OperationalWorkspacePrimitives'
 
 export function AssetLegacyMapSurface({
   assets,
+  visibleAssets,
   connections,
   relationships,
   systemsList,
 }: {
   assets: any[]
+  visibleAssets: any[]
   connections: any[]
   relationships: any[]
   systemsList: string[]
@@ -68,7 +70,7 @@ export function AssetLegacyMapSurface({
       }
     }
 
-    const rootAssets = assets.filter((asset: any) =>
+    const rootAssets = visibleAssets.filter((asset: any) =>
       selectedSystems.includes(asset.system) ||
       selectedAssetIds.includes(asset.id) ||
       (searchTerm.length >= 2 && String(asset.name || '').toLowerCase().includes(searchTerm.toLowerCase()))
@@ -118,14 +120,13 @@ export function AssetLegacyMapSurface({
       nodes: Array.from(nodesMap.values()),
       links: Array.from(linksMap.values()),
     }
-  }, [assets, connections, depth, hasFilter, relationships, searchTerm, selectedAssetIds, selectedSystems])
+  }, [assets, connections, depth, hasFilter, relationships, searchTerm, selectedAssetIds, selectedSystems, visibleAssets])
 
   const filteredAssetsForSelection = useMemo(() => {
-    return assets.filter((asset: any) =>
-      !asset.is_deleted &&
+    return visibleAssets.filter((asset: any) =>
       (assetSearch.length === 0 || String(asset.name || '').toLowerCase().includes(assetSearch.toLowerCase()))
     )
-  }, [assetSearch, assets])
+  }, [assetSearch, visibleAssets])
 
   const typeColors: Record<string, string> = {
     Physical: '#10b981',

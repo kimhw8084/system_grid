@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Clipboard,
+  Download,
   FileText,
   GitCompare,
   Activity,
@@ -33,7 +34,7 @@ import {
 import { AppDropdown } from '../shared/AppDropdown'
 import { showWorkspaceToast } from '../shared/WorkspaceToast'
 import { useWorkspaceOverlayController } from '../shared/OperationalWorkspaceHooks'
-import { useWorkspaceAnchoredLayer } from '../shared/OperationalWorkspacePrimitives'
+import { WorkspaceFloatingPanel, useWorkspaceAnchoredLayer } from '../shared/OperationalWorkspacePrimitives'
 import { AssetBulkActionsPanel } from './AssetBulkActionsPanel'
 import { AssetCompareModal } from './AssetCompareModal'
 
@@ -55,6 +56,7 @@ export default function AssetGoldenOperationalWorkspace() {
   const [showCompareOpen, setShowCompareOpen] = useState(false)
   const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
+  const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<number | null>(null)
 
   const {
     activeOverlay,
@@ -67,11 +69,13 @@ export default function AssetGoldenOperationalWorkspace() {
   const showDisplayMenu = isOverlayOpen('display')
   const showViewsMenu = isOverlayOpen('views')
   const showBulkMenu = isOverlayOpen('bulk')
+  const showExportMenu = isOverlayOpen('export')
   const hasRowActionMenu = activeOverlay === 'rowAction' && Boolean(workspace.rowActionMenu)
 
   const { triggerRef: displayMenuButtonRef, panelRef: displayMenuPanelRef, panelStyle: displayMenuStyle } = useWorkspaceAnchoredLayer(showDisplayMenu, { minWidth: 320 })
   const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
   const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
+  const { triggerRef: exportMenuButtonRef, panelRef: exportMenuPanelRef, panelStyle: exportMenuStyle } = useWorkspaceAnchoredLayer(showExportMenu, { minWidth: 260 })
 
   const openDetailAsset = useCallback((asset: any) => {
     workspace.setDetailAsset(asset)
@@ -122,6 +126,7 @@ export default function AssetGoldenOperationalWorkspace() {
     onOpenQuickLook: workspace.setQuickLookAsset,
     onOpenDetails: openDetailAsset,
     onOpenEdit: workspace.setEditingAsset,
+    getConsoleUrl: workspace.getAssetConsoleUrl,
     onOpenRowActions: (asset, event) => {
       event.stopPropagation()
       openRowActionMenuAtPoint(asset, event.clientX, event.clientY)
@@ -135,19 +140,48 @@ export default function AssetGoldenOperationalWorkspace() {
   const rowActionSections = workspace.rowActionMenu ? buildAssetGoldenRowActionSections({
     asset: workspace.rowActionMenu.asset,
     activeTab: workspace.activeTab,
+    deleteConfirmId: rowDeleteConfirmId,
+    onSetDeleteConfirmId: setRowDeleteConfirmId,
     onOpenQuickLook: workspace.setQuickLookAsset,
     onOpenReport: (asset) => {
       workspace.setReportAssetId(asset.id)
       workspace.setViewMode('report')
       dismissWorkspaceMenus()
     },
+    onOpenMap: (asset) => {
+      workspace.setReportAssetId(asset.id)
+      workspace.setViewMode('map')
+      dismissWorkspaceMenus()
+    },
     onOpenDetails: openDetailAsset,
     onOpenEdit: workspace.setEditingAsset,
+    onAddToCompare: (asset) => {
+      workspace.setSelectedIds((current) => {
+        const next = current.includes(asset.id) ? current : [...current, asset.id].slice(0, 5)
+        if (next.length >= 2) setShowCompareOpen(true)
+        return next
+      })
+    },
     onCloseMenu: dismissWorkspaceMenus,
-    onOpenConfirm: workspace.openConfirm,
     onBulkAction: ({ action, ids }) => workspace.performBulkAction(action, ids),
+    onCopyAssetId: (asset) => {
+      navigator.clipboard.writeText(String(asset.id))
+      showWorkspaceToast('Asset ID copied')
+    },
+    onCopyRow: (asset) => {
+      navigator.clipboard.writeText(JSON.stringify(asset, null, 2))
+      showWorkspaceToast('Asset row copied')
+    },
+    onExportRow: (asset) => {
+      navigator.clipboard.writeText(Object.values(asset).map((value) => JSON.stringify(value ?? '')).join(','))
+      showWorkspaceToast('Asset row exported to clipboard')
+    },
     getConsoleUrl: workspace.getAssetConsoleUrl,
   }) : []
+
+  useEffect(() => {
+    if (!workspace.rowActionMenu) setRowDeleteConfirmId(null)
+  }, [workspace.rowActionMenu])
 
   const LENS_OPTIONS = useMemo(() => [
     { value: 'all', label: 'All Lenses' },
@@ -180,6 +214,19 @@ export default function AssetGoldenOperationalWorkspace() {
       .then(() => showWorkspaceToast(selectedCount > 0 ? 'Selected assets copied to clipboard' : 'Asset table copied to clipboard'))
       .catch(() => showWorkspaceToast('Failed to copy data', { type: 'error' }))
   }, [selectedCount])
+
+  const handleExportCSV = useCallback(() => {
+    if (!gridRef.current?.api) {
+      showWorkspaceToast('Grid is not ready', { type: 'error' })
+      return
+    }
+    gridRef.current.api.exportDataAsCsv({
+      fileName: `SysGrid_Assets_${new Date().toISOString().slice(0, 10)}.csv`,
+      allColumns: false,
+      onlySelected: false,
+    })
+    showWorkspaceToast('Asset CSV exported')
+  }, [])
 
   const selectionScopeKey = `${workspace.activeTab}:${workspace.viewMode}:${workspace.groupBy}`
   const { handleSelectionChanged } = useOperationalGroupedSelection({
@@ -221,17 +268,20 @@ export default function AssetGoldenOperationalWorkspace() {
   }, [workspace.groupBy, workspace.visibleAssets])
 
   useOperationalDismissController({
-    active: showBulkMenu || showDisplayMenu || showViewsMenu || hasRowActionMenu,
+    active: showBulkMenu || showDisplayMenu || showViewsMenu || showExportMenu || hasRowActionMenu,
     onDismiss: dismissWorkspaceMenus,
-    allTriggerRefs: [bulkMenuButtonRef, displayMenuButtonRef, viewsMenuButtonRef],
+    allTriggerRefs: [bulkMenuButtonRef, displayMenuButtonRef, exportMenuButtonRef, viewsMenuButtonRef],
     bulkMenuButtonRef,
     bulkMenuPanelRef,
     displayMenuButtonRef,
     displayMenuPanelRef,
+    exportMenuButtonRef,
+    exportMenuPanelRef,
     viewsMenuButtonRef,
     viewsMenuPanelRef,
     showBulkMenu,
     showDisplayMenu,
+    showExportMenu,
     showViewsMenu,
     hasRowActionMenu,
   })
@@ -272,20 +322,24 @@ export default function AssetGoldenOperationalWorkspace() {
         toolbarControls={(
           <>
             <ToolbarGroup>
-              <ToolbarButton ref={viewsMenuButtonRef as any} active={showViewsMenu} onClick={() => toggleOverlay('views')}>
-                <span className="flex items-center gap-2">
-                  <LayoutGrid size={14} />
-                  Views
-                </span>
-              </ToolbarButton>
-              <ToolbarButton ref={displayMenuButtonRef as any} active={showDisplayMenu} onClick={() => toggleOverlay('display')}>
-                <span className="flex items-center gap-2">
-                  <Sliders size={14} />
-                  Display
-                </span>
-              </ToolbarButton>
-              <ToolbarIconButton onClick={workspace.exportSnapshot} title="Export CSV">
-                <FileText size={16} />
+              <div className="views-menu-container">
+                <ToolbarButton ref={viewsMenuButtonRef as any} active={showViewsMenu} onClick={() => toggleOverlay('views')}>
+                  <span className="flex items-center gap-2">
+                    <LayoutGrid size={14} />
+                    Views
+                  </span>
+                </ToolbarButton>
+              </div>
+              <div className="display-menu-container">
+                <ToolbarButton ref={displayMenuButtonRef as any} active={showDisplayMenu} onClick={() => toggleOverlay('display')}>
+                  <span className="flex items-center gap-2">
+                    <Sliders size={14} />
+                    Display
+                  </span>
+                </ToolbarButton>
+              </div>
+              <ToolbarIconButton ref={exportMenuButtonRef as any} onClick={() => toggleOverlay('export')} title="Export asset data">
+                <Download size={16} />
               </ToolbarIconButton>
               <ToolbarIconButton onClick={handleCopyToClipboard} title="Copy to clipboard">
                 <Clipboard size={16} />
@@ -310,7 +364,7 @@ export default function AssetGoldenOperationalWorkspace() {
               <ToolbarButton active={isIntelligenceExpanded} onClick={() => setIsIntelligenceExpanded((current) => !current)} title={isIntelligenceExpanded ? 'Hide Activity Columns' : 'Show Activity Columns'}>
                 <span className="flex items-center gap-2">
                   {isIntelligenceExpanded ? <Minimize2 size={14} /> : <Activity size={14} />}
-                  Activity
+                  Expand Table
                 </span>
               </ToolbarButton>
             </ToolbarGroup>
@@ -382,9 +436,43 @@ export default function AssetGoldenOperationalWorkspace() {
               isOpen={showBulkMenu}
               panelRef={bulkMenuPanelRef}
               panelStyle={bulkMenuStyle}
+              selectedCount={selectedCount}
               onClose={dismissWorkspaceMenus}
               onApply={(action, payload) => workspace.performBulkAction(action, undefined, payload)}
             />
+            {showExportMenu ? (
+              <div ref={exportMenuPanelRef} style={exportMenuStyle} className="bulk-menu-container">
+                <WorkspaceFloatingPanel kind="context" className="max-h-[320px] overflow-y-auto custom-scrollbar p-3">
+                  <div className="space-y-2">
+                    <div className="rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
+                      <p className="text-[10px] font-semibold text-slate-400">Export assets</p>
+                      <p className="pt-1 text-[12px] font-semibold text-slate-100">Download a CSV export, template, or registry snapshot.</p>
+                    </div>
+                    <button type="button" onClick={() => { handleExportCSV(); dismissWorkspaceMenus() }} className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-left transition-all hover:bg-white/[0.03]">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">Export CSV</p>
+                        <p className="pt-1 text-[11px] text-slate-500">Download the current asset import snapshot.</p>
+                      </div>
+                      <FileText size={16} className="text-blue-400" />
+                    </button>
+                    <button type="button" onClick={() => { workspace.exportTemplate(); dismissWorkspaceMenus() }} className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-left transition-all hover:bg-white/[0.03]">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">Export Template</p>
+                        <p className="pt-1 text-[11px] text-slate-500">Download the asset registry template with canonical columns.</p>
+                      </div>
+                      <Download size={16} className="text-emerald-400" />
+                    </button>
+                    <button type="button" onClick={() => { workspace.exportSnapshot(); dismissWorkspaceMenus() }} className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-left transition-all hover:bg-white/[0.03]">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">Snapshot</p>
+                        <p className="pt-1 text-[11px] text-slate-500">Download the backend snapshot artifact for import/export recovery.</p>
+                      </div>
+                      <FileText size={16} className="text-amber-400" />
+                    </button>
+                  </div>
+                </WorkspaceFloatingPanel>
+              </div>
+            ) : null}
             {workspace.rowActionMenu ? (
               <OperationalRowActionMenu
                 meta={workspace.rowActionMenu.asset.system}
@@ -400,9 +488,9 @@ export default function AssetGoldenOperationalWorkspace() {
       >
         <AssetGoldenFeatureSurfaces
           gridRef={gridRef}
+          allAssets={workspace.allAssets}
           columnDefs={columnDefs}
           contextMenu={assetContextMenu}
-          devices={workspace.devices}
           dataState={workspace.dataState}
           fontSize={workspace.fontSize}
           getRowClass={getRowClass}
@@ -419,6 +507,7 @@ export default function AssetGoldenOperationalWorkspace() {
           onEditService={workspace.setServiceEdit}
           rowDensity={workspace.rowDensity}
           rows={workspace.visibleAssets}
+          visibleAssets={workspace.visibleAssets}
           runtime={{}}
           rowInteractions={assetRowInteractions}
           selectionScopeKey={selectionScopeKey}

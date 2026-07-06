@@ -404,7 +404,7 @@ const HWTab = ({ deviceId }: { deviceId: number }) => {
   )
 }
 
-const HWTable = ({ deviceId }: { deviceId: number }) => {
+export const HWTable = ({ deviceId }: { deviceId: number }) => {
   const queryClient = useQueryClient()
   const { data: hardware } = useQuery({ queryKey: ['device-hw', deviceId], queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/hardware`)).json()) })
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -562,7 +562,7 @@ const SecretsTab = ({ deviceId }: { deviceId: number }) => {
   )
 }
 
-const SecretsTable = ({ deviceId }: { deviceId: number }) => {
+export const SecretsTable = ({ deviceId }: { deviceId: number }) => {
   const queryClient = useQueryClient()
   const { data: secrets } = useQuery({ queryKey: ['device-secrets', deviceId], queryFn: async () => (await (await apiFetch(`/api/v1/devices/${deviceId}/secrets`)).json()) })
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -673,7 +673,7 @@ const SecretsTable = ({ deviceId }: { deviceId: number }) => {
   )
 }
 
-const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
+export const RelationshipsTab = ({ deviceId }: { deviceId: number }) => {
   const queryClient = useQueryClient()
   const { data: devices } = useQuery({ queryKey: ['devices'], queryFn: async () => (await (await apiFetch('/api/v1/devices')).json()) })
   

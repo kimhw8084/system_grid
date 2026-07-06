@@ -1,17 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Activity, Box, Calendar, Cpu as CpuIcon, Edit2, Layers, Search, Share2, Shield } from 'lucide-react'
+import { Activity, Box, Calendar, Cpu as CpuIcon, Edit2, Layers, Network, Search, Shield } from 'lucide-react'
 import { motion } from 'framer-motion'
 import ForceGraph2D from 'react-force-graph-2d'
-import { useQuery } from '@tanstack/react-query'
-import { apiFetch } from '../../api/apiClient'
 import { formatAppDay } from '../../utils/dateUtils'
 import { WorkspaceEmptyState } from '../shared/OperationalWorkspacePrimitives'
 import { AssetServicesTable, MetadataViewer, MiniMonitoringTable } from '../AssetGrid_Legacy'
+import { HWTable, RelationshipsTab, SecretsTable } from './AssetDetailsView'
 
 type AssetLegacyReportSurfaceProps = {
   assets: any[]
   options: any[]
-  devices: any[]
+  allAssets: any[]
+  connections: any[]
+  relationships: any[]
   selectedAssetId?: number | null
   onSelectAsset?: (asset: any) => void
   onEdit: (asset: any) => void
@@ -44,55 +45,44 @@ const ASSET_TYPES = [
   { value: 'Load Balancer', label: 'Load Balancer' },
 ]
 
-function ConnectionMap({ deviceId, type, devices }: { deviceId: number; type: 'dependency' | 'network'; devices: any[] }) {
-  const { data: rels } = useQuery({
-    queryKey: ['asset-report-rel', deviceId],
-    queryFn: async () => (await apiFetch(`/api/v1/devices/${deviceId}/relationships`)).json(),
-    enabled: type === 'dependency' && !!deviceId,
-  })
-
-  const { data: conns } = useQuery({
-    queryKey: ['asset-report-conns', deviceId],
-    queryFn: async () => (await apiFetch(`/api/v1/networks/connections?device_id=${deviceId}`)).json(),
-    enabled: type === 'network' && !!deviceId,
-  })
-
+function ConnectionMap({
+  deviceId,
+  type,
+  devices,
+  relationships,
+  connections,
+}: {
+  deviceId: number
+  type: 'dependency' | 'network'
+  devices: any[]
+  relationships: any[]
+  connections: any[]
+}) {
   const centerDevice = devices.find((device) => Number(device.id) === Number(deviceId))
 
   const graphData = useMemo(() => {
     const nodes = [{ id: deviceId, name: centerDevice?.name, isCenter: true, type: centerDevice?.type }]
     const links: any[] = []
 
-    if (type === 'dependency' && Array.isArray(rels)) {
-      rels.forEach((rel: any) => {
-        const isSource = Number(rel.source_device_id) === Number(deviceId)
-        const peerId = isSource ? Number(rel.target_device_id) : Number(rel.source_device_id)
-        const peer = devices.find((device) => Number(device.id) === peerId)
-        if (!peer) return
-        nodes.push({ id: peerId, name: peer.name, isCenter: false, type: peer.type })
-        links.push({
-          source: isSource ? deviceId : peerId,
-          target: isSource ? peerId : deviceId,
-          label: rel.relationship_type,
-        })
-      })
-    } else if (type === 'network' && Array.isArray(conns)) {
-      conns.forEach((conn: any) => {
-        const isSource = Number(conn.src_device_id) === Number(deviceId)
-        const peerId = isSource ? Number(conn.dst_device_id) : Number(conn.src_device_id)
-        const peer = devices.find((device) => Number(device.id) === peerId)
-        if (!peer) return
-        nodes.push({ id: peerId, name: peer.name, isCenter: false, type: peer.type })
-        links.push({
-          source: isSource ? deviceId : peerId,
-          target: isSource ? peerId : deviceId,
-          label: conn.connection_type || 'Network',
-        })
+    const pool: any[] = type === 'dependency' ? relationships : connections
+    for (const entry of pool) {
+      const sourceId = Number(type === 'dependency' ? entry.source_device_id : entry.src_device_id)
+      const targetId = Number(type === 'dependency' ? entry.target_device_id : entry.dst_device_id)
+      if (sourceId !== Number(deviceId) && targetId !== Number(deviceId)) continue
+      const isSource = sourceId === Number(deviceId)
+      const peerId = isSource ? targetId : sourceId
+      const peer = devices.find((device) => Number(device.id) === Number(peerId))
+      if (!peer) continue
+      nodes.push({ id: peerId, name: peer.name, isCenter: false, type: peer.type })
+      links.push({
+        source: isSource ? deviceId : peerId,
+        target: isSource ? peerId : deviceId,
+        label: type === 'dependency' ? (entry.relationship_type || 'Relationship') : (entry.connection_type || 'Network'),
       })
     }
 
     return { nodes, links }
-  }, [centerDevice?.name, centerDevice?.type, conns, deviceId, devices, rels, type])
+  }, [centerDevice?.name, centerDevice?.type, connections, deviceId, devices, relationships, type])
 
   return (
     <div className="h-[300px] w-full overflow-hidden rounded-lg border border-white/5 bg-black/20">
@@ -156,7 +146,9 @@ function ConnectionMap({ deviceId, type, devices }: { deviceId: number; type: 'd
 export function AssetLegacyReportSurface({
   assets,
   options,
-  devices,
+  allAssets,
+  connections,
+  relationships,
   selectedAssetId,
   onSelectAsset,
   onEdit,
@@ -369,46 +361,62 @@ export function AssetLegacyReportSurface({
             </div>
 
             <div className="space-y-6">
-              <SectionTitle icon={<Share2 size={16} className="text-indigo-400" />} title="Vector Topologies & Interconnects" />
-              <div className="grid grid-cols-2 gap-8">
-                <div className="space-y-3">
-                  <p className="text-center text-[9px] font-bold uppercase tracking-widest text-slate-500">Dependency Vector Map</p>
-                  <ConnectionMap deviceId={selectedAsset.id} type="dependency" devices={devices} />
-                </div>
-                <div className="space-y-3">
-                  <p className="text-center text-[9px] font-bold uppercase tracking-widest text-slate-500">Network Interconnect Map</p>
-                  <ConnectionMap deviceId={selectedAsset.id} type="network" devices={devices} />
-                </div>
+              <SectionTitle icon={<Layers size={16} className="text-blue-400" />} title="Hosted Logical Services" />
+              <div className="overflow-hidden rounded-lg border border-white/5 bg-black/10">
+                <AssetServicesTable deviceId={selectedAsset.id} onViewDetails={onViewServiceDetails} onEdit={onEditService} />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <SectionTitle icon={<Layers size={16} className="text-blue-400" />} title="Hosted Logical Services" />
-                <div className="overflow-hidden rounded-lg border border-white/5 bg-black/10">
-                  <AssetServicesTable deviceId={selectedAsset.id} onViewDetails={onViewServiceDetails} onEdit={onEditService} />
-                </div>
-              </div>
-              <div className="space-y-6">
-                <SectionTitle icon={<Activity size={16} className="text-emerald-400" />} title="Monitoring & Telemetry Nodes" />
-                <div className="overflow-hidden rounded-lg border border-white/5 bg-black/10">
-                  <MiniMonitoringTable deviceId={selectedAsset.id} />
-                </div>
+            <div className="space-y-6">
+              <SectionTitle icon={<Activity size={16} className="text-emerald-400" />} title="Monitoring & Telemetry Nodes" />
+              <div className="overflow-hidden rounded-lg border border-white/5 bg-black/10">
+                <MiniMonitoringTable deviceId={selectedAsset.id} />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <SectionTitle icon={<Shield size={16} className="text-amber-500" />} title="Security & Stewardship" />
-                <div className="space-y-4 rounded-lg border border-white/5 bg-black/20 p-8">
-                  <MetricBlock label="Owner" value={selectedAsset.owner || 'Unowned'} />
-                  <MetricBlock label="Exposure" value={selectedAsset.management_ip || selectedAsset.primary_ip || 'No address recorded'} />
-                </div>
+            <div className="space-y-6">
+              <SectionTitle icon={<Shield size={16} className="text-amber-500" />} title="Security Credentials & Secrets" />
+              <div className="overflow-hidden rounded-lg border border-white/5 bg-black/10">
+                <SecretsTable deviceId={selectedAsset.id} />
               </div>
-              <div className="space-y-6">
-                <SectionTitle icon={<Box size={16} className="text-violet-400" />} title="Registry Metadata" />
-                <div className="rounded-lg border border-white/5 bg-black/20 p-8">
-                  <MetadataViewer data={selectedAsset.metadata_json || {}} />
+            </div>
+
+            <div className="space-y-6">
+              <SectionTitle icon={<Box size={16} className="text-violet-400" />} title="Registry Metadata Payload" />
+              <div className="rounded-lg border border-white/5 bg-black/20 p-8">
+                <MetadataViewer data={selectedAsset.metadata_json || {}} />
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <SectionTitle icon={<CpuIcon size={16} className="text-cyan-400" />} title="Physical Component Inventory" />
+              <div className="overflow-hidden rounded-lg border border-white/5 bg-black/10">
+                <HWTable deviceId={selectedAsset.id} />
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <SectionTitle icon={<Network size={16} className="text-indigo-400" />} title="Relationship, Dependency & Network Context" />
+              <div className="grid gap-8 xl:grid-cols-2">
+                <div className="overflow-hidden rounded-lg border border-white/5 bg-black/10">
+                  <RelationshipsTab deviceId={selectedAsset.id} />
+                </div>
+                <div className="space-y-6 rounded-lg border border-white/5 bg-black/10 p-6">
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Registry Context</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <MetricBlock label="Owner" value={selectedAsset.owner || 'Unowned'} />
+                      <MetricBlock label="Exposure" value={selectedAsset.management_ip || selectedAsset.primary_ip || 'No address recorded'} />
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Dependency Vector Map</p>
+                    <ConnectionMap deviceId={selectedAsset.id} type="dependency" devices={allAssets} relationships={relationships} connections={connections} />
+                  </div>
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Network Interconnect Map</p>
+                    <ConnectionMap deviceId={selectedAsset.id} type="network" devices={allAssets} relationships={relationships} connections={connections} />
+                  </div>
                 </div>
               </div>
             </div>

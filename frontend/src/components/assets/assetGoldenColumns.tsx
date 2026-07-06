@@ -1,5 +1,5 @@
 import React from 'react'
-import { AlertCircle, Check, Edit2, Maximize2, MoreVertical } from 'lucide-react'
+import { AlertCircle, Edit2, Maximize2, MoreVertical, Terminal } from 'lucide-react'
 import {
   type OperationalColumnConfig,
   OPERATIONAL_GRID_WIDTHS,
@@ -8,6 +8,36 @@ import {
   buildOperationalGridColumnDefinitions,
   renderOperationalActionButtons,
 } from '../shared/OperationalGridStandard'
+
+export const ASSET_GOLDEN_COLUMN_FIELDS = [
+  'name',
+  'system',
+  'type',
+  'status',
+  'environment',
+  'owner',
+  'manufacturer',
+  'model',
+  'os_name',
+  'os_version',
+  'primary_ip',
+  'management_ip',
+  'hardware_summary',
+  'hardware_age',
+  'open_incident_count',
+  'site_name',
+  'rack_name',
+  'depth',
+  'mount_orientation',
+  'u_start',
+  'size_u',
+  'power_typical_w',
+  'power_max_w',
+  'is_deleted',
+  'updated_at',
+] as const
+
+export const ASSET_GOLDEN_ALLOWED_COLUMN_FIELDS = new Set<string>(ASSET_GOLDEN_COLUMN_FIELDS)
 
 const ASSET_STATUS_COLORS: Record<string, string> = {
   Active: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
@@ -39,6 +69,7 @@ type BuildAssetGoldenColumnsArgs = {
   onOpenQuickLook: (asset: any) => void
   onOpenDetails: (asset: any) => void
   onOpenEdit: (asset: any) => void
+  getConsoleUrl: (asset: any) => string | null
   onOpenRowActions: (asset: any, event: React.MouseEvent<HTMLButtonElement>) => void
 }
 
@@ -53,6 +84,7 @@ export function buildAssetGoldenColumns({
   onOpenQuickLook,
   onOpenDetails,
   onOpenEdit,
+  getConsoleUrl,
   onOpenRowActions,
 }: BuildAssetGoldenColumnsArgs) {
   const columnConfigs: OperationalColumnConfig[] = [
@@ -265,7 +297,7 @@ export function buildAssetGoldenColumns({
     },
     {
       kind: 'action',
-      width: 140,
+      width: 170,
       renderActions: (asset) => renderOperationalActionButtons(
         <>
           <button
@@ -290,9 +322,27 @@ export function buildAssetGoldenColumns({
           >
             <Edit2 size={13} />
           </button>
+          {getConsoleUrl(asset) ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                const consoleUrl = getConsoleUrl(asset)
+                if (!consoleUrl) return
+                window.open(consoleUrl, '_blank', 'noopener,noreferrer')
+              }}
+              title="Quick console"
+              className="rounded-lg p-1 text-indigo-400 transition-all hover:bg-indigo-400/10 active:scale-90"
+            >
+              <Terminal size={13} />
+            </button>
+          ) : null}
           <button
             type="button"
-            onClick={(event) => onOpenRowActions(asset, event)}
+            onClick={(event) => {
+              event.stopPropagation()
+              onOpenRowActions(asset, event)
+            }}
             title="More actions"
             className="row-action-trigger row-action-menu-container rounded-lg p-1 text-slate-400 transition-all hover:bg-white/10 hover:text-white active:scale-90"
           >

@@ -5,6 +5,7 @@ import { apiFetch } from '../../api/apiClient'
 import { downloadOperationalImportFile } from '../shared/OperationalImportExport'
 import { resolveOperationalDataState } from '../shared/OperationalDataState'
 import { showWorkspaceToast } from '../shared/WorkspaceToast'
+import { ASSET_GOLDEN_ALLOWED_COLUMN_FIELDS } from './assetGoldenColumns'
 
 export type AssetTab = 'inventory' | 'deleted'
 export type AssetViewMode = 'grid' | 'report' | 'map'
@@ -31,13 +32,79 @@ export type AssetQuickFilters = {
   owner: string[]
 }
 
-const STORAGE_KEY = 'sysgrid_asset_golden_workspace_v33'
-const STORAGE_MIGRATION_KEYS = ['sysgrid_asset_golden_workspace_v32']
+const STORAGE_KEY = 'sysgrid_asset_golden_workspace_v34'
+const STORAGE_MIGRATION_KEYS = ['sysgrid_asset_golden_workspace_v33', 'sysgrid_asset_golden_workspace_v32']
+const STORAGE_SCHEMA_VERSION = 34
 const DEFAULT_HIDDEN_COLUMNS = [
   'is_deleted',
 ]
 
 const EMPTY_FILTERS: AssetQuickFilters = { status: [], system: [], type: [], owner: [] }
+const VALID_TABS = new Set<AssetTab>(['inventory', 'deleted'])
+const VALID_VIEW_MODES = new Set<AssetViewMode>(['grid', 'report', 'map'])
+const VALID_LENSES = new Set<AssetLens>(['all', 'degraded', 'unowned', 'security', 'network'])
+const VALID_GROUP_BY = new Set(['raw', 'system', 'type', 'status', 'environment', 'owner', 'site_name', 'rack_name'])
+const VALID_STORAGE_VERSIONS = new Set([STORAGE_SCHEMA_VERSION])
+
+const uniqueStringArray = (value: any) => (
+  Array.isArray(value)
+    ? Array.from(new Set(value.filter((entry: any) => typeof entry === 'string' && entry.trim()).map((entry: string) => entry.trim())))
+    : []
+)
+
+const sanitizeHiddenColumns = (value: any) => uniqueStringArray(value).filter((field) => ASSET_GOLDEN_ALLOWED_COLUMN_FIELDS.has(field))
+
+const sanitizeFilters = (value: any): AssetQuickFilters => ({
+  status: uniqueStringArray(value?.status),
+  system: uniqueStringArray(value?.system),
+  type: uniqueStringArray(value?.type),
+  owner: uniqueStringArray(value?.owner),
+})
+
+const sanitizeSavedViews = (value: any): AssetSavedView[] => {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((view: any) => {
+    if (!view || typeof view !== 'object' || typeof view.id !== 'string' || typeof view.name !== 'string') return []
+    const config = view.config || {}
+    return [{
+      id: view.id,
+      name: view.name,
+      config: {
+        activeTab: VALID_TABS.has(config.activeTab) ? config.activeTab : 'inventory',
+        viewMode: VALID_VIEW_MODES.has(config.viewMode) ? config.viewMode : 'grid',
+        groupBy: VALID_GROUP_BY.has(config.groupBy) ? config.groupBy : 'raw',
+        searchTerm: typeof config.searchTerm === 'string' ? config.searchTerm : '',
+        activeLens: VALID_LENSES.has(config.activeLens) ? config.activeLens : 'all',
+        hiddenColumns: sanitizeHiddenColumns(config.hiddenColumns),
+        fontSize: Number.isFinite(config.fontSize) ? Math.min(14, Math.max(10, Number(config.fontSize))) : 11,
+        rowDensity: Number.isFinite(config.rowDensity) ? Math.min(14, Math.max(6, Number(config.rowDensity))) : 8,
+        filters: sanitizeFilters(config.filters),
+      },
+    }]
+  })
+}
+
+const normalizeStoredWorkspace = (value: any) => {
+  const normalizedSavedViews = sanitizeSavedViews(value?.savedViews)
+  const activeViewId = typeof value?.activeViewId === 'string' && normalizedSavedViews.some((view) => view.id === value.activeViewId)
+    ? value.activeViewId
+    : null
+
+  return {
+    schemaVersion: STORAGE_SCHEMA_VERSION,
+    activeTab: VALID_TABS.has(value?.activeTab) ? value.activeTab : 'inventory',
+    viewMode: VALID_VIEW_MODES.has(value?.viewMode) ? value.viewMode : 'grid',
+    groupBy: VALID_GROUP_BY.has(value?.groupBy) ? value.groupBy : 'raw',
+    searchTerm: typeof value?.searchTerm === 'string' ? value.searchTerm : '',
+    activeLens: VALID_LENSES.has(value?.activeLens) ? value.activeLens : 'all',
+    hiddenColumns: sanitizeHiddenColumns(value?.hiddenColumns).length > 0 ? sanitizeHiddenColumns(value?.hiddenColumns) : DEFAULT_HIDDEN_COLUMNS,
+    fontSize: Number.isFinite(value?.fontSize) ? Math.min(14, Math.max(10, Number(value.fontSize))) : 11,
+    rowDensity: Number.isFinite(value?.rowDensity) ? Math.min(14, Math.max(6, Number(value.rowDensity))) : 8,
+    filters: sanitizeFilters(value?.filters),
+    savedViews: normalizedSavedViews,
+    activeViewId,
+  }
+}
 
 const readStorage = () => {
   if (typeof window === 'undefined') return null
@@ -47,10 +114,14 @@ const readStorage = () => {
       const raw = window.localStorage.getItem(key)
       if (!raw) continue
       const parsed = JSON.parse(raw)
-      if (key !== STORAGE_KEY) {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed))
+      const storedVersion = Number(parsed?.schemaVersion || 0)
+      if (key !== STORAGE_KEY || !VALID_STORAGE_VERSIONS.has(storedVersion)) {
+        window.localStorage.removeItem(key)
+        continue
       }
-      return parsed
+      const normalized = normalizeStoredWorkspace(parsed)
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
+      return normalized
     }
     return null
   } catch {
@@ -60,7 +131,10 @@ const readStorage = () => {
 
 const writeStorage = (value: any) => {
   if (typeof window === 'undefined') return
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(value))
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    ...value,
+    schemaVersion: STORAGE_SCHEMA_VERSION,
+  }))
 }
 
 const slugify = (value: string) =>
@@ -133,15 +207,15 @@ export function useAssetGoldenWorkspace() {
   const stored = readStorage()
 
   const [activeTab, setActiveTab] = useState<AssetTab>(stored?.activeTab === 'deleted' ? 'deleted' : 'inventory')
-  const [viewMode, setViewMode] = useState<AssetViewMode>(stored?.viewMode || 'grid')
-  const [groupBy, setGroupBy] = useState(typeof stored?.groupBy === 'string' ? stored.groupBy : 'raw')
+  const [viewMode, setViewMode] = useState<AssetViewMode>(VALID_VIEW_MODES.has(stored?.viewMode) ? stored.viewMode : 'grid')
+  const [groupBy, setGroupBy] = useState(VALID_GROUP_BY.has(stored?.groupBy) ? stored.groupBy : 'raw')
   const [searchTerm, setSearchTerm] = useState(stored?.searchTerm || '')
-  const [activeLens, setActiveLens] = useState<AssetLens>(stored?.activeLens || 'all')
-  const [hiddenColumns, setHiddenColumns] = useState<string[]>(Array.isArray(stored?.hiddenColumns) ? stored.hiddenColumns : DEFAULT_HIDDEN_COLUMNS)
-  const [fontSize, setFontSize] = useState(Number.isFinite(stored?.fontSize) ? stored.fontSize : 11)
-  const [rowDensity, setRowDensity] = useState(Number.isFinite(stored?.rowDensity) ? stored.rowDensity : 8)
-  const [filters, setFilters] = useState<AssetQuickFilters>(stored?.filters || EMPTY_FILTERS)
-  const [savedViews, setSavedViews] = useState<AssetSavedView[]>(Array.isArray(stored?.savedViews) ? stored.savedViews : [])
+  const [activeLens, setActiveLens] = useState<AssetLens>(VALID_LENSES.has(stored?.activeLens) ? stored.activeLens : 'all')
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>(sanitizeHiddenColumns(stored?.hiddenColumns).length > 0 ? sanitizeHiddenColumns(stored?.hiddenColumns) : DEFAULT_HIDDEN_COLUMNS)
+  const [fontSize, setFontSize] = useState(Number.isFinite(stored?.fontSize) ? Math.min(14, Math.max(10, Number(stored.fontSize))) : 11)
+  const [rowDensity, setRowDensity] = useState(Number.isFinite(stored?.rowDensity) ? Math.min(14, Math.max(6, Number(stored.rowDensity))) : 8)
+  const [filters, setFilters] = useState<AssetQuickFilters>(sanitizeFilters(stored?.filters))
+  const [savedViews, setSavedViews] = useState<AssetSavedView[]>(sanitizeSavedViews(stored?.savedViews))
   const [activeViewId, setActiveViewId] = useState<string | null>(stored?.activeViewId || null)
   const [newViewName, setNewViewName] = useState('')
   const [selectedIds, setSelectedIds] = useState<number[]>([])
@@ -160,7 +234,7 @@ export function useAssetGoldenWorkspace() {
 
   const devicesQuery = useQuery({
     queryKey: ['asset-golden-devices'],
-    queryFn: async () => (await apiFetch('/api/v1/devices?include_deleted=true')).json(),
+    queryFn: async () => (await apiFetch('/api/v1/devices/?include_deleted=true')).json(),
   })
   const liveDevicesQuery = useQuery({
     queryKey: ['devices'],
@@ -230,7 +304,7 @@ export function useAssetGoldenWorkspace() {
 
   const dataState = useMemo(() => resolveOperationalDataState({
     loading: devicesQuery.isLoading && liveDevicesQuery.isLoading,
-    error: allAssets.length > 0 ? null : (devicesQuery.error || liveDevicesQuery.error),
+    error: allAssets.length > 0 ? null : (devicesQuery.error && liveDevicesQuery.error ? devicesQuery.error || liveDevicesQuery.error : null),
     totalCount: allAssets.length,
     tabCount: visiblePool.length,
     visibleCount: filteredAssets.length,
@@ -353,7 +427,7 @@ export function useAssetGoldenWorkspace() {
       setGroupBy('raw')
       setSearchTerm('')
       setActiveLens('all')
-      setHiddenColumns(DEFAULT_HIDDEN_COLUMNS)
+      setHiddenColumns([...DEFAULT_HIDDEN_COLUMNS])
       setFontSize(11)
       setRowDensity(8)
       setFilters(EMPTY_FILTERS)
@@ -362,13 +436,13 @@ export function useAssetGoldenWorkspace() {
     setActiveViewId(view.id)
     setActiveTab(view.config.activeTab)
     setViewMode(view.config.viewMode)
-    setGroupBy(view.config.groupBy || 'raw')
+    setGroupBy(VALID_GROUP_BY.has(view.config.groupBy) ? view.config.groupBy : 'raw')
     setSearchTerm(view.config.searchTerm)
-    setActiveLens(view.config.activeLens)
-    setHiddenColumns(view.config.hiddenColumns)
-    setFontSize(view.config.fontSize)
-    setRowDensity(view.config.rowDensity)
-    setFilters(view.config.filters)
+    setActiveLens(VALID_LENSES.has(view.config.activeLens) ? view.config.activeLens : 'all')
+    setHiddenColumns(sanitizeHiddenColumns(view.config.hiddenColumns).length > 0 ? sanitizeHiddenColumns(view.config.hiddenColumns) : DEFAULT_HIDDEN_COLUMNS)
+    setFontSize(Number.isFinite(view.config.fontSize) ? Math.min(14, Math.max(10, Number(view.config.fontSize))) : 11)
+    setRowDensity(Number.isFinite(view.config.rowDensity) ? Math.min(14, Math.max(6, Number(view.config.rowDensity))) : 8)
+    setFilters(sanitizeFilters(view.config.filters))
   }, [])
 
   const createSavedView = useCallback(() => {

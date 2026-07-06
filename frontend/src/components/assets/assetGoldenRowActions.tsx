@@ -1,58 +1,52 @@
-import { ArchiveRestore, Clipboard, Edit2, Eye, FileText, Maximize2, Terminal, Trash2 } from 'lucide-react'
+import { Activity, ArchiveRestore, Clipboard, Cpu, Edit2, Eye, FileText, GitCompare, Map, Maximize2, Network, Server, Shield, Terminal, Trash2 } from 'lucide-react'
+import type { OperationalRowActionVariant } from '../shared/OperationalRowActionMenu'
 
 export function buildAssetGoldenRowActionSections({
   asset,
   activeTab,
+  deleteConfirmId,
+  onSetDeleteConfirmId,
   onOpenQuickLook,
   onOpenReport,
+  onOpenMap,
   onOpenDetails,
   onOpenEdit,
+  onAddToCompare,
   onCloseMenu,
-  onOpenConfirm,
   onBulkAction,
+  onCopyAssetId,
+  onCopyRow,
+  onExportRow,
   getConsoleUrl,
 }: {
   asset: any
   activeTab: 'inventory' | 'deleted'
+  deleteConfirmId: number | null
+  onSetDeleteConfirmId: (id: number | null) => void
   onOpenQuickLook: (asset: any) => void
   onOpenReport: (asset: any) => void
+  onOpenMap: (asset: any) => void
   onOpenDetails: (asset: any) => void
   onOpenEdit: (asset: any) => void
+  onAddToCompare: (asset: any) => void
   onCloseMenu: () => void
-  onOpenConfirm: (title: string, message: string, onConfirm: () => void) => void
   onBulkAction: (payload: { action: string; ids: number[] }) => void
+  onCopyAssetId: (asset: any) => void
+  onCopyRow: (asset: any) => void
+  onExportRow: (asset: any) => void
   getConsoleUrl: (asset: any) => string | null
 }) {
   const consoleUrl = getConsoleUrl(asset)
+  const isDeleteConfirming = deleteConfirmId === asset.id
 
   return [
     {
       id: 'quickAccess',
-      columns: 1,
+      columns: 3,
       items: [
         {
-          id: 'asset-report',
-          label: 'Open Report',
-          icon: FileText,
-          tone: 'info',
-          onClick: () => {
-            onOpenReport(asset)
-            onCloseMenu()
-          },
-        },
-        {
-          id: 'asset-quick-look',
-          label: 'Quick Look',
-          icon: Eye,
-          tone: 'info',
-          onClick: () => {
-            onOpenQuickLook(asset)
-            onCloseMenu()
-          },
-        },
-        {
           id: 'asset-details',
-          label: 'Detail View',
+          label: 'View Details',
           icon: Maximize2,
           tone: 'info',
           onClick: () => {
@@ -71,25 +65,151 @@ export function buildAssetGoldenRowActionSections({
           },
         },
         {
+          id: 'asset-quick-look',
+          label: 'Quick Look',
+          icon: Eye,
+          tone: 'info',
+          onClick: () => {
+            onOpenQuickLook(asset)
+            onCloseMenu()
+          },
+        },
+        {
           id: 'asset-console',
           label: 'Quick Console',
           icon: Terminal,
           tone: 'info',
           onClick: () => {
             if (!consoleUrl) return
-            window.open(consoleUrl, '_blank')
+            window.open(consoleUrl, '_blank', 'noopener,noreferrer')
             onCloseMenu()
           },
           disabled: !consoleUrl,
           disabledReason: 'No management endpoint configured',
         },
         {
-          id: 'asset-copy',
+          id: 'asset-report',
+          label: 'Open Report',
+          icon: FileText,
+          tone: 'info',
+          onClick: () => {
+            onOpenReport(asset)
+            onCloseMenu()
+          },
+        },
+        {
+          id: 'asset-compare',
+          label: 'Add to Compare',
+          icon: GitCompare,
+          tone: 'warning',
+          onClick: () => {
+            onAddToCompare(asset)
+            onCloseMenu()
+          },
+        },
+      ],
+    },
+    {
+      id: 'followOptions',
+      columns: 3,
+      items: [
+        {
+          id: 'asset-copy-id',
           label: 'Copy Asset ID',
           icon: Clipboard,
           tone: 'neutral',
           onClick: () => {
-            navigator.clipboard.writeText(String(asset.id))
+            onCopyAssetId(asset)
+            onCloseMenu()
+          },
+        },
+        {
+          id: 'asset-copy-row',
+          label: 'Copy Row',
+          icon: Clipboard,
+          tone: 'neutral',
+          onClick: () => {
+            onCopyRow(asset)
+            onCloseMenu()
+          },
+        },
+        {
+          id: 'asset-export-row',
+          label: 'Export Row',
+          icon: FileText,
+          tone: 'neutral',
+          onClick: () => {
+            onExportRow(asset)
+            onCloseMenu()
+          },
+        },
+        {
+          id: 'asset-services',
+          label: 'Services',
+          icon: Server,
+          tone: 'info',
+          onClick: () => {
+            onOpenReport(asset)
+            onCloseMenu()
+          },
+        },
+        {
+          id: 'asset-monitoring',
+          label: 'Monitoring',
+          icon: Activity,
+          tone: 'info',
+          onClick: () => {
+            onOpenReport(asset)
+            onCloseMenu()
+          },
+        },
+        {
+          id: 'asset-relationships',
+          label: 'Relationships',
+          icon: Network,
+          tone: 'info',
+          onClick: () => {
+            onOpenReport(asset)
+            onCloseMenu()
+          },
+        },
+        {
+          id: 'asset-dependencies',
+          label: 'Dependencies',
+          icon: Network,
+          tone: 'info',
+          onClick: () => {
+            onOpenMap(asset)
+            onCloseMenu()
+          },
+        },
+        {
+          id: 'asset-hardware',
+          label: 'Hardware',
+          icon: Cpu,
+          tone: 'info',
+          onClick: () => {
+            onOpenReport(asset)
+            onCloseMenu()
+          },
+        },
+        {
+          id: 'asset-secrets',
+          label: 'Secrets',
+          icon: Shield,
+          tone: 'warning',
+          onClick: () => {
+            onOpenReport(asset)
+            onCloseMenu()
+          },
+        },
+        {
+          id: 'asset-map',
+          label: 'Locate in Map',
+          icon: Map,
+          tone: 'info',
+          onClick: () => {
+            onOpenMap(asset)
             onCloseMenu()
           },
         },
@@ -105,8 +225,16 @@ export function buildAssetGoldenRowActionSections({
               label: 'Soft Delete',
               icon: Trash2,
               tone: 'danger',
+              variant: 'inline' as OperationalRowActionVariant,
+              confirming: isDeleteConfirming,
+              confirmLabel: 'Confirm Delete',
               onClick: () => {
-                onOpenConfirm('Soft Delete', 'Move this asset to deleted?', () => onBulkAction({ action: 'delete', ids: [asset.id] }))
+                if (!isDeleteConfirming) {
+                  onSetDeleteConfirmId(asset.id)
+                  return
+                }
+                onBulkAction({ action: 'delete', ids: [asset.id] })
+                onSetDeleteConfirmId(null)
                 onCloseMenu()
               },
             }
@@ -115,8 +243,10 @@ export function buildAssetGoldenRowActionSections({
               label: 'Restore',
               icon: ArchiveRestore,
               tone: 'success',
+              variant: 'inline' as OperationalRowActionVariant,
               onClick: () => {
-                onOpenConfirm('Restore Asset', 'Return this asset to the active registry?', () => onBulkAction({ action: 'restore', ids: [asset.id] }))
+                onSetDeleteConfirmId(null)
+                onBulkAction({ action: 'restore', ids: [asset.id] })
                 onCloseMenu()
               },
             },
@@ -126,8 +256,16 @@ export function buildAssetGoldenRowActionSections({
               label: 'Purge',
               icon: Trash2,
               tone: 'danger',
+              variant: 'inline' as OperationalRowActionVariant,
+              confirming: isDeleteConfirming,
+              confirmLabel: 'Confirm Purge',
               onClick: () => {
-                onOpenConfirm('Purge Registry', 'PURGE PERMANENTLY?', () => onBulkAction({ action: 'purge', ids: [asset.id] }))
+                if (!isDeleteConfirming) {
+                  onSetDeleteConfirmId(asset.id)
+                  return
+                }
+                onBulkAction({ action: 'purge', ids: [asset.id] })
+                onSetDeleteConfirmId(null)
                 onCloseMenu()
               },
             }
