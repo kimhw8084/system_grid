@@ -21,7 +21,199 @@ const getAssetConsoleUrl = (asset: any) => {
 
 const MonitoringTab = ({ deviceId }: { deviceId: number }) => <MiniMonitoringTable deviceId={deviceId} />
 
-const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number, onEditLink: (l: any) => void, onViewLink: (l: any) => void }) => {
+const DevicePortGrid = ({ device, connections, onEditLink, onViewLink }: { device: any, connections: any[], onEditLink: (l: any) => void, onViewLink: (l: any) => void }) => {
+  const [hoveredPort, setHoveredPort] = useState<any | null>(null)
+
+  const ports = useMemo(() => {
+    const deviceType = device?.type || ''
+    const typeLower = deviceType.toLowerCase()
+
+    if (typeLower.includes('switch') || typeLower.includes('router') || typeLower.includes('fabric')) {
+      const list = []
+      for (let i = 1; i <= 24; i++) {
+        list.push({ id: `eth${i}`, label: `eth${i}`, type: 'RJ45' })
+      }
+      for (let i = 1; i <= 4; i++) {
+        list.push({ id: `sfp${i}`, label: `sfp${i}`, type: 'SFP+' })
+      }
+      return list
+    } else if (typeLower.includes('server') || typeLower.includes('compute') || typeLower.includes('node')) {
+      return [
+        { id: 'eth0', label: 'eth0 (LOM)', type: 'RJ45' },
+        { id: 'eth1', label: 'eth1 (LOM)', type: 'RJ45' },
+        { id: 'eth2', label: 'eth2', type: 'RJ45' },
+        { id: 'eth3', label: 'eth3', type: 'RJ45' },
+        { id: 'sfp0', label: 'sfp0', type: 'SFP+' },
+        { id: 'sfp1', label: 'sfp1', type: 'SFP+' },
+      ]
+    } else {
+      const list = []
+      for (let i = 1; i <= 8; i++) {
+        list.push({ id: `eth${i}`, label: `eth${i}`, type: 'RJ45' })
+      }
+      list.push({ id: 'sfp1', label: 'sfp1', type: 'SFP+' })
+      list.push({ id: 'sfp2', label: 'sfp2', type: 'SFP+' })
+      return list
+    }
+  }, [device])
+
+  const portsWithConnections = useMemo(() => {
+    return ports.map((port) => {
+      const activeLink = connections?.find((link: any) => {
+        const isSource = Number(link.source_device_id) === Number(device.id)
+        const isTarget = Number(link.target_device_id) === Number(device.id)
+        const localPort = isSource ? link.source_port : isTarget ? link.target_port : null
+        if (!localPort) return false
+
+        const normLocal = String(localPort).toLowerCase().replace(/[^a-z0-9]/g, '')
+        const normPortId = String(port.id).toLowerCase().replace(/[^a-z0-9]/g, '')
+        const normPortLabel = String(port.label).toLowerCase().replace(/[^a-z0-9]/g, '')
+
+        return normLocal === normPortId || normLocal === normPortLabel || normLocal.includes(normPortId) || normPortId.includes(normLocal)
+      })
+
+      return {
+        ...port,
+        link: activeLink,
+      }
+    })
+  }, [ports, connections, device])
+
+  return (
+    <div className="bg-slate-950/60 border border-white/5 rounded-lg p-4 space-y-4">
+      {/* 1U CHASSIS FACEPLATE */}
+      <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 shadow-2xl relative select-none flex flex-col md:flex-row gap-4 items-center justify-between">
+        
+        {/* CHASSIS IDENT/LEFT SCREW RACK-EAR */}
+        <div className="hidden md:flex flex-col gap-1 items-center border-r border-slate-800 pr-4">
+          <div className="w-3 h-3 rounded-full bg-slate-950 border border-slate-800 shadow-inner flex items-center justify-center">
+            <div className="w-1.5 h-0.5 bg-slate-600 rotate-45" />
+          </div>
+          <span className="text-[7px] font-black text-slate-600 uppercase tracking-widest leading-none">1U UNIT</span>
+          <div className="w-3 h-3 rounded-full bg-slate-950 border border-slate-800 shadow-inner flex items-center justify-center">
+            <div className="w-1.5 h-0.5 bg-slate-600 -rotate-45" />
+          </div>
+        </div>
+
+        {/* PORTS GRID DISPLAY AREA */}
+        <div className="flex-1 w-full">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Physical Interface Matrix</span>
+            </div>
+            <span className="text-[8px] font-mono text-slate-500 uppercase">{device?.type || 'Switch'} // {device?.model || 'Generic Model'}</span>
+          </div>
+
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-2.5 bg-slate-950/80 p-3 rounded-md border border-slate-800 shadow-inner">
+            {portsWithConnections.map((port) => {
+              const isActive = !!port.link
+              return (
+                <div
+                  key={port.id}
+                  className="flex flex-col items-center"
+                  onMouseEnter={() => setHoveredPort(port)}
+                  onMouseLeave={() => setHoveredPort(null)}
+                >
+                  {/* LINK LED */}
+                  <div className={`w-1.5 h-1.5 rounded-full mb-1 transition-all ${
+                    isActive ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,1)] animate-pulse' : 'bg-slate-800'
+                  }`} />
+
+                  {/* PORT SOCKET */}
+                  {port.type === 'RJ45' ? (
+                    <div className={`relative w-9 h-9 border rounded flex flex-col items-center justify-center transition-all duration-200 cursor-pointer ${
+                      isActive 
+                        ? 'border-emerald-500/50 bg-gradient-to-t from-emerald-950/30 to-slate-900 shadow-[inset_0_0_8px_rgba(16,185,129,0.2)] hover:border-emerald-400 hover:shadow-[0_0_12px_rgba(16,185,129,0.4)]' 
+                        : 'border-slate-800 bg-slate-950 hover:bg-slate-900/60'
+                    }`}>
+                      <div className="absolute top-1 flex gap-[2px] justify-center w-5 h-1 opacity-30">
+                        {[...Array(8)].map((_, idx) => (
+                          <div key={idx} className="w-[1px] h-full bg-amber-400" />
+                        ))}
+                      </div>
+                      <span className="text-[7px] font-mono font-bold text-slate-500 mt-1">{port.id}</span>
+                      <div className="absolute bottom-0.5 w-3 h-1 bg-slate-950 border-t border-slate-800 rounded-t-sm" />
+                    </div>
+                  ) : (
+                    <div className={`relative w-11 h-9 border rounded flex flex-col items-center justify-center transition-all duration-200 cursor-pointer ${
+                      isActive 
+                        ? 'border-cyan-500/50 bg-gradient-to-t from-cyan-950/30 to-slate-900 shadow-[inset_0_0_8px_rgba(6,182,212,0.2)] hover:border-cyan-400 hover:shadow-[0_0_12px_rgba(6,182,212,0.4)]' 
+                        : 'border-slate-800 bg-slate-950 hover:bg-slate-900/60'
+                    }`}>
+                      <div className="absolute inset-1 border border-slate-700/20 rounded-sm pointer-events-none" />
+                      <span className="text-[7px] font-mono font-black text-cyan-400/80">{port.id}</span>
+                      {isActive && <div className="absolute top-1 right-1 w-1 h-1 rounded-full bg-cyan-400 animate-ping" />}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* LCD TELEMETRY CONSOLE ON RIGHT */}
+        <div className="w-full md:w-56 h-[92px] bg-emerald-950/20 border border-emerald-500/10 rounded-md p-2.5 font-mono flex flex-col justify-between text-left">
+          {hoveredPort ? (
+            <div className="animate-in fade-in duration-200 h-full flex flex-col justify-between text-[10px]">
+              <div>
+                <div className="flex justify-between border-b border-emerald-500/10 pb-1 mb-1 text-[8px]">
+                  <span className="text-emerald-400 font-bold uppercase tracking-wider">{hoveredPort.label} ({hoveredPort.type})</span>
+                  <span className={hoveredPort.link ? "text-emerald-400 font-bold animate-pulse" : "text-slate-500"}>
+                    {hoveredPort.link ? "CONNECTED" : "VACANT"}
+                  </span>
+                </div>
+                {hoveredPort.link ? (
+                  <div className="space-y-0.5 text-[8px] text-slate-300">
+                    <p className="truncate"><span className="text-emerald-500 font-bold">PEER:</span> {hoveredPort.link.target_device_name || hoveredPort.link.source_device_name || 'N/A'}</p>
+                    <p className="truncate"><span className="text-emerald-500 font-bold">PORT:</span> {hoveredPort.link.source_port} → {hoveredPort.link.target_port}</p>
+                    <p><span className="text-emerald-500 font-bold">MEDIA:</span> {hoveredPort.type === 'RJ45' ? '1G BASE-T COPPER' : '10G SFP+ FIBER'}</p>
+                  </div>
+                ) : (
+                  <p className="text-[8px] text-slate-500 italic pt-1">No active cable linked.</p>
+                )}
+              </div>
+              {hoveredPort.link && (
+                <div className="flex gap-2 text-[8px] justify-end border-t border-emerald-500/10 pt-1">
+                  <button onClick={() => onViewLink(hoveredPort.link)} className="text-blue-400 hover:text-blue-300 font-bold uppercase">View</button>
+                  <button onClick={() => onEditLink(hoveredPort.link)} className="text-emerald-400 hover:text-emerald-300 font-bold uppercase">Edit</button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="h-full flex flex-col justify-between text-[8px] text-slate-400">
+              <div className="flex justify-between border-b border-emerald-500/10 pb-1 mb-1">
+                <span className="text-emerald-500/60 font-bold uppercase">INTERFACE SYS_MON</span>
+                <span className="text-emerald-500/40 font-bold">OK_STB</span>
+              </div>
+              <div className="space-y-0.5 text-slate-400 italic">
+                <p>SYSGRID RACK TELEMETRY V2</p>
+                <p>HOVER ANY PHYSICAL PORT FOR</p>
+                <p>LINK-STATE INTERFACE CONSOLE</p>
+              </div>
+              <div className="text-[8px] text-slate-500 text-right">SYSTEM ONLINE</div>
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT SCREW RACK-EAR */}
+        <div className="hidden md:flex flex-col gap-1 items-center border-l border-slate-800 pl-4">
+          <div className="w-3 h-3 rounded-full bg-slate-950 border border-slate-800 shadow-inner flex items-center justify-center">
+            <div className="w-1.5 h-0.5 bg-slate-600 rotate-45" />
+          </div>
+          <span className="text-[7px] font-black text-slate-600 uppercase tracking-widest leading-none">SYSGRID</span>
+          <div className="w-3 h-3 rounded-full bg-slate-950 border border-slate-800 shadow-inner flex items-center justify-center">
+            <div className="w-1.5 h-0.5 bg-slate-600 -rotate-45" />
+          </div>
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
+const NetworkingTab = ({ device, onEditLink, onViewLink }: { device: any, onEditLink: (l: any) => void, onViewLink: (l: any) => void }) => {
+  const deviceId = device.id
   const { data: connections, isLoading } = useQuery({
     queryKey: ['asset-detail-network', deviceId],
     queryFn: async () => (await apiFetch(`/api/v1/networks/connections?device_id=${deviceId}`)).json(),
@@ -32,35 +224,47 @@ const NetworkingTab = ({ deviceId, onEditLink, onViewLink }: { deviceId: number,
     return <div className="p-8 text-center text-[10px] font-bold uppercase text-slate-500">Loading connectivity...</div>
   }
 
-  if (!connections?.length) {
-    return <WorkspaceEmptyState compact title="No connections mapped" description="No network links are currently recorded for this asset." />
-  }
+  const hasConnections = connections && connections.length > 0
 
   return (
-    <div className="p-4">
-      <table className="w-full text-[10px]">
-        <thead className="bg-white/5 border-b border-white/5">
-          <tr>
-            <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Peer</th>
-            <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Ports</th>
-            <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-white/5">
-          {connections.map((link: any) => (
-            <tr key={link.id} className="hover:bg-white/5">
-              <td className="px-4 py-3 font-bold text-slate-200">{link.target_device_name || link.source_device_name || 'Peer'}</td>
-              <td className="px-4 py-3 text-slate-400 font-mono">{`${link.source_port || 'n/a'} -> ${link.target_port || 'n/a'}`}</td>
-              <td className="px-4 py-3 text-center">
-                <div className="flex items-center justify-center gap-1">
-                  <button onClick={() => onViewLink(link)} className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg"><Eye size={14} /></button>
-                  <button onClick={() => onEditLink(link)} className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-lg"><Edit2 size={14} /></button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="p-4 space-y-6">
+      {/* Port Grid Visualization */}
+      <DevicePortGrid device={device} connections={connections || []} onEditLink={onEditLink} onViewLink={onViewLink} />
+
+      {!hasConnections ? (
+        <WorkspaceEmptyState compact title="No connections mapped" description="No network links are currently recorded for this asset." />
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 px-1">
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Structured Connection Ledger</span>
+          </div>
+          <div className="border border-white/5 rounded-lg overflow-hidden">
+            <table className="w-full text-[10px]">
+              <thead className="bg-white/5 border-b border-white/5 animate-fade-in">
+                <tr>
+                  <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Peer</th>
+                  <th className="px-4 py-2 text-left font-bold uppercase tracking-widest text-slate-500">Ports</th>
+                  <th className="px-4 py-2 text-center font-bold uppercase tracking-widest text-slate-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 bg-slate-950/20">
+                {connections.map((link: any) => (
+                  <tr key={link.id} className="hover:bg-white/5">
+                    <td className="px-4 py-3 font-bold text-slate-200">{link.target_device_name || link.source_device_name || 'Peer'}</td>
+                    <td className="px-4 py-3 text-slate-400 font-mono">{`${link.source_port || 'n/a'} -> ${link.target_port || 'n/a'}`}</td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button onClick={() => onViewLink(link)} className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg"><Eye size={14} /></button>
+                        <button onClick={() => onEditLink(link)} className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-lg"><Edit2 size={14} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -248,13 +452,13 @@ export const AssetDetailsView = ({ device, options, onViewServiceDetails, onEdit
                         {tab === 'secrets' && <SecretsTab deviceId={device.id} />}
                         {tab === 'monitoring' && <MonitoringTab deviceId={device.id} />}
                         {tab === 'services' && (
-                            <AssetServicesTable 
-                              deviceId={device.id} 
-                              onViewDetails={onViewServiceDetails} 
-                              onEdit={onEditService} 
+                            <AssetServicesTable
+                              deviceId={device.id}
+                              onViewDetails={onViewServiceDetails}
+                              onEdit={onEditService}
                             />
                         )}
-                        {tab === 'network' && <NetworkingTab deviceId={device.id} onEditLink={onEditLink} onViewLink={onViewLink} />}
+                        {tab === 'network' && <NetworkingTab device={device} onEditLink={onEditLink} onViewLink={onViewLink} />}
                         {tab === 'relations' && <RelationshipsTab deviceId={device.id} />}
                         {tab === 'security' && <SecurityTab device={device} />}
                         {tab === 'metadata' && (
