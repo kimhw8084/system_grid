@@ -1,25 +1,54 @@
 ## OUT-26 Asset Golden Proof Summary
 
-- Iteration / stage / prompt type: continuation owner-mode workhorse run on 2026-07-06, product-code continuation rather than architecture or proof-only.
-- Files inspected: `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`, `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/assets/AssetLegacyReportSurface.tsx`, `frontend/src/components/assets/AssetLegacyMapSurface.tsx`, `frontend/src/components/shared/LayoutPrimitives.tsx`, `frontend/src/components/shared/OperationalWorkspaceShells.tsx`, `frontend/src/App.tsx`, `frontend/package.json`, `scripts/verify-app.sh`.
-- Files changed: `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/assets/AssetLegacyReportSurface.tsx`, `frontend/src/components/shared/LayoutPrimitives.tsx`.
-- Browser targets checked: `/asset` grid, Views panel, built-in `Dependency Map`, built-in `Monitoring Coverage`, reload persistence, custom saved-view create/delete path, v33 localStorage migration behavior, adjacent `/asset` grid after shell changes.
-- Major feature results:
-  - Views panel: PASS for built-in view visibility, saved-view labeling, dependency-map seeding, reload persistence, and old-storage migration protection for the new built-ins.
-  - Report view desktop: PASS for dossier selection seeding; report opens with a selected asset instead of a blank state.
-  - Report view 960x720: PARTIAL. Shared toolbar density improved, but the report dossier still sits too low and `Modify Config` remains below the fold.
-  - Map surface via built-in view: PASS for removing the immediate `Map filters required` failure after applying `Dependency Map`.
-  - Table / shell adjacency: PARTIAL. Grid still loads and command actions remain visible after the toolbar layout change, but full golden parity was not closed in this run.
-- Adjacent regression checks:
-  - After saved-view state changes, rechecked report and map view switching from `/asset`.
-  - After toolbar layout changes, rechecked `/asset` grid shell visibility and command-bar rendering at 960x720.
-- Validation commands / results:
+- Issue / iteration / stage: OUT-26 / Run 19 continuation pass on 2026-07-06.
+- Prompt type: owner-mode source-first deployment workhorse.
+- Files inspected: `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`, `frontend/src/components/assets/AssetGoldenFeatureSurfaces.tsx`, `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/assets/AssetLegacyReportSurface.tsx`, `frontend/src/components/assets/AssetLegacyMapSurface.tsx`, `frontend/src/components/shared/LayoutPrimitives.tsx`, `frontend/src/components/shared/OperationalWorkspaceShells.tsx`, `frontend/src/App.tsx`, `frontend/package.json`, `scripts/verify-app.sh`.
+- Files changed: `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/assets/AssetLegacyReportSurface.tsx`, `frontend/src/components/assets/AssetLegacyMapSurface.tsx`, `frontend/src/components/assets/AssetGoldenFeatureSurfaces.tsx`, `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`, `frontend/src/components/shared/LayoutPrimitives.tsx`.
+- Product-code improvements made:
+  - preserved and reinforced built-in Asset saved views by fixing old localStorage migration so legacy workspace state cannot suppress new default views;
+  - added report/map selected-asset reseeding so built-in report/map views open against a real visible asset instead of empty or blocked states;
+  - converted shared page toolbars to compact horizontal-scroll behavior to reduce shell crowding at narrower widths without deleting actions;
+  - added a compact sticky Asset report action rail with `Modify Config`, `Details`, `Quick Look`, `Quick Console`, plus section jump controls;
+  - wired report compact actions to real Asset details, quick look, and console paths through the golden workspace;
+  - improved Asset map operator controls with seeded selected-node details, focus/clear controls, and richer selected-node metadata.
+- Golden-template acceptance matrix:
+  - Report primary action reachability: PASS on functional availability, PARTIAL on compact visual placement.
+  - Built-in views visibility/application: PASS.
+  - Report/map seeded selected asset behavior: PASS.
+  - Shell command-action survival after compact treatment: PASS.
+  - Map operator controls and selected-node usefulness: PASS.
+- Asset behavior preservation checklist:
+  - include-deleted plus live fallback preserved;
+  - built-in Asset saved views preserved;
+  - default view wiring through `OperationalSavedViewsPanel` preserved;
+  - report selected-asset seeding preserved and reinforced;
+  - map selected-asset seeding preserved and reinforced;
+  - real relationships/connections map preserved;
+  - Quick Console reachability preserved;
+  - no backend, route, Monitoring, or Settings drift introduced.
+- Additive reinforcement checklist:
+  - compact sticky report action rail: added;
+  - report section jump controls: added;
+  - report desktop action cluster enrichment: added;
+  - map focus control: added;
+  - map clear control: added;
+  - map selected-node owner/incidents details: added.
+- Browser confirmations performed:
+  - `/asset` Views panel shows default built-in views;
+  - applying `Dependency Map` no longer lands on `Map filters required`;
+  - applying `Monitoring Coverage` opens report with a selected asset;
+  - reload preserves report saved-view state;
+  - compact report `Quick Look` action opens the real quick-look panel;
+  - compact report action rail exposes `Modify Config`, `Details`, `Quick Look`, `Quick Console`, and section jumps;
+  - seeded map exposes `Focus`, `Clear`, legend toggle, and selected-node owner/incidents details;
+  - adjacent `/asset` grid still shows `Register Asset`, `Views`, and `Display`.
+- Final validation commands / results:
   - `npm run typecheck`: PASS.
   - `npm run build`: PASS with existing large-chunk warning only.
   - `npm run test:lint`: PASS.
 - Remaining visible issues:
-  - `/asset` report at 960x720 is still not deployable: the dossier panel height is too short and `Modify Config` remains below the fold.
-  - Full golden parity for Asset table chrome, context menu, bulk actions, and map polish was not completed in this run.
+  - compact Asset report is functionally improved but still not visually deploy-complete; the dossier area remains too compressed at `960x720`.
+  - full Asset table parity, row-action/right-click completeness, and bulk-action completion were not closed in this pass.
 - Forbidden-command statement: no destructive git reset/checkout/revert commands were used.
-- Unrelated-scope exclusion statement: preserved the prior built-in Asset saved views and report responsiveness work; no unrelated workspace behavior was removed or reverted.
+- Unrelated-scope exclusion statement: no backend/API redesign, no route re-decision, no AssetReal promotion, no Monitoring/Settings/unrelated workspace migration, and no feature deletion were introduced.
 - Final worker result: PARTIAL.

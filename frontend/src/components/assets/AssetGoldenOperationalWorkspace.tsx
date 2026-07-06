@@ -503,12 +503,14 @@ export default function AssetGoldenOperationalWorkspace() {
           onSelectReportAsset={(asset) => workspace.setReportAssetId(asset.id)}
           options={workspace.options}
           onEditAsset={workspace.setEditingAsset}
+          onOpenDetails={openDetailAsset}
+          onOpenQuickLook={workspace.setQuickLookAsset}
           onViewServiceDetails={workspace.setServiceDetails}
           onEditService={workspace.setServiceEdit}
           rowDensity={workspace.rowDensity}
           rows={workspace.visibleAssets}
           visibleAssets={workspace.visibleAssets}
-          runtime={{}}
+          runtime={{ getAssetConsoleUrl: workspace.getAssetConsoleUrl }}
           rowInteractions={assetRowInteractions}
           selectionScopeKey={selectionScopeKey}
           viewMode={workspace.viewMode}

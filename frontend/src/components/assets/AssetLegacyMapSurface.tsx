@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import ForceGraph2D from 'react-force-graph-2d'
-import { Box, Filter, Search, Share2, X } from 'lucide-react'
+import { Box, Crosshair, Filter, RotateCcw, Search, Share2, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { WorkspaceEmptyState } from '../shared/OperationalWorkspacePrimitives'
 
@@ -51,7 +51,8 @@ export function AssetLegacyMapSurface({
   useEffect(() => {
     const normalizedSelectedAssetId = Number(selectedAssetId)
     if (!Number.isFinite(normalizedSelectedAssetId) || normalizedSelectedAssetId <= 0) return
-    const existsInVisibleAssets = visibleAssets.some((asset: any) => Number(asset.id) === normalizedSelectedAssetId)
+    const seededAsset = visibleAssets.find((asset: any) => Number(asset.id) === normalizedSelectedAssetId)
+    const existsInVisibleAssets = Boolean(seededAsset)
     if (!existsInVisibleAssets) return
     if (lastSeededAssetIdRef.current === normalizedSelectedAssetId && selectedAssetIds.includes(normalizedSelectedAssetId)) return
 
@@ -59,6 +60,7 @@ export function AssetLegacyMapSurface({
       if (current.includes(normalizedSelectedAssetId)) return current
       return [normalizedSelectedAssetId]
     })
+    setSelectedNode(seededAsset || null)
     lastSeededAssetIdRef.current = normalizedSelectedAssetId
   }, [selectedAssetId, selectedAssetIds, visibleAssets])
 
@@ -144,6 +146,21 @@ export function AssetLegacyMapSurface({
       (assetSearch.length === 0 || String(asset.name || '').toLowerCase().includes(assetSearch.toLowerCase()))
     )
   }, [assetSearch, visibleAssets])
+
+  const resetMapFilters = () => {
+    setSelectedSystems([])
+    setSelectedAssetIds([])
+    setSearchTerm('')
+    setAssetSearch('')
+    setSelectedNode(null)
+  }
+
+  const focusSelectedContext = () => {
+    if (!fgRef.current || graphData.nodes.length === 0) return
+    fgRef.current.zoomToFit(400, 48, (node: any) => (
+      selectedNode ? Number(node.id) === Number(selectedNode.id) : selectedAssetIds.includes(Number(node.id))
+    ))
+  }
 
   const typeColors: Record<string, string> = {
     Physical: '#10b981',
@@ -256,6 +273,26 @@ export function AssetLegacyMapSurface({
             >
               {showLegend ? 'Hide Legend' : 'Show Legend'}
             </button>
+            {hasFilter ? (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={focusSelectedContext}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-blue-500/20 bg-blue-600/10 px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-blue-300 transition-all hover:bg-blue-600/20"
+                >
+                  <Crosshair size={12} />
+                  Focus
+                </button>
+                <button
+                  type="button"
+                  onClick={resetMapFilters}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-slate-300 transition-all hover:border-white/20 hover:text-white"
+                >
+                  <RotateCcw size={12} />
+                  Clear
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -280,6 +317,8 @@ export function AssetLegacyMapSurface({
               <MapMetric label="Type" value={selectedNode.type} tone="text-indigo-400" />
               <MapMetric label="Primary IP" value={selectedNode.primary_ip || 'N/A'} />
               <MapMetric label="Mgmt IP" value={selectedNode.management_ip || 'N/A'} />
+              <MapMetric label="Owner" value={selectedNode.owner || 'Unowned'} tone="text-blue-300" />
+              <MapMetric label="Incidents" value={String(selectedNode.open_incident_count || 0)} tone="text-amber-300" />
             </div>
           </motion.div>
         ) : null}

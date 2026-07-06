@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { Activity, Box, Calendar, Cpu as CpuIcon, Edit2, Layers, Network, Search, Shield } from 'lucide-react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { Activity, Box, Calendar, Cpu as CpuIcon, Edit2, Eye, ExternalLink, Layers, Network, Search, Shield } from 'lucide-react'
 import { motion } from 'framer-motion'
 import ForceGraph2D from 'react-force-graph-2d'
 import { formatAppDay } from '../../utils/dateUtils'
@@ -16,9 +16,22 @@ type AssetLegacyReportSurfaceProps = {
   selectedAssetId?: number | null
   onSelectAsset?: (asset: any) => void
   onEdit: (asset: any) => void
+  onOpenDetails?: (asset: any) => void
+  onOpenQuickLook?: (asset: any) => void
   onViewServiceDetails: (service: any) => void
   onEditService: (service: any) => void
+  getConsoleUrl?: (asset: any) => string | null
 }
+
+const REPORT_SECTION_LINKS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'hardware-summary', label: 'Hardware' },
+  { id: 'services', label: 'Services' },
+  { id: 'monitoring', label: 'Monitoring' },
+  { id: 'security', label: 'Secrets' },
+  { id: 'metadata', label: 'Metadata' },
+  { id: 'relationships', label: 'Relationships' },
+] as const
 
 const STATUS_ITEMS = [
   { value: 'Active', label: 'Active' },
@@ -152,11 +165,15 @@ export function AssetLegacyReportSurface({
   selectedAssetId,
   onSelectAsset,
   onEdit,
+  onOpenDetails,
+  onOpenQuickLook,
   onViewServiceDetails,
   onEditService,
+  getConsoleUrl,
 }: AssetLegacyReportSurfaceProps) {
   const [selectedId, setSelectedId] = useState<number | null>(selectedAssetId ?? assets[0]?.id ?? null)
   const [filter, setFilter] = useState({ name: '', system: '', type: '', status: '', env: '' })
+  const reportSectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const filteredAssets = useMemo(() => {
     return assets.filter((asset: any) => {
@@ -193,6 +210,11 @@ export function AssetLegacyReportSurface({
   }, [onSelectAsset, selectedAsset])
 
   const getOptions = (category: string) => Array.isArray(options) ? options.filter((item: any) => item.category === category) : []
+  const selectedConsoleUrl = selectedAsset ? getConsoleUrl?.(selectedAsset) || null : null
+
+  const scrollToSection = (sectionId: string) => {
+    reportSectionRefs.current[sectionId]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden md:flex-row">
@@ -262,8 +284,38 @@ export function AssetLegacyReportSurface({
 
       <div className="custom-scrollbar min-w-0 flex-1 overflow-y-auto rounded-lg border border-white/5 bg-[#0a0c14]/40">
         {selectedAsset ? (
-          <div className="space-y-10 p-6 lg:p-8 xl:p-10">
-            <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+          <div className="space-y-8 p-6 lg:p-8 xl:p-10">
+            <div className="sticky top-0 z-20 -mx-6 border-b border-white/5 bg-[#0a0c14]/95 px-6 py-4 backdrop-blur-xl lg:hidden">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-[8px] font-black uppercase tracking-[0.24em] text-blue-400">{selectedAsset.system}</p>
+                  <h2 className="truncate text-sm font-black uppercase tracking-[0.08em] text-white">{selectedAsset.name}</h2>
+                </div>
+                <span className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-bold uppercase text-slate-300">
+                  {selectedAsset.status}
+                </span>
+              </div>
+              <div className="custom-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">
+                <ReportQuickAction label="Modify Config" icon={<Edit2 size={14} />} onClick={() => onEdit(selectedAsset)} />
+                {onOpenDetails ? <ReportQuickAction label="Details" icon={<Box size={14} />} onClick={() => onOpenDetails(selectedAsset)} /> : null}
+                {onOpenQuickLook ? <ReportQuickAction label="Quick Look" icon={<Eye size={14} />} onClick={() => onOpenQuickLook(selectedAsset)} /> : null}
+                {selectedConsoleUrl ? <ReportQuickAction label="Quick Console" icon={<ExternalLink size={14} />} href={selectedConsoleUrl} /> : null}
+              </div>
+              <div className="custom-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">
+                {REPORT_SECTION_LINKS.map((section) => (
+                  <button
+                    key={section.id}
+                    type="button"
+                    onClick={() => scrollToSection(section.id)}
+                    className="shrink-0 rounded-lg border border-white/10 bg-black/20 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-300 transition-all hover:border-blue-500/30 hover:text-white"
+                  >
+                    {section.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div ref={(node) => { reportSectionRefs.current.overview = node }} className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
               <div className="min-w-0 flex-1 space-y-6">
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
                   <div className="w-fit rounded-lg bg-blue-600 p-3 text-white shadow-xl shadow-blue-500/20 ring-4 ring-blue-500/10">
@@ -304,6 +356,23 @@ export function AssetLegacyReportSurface({
                   <Edit2 size={16} />
                   <span>Modify Config</span>
                 </button>
+                <div className="hidden flex-wrap items-center justify-end gap-2 lg:flex">
+                  {onOpenQuickLook ? (
+                    <button type="button" onClick={() => onOpenQuickLook(selectedAsset)} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-300 transition-all hover:border-white/20 hover:text-white">
+                      Quick Look
+                    </button>
+                  ) : null}
+                  {onOpenDetails ? (
+                    <button type="button" onClick={() => onOpenDetails(selectedAsset)} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-300 transition-all hover:border-white/20 hover:text-white">
+                      Details
+                    </button>
+                  ) : null}
+                  {selectedConsoleUrl ? (
+                    <a href={selectedConsoleUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-300 transition-all hover:border-white/20 hover:text-white">
+                      Quick Console
+                    </a>
+                  ) : null}
+                </div>
                 <div className="text-left xl:text-right">
                   <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600">Last Synced</p>
                   <p className="text-[10px] font-mono text-slate-400">{new Date().toLocaleString()}</p>
@@ -321,7 +390,7 @@ export function AssetLegacyReportSurface({
             </div>
 
             <div className="grid items-stretch gap-8 2xl:grid-cols-2">
-              <div className="flex h-full flex-col space-y-6">
+              <div ref={(node) => { reportSectionRefs.current['hardware-summary'] = node }} className="flex h-full flex-col space-y-6">
                 <SectionTitle icon={<CpuIcon size={16} className="text-amber-400" />} title="Hardware & System Architecture" />
                 <div className="grid flex-1 gap-x-12 gap-y-8 rounded-lg border border-white/5 bg-black/20 p-6 lg:grid-cols-2 xl:p-8">
                   <div>
@@ -358,28 +427,28 @@ export function AssetLegacyReportSurface({
               </div>
             </div>
 
-            <div className="space-y-6">
+            <div ref={(node) => { reportSectionRefs.current.services = node }} className="space-y-6">
               <SectionTitle icon={<Layers size={16} className="text-blue-400" />} title="Hosted Logical Services" />
               <div className="overflow-hidden rounded-lg border border-white/5 bg-black/10">
                 <AssetServicesTable deviceId={selectedAsset.id} onViewDetails={onViewServiceDetails} onEdit={onEditService} />
               </div>
             </div>
 
-            <div className="space-y-6">
+            <div ref={(node) => { reportSectionRefs.current.monitoring = node }} className="space-y-6">
               <SectionTitle icon={<Activity size={16} className="text-emerald-400" />} title="Monitoring & Telemetry Nodes" />
               <div className="overflow-hidden rounded-lg border border-white/5 bg-black/10">
                 <MiniMonitoringTable deviceId={selectedAsset.id} />
               </div>
             </div>
 
-            <div className="space-y-6">
+            <div ref={(node) => { reportSectionRefs.current.security = node }} className="space-y-6">
               <SectionTitle icon={<Shield size={16} className="text-amber-500" />} title="Security Credentials & Secrets" />
               <div className="overflow-hidden rounded-lg border border-white/5 bg-black/10">
                 <SecretsTable deviceId={selectedAsset.id} />
               </div>
             </div>
 
-            <div className="space-y-6">
+            <div ref={(node) => { reportSectionRefs.current.metadata = node }} className="space-y-6">
               <SectionTitle icon={<Box size={16} className="text-violet-400" />} title="Registry Metadata Payload" />
               <div className="rounded-lg border border-white/5 bg-black/20 p-8">
                 <MetadataViewer data={selectedAsset.metadata_json || {}} />
@@ -393,7 +462,7 @@ export function AssetLegacyReportSurface({
               </div>
             </div>
 
-            <div className="space-y-6">
+            <div ref={(node) => { reportSectionRefs.current.relationships = node }} className="space-y-6">
               <SectionTitle icon={<Network size={16} className="text-indigo-400" />} title="Relationship, Dependency & Network Context" />
               <div className="grid gap-8 xl:grid-cols-2">
                 <div className="overflow-hidden rounded-lg border border-white/5 bg-black/10">
@@ -421,7 +490,7 @@ export function AssetLegacyReportSurface({
           </div>
         ) : (
           <div className="p-12">
-            <WorkspaceEmptyState title="No asset selected" description="Choose an asset from the report rail to load the dossier." />
+            <WorkspaceEmptyState title="No asset selected" description="Choose an asset from the report rail or clear narrowing filters to load the dossier." />
           </div>
         )}
       </div>
@@ -454,5 +523,35 @@ function MetricBlock({ label, value, meta, tone = 'text-white' }: { label: strin
       <p className={`text-sm font-bold uppercase ${tone}`}>{value}</p>
       {meta ? <p className="mt-1 text-[10px] font-bold uppercase text-blue-400">{meta}</p> : null}
     </div>
+  )
+}
+
+function ReportQuickAction({
+  label,
+  icon,
+  onClick,
+  href,
+}: {
+  label: string
+  icon: React.ReactNode
+  onClick?: () => void
+  href?: string
+}) {
+  const className = 'inline-flex shrink-0 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-200 transition-all hover:border-blue-500/30 hover:bg-white/10 hover:text-white'
+
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noreferrer" className={className}>
+        {icon}
+        <span>{label}</span>
+      </a>
+    )
+  }
+
+  return (
+    <button type="button" onClick={onClick} className={className}>
+      {icon}
+      <span>{label}</span>
+    </button>
   )
 }

@@ -22,6 +22,8 @@ export function AssetGoldenFeatureSurfaces({
   onSelectReportAsset,
   options,
   onEditAsset,
+  onOpenDetails,
+  onOpenQuickLook,
   onViewServiceDetails,
   onEditService,
   rowDensity,
@@ -54,6 +56,8 @@ export function AssetGoldenFeatureSurfaces({
   onSelectReportAsset: (asset: any) => void
   options: any[]
   onEditAsset: (asset: any) => void
+  onOpenDetails?: (asset: any) => void
+  onOpenQuickLook?: (asset: any) => void
   onViewServiceDetails: (service: any) => void
   onEditService: (service: any) => void
   rowDensity: number
@@ -81,8 +85,11 @@ export function AssetGoldenFeatureSurfaces({
         selectedAssetId={reportAssetId}
         onSelectAsset={onSelectReportAsset}
         onEdit={onEditAsset}
+        onOpenDetails={onOpenDetails}
+        onOpenQuickLook={onOpenQuickLook}
         onViewServiceDetails={onViewServiceDetails}
         onEditService={onEditService}
+        getConsoleUrl={runtime?.getAssetConsoleUrl}
       />
     )
   }
