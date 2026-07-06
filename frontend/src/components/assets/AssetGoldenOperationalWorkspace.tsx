@@ -91,6 +91,13 @@ export default function AssetGoldenOperationalWorkspace() {
     workspace.setRowActionMenu(null)
   }, [dismissOverlays, workspace])
 
+  const openReportSection = useCallback((asset: any, section?: string) => {
+    workspace.setReportAssetId(asset.id)
+    workspace.setReportFocusSection(section || null)
+    workspace.setViewMode('report')
+    dismissWorkspaceMenus()
+  }, [dismissWorkspaceMenus, workspace])
+
   useEffect(() => {
     if (activeOverlay !== 'rowAction' && workspace.rowActionMenu) {
       workspace.setRowActionMenu(null)
@@ -144,9 +151,7 @@ export default function AssetGoldenOperationalWorkspace() {
     onSetDeleteConfirmId: setRowDeleteConfirmId,
     onOpenQuickLook: workspace.setQuickLookAsset,
     onOpenReport: (asset) => {
-      workspace.setReportAssetId(asset.id)
-      workspace.setViewMode('report')
-      dismissWorkspaceMenus()
+      openReportSection(asset)
     },
     onOpenMap: (asset) => {
       workspace.setReportAssetId(asset.id)
@@ -155,6 +160,7 @@ export default function AssetGoldenOperationalWorkspace() {
     },
     onOpenDetails: openDetailAsset,
     onOpenEdit: workspace.setEditingAsset,
+    onOpenReportSection: openReportSection,
     onAddToCompare: (asset) => {
       workspace.setSelectedIds((current) => {
         const next = current.includes(asset.id) ? current : [...current, asset.id].slice(0, 5)
@@ -437,8 +443,10 @@ export default function AssetGoldenOperationalWorkspace() {
               panelRef={bulkMenuPanelRef}
               panelStyle={bulkMenuStyle}
               selectedCount={selectedCount}
+              selectedLabels={selectedAssets.map((asset: any) => asset.name)}
               onClose={dismissWorkspaceMenus}
               onApply={(action, payload) => workspace.performBulkAction(action, undefined, payload)}
+              onRequestConfirm={(title, message, onConfirm) => workspace.openConfirm(title, message, onConfirm)}
             />
             {showExportMenu ? (
               <div ref={exportMenuPanelRef} style={exportMenuStyle} className="bulk-menu-container">
@@ -517,6 +525,8 @@ export default function AssetGoldenOperationalWorkspace() {
           connections={workspace.connections}
           relationships={workspace.relationships}
           reportAssetId={workspace.reportAssetId}
+          reportFocusSection={workspace.reportFocusSection}
+          onFocusSectionHandled={() => workspace.setReportFocusSection(null)}
           systemsList={workspace.systemsList}
           onSelectionChanged={handleSelectionChanged}
           isSelected={isSelected}

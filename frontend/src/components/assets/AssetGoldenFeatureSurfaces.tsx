@@ -36,6 +36,8 @@ export function AssetGoldenFeatureSurfaces({
   connections,
   relationships,
   reportAssetId,
+  reportFocusSection,
+  onFocusSectionHandled,
   systemsList,
   onSelectionChanged,
   isSelected,
@@ -70,6 +72,8 @@ export function AssetGoldenFeatureSurfaces({
   connections: any[]
   relationships: any[]
   reportAssetId?: number | null
+  reportFocusSection?: string | null
+  onFocusSectionHandled?: () => void
   systemsList: string[]
   onSelectionChanged: (event: any, groupKey?: string) => void
   isSelected: (id: number) => boolean
@@ -83,6 +87,8 @@ export function AssetGoldenFeatureSurfaces({
         connections={connections}
         relationships={relationships}
         selectedAssetId={reportAssetId}
+        focusSection={reportFocusSection}
+        onFocusSectionHandled={onFocusSectionHandled}
         onSelectAsset={onSelectReportAsset}
         onEdit={onEditAsset}
         onOpenDetails={onOpenDetails}

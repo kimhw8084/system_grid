@@ -14,6 +14,8 @@ type AssetLegacyReportSurfaceProps = {
   connections: any[]
   relationships: any[]
   selectedAssetId?: number | null
+  focusSection?: string | null
+  onFocusSectionHandled?: () => void
   onSelectAsset?: (asset: any) => void
   onEdit: (asset: any) => void
   onOpenDetails?: (asset: any) => void
@@ -163,6 +165,8 @@ export function AssetLegacyReportSurface({
   connections,
   relationships,
   selectedAssetId,
+  focusSection,
+  onFocusSectionHandled,
   onSelectAsset,
   onEdit,
   onOpenDetails,
@@ -208,6 +212,15 @@ export function AssetLegacyReportSurface({
       onSelectAsset(selectedAsset)
     }
   }, [onSelectAsset, selectedAsset])
+
+  useEffect(() => {
+    if (!focusSection) return
+    const sectionNode = reportSectionRefs.current[focusSection]
+    if (sectionNode) {
+      sectionNode.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      onFocusSectionHandled?.()
+    }
+  }, [focusSection, onFocusSectionHandled, selectedAsset])
 
   const getOptions = (category: string) => Array.isArray(options) ? options.filter((item: any) => item.category === category) : []
   const selectedConsoleUrl = selectedAsset ? getConsoleUrl?.(selectedAsset) || null : null

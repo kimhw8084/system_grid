@@ -1,54 +1,45 @@
 ## OUT-26 Asset Golden Proof Summary
 
-- Issue / iteration / stage: OUT-26 / Run 19 continuation pass on 2026-07-06.
-- Prompt type: owner-mode source-first deployment workhorse.
-- Files inspected: `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`, `frontend/src/components/assets/AssetGoldenFeatureSurfaces.tsx`, `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/assets/AssetLegacyReportSurface.tsx`, `frontend/src/components/assets/AssetLegacyMapSurface.tsx`, `frontend/src/components/shared/LayoutPrimitives.tsx`, `frontend/src/components/shared/OperationalWorkspaceShells.tsx`, `frontend/src/App.tsx`, `frontend/package.json`, `scripts/verify-app.sh`.
-- Files changed: `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/assets/AssetLegacyReportSurface.tsx`, `frontend/src/components/assets/AssetLegacyMapSurface.tsx`, `frontend/src/components/assets/AssetGoldenFeatureSurfaces.tsx`, `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`, `frontend/src/components/shared/LayoutPrimitives.tsx`.
+- Iteration / stage / prompt type: OUT-26 / Run 19 continuation pass on 2026-07-06 / owner-mode source-first deployment workhorse.
+- Files inspected: `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`, `frontend/src/components/assets/AssetGoldenFeatureSurfaces.tsx`, `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/assets/AssetLegacyReportSurface.tsx`, `frontend/src/components/assets/AssetBulkActionsPanel.tsx`, `frontend/src/components/assets/assetGoldenRowActions.tsx`, `frontend/src/components/assets/assetGoldenColumns.tsx`, `frontend/src/components/shared/OperationalDataGrid.tsx`, `frontend/src/components/shared/OperationalGridInteractions.ts`, `frontend/src/components/shared/OperationalRowActionMenu.tsx`, `frontend/src/components/shared/WorkspaceFlyout.tsx`, `frontend/src/components/shared/OperationalGridStandard.tsx`.
+- Files changed in this pass: `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/assets/AssetLegacyReportSurface.tsx`, `frontend/src/components/assets/AssetGoldenFeatureSurfaces.tsx`, `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`, `frontend/src/components/assets/AssetBulkActionsPanel.tsx`, `frontend/src/components/assets/assetGoldenRowActions.tsx`.
 - Product-code improvements made:
-  - preserved and reinforced built-in Asset saved views by fixing old localStorage migration so legacy workspace state cannot suppress new default views;
-  - added report/map selected-asset reseeding so built-in report/map views open against a real visible asset instead of empty or blocked states;
-  - converted shared page toolbars to compact horizontal-scroll behavior to reduce shell crowding at narrower widths without deleting actions;
-  - added a compact sticky Asset report action rail with `Modify Config`, `Details`, `Quick Look`, `Quick Console`, plus section jump controls;
-  - wired report compact actions to real Asset details, quick look, and console paths through the golden workspace;
-  - improved Asset map operator controls with seeded selected-node details, focus/clear controls, and richer selected-node metadata.
-- Golden-template acceptance matrix:
-  - Report primary action reachability: PASS on functional availability, PARTIAL on compact visual placement.
-  - Built-in views visibility/application: PASS.
-  - Report/map seeded selected asset behavior: PASS.
-  - Shell command-action survival after compact treatment: PASS.
-  - Map operator controls and selected-node usefulness: PASS.
-- Asset behavior preservation checklist:
-  - include-deleted plus live fallback preserved;
-  - built-in Asset saved views preserved;
-  - default view wiring through `OperationalSavedViewsPanel` preserved;
-  - report selected-asset seeding preserved and reinforced;
-  - map selected-asset seeding preserved and reinforced;
-  - real relationships/connections map preserved;
-  - Quick Console reachability preserved;
-  - no backend, route, Monitoring, or Settings drift introduced.
-- Additive reinforcement checklist:
-  - compact sticky report action rail: added;
-  - report section jump controls: added;
-  - report desktop action cluster enrichment: added;
-  - map focus control: added;
-  - map clear control: added;
-  - map selected-node owner/incidents details: added.
-- Browser confirmations performed:
-  - `/asset` Views panel shows default built-in views;
-  - applying `Dependency Map` no longer lands on `Map filters required`;
-  - applying `Monitoring Coverage` opens report with a selected asset;
-  - reload preserves report saved-view state;
-  - compact report `Quick Look` action opens the real quick-look panel;
-  - compact report action rail exposes `Modify Config`, `Details`, `Quick Look`, `Quick Console`, and section jumps;
-  - seeded map exposes `Focus`, `Clear`, legend toggle, and selected-node owner/incidents details;
-  - adjacent `/asset` grid still shows `Register Asset`, `Views`, and `Display`.
-- Final validation commands / results:
+  - added report-section focus state so Asset row/context actions can route directly into existing report sections instead of dropping users at a generic dossier top;
+  - wired `Services`, `Monitoring`, `Relationships`, `Hardware`, and `Secrets / Security` row-menu actions to focused report sections;
+  - kept compare/report/details/edit/quick-look menu actions on real existing Asset surfaces;
+  - strengthened Bulk Actions with selection preview, state reset on reopen/selection change, and golden confirmation-modal guards for delete/restore/purge;
+  - fixed a runtime regression in `AssetGoldenOperationalWorkspace` caused by callback ordering after report-action routing was added.
+- Feature preservation checklist:
+  - built-in Asset saved views: preserved;
+  - saved-view migration restoration: preserved;
+  - report/map selected-asset seeding: preserved;
+  - compact Report action rail: preserved;
+  - Report Details / Quick Look / Quick Console actions: preserved;
+  - include-deleted plus live fallback: preserved;
+  - Export Template reachability: preserved;
+  - full report sections: preserved.
+- No-regression checklist:
+  - no backend/API redesign;
+  - no route re-decision;
+  - no AssetReal promotion;
+  - no Monitoring/Settings/unrelated workspace migration;
+  - no feature deletion to fake progress.
+- Browser sanity checks performed:
+  - row action menu opens from grid row action trigger;
+  - row action menu now contains the expected operator inventory for active rows;
+  - `Services` row action routes into the existing report services section;
+  - row-click selection enables `Bulk Actions`;
+  - Bulk Actions flyout shows resettable `Set Status` and `Set Environment` editors;
+  - Bulk Delete opens the shared confirmation modal instead of executing directly.
+- Validation command results:
   - `npm run typecheck`: PASS.
   - `npm run build`: PASS with existing large-chunk warning only.
   - `npm run test:lint`: PASS.
 - Remaining visible issues:
-  - compact Asset report is functionally improved but still not visually deploy-complete; the dossier area remains too compressed at `960x720`.
-  - full Asset table parity, row-action/right-click completeness, and bulk-action completion were not closed in this pass.
+  - full table chrome/golden parity is still incomplete;
+  - right-click/menu completion still needs deleted-scope restore/purge confirmation sanity and broader route checks;
+  - bulk actions still need end-to-end status/environment mutation confirmation and post-action refresh/toast verification in browser;
+  - toolbar/import/export/template and compare/details/edit closure paths still need a dedicated completion pass.
 - Forbidden-command statement: no destructive git reset/checkout/revert commands were used.
-- Unrelated-scope exclusion statement: no backend/API redesign, no route re-decision, no AssetReal promotion, no Monitoring/Settings/unrelated workspace migration, and no feature deletion were introduced.
+- Unrelated-scope exclusion statement: work stayed inside the Asset goldenization scope and shared primitives only where directly required by Asset behavior.
 - Final worker result: PARTIAL.

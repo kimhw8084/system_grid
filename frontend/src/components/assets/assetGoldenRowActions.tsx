@@ -11,6 +11,7 @@ export function buildAssetGoldenRowActionSections({
   onOpenMap,
   onOpenDetails,
   onOpenEdit,
+  onOpenReportSection,
   onAddToCompare,
   onCloseMenu,
   onBulkAction,
@@ -28,6 +29,7 @@ export function buildAssetGoldenRowActionSections({
   onOpenMap: (asset: any) => void
   onOpenDetails: (asset: any) => void
   onOpenEdit: (asset: any) => void
+  onOpenReportSection: (asset: any, section?: string) => void
   onAddToCompare: (asset: any) => void
   onCloseMenu: () => void
   onBulkAction: (payload: { action: string; ids: number[] }) => void
@@ -99,7 +101,7 @@ export function buildAssetGoldenRowActionSections({
         },
         {
           id: 'asset-compare',
-          label: 'Add to Compare',
+          label: 'Compare / Add to Compare',
           icon: GitCompare,
           tone: 'warning',
           onClick: () => {
@@ -149,7 +151,7 @@ export function buildAssetGoldenRowActionSections({
           icon: Server,
           tone: 'info',
           onClick: () => {
-            onOpenReport(asset)
+            onOpenReportSection(asset, 'services')
             onCloseMenu()
           },
         },
@@ -159,7 +161,7 @@ export function buildAssetGoldenRowActionSections({
           icon: Activity,
           tone: 'info',
           onClick: () => {
-            onOpenReport(asset)
+            onOpenReportSection(asset, 'monitoring')
             onCloseMenu()
           },
         },
@@ -169,7 +171,7 @@ export function buildAssetGoldenRowActionSections({
           icon: Network,
           tone: 'info',
           onClick: () => {
-            onOpenReport(asset)
+            onOpenReportSection(asset, 'relationships')
             onCloseMenu()
           },
         },
@@ -189,17 +191,17 @@ export function buildAssetGoldenRowActionSections({
           icon: Cpu,
           tone: 'info',
           onClick: () => {
-            onOpenReport(asset)
+            onOpenReportSection(asset, 'hardware-summary')
             onCloseMenu()
           },
         },
         {
           id: 'asset-secrets',
-          label: 'Secrets',
+          label: 'Secrets / Security',
           icon: Shield,
           tone: 'warning',
           onClick: () => {
-            onOpenReport(asset)
+            onOpenReportSection(asset, 'security')
             onCloseMenu()
           },
         },

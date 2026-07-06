@@ -344,6 +344,7 @@ export function useAssetGoldenWorkspace() {
   const [newViewName, setNewViewName] = useState('')
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [reportAssetId, setReportAssetId] = useState<number | null>(null)
+  const [reportFocusSection, setReportFocusSection] = useState<string | null>(null)
   const [quickLookAsset, setQuickLookAsset] = useState<any | null>(null)
   const [detailAsset, setDetailAsset] = useState<any | null>(null)
   const [editingAsset, setEditingAsset] = useState<any | null>(null)
@@ -477,13 +478,14 @@ export function useAssetGoldenWorkspace() {
     if (viewMode !== 'report' && viewMode !== 'map') return
     if (!filteredAssets.length) {
       if (reportAssetId != null) setReportAssetId(null)
+      if (reportFocusSection != null) setReportFocusSection(null)
       return
     }
     const hasSelectedVisibleAsset = reportAssetId != null && filteredAssets.some((asset) => asset.id === reportAssetId)
     if (!hasSelectedVisibleAsset) {
       setReportAssetId(filteredAssets[0].id)
     }
-  }, [filteredAssets, reportAssetId, viewMode])
+  }, [filteredAssets, reportAssetId, reportFocusSection, viewMode])
 
   useEffect(() => {
     writeStorage({
@@ -679,6 +681,7 @@ export function useAssetGoldenWorkspace() {
     performBulkAction,
     quickLookAsset,
     reportAssetId,
+    reportFocusSection,
     refreshAll,
     relationships: Array.isArray(relationshipsQuery.data) ? relationshipsQuery.data : [],
     rowActionMenu,
@@ -703,6 +706,7 @@ export function useAssetGoldenWorkspace() {
     setNewViewName,
     setQuickLookAsset,
     setReportAssetId,
+    setReportFocusSection,
     setRowActionMenu,
     setRowDensity,
     setSearchParams,
