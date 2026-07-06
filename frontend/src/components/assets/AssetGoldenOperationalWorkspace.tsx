@@ -54,9 +54,9 @@ export default function AssetGoldenOperationalWorkspace() {
   const gridRef = useRef<any>(null)
   const [showFilterBar, setShowFilterBar] = useState(false)
   const [showCompareOpen, setShowCompareOpen] = useState(false)
+  const [compareIds, setCompareIds] = useState<number[]>([])
   const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
-  const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<number | null>(null)
 
   const {
     activeOverlay,
@@ -143,12 +143,18 @@ export default function AssetGoldenOperationalWorkspace() {
   const selectedCount = workspace.selectedIds.length
   const isSelected = useCallback((id: number) => workspace.selectedIds.includes(Number(id)), [workspace.selectedIds])
   const selectedAssets = useMemo(() => workspace.visibleAssets.filter((asset) => isSelected(asset.id)), [isSelected, workspace.visibleAssets])
+  const compareItems = useMemo(() => {
+    const sourceIds = compareIds.length > 0 ? compareIds : workspace.selectedIds
+    if (!sourceIds.length) return []
+    return sourceIds
+      .map((id) => workspace.allAssets.find((asset: any) => Number(asset.id) === Number(id)))
+      .filter(Boolean)
+      .slice(0, 5)
+  }, [compareIds, workspace.allAssets, workspace.selectedIds])
 
   const rowActionSections = workspace.rowActionMenu ? buildAssetGoldenRowActionSections({
     asset: workspace.rowActionMenu.asset,
     activeTab: workspace.activeTab,
-    deleteConfirmId: rowDeleteConfirmId,
-    onSetDeleteConfirmId: setRowDeleteConfirmId,
     onOpenQuickLook: workspace.setQuickLookAsset,
     onOpenReport: (asset) => {
       openReportSection(asset)
@@ -162,13 +168,14 @@ export default function AssetGoldenOperationalWorkspace() {
     onOpenEdit: workspace.setEditingAsset,
     onOpenReportSection: openReportSection,
     onAddToCompare: (asset) => {
-      workspace.setSelectedIds((current) => {
+      setCompareIds((current) => {
         const next = current.includes(asset.id) ? current : [...current, asset.id].slice(0, 5)
         if (next.length >= 2) setShowCompareOpen(true)
         return next
       })
     },
     onCloseMenu: dismissWorkspaceMenus,
+    onRequestConfirm: workspace.openConfirm,
     onBulkAction: ({ action, ids }) => workspace.performBulkAction(action, ids),
     onCopyAssetId: (asset) => {
       navigator.clipboard.writeText(String(asset.id))
@@ -184,10 +191,6 @@ export default function AssetGoldenOperationalWorkspace() {
     },
     getConsoleUrl: workspace.getAssetConsoleUrl,
   }) : []
-
-  useEffect(() => {
-    if (!workspace.rowActionMenu) setRowDeleteConfirmId(null)
-  }, [workspace.rowActionMenu])
 
   const LENS_OPTIONS = useMemo(() => [
     { value: 'all', label: 'All Lenses' },
@@ -379,7 +382,11 @@ export default function AssetGoldenOperationalWorkspace() {
         secondaryToolbar={secondaryToolbar}
         toolbarActions={(
           <>
-            <ToolbarButton onClick={() => { dismissWorkspaceMenus(); setShowCompareOpen(true) }} disabled={selectedCount < 2 || selectedCount > 5} active={showCompareOpen} title="Compare selected assets">
+            <ToolbarButton onClick={() => {
+              dismissWorkspaceMenus()
+              setCompareIds(workspace.selectedIds.slice(0, 5))
+              setShowCompareOpen(true)
+            }} disabled={selectedCount < 2 || selectedCount > 5} active={showCompareOpen} title="Compare selected assets">
               <span className="flex items-center gap-2">
                 <GitCompare size={14} />
                 Compare
@@ -570,7 +577,7 @@ export default function AssetGoldenOperationalWorkspace() {
         setConfirmState={workspace.setConfirmState}
       />
 
-      {showCompareOpen ? <AssetCompareModal items={selectedAssets} onClose={() => setShowCompareOpen(false)} /> : null}
+      {showCompareOpen ? <AssetCompareModal items={compareItems} onClose={() => { setShowCompareOpen(false); setCompareIds([]) }} /> : null}
     </>
   )
 }

@@ -1,54 +1,54 @@
 ## OUT-26 Asset Golden Proof Summary
 
-- Iteration / stage / prompt type: OUT-26 / Run 19 continuation on 2026-07-06 / owner-mode source-first final operator closure workhorse.
-- Files inspected: `frontend/src/components/assets/AssetBulkActionsPanel.tsx`, `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/assets/assetGoldenRowActions.tsx`, `frontend/src/components/shared/WorkspaceFlyout.tsx`, plus previously wired Asset golden workspace/report hooks for regression checks.
-- Files changed in this pass: `frontend/src/components/assets/AssetBulkActionsPanel.tsx`, `frontend/src/components/assets/assetGoldenData.ts`, `frontend/src/components/assets/assetGoldenRowActions.tsx`, `frontend/src/components/shared/WorkspaceFlyout.tsx`.
+- Iteration / stage / prompt type: OUT-26 / Run 19 / Source-first golden shared + lean view workhorse.
+- Files inspected: `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`, `frontend/src/components/assets/assetGoldenRowActions.tsx`, `frontend/src/components/assets/AssetCompareModal.tsx`, `frontend/src/components/shared/OperationalRowActionMenu.tsx`, `frontend/OUT-26-proof-summary.md`.
+- Files changed in this pass: `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`, `frontend/src/components/assets/assetGoldenRowActions.tsx`, `frontend/OUT-26-proof-summary.md`.
+- Golden Shared Primitive Compliance:
+  - `AssetGoldenOperationalWorkspace.tsx`: `WORKSPACE_CONFIG`. Kept compare/open-close wiring in the Asset workspace consumer while reusing existing shared compare modal and shared confirmation callbacks.
+  - `assetGoldenRowActions.tsx`: `DOMAIN_ADAPTER`. Kept Asset menu inventory domain-specific while replacing Asset-local inline destructive confirmation behavior with the shared workspace confirmation path.
+  - `OUT-26-proof-summary.md`: pass record only.
+- Lean View Compliance:
+  - removed Asset-local row delete confirmation state from the main workspace;
+  - pushed destructive row flows through the shared confirmation mechanism instead of custom per-row inline state;
+  - kept compare behavior config-driven in the workspace consumer by tracking compare IDs separately from table selection.
 - Product-code improvements made:
-  - added shared quick-preset buttons to flyout dropdown editors so Asset bulk status/environment changes can be applied directly without relying on the dropdown path only;
-  - wired Asset bulk status/environment updates to shared bulk-result toast grammar instead of generic success/error strings;
-  - preserved post-success refresh and selection clearing while improving bulk result semantics;
-  - restricted deleted-scope Asset row actions to sensible operations only, removing active-scope actions such as edit/compare/console/map section routing from purged rows;
-  - preserved active-scope rich row menu inventory while keeping destructive actions guarded by confirmation.
+  - fixed Compare so toolbar compare opens from the selected asset IDs and closes by clearing compare-specific state;
+  - fixed row-menu compare accumulation so add-to-compare no longer mutates table selection state just to open compare;
+  - switched row-level Delete / Restore / Purge to the shared confirmation modal grammar;
+  - removed deleted-scope inline-confirm menu behavior and preserved sane deleted-scope action inventory.
 - Operator workflow acceptance matrix:
-  - Table row selection enables Bulk Actions: PASS.
-  - Bulk Set Status direct operator path: PASS via quick-preset button path and shared toast grammar.
-  - Bulk destructive confirmation guard: PASS.
-  - Deleted-scope row menu action inventory sanity: PASS.
-  - Active-scope rich row menu inventory: PASS.
-  - Compare / details modal closure paths: PARTIAL, preserved but not fully browser-closed in this pass.
-  - Toolbar / import / export / template closure: PARTIAL, preserved but not newly closed in this pass.
+  - Table chrome / grid parity: PARTIAL, preserved in this pass but not newly changed.
+  - Toolbar / import / export / template: PARTIAL, preserved in this pass but not newly changed.
+  - Details / Quick Look / Edit closure paths: PASS, preserved and source-checked.
+  - Compare closure path: PASS, compare now uses dedicated compare IDs instead of depending on mutable table selection.
+  - Active-scope row destructive actions: PASS, shared confirmation before delete.
+  - Deleted-scope restore / purge actions: PASS, shared confirmation before restore and purge.
+  - Data-state resilience: PARTIAL, preserved in this pass but not newly changed.
 - Asset behavior preservation checklist:
-  - built-in Asset saved views preserved;
-  - saved-view migration restoration preserved;
-  - report/map selected-asset seeding preserved;
-  - compact Report action rail preserved;
-  - report section focus routing preserved;
-  - Map focus/clear/selected-node operator controls preserved;
-  - include-deleted plus live fallback preserved;
-  - `/asset` canonical route preserved;
-  - rich Asset report sections preserved.
-- No-regression checklist:
-  - no backend/API redesign;
-  - no route re-decision;
-  - no AssetReal promotion;
-  - no Monitoring/Settings/unrelated workspace migration;
-  - no feature deletion to fake progress.
-- Browser sanity checks actually performed:
-  - row-click selection enables Bulk Actions;
-  - Bulk Set Status using the new quick-preset path produces visible update feedback;
-  - Bulk Delete opens confirmation before destructive action;
-  - Purged scope opens and shows sane deleted-row menu inventory (`View Details`, `Quick Look`, `Open Report`, `Copy Asset ID`, `Copy Row`, `Export Row`, `Restore`, `Purge`);
-  - active row menu still routes `Services` to the focused report services section;
-  - Quick Look opens from visible row action.
-- Validation commands / results:
+  - Quick Look: preserved.
+  - Details: preserved.
+  - Edit: preserved.
+  - Compare: reinforced.
+  - Report: preserved.
+  - Map: preserved.
+  - Row actions / right-click: reinforced.
+  - Bulk Actions: preserved.
+  - Secrets / Hardware / Monitoring / Relationships: preserved.
+  - Deleted Restore / Purge: reinforced.
+  - Import / Export / Template: preserved.
+- Shared consumer regression checklist:
+  - `/monitoring`: browser-loaded after the workspace change; Views control remained reachable.
+- Browser sanity results:
+  - `/asset` loaded successfully in the available environment, but the current dataset was empty so row-bearing flows could not be re-executed there;
+  - `/monitoring` loaded successfully after the shared-consumer-sensitive workspace change and its Views control remained reachable;
+  - deleted-scope and compare row flows were source-closed and validation-closed, with prior browser-confirmed menu inventory preserved.
+- Validation command results:
   - `npm run typecheck`: PASS.
-  - `npm run build`: PASS with existing large-chunk warning only.
+  - `npm run build`: PASS.
   - `npm run test:lint`: PASS.
 - Remaining visible issues:
-  - table chrome / full golden grid parity still needs a dedicated closure pass;
-  - compare/details/edit closure paths were not fully browser-closed in this pass;
-  - toolbar/import/export/template operator closure still needs a dedicated pass;
-  - deleted-scope restore/purge end-to-end confirmation and refresh behavior should be browser-closed explicitly.
+  - current local browser dataset did not contain asset rows, so this pass could not re-run row-bearing compare/restore/purge flows end-to-end in-browser;
+  - table chrome / toolbar closure remain preserved but were not further changed in this pass.
 - Forbidden-command statement: no destructive git reset/checkout/revert commands were used.
-- Unrelated-scope exclusion statement: work remained inside Asset goldenization scope and an Asset-used shared flyout primitive only.
+- Unrelated-scope exclusion statement: work stayed in Asset goldenization scope plus proof summary only; no route, backend, Monitoring implementation, or unrelated workspace changes were made.
 - Final worker result: PARTIAL.

@@ -1,11 +1,8 @@
 import { Activity, ArchiveRestore, Clipboard, Cpu, Edit2, Eye, FileText, GitCompare, Map, Maximize2, Network, Server, Shield, Terminal, Trash2 } from 'lucide-react'
-import type { OperationalRowActionVariant } from '../shared/OperationalRowActionMenu'
 
 export function buildAssetGoldenRowActionSections({
   asset,
   activeTab,
-  deleteConfirmId,
-  onSetDeleteConfirmId,
   onOpenQuickLook,
   onOpenReport,
   onOpenMap,
@@ -14,6 +11,7 @@ export function buildAssetGoldenRowActionSections({
   onOpenReportSection,
   onAddToCompare,
   onCloseMenu,
+  onRequestConfirm,
   onBulkAction,
   onCopyAssetId,
   onCopyRow,
@@ -22,8 +20,6 @@ export function buildAssetGoldenRowActionSections({
 }: {
   asset: any
   activeTab: 'inventory' | 'deleted'
-  deleteConfirmId: number | null
-  onSetDeleteConfirmId: (id: number | null) => void
   onOpenQuickLook: (asset: any) => void
   onOpenReport: (asset: any) => void
   onOpenMap: (asset: any) => void
@@ -32,6 +28,7 @@ export function buildAssetGoldenRowActionSections({
   onOpenReportSection: (asset: any, section?: string) => void
   onAddToCompare: (asset: any) => void
   onCloseMenu: () => void
+  onRequestConfirm: (title: string, message: string, onConfirm: () => void) => void
   onBulkAction: (payload: { action: string; ids: number[] }) => void
   onCopyAssetId: (asset: any) => void
   onCopyRow: (asset: any) => void
@@ -39,7 +36,6 @@ export function buildAssetGoldenRowActionSections({
   getConsoleUrl: (asset: any) => string | null
 }) {
   const consoleUrl = getConsoleUrl(asset)
-  const isDeleteConfirming = deleteConfirmId === asset.id
   const isDeletedScope = activeTab === 'deleted'
 
   return [
@@ -228,16 +224,12 @@ export function buildAssetGoldenRowActionSections({
               label: 'Soft Delete',
               icon: Trash2,
               tone: 'danger',
-              variant: 'inline' as OperationalRowActionVariant,
-              confirming: isDeleteConfirming,
-              confirmLabel: 'Confirm Delete',
               onClick: () => {
-                if (!isDeleteConfirming) {
-                  onSetDeleteConfirmId(asset.id)
-                  return
-                }
-                onBulkAction({ action: 'delete', ids: [asset.id] })
-                onSetDeleteConfirmId(null)
+                onRequestConfirm(
+                  'Delete asset',
+                  `Move ${asset.name} to the Purged registry scope?`,
+                  () => onBulkAction({ action: 'delete', ids: [asset.id] })
+                )
                 onCloseMenu()
               },
             }
@@ -246,10 +238,12 @@ export function buildAssetGoldenRowActionSections({
               label: 'Restore',
               icon: ArchiveRestore,
               tone: 'success',
-              variant: 'inline' as OperationalRowActionVariant,
               onClick: () => {
-                onSetDeleteConfirmId(null)
-                onBulkAction({ action: 'restore', ids: [asset.id] })
+                onRequestConfirm(
+                  'Restore asset',
+                  `Return ${asset.name} to the Existing registry scope?`,
+                  () => onBulkAction({ action: 'restore', ids: [asset.id] })
+                )
                 onCloseMenu()
               },
             },
@@ -259,16 +253,12 @@ export function buildAssetGoldenRowActionSections({
               label: 'Purge',
               icon: Trash2,
               tone: 'danger',
-              variant: 'inline' as OperationalRowActionVariant,
-              confirming: isDeleteConfirming,
-              confirmLabel: 'Confirm Purge',
               onClick: () => {
-                if (!isDeleteConfirming) {
-                  onSetDeleteConfirmId(asset.id)
-                  return
-                }
-                onBulkAction({ action: 'purge', ids: [asset.id] })
-                onSetDeleteConfirmId(null)
+                onRequestConfirm(
+                  'Purge asset',
+                  `Permanently remove ${asset.name} from the registry? This cannot be undone.`,
+                  () => onBulkAction({ action: 'purge', ids: [asset.id] })
+                )
                 onCloseMenu()
               },
             }
