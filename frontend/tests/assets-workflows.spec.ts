@@ -71,6 +71,43 @@ test.describe('Assets workflows', () => {
     await page.getByPlaceholder('Scan asset matrix...').fill(secondary.name)
     await expect(page.locator('[role="treegrid"]')).toContainText(secondary.name)
 
+    // E2E Verification of Soft-Delete, Scope-Switch, and Restore lifecycle
+    const moreActions = page.getByTitle('More actions').first()
+    await moreActions.click({ force: true })
+    await page.getByRole('button', { name: 'Soft Delete' }).click({ force: true })
+    await page.getByRole('button', { name: 'Confirm', exact: true }).click({ force: true })
+
+    // Switch to Purged Tab and verify row is present in Deleted scope
+    await page.getByRole('button', { name: /Purged/ }).click({ force: true })
+    await page.getByPlaceholder('Scan asset matrix...').fill(secondary.name)
+    await expect(page.locator('[role="treegrid"]')).toContainText(secondary.name)
+
+    // Restore back to Existing scope
+    await moreActions.click({ force: true })
+    await page.getByRole('button', { name: 'Restore' }).click({ force: true })
+    await page.getByRole('button', { name: 'Confirm', exact: true }).click({ force: true })
+
+    // Switch back to Existing tab and verify restored row is present
+    await page.getByRole('button', { name: /Existing/ }).click({ force: true })
+    await page.getByPlaceholder('Scan asset matrix...').fill(secondary.name)
+    await expect(page.locator('[role="treegrid"]')).toContainText(secondary.name)
+
+    // E2E Verification of Toolbar Export flyout and Import modal reachability
+    const exportBtn = page.getByTitle('Export asset data')
+    await exportBtn.click({ force: true })
+    await expect(page.getByText('Export CSV')).toBeVisible()
+    await expect(page.getByText('Export Template')).toBeVisible()
+
+    // Dismiss export flyout by clicking outside
+    await page.mouse.click(10, 10)
+    await expect(page.getByText('Export CSV')).not.toBeVisible()
+
+    // Open and close import modal cleanly
+    await page.getByRole('button', { name: 'Import' }).click({ force: true })
+    await expect(page.getByText('Data Ingestion Pipeline')).toBeVisible()
+    await page.getByRole('button', { name: 'Close', exact: true }).last().click({ force: true })
+    await expect(page.getByText('Data Ingestion Pipeline')).not.toBeVisible()
+
     await page.goto(`/monitoring?id=${monitoring.id}`)
     await expect(page).toHaveURL(/\/monitoring$/)
     await expect(page.getByRole('heading', { name: 'Monitoring' })).toBeVisible()

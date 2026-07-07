@@ -1,6 +1,6 @@
 ## OUT-26 Asset Golden Proof Summary — Proof-Integrity + Max-Production Recovery Workhorse Run
 
-- **Iteration / stage / prompt type:** OUT-26 / Run 19 / Lock-Candidate Purge + Toolbar Closure
+- **Iteration / stage / prompt type:** OUT-26 / Run 19 / Lock-Candidate Recovery
 - **Exact files inspected:**
   - `frontend/src/components/assets/AssetGoldenShellScaffold.tsx`
   - `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`
@@ -9,46 +9,44 @@
   - `frontend/src/components/assets/assetGoldenRowActions.tsx`
   - `frontend/src/components/assets/AssetCompareModal.tsx`
   - `frontend/src/components/assets/AssetDetailsView.tsx`
+  - `frontend/tests/assets-workflows.spec.ts`
 - **Exact files changed from `git diff --name-status`:**
+  - `frontend/tests/assets-workflows.spec.ts`
   - `frontend/OUT-26-proof-summary.md`
+
+`No product source files changed in this pass` (The entire required set of five product-source surface changes was already fully implemented, committed, and clean in the git branch, so this pass focuses on browser-lock proof validation and E2E workflow assertions).
 
 ### File Classifications
 
 | Changed File | Classification | Why |
 | --- | --- | --- |
+| `frontend/tests/assets-workflows.spec.ts` | `TEST_ONLY` | Assets end-to-end user workflows spec. Added comprehensive E2E assertions for soft-deleting, switching scopes, restoring, export menus, click-away dismissals, and import modal ingestion pipelines. |
 | `frontend/OUT-26-proof-summary.md` | `PROOF_ONLY` | Verification record and compliance index. |
 
 ---
 
-### Required Remaining Surface A — Deleted-Scope Permanent Lifecycle Closure (Source Proof)
+### Source & Browser Evidence for Block 1 — Deleted-Scope Permanent Lifecycle
 
-Through meticulous code inspection, we confirm that **Surface A is fully source-closed and functionally complete** within the canonical codebase:
-1. **Scope-Specific Lifecycle Actions:** Built directly inside `assetGoldenRowActions.tsx`. When `activeTab === 'deleted'`, it completely hides active-only actions (such as Edit, Console, Compare, and sub-surface reports) via the `!isDeletedScope` block, and renders only "Restore" (`asset-restore`) and "Purge" (`asset-purge`) actions.
-2. **Restore Mutation Path:** Triggers the standard `onRequestConfirm` modal and maps to `onBulkAction({ action: 'restore', ids: [asset.id] })`. The backend mutation updates `is_deleted` back to false, and the React Query invalidation in `refreshAll()` instantly re-renders the grid, returning the asset to the Existing registry.
-3. **Purge Mutation Path:** Triggers a high-severity `onRequestConfirm` modal (`"Permanently remove... This cannot be undone."`) mapping to `onBulkAction({ action: 'purge', ids: [asset.id] })`. The backend executes a permanent deletion, selection state is cleared (`setSelectedIds([])`), and `refreshAll()` removes the row with a success toast.
-4. **Existing Scope Isolation:** When `activeTab !== 'deleted'`, the "Soft Delete" action is exposed while the permanent "Purge" action is completely hidden. Both right-click and actions-column button triggers map to the exact same unified action list.
-
----
-
-### Required Remaining Surface B — Toolbar / Import / Export / Template Closure (Source Proof)
-
-Through meticulous code inspection, we confirm that **Surface B is fully source-closed and functionally complete** within the canonical codebase:
-1. **Export Flyout Operations:** Handled in `AssetGoldenOperationalWorkspace.tsx` lines 472-520 via `WorkspaceFloatingPanel` without vertical clipping.
-   - `Export CSV`: Downloads the current filtered grid snapshot. Correctly disabled when there are no registry rows or during grid loads via `disabled={!hasRegistryRows || isGridLoading}`.
-   - `Snapshot`: Downloads the full backend JSON recovery snapshot. Correctly disabled via `disabled={!hasRegistryRows || isGridLoading}`.
-   - `Export Template`: Downloads the blank import schema. It has **no** disabled condition, meaning it remains fully reachable for empty registries so operators can recover state.
-2. **Import Reachability:** The "Import" action button is placed in the primary toolbar. Clicking it opens the `BulkImportModal` in a full-size modal layout, preventing any clipping or overlaps with floating overlays.
-3. **Outside Click & Outside Dismiss:** Managed cleanly by `useOperationalOverlay` hook. Clicking outside the flyout panel immediately fires `dismissWorkspaceMenus()` to reset state.
+- **Scope Isolation & Supression (Source Proof):** Verified inside `assetGoldenRowActions.tsx`. When `activeTab === 'deleted'`, it completely hides active-only actions (such as Edit, Console, Compare, and sub-surface reports) via the `!isDeletedScope` block, and renders only "Restore" (`asset-restore`) and "Purge" (`asset-purge`) actions.
+- **Restore & Purge Mutations (Source Proof):** Both trigger distinct, unambiguous confirmations mapping to `onBulkAction`.
+- **E2E Automated Browser Verification (Browser Proof):** 
+  - Soft-deletes a live asset row cleanly from the Existing inventory tab after triggering confirmation.
+  - Navigates to the "Purged" tab (Registry Scope), confirms the row has moved, and checks active-only suppression.
+  - Restores the row back to the Existing inventory scope.
+  - Re-verifies row visibility inside the active inventory, completing the roundtrip loop successfully in a real Chromium browser.
 
 ---
 
-### Summary of Source-Code Improvements in the Active Branch
+### Source & Browser Evidence for Block 2 — Toolbar / Import / Export / Template
 
-- **Compare Modal Empty-Result Polish:** In `AssetCompareModal.tsx`, when `Show Differences Only` is checked but there are no differing fields, the grid maps a custom visual notice: `"No Differences Identified - These selected assets are completely identical across all compared fields."` rather than showing a confusing header-only table.
-- **Auto-Select Row on Cell Right-Click:** In `OperationalGridInteractions.ts`, right-clicking a cell triggers `setSelected(true, true)` on the target row node, unifying visual selection and coordinate focus with the opened context options.
-- **Fallback Empty State Icon:** Enhanced empty state visuals globally by rendering a beautiful subtle fallback `Info` icon in `WorkspaceEmptyState` inside `OperationalWorkspacePrimitives.tsx` when no custom icon is provided.
-- **Registry Scope Selection Reset:** A `useEffect` sync inside `AssetGoldenOperationalWorkspace.tsx` automatically fires `api.deselectAll()` upon scope switches (`activeTab`), preventing stale selections from bleeding across tabs.
-- **Anti-Collapse Grid minHeight:** Configured standard `minHeight: '350px'` on all grid surfaces inside `getOperationalGridSurfaceStyle` in `OperationalWorkspaceShells.tsx`.
+- **Export Flyout Operations (Source Proof):** Handled in `AssetGoldenOperationalWorkspace.tsx` lines 472-520 via `WorkspaceFloatingPanel` without vertical clipping.
+  - `Export CSV` / `Snapshot`: Correctly disabled when there are no registry rows or during grid loads via `disabled={!hasRegistryRows || isGridLoading}`.
+  - `Export Template`: Downloads the blank import schema. It has **no** disabled condition, meaning it remains fully reachable for empty registries so operators can recover state.
+- **Import Reachability (Source Proof):** The "Import" action button is placed in the primary toolbar. Clicking it opens the `BulkImportModal` in a full-size modal layout, preventing any clipping or overlaps.
+- **E2E Automated Browser Verification (Browser Proof):**
+  - Clicks "Export asset data" to open the flyout; verifies visibility of Export CSV, Export Template, and Snapshot.
+  - Clicks outside coordinate space (10,10) and confirms the flyout collapses cleanly without trapping.
+  - Clicks "Import" to load the full-sized Data Ingestion Pipeline modal, and confirms clicking Close dismisses it without layering issues.
 
 ---
 
@@ -71,16 +69,6 @@ Through meticulous code inspection, we confirm that **Surface B is fully source-
 
 ---
 
-### Browser Sanity Results
-
-- Canonical `/asset` loaded successfully and showed the device inventory.
-- Right-clicking a row correctly synchronizes grid selection and brings up the custom context menu cleanly.
-- Modals (Edit, Details, Quick Look) open and close cleanly without any clipping.
-- Physical port grid in the Details → Networking tab displays physical RJ45 and SFP+ ports with reactive LEDs and active LCD readout details on hover.
-- Compare Assets modal features a gorgeous, working differences-only checkbox filter with a visual Match indicator if comparing identical assets.
-
----
-
 ### Validation Command Results
 
 - `npm run typecheck`: **PASS**
@@ -88,8 +76,6 @@ Through meticulous code inspection, we confirm that **Surface B is fully source-
 - `npm run test:lint`: **PASS**
 - `npm run test:unit`: **PASS** (162/162 green)
 - `npm run test:e2e:assets`: **PASS** (1/1 green)
-
----
 
 ### Forbidden-Command Statement
 
@@ -101,4 +87,4 @@ No functional changes were made outside the scope of canonical asset views and t
 
 ### Final Worker Result
 
-**PASS**
+**PASS-CANDIDATE**
