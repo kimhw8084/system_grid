@@ -4,7 +4,6 @@ import {
   Download,
   FileText,
   GitCompare,
-  Activity,
   Eye,
   EyeOff,
   LayoutGrid,

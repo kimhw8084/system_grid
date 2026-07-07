@@ -4,7 +4,7 @@
     "iteration": 39,
     "stage": 37,
     "stageName": "Stage 37 Execution-and-Fix Recovery / Proof Finalization",
-    "generatedAt": "2026-07-07T12:44:56.913Z"
+    "generatedAt": "2026-07-07T14:40:53.037Z"
   },
   "routeCaptures": {
     "asset-desktop-fullpage": {
@@ -49,7 +49,7 @@
         "Report",
         "Map",
         "Registry Scope",
-        "Existing (295)",
+        "Existing (298)",
         "Purged (18)",
         "Views",
         "Display",
@@ -68,11 +68,11 @@
         "Owner",
         "Make",
         "Action",
-        "312",
-        "PW-ASSET-A-1783428264866-8wiwog",
-        "313",
-        "PW-ASSET-B-1783428264866-8wiwog",
-        "PW-SYS-1783428264866-8wiwog",
+        "315",
+        "PW-ASSET-A-1783435220786-ib1xcv",
+        "316",
+        "PW-ASSET-B-1783435220786-ib1xcv",
+        "PW-SYS-1783435220786-ib1xcv",
         "Physical",
         "Maintenance",
         "Production",
@@ -98,7 +98,7 @@
         "bounds": {
           "x": 272,
           "y": 117,
-          "width": 296,
+          "width": 295,
           "height": 28
         },
         "status": "non-null",
@@ -140,9 +140,9 @@
       "firstRow": {
         "selector": "div[role=\"row\"].ag-row-even.ag-row-no-focus.ag-row",
         "bounds": {
-          "x": 675,
+          "x": 670,
           "y": 365,
-          "width": 2732,
+          "width": 2726,
           "height": 23
         },
         "status": "non-null",
@@ -252,7 +252,7 @@
         "Report",
         "Map",
         "Registry Scope",
-        "Existing (295)",
+        "Existing (298)",
         "Purged (18)",
         "Views",
         "Display",
@@ -271,11 +271,11 @@
         "Owner",
         "Make",
         "Action",
-        "312",
-        "PW-ASSET-A-1783428264866-8wiwog",
-        "313",
-        "PW-ASSET-B-1783428264866-8wiwog",
-        "PW-SYS-1783428264866-8wiwog",
+        "315",
+        "PW-ASSET-A-1783435220786-ib1xcv",
+        "316",
+        "PW-ASSET-B-1783435220786-ib1xcv",
+        "PW-SYS-1783435220786-ib1xcv",
         "Physical",
         "Maintenance",
         "Production",
@@ -301,7 +301,7 @@
         "bounds": {
           "x": 272,
           "y": 117,
-          "width": 296,
+          "width": 295,
           "height": 28
         },
         "status": "non-null",
@@ -343,9 +343,9 @@
       "firstRow": {
         "selector": "div[role=\"row\"].ag-row-even.ag-row-no-focus.ag-row",
         "bounds": {
-          "x": 675,
+          "x": 670,
           "y": 365,
-          "width": 2732,
+          "width": 2726,
           "height": 23
         },
         "status": "non-null",
@@ -455,7 +455,7 @@
         "Report",
         "Map",
         "Registry Scope",
-        "Existing (295)",
+        "Existing (298)",
         "Purged (18)",
         "Views",
         "Display",
@@ -470,11 +470,11 @@
         "System",
         "Type",
         "Action",
-        "312",
-        "PW-ASSET-A-1783428264866-8wiwog",
-        "313",
-        "PW-ASSET-B-1783428264866-8wiwog",
-        "PW-SYS-1783428264866-8wiwog",
+        "315",
+        "PW-ASSET-A-1783435220786-ib1xcv",
+        "316",
+        "PW-ASSET-B-1783435220786-ib1xcv",
+        "PW-SYS-1783435220786-ib1xcv",
         "Physical"
       ],
       "workspaceRoot": {
@@ -535,9 +535,9 @@
       "firstRow": {
         "selector": "div[role=\"row\"].ag-row-even.ag-row-no-focus.ag-row",
         "bounds": {
-          "x": 675,
+          "x": 670,
           "y": 378,
-          "width": 2626,
+          "width": 2620,
           "height": 23
         },
         "status": "non-null",
@@ -643,7 +643,7 @@
         "Monitoring",
         "Centralized monitoring configuration and operational status",
         "Registry Scope",
-        "137 existing · 0 archived",
+        "139 existing · 0 archived",
         "Existing",
         "Archived",
         "Views",
@@ -654,7 +654,11 @@
         "Compare",
         "Bulk Actions",
         "+ Add Monitoring",
-        "Search: PW-MON-1783428264866-8wiwog",
+        "All statuses",
+        "All severities",
+        "All platforms",
+        "All owners",
+        "Search: PW-MON-1783435220786-ib1xcv",
         "Clear All",
         "ID",
         "Title",
@@ -663,9 +667,9 @@
         "Owners",
         "Category",
         "Action",
-        "137",
-        "PW-MON-1783428264866-8wiwog",
-        "PW-ASSET-A-1783428264866-8wiwog",
+        "139",
+        "PW-MON-1783435220786-ib1xcv",
+        "PW-ASSET-A-1783435220786-ib1xcv",
         "N/A",
         "Hardware"
       ],
@@ -685,7 +689,7 @@
         "bounds": {
           "x": 272,
           "y": 117,
-          "width": 752,
+          "width": 751,
           "height": 28
         },
         "status": "non-null",
@@ -717,9 +721,9 @@
         "selector": "div[role=\"presentation\"].ag-root-wrapper.ag-ltr.ag-layout-normal",
         "bounds": {
           "x": 273,
-          "y": 350,
+          "y": 452,
           "width": 1119,
-          "height": 785
+          "height": 683
         },
         "status": "non-null",
         "failureReason": null
@@ -727,9 +731,9 @@
       "firstRow": {
         "selector": "div[role=\"row\"].ag-row-even.ag-row-no-focus.ag-row",
         "bounds": {
-          "x": 649,
-          "y": 380,
-          "width": 1592,
+          "x": 653,
+          "y": 482,
+          "width": 1587,
           "height": 23
         },
         "status": "non-null",
@@ -739,7 +743,7 @@
         "selector": "button[title=\"More actions\"].row-action-trigger.row-action-menu-container.rounded-lg",
         "bounds": {
           "x": 1342,
-          "y": 377,
+          "y": 479,
           "width": 28,
           "height": 28
         },
@@ -835,7 +839,7 @@
         "Monitoring",
         "Centralized monitoring configuration and operational status",
         "Registry Scope",
-        "137 existing · 0 archived",
+        "139 existing · 0 archived",
         "Existing",
         "Archived",
         "Views",
@@ -846,7 +850,11 @@
         "Compare",
         "Bulk Actions",
         "+ Add Monitoring",
-        "Search: PW-MON-1783428264866-8wiwog",
+        "All statuses",
+        "All severities",
+        "All platforms",
+        "All owners",
+        "Search: PW-MON-1783435220786-ib1xcv",
         "Clear All",
         "ID",
         "Title",
@@ -855,9 +863,9 @@
         "Owners",
         "Category",
         "Action",
-        "137",
-        "PW-MON-1783428264866-8wiwog",
-        "PW-ASSET-A-1783428264866-8wiwog",
+        "139",
+        "PW-MON-1783435220786-ib1xcv",
+        "PW-ASSET-A-1783435220786-ib1xcv",
         "N/A",
         "Hardware"
       ],
@@ -877,7 +885,7 @@
         "bounds": {
           "x": 272,
           "y": 117,
-          "width": 752,
+          "width": 751,
           "height": 28
         },
         "status": "non-null",
@@ -909,9 +917,9 @@
         "selector": "div[role=\"presentation\"].ag-root-wrapper.ag-ltr.ag-layout-normal",
         "bounds": {
           "x": 273,
-          "y": 350,
+          "y": 452,
           "width": 1119,
-          "height": 485
+          "height": 383
         },
         "status": "non-null",
         "failureReason": null
@@ -919,9 +927,9 @@
       "firstRow": {
         "selector": "div[role=\"row\"].ag-row-even.ag-row-no-focus.ag-row",
         "bounds": {
-          "x": 653,
-          "y": 380,
-          "width": 1592,
+          "x": 648,
+          "y": 482,
+          "width": 1587,
           "height": 23
         },
         "status": "non-null",
@@ -931,7 +939,7 @@
         "selector": "button[title=\"More actions\"].row-action-trigger.row-action-menu-container.rounded-lg",
         "bounds": {
           "x": 1342,
-          "y": 377,
+          "y": 479,
           "width": 28,
           "height": 28
         },
@@ -1037,7 +1045,7 @@
         "Monitoring",
         "Centralized monitoring configuration and operational status",
         "Registry Scope",
-        "137 existing · 0 archived",
+        "139 existing · 0 archived",
         "Existing",
         "Archived",
         "Views",
@@ -1048,16 +1056,20 @@
         "Compare",
         "Bulk Actions",
         "+ Add Monitoring",
-        "Search: PW-MON-1783428264866-8wiwog",
+        "All statuses",
+        "All severities",
+        "All platforms",
+        "All owners",
+        "Search: PW-MON-1783435220786-ib1xcv",
         "Clear All",
         "ID",
         "Title",
         "Target Asset",
         "Status",
         "Action",
-        "137",
-        "PW-MON-1783428264866-8wiwog",
-        "PW-ASSET-A-1783428264866-8wiwog"
+        "139",
+        "PW-MON-1783435220786-ib1xcv",
+        "PW-ASSET-A-1783435220786-ib1xcv"
       ],
       "workspaceRoot": {
         "selector": "div.h-full.min-h-0.flex",
@@ -1075,7 +1087,7 @@
         "bounds": {
           "x": 272,
           "y": 124,
-          "width": 272,
+          "width": 271,
           "height": 28
         },
         "status": "non-null",
@@ -1107,7 +1119,7 @@
         "selector": "div[role=\"presentation\"].ag-root-wrapper.ag-ltr.ag-layout-normal",
         "bounds": {
           "x": 273,
-          "y": 339,
+          "y": 439,
           "width": 639,
           "height": 348
         },
@@ -1117,9 +1129,9 @@
       "firstRow": {
         "selector": "div[role=\"row\"].ag-row-even.ag-row-no-focus.ag-row",
         "bounds": {
-          "x": 653,
-          "y": 369,
-          "width": 1514,
+          "x": 648,
+          "y": 469,
+          "width": 1509,
           "height": 23
         },
         "status": "non-null",
@@ -1129,7 +1141,7 @@
         "selector": "button[title=\"More actions\"].row-action-trigger.row-action-menu-container.rounded-lg",
         "bounds": {
           "x": 862,
-          "y": 366,
+          "y": 466,
           "width": 28,
           "height": 28
         },
@@ -1239,7 +1251,7 @@
         "Report",
         "Map",
         "Registry Scope",
-        "Existing (295)",
+        "Existing (298)",
         "Purged (18)",
         "Views",
         "Display",
@@ -1258,11 +1270,11 @@
         "Owner",
         "Make",
         "Action",
-        "312",
-        "PW-ASSET-A-1783428264866-8wiwog",
-        "313",
-        "PW-ASSET-B-1783428264866-8wiwog",
-        "PW-SYS-1783428264866-8wiwog",
+        "315",
+        "PW-ASSET-A-1783435220786-ib1xcv",
+        "316",
+        "PW-ASSET-B-1783435220786-ib1xcv",
+        "PW-SYS-1783435220786-ib1xcv",
         "Physical",
         "Maintenance",
         "Production",
@@ -1288,7 +1300,7 @@
         "bounds": {
           "x": 272,
           "y": 117,
-          "width": 296,
+          "width": 295,
           "height": 28
         },
         "status": "non-null",
@@ -1330,9 +1342,9 @@
       "firstRow": {
         "selector": "div[role=\"row\"].ag-row-even.ag-row-no-focus.ag-row",
         "bounds": {
-          "x": 675,
+          "x": 670,
           "y": 365,
-          "width": 2732,
+          "width": 2726,
           "height": 23
         },
         "status": "non-null",
@@ -1442,7 +1454,7 @@
         "Report",
         "Map",
         "Registry Scope",
-        "Existing (295)",
+        "Existing (298)",
         "Purged (18)",
         "Views",
         "Display",
@@ -1461,11 +1473,11 @@
         "Owner",
         "Make",
         "Action",
-        "312",
-        "PW-ASSET-A-1783428264866-8wiwog",
-        "313",
-        "PW-ASSET-B-1783428264866-8wiwog",
-        "PW-SYS-1783428264866-8wiwog",
+        "315",
+        "PW-ASSET-A-1783435220786-ib1xcv",
+        "316",
+        "PW-ASSET-B-1783435220786-ib1xcv",
+        "PW-SYS-1783435220786-ib1xcv",
         "Physical",
         "Maintenance",
         "Production",
@@ -1491,7 +1503,7 @@
         "bounds": {
           "x": 272,
           "y": 117,
-          "width": 296,
+          "width": 295,
           "height": 28
         },
         "status": "non-null",
@@ -1533,9 +1545,9 @@
       "firstRow": {
         "selector": "div[role=\"row\"].ag-row-even.ag-row-no-focus.ag-row",
         "bounds": {
-          "x": 675,
+          "x": 670,
           "y": 365,
-          "width": 2732,
+          "width": 2726,
           "height": 23
         },
         "status": "non-null",
@@ -1645,7 +1657,7 @@
         "Report",
         "Map",
         "Registry Scope",
-        "Existing (295)",
+        "Existing (298)",
         "Purged (18)",
         "Views",
         "Display",
@@ -1669,11 +1681,11 @@
         "Owner",
         "Make",
         "Action",
-        "312",
-        "PW-ASSET-A-1783428264866-8wiwog",
-        "313",
-        "PW-ASSET-B-1783428264866-8wiwog",
-        "PW-SYS-1783428264866-8wiwog",
+        "315",
+        "PW-ASSET-A-1783435220786-ib1xcv",
+        "316",
+        "PW-ASSET-B-1783435220786-ib1xcv",
+        "PW-SYS-1783435220786-ib1xcv",
         "Physical",
         "Maintenance",
         "Production",
@@ -1699,7 +1711,7 @@
         "bounds": {
           "x": 272,
           "y": 117,
-          "width": 296,
+          "width": 295,
           "height": 28
         },
         "status": "non-null",
@@ -1741,9 +1753,9 @@
       "firstRow": {
         "selector": "div[role=\"row\"].ag-row-even.ag-row-no-focus.ag-row",
         "bounds": {
-          "x": 675,
+          "x": 670,
           "y": 467,
-          "width": 2732,
+          "width": 2726,
           "height": 23
         },
         "status": "non-null",
@@ -1849,7 +1861,7 @@
         "Monitoring",
         "Centralized monitoring configuration and operational status",
         "Registry Scope",
-        "137 existing · 0 archived",
+        "139 existing · 0 archived",
         "Existing",
         "Archived",
         "Views",
@@ -1860,11 +1872,7 @@
         "Compare",
         "Bulk Actions",
         "+ Add Monitoring",
-        "All statuses",
-        "All severities",
-        "All platforms",
-        "All owners",
-        "Search: PW-MON-1783428264866-8wiwog",
+        "Search: PW-MON-1783435220786-ib1xcv",
         "Clear All",
         "ID",
         "Title",
@@ -1873,9 +1881,9 @@
         "Owners",
         "Category",
         "Action",
-        "137",
-        "PW-MON-1783428264866-8wiwog",
-        "PW-ASSET-A-1783428264866-8wiwog",
+        "139",
+        "PW-MON-1783435220786-ib1xcv",
+        "PW-ASSET-A-1783435220786-ib1xcv",
         "N/A",
         "Hardware"
       ],
@@ -1895,7 +1903,7 @@
         "bounds": {
           "x": 272,
           "y": 117,
-          "width": 752,
+          "width": 751,
           "height": 28
         },
         "status": "non-null",
@@ -1927,9 +1935,9 @@
         "selector": "div[role=\"presentation\"].ag-root-wrapper.ag-ltr.ag-layout-normal",
         "bounds": {
           "x": 273,
-          "y": 452,
+          "y": 350,
           "width": 1119,
-          "height": 383
+          "height": 485
         },
         "status": "non-null",
         "failureReason": null
@@ -1937,9 +1945,9 @@
       "firstRow": {
         "selector": "div[role=\"row\"].ag-row-even.ag-row-no-focus.ag-row",
         "bounds": {
-          "x": 653,
-          "y": 482,
-          "width": 1592,
+          "x": 648,
+          "y": 380,
+          "width": 1587,
           "height": 23
         },
         "status": "non-null",
@@ -1949,7 +1957,7 @@
         "selector": "button[title=\"More actions\"].row-action-trigger.row-action-menu-container.rounded-lg",
         "bounds": {
           "x": 1342,
-          "y": 479,
+          "y": 377,
           "width": 28,
           "height": 28
         },
@@ -2059,7 +2067,7 @@
         "Report",
         "Map",
         "Registry Scope",
-        "Existing (295)",
+        "Existing (298)",
         "Purged (18)",
         "Views",
         "Display",
@@ -2078,11 +2086,11 @@
         "Owner",
         "Make",
         "Action",
-        "312",
-        "PW-ASSET-A-1783428264866-8wiwog",
-        "313",
-        "PW-ASSET-B-1783428264866-8wiwog",
-        "PW-SYS-1783428264866-8wiwog",
+        "315",
+        "PW-ASSET-A-1783435220786-ib1xcv",
+        "316",
+        "PW-ASSET-B-1783435220786-ib1xcv",
+        "PW-SYS-1783435220786-ib1xcv",
         "Physical",
         "Maintenance",
         "Production",
@@ -2108,7 +2116,7 @@
         "bounds": {
           "x": 272,
           "y": 117,
-          "width": 296,
+          "width": 295,
           "height": 28
         },
         "status": "non-null",
@@ -2150,9 +2158,9 @@
       "firstRow": {
         "selector": "div[role=\"row\"].ag-row-even.ag-row-no-focus.ag-row",
         "bounds": {
-          "x": 675,
+          "x": 670,
           "y": 365,
-          "width": 2732,
+          "width": 2726,
           "height": 23
         },
         "status": "non-null",
@@ -2262,7 +2270,7 @@
         "Report",
         "Map",
         "Registry Scope",
-        "Existing (295)",
+        "Existing (298)",
         "Purged (18)",
         "Views",
         "Display",
@@ -2281,11 +2289,11 @@
         "Owner",
         "Make",
         "Action",
-        "312",
-        "PW-ASSET-A-1783428264866-8wiwog",
-        "313",
-        "PW-ASSET-B-1783428264866-8wiwog",
-        "PW-SYS-1783428264866-8wiwog",
+        "315",
+        "PW-ASSET-A-1783435220786-ib1xcv",
+        "316",
+        "PW-ASSET-B-1783435220786-ib1xcv",
+        "PW-SYS-1783435220786-ib1xcv",
         "Physical",
         "Maintenance",
         "Production",
@@ -2311,7 +2319,7 @@
         "bounds": {
           "x": 272,
           "y": 117,
-          "width": 296,
+          "width": 295,
           "height": 28
         },
         "status": "non-null",
@@ -2353,9 +2361,9 @@
       "firstRow": {
         "selector": "div[role=\"row\"].ag-row-even.ag-row.ag-row-level-0",
         "bounds": {
-          "x": 627,
+          "x": 633,
           "y": 365,
-          "width": 2732,
+          "width": 2726,
           "height": 23
         },
         "status": "non-null",
@@ -2429,7 +2437,7 @@
       "routeKey": "asset",
       "routeLabel": "/asset",
       "requestedUrl": "http://127.0.0.1:5173/asset",
-      "finalUrl": "http://127.0.0.1:5173/asset?id=312",
+      "finalUrl": "http://127.0.0.1:5173/asset?id=315",
       "routeVerdict": "pass",
       "routeVerdictReason": null,
       "screenshotPath": "/Users/haewonkim/home/development/sysgrid/frontend/stage37-evidence/asset-double-click.png",
@@ -2465,7 +2473,7 @@
         "Report",
         "Map",
         "Registry Scope",
-        "Existing (295)",
+        "Existing (298)",
         "Purged (18)",
         "Views",
         "Display",
@@ -2484,11 +2492,11 @@
         "Owner",
         "Make",
         "Action",
-        "312",
-        "PW-ASSET-A-1783428264866-8wiwog",
-        "313",
-        "PW-ASSET-B-1783428264866-8wiwog",
-        "PW-SYS-1783428264866-8wiwog",
+        "315",
+        "PW-ASSET-A-1783435220786-ib1xcv",
+        "316",
+        "PW-ASSET-B-1783435220786-ib1xcv",
+        "PW-SYS-1783435220786-ib1xcv",
         "Physical",
         "Maintenance",
         "Production",
@@ -2520,15 +2528,15 @@
         "Audit",
         "Sync",
         "Incident Flow",
-        "PW-MON-1783428264866-8wiwogCritical // Existing",
-        "PW-MON-1783428264866-8wiwog",
+        "PW-MON-1783435220786-ib1xcvCritical // Existing",
+        "PW-MON-1783435220786-ib1xcv",
         "Critical // Existing",
         "Runbooks & Knowledge",
-        "PW-RUNBOOK-1783428264866-8wiwogBKM // Published",
-        "PW-RUNBOOK-1783428264866-8wiwog",
+        "PW-RUNBOOK-1783435220786-ib1xcvBKM // Published",
+        "PW-RUNBOOK-1783435220786-ib1xcv",
         "BKM // Published",
         "Change & Maintenance",
-        "PW-MAINT-1783428264866-8wiwog",
+        "PW-MAINT-1783435220786-ib1xcv",
         "Scheduled // 1/1/2030",
         "View Full Audit Trail",
         "Close"
@@ -2549,7 +2557,7 @@
         "bounds": {
           "x": 272,
           "y": 117,
-          "width": 296,
+          "width": 295,
           "height": 28
         },
         "status": "non-null",
@@ -2591,9 +2599,9 @@
       "firstRow": {
         "selector": "div[role=\"row\"].ag-row-even.ag-row.ag-row-level-0",
         "bounds": {
-          "x": 627,
+          "x": 633,
           "y": 365,
-          "width": 2732,
+          "width": 2726,
           "height": 23
         },
         "status": "non-null",
@@ -2713,7 +2721,7 @@
         "Report",
         "Map",
         "Registry Scope",
-        "Existing (295)",
+        "Existing (298)",
         "Purged (18)",
         "Views",
         "Display",
@@ -2732,11 +2740,11 @@
         "Owner",
         "Make",
         "Action",
-        "312",
-        "PW-ASSET-A-1783428264866-8wiwog",
-        "313",
-        "PW-ASSET-B-1783428264866-8wiwog",
-        "PW-SYS-1783428264866-8wiwog",
+        "315",
+        "PW-ASSET-A-1783435220786-ib1xcv",
+        "316",
+        "PW-ASSET-B-1783435220786-ib1xcv",
+        "PW-SYS-1783435220786-ib1xcv",
         "Physical",
         "Maintenance",
         "Production",
@@ -2784,7 +2792,7 @@
         "bounds": {
           "x": 272,
           "y": 117,
-          "width": 296,
+          "width": 295,
           "height": 28
         },
         "status": "non-null",
@@ -2826,9 +2834,9 @@
       "firstRow": {
         "selector": "div[role=\"row\"].ag-row-even.ag-row.ag-row-level-0",
         "bounds": {
-          "x": 627,
+          "x": 633,
           "y": 365,
-          "width": 2732,
+          "width": 2726,
           "height": 23
         },
         "status": "non-null",
@@ -2902,7 +2910,7 @@
       "routeKey": "asset",
       "routeLabel": "/asset",
       "requestedUrl": "http://127.0.0.1:5173/asset",
-      "finalUrl": "http://127.0.0.1:5173/asset?id=312",
+      "finalUrl": "http://127.0.0.1:5173/asset?id=315",
       "routeVerdict": "pass",
       "routeVerdictReason": null,
       "screenshotPath": "/Users/haewonkim/home/development/sysgrid/frontend/stage37-evidence/asset-details-modal.png",
@@ -2938,7 +2946,7 @@
         "Report",
         "Map",
         "Registry Scope",
-        "Existing (295)",
+        "Existing (298)",
         "Purged (18)",
         "Views",
         "Display",
@@ -2957,11 +2965,11 @@
         "Owner",
         "Make",
         "Action",
-        "312",
-        "PW-ASSET-A-1783428264866-8wiwog",
-        "313",
-        "PW-ASSET-B-1783428264866-8wiwog",
-        "PW-SYS-1783428264866-8wiwog",
+        "315",
+        "PW-ASSET-A-1783435220786-ib1xcv",
+        "316",
+        "PW-ASSET-B-1783435220786-ib1xcv",
+        "PW-SYS-1783435220786-ib1xcv",
         "Physical",
         "Maintenance",
         "Production",
@@ -2993,15 +3001,15 @@
         "Audit",
         "Sync",
         "Incident Flow",
-        "PW-MON-1783428264866-8wiwogCritical // Existing",
-        "PW-MON-1783428264866-8wiwog",
+        "PW-MON-1783435220786-ib1xcvCritical // Existing",
+        "PW-MON-1783435220786-ib1xcv",
         "Critical // Existing",
         "Runbooks & Knowledge",
-        "PW-RUNBOOK-1783428264866-8wiwogBKM // Published",
-        "PW-RUNBOOK-1783428264866-8wiwog",
+        "PW-RUNBOOK-1783435220786-ib1xcvBKM // Published",
+        "PW-RUNBOOK-1783435220786-ib1xcv",
         "BKM // Published",
         "Change & Maintenance",
-        "PW-MAINT-1783428264866-8wiwog",
+        "PW-MAINT-1783435220786-ib1xcv",
         "Scheduled // 1/1/2030",
         "View Full Audit Trail",
         "Close"
@@ -3022,7 +3030,7 @@
         "bounds": {
           "x": 272,
           "y": 117,
-          "width": 296,
+          "width": 295,
           "height": 28
         },
         "status": "non-null",
@@ -3064,9 +3072,9 @@
       "firstRow": {
         "selector": "div[role=\"row\"].ag-row-even.ag-row.ag-row-level-0",
         "bounds": {
-          "x": 675,
+          "x": 670,
           "y": 365,
-          "width": 2732,
+          "width": 2726,
           "height": 23
         },
         "status": "non-null",
@@ -3186,7 +3194,7 @@
         "Report",
         "Map",
         "Registry Scope",
-        "Existing (295)",
+        "Existing (298)",
         "Purged (18)",
         "Views",
         "Display",
@@ -3205,11 +3213,11 @@
         "Owner",
         "Make",
         "Action",
-        "312",
-        "PW-ASSET-A-1783428264866-8wiwog",
-        "313",
-        "PW-ASSET-B-1783428264866-8wiwog",
-        "PW-SYS-1783428264866-8wiwog",
+        "315",
+        "PW-ASSET-A-1783435220786-ib1xcv",
+        "316",
+        "PW-ASSET-B-1783435220786-ib1xcv",
+        "PW-SYS-1783435220786-ib1xcv",
         "Physical",
         "Maintenance",
         "Production",
@@ -3243,7 +3251,7 @@
         "bounds": {
           "x": 272,
           "y": 117,
-          "width": 296,
+          "width": 295,
           "height": 28
         },
         "status": "non-null",
@@ -3285,9 +3293,9 @@
       "firstRow": {
         "selector": "div[role=\"row\"].ag-row-even.ag-row-no-focus.ag-row",
         "bounds": {
-          "x": 675,
+          "x": 670,
           "y": 365,
-          "width": 2732,
+          "width": 2726,
           "height": 23
         },
         "status": "non-null",
