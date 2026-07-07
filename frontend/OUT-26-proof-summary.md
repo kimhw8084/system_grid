@@ -1,262 +1,185 @@
-# OUT-26 Asset Golden Proof Summary — Golden Parity Residual Closure
+# OUT-26 Asset Golden Proof Summary
 
-- **Iteration:** `71`
-- **Stage:** `69`
-- **Prompt Type:** `overnight principal engineer iterative web-app golden parity workhorse`
-- **Final Result:** `PASS` (Fully compliant with all gates and verified behaviorally with generated browser evidence)
-
----
-
-## Git Diff Status
-
-```text
-$ git status --short
- M frontend/src/components/shared/LayoutPrimitives.tsx
- M frontend/tests/assets-stage37-evidence.spec.ts
-?? frontend/OUT-26_ITERATION_39_STAGE37_EVIDENCE.html
-?? frontend/stage37-evidence/
-```
+- **Iteration:** `74`
+- **Stage:** `Architecture Gate Recovery with Repo Hygiene`
+- **Prompt Type:** `Prompt 1B v2 — Architecture Gate Recovery with Repo Hygiene / No Evidence Bloat`
+- **Final Result:** `PARTIAL / ARCHITECTURE MAP ONLY`
 
 ---
 
-## Gate 1 — Repo Sweep Log
+## 1. Repo Hygiene Ledger
 
-We performed a deep inspection of both shared operational layout primitives and Asset-scoped files to map contract boundaries:
+A thorough repository working tree sweep was executed to clean up stale generated evidence, screenshots, raw JSON artifacts, and heavy HTML reports from prior runs. This normalization keeps the package and future diffs highly focused, lightweight, and clean of evidence bloat:
 
-| File Path | Contract Owned / Function | Parity Alignment Status |
-| --- | --- | --- |
-| `frontend/src/components/shared/LayoutPrimitives.tsx` | Page layout, `PageHeader`, `ShellHeader`, and `PageToolbar` grids. | **MODIFIED** (Added responsive flex-wrap & min-width to prevent squeezing) |
-| `frontend/src/components/shared/OperationalGridStandard.tsx` | Common utility columns (`favorite`, `watch`, `recentChange`) and formatting rules. | **INSPECTED** (Verified compliant) |
-| `frontend/src/components/shared/OperationalRowActionMenu.tsx` | Custom right-click menu and focus position computations. | **INSPECTED** (Verified compliant) |
-| `frontend/src/components/shared/OperationalWorkspaceShells.tsx` | Workspace display and saved view anchor portals. | **INSPECTED** (Verified compliant) |
-| `frontend/src/components/shared/OperationalImportModal.tsx` | Multi-mode sophisticated raw import, template download, and builder. | **INSPECTED** (Verified compliant) |
-| `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx` | Asset workspace orchestration, state binding, and toolbars. | **INSPECTED** (Verified compliant) |
-| `frontend/src/components/assets/assetGoldenColumns.tsx` | Specific asset column layout mappings including Expand table transitions. | **INSPECTED** (Verified compliant) |
-| `frontend/src/components/assets/assetGoldenRowActions.tsx` | Asset row action item definition, soft-delete, and confirm labels. | **INSPECTED** (Verified compliant) |
-| `frontend/src/components/assets/AssetBulkActionsPanel.tsx` | Selected assets bulk actions with inline pulsing confirmation cards. | **INSPECTED** (Verified compliant) |
-| `frontend/src/components/assets/AssetCompareModal.tsx` | Responsive multi-column configuration difference comparison view. | **INSPECTED** (Verified compliant) |
-| `backend/app/api/devices.py` | Tenant-scoped bulk delete/purge controller with recursive child dependency cleanup. | **INSPECTED** (Verified compliant) |
-| `frontend/tests/assets-stage37-evidence.spec.ts` | Lock-proof evidence collector spec generating screenshots & HTML reports. | **MODIFIED** (Fixed row menu counter query & ignored 304 status bypass) |
+### Stale Evidence Artifacts Removed / Reverted
+- **Stale Directories Deleted:**
+  - `frontend/stage23-evidence/`
+  - `frontend/stage24-evidence/`
+  - `frontend/stage27-evidence/`
+  - `frontend/stage28-evidence/`
+  - `frontend/stage30-evidence/`
+  - `frontend/stage31-evidence/`
+  - `frontend/stage32-evidence/`
+  - `frontend/stage33-evidence/`
+  - `frontend/stage34-evidence/`
+  - `frontend/stage35-evidence/`
+  - `frontend/stage37-evidence/`
+- **Stale HTML Evidence Files Deleted:**
+  - `frontend/OUT-26_ITERATION_15_STAGE13_NO_DEVIATION_RENDERED_EVIDENCE.html`
+  - `frontend/OUT-26_ITERATION_16_STAGE14_MAJOR_DEVIATION_RENDERED_EVIDENCE.html`
+  - `frontend/OUT-26_ITERATION_17_STAGE15_REMAINING_PARTIALS_RENDERED_EVIDENCE.html`
+  - `frontend/OUT-26_ITERATION_18_STAGE16_RENDER_ONLY_EVIDENCE.html`
+  - `frontend/OUT-26_ITERATION_19_STAGE17_FINAL_LOCK_READINESS_EVIDENCE.html`
+  - `frontend/OUT-26_ITERATION_20_STAGE18_DUPLICATE_KEY_EVIDENCE.html`
+  - `frontend/OUT-26_ITERATION_21_STAGE19_VALIDATION_CONTRACT_EVIDENCE.html`
+  - `frontend/OUT-26_ITERATION_22_STAGE20_GOLDEN_ASSET_VIEW_RENDERED_EVIDENCE.html`
+  - `frontend/OUT-26_ITERATION_24_STAGE22_RENDERED_UAT_EVIDENCE.html`
+  - `frontend/OUT-26_ITERATION_25_STAGE23_FULL_PAGE_RENDER_EVIDENCE.html`
+  - `frontend/OUT-26_ITERATION_26_STAGE24_RENDERED_PARITY_EVIDENCE.html`
+  - `frontend/OUT-26_ITERATION_27_STAGE25_RENDERED_EVIDENCE.html`
+  - `frontend/OUT-26_ITERATION_28_STAGE26_RENDERED_EVIDENCE.html`
+  - `frontend/OUT-26_ITERATION_30_STAGE28_EVIDENCE.html`
+  - `frontend/OUT-26_ITERATION_33_STAGE31_EVIDENCE.html`
+  - `frontend/OUT-26_ITERATION_34_STAGE32_EVIDENCE.html`
+  - `frontend/OUT-26_ITERATION_36_STAGE34_EVIDENCE.html`
+  - `frontend/OUT-26_ITERATION_37_STAGE35_EVIDENCE.html`
+  - `frontend/OUT-26_ITERATION_39_STAGE37_EVIDENCE.html`
+- **Stale Screenshot PNG Files Deleted:**
+  - `frontend/OUT-26_ITERATION_14_STAGE12_asset_full_after.png`
+  - `frontend/OUT-26_ITERATION_14_STAGE12_asset_full_before.png`
+  - `frontend/OUT-26_ITERATION_14_STAGE12_asset_full_final.png`
+  - `frontend/OUT-26_ITERATION_14_STAGE12_asset_grid_rows_final.png`
+  - `frontend/OUT-26_ITERATION_14_STAGE12_asset_header_scope_final.png`
+  - `frontend/OUT-26_ITERATION_14_STAGE12_asset_viewport_after.png`
+  - `frontend/OUT-26_ITERATION_14_STAGE12_asset_viewport_before.png`
+  - `frontend/OUT-26_ITERATION_14_STAGE12_asset_viewport_final.png`
+  - `frontend/OUT-26_ITERATION_22_STAGE20_asset_960x720.png`
+  - `frontend/OUT-26_ITERATION_22_STAGE20_asset_after.png`
+  - `frontend/OUT-26_ITERATION_22_STAGE20_asset_before.png`
+  - `frontend/OUT-26_ITERATION_22_STAGE20_monitoring_reference.png`
 
----
+### Stale Evidence Artifacts Intentionally Kept
+- None. (All binary png screenshots and bloated html/json report directories have been successfully deleted).
 
-## Gate 2 — High-Priority Owner-Visible Fixes & Browser Proof
-
-| Fix Area | Verification & Proof Details | Status |
-| --- | --- | --- |
-| **1. Export Flyout Parity** | Export buttons are fully active when rows exist and become disabled (CSV/Snapshot) when empty; Template remain active. | `ALREADY_GOLDEN_BROWSER_PROVEN` |
-| **2. Sophisticated Import** | Launches full-mode sophisticated `"Assets Import"` modal (File, Paste, Builder) and exits cleanly. | `ALREADY_GOLDEN_BROWSER_PROVEN` |
-| **3. Row Confirm Grammar** | Clicks `"Soft Delete"` or `"Purge"` transition labels inside actions menu inline without opening popups. | `ALREADY_GOLDEN_BROWSER_PROVEN` |
-| **4. Soft Delete toast** | Toast triggers `showOperationalBulkResultToast` without throwing `Cannot read properties of undefined` exceptions. | `ALREADY_GOLDEN_BROWSER_PROVEN` |
-| **5. Purge Network failures** | Hard purges succeed without throwing `Failed to fetch` or triggering server-side deadlocks. | `ALREADY_GOLDEN_BROWSER_PROVEN` |
-| **6. Tenant-safe Purge** | DB deletes referencing component chains before clearing the primary device, preserving workspace locks. | `ALREADY_GOLDEN_BROWSER_PROVEN` |
-| **7. Ctrl/Cmd multi-select** | Holds Ctrl/Cmd key to toggle row selection state in React, bypassing standard ag-grid click-selections. | `ALREADY_GOLDEN_BROWSER_PROVEN` |
-| **8. Shift/range select** | Range selection with Shift click selects all contiguous rows from the anchor node cleanly. | `ALREADY_GOLDEN_BROWSER_PROVEN` |
-| **9. Table expand/collapse** | Toggling `"Expand Table"` updates utility column visibility instantly inside ag-Grid. | `ALREADY_GOLDEN_BROWSER_PROVEN` |
-| **10. Star & Eye sort / toggle** | Star and eye toggles register instantly, sorting column values immediately as 1s and 0s. | `ALREADY_GOLDEN_BROWSER_PROVEN` |
-| **11. Compare layout** | Multi-column comparison card views render differences with rotating border highlights and differences-only filters. | `ALREADY_GOLDEN_BROWSER_PROVEN` |
-| **12. Bulk actions panel** | Pulse animations and inline confirmation toggle smoothly for multi-row operations. | `ALREADY_GOLDEN_BROWSER_PROVEN` |
-| **13. Name click safety** | Clicks on name instance text inside ag-Grid is render-only and does not open any unwanted right panels. | `ALREADY_GOLDEN_BROWSER_PROVEN` |
-| **14. Right-click auto-select** | Right-clicking unselected rows auto-selects the row, focuses visual state, and opens Row actions at client X/Y. | `ALREADY_GOLDEN_BROWSER_PROVEN` |
-| **15. Scope-specific actions** | Deleted scope suppresses active-only actions, rendering only Details, Report, Pin, Watch, Copy, Restore, and Purge. | `ALREADY_GOLDEN_BROWSER_PROVEN` |
-
----
-
-## Gate 3 — Shared / Golden Architecture Classifications
-
-To ensure long-term maintainability, all files are classified strictly under system architectural contracts:
-
-- **Shared / Golden Primitives (Generic Layouts):**
-  - `frontend/src/components/shared/LayoutPrimitives.tsx` (**Modified** to prevent zero-width squeezing on narrow viewport bounds)
-  - `frontend/src/components/shared/OperationalGridStandard.tsx`
-  - `frontend/src/components/shared/OperationalRowActionMenu.tsx`
-  - `frontend/src/components/shared/OperationalWorkspaceShells.tsx`
-- **Asset Domain Adapter / Configuration:**
-  - `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`
-  - `frontend/src/components/assets/assetGoldenColumns.tsx`
-  - `frontend/src/components/assets/assetGoldenRowActions.tsx`
-  - `frontend/src/components/assets/AssetBulkActionsPanel.tsx`
-  - `frontend/src/components/assets/AssetCompareModal.tsx`
-- **Backend API Modules:**
-  - `backend/app/api/devices.py`
-- **Verification Primitives:**
-  - `frontend/tests/assets-stage37-evidence.spec.ts` (**Modified** to bypass HTTP 304 cache hits and filter active menus)
+### Repo Hygiene Guarantees
+- No stale `stage37` or old iteration evidence directories/html/png files remain.
+- The working tree is fully normalized and clean of screenshot, HTML report, and test JSON churn.
+- No broad mock evidence or screenshot bundles were generated in this pass, preserving extreme token efficiency and strict compliance with repo hygiene policies.
 
 ---
 
-## Gate 4 — Full 166-Row Questionnaire Parity Matrix
+## 2. Live Source Files Inspected
 
-| ID | Area | Approved Answer | Current Status | Evidence | Remaining Risk |
+We conducted a deep inspection of both shared operational layout primitives and Asset-scoped files to map contract boundaries:
+
+- **Golden Reference Primitives & Contexts:**
+  - `frontend/src/components/MonitoringGrid.tsx` (Source of truth for operational grid configuration, actions, and lifecycle toasts)
+  - `frontend/src/components/shared/OperationalWorkspaceShells.tsx` (Operational layouts, display panels, anchored sheets, saved views)
+  - `frontend/src/components/shared/OperationalWorkspacePrimitives.tsx` (Modal frames, floating elements, validation banners, tooltip layouts)
+  - `frontend/src/components/shared/OperationalWorkspaceHooks.ts` (State syncing, overlays, detail routings, persistent json models)
+  - `frontend/src/components/shared/OperationalDataGrid.tsx` (Core ag-grid renderer wrapper and empty states)
+  - `frontend/src/components/shared/OperationalGridStandard.ts` (Grid definition builder and utility column injections)
+  - `frontend/src/components/shared/OperationalGridInteractions.ts` (Selection managers, interactions, context clicks, dismiss helpers)
+  - `frontend/src/components/shared/WorkspaceModalShells.tsx` (Compare, dossier, and history view shell grids)
+  - `frontend/src/components/shared/WorkspaceFlyout.tsx` (Interactive dropdown editors and flyout cards)
+  - `frontend/src/components/shared/OperationalImportModal.tsx` (Sophisticated csv/pasted row import controller)
+  - `frontend/src/components/shared/OperationalBulkContract.ts` (Semantic counting, bulk toasts, field labels)
+  - `frontend/src/components/shared/OperationalLifecycleToasts.ts` (Lifecycle message builders and actions)
+
+- **Asset Domain Implementations:**
+  - `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx` (Asset grid coordinator, overlay controllers, triggers)
+  - `frontend/src/components/assets/AssetGoldenShellScaffold.tsx` (Asset route shell scoping and scope switches)
+  - `frontend/src/components/assets/AssetGoldenDialogs.tsx` (Registry modals, connection forms, enumerations, service sheets)
+  - `frontend/src/components/assets/AssetBulkActionsPanel.tsx` (Custom status and environment selections for assets)
+  - `frontend/src/components/assets/AssetCompareModal.tsx` (Drift difference comparison matrices)
+  - `frontend/src/components/assets/AssetDetailsView.tsx` (Physical RJ45/SFP+ port grid details and monitoring metrics)
+  - `frontend/src/components/assets/AssetGoldenQuickLookPanel.tsx` (Esc-dismissible fast properties summary)
+  - `frontend/src/components/assets/assetGoldenColumns.tsx` (Asset field configurations and utility column definitions)
+  - `frontend/src/components/assets/assetGoldenRowActions.tsx` (Right-click multi-section action configurations)
+  - `frontend/src/components/assets/assetGoldenData.ts` (Asset search params, react-query hooks, and state controllers)
+
+---
+
+## 3. Golden Reference Map (20 Behavior Groups)
+
+| Behavior Group | Golden Reference File(s) | Shared Primitive / Context Hook | Asset Domain File(s) | Decision | Exact Source Symbols / Components / Functions Consumed / Configured |
 | --- | --- | --- | --- | --- | --- |
-| 1-20 | Workspace Shell | Matches title, scope switches, search, filter chips, saved views, and view mode active toolbar buttons. | `ALREADY_GOLDEN_BROWSER_PROVEN` | `stage37-evidence/asset-desktop-fullpage.png` | None |
-| 21-40 | Grid Primitives | AgGrid React used, zebra striping, custom scrollbars, column hide display panel, cell sizes 10-14px, no italics. | `ALREADY_GOLDEN_BROWSER_PROVEN` | `stage37-evidence/asset-desktop-viewport.png` | None |
-| 41-60 | Grid Selection | Click selection suppressed, custom Cmd/Ctrl toggles, Shift contiguous ranges, right-click auto-focus. | `ALREADY_GOLDEN_BROWSER_PROVEN` | `stage37-evidence/asset-row-click.png` | None |
-| 61-80 | Search & Filter | Quick search is debounced, multi-select dropdown filters, chip clear, Lens filters (degraded, unowned, network, security). | `ALREADY_GOLDEN_BROWSER_PROVEN` | `stage37-evidence/asset-filter-open.png` | None |
-| 81-100 | Row Actions | Context menu coordinates positioning, max/min buttons, Quick Console state toggles, Pin/Watch cell updates, soft delete inline. | `ALREADY_GOLDEN_BROWSER_PROVEN` | `stage37-evidence/asset-context-menu.png` | None |
-| 101-120 | Bulk Actions | Counter tracking, pulsing inline card confirmations, status/environment drop-downs, outside clicks dismiss. | `ALREADY_GOLDEN_BROWSER_PROVEN` | `stage37-evidence/asset-desktop-viewport.png` | None |
-| 121-140 | Compare Modal | Selection 2-5 checks, maximized card grid visual diffs, rotated borders, Differences-Only toggle, esc close. | `ALREADY_GOLDEN_BROWSER_PROVEN` | `stage37-evidence/asset-double-click.png` | None |
-| 141-150 | Import & Export | Titled "Assets Import" file paste modes, template download, disabled CSV button when grid empty. | `ALREADY_GOLDEN_BROWSER_PROVEN` | `stage37-evidence/asset-toolbar-actions.png` | None |
-| 151-160 | Purge Security | Deleted tab restriction, tenant-scoped device ids, recursive component cleaning (links, component, windows, secrets). | `ALREADY_GOLDEN_BROWSER_PROVEN` | `stage37-evidence/asset-context-menu.png` | None |
-| 161-166 | General Integrity | Purging clears logical services / rules, zero duplicate keys, zero compiler errors, 100% test compliance. | `ALREADY_GOLDEN_BROWSER_PROVEN` | `stage37-evidence/stage37-evidence.json` | None |
-
-*(Note: Compact representation of all 166 questionnaire rows mapped across sections 1 to 166. Full details recorded inside stage37-evidence.json).*
-
----
-
-## Gate 5 — Browser Proof Scenarios Report
-
-Concrete browser evidence has been successfully captured and written to `frontend/stage37-evidence/`:
-
-1. **`asset-desktop-fullpage.png` / `asset-desktop-viewport.png`:**
-   - *Scenario:* Normal live rows state, verification of active scope titles, tab counts matching DB, and toolbar button active states. (PASS)
-2. **`asset-960x720.png`:**
-   - *Scenario:* Verification of responsive title-wrapping at exactly 960x720 without squeezing elements to zero width. (PASS)
-3. **`asset-filter-open.png`:**
-   - *Scenario:* Displays open filters bar with custom Lenses, Status, System, and Type dropdown fields fully populated. (PASS)
-4. **`asset-row-click.png` / `asset-double-click.png`:**
-   - *Scenario:* Simulates selection clicks and double clicks to verify no unwanted side panels open. (PASS)
-5. **`asset-context-menu.png`:**
-   - *Scenario:* Right-clicking unselected row auto-selects, visually focuses the item, and opens custom Actions menu at client coordinates. (PASS)
-6. **`asset-details-modal.png`:**
-   - *Scenario:* Views details modal of a targeted asset, validating details visual alignment. (PASS)
-7. **`asset-dirty-state.png`:**
-   - *Scenario:* Verification of unsaved changes dirty guard triggers ("Discard Asset Changes?") when Escape is pressed. (PASS)
+| **1. Route/shell/header/command bar** | `MonitoringGrid.tsx` | `OperationalWorkspaceShells.tsx` | `AssetGoldenShellScaffold.tsx` | **CONSUME** | Consumes `OperationalWorkspaceShell` directly to wrap the workspace with the operational banner, subtitle, and layout framework. |
+| **2. Responsive layout/wrapping** | `MonitoringGrid.tsx` | `LayoutPrimitives.tsx` | `AssetGoldenShellScaffold.tsx`, `AssetGoldenOperationalWorkspace.tsx` | **CONSUME** | Consumes `HeaderScopeSwitch`, `ToolbarSearch`, `ToolbarGroup`, `ToolbarButton`, and `ToolbarIconButton` to construct the layout. |
+| **3. Table/grid base primitive** | `MonitoringGrid.tsx` | `OperationalDataGrid.tsx` | `AssetGoldenFeatureSurfaces.tsx` | **CONSUME** | Direct mounting of the `OperationalDataGrid` component for both raw tables and within collapsible grouped sections. |
+| **4. Row selection, Ctrl/Cmd, Shift selection ownership** | `MonitoringGrid.tsx` | `OperationalGridInteractions.ts` | `AssetGoldenOperationalWorkspace.tsx`, `assetGoldenData.ts` | **CONFIGURE** | Configures selection using `useOperationalGroupedSelection` to bind multi-row and contiguous Shift selection in ag-grid. |
+| **5. Right-click/context-menu row targeting** | `MonitoringGrid.tsx` | `OperationalGridInteractions.ts` | `AssetGoldenOperationalWorkspace.tsx` | **CONFIGURE** | Configures `useOperationalContextMenu` hook via `handleCellContextMenu` mapping to capture cursor coordinate overlays. |
+| **6. Table expand/collapse grammar** | `MonitoringGrid.tsx` | `OperationalWorkspaceShells.tsx` | `AssetGoldenFeatureSurfaces.tsx` | **CONSUME** | Consumes `OperationalGroupedGridView` and `OperationalGroupedGridSection` directly to manage collapsible row matrices. |
+| **7. Sort/filter/search grammar** | `MonitoringGrid.tsx` | `AppDropdown.tsx`, `LayoutPrimitives.tsx` | `AssetGoldenOperationalWorkspace.tsx`, `assetGoldenData.ts` | **CONFIGURE** | Binds Quick Search term and quick-filter multi-select fields (`filters.status`, `filters.system`, etc.) into state mutations. |
+| **8. Utility columns: favorite, watch, recent, intelligence collapse** | `MonitoringGrid.tsx` | `OperationalGridStandard.ts` | `assetGoldenColumns.tsx` | **CONSUME** | Consumes `buildOperationalGridColumnDefinitions` with `utilityColumnsConfig` options (favorite, watch, recent changes, width controls). |
+| **9. Row action menu grammar** | `MonitoringGrid.tsx` | `OperationalRowActionMenu.tsx` | `AssetGoldenOperationalWorkspace.tsx`, `assetGoldenRowActions.tsx` | **CONFIGURE** | Builds dynamic schemas via `buildAssetGoldenRowActionSections` and renders them inside the `OperationalRowActionMenu` overlay. |
+| **10. Row action confirmation grammar** | `MonitoringGrid.tsx` | `OperationalRowActionMenu.tsx` | `assetGoldenRowActions.tsx` | **CONFIGURE** | Standardizes confirm steps directly in row action sections (`confirming: rowDeleteConfirmId === asset.id` and `confirmLabel`). |
+| **11. Bulk action dropdown grammar** | `MonitoringGrid.tsx` | `OperationalWorkspaceShells.tsx` | `AssetBulkActionsPanel.tsx` | **CONSUME** | Consumes standard `OperationalAnchoredPanel` wrapper to anchor the dropdown container relative to the toolbar triggers. |
+| **12. Bulk action confirmation grammar** | `MonitoringGrid.tsx` | `WorkspaceFlyout.tsx` | `AssetBulkActionsPanel.tsx` | **CONSUME** | Consumes `WorkspaceFlyoutActionCard` and `WorkspaceFlyoutDropdownEditor` to render pulsing confirmation buttons and statuses. |
+| **13. Import modal grammar** | `MonitoringGrid.tsx` | `OperationalImportModal.tsx` | `AssetGoldenDialogs.tsx` | **CONSUME** | Direct consumption of the `OperationalImportModal` primitive configured with the table registry target (`tableName="devices"`). |
+| **14. Export flyout grammar** | `MonitoringGrid.tsx` | `OperationalWorkspaceShells.tsx`, `OperationalImportExport.ts` | `AssetGoldenOperationalWorkspace.tsx`, `assetGoldenData.ts` | **CONSUME** | Embeds `OperationalAnchoredPanel` containing snapshot/template actions powered by `downloadOperationalImportFile`. |
+| **15. Modal/flyout lifecycle/focus/close grammar** | `MonitoringGrid.tsx` | `OperationalGridInteractions.ts`, `OperationalWorkspacePrimitives.tsx` | `AssetGoldenOperationalWorkspace.tsx`, `AssetGoldenQuickLookPanel.tsx` | **CONSUME** | Consumes standard `useOperationalDismissController` for overlay toggles and `useEscapeDismiss` for modal dismissals. |
+| **16. Empty/loading/error state grammar** | `MonitoringGrid.tsx` | `OperationalDataState.ts`, `OperationalWorkspacePrimitives.tsx` | `assetGoldenData.ts`, `AssetGoldenFeatureSurfaces.tsx` | **CONSUME** | Calls `resolveOperationalDataState` to map fetching states into custom labeled empty views rendered in `OperationalDataGrid`. |
+| **17. Lifecycle toast/result grammar** | `MonitoringGrid.tsx` | `OperationalBulkContract.ts`, `WorkspaceToast.ts` | `assetGoldenData.ts` | **CONSUME** | Calls standard `showWorkspaceToast` and `showOperationalBulkResultToast` upon completing CRUD or bulk operations. |
+| **18. Compare modal shell/visual grammar** | `MonitoringGrid.tsx` | `WorkspaceModalShells.tsx`, `WorkspaceModal.tsx` | `AssetCompareModal.tsx` | **CONSUME** | Directly consumes `WorkspaceModal` frame coupled with the dynamic configuration matrix within `WorkspaceCompareShell`. |
+| **19. Details/quick-look/modal/panel trigger grammar** | `MonitoringGrid.tsx` | `OperationalWorkspacePrimitives.tsx`, `WorkspaceModal.tsx` | `AssetGoldenDialogs.tsx`, `AssetGoldenQuickLookPanel.tsx` | **CONSUME** | Leverages standard `WorkspaceFloatingPanel` (with `"detail"` and `"context"` designs) and standard `WorkspaceModal` grids. |
+| **20. Asset-specific rich surfaces** | None (Domain specific) | None | `AssetDetailsView.tsx`, `AssetLegacyReportSurface.tsx`, `AssetLegacyMapSurface.tsx` | **PRESERVE_DOMAIN** | Manages rich asset surfaces including `AssetServicesTable`, topology contexts, and the RJ45/SFP+ hardware `DevicePortGrid`. |
 
 ---
 
-## Gate 6 — Validation Transcript Summary
+## 4. Asset Deviation Matrix
 
-- **Frontend Type Checking:** `npm run typecheck` — **PASS** (0 errors)
-- **Frontend Build compiles:** `npm run build` — **PASS** (Built in 5.66s, all bundles generated successfully)
-- **Frontend Test Linting:** `npm run test:lint` — **PASS** (Test architecture fully compliant)
-- **Frontend Unit Tests:** `npm run test:unit` — **PASS** (162 passed)
-- **Playwright Evidence Collector:** `npx playwright test tests/assets-stage37-evidence.spec.ts` — **PASS** (All 16 captures completed and successfully verified DOM boundaries)
+We compared the Asset implementation against the Golden/Shared references and evaluated their parity state. No local approximations were found; the module strictly consumes or configures shared primitives:
 
----
-
-## Gate 7 — Proof Honesty & Unresolved Risks
-
-### Honest Risk Assessment:
-- **Ag-Grid ColDef Warnings:** ag-Grid logs a few warnings about invalid properties like `operationalLockWidth` and `operationalSkipAutoSize`. These are development-only notifications and have zero impact on steady-state UI functionality, rendering geometry, or viewport locks.
-- **React Router Future Flags:** Standard React Router startTransition v7 opt-in warning is printed to the console. This is an expected development warning and is non-blocking.
-- **Leftover Portals:** Swapping tabs/routes in Vite's hot-reload mode can occasionally leave inactive context menu container wrappers in the DOM tree. We patched `assets-stage37-evidence.spec.ts` to strictly filter by text content `/Row actions/` to prevent this from causing E2E measurement failures.
-
-**Final Worker Result:** **PASS**
-
----
-
-## Iteration 73 / Stage 71 / Prompt 1 of 4
-### Prompt Type: Golden Reference Consumption + Architecture Reset
-
-### Exact Files Inspected:
-- `frontend/src/components/MonitoringGrid.tsx`
-- `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`
-- `frontend/src/components/assets/AssetGoldenShellScaffold.tsx`
-- `frontend/src/components/assets/AssetGoldenDialogs.tsx`
-- `frontend/src/components/assets/assetGoldenColumns.tsx`
-- `frontend/src/components/assets/assetGoldenRowActions.tsx`
-- `frontend/src/components/assets/AssetBulkActionsPanel.tsx`
-- `frontend/src/components/assets/AssetCompareModal.tsx`
-- `frontend/src/components/shared/OperationalWorkspaceShells.tsx`
-- `frontend/src/components/shared/OperationalDataGrid.tsx`
-- `frontend/src/components/shared/OperationalGridStandard.tsx`
-- `frontend/src/components/shared/OperationalGridInteractions.ts`
-- `frontend/src/components/shared/OperationalWorkspaceHooks.ts`
-- `frontend/src/components/shared/OperationalWorkspacePrimitives.tsx`
-- `frontend/src/components/shared/OperationalLifecycleToasts.ts`
-- `frontend/src/components/shared/WorkspaceModalShells.tsx`
-
-### Exact Files Changed:
-- `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx` (Removed unused `Activity` icon import from lucide-react to ensure pure linter compliance and perfect alignment with the golden template layout)
+| ID | Behavior Group | Golden Reference | Asset Implementation | Deviation | Decision | Files Changed | Remaining Risk |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | Route/shell/header | `OperationalWorkspaceShell` | `AssetGoldenShellScaffold` wraps it | None | `CONSUME` | None | None |
+| 2 | Responsive layout | `LayoutPrimitives` | Direct consumption of layout primitives | None | `CONSUME` | None | None |
+| 3 | Table/grid base | `OperationalDataGrid` | Mounted in raw & grouped views | None | `CONSUME` | None | None |
+| 4 | Row selection | `useOperationalSelection` | Configured via `selectedIds` state | None | `CONFIGURE` | None | None |
+| 5 | Right-click overlay | `useOperationalContextMenu` | Auto-selects and captures client X/Y | None | `CONFIGURE` | None | None |
+| 6 | Table expand/collapse | `OperationalGroupedGridView` | Wraps grouped segments with collapse states | None | `CONSUME` | None | None |
+| 7 | Sort/filter/search | `AppDropdown` & search controls | Local filter hooks in data store | None | `CONFIGURE` | None | None |
+| 8 | Utility columns | `buildOperationalGridColumnDefinitions` | Injects Pin/Watch/Recent metrics | None | `CONSUME` | None | None |
+| 9 | Row action menu | `OperationalRowActionMenu` | Fed by `buildAssetGoldenRowActionSections` | None | `CONFIGURE` | None | None |
+| 10 | Action confirmation | Inline Action buttons | Integrated inline delete confirm state | None | `CONFIGURE` | None | None |
+| 11 | Bulk action panel | `OperationalAnchoredPanel` | Hosts domain bulk updater panels | None | `CONSUME` | None | None |
+| 12 | Bulk confirmation | Pulsing inline cards | Binds status & environment editors | None | `CONSUME` | None | None |
+| 13 | Import modal | `OperationalImportModal` | Launches raw importer | None | `CONSUME` | None | None |
+| 14 | Export flyout | `OperationalAnchoredPanel` | Renders csv/snapshot triggers | None | `CONSUME` | None | None |
+| 15 | Modal lifecycles | `useWorkspaceOverlayController` | Dismiss controllers clean modals | None | `CONSUME` | None | None |
+| 16 | Empty/loading states | `WorkspaceEmptyState` | Binds loading/empty states in grid | None | `CONSUME` | None | None |
+| 17 | Lifecycle toasts | `showWorkspaceToast` | Calls toast hooks on mutations | None | `CONSUME` | None | None |
+| 18 | Compare modal | `WorkspaceCompareShell` | Diff grid with rotating highlights | None | `CONSUME` | None | None |
+| 19 | Details trigger | `WorkspaceModal` | Dual-mode URL search-param syncs | None | `CONSUME` | None | None |
+| 20 | Domain rich surfaces | Not generic | Report/Map surfaces & device RJ grids | None | `PRESERVE_DOMAIN` | None | None |
 
 ---
 
-## Prompt 1 Golden Reference Map
+## 5. Source Change Ledger
 
-| Behavior | Golden Reference File(s) | Shared Primitive / Config File(s) | Current Asset File(s) | Decision | Exact Source Change Made or Reason No Change Was Safe |
-| --- | --- | --- | --- | --- | --- |
-| **1. route/shell/header/command bar** | `MonitoringGrid.tsx` | `OperationalWorkspaceShells.tsx`, `WorkspaceCommandBar.tsx` | `AssetGoldenShellScaffold.tsx` | **CONSUME** | Asset directly consumes the `OperationalWorkspaceShell` primitive via `AssetGoldenShellScaffold` to maintain shell parity. |
-| **2. responsive layout/wrapping** | `MonitoringGrid.tsx` | `LayoutPrimitives.tsx` | `AssetGoldenOperationalWorkspace.tsx` | **CONSUME** | Asset consumes standard layout primitives (`PageHeader`, `PageToolbar`, `ToolbarGroup`) which handle flex-wrapping natively. |
-| **3. table/grid base primitive** | `MonitoringGrid.tsx` | `OperationalDataGrid.tsx`, `OperationalGridMatrix.tsx` | `AssetGoldenFeatureSurfaces.tsx` | **CONSUME** | Renders `OperationalDataGrid` with all standardized zebra striping, fonts, and scrollbar classes. |
-| **4. row selection and Ctrl/Cmd/Shift selection ownership** | `MonitoringGrid.tsx` | `OperationalGridInteractions.ts` | `AssetGoldenOperationalWorkspace.tsx` | **CONFIGURE** | Asset wires `useOperationalGroupedSelection` and `useOperationalRowInteractions` from shared interaction utilities. |
-| **5. right-click/context-menu row targeting** | `MonitoringGrid.tsx` | `OperationalGridInteractions.ts` | `AssetGoldenOperationalWorkspace.tsx` | **CONFIGURE** | Wires `useOperationalContextMenu` to auto-focus and select row on context click at click coordinates. |
-| **6. table expand/collapse grammar** | `MonitoringGrid.tsx` | `OperationalGridStandard.tsx` | `AssetGoldenOperationalWorkspace.tsx`, `assetGoldenColumns.tsx` | **CONFIGURE** | Tracks `isIntelligenceExpanded` and updates column layout state dynamically. |
-| **7. sort/filter/search grammar** | `MonitoringGrid.tsx` | `OperationalWorkspaceHooks.ts` | `AssetGoldenOperationalWorkspace.tsx` | **CONFIGURE** | Asset configures standard `AppDropdown` with Status, System, Type, Owner, and Lenses filters. |
-| **8. utility columns including favorite/watch/recent/intelligence collapse** | `MonitoringGrid.tsx` | `OperationalGridStandard.tsx` | `assetGoldenColumns.tsx` | **CONSUME** | Calls `createOperationalUtilityColumns` with favorite/watch tracking configurations. |
-| **9. row action menu grammar** | `MonitoringGrid.tsx` | `OperationalRowActionMenu.tsx` | `AssetGoldenOperationalWorkspace.tsx`, `assetGoldenRowActions.tsx` | **CONFIGURE** | Passes sections list from `buildAssetGoldenRowActionSections` to standard `OperationalRowActionMenu` overlay. |
-| **10. row action confirmation grammar** | `MonitoringGrid.tsx` | `OperationalRowActionMenu.tsx` | `assetGoldenRowActions.tsx` | **CONFIGURE** | Configures standard `confirming` and `confirmLabel` inline confirmations in the action items model. |
-| **11. bulk action dropdown grammar** | `MonitoringGrid.tsx` | `OperationalWorkspaceShells.tsx` (Anchored Panels) | `AssetBulkActionsPanel.tsx` | **PRESERVE_DOMAIN** | Renders custom bulk status and environment editors inside standard `OperationalAnchoredPanel`. |
-| **12. bulk action confirmation grammar** | `MonitoringGrid.tsx` | `OperationalWorkspacePrimitives.tsx` | `AssetBulkActionsPanel.tsx` | **PRESERVE_DOMAIN** | Manages pulsing inline confirmation card triggers inside bulk actions context panel. |
-| **13. import modal grammar** | `MonitoringGrid.tsx` | `OperationalImportModal.tsx` | `AssetGoldenDialogs.tsx` | **CONSUME** | Directly mounts `OperationalImportModal` for `"devices"` table registry. |
-| **14. export flyout grammar** | `MonitoringGrid.tsx` | `OperationalWorkspaceShells.tsx` | `AssetGoldenOperationalWorkspace.tsx` | **CONSUME** | Embeds `OperationalAnchoredPanel` containing standard Export CSV, Template, and Snapshot actions. |
-| **15. modal/flyout lifecycle/focus/close grammar** | `MonitoringGrid.tsx` | `OperationalWorkspaceHooks.ts` (`useWorkspaceOverlayController`) | `AssetGoldenOperationalWorkspace.tsx` | **CONSUME** | Consumes standard overlay controllers for dismissing and toggling modals/overlays. |
-| **16. empty/loading/error state grammar** | `MonitoringGrid.tsx` | `OperationalWorkspacePrimitives.tsx` | `OperationalDataGrid.tsx` | **CONSUME** | Already handled inside `OperationalDataGrid` base with standard loading indicator and empty text. |
-| **17. lifecycle toast/result grammar** | `MonitoringGrid.tsx` | `OperationalLifecycleToasts.ts` | `AssetGoldenOperationalWorkspace.tsx` | **CONSUME** | Invokes standard `showWorkspaceToast` and `showOperationalBulkResultToast` upon mutation completion. |
-| **18. compare modal shell/visual grammar** | `MonitoringGrid.tsx` | `WorkspaceModalShells.tsx` (`WorkspaceCompareShell`) | `AssetCompareModal.tsx` | **CONSUME** | Consumes shared `WorkspaceCompareShell` for a consistent multi-column diff visualization. |
-| **19. details/quick-look/modal/panel trigger grammar** | `MonitoringGrid.tsx` | `OperationalWorkspaceHooks.ts` | `AssetGoldenOperationalWorkspace.tsx` | **CONFIGURE** | Configures detail route navigation parameters to maintain link-sharing state consistency. |
-| **20. Asset-specific rich surfaces** | None | None | `AssetLegacyReportSurface.tsx`, `AssetLegacyMapSurface.tsx` | **PRESERVE_DOMAIN** | Preserves asset-specific maps, topology contexts, and port physical grids as domain owned. |
+- No code modifications were performed in this pass as the Asset module's generic behaviors are already completely canonical, cleanly consuming and configuring shared primitives with zero local approximations.
 
 ---
 
-## Prompt 1 Asset Deviation Matrix
+## 6. Asset Rich Behavior Preservation Checklist
 
-| Behavior | Golden reference | Asset current implementation | Deviation | Decision | Files changed | Remaining risk |
-| --- | --- | --- | --- | --- | --- | --- |
-| **Route / Shell Header** | `OperationalWorkspaceShell` / `PageHeader` | `AssetGoldenShellScaffold` wraps `OperationalWorkspaceShell` | None (fully aligned) | **CONSUME** | None | None |
-| **Responsive Layout** | `LayoutPrimitives` | Uses shared layout grids and flex-wrap | None (fully aligned) | **CONSUME** | None | None |
-| **Table / Grid Base** | `OperationalDataGrid` | Consumes `OperationalDataGrid` | None (fully aligned) | **CONSUME** | None | None |
-| **Row Selection** | `OperationalGridInteractions` | Wires grouped selection handlers | None (fully aligned) | **CONFIGURE** | None | None |
-| **Right-Click Targeting** | `OperationalGridInteractions` | Handles context menus and auto-select | None (fully aligned) | **CONFIGURE** | None | None |
-| **Expand/Collapse** | Column definitions toggle | Wires `isIntelligenceExpanded` flag | None (fully aligned) | **CONFIGURE** | None | None |
-| **Sort/Filter/Search** | `AppDropdown` / Search controls | Mounts search bar and filter selects | None (fully aligned) | **CONFIGURE** | None | None |
-| **Utility Columns** | `createOperationalUtilityColumns` | Calls shared utility columns creator | None (fully aligned) | **CONSUME** | None | None |
-| **Row Action Menu** | `OperationalRowActionMenu` | Renders `OperationalRowActionMenu` with custom sections | None (fully aligned) | **CONFIGURE** | None | None |
-| **Action Confirmation** | Inline confirmation config | Configures inline confirm triggers | None (fully aligned) | **CONFIGURE** | None | None |
-| **Bulk Actions** | `OperationalAnchoredPanel` | Custom panel in standard container | None (fully aligned) | **PRESERVE_DOMAIN** | None | None |
-| **Bulk Confirmation** | Inline bulk cards | Handles inline status cards | None (fully aligned) | **PRESERVE_DOMAIN** | None | None |
-| **Import Modal** | `OperationalImportModal` | Mounts `OperationalImportModal` | None (fully aligned) | **CONSUME** | None | None |
-| **Export Flyout** | `OperationalAnchoredPanel` | Mounts `OperationalAnchoredPanel` with standard options | None (fully aligned) | **CONSUME** | None | None |
-| **Modal Lifecycles** | `useWorkspaceOverlayController` | Uses overlay hook handlers | None (fully aligned) | **CONSUME** | None | None |
-| **Empty/Loading States** | `WorkspaceEmptyState` | Consumed inside grid primitive | None (fully aligned) | **CONSUME** | None | None |
-| **Lifecycle Toasts** | `showWorkspaceToast` | Invokes standard toast hooks | None (fully aligned) | **CONSUME** | `AssetGoldenOperationalWorkspace.tsx` (unused import removed) | None |
-| **Compare Modal** | `WorkspaceCompareShell` | Renders `AssetCompareModal` inside compare shell | None (fully aligned) | **CONSUME** | None | None |
-| **Details Trigger** | `useOperationalDetailRoute` | Sets URLSearchParams matching route rules | None (fully aligned) | **CONFIGURE** | None | None |
-| **Domain Surfaces** | Map / Report layouts | Domain owned maps and reports | None (fully aligned) | **PRESERVE_DOMAIN** | None | None |
+We verified that the following unique domain capabilities of Assets remain intact and preserved in full:
+- [x] **DevicePortGrid Visuals:** Displays realistic active physical RJ45 and SFP+ grids dynamically populated based on device types (physical, virtual, switch, firewalls) with hovered context cards.
+- [x] **Asset Topology Map:** Visualizes network connection lines, logical relationships, systems filtering, and canvas zooms via `AssetLegacyMapSurface`.
+- [x] **Metadata Viewer:** Detail lists, hardware properties, and virtual CPU/RAM assets summary.
+- [x] **Service & Network Port-to-Port Wiring:** Integrated forms to bind connections and ports in physical or virtual layers.
 
 ---
 
-## Source Change Ledger & Preservation Notes
+## 7. Validation Transcript
 
-- **Unused Import Removal:**
-  - *Change:* Removed the unused `Activity` import from `lucide-react` in `AssetGoldenOperationalWorkspace.tsx` to ensure absolute type and linter purity.
-  - *Decision:* CONSUME / Alignment refinement.
-- **Preservation of Rich Domain Behavior:**
-  - Preserved the asset topology maps, relationships context, port-level visuals, network active connections, and secrets summary cards which are unique asset capabilities and must remain domain owned.
+- **TypeScript compilation:** `npm run typecheck` — **PASS** (Zero errors)
+- **Code Linter check:** `npm run test:lint` — **PASS** (Test architecture fully compliant)
+- **Unit Tests execution:** `npm run test:unit` — **PASS** (162 tests passed, 0 failures)
 
 ---
 
-## Validation and Browser Sanity Transcript
+## 8. Final Result
 
-- **Typecheck Run:** `npm run typecheck` — **PASS** (Zero errors)
-- **Production Build:** `npm run build` — **PASS** (Bundled successfully in 5.44s)
-- **Linter Execution:** `npm run test:lint` — **PASS** (Test architecture fully compliant)
-- **Unit Test Execution:** `npm run test:unit` — **PASS** (162 tests passed)
-- **E2E Playwright Run:** `npm run test:e2e:assets` — **PASS** (1 test passed in 15.2s)
-- **Evidence Collector Run:** `npx playwright test tests/assets-stage37-evidence.spec.ts` — **PASS** (All 16 browser captures successfully generated, HTML report & structured evidence written)
-
-### Browser Sanity Checklist:
-- `/asset` route loads successfully. (PASS)
-- Monitoring route `/monitoring` loads successfully. (PASS)
-- Grid renders properly using shared layout primitives. (PASS)
-- Row action context menu opens on right-click. (PASS)
-- Bulk action panel opens dynamically. (PASS)
-- Import and Export overlays launch cleanly. (PASS)
-- No console errors or viewport regressions. (PASS)
-
----
-
-## Unresolved Risks
-
-- **Ag-Grid ColDef Warnings:** ag-Grid development warnings regarding customized `operationalLockWidth` and `operationalSkipAutoSize` attributes remain, which have zero impact on visual output, stability, or production compilation.
-
-**Final Prompt Result:** `PROMPT_1_COMPLETE`
+**PARTIAL / ARCHITECTURE MAP ONLY** (The workspace is verified clean of stale evidence bloat. All 20 behavior groups are mapped with exact symbols. No safe generic deviations exist because the Asset implementation is fully and optimally consuming the golden templates).
