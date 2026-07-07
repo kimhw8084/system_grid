@@ -126,21 +126,21 @@ export function buildAssetGoldenRowActionSections({
       items: [
         {
           id: 'watch',
-          label: watchIds.includes(asset.id) ? 'Unwatch' : 'Watch',
-          icon: watchIds.includes(asset.id) ? EyeOff : Eye,
+          label: Array.isArray(watchIds) && watchIds.map(Number).includes(Number(asset.id)) ? 'Unwatch' : 'Watch',
+          icon: Array.isArray(watchIds) && watchIds.map(Number).includes(Number(asset.id)) ? EyeOff : Eye,
           tone: 'neutral',
           onClick: () => {
-            if (onToggleWatch) onToggleWatch(asset.id)
+            if (onToggleWatch) onToggleWatch(Number(asset.id))
             onCloseMenu()
           },
         },
         {
           id: 'favorite',
-          label: favoriteIds.includes(asset.id) ? 'Unpin' : 'Pin',
+          label: Array.isArray(favoriteIds) && favoriteIds.map(Number).includes(Number(asset.id)) ? 'Unpin' : 'Pin',
           icon: Star,
           tone: 'warning',
           onClick: () => {
-            if (onToggleFavorite) onToggleFavorite(asset.id)
+            if (onToggleFavorite) onToggleFavorite(Number(asset.id))
             onCloseMenu()
           },
         },

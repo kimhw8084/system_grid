@@ -248,13 +248,14 @@ export default function AssetGoldenOperationalWorkspace() {
       showWorkspaceToast('Grid is not ready', { type: 'error' })
       return
     }
+    const hasSelection = workspace.selectedIds.length > 0
     gridRef.current.api.exportDataAsCsv({
       fileName: `SysGrid_Assets_${new Date().toISOString().slice(0, 10)}.csv`,
       allColumns: false,
-      onlySelected: false,
+      onlySelected: hasSelection,
     })
-    showWorkspaceToast('Asset CSV exported')
-  }, [])
+    showWorkspaceToast(hasSelection ? 'Exported selected asset rows to CSV' : 'Asset CSV exported')
+  }, [workspace.selectedIds.length])
 
   const selectionScopeKey = `${workspace.activeTab}:${workspace.viewMode}:${workspace.groupBy}`
   const { handleSelectionChanged } = useOperationalGroupedSelection({

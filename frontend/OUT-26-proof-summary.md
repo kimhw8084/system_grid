@@ -16,12 +16,10 @@
 - `backend/app/api/devices.py`
 
 ## Files Changed (Status: Modified `M`)
-- `M       backend/app/api/devices.py`
-- `M       frontend/src/components/assets/AssetBulkActionsPanel.tsx`
 - `M       frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`
-- `M       frontend/src/components/assets/assetGoldenColumns.tsx`
+- `M       frontend/src/components/assets/assetGoldenRowActions.tsx`
 - `M       frontend/src/components/shared/OperationalGridStandard.tsx`
-- `M       frontend/tests/assets-workflows.spec.ts`
+- `M       frontend/OUT-26-proof-summary.md`
 
 ---
 

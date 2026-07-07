@@ -656,6 +656,7 @@ export function createOperationalUtilityColumns({
       sortable: true,
       filter: false,
       lockVisible: true,
+      hide: !isIntelligenceExpanded,
       operationalLockWidth: true,
       operationalSkipAutoSize: true,
       checkboxSelection: false,
