@@ -313,9 +313,21 @@ const captureDomState = async (page: any, heading: string, searchPlaceholder: st
       .filter((value, index, items) => items.indexOf(value) === index)
       .slice(0, 120)
 
-    const headingNode = Array.from(document.querySelectorAll('h1, h2, h3')).find((node) => node.textContent?.replace(/\s+/g, ' ').trim() === expectedHeading) ?? null
-    const treegrid = document.querySelector('[role="treegrid"]')
-    const searchInput = document.querySelector(`input[placeholder="${expectedPlaceholder}"]`)
+    const findVisible = (selector: string): HTMLElement | null => {
+      return Array.from(document.querySelectorAll(selector)).find((node) => {
+        const box = node.getBoundingClientRect()
+        return box.width > 0 && box.height > 0
+      }) as HTMLElement | null ?? document.querySelector(selector) as HTMLElement | null
+    }
+
+    const headingNode = Array.from(document.querySelectorAll('h1, h2, h3')).find((node) => {
+      const text = node.textContent?.replace(/\s+/g, ' ').trim()
+      if (text !== expectedHeading) return false
+      const box = node.getBoundingClientRect()
+      return box.width > 0 && box.height > 0
+    }) ?? Array.from(document.querySelectorAll('h1, h2, h3')).find((node) => node.textContent?.replace(/\s+/g, ' ').trim() === expectedHeading) ?? null
+    const treegrid = findVisible('[role="treegrid"]')
+    const searchInput = findVisible(`input[placeholder="${expectedPlaceholder}"]`)
 
     const commonAncestor = (left: Element | null, right: Element | null) => {
       if (!left || !right) return null
@@ -336,8 +348,8 @@ const captureDomState = async (page: any, heading: string, searchPlaceholder: st
     const workspaceRootNode =
       commonAncestor(headingNode, treegrid) ??
       commonAncestor(searchInput, treegrid) ??
-      document.querySelector('main > div:last-child') ??
-      document.querySelector('main')
+      findVisible('main > div:last-child') ??
+      findVisible('main')
 
     const commandRegionNode = (() => {
       if (!searchInput) return null
@@ -351,11 +363,16 @@ const captureDomState = async (page: any, heading: string, searchPlaceholder: st
       return searchInput.parentElement
     })()
 
-    const actionStatusZoneNode = Array.from(document.querySelectorAll('button')).find((node) => /bulk actions|display|compare/i.test(node.textContent || '')) ?? null
+    const actionStatusZoneNode = Array.from(document.querySelectorAll('button')).find((node) => {
+      const box = node.getBoundingClientRect()
+      if (box.width === 0 || box.height === 0) return false
+      return /bulk actions|display|compare/i.test(node.textContent || '')
+    }) ?? Array.from(document.querySelectorAll('button')).find((node) => /bulk actions|display|compare/i.test(node.textContent || '')) ?? null
+
     const firstRowNode =
-      document.querySelector('.ag-center-cols-container .ag-row') ??
-      document.querySelector('[role="row"][row-index="0"]') ??
-      document.querySelector('[role="row"]')
+      findVisible('.ag-center-cols-container .ag-row') ??
+      findVisible('[role="row"][row-index="0"]') ??
+      findVisible('[role="row"]')
 
     const tableNode =
       firstRowNode?.closest('.ag-root-wrapper') ??
@@ -363,7 +380,7 @@ const captureDomState = async (page: any, heading: string, searchPlaceholder: st
       treegrid?.closest('.ag-root-wrapper') ??
       treegrid
 
-    const moreActions = document.querySelector('.row-action-trigger') ?? document.querySelector('[title="More actions"]')
+    const moreActions = findVisible('.row-action-trigger') ?? findVisible('[title="More actions"]')
 
     const invalidSignals = [
       'Bootstrap Blocked',
@@ -593,7 +610,7 @@ const attachRouteScopedListeners = (page: any, sink: RuntimeEvent[]) => {
     })
   }
   const responseListener = (response: any) => {
-    if (response.ok()) return
+    if (response.ok() || response.status() === 304) return
     sink.push({
       kind: 'non-ok-response',
       url: response.url(),
@@ -723,6 +740,17 @@ test.describe('Assets Stage 37 targeted acceptance cleanup', () => {
           await page.waitForTimeout(200)
         }
 
+        await page.evaluate(() => {
+          window.scrollTo(0, 0)
+          const main = document.querySelector('main')
+          if (main) main.scrollTop = 0
+          const shell = document.querySelector('.operational-workspace-shell')
+          if (shell) shell.scrollTop = 0
+          const body = document.body
+          if (body) body.scrollTop = 0
+        })
+        await page.waitForTimeout(100)
+
         const screenshotPath = path.join(CAPTURE_DIR, `${captureLabel}.png`)
         console.log(`[Harness] Taking screenshot: ${screenshotPath}`)
         await page.screenshot({ path: screenshotPath, fullPage })
@@ -762,7 +790,7 @@ test.describe('Assets Stage 37 targeted acceptance cleanup', () => {
           pageErrorCount: eventBuckets.pageErrorCount,
           warningRequestClassificationTable: classificationTable,
         })
-        console.log(`=== Capture [${captureLabel}] Done (Verdict: ${domState.validity.valid ? 'PASS' : 'FAIL'}) ===`)
+        console.log(`=== Capture [${captureLabel}] Done (Verdict: ${domState.validity.valid ? 'PASS' : 'FAIL'}, Reason: ${domState.validity.rejectionReason}) ===`)
       } finally {
         detach()
       }
@@ -1000,7 +1028,7 @@ test.describe('Assets Stage 37 targeted acceptance cleanup', () => {
 
         const contextMenu = currentPage.locator('.row-action-menu-container').filter({ has: currentPage.getByText('Row actions') }).first()
         customMenuVisible = await contextMenu.isVisible().catch(() => false)
-        customMenuCount = await currentPage.locator('.row-action-menu-container').count()
+        customMenuCount = await currentPage.locator('.row-action-menu-container').filter({ has: currentPage.getByText('Row actions') }).count()
 
         const evState = await currentPage.evaluate(() => ({
           seen: (window as any)._contextMenuSeen,
@@ -1030,7 +1058,7 @@ test.describe('Assets Stage 37 targeted acceptance cleanup', () => {
       interaction: async (currentPage) => {
         await currentPage.getByTitle('More actions').first().click({ force: true })
         await currentPage.waitForTimeout(300)
-        await currentPage.locator('.row-action-menu-container button').filter({ hasText: /open details/i }).first().click({ force: true })
+        await currentPage.locator('.row-action-menu-container button').filter({ hasText: /(view|open) details/i }).first().click({ force: true })
         const dialog = currentPage.getByRole('dialog')
         await expect(dialog).toBeVisible({ timeout: 5_000 })
       }

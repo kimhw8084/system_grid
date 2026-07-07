@@ -34,8 +34,8 @@ export const PageHeader = ({
   actions?: ReactNode
   className?: string
 }) => (
-  <section className={join('flex items-start justify-between gap-6', className)}>
-    <div className="min-w-0 space-y-1">
+  <section className={join('flex flex-wrap items-start justify-between gap-6', className)}>
+    <div className="min-w-[200px] flex-1 space-y-1">
       {eyebrow && <div className="text-[8px] font-black uppercase tracking-[0.24em] text-blue-400">{eyebrow}</div>}
       <div className="space-y-0.5">
         <h1 className="text-xl font-black tracking-tighter text-[var(--text-primary)]">{title}</h1>
