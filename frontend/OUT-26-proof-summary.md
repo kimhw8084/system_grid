@@ -1,6 +1,6 @@
 ## OUT-26 Asset Golden Proof Summary — Proof-Integrity + Max-Production Recovery Workhorse Run
 
-- **Iteration / stage / prompt type:** OUT-26 / Run 19 / Failed E2E Lock Recovery
+- **Iteration / stage / prompt type:** OUT-26 / Run 19 / Final Exact-Evidence Lock
 - **Exact files inspected:**
   - `frontend/src/components/assets/AssetGoldenShellScaffold.tsx`
   - `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`
@@ -10,30 +10,18 @@
   - `frontend/src/components/assets/AssetCompareModal.tsx`
   - `frontend/src/components/assets/AssetDetailsView.tsx`
   - `frontend/tests/assets-workflows.spec.ts`
-  - `frontend/tests/helpers/sysgrid.ts`
 - **Exact files changed from `git diff --name-status`:**
-  - `D       frontend/error.txt`
+  - `M       frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`
   - `M       frontend/tests/assets-workflows.spec.ts`
   - `M       frontend/OUT-26-proof-summary.md`
-
-`No product source files changed in this pass` (The entire required set of five product-source improvements remains saved, compiled, and verified in the active branch, so this pass focuses on browser-lock proof validation, resolving test races, and removing failure artifacts).
 
 ### File Classifications
 
 | Changed File | Classification | Why |
 | --- | --- | --- |
-| `frontend/tests/assets-workflows.spec.ts` | `TEST_ONLY` | Assets end-to-end user workflows spec. Upgraded E2E assertions to use standard, linter-compliant and resilient `fillGridSearch` and `openToolbarButton` helpers, added explicit unmounted-safe empty state visible checks, and resolved timing races. |
-| `frontend/error.txt` | `PROOF_ONLY` | Deleted the stale failure artifact file from the repository disk completely. |
+| `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx` | `ASSET_ONLY_SURFACE` | Main asset workspace layout. Updated `disabled` state triggers and descriptive texts on `Export CSV` and `Snapshot` buttons inside the export flyout menu. Aligns disabled states with active grid `hasVisibleRows` instead of registry `hasRegistryRows` so exporting nothing from empty/filtered-empty views is properly locked out. |
+| `frontend/tests/assets-workflows.spec.ts` | `TEST_ONLY` | Assets end-to-end user workflows spec. Upgraded E2E assertions to cover exact enabled/disabled matrices in non-empty and empty/filtered-empty states, verified permanent Purge lifecycle loops, and cleared temporary response loggers. |
 | `frontend/OUT-26-proof-summary.md` | `PROOF_ONLY` | Verification record and compliance index. |
-
----
-
-### Prior Failure Root Cause & Recovery Actions (Path B — Evidence Fix Path)
-
-- **Prior Failure Diagnosis:** In the previous run, the Purged-scope row assertion timed out on `[role="treegrid"]` trying to assert `not.toContainText(secondary.name)`.
-  - **Root Cause:** When an AG Grid becomes completely empty on the frontend (such as after purging the only visible row), `OperationalDataGrid` completely unmounts the `OperationalGridMatrix` (the element containing `role="treegrid"`) and displays a custom `WorkspaceEmptyState`. Because the element was unmounted, Playwright threw an `"element not found"` strict-mode error, leading to a false failure even though the purge itself completed successfully!
-  - **Recovery Resolution:** Refactored the post-purge verification to semantically assert on the empty state text message: `expect(page.getByText('No assets match the current working view')).toBeVisible()`. This is highly semantic, avoids any unmounted locator crashes, and is extremely stable.
-- **Removed Failure Artifact:** Completely removed `frontend/error.txt` from the disk and git diff tree.
 
 ---
 
@@ -53,13 +41,14 @@
 ### Source & Browser Evidence for Blocker 2 — Toolbar / Export / Template / Import State Matrix
 
 - **Export Flyout Operations (Source Proof):** Handled in `AssetGoldenOperationalWorkspace.tsx` lines 472-520 via `WorkspaceFloatingPanel` without vertical clipping.
-  - `Export CSV` / `Snapshot`: Correctly disabled when there are no registry rows or during grid loads via `disabled={!hasRegistryRows || isGridLoading}`.
+  - `Export CSV` / `Snapshot`: Correctly disabled when there are no visible grid rows or during grid loads via `disabled={!hasVisibleRows || isGridLoading}`.
   - `Export Template`: Downloads the blank import schema. It has **no** disabled condition, meaning it remains fully reachable for empty registries so operators can recover state.
 - **Import Reachability (Source Proof):** The "Import" action button is placed in the primary toolbar. Clicking it opens the `BulkImportModal` in a full-size modal layout, preventing any clipping or overlaps.
 - **E2E Automated Browser Verification (Browser Proof):**
-  - Clicks "Export asset data" to open the flyout; verifies visibility of Export CSV, Export Template, and Snapshot.
-  - Clicks outside coordinate space (10,10) and confirms the flyout collapses cleanly without trapping.
-  - Clicks "Import" to load the full-sized Data Ingestion Pipeline modal, and confirms clicking Close dismisses it without layering issues.
+  - **Non-Empty State:** Clicks "Export asset data" to open the flyout; verifies that `Export CSV`, `Export Template`, and `Snapshot` are all visible and **ENABLED**.
+  - **Empty / Filtered-Empty State:** Clicks "Export asset data" to open the flyout; verifies that `Export CSV` and `Snapshot` are visible but **DISABLED**, while `Export Template` remains fully reachable and **ENABLED**.
+  - **Dismiss / Click Outside:** Clicks outside coordinate space (10,10) and confirms the flyout collapses cleanly without trapping.
+  - **Import Modal:** Clicks "Import" to load the full-sized Data Ingestion Pipeline modal, and confirms clicking Close dismisses it without layering issues.
 
 ---
 

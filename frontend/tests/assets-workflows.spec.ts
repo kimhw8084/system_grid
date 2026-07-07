@@ -7,24 +7,6 @@ test.describe('Assets workflows', () => {
 
   test('simulates the changed Assets workflows end-to-end', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
-    page.on('response', async response => {
-      if (response.url().includes('/api/v1/devices?include_deleted=true')) {
-        try {
-          const text = await response.text();
-          console.log(`DEVICES GET JSON FOR ${secondary.name}: ${text.includes(secondary.name) ? 'STILL CONTAINS' : 'GONE!'}`);
-        } catch (e) {}
-      }
-      if (response.url().includes('/api/v1/devices')) {
-        console.log(`DEVICES API RESPONSE: ${response.url()} -> ${response.status()}`);
-      }
-      if (response.url().includes('/api/v1/devices/bulk-action')) {
-        console.log(`BULK ACTION RESPONSE: ${response.status()} -> ${await response.text()}`);
-      }
-      if (response.url().includes('/api/v1/') && response.status() >= 400) {
-        console.log(`API FAILED: ${response.url()} -> ${response.status()} ${response.statusText()}`);
-        response.text().then(text => console.log(`RESPONSE BODY: ${text}`)).catch(() => {});
-      }
-    })
     const { stamp, systemName, primary, secondary, monitoring, far } = await seedOperationalScenario(request)
 
     await page.goto('/asset')
@@ -89,6 +71,15 @@ test.describe('Assets workflows', () => {
     await fillGridSearch(page, 'Scan asset matrix...', secondary.name)
     await verifyGridRowRobust(page, secondary.name)
 
+    // A. Toolbar / Export / Template Enabled state check when rows exist
+    await page.getByTitle('Export asset data').click()
+    await expect(page.getByRole('button', { name: /^Export CSV/ })).toBeEnabled()
+    await expect(page.getByRole('button', { name: /^Snapshot/ })).toBeEnabled()
+    await expect(page.getByRole('button', { name: /^Export Template/ })).toBeEnabled()
+    // Dismiss export flyout by clicking outside
+    await page.mouse.click(10, 10)
+    await expect(page.getByRole('button', { name: /^Export CSV/ })).not.toBeVisible()
+
     // Settle layout before action click
     await page.waitForTimeout(1000)
 
@@ -135,16 +126,18 @@ test.describe('Assets workflows', () => {
     await fillGridSearch(page, 'Scan asset matrix...', secondary.name)
     await expect(page.getByText('No assets match the current working view')).toBeVisible()
 
-    // E2E Verification of Toolbar Export flyout and Import modal reachability
-    const exportBtn = page.getByTitle('Export asset data')
-    await exportBtn.click()
-    await expect(page.getByText('Export CSV')).toBeVisible()
-    await expect(page.getByText('Export Template')).toBeVisible()
-    await expect(page.getByText('Snapshot', { exact: true })).toBeVisible()
+    // Verify row has not returned to Existing scope either on clean reload
+    await openToolbarButton(page, /Existing/)
+    await fillGridSearch(page, 'Scan asset matrix...', secondary.name)
+    await expect(page.getByText('No assets match the current working view')).toBeVisible()
 
+    // B. Toolbar / Export / Template Disabled state check when the registry is empty or filtered-empty
+    await page.getByTitle('Export asset data').click()
+    await expect(page.getByRole('button', { name: /^Export CSV/ })).toBeDisabled()
+    await expect(page.getByRole('button', { name: /^Snapshot/ })).toBeDisabled()
+    await expect(page.getByRole('button', { name: /^Export Template/ })).toBeEnabled()
     // Dismiss export flyout by clicking outside
     await page.mouse.click(10, 10)
-    await expect(page.getByText('Export CSV')).not.toBeVisible()
 
     // Open and close import modal cleanly
     await clickResilientButton(page, 'Import')

@@ -479,13 +479,13 @@ export default function AssetGoldenOperationalWorkspace() {
                     <button
                       type="button"
                       onClick={() => { handleExportCSV(); dismissWorkspaceMenus() }}
-                      disabled={!hasRegistryRows || isGridLoading}
+                      disabled={!hasVisibleRows || isGridLoading}
                       className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-left transition-all hover:bg-white/[0.03] disabled:cursor-not-allowed disabled:opacity-45"
                     >
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">Export CSV</p>
                         <p className="pt-1 text-[11px] text-slate-500">
-                          {hasRegistryRows ? 'Download the current asset import snapshot.' : 'Available once the asset registry has at least one row.'}
+                          {hasVisibleRows ? 'Download the current asset import snapshot.' : 'Available once the active grid view has at least one row.'}
                         </p>
                       </div>
                       <FileText size={16} className="text-blue-400" />
@@ -500,13 +500,13 @@ export default function AssetGoldenOperationalWorkspace() {
                     <button
                       type="button"
                       onClick={() => { workspace.exportSnapshot(); dismissWorkspaceMenus() }}
-                      disabled={!hasRegistryRows || isGridLoading}
+                      disabled={!hasVisibleRows || isGridLoading}
                       className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-left transition-all hover:bg-white/[0.03] disabled:cursor-not-allowed disabled:opacity-45"
                     >
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">Snapshot</p>
                         <p className="pt-1 text-[11px] text-slate-500">
-                          {hasRegistryRows ? 'Download the backend snapshot artifact for import/export recovery.' : 'Available once the asset registry has at least one row.'}
+                          {hasVisibleRows ? 'Download the backend snapshot artifact for import/export recovery.' : 'Available once the active grid view has at least one row.'}
                         </p>
                       </div>
                       <FileText size={16} className="text-amber-400" />
