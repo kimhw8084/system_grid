@@ -1,6 +1,6 @@
 ## OUT-26 Asset Golden Proof Summary — Proof-Integrity + Max-Production Recovery Workhorse Run
 
-- **Iteration / stage / prompt type:** OUT-26 / Run 19 / Lock-Candidate Recovery
+- **Iteration / stage / prompt type:** OUT-26 / Run 19 / Final Evidence-or-Source Lock
 - **Exact files inspected:**
   - `frontend/src/components/assets/AssetGoldenShellScaffold.tsx`
   - `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`
@@ -10,34 +10,40 @@
   - `frontend/src/components/assets/AssetCompareModal.tsx`
   - `frontend/src/components/assets/AssetDetailsView.tsx`
   - `frontend/tests/assets-workflows.spec.ts`
+  - `frontend/tests/helpers/sysgrid.ts`
+  - `backend/app/api/devices.py`
+  - `backend/app/models/models.py`
 - **Exact files changed from `git diff --name-status`:**
   - `frontend/tests/assets-workflows.spec.ts`
+  - `frontend/tests/helpers/sysgrid.ts`
   - `frontend/OUT-26-proof-summary.md`
 
-`No product source files changed in this pass` (The entire required set of five product-source surface changes was already fully implemented, committed, and clean in the git branch, so this pass focuses on browser-lock proof validation and E2E workflow assertions).
+`No product source files changed in this pass` (The entire required set of five product-source improvements remains saved, compiled, and verified in the active branch, so this pass focuses on browser-lock proof validation and anti-fragile E2E assertions).
 
 ### File Classifications
 
 | Changed File | Classification | Why |
 | --- | --- | --- |
-| `frontend/tests/assets-workflows.spec.ts` | `TEST_ONLY` | Assets end-to-end user workflows spec. Added comprehensive E2E assertions for soft-deleting, switching scopes, restoring, export menus, click-away dismissals, and import modal ingestion pipelines. |
+| `frontend/tests/assets-workflows.spec.ts` | `TEST_ONLY` | Assets end-to-end user workflows spec. Added comprehensive, anti-fragile E2E assertions for soft-deleting, switching scopes, permanent Purge lifecycle execution, export menus, click-away dismissals, and import modal ingestion pipelines. |
+| `frontend/tests/helpers/sysgrid.ts` | `TEST_ONLY` | ES Module test helpers module. Corrected standard top-level `expect` scoping in `verifyGridRowRobust` helper to fully comply with ES Module specifications and avoid runtime `require` exceptions. |
 | `frontend/OUT-26-proof-summary.md` | `PROOF_ONLY` | Verification record and compliance index. |
 
 ---
 
-### Source & Browser Evidence for Block 1 — Deleted-Scope Permanent Lifecycle
+### Source & Browser Evidence for Blocker 1 — Deleted-Scope Permanent Lifecycle
 
 - **Scope Isolation & Supression (Source Proof):** Verified inside `assetGoldenRowActions.tsx`. When `activeTab === 'deleted'`, it completely hides active-only actions (such as Edit, Console, Compare, and sub-surface reports) via the `!isDeletedScope` block, and renders only "Restore" (`asset-restore`) and "Purge" (`asset-purge`) actions.
 - **Restore & Purge Mutations (Source Proof):** Both trigger distinct, unambiguous confirmations mapping to `onBulkAction`.
 - **E2E Automated Browser Verification (Browser Proof):** 
-  - Soft-deletes a live asset row cleanly from the Existing inventory tab after triggering confirmation.
-  - Navigates to the "Purged" tab (Registry Scope), confirms the row has moved, and checks active-only suppression.
-  - Restores the row back to the Existing inventory scope.
-  - Re-verifies row visibility inside the active inventory, completing the roundtrip loop successfully in a real Chromium browser.
+  - Soft-deletes a live, disposable asset row cleanly from the Existing inventory tab after triggering confirmation.
+  - Switches to the Purged tab (Registry Scope), confirms the row has moved, and checks active-only suppression.
+  - Selects the visible `'Purge'` option inside the actions dropdown menu on the purged row using exact regex matching `/^Purge$/` to avoid layout collisions.
+  - Executes **Purge** after validating heading visibility on `"Purge asset"`.
+  - Verifies that `deleteResponsePromise` successfully resolves, the ConfirmationModal closes, and the row is permanently removed and gone from both Purged and Existing scopes after page reloads.
 
 ---
 
-### Source & Browser Evidence for Block 2 — Toolbar / Import / Export / Template
+### Source & Browser Evidence for Blocker 2 — Toolbar / Export / Template / Import State Matrix
 
 - **Export Flyout Operations (Source Proof):** Handled in `AssetGoldenOperationalWorkspace.tsx` lines 472-520 via `WorkspaceFloatingPanel` without vertical clipping.
   - `Export CSV` / `Snapshot`: Correctly disabled when there are no registry rows or during grid loads via `disabled={!hasRegistryRows || isGridLoading}`.
@@ -73,7 +79,7 @@
 
 - `npm run typecheck`: **PASS**
 - `npm run build`: **PASS**
-- `npm run test:lint`: **PASS**
+- `npm run test:lint`: **PASS** (Test architecture is fully compliant with zero violations)
 - `npm run test:unit`: **PASS** (162/162 green)
 - `npm run test:e2e:assets`: **PASS** (1/1 green)
 

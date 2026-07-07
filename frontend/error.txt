@@ -1,0 +1,342 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: assets-workflows.spec.ts >> Assets workflows >> simulates the changed Assets workflows end-to-end
+- Location: tests/assets-workflows.spec.ts:8:3
+
+# Error details
+
+```
+Error: expect(locator).toContainText(expected) failed
+
+Locator: locator('[role="treegrid"]').first()
+Expected substring: "PW-ASSET-B-1783386324146-xzkcvx"
+Timeout: 15000ms
+Error: element(s) not found
+
+Call log:
+  - Expect "toContainText" with timeout 15000ms
+  - waiting for locator('[role="treegrid"]').first()
+
+```
+
+```yaml
+- complementary:
+  - link "SYSGRID":
+    - /url: /
+    - img
+    - text: SYSGRID
+  - button:
+    - img
+  - navigation:
+    - button "OPERATIONS":
+      - text: OPERATIONS
+      - img
+    - link "Home":
+      - /url: /
+      - img
+      - text: Home
+    - link "Projects":
+      - /url: /projects
+      - img
+      - text: Projects
+    - link "Monitoring":
+      - /url: /monitoring
+      - img
+      - text: Monitoring
+    - button "INFRASTRUCTURE":
+      - text: INFRASTRUCTURE
+      - img
+    - link "Assets":
+      - /url: /asset
+      - img
+      - text: Assets
+    - link "Racks":
+      - /url: /racks
+      - img
+      - text: Racks
+    - link "Services":
+      - /url: /services
+      - img
+      - text: Services
+    - link "External":
+      - /url: /external
+      - img
+      - text: External
+    - button "CONNECTIVITY":
+      - text: CONNECTIVITY
+      - img
+    - link "Network":
+      - /url: /network
+      - img
+      - text: Network
+    - link "Architecture":
+      - /url: /architecture
+      - img
+      - text: Architecture
+    - button "ANALYSIS":
+      - text: ANALYSIS
+      - img
+    - link "FAR":
+      - /url: /far
+      - img
+      - text: FAR
+    - link "Research":
+      - /url: /research
+      - img
+      - text: Research
+    - button "RESOURCES":
+      - text: RESOURCES
+      - img
+    - link "Vendors":
+      - /url: /vendors
+      - img
+      - text: Vendors
+    - link "Knowledge":
+      - /url: /knowledge
+      - img
+      - text: Knowledge
+  - 'button "Haewon Kim ID: 2"':
+    - img
+    - text: "Haewon Kim ID: 2"
+  - button "Dark"
+  - button "Light"
+  - paragraph: 1.2.6
+- main:
+  - button "Patch Notes"
+  - button "Search assets, projects, or incidents... ⌘ K":
+    - img
+    - text: Search assets, projects, or incidents... ⌘ K
+  - button "Active Database Local Demo":
+    - img
+    - text: Active Database Local Demo
+    - img
+  - text: System Status Operational 4ms
+  - button "Notifications":
+    - img
+  - button "1":
+    - img
+    - text: "1"
+  - link:
+    - /url: /settings
+    - img
+  - text: Infrastructure
+  - heading "Assets" [level=1]:
+    - img
+    - text: Assets
+  - paragraph: Operational asset inventory, topology context, and ownership status
+  - paragraph: View Surface
+  - button "Grid":
+    - img
+    - text: Grid
+  - button "Report":
+    - img
+    - text: Report
+  - button "Map":
+    - img
+    - text: Map
+  - paragraph: Registry Scope
+  - button "Existing (262)"
+  - button "Purged (15)"
+  - img
+  - textbox "Scan asset matrix...": PW-ASSET-B-1783386324146-xzkcvx
+  - button "Views":
+    - img
+    - text: Views
+  - button "Display":
+    - img
+    - text: Display
+  - button "Export asset data":
+    - img
+  - button "No visible asset rows to copy" [disabled]:
+    - img
+  - button "Registry configuration":
+    - img
+  - button "Import":
+    - img
+    - text: Import
+  - button "Filters":
+    - img
+    - text: Filters
+  - button "Expand Table":
+    - img
+    - text: Expand Table
+  - button "Compare" [disabled]:
+    - img
+    - text: Compare
+  - button "Bulk Actions" [disabled]:
+    - img
+    - text: Bulk Actions
+  - button "Register Asset":
+    - img
+    - text: Register Asset
+  - img
+  - paragraph: No assets match the current working view
+  - paragraph: Clear filters, search terms, or apply a broader saved view to bring assets back into scope.
+  - img
+  - text: "YOUR TIME (America/Chicago): 20:05:45"
+  - img
+  - text: "SOUTH KOREA (KST): 10:05:45 VERSION 1.2.6"
+```
+
+# Test source
+
+```ts
+  16  |       }
+  17  |       if (response.url().includes('/api/v1/devices')) {
+  18  |         console.log(`DEVICES API RESPONSE: ${response.url()} -> ${response.status()}`);
+  19  |       }
+  20  |       if (response.url().includes('/api/v1/devices/bulk-action')) {
+  21  |         console.log(`BULK ACTION RESPONSE: ${response.status()} -> ${await response.text()}`);
+  22  |       }
+  23  |       if (response.url().includes('/api/v1/') && response.status() >= 400) {
+  24  |         console.log(`API FAILED: ${response.url()} -> ${response.status()} ${response.statusText()}`);
+  25  |         response.text().then(text => console.log(`RESPONSE BODY: ${text}`)).catch(() => {});
+  26  |       }
+  27  |     })
+  28  |     const { stamp, systemName, primary, secondary, monitoring, far } = await seedOperationalScenario(request)
+  29  | 
+  30  |     await page.goto('/asset')
+  31  |     await expect(page.getByRole('heading', { name: 'Assets' })).toBeVisible()
+  32  |     await expect(page.getByText('Syncing asset registry...')).not.toBeVisible()
+  33  | 
+  34  |     await page.getByPlaceholder('Scan asset matrix...').fill(systemName)
+  35  |     await page.keyboard.press('Enter')
+  36  |     await expect(page.locator('[role="treegrid"]')).toContainText(primary.name, { timeout: 15_000 })
+  37  |     await expect(page.locator('[role="treegrid"]')).toContainText(secondary.name, { timeout: 15_000 })
+  38  | 
+  39  |     const assetRowActions = page.getByTitle('More actions')
+  40  |     const viewDetailsButtons = page.getByRole('button', { name: 'View Details' })
+  41  |     const openKnowledgeButton = page.getByRole('button', { name: 'Open Knowledge', exact: true })
+  42  |     const farRisksButton = page.getByRole('button', { name: 'FAR Risks', exact: true })
+  43  |     const auditButton = page.getByRole('button', { name: 'Audit', exact: true })
+  44  |     const bulkActionsButton = page.getByRole('button', { name: 'Bulk Actions', exact: true })
+  45  |     const compareVisibleButton = page.getByRole('button', { name: 'Compare', exact: true })
+  46  | 
+  47  |     await assetRowActions.first().click({ force: true })
+  48  |     await viewDetailsButtons.last().click({ force: true })
+  49  |     await expect(page.getByText(primary.name).first()).toBeVisible({ timeout: 20000 })
+  50  |     await expect(page.getByText('Suggested Runbooks Now')).toBeVisible()
+  51  |     await expect(farRisksButton).toBeVisible()
+  52  |     await expect(farRisksButton).toBeEnabled()
+  53  |     await expect(auditButton).toBeVisible()
+  54  |     await expect(page.getByText(`PW-MON-${stamp}`)).toBeVisible()
+  55  |     await expect(page.getByRole('button', { name: new RegExp(`PW-RUNBOOK-${stamp}`, 'i') }).first()).toBeVisible()
+  56  |     await expect(page.getByText(`PW-MAINT-${stamp}`)).toBeVisible()
+  57  |     await openKnowledgeButton.click({ force: true })
+  58  |     await expect(page).toHaveURL(new RegExp(`/knowledge\\?device_id=${primary.id}`))
+  59  | 
+  60  |     await page.goto('/asset')
+  61  |     await page.getByPlaceholder('Scan asset matrix...').fill(primary.name)
+  62  |     await assetRowActions.first().click()
+  63  |     await viewDetailsButtons.last().click({ force: true })
+  64  | 
+  65  |     await expect(farRisksButton).toBeEnabled()
+  66  |     await farRisksButton.click({ force: true })
+  67  |     await expect(page).toHaveURL(new RegExp(`/far\\?id=${far.id}`))
+  68  | 
+  69  |     await page.goto('/asset')
+  70  |     await page.getByPlaceholder('Scan asset matrix...').fill(primary.name)
+  71  |     await assetRowActions.first().click()
+  72  |     await viewDetailsButtons.last().click({ force: true })
+  73  |     await auditButton.click({ force: true })
+  74  |     await expect(page).toHaveURL(new RegExp(`/logs\\?target_table=devices&target_id=${primary.id}`))
+  75  |     await expect(page.getByText(`Scoped: devices // ${primary.id}`)).toBeVisible()
+  76  | 
+  77  |     await page.goto('/asset')
+  78  |     await page.getByPlaceholder('Scan asset matrix...').fill(systemName)
+  79  |     const rows = page.locator('.ag-center-cols-container .ag-row')
+  80  |     await expect(rows).toHaveCount(2, { timeout: 15_000 })
+  81  |     await selectGridCheckboxRows(page, [0, 1])
+  82  |     await bulkActionsButton.click()
+  83  |     await compareVisibleButton.click()
+  84  |     await expect(page.getByText('Compare Assets')).toBeVisible()
+  85  | 
+  86  |     await page.keyboard.press('Escape')
+  87  | 
+  88  |     await page.goto('/asset')
+  89  |     await page.getByPlaceholder('Scan asset matrix...').fill(secondary.name)
+  90  |     await page.keyboard.press('Enter')
+  91  |     await expect(page.locator('[role="treegrid"]')).toContainText(secondary.name)
+  92  | 
+  93  |     // Settle layout before action click
+  94  |     await page.waitForTimeout(500)
+  95  | 
+  96  |     // E2E Verification of Soft-Delete and Scope-Switch lifecycle
+  97  |     await page.getByTitle('More actions').filter({ visible: true }).first().click({ force: true })
+  98  |     await page.getByRole('button', { name: 'Soft Delete' }).waitFor({ state: 'visible' })
+  99  |     await clickResilientButton(page, 'Soft Delete')
+  100 | 
+  101 |     await page.getByRole('heading', { name: 'Delete asset' }).waitFor({ state: 'visible' })
+  102 |     const deleteResponsePromise = page.waitForResponse(response =>
+  103 |       response.url().includes('/api/v1/devices/bulk-action') && response.status() === 200
+  104 |     )
+  105 |     await clickResilientButton(page, 'Confirm')
+  106 |     await deleteResponsePromise
+  107 |     await expect(page.getByText('Please confirm you want to proceed with this action.')).not.toBeVisible()
+  108 | 
+  109 |     // Settle React state before tab switch
+  110 |     await page.waitForTimeout(500)
+  111 | 
+  112 |     // Switch to Purged Tab and verify row is present in Deleted scope
+  113 |     await clickResilientButton(page, /Purged/)
+  114 |     await page.getByPlaceholder('Scan asset matrix...').fill(secondary.name)
+  115 |     await page.keyboard.press('Enter')
+> 116 |     await expect(page.locator('[role="treegrid"]').first()).toContainText(secondary.name)
+      |                                                             ^ Error: expect(locator).toContainText(expected) failed
+  117 | 
+  118 |     // Settle layout before action click
+  119 |     await page.waitForTimeout(500)
+  120 | 
+  121 |     // Perform permanent Purge lifecycle path on the deleted row
+  122 |     await page.getByTitle('More actions').filter({ visible: true }).first().click({ force: true })
+  123 |     
+  124 |     // Purge is exact inside menu, we can wait for visible first to make sure, then use clickResilientButton
+  125 |     const purgeMenuBtn = page.getByRole('button', { name: 'Purge', exact: true }).filter({ visible: true }).first()
+  126 |     await purgeMenuBtn.waitFor({ state: 'visible' })
+  127 |     await clickResilientButton(page, 'Purge')
+  128 | 
+  129 |     await page.getByRole('heading', { name: 'Purge asset' }).waitFor({ state: 'visible' })
+  130 |     const purgeResponsePromise = page.waitForResponse(response =>
+  131 |       response.url().includes('/api/v1/devices/bulk-action') && response.status() === 200
+  132 |     )
+  133 |     await clickResilientButton(page, 'Confirm')
+  134 |     await purgeResponsePromise
+  135 |     await expect(page.getByText('Please confirm you want to proceed with this action.')).not.toBeVisible()
+  136 | 
+  137 |     // Verify row has disappeared completely from Purged scope by reloading the page
+  138 |     await page.goto('/asset')
+  139 |     await clickResilientButton(page, /Purged/)
+  140 |     await page.getByPlaceholder('Scan asset matrix...').fill(secondary.name)
+  141 |     await page.keyboard.press('Enter')
+  142 |     await expect(page.locator('[role="treegrid"]').first()).not.toContainText(secondary.name)
+  143 | 
+  144 |     // E2E Verification of Toolbar Export flyout and Import modal reachability
+  145 |     const exportBtn = page.getByTitle('Export asset data')
+  146 |     await exportBtn.click()
+  147 |     await expect(page.getByText('Export CSV')).toBeVisible()
+  148 |     await expect(page.getByText('Export Template')).toBeVisible()
+  149 |     await expect(page.getByText('Snapshot', { exact: true })).toBeVisible()
+  150 | 
+  151 |     // Dismiss export flyout by clicking outside
+  152 |     await page.mouse.click(10, 10)
+  153 |     await expect(page.getByText('Export CSV')).not.toBeVisible()
+  154 | 
+  155 |     // Open and close import modal cleanly
+  156 |     await clickResilientButton(page, 'Import')
+  157 |     await expect(page.getByText('Data Ingestion Pipeline')).toBeVisible()
+  158 |     await clickResilientButton(page, 'Close')
+  159 |     await expect(page.getByText('Data Ingestion Pipeline')).not.toBeVisible()
+  160 | 
+  161 |     await page.goto(`/monitoring?id=${monitoring.id}`)
+  162 |     await expect(page).toHaveURL(/\/monitoring$/)
+  163 |     await expect(page.getByRole('heading', { name: 'Monitoring' })).toBeVisible()
+  164 |   })
+  165 | })
+  166 | 
+```

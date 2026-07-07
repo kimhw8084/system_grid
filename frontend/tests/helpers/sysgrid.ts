@@ -496,6 +496,5 @@ export async function clickResilientButton(page: Page, ...names: (string | RegEx
 }
 
 export async function verifyGridRowRobust(page: Page, searchString: string | RegExp) {
-  const { expect } = require('@playwright/test');
   await expect(page.locator('.ag-cell').filter({ hasText: searchString }).first()).toBeVisible({ timeout: 15000 });
 }

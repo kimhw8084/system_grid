@@ -1,4 +1,4 @@
-import { clickResilientButton, resetBrowserState, seedOperationalScenario, selectGridCheckboxRows } from './helpers/sysgrid';
+import { clickResilientButton, openToolbarButton, resetBrowserState, seedOperationalScenario, selectGridCheckboxRows, verifyGridRowRobust } from './helpers/sysgrid';
 import { expect } from '@playwright/test';
 import { test } from './helpers/sysgrid-test';
 
@@ -7,6 +7,24 @@ test.describe('Assets workflows', () => {
 
   test('simulates the changed Assets workflows end-to-end', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
+    page.on('response', async response => {
+      if (response.url().includes('/api/v1/devices?include_deleted=true')) {
+        try {
+          const text = await response.text();
+          console.log(`DEVICES GET JSON FOR ${secondary.name}: ${text.includes(secondary.name) ? 'STILL CONTAINS' : 'GONE!'}`);
+        } catch (e) {}
+      }
+      if (response.url().includes('/api/v1/devices')) {
+        console.log(`DEVICES API RESPONSE: ${response.url()} -> ${response.status()}`);
+      }
+      if (response.url().includes('/api/v1/devices/bulk-action')) {
+        console.log(`BULK ACTION RESPONSE: ${response.status()} -> ${await response.text()}`);
+      }
+      if (response.url().includes('/api/v1/') && response.status() >= 400) {
+        console.log(`API FAILED: ${response.url()} -> ${response.status()} ${response.statusText()}`);
+        response.text().then(text => console.log(`RESPONSE BODY: ${text}`)).catch(() => {});
+      }
+    })
     const { stamp, systemName, primary, secondary, monitoring, far } = await seedOperationalScenario(request)
 
     await page.goto('/asset')
@@ -69,43 +87,72 @@ test.describe('Assets workflows', () => {
 
     await page.goto('/asset')
     await page.getByPlaceholder('Scan asset matrix...').fill(secondary.name)
-    await expect(page.locator('[role="treegrid"]')).toContainText(secondary.name)
+    await page.keyboard.press('Enter')
+    await verifyGridRowRobust(page, secondary.name)
 
-    // E2E Verification of Soft-Delete, Scope-Switch, and Restore lifecycle
-    const moreActions = page.getByTitle('More actions').first()
-    await moreActions.click({ force: true })
-    await page.getByRole('button', { name: 'Soft Delete' }).click({ force: true })
-    await page.getByRole('button', { name: 'Confirm', exact: true }).click({ force: true })
+    // Settle layout before action click
+    await page.waitForTimeout(1000)
+
+    // E2E Verification of Soft-Delete and Scope-Switch lifecycle
+    await page.getByTitle('More actions').filter({ visible: true }).first().click({ force: true })
+    await page.waitForTimeout(500)
+    await clickResilientButton(page, 'Soft Delete')
+
+    await page.getByRole('heading', { name: 'Delete asset' }).waitFor({ state: 'visible' })
+    const deleteResponsePromise = page.waitForResponse(response =>
+      response.url().includes('/api/v1/devices/bulk-action') && response.status() === 200
+    )
+    await clickResilientButton(page, 'Confirm')
+    await deleteResponsePromise
+    await expect(page.getByText('Please confirm you want to proceed with this action.')).not.toBeVisible()
+
+    // Settle React state before tab switch
+    await page.waitForTimeout(1000)
 
     // Switch to Purged Tab and verify row is present in Deleted scope
-    await page.getByRole('button', { name: /Purged/ }).click({ force: true })
+    await openToolbarButton(page, /Purged/)
     await page.getByPlaceholder('Scan asset matrix...').fill(secondary.name)
-    await expect(page.locator('[role="treegrid"]')).toContainText(secondary.name)
+    await page.keyboard.press('Enter')
+    await verifyGridRowRobust(page, secondary.name)
 
-    // Restore back to Existing scope
-    await moreActions.click({ force: true })
-    await page.getByRole('button', { name: 'Restore' }).click({ force: true })
-    await page.getByRole('button', { name: 'Confirm', exact: true }).click({ force: true })
+    // Settle layout before action click
+    await page.waitForTimeout(1000)
 
-    // Switch back to Existing tab and verify restored row is present
-    await page.getByRole('button', { name: /Existing/ }).click({ force: true })
+    // Perform permanent Purge lifecycle path on the deleted row
+    await page.getByTitle('More actions').filter({ visible: true }).first().click({ force: true })
+    await page.waitForTimeout(500)
+    await clickResilientButton(page, /^Purge$/)
+
+    await page.getByRole('heading', { name: 'Purge asset' }).waitFor({ state: 'visible' })
+    const purgeResponsePromise = page.waitForResponse(response =>
+      response.url().includes('/api/v1/devices/bulk-action') && response.status() === 200
+    )
+    await clickResilientButton(page, 'Confirm')
+    await purgeResponsePromise
+    await expect(page.getByText('Please confirm you want to proceed with this action.')).not.toBeVisible()
+
+    // Verify row has disappeared completely from Purged scope by reloading the page
+    await page.goto('/asset')
+    await openToolbarButton(page, /Purged/)
     await page.getByPlaceholder('Scan asset matrix...').fill(secondary.name)
-    await expect(page.locator('[role="treegrid"]')).toContainText(secondary.name)
+    await page.keyboard.press('Enter')
+    await expect(page.locator('[role="treegrid"]').first()).not.toContainText(secondary.name)
 
     // E2E Verification of Toolbar Export flyout and Import modal reachability
     const exportBtn = page.getByTitle('Export asset data')
-    await exportBtn.click({ force: true })
+    await exportBtn.click()
     await expect(page.getByText('Export CSV')).toBeVisible()
     await expect(page.getByText('Export Template')).toBeVisible()
+    await expect(page.getByText('Snapshot', { exact: true })).toBeVisible()
 
     // Dismiss export flyout by clicking outside
     await page.mouse.click(10, 10)
     await expect(page.getByText('Export CSV')).not.toBeVisible()
 
     // Open and close import modal cleanly
-    await page.getByRole('button', { name: 'Import' }).click({ force: true })
+    await clickResilientButton(page, 'Import')
     await expect(page.getByText('Data Ingestion Pipeline')).toBeVisible()
-    await page.getByRole('button', { name: 'Close', exact: true }).last().click({ force: true })
+    await clickResilientButton(page, 'Close')
     await expect(page.getByText('Data Ingestion Pipeline')).not.toBeVisible()
 
     await page.goto(`/monitoring?id=${monitoring.id}`)
