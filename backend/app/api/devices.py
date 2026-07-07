@@ -375,6 +375,31 @@ async def bulk_action(request: Request, data: dict, db: AsyncSession = Depends(g
     if action == "delete":
         await db.execute(update(models.Device).where(models.Device.id.in_(ids)).filter(models.Device.tenant_id == tenant_id).values(is_deleted=True))
     elif action == "purge":
+        # Delete referencing external links
+        await db.execute(delete(models.ExternalLink).where(models.ExternalLink.device_id.in_(ids)))
+        # Delete referencing locations
+        await db.execute(delete(models.DeviceLocation).where(models.DeviceLocation.device_id.in_(ids)))
+        # Delete referencing hardware
+        await db.execute(delete(models.HardwareComponent).where(models.HardwareComponent.device_id.in_(ids)))
+        # Delete referencing secrets
+        await db.execute(delete(models.SecretVault).where(models.SecretVault.device_id.in_(ids)))
+        # Delete referencing relationships
+        await db.execute(delete(models.DeviceRelationship).where(
+            or_(
+                models.DeviceRelationship.source_device_id.in_(ids),
+                models.DeviceRelationship.target_device_id.in_(ids)
+            )
+        ))
+        # Delete referencing port connections
+        await db.execute(delete(models.PortConnection).where(
+            or_(
+                models.PortConnection.source_device_id.in_(ids),
+                models.PortConnection.target_device_id.in_(ids)
+            )
+        ))
+        # Clear logical services device_id reference
+        await db.execute(update(models.LogicalService).where(models.LogicalService.device_id.in_(ids)).values(device_id=None))
+        # Now safely delete devices
         await db.execute(delete(models.Device).where(models.Device.id.in_(ids)).filter(models.Device.tenant_id == tenant_id))
     elif action == "restore":
         # Conflicts check before restore

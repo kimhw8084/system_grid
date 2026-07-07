@@ -71,6 +71,8 @@ type BuildAssetGoldenColumnsArgs = {
   onOpenEdit: (asset: any) => void
   getConsoleUrl: (asset: any) => string | null
   onOpenRowActions: (asset: any, event: React.MouseEvent<HTMLButtonElement>) => void
+  onToggleFavorite: (id: number) => void
+  onToggleWatch: (id: number) => void
 }
 
 export function buildAssetGoldenColumns({
@@ -86,6 +88,8 @@ export function buildAssetGoldenColumns({
   onOpenEdit,
   getConsoleUrl,
   onOpenRowActions,
+  onToggleFavorite,
+  onToggleWatch,
 }: BuildAssetGoldenColumnsArgs) {
   const columnConfigs: OperationalColumnConfig[] = [
     {
@@ -96,8 +100,6 @@ export function buildAssetGoldenColumns({
       minWidth: 180,
       maxWidth: 320,
       hide: hiddenColumns.includes('name'),
-      onActivate: onOpenQuickLook,
-      buttonTitle: 'Open quick look',
     },
     {
       kind: 'plain',
@@ -360,12 +362,12 @@ export function buildAssetGoldenColumns({
   return buildOperationalGridColumnDefinitions({
     utilityColumnsConfig: {
       includeRecentChange: isIntelligenceExpanded,
-      includeFavorite: false,
-      includeWatch: false,
+      includeFavorite: true,
+      includeWatch: true,
       isIntelligenceExpanded,
       isRecentChange,
-      onToggleFavorite: () => {},
-      onToggleWatch: () => {},
+      onToggleFavorite,
+      onToggleWatch,
       itemLabel: 'asset',
     },
     columnConfigs,

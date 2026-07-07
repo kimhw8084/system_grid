@@ -41,6 +41,7 @@ export function AssetGoldenFeatureSurfaces({
   systemsList,
   onSelectionChanged,
   isSelected,
+  gridContext,
 }: {
   gridRef?: React.RefObject<any>
   allAssets: any[]
@@ -77,6 +78,7 @@ export function AssetGoldenFeatureSurfaces({
   systemsList: string[]
   onSelectionChanged: (event: any, groupKey?: string) => void
   isSelected: (id: number) => boolean
+  gridContext?: any
 }) {
   if (viewMode === 'report') {
     return (
@@ -171,7 +173,7 @@ export function AssetGoldenFeatureSurfaces({
                   noRowsLabel="No assets found"
                   className="w-full"
                   height={`${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px`}
-                  suppressRowClickSelection={false}
+                  context={gridContext}
                 />
               ) : null}
             </OperationalGroupedGridSection>
@@ -198,7 +200,7 @@ export function AssetGoldenFeatureSurfaces({
       dataState={dataState}
       noRowsLabel="No assets match the current working set."
       height="calc(100vh - 250px)"
-      suppressRowClickSelection={false}
+      context={gridContext}
     />
   )
 }

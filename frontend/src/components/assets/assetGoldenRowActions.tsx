@@ -17,6 +17,8 @@ export function buildAssetGoldenRowActionSections({
   onCopyRow,
   onExportRow,
   getConsoleUrl,
+  rowDeleteConfirmId,
+  setRowDeleteConfirmId,
 }: {
   asset: any
   activeTab: 'inventory' | 'deleted'
@@ -34,6 +36,8 @@ export function buildAssetGoldenRowActionSections({
   onCopyRow: (asset: any) => void
   onExportRow: (asset: any) => void
   getConsoleUrl: (asset: any) => string | null
+  rowDeleteConfirmId?: number | null
+  setRowDeleteConfirmId?: (id: number | null) => void
 }) {
   const consoleUrl = getConsoleUrl(asset)
   const isDeletedScope = activeTab === 'deleted'
@@ -221,15 +225,17 @@ export function buildAssetGoldenRowActionSections({
         activeTab !== 'deleted'
           ? {
               id: 'asset-delete',
-              label: 'Soft Delete',
+              label: rowDeleteConfirmId === asset.id ? 'Confirm Archive?' : 'Soft Delete',
               icon: Trash2,
               tone: 'danger',
+              confirming: rowDeleteConfirmId === asset.id,
               onClick: () => {
-                onRequestConfirm(
-                  'Delete asset',
-                  `Move ${asset.name} to the Purged registry scope?`,
-                  () => onBulkAction({ action: 'delete', ids: [asset.id] })
-                )
+                if (setRowDeleteConfirmId && rowDeleteConfirmId !== asset.id) {
+                  setRowDeleteConfirmId(asset.id)
+                  return
+                }
+                onBulkAction({ action: 'delete', ids: [asset.id] })
+                if (setRowDeleteConfirmId) setRowDeleteConfirmId(null)
                 onCloseMenu()
               },
             }
@@ -239,26 +245,24 @@ export function buildAssetGoldenRowActionSections({
               icon: ArchiveRestore,
               tone: 'success',
               onClick: () => {
-                onRequestConfirm(
-                  'Restore asset',
-                  `Return ${asset.name} to the Existing registry scope?`,
-                  () => onBulkAction({ action: 'restore', ids: [asset.id] })
-                )
+                onBulkAction({ action: 'restore', ids: [asset.id] })
                 onCloseMenu()
               },
             },
         activeTab === 'deleted'
           ? {
               id: 'asset-purge',
-              label: 'Purge',
+              label: rowDeleteConfirmId === asset.id ? 'Confirm Purge?' : 'Purge',
               icon: Trash2,
               tone: 'danger',
+              confirming: rowDeleteConfirmId === asset.id,
               onClick: () => {
-                onRequestConfirm(
-                  'Purge asset',
-                  `Permanently remove ${asset.name} from the registry? This cannot be undone.`,
-                  () => onBulkAction({ action: 'purge', ids: [asset.id] })
-                )
+                if (setRowDeleteConfirmId && rowDeleteConfirmId !== asset.id) {
+                  setRowDeleteConfirmId(asset.id)
+                  return
+                }
+                onBulkAction({ action: 'purge', ids: [asset.id] })
+                if (setRowDeleteConfirmId) setRowDeleteConfirmId(null)
                 onCloseMenu()
               },
             }

@@ -4,7 +4,7 @@ import toast from 'react-hot-toast'
 import { AssetDetailsView } from './AssetDetailsView'
 import AssetGoldenQuickLookPanel from './AssetGoldenQuickLookPanel'
 import { AssetRecordFormModal, NetworkConnectionForm } from '../AssetReal'
-import { BulkImportModal } from '../shared/BulkImportModal'
+import { OperationalImportModal } from '../shared/OperationalImportModal'
 import { ConfirmationModal } from '../shared/ConfirmationModal'
 import { WorkspaceModal } from '../shared/WorkspaceModal'
 import { ToolbarButton } from '../shared/LayoutPrimitives'
@@ -173,7 +173,7 @@ export function AssetGoldenDialogs({
         options={options}
       />
 
-      <BulkImportModal
+      <OperationalImportModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         tableName="devices"

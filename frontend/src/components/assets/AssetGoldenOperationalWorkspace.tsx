@@ -17,7 +17,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { ToolbarButton, ToolbarGroup, ToolbarIconButton } from '../shared/LayoutPrimitives'
-import { OperationalDisplayPanel, OperationalSavedViewsPanel } from '../shared/OperationalWorkspaceShells'
+import { OperationalDisplayPanel, OperationalSavedViewsPanel, OperationalAnchoredPanel } from '../shared/OperationalWorkspaceShells'
 import { OperationalRowActionMenu } from '../shared/OperationalRowActionMenu'
 import { buildAssetGoldenColumns } from './assetGoldenColumns'
 import { buildAssetGoldenRowActionSections } from './assetGoldenRowActions'
@@ -57,6 +57,7 @@ export default function AssetGoldenOperationalWorkspace() {
   const [compareIds, setCompareIds] = useState<number[]>([])
   const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
+  const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<number | null>(null)
 
   const {
     activeOverlay,
@@ -89,6 +90,7 @@ export default function AssetGoldenOperationalWorkspace() {
   const dismissWorkspaceMenus = useCallback(() => {
     dismissOverlays()
     workspace.setRowActionMenu(null)
+    setRowDeleteConfirmId(null)
   }, [dismissOverlays, workspace])
 
   const openReportSection = useCallback((asset: any, section?: string) => {
@@ -144,6 +146,8 @@ export default function AssetGoldenOperationalWorkspace() {
       event.stopPropagation()
       openRowActionMenuAtPoint(asset, event.clientX, event.clientY)
     },
+    onToggleFavorite: workspace.toggleFavorite,
+    onToggleWatch: workspace.toggleWatch,
   }), [isIntelligenceExpanded, openDetailAsset, openRowActionMenuAtPoint, workspace])
 
   const selectedCount = workspace.selectedIds.length
@@ -199,6 +203,8 @@ export default function AssetGoldenOperationalWorkspace() {
       showWorkspaceToast('Asset row exported to clipboard')
     },
     getConsoleUrl: workspace.getAssetConsoleUrl,
+    rowDeleteConfirmId,
+    setRowDeleteConfirmId,
   }) : []
 
   const LENS_OPTIONS = useMemo(() => [
@@ -468,53 +474,57 @@ export default function AssetGoldenOperationalWorkspace() {
               onApply={(action, payload) => workspace.performBulkAction(action, undefined, payload)}
               onRequestConfirm={(title, message, onConfirm) => workspace.openConfirm(title, message, onConfirm)}
             />
-            {showExportMenu ? (
-              <div ref={exportMenuPanelRef} style={exportMenuStyle} className="bulk-menu-container">
-                <WorkspaceFloatingPanel kind="context" className="p-3">
-                  <div className="space-y-2">
-                    <div className="rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
-                      <p className="text-[10px] font-semibold text-slate-400">Export assets</p>
-                      <p className="pt-1 text-[12px] font-semibold text-slate-100">Download a CSV export, template, or registry snapshot.</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => { handleExportCSV(); dismissWorkspaceMenus() }}
-                      disabled={!hasVisibleRows || isGridLoading}
-                      className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-left transition-all hover:bg-white/[0.03] disabled:cursor-not-allowed disabled:opacity-45"
-                    >
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">Export CSV</p>
-                        <p className="pt-1 text-[11px] text-slate-500">
-                          {hasVisibleRows ? 'Download the current asset import snapshot.' : 'Available once the active grid view has at least one row.'}
-                        </p>
-                      </div>
-                      <FileText size={16} className="text-blue-400" />
-                    </button>
-                    <button type="button" onClick={() => { workspace.exportTemplate(); dismissWorkspaceMenus() }} className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-left transition-all hover:bg-white/[0.03]">
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">Export Template</p>
-                        <p className="pt-1 text-[11px] text-slate-500">Download the asset registry template with canonical columns.</p>
-                      </div>
-                      <Download size={16} className="text-emerald-400" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { workspace.exportSnapshot(); dismissWorkspaceMenus() }}
-                      disabled={!hasVisibleRows || isGridLoading}
-                      className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-left transition-all hover:bg-white/[0.03] disabled:cursor-not-allowed disabled:opacity-45"
-                    >
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">Snapshot</p>
-                        <p className="pt-1 text-[11px] text-slate-500">
-                          {hasVisibleRows ? 'Download the backend snapshot artifact for import/export recovery.' : 'Available once the active grid view has at least one row.'}
-                        </p>
-                      </div>
-                      <FileText size={16} className="text-amber-400" />
-                    </button>
+            <OperationalAnchoredPanel
+              isOpen={showExportMenu}
+              panelKey="export-menu"
+              style={exportMenuStyle}
+              panelRef={exportMenuPanelRef}
+              className="export-menu-container"
+            >
+              <WorkspaceFloatingPanel kind="context" className="p-3">
+                <div className="space-y-2">
+                  <div className="rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
+                    <p className="text-[10px] font-semibold text-slate-400">Export assets</p>
+                    <p className="pt-1 text-[12px] font-semibold text-slate-100">Download a CSV export, template, or registry snapshot.</p>
                   </div>
-                </WorkspaceFloatingPanel>
-              </div>
-            ) : null}
+                  <button
+                    type="button"
+                    onClick={() => { handleExportCSV(); dismissWorkspaceMenus() }}
+                    disabled={!hasVisibleRows || isGridLoading}
+                    className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-left transition-all hover:bg-white/[0.03] disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">Export CSV</p>
+                      <p className="pt-1 text-[11px] text-slate-500">
+                        {hasVisibleRows ? 'Download the current asset import snapshot.' : 'Available once the active grid view has at least one row.'}
+                      </p>
+                    </div>
+                    <FileText size={16} className="text-blue-400" />
+                  </button>
+                  <button type="button" onClick={() => { workspace.exportTemplate(); dismissWorkspaceMenus() }} className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-left transition-all hover:bg-white/[0.03]">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">Export Template</p>
+                      <p className="pt-1 text-[11px] text-slate-500">Download the asset registry template with canonical columns.</p>
+                    </div>
+                    <Download size={16} className="text-emerald-400" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { workspace.exportSnapshot(); dismissWorkspaceMenus() }}
+                    disabled={!hasVisibleRows || isGridLoading}
+                    className="flex w-full items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-left transition-all hover:bg-white/[0.03] disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-300">Snapshot</p>
+                      <p className="pt-1 text-[11px] text-slate-500">
+                        {hasVisibleRows ? 'Download the backend snapshot artifact for import/export recovery.' : 'Available once the active grid view has at least one row.'}
+                      </p>
+                    </div>
+                    <FileText size={16} className="text-amber-400" />
+                  </button>
+                </div>
+              </WorkspaceFloatingPanel>
+            </OperationalAnchoredPanel>
             {workspace.rowActionMenu ? (
               <OperationalRowActionMenu
                 meta={workspace.rowActionMenu.asset.system}
@@ -564,6 +574,7 @@ export default function AssetGoldenOperationalWorkspace() {
           systemsList={workspace.systemsList}
           onSelectionChanged={handleSelectionChanged}
           isSelected={isSelected}
+          gridContext={useMemo(() => ({ favoriteIds: workspace.favoriteIds, watchIds: workspace.watchIds }), [workspace.favoriteIds, workspace.watchIds])}
         />
       </AssetGoldenShellScaffold>
 

@@ -7,6 +7,7 @@ import { resolveOperationalDataState } from '../shared/OperationalDataState'
 import { showWorkspaceToast } from '../shared/WorkspaceToast'
 import { resolveBulkFieldLabel, showOperationalBulkErrorToast, showOperationalBulkResultToast } from '../shared/OperationalBulkContract'
 import { ASSET_GOLDEN_ALLOWED_COLUMN_FIELDS } from './assetGoldenColumns'
+import { usePersistentJsonState } from '../shared/OperationalWorkspaceHooks'
 
 export type AssetTab = 'inventory' | 'deleted'
 export type AssetViewMode = 'grid' | 'report' | 'map'
@@ -362,6 +363,27 @@ export function useAssetGoldenWorkspace() {
   const [confirmState, setConfirmState] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
   const [rowActionMenu, setRowActionMenu] = useState<{ asset: any; x: number; y: number } | null>(null)
 
+  const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>('sysgrid_asset_favorites', [])
+  const [watchIds, setWatchIds] = usePersistentJsonState<number[]>('sysgrid_asset_watches', [])
+
+  const toggleFavorite = useCallback((id: number) => {
+    setFavoriteIds((current) => {
+      const isFav = current.includes(id)
+      const next = isFav ? current.filter((i) => i !== id) : [...current, id]
+      showWorkspaceToast(isFav ? 'Removed from favorites' : 'Added to favorites', { type: 'success' })
+      return next
+    })
+  }, [setFavoriteIds])
+
+  const toggleWatch = useCallback((id: number) => {
+    setWatchIds((current) => {
+      const isWatched = current.includes(id)
+      const next = isWatched ? current.filter((i) => i !== id) : [...current, id]
+      showWorkspaceToast(isWatched ? 'Removed from watchers' : 'Added to watchers', { type: 'success' })
+      return next
+    })
+  }, [setWatchIds])
+
   const devicesQuery = useQuery({
     queryKey: ['asset-golden-devices'],
     queryFn: async () => (await apiFetch('/api/v1/devices/?include_deleted=true')).json(),
@@ -590,7 +612,7 @@ export function useAssetGoldenWorkspace() {
       }
       if (result?.action === 'delete' || result?.action === 'restore' || result?.action === 'purge') {
         showOperationalBulkResultToast({
-          action: result.action,
+          action: result.action === 'delete' ? 'archive' : result.action,
           totalSelected: Number(result?.totalSelected || 0),
           changedCount: Number(result?.changed || 0),
           unchangedCount: Number(result?.unchanged || 0),
@@ -718,6 +740,10 @@ export function useAssetGoldenWorkspace() {
     editingLink,
     exportSnapshot,
     exportTemplate,
+    favoriteIds,
+    watchIds,
+    toggleFavorite,
+    toggleWatch,
     farmOptions,
     filterChips,
     filterOptions,
