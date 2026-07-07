@@ -391,6 +391,7 @@ export function useAssetGoldenWorkspace() {
   const liveDevicesQuery = useQuery({
     queryKey: ['devices'],
     queryFn: async () => (await apiFetch('/api/v1/devices/')).json(),
+    enabled: devicesQuery.isError,
   })
   const optionsQuery = useQuery({
     queryKey: ['settings-options'],

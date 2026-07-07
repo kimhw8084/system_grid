@@ -50,6 +50,15 @@ const GROUP_OPTIONS = [
 
 export default function AssetGoldenOperationalWorkspace() {
   const workspace = useAssetGoldenWorkspace()
+  const {
+    setDetailAsset,
+    setSearchParams,
+    setRowActionMenu,
+    setReportAssetId,
+    setReportFocusSection,
+    setViewMode,
+  } = workspace
+
   const gridRef = useRef<any>(null)
   const [showFilterBar, setShowFilterBar] = useState(false)
   const [showCompareOpen, setShowCompareOpen] = useState(false)
@@ -78,32 +87,32 @@ export default function AssetGoldenOperationalWorkspace() {
   const { triggerRef: exportMenuButtonRef, panelRef: exportMenuPanelRef, panelStyle: exportMenuStyle } = useWorkspaceAnchoredLayer(showExportMenu, { minWidth: 260 })
 
   const openDetailAsset = useCallback((asset: any) => {
-    workspace.setDetailAsset(asset)
-    workspace.setSearchParams((current: URLSearchParams) => {
+    setDetailAsset(asset)
+    setSearchParams((current: URLSearchParams) => {
       const next = new URLSearchParams(current)
       next.set('id', String(asset.id))
       return next
     })
-  }, [workspace])
+  }, [setDetailAsset, setSearchParams])
 
   const dismissWorkspaceMenus = useCallback(() => {
     dismissOverlays()
-    workspace.setRowActionMenu(null)
+    setRowActionMenu(null)
     setRowDeleteConfirmId(null)
-  }, [dismissOverlays, workspace])
+  }, [dismissOverlays, setRowActionMenu])
 
   const openReportSection = useCallback((asset: any, section?: string) => {
-    workspace.setReportAssetId(asset.id)
-    workspace.setReportFocusSection(section || null)
-    workspace.setViewMode('report')
+    setReportAssetId(asset.id)
+    setReportFocusSection(section || null)
+    setViewMode('report')
     dismissWorkspaceMenus()
-  }, [dismissWorkspaceMenus, workspace])
+  }, [dismissWorkspaceMenus, setReportAssetId, setReportFocusSection, setViewMode])
 
   useEffect(() => {
     if (activeOverlay !== 'rowAction' && workspace.rowActionMenu) {
-      workspace.setRowActionMenu(null)
+      setRowActionMenu(null)
     }
-  }, [activeOverlay, workspace])
+  }, [activeOverlay, setRowActionMenu, workspace.rowActionMenu])
 
   useEffect(() => {
     if (gridRef.current?.api) {
@@ -118,9 +127,9 @@ export default function AssetGoldenOperationalWorkspace() {
   }, [activeOverlay, dismissOverlays, workspace.rowActionMenu])
 
   const openRowActionMenuAtPoint = useCallback((asset: any, x: number, y: number) => {
-    workspace.setRowActionMenu({ asset, x, y })
+    setRowActionMenu({ asset, x, y })
     openOverlay('rowAction')
-  }, [openOverlay, workspace])
+  }, [openOverlay, setRowActionMenu])
 
   const { handleCellContextMenu } = useOperationalContextMenu({
     onOpenRowActionMenu: useCallback((asset, point) => {
@@ -128,26 +137,49 @@ export default function AssetGoldenOperationalWorkspace() {
     }, [openRowActionMenuAtPoint]),
   })
 
+  const {
+    activeTab,
+    hiddenColumns,
+    fontSize,
+    setQuickLookAsset,
+    setEditingAsset,
+    getAssetConsoleUrl,
+    toggleFavorite,
+    toggleWatch,
+  } = workspace
+
   const columnDefs = useMemo(() => buildAssetGoldenColumns({
-    activeTab: workspace.activeTab,
-    hiddenColumns: workspace.hiddenColumns,
-    fontSize: workspace.fontSize,
+    activeTab,
+    hiddenColumns,
+    fontSize,
     isIntelligenceExpanded,
     isRecentChange: (asset) => {
       if (!asset?.updated_at) return false
       return Date.now() - new Date(asset.updated_at).getTime() < 1000 * 60 * 60 * 24
     },
-    onOpenQuickLook: workspace.setQuickLookAsset,
+    onOpenQuickLook: setQuickLookAsset,
     onOpenDetails: openDetailAsset,
-    onOpenEdit: workspace.setEditingAsset,
-    getConsoleUrl: workspace.getAssetConsoleUrl,
+    onOpenEdit: setEditingAsset,
+    getConsoleUrl: getAssetConsoleUrl,
     onOpenRowActions: (asset, event) => {
       event.stopPropagation()
       openRowActionMenuAtPoint(asset, event.clientX, event.clientY)
     },
-    onToggleFavorite: workspace.toggleFavorite,
-    onToggleWatch: workspace.toggleWatch,
-  }), [isIntelligenceExpanded, openDetailAsset, openRowActionMenuAtPoint, workspace])
+    onToggleFavorite: toggleFavorite,
+    onToggleWatch: toggleWatch,
+  }), [
+    activeTab,
+    hiddenColumns,
+    fontSize,
+    isIntelligenceExpanded,
+    setQuickLookAsset,
+    openDetailAsset,
+    setEditingAsset,
+    getAssetConsoleUrl,
+    openRowActionMenuAtPoint,
+    toggleFavorite,
+    toggleWatch,
+  ])
 
   const selectedCount = workspace.selectedIds.length
   const hasVisibleRows = workspace.visibleAssets.length > 0
@@ -307,6 +339,9 @@ export default function AssetGoldenOperationalWorkspace() {
   useEffect(() => {
     if (gridRef.current?.api) {
       gridRef.current.api.refreshCells({ columns: ['favorite', 'watch'], force: true })
+      if (typeof gridRef.current.api.onSortChanged === 'function') {
+        gridRef.current.api.onSortChanged()
+      }
     }
   }, [workspace.favoriteIds, workspace.watchIds])
 

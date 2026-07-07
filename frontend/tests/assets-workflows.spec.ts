@@ -17,6 +17,7 @@ test.describe('Assets workflows', () => {
     await page.keyboard.press('Enter')
     await expect(page.locator('[role="treegrid"]')).toContainText(primary.name, { timeout: 15_000 })
     await expect(page.locator('[role="treegrid"]')).toContainText(secondary.name, { timeout: 15_000 })
+    await page.waitForTimeout(1500)
 
     const assetRowActions = page.getByTitle('More actions')
     const viewDetailsButtons = page.getByRole('button', { name: 'View Details' })
@@ -41,7 +42,9 @@ test.describe('Assets workflows', () => {
 
     await page.goto('/asset')
     await page.getByPlaceholder('Scan asset matrix...').fill(primary.name)
-    await assetRowActions.first().click()
+    await page.keyboard.press('Enter')
+    await expect(page.locator('[role="treegrid"]')).toContainText(primary.name, { timeout: 15_000 })
+    await assetRowActions.first().click({ force: true })
     await viewDetailsButtons.last().click({ force: true })
 
     await expect(farRisksButton).toBeEnabled()
@@ -50,7 +53,9 @@ test.describe('Assets workflows', () => {
 
     await page.goto('/asset')
     await page.getByPlaceholder('Scan asset matrix...').fill(primary.name)
-    await assetRowActions.first().click()
+    await page.keyboard.press('Enter')
+    await expect(page.locator('[role="treegrid"]')).toContainText(primary.name, { timeout: 15_000 })
+    await assetRowActions.first().click({ force: true })
     await viewDetailsButtons.last().click({ force: true })
     await auditButton.click({ force: true })
     await expect(page).toHaveURL(new RegExp(`/logs\\?target_table=devices&target_id=${primary.id}`))
@@ -86,7 +91,7 @@ test.describe('Assets workflows', () => {
     // E2E Verification of Soft-Delete and Scope-Switch lifecycle
     await page.getByTitle('More actions').filter({ visible: true }).first().click({ force: true })
     await page.waitForTimeout(500)
-    await clickResilientButton(page, 'Soft Delete')
+    await clickResilientButton(page, 'Soft Delete', 'Archive')
     await page.waitForTimeout(500)
 
     const deleteResponsePromise = page.waitForResponse(response =>
@@ -107,7 +112,10 @@ test.describe('Assets workflows', () => {
     await page.waitForTimeout(1000)
 
     // Perform permanent Purge lifecycle path on the deleted row
-    await page.getByTitle('More actions').filter({ visible: true }).first().click({ force: true })
+    const purgeActionBtn = page.getByTitle('More actions').filter({ visible: true }).first()
+    await purgeActionBtn.waitFor({ state: 'visible' })
+    await page.waitForTimeout(1000)
+    await purgeActionBtn.click({ force: true })
     await page.waitForTimeout(500)
     await clickResilientButton(page, /^Purge$/)
     await page.waitForTimeout(500)
