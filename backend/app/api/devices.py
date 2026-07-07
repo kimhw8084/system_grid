@@ -383,6 +383,17 @@ async def bulk_action(request: Request, data: dict, db: AsyncSession = Depends(g
         await db.execute(delete(models.HardwareComponent).where(models.HardwareComponent.device_id.in_(ids)))
         # Delete referencing secrets
         await db.execute(delete(models.SecretVault).where(models.SecretVault.device_id.in_(ids)))
+        # Delete referencing maintenance windows
+        await db.execute(delete(models.MaintenanceWindow).where(models.MaintenanceWindow.device_id.in_(ids)))
+        
+        # Clean up monitoring items, their owners, and history
+        m_items_res = await db.execute(select(models.MonitoringItem.id).where(models.MonitoringItem.device_id.in_(ids)))
+        m_item_ids = m_items_res.scalars().all()
+        if m_item_ids:
+            await db.execute(delete(models.MonitoringHistory).where(models.MonitoringHistory.monitoring_item_id.in_(m_item_ids)))
+            await db.execute(delete(models.MonitoringOwner).where(models.MonitoringOwner.monitoring_item_id.in_(m_item_ids)))
+            await db.execute(delete(models.MonitoringItem).where(models.MonitoringItem.id.in_(m_item_ids)))
+
         # Delete referencing relationships
         await db.execute(delete(models.DeviceRelationship).where(
             or_(
@@ -399,6 +410,9 @@ async def bulk_action(request: Request, data: dict, db: AsyncSession = Depends(g
         ))
         # Clear logical services device_id reference
         await db.execute(update(models.LogicalService).where(models.LogicalService.device_id.in_(ids)).values(device_id=None))
+        # Clear firewall rule source/dest references
+        await db.execute(update(models.FirewallRule).where(models.FirewallRule.source_device_id.in_(ids)).values(source_device_id=None))
+        await db.execute(update(models.FirewallRule).where(models.FirewallRule.dest_device_id.in_(ids)).values(dest_device_id=None))
         # Now safely delete devices
         await db.execute(delete(models.Device).where(models.Device.id.in_(ids)).filter(models.Device.tenant_id == tenant_id))
     elif action == "restore":

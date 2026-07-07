@@ -205,6 +205,10 @@ export default function AssetGoldenOperationalWorkspace() {
     getConsoleUrl: workspace.getAssetConsoleUrl,
     rowDeleteConfirmId,
     setRowDeleteConfirmId,
+    favoriteIds: workspace.favoriteIds,
+    watchIds: workspace.watchIds,
+    onToggleFavorite: workspace.toggleFavorite,
+    onToggleWatch: workspace.toggleWatch,
   }) : []
 
   const LENS_OPTIONS = useMemo(() => [
@@ -391,7 +395,7 @@ export default function AssetGoldenOperationalWorkspace() {
               </ToolbarButton>
               <ToolbarButton active={isIntelligenceExpanded} onClick={() => setIsIntelligenceExpanded((current) => !current)} title={isIntelligenceExpanded ? 'Hide Activity Columns' : 'Show Activity Columns'}>
                 <span className="flex items-center gap-2">
-                  {isIntelligenceExpanded ? <Minimize2 size={14} /> : <Activity size={14} />}
+                  {isIntelligenceExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                   Expand Table
                 </span>
               </ToolbarButton>

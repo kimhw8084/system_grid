@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { WorkspaceModal } from '../shared/WorkspaceModal'
 import { WorkspaceCompareShell } from '../shared/WorkspaceModalShells'
 import { StatusPill } from '../shared/StatusPill'
+import { GitCompare } from 'lucide-react'
 
 export function AssetCompareModal({
   items,
@@ -32,7 +33,10 @@ export function AssetCompareModal({
     const map: Record<string, any[]> = {}
     fields.forEach((field) => {
       const values = items.map(field.getValue)
-      map[field.label] = Array.from(new Set(values))
+      const unique = Array.from(new Set(values))
+      if (unique.length > 1) {
+        map[field.label] = unique
+      }
     })
     return map
   }, [fields, items])
@@ -40,21 +44,22 @@ export function AssetCompareModal({
   const visibleFields = useMemo(() => {
     if (!showDiffsOnly) return fields
     return fields.filter((field) => {
-      const hasDifference = diffMap[field.label]?.length > 1
-      return hasDifference
+      return Boolean(diffMap[field.label])
     })
   }, [fields, showDiffsOnly, diffMap])
 
+  const gridCols = items.length === 2 ? 'md:grid-cols-2' : items.length === 3 ? 'md:grid-cols-3' : items.length === 4 ? 'md:grid-cols-4' : 'md:grid-cols-5'
+
   return (
     <WorkspaceModal
-      isOpen
+      isOpen={true}
       onClose={onClose}
       size="workspace"
-      className={isMaximized ? 'h-[92vh]' : 'h-[82vh]'}
       isMaximized={isMaximized}
-      onMaximizeToggle={() => setIsMaximized((current) => !current)}
+      onMaximizeToggle={() => setIsMaximized(!isMaximized)}
       title="Compare Assets"
-      subtitle="Compare selected asset records side by side."
+      subtitle={`Temporal Variance Analysis · Comparing ${items.length} assets for configuration drift`}
+      icon={<GitCompare size={20} />}
       hideFooterClose
     >
       <WorkspaceCompareShell
@@ -76,52 +81,72 @@ export function AssetCompareModal({
           </div>
         )}
         body={(
-          <div className="grid min-h-0 flex-1 overflow-hidden mt-4">
-            <div className="custom-scrollbar overflow-auto pr-1">
-              <div className="min-w-[960px] rounded-lg border border-white/5 bg-black/20">
-                <div className="grid border-b border-white/5 bg-white/[0.03]" style={{ gridTemplateColumns: `220px repeat(${items.length}, minmax(220px, 1fr))` }}>
-                  <div className="border-r border-white/5 px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Field</div>
-                  {items.map((item) => (
-                    <div key={item.id} className="border-r border-white/5 px-4 py-3 last:border-r-0">
-                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-400">{item.system || 'Unassigned'}</p>
-                      <p className="pt-1 text-sm font-semibold text-white">{item.name}</p>
-                      <div className="pt-2">
-                        <StatusPill value={item.status || 'Unknown'} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {visibleFields.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-                    <p className="text-emerald-400 text-xs font-black uppercase tracking-[0.2em] mb-1.5 animate-pulse">No Differences Identified</p>
-                    <p className="text-slate-400 text-[11px] font-semibold max-w-md leading-relaxed">
-                      These selected assets are completely identical across all compared fields. Uncheck "Show Differences Only" in the header to view the full property alignment.
-                    </p>
-                  </div>
-                ) : (
-                  visibleFields.map((field) => {
-                    const hasDifference = diffMap[field.label]?.length > 1
-                    return (
-                      <div key={field.label} className={`grid border-b border-white/5 last:border-b-0 ${hasDifference ? 'bg-amber-500/[0.04]' : ''}`} style={{ gridTemplateColumns: `220px repeat(${items.length}, minmax(220px, 1fr))` }}>
-                        <div className="border-r border-white/5 px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
-                          {field.label}
-                        </div>
-                        {items.map((item) => (
-                          <div key={`${field.label}:${item.id}`} className="border-r border-white/5 px-4 py-3 text-[11px] text-slate-200 last:border-r-0">
-                            <div className={field.multiline ? 'whitespace-pre-wrap leading-relaxed' : ''}>
-                              {field.getValue(item)}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )
-                  })
-                )}
+          <div className="flex flex-col flex-1 min-h-0 overflow-y-auto mt-4 custom-scrollbar">
+            {visibleFields.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 px-4 text-center w-full">
+                <p className="text-emerald-400 text-xs font-black uppercase tracking-[0.2em] mb-1.5 animate-pulse">No Differences Identified</p>
+                <p className="text-slate-400 text-[11px] font-semibold max-w-md leading-relaxed">
+                  These selected assets are completely identical across all compared fields. Uncheck "Show Differences Only" in the header to view the full property alignment.
+                </p>
               </div>
-            </div>
+            ) : (
+              <div className={`grid gap-4 ${gridCols}`}>
+                {items.map((item: any) => (
+                  <div key={item.id} className="rounded-lg border border-white/5 bg-black/40 p-5 shadow-inner flex flex-col">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-[9px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20">ID {item.id}</span>
+                      <StatusPill value={item.status || 'Unknown'} />
+                    </div>
+                    <h4 className="text-sm font-black text-white truncate mb-1">{item.name}</h4>
+                    <p className="text-[9px] font-bold text-slate-500 tracking-widest truncate">{item.system || 'Unassigned System'}</p>
+                    
+                    <div className="mt-6 space-y-2.5 flex-1">
+                      {visibleFields.map((f) => {
+                        const val = f.getValue(item)
+                        const diffSet = diffMap[f.label]
+                        const colorIndex = diffSet ? diffSet.indexOf(val) : -1
+                        return (
+                          <CompareRow 
+                            key={f.label} 
+                            label={f.label} 
+                            value={val} 
+                            multiline={f.multiline} 
+                            colorIndex={colorIndex}
+                          />
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       />
     </WorkspaceModal>
+  )
+}
+
+function CompareRow({ label, value, multiline = false, colorIndex = -1 }: { label: string; value: string; multiline?: boolean; colorIndex?: number }) {
+  const isDiff = colorIndex !== -1
+  
+  const diffStyles = [
+    { border: 'border-amber-500/30', bg: 'bg-amber-500/5', text: 'text-amber-400', val: 'text-amber-200' },
+    { border: 'border-sky-500/30', bg: 'bg-sky-500/5', text: 'text-sky-400', val: 'text-sky-200' },
+    { border: 'border-emerald-500/30', bg: 'bg-emerald-500/5', text: 'text-emerald-400', val: 'text-emerald-200' },
+    { border: 'border-rose-500/30', bg: 'bg-rose-500/5', text: 'text-rose-400', val: 'text-rose-200' },
+    { border: 'border-purple-500/30', bg: 'bg-purple-500/5', text: 'text-purple-400', val: 'text-purple-200' },
+  ]
+
+  const style = isDiff ? diffStyles[colorIndex % diffStyles.length] : { border: 'border-white/5', bg: 'bg-black/20', text: 'text-slate-500', val: 'text-slate-300' }
+
+  return (
+    <div className={`rounded-lg border px-3 py-2.5 transition-all ${style.border} ${style.bg} ${isDiff ? 'shadow-lg' : ''} ${multiline ? '' : 'flex items-center justify-between gap-3'}`}>
+      <div className="flex items-center gap-2">
+        <p className={`text-[8px] font-black uppercase tracking-widest ${style.text}`}>{label}</p>
+        {isDiff && <div className={`w-1 h-1 rounded-full ${style.text.replace('text-', 'bg-')} animate-pulse`} />}
+      </div>
+      <p className={`pt-0.5 font-bold ${style.val} ${multiline ? 'leading-relaxed text-[11px] mt-1' : 'text-right text-[10px]'}`}>{value}</p>
+    </div>
   )
 }

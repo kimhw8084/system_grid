@@ -1,4 +1,4 @@
-import { Activity, ArchiveRestore, Clipboard, Cpu, Edit2, Eye, FileText, GitCompare, Map, Maximize2, Network, Server, Shield, Terminal, Trash2 } from 'lucide-react'
+import { Activity, ArchiveRestore, Clipboard, Cpu, Edit2, Eye, EyeOff, Star, FileText, GitCompare, Map, Maximize2, Network, Server, Shield, Terminal, Trash2 } from 'lucide-react'
 
 export function buildAssetGoldenRowActionSections({
   asset,
@@ -19,6 +19,10 @@ export function buildAssetGoldenRowActionSections({
   getConsoleUrl,
   rowDeleteConfirmId,
   setRowDeleteConfirmId,
+  favoriteIds = [],
+  watchIds = [],
+  onToggleFavorite,
+  onToggleWatch,
 }: {
   asset: any
   activeTab: 'inventory' | 'deleted'
@@ -38,6 +42,10 @@ export function buildAssetGoldenRowActionSections({
   getConsoleUrl: (asset: any) => string | null
   rowDeleteConfirmId?: number | null
   setRowDeleteConfirmId?: (id: number | null) => void
+  favoriteIds?: number[]
+  watchIds?: number[]
+  onToggleFavorite?: (id: number) => void
+  onToggleWatch?: (id: number) => void
 }) {
   const consoleUrl = getConsoleUrl(asset)
   const isDeletedScope = activeTab === 'deleted'
@@ -116,6 +124,26 @@ export function buildAssetGoldenRowActionSections({
       id: 'followOptions',
       columns: 3,
       items: [
+        {
+          id: 'watch',
+          label: watchIds.includes(asset.id) ? 'Unwatch' : 'Watch',
+          icon: watchIds.includes(asset.id) ? EyeOff : Eye,
+          tone: 'neutral',
+          onClick: () => {
+            if (onToggleWatch) onToggleWatch(asset.id)
+            onCloseMenu()
+          },
+        },
+        {
+          id: 'favorite',
+          label: favoriteIds.includes(asset.id) ? 'Unpin' : 'Pin',
+          icon: Star,
+          tone: 'warning',
+          onClick: () => {
+            if (onToggleFavorite) onToggleFavorite(asset.id)
+            onCloseMenu()
+          },
+        },
         {
           id: 'asset-copy-id',
           label: 'Copy Asset ID',
@@ -225,7 +253,8 @@ export function buildAssetGoldenRowActionSections({
         activeTab !== 'deleted'
           ? {
               id: 'asset-delete',
-              label: rowDeleteConfirmId === asset.id ? 'Confirm Archive?' : 'Soft Delete',
+              label: 'Soft Delete',
+              confirmLabel: 'Confirm Archive?',
               icon: Trash2,
               tone: 'danger',
               confirming: rowDeleteConfirmId === asset.id,
@@ -252,7 +281,8 @@ export function buildAssetGoldenRowActionSections({
         activeTab === 'deleted'
           ? {
               id: 'asset-purge',
-              label: rowDeleteConfirmId === asset.id ? 'Confirm Purge?' : 'Purge',
+              label: 'Purge',
+              confirmLabel: 'Confirm Purge?',
               icon: Trash2,
               tone: 'danger',
               confirming: rowDeleteConfirmId === asset.id,
