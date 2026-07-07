@@ -3,6 +3,7 @@ import { ArchiveRestore, Trash2, Zap } from 'lucide-react'
 import { OperationalAnchoredPanel } from '../shared/OperationalWorkspaceShells'
 import { WorkspaceFloatingPanel } from '../shared/OperationalWorkspacePrimitives'
 import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from '../shared/WorkspaceFlyout'
+import { OPERATIONAL_ACTION_LABELS } from '../shared/OperationalActionLabels'
 
 type AssetBulkActionsPanelProps = {
   activeTab: 'inventory' | 'deleted'
@@ -124,7 +125,7 @@ export function AssetBulkActionsPanel({
               >
                 <div>
                   <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${bulkConfirmAction === 'delete' ? 'text-white' : 'text-rose-400'}`}>
-                    {bulkConfirmAction === 'delete' ? 'Confirm Bulk Delete?' : 'Bulk Delete'}
+                    {bulkConfirmAction === 'delete' ? OPERATIONAL_ACTION_LABELS.archiveSelectionConfirm : OPERATIONAL_ACTION_LABELS.archiveSelection}
                   </p>
                   <p className={`pt-1 text-[11px] ${bulkConfirmAction === 'delete' ? 'text-rose-100' : 'text-slate-400'}`}>
                     {bulkConfirmAction === 'delete' ? 'Click again to move selected assets to Purged registry.' : 'Move the current selection to the Purged registry scope.'}
@@ -153,7 +154,7 @@ export function AssetBulkActionsPanel({
               >
                 <div>
                   <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${bulkConfirmAction === 'restore' ? 'text-white' : 'text-emerald-400'}`}>
-                    {bulkConfirmAction === 'restore' ? 'Confirm Bulk Restore?' : 'Bulk Restore'}
+                    {bulkConfirmAction === 'restore' ? 'Confirm Bulk Restore?' : OPERATIONAL_ACTION_LABELS.restore}
                   </p>
                   <p className={`pt-1 text-[11px] ${bulkConfirmAction === 'restore' ? 'text-emerald-100' : 'text-slate-400'}`}>
                     {bulkConfirmAction === 'restore' ? 'Click again to return selected assets to Existing registry.' : 'Return the current selection to the Existing registry scope.'}
@@ -182,7 +183,7 @@ export function AssetBulkActionsPanel({
               >
                 <div>
                   <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${bulkConfirmAction === 'purge' ? 'text-white' : 'text-rose-400'}`}>
-                    {bulkConfirmAction === 'purge' ? 'Confirm Bulk Purge?' : 'Bulk Purge'}
+                    {bulkConfirmAction === 'purge' ? OPERATIONAL_ACTION_LABELS.purgeSelectionConfirm : OPERATIONAL_ACTION_LABELS.purgeSelection}
                   </p>
                   <p className={`pt-1 text-[11px] ${bulkConfirmAction === 'purge' ? 'text-rose-100' : 'text-slate-400'}`}>
                     {bulkConfirmAction === 'purge' ? 'Click again to permanently delete selected assets. THIS CANNOT BE UNDONE.' : 'Permanently remove the current selection from the registry.'}

@@ -1,4 +1,5 @@
 import { Activity, ArchiveRestore, Clipboard, Cpu, Edit2, Eye, EyeOff, Star, FileText, GitCompare, Map, Maximize2, Network, Server, Shield, Terminal, Trash2 } from 'lucide-react'
+import { OPERATIONAL_ACTION_LABELS } from '../shared/OperationalActionLabels'
 
 export function buildAssetGoldenRowActionSections({
   asset,
@@ -253,8 +254,8 @@ export function buildAssetGoldenRowActionSections({
         activeTab !== 'deleted'
           ? {
               id: 'asset-delete',
-              label: 'Soft Delete',
-              confirmLabel: 'Confirm Archive?',
+              label: OPERATIONAL_ACTION_LABELS.archive,
+              confirmLabel: OPERATIONAL_ACTION_LABELS.archiveConfirm,
               icon: Trash2,
               tone: 'danger',
               confirming: rowDeleteConfirmId === asset.id,
@@ -270,7 +271,7 @@ export function buildAssetGoldenRowActionSections({
             }
           : {
               id: 'asset-restore',
-              label: 'Restore',
+              label: OPERATIONAL_ACTION_LABELS.restore,
               icon: ArchiveRestore,
               tone: 'success',
               onClick: () => {
@@ -281,8 +282,8 @@ export function buildAssetGoldenRowActionSections({
         activeTab === 'deleted'
           ? {
               id: 'asset-purge',
-              label: 'Purge',
-              confirmLabel: 'Confirm Purge?',
+              label: OPERATIONAL_ACTION_LABELS.purge,
+              confirmLabel: OPERATIONAL_ACTION_LABELS.purgeConfirm,
               icon: Trash2,
               tone: 'danger',
               confirming: rowDeleteConfirmId === asset.id,
