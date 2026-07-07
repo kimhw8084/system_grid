@@ -52,6 +52,7 @@ export const OPERATIONAL_LIFECYCLE_ACTION_SPECS: Record<OperationalLifecycleActi
   },
 }
 
-export const getOperationalLifecycleActionSpec = (actionId: OperationalLifecycleActionId) => (
-  OPERATIONAL_LIFECYCLE_ACTION_SPECS[actionId]
-)
+export const getOperationalLifecycleActionSpec = (actionId: OperationalLifecycleActionId | 'delete') => {
+  const resolvedId = actionId === 'delete' ? 'archive' : actionId
+  return OPERATIONAL_LIFECYCLE_ACTION_SPECS[resolvedId as OperationalLifecycleActionId]
+}

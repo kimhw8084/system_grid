@@ -295,6 +295,34 @@ export default function AssetGoldenOperationalWorkspace() {
     })
   }, [workspace.groupBy, workspace.visibleAssets])
 
+  // Synchronize selection back to AgGrid if it gets cleared on the react side
+  useEffect(() => {
+    if (workspace.selectedIds.length === 0 && gridRef.current?.api) {
+      gridRef.current.api.deselectAll()
+    }
+  }, [workspace.selectedIds, workspace.selectedIds.length])
+
+  // Refresh favorite and watch columns immediately in AgGrid when changed
+  useEffect(() => {
+    if (gridRef.current?.api) {
+      gridRef.current.api.refreshCells({ columns: ['favorite', 'watch'], force: true })
+    }
+  }, [workspace.favoriteIds, workspace.watchIds])
+
+  // Filter compareIds to only include assets in the currently active tab's visiblePool
+  useEffect(() => {
+    if (compareIds.length > 0) {
+      const validPoolIds = new Set(workspace.visiblePool.map((asset: any) => Number(asset.id)))
+      setCompareIds((current) => {
+        const next = current.filter((id) => validPoolIds.has(Number(id)))
+        if (next.length !== current.length) {
+          return next
+        }
+        return current
+      })
+    }
+  }, [compareIds, workspace.visiblePool])
+
   useOperationalDismissController({
     active: showBulkMenu || showDisplayMenu || showViewsMenu || showExportMenu || hasRowActionMenu,
     onDismiss: dismissWorkspaceMenus,

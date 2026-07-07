@@ -554,6 +554,49 @@ export function useAssetGoldenWorkspace() {
     }
   }, [allAssets, searchParams])
 
+  // Synchronize/close quickLookAsset and detailAsset after mutations/scope changes
+  useEffect(() => {
+    if (quickLookAsset) {
+      const latest = allAssets.find((asset: any) => Number(asset.id) === Number(quickLookAsset.id))
+      if (!latest) {
+        setQuickLookAsset(null)
+      } else if (latest.is_deleted !== (activeTab === 'deleted')) {
+        setQuickLookAsset(null)
+      } else {
+        const latestNormalized = normalizeAsset(latest)
+        if (JSON.stringify(latestNormalized) !== JSON.stringify(quickLookAsset)) {
+          setQuickLookAsset(latestNormalized)
+        }
+      }
+    }
+  }, [allAssets, activeTab, quickLookAsset])
+
+  useEffect(() => {
+    if (detailAsset) {
+      const latest = allAssets.find((asset: any) => Number(asset.id) === Number(detailAsset.id))
+      if (!latest) {
+        setDetailAsset(null)
+        setSearchParams((current: URLSearchParams) => {
+          const next = new URLSearchParams(current)
+          next.delete('id')
+          return next
+        })
+      } else if (latest.is_deleted !== (activeTab === 'deleted')) {
+        setDetailAsset(null)
+        setSearchParams((current: URLSearchParams) => {
+          const next = new URLSearchParams(current)
+          next.delete('id')
+          return next
+        })
+      } else {
+        const latestNormalized = normalizeAsset(latest)
+        if (JSON.stringify(latestNormalized) !== JSON.stringify(detailAsset)) {
+          setDetailAsset(latestNormalized)
+        }
+      }
+    }
+  }, [allAssets, activeTab, detailAsset, setSearchParams])
+
   const refreshAll = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['asset-golden-devices'] })
     queryClient.invalidateQueries({ queryKey: ['devices'] })

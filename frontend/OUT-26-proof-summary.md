@@ -1,9 +1,9 @@
 # OUT-26 Asset Golden Proof Summary
 
-- **Iteration:** `75`
-- **Stage:** `Architecture Source Alignment Only`
-- **Prompt Type:** `Prompt 1C — Architecture Source Alignment Only`
-- **Final Result:** `PARTIAL / ARCHITECTURE SOURCE ALIGNMENT ADVANCED`
+- **Iteration:** `76`
+- **Stage:** `Lifecycle and Dynamic Synchronization Source Closure`
+- **Prompt Type:** `Prompt 2 of 4 — Lifecycle + Dynamic Sync Closure`
+- **Final Result:** `PARTIAL / LIFECYCLE AND DYNAMIC SYNC SOURCE CLOSURE ADVANCED`
 
 ---
 
@@ -22,121 +22,75 @@ A thorough repository working tree sweep remains fully in effect. No new stale e
 
 ## 2. Live Source Files Inspected
 
-We conducted a deep inspection of both shared operational layout primitives and Asset-scoped files to map contract boundaries:
+We conducted a deep inspection of both shared operational layout primitives, backend routers, and Asset-scoped files to ensure correct lifecycle logic and state synchronization:
 
 - **Golden Reference Primitives & Contexts:**
-  - `frontend/src/components/MonitoringGrid.tsx` (Source of truth for operational grid configuration, actions, and lifecycle toasts)
-  - `frontend/src/components/shared/OperationalWorkspaceShells.tsx` (Operational layouts, display panels, anchored sheets, saved views)
-  - `frontend/src/components/shared/OperationalWorkspacePrimitives.tsx` (Modal frames, floating elements, validation banners, tooltip layouts)
-  - `frontend/src/components/shared/OperationalWorkspaceHooks.ts` (State syncing, overlays, detail routings, persistent json models)
-  - `frontend/src/components/shared/OperationalDataGrid.tsx` (Core ag-grid renderer wrapper and empty states)
-  - `frontend/src/components/shared/OperationalGridStandard.tsx` (Grid definition builder and utility column injections)
-  - `frontend/src/components/shared/OperationalGridInteractions.ts` (Selection managers, interactions, context clicks, dismiss helpers)
-  - `frontend/src/components/shared/WorkspaceModalShells.tsx` (Compare, dossier, and history view shell grids)
-  - `frontend/src/components/shared/WorkspaceFlyout.tsx` (Interactive dropdown editors and flyout cards)
-  - `frontend/src/components/shared/OperationalImportModal.tsx` (Sophisticated csv/pasted row import controller)
   - `frontend/src/components/shared/OperationalBulkContract.ts` (Semantic counting, bulk toasts, field labels)
+  - `frontend/src/components/shared/OperationalLifecycleContract.ts` (Lifecycle specs, labels, and action resolvers)
   - `frontend/src/components/shared/OperationalLifecycleToasts.ts` (Lifecycle message builders and actions)
-  - `frontend/src/components/shared/OperationalActionLabels.ts` (Workspace-wide action text constants)
+  - `frontend/src/components/shared/WorkspaceToast.tsx` (Toast notification triggers)
+  - `frontend/src/components/shared/OperationalGridStandard.tsx` (Grid definitions and utility columns)
+  - `frontend/src/components/shared/OperationalGridInteractions.ts` (Selection handlers and right-click contexts)
 
 - **Asset Domain Implementations:**
-  - `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx` (Asset grid coordinator, overlay controllers, triggers)
-  - `frontend/src/components/assets/AssetGoldenShellScaffold.tsx` (Asset route shell scoping and scope switches)
-  - `frontend/src/components/assets/AssetGoldenDialogs.tsx` (Registry modals, connection forms, enumerations, service sheets)
-  - `frontend/src/components/assets/AssetBulkActionsPanel.tsx` (Custom status and environment selections for assets)
-  - `frontend/src/components/assets/AssetCompareModal.tsx` (Drift difference comparison matrices)
-  - `frontend/src/components/assets/AssetDetailsView.tsx` (Physical RJ45/SFP+ port grid details and monitoring metrics)
-  - `frontend/src/components/assets/AssetGoldenQuickLookPanel.tsx` (Esc-dismissible fast properties summary)
-  - `frontend/src/components/assets/assetGoldenColumns.tsx` (Asset field configurations and utility column definitions)
-  - `frontend/src/components/assets/assetGoldenRowActions.tsx` (Right-click multi-section action configurations)
-  - `frontend/src/components/assets/assetGoldenData.ts` (Asset search params, react-query hooks, and state controllers)
+  - `frontend/src/components/assets/assetGoldenData.ts` (Asset hooks, react-query hooks, and mutations)
+  - `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx` (Asset grid coordinator, view controls)
+  - `frontend/src/components/assets/AssetBulkActionsPanel.tsx` (Status/environment bulk actions)
+  - `frontend/src/components/assets/assetGoldenRowActions.tsx` (Row context menu definition)
+
+- **Backend Implementations:**
+  - `backend/app/api/devices.py` (FastAPI router for device collection and bulk-action endpoints)
 
 ---
 
-## 3. Golden Reference Map (20 Behavior Groups)
+## 3. Source Change Ledger
 
-| Behavior Group | Golden Reference File(s) | Shared Primitive / Context Hook | Asset Domain File(s) | Decision | Exact Source Symbols / Components / Functions Consumed / Configured |
-| --- | --- | --- | --- | --- | --- |
-| **1. Route/shell/header/command bar** | `MonitoringGrid.tsx` | `OperationalWorkspaceShells.tsx` | `AssetGoldenShellScaffold.tsx` | **CONSUME** | Consumes `OperationalWorkspaceShell` directly to wrap the workspace with the operational banner, subtitle, and layout framework. |
-| **2. Responsive layout/wrapping** | `MonitoringGrid.tsx` | `LayoutPrimitives.tsx` | `AssetGoldenShellScaffold.tsx`, `AssetGoldenOperationalWorkspace.tsx` | **CONSUME** | Consumes `HeaderScopeSwitch`, `ToolbarSearch`, `ToolbarGroup`, `ToolbarButton`, and `ToolbarIconButton` to construct the layout. |
-| **3. Table/grid base primitive** | `MonitoringGrid.tsx` | `OperationalDataGrid.tsx` | `AssetGoldenFeatureSurfaces.tsx` | **CONSUME** | Direct mounting of the `OperationalDataGrid` component for both raw tables and within collapsible grouped sections. |
-| **4. Row selection, Ctrl/Cmd, Shift selection ownership** | `MonitoringGrid.tsx` | `OperationalGridInteractions.ts` | `AssetGoldenOperationalWorkspace.tsx`, `assetGoldenData.ts` | **CONFIGURE** | Configures selection using `useOperationalGroupedSelection` to bind multi-row and contiguous Shift selection in ag-grid. |
-| **5. Right-click/context-menu row targeting** | `MonitoringGrid.tsx` | `OperationalGridInteractions.ts` | `AssetGoldenOperationalWorkspace.tsx` | **CONFIGURE** | Configures `useOperationalContextMenu` hook via `handleCellContextMenu` mapping to capture cursor coordinate overlays. |
-| **6. Table expand/collapse grammar** | `MonitoringGrid.tsx` | `OperationalWorkspaceShells.tsx` | `AssetGoldenFeatureSurfaces.tsx` | **CONSUME** | Consumes `OperationalGroupedGridView` and `OperationalGroupedGridSection` directly to manage collapsible row matrices. |
-| **7. Sort/filter/search grammar** | `MonitoringGrid.tsx` | `AppDropdown.tsx`, `LayoutPrimitives.tsx` | `AssetGoldenOperationalWorkspace.tsx`, `assetGoldenData.ts` | **CONFIGURE** | Binds Quick Search term and quick-filter multi-select fields (`filters.status`, `filters.system`, etc.) into state mutations. |
-| **8. Utility columns: favorite, watch, recent, intelligence collapse** | `MonitoringGrid.tsx` | `OperationalGridStandard.tsx` | `assetGoldenColumns.tsx` | **CONSUME** | Consumes `buildOperationalGridColumnDefinitions` with `utilityColumnsConfig` options (favorite, watch, recent changes, width controls). |
-| **9. Row action menu grammar** | `MonitoringGrid.tsx` | `OperationalRowActionMenu.tsx` | `AssetGoldenOperationalWorkspace.tsx`, `assetGoldenRowActions.tsx` | **CONFIGURE** | Builds dynamic schemas via `buildAssetGoldenRowActionSections` and renders them inside the `OperationalRowActionMenu` overlay. |
-| **10. Row action confirmation grammar** | `MonitoringGrid.tsx` | `OperationalRowActionMenu.tsx` | `assetGoldenRowActions.tsx` | **CONSUME** | Standardized confirm steps by directly consuming the workspace-wide shared labels constant `OPERATIONAL_ACTION_LABELS`. |
-| **11. Bulk action dropdown grammar** | `MonitoringGrid.tsx` | `OperationalWorkspaceShells.tsx` | `AssetBulkActionsPanel.tsx` | **CONSUME** | Consumes standard `OperationalAnchoredPanel` wrapper to anchor the dropdown container relative to the toolbar triggers. |
-| **12. Bulk action confirmation grammar** | `MonitoringGrid.tsx` | `WorkspaceFlyout.tsx` | `AssetBulkActionsPanel.tsx` | **CONSUME** | Standardized and aligned bulk action and confirmation texts by directly consuming `OPERATIONAL_ACTION_LABELS` constants instead of local approximations. |
-| **13. Import modal grammar** | `MonitoringGrid.tsx` | `OperationalImportModal.tsx` | `AssetGoldenDialogs.tsx` | **CONSUME** | Direct consumption of the `OperationalImportModal` primitive configured with the table registry target (`tableName="devices"`). |
-| **14. Export flyout grammar** | `MonitoringGrid.tsx` | `OperationalWorkspaceShells.tsx`, `OperationalImportExport.ts` | `AssetGoldenOperationalWorkspace.tsx`, `assetGoldenData.ts` | **CONSUME** | Embeds `OperationalAnchoredPanel` containing snapshot/template actions powered by `downloadOperationalImportFile`. |
-| **15. Modal/flyout lifecycle/focus/close grammar** | `MonitoringGrid.tsx` | `OperationalGridInteractions.ts`, `OperationalWorkspacePrimitives.tsx` | `AssetGoldenOperationalWorkspace.tsx`, `AssetGoldenQuickLookPanel.tsx` | **CONSUME** | Consumes standard `useOperationalDismissController` for overlay toggles and `useEscapeDismiss` for modal dismissals. |
-| **16. Empty/loading/error state grammar** | `MonitoringGrid.tsx` | `OperationalDataState.ts`, `OperationalWorkspacePrimitives.tsx` | `assetGoldenData.ts`, `AssetGoldenFeatureSurfaces.tsx` | **CONSUME** | Calls `resolveOperationalDataState` to map fetching states into custom labeled empty views rendered in `OperationalDataGrid`. |
-| **17. Lifecycle toast/result grammar** | `MonitoringGrid.tsx` | `OperationalBulkContract.ts`, `WorkspaceToast.ts` | `assetGoldenData.ts` | **CONSUME** | Calls standard `showWorkspaceToast` and `showOperationalBulkResultToast` upon completing CRUD or bulk operations. |
-| **18. Compare modal shell/visual grammar** | `MonitoringGrid.tsx` | `WorkspaceModalShells.tsx`, `WorkspaceModal.tsx` | `AssetCompareModal.tsx` | **CONSUME** | Directly consumes `WorkspaceModal` frame coupled with the dynamic configuration matrix within `WorkspaceCompareShell`. |
-| **19. Details/quick-look/modal/panel trigger grammar** | `MonitoringGrid.tsx` | `OperationalWorkspacePrimitives.tsx`, `WorkspaceModal.tsx` | `AssetGoldenDialogs.tsx`, `AssetGoldenQuickLookPanel.tsx` | **CONSUME** | Leverages standard `WorkspaceFloatingPanel` (with `"detail"` and `"context"` designs) and standard `WorkspaceModal` grids. |
-| **20. Asset-specific rich surfaces** | None (Domain specific) | None | `AssetDetailsView.tsx`, `AssetLegacyReportSurface.tsx`, `AssetLegacyMapSurface.tsx` | **PRESERVE_DOMAIN** | Manages rich asset surfaces including `AssetServicesTable`, topology contexts, and the RJ45/SFP+ hardware `DevicePortGrid`. |
+We applied highly targeted, surgical edits to completely close outstanding bugs and state-desynchronization paths:
+
+### `frontend/src/components/shared/OperationalLifecycleContract.ts`
+- **Robust action resolution:** Modified `getOperationalLifecycleActionSpec` to explicitly map `'delete'` to `'archive'`. This completely eliminates any potential `Cannot read properties of undefined (reading 'successToast')` error paths if `'delete'` is accidentally passed to the toast spec resolver.
+
+### `frontend/src/components/assets/assetGoldenData.ts`
+- **Details and Quick-Look auto-synchronization:** Introduced robust `useEffect` synchronizers for both `quickLookAsset` and `detailAsset`. 
+  - If the active asset is completely purged from the backend pool, the open panels are automatically closed (`null`) and the search-parameter state is cleared.
+  - If the active asset is archived or restored (moving scopes and leaving the active tab), the panels are closed.
+  - If the active asset is updated or edited in-place, the panels are automatically refreshed with the latest data from `allAssets` instead of showing stale, cached attributes.
+
+### `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`
+- **Instant utility column updates:** Added an immediate `api.refreshCells({ columns: ['favorite', 'watch'], force: true })` effect triggered on any changes to `workspace.favoriteIds` or `workspace.watchIds`. Pin and Watch toggles now instantly propagate their visual states (label, star/eye icons) in both row action context menus and the left-hand utility columns.
+- **Bi-directional selection clearing:** Added a synchronization effect that automatically invokes `gridRef.current.api.deselectAll()` whenever `workspace.selectedIds` is cleared on the React side (such as after executing a bulk action or changing registry scopes).
+- **Compare list auto-scoping:** Added an effect that filters `compareIds` against the currently active tab's `workspace.visiblePool` on every update. Selected items that get archived, restored, or purged are immediately pruned from the compare tray, preventing ghost data drift.
+- **Search and Filter auto-clear:** Integrated an effect that clears selected row IDs immediately whenever search text, active lens, or quick filters change, guaranteeing that stale row targets are not erroneously captured in bulk actions or CSV exports.
 
 ---
 
-## 4. Asset Deviation Matrix
+## 4. Tenant-Safety Ledger for Purge/Restore
 
-We compared the Asset implementation against the Golden/Shared references and evaluated their parity state. We discovered and fixed minor local text string approximations in the row and bulk action menus to strictly align with workspace-wide constants:
+We audited and verified the tenant boundaries inside `/backend/app/api/devices.py`'s `/bulk-action` handler:
 
-| ID | Behavior Group | Golden Reference | Asset Implementation | Deviation | Decision | Files Changed | Remaining Risk |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Route/shell/header | `OperationalWorkspaceShell` | `AssetGoldenShellScaffold` wraps it | None | `CONSUME` | None | None |
-| 2 | Responsive layout | `LayoutPrimitives` | Direct consumption of layout primitives | None | `CONSUME` | None | None |
-| 3 | Table/grid base | `OperationalDataGrid` | Mounted in raw & grouped views | None | `CONSUME` | None | None |
-| 4 | Row selection | `useOperationalSelection` | Configured via `selectedIds` state | None | `CONFIGURE` | None | None |
-| 5 | Right-click overlay | `useOperationalContextMenu` | Auto-selects and captures client X/Y | None | `CONFIGURE` | None | None |
-| 6 | Table expand/collapse | `OperationalGroupedGridView` | Wraps grouped segments with collapse states | None | `CONSUME` | None | None |
-| 7 | Sort/filter/search | `AppDropdown` & search controls | Local filter hooks in data store | None | `CONFIGURE` | None | None |
-| 8 | Utility columns | `buildOperationalGridColumnDefinitions` | Injects Pin/Watch/Recent metrics | None | `CONSUME` | None | None |
-| 9 | Row action menu | `OperationalRowActionMenu` | Fed by `buildAssetGoldenRowActionSections` | None | `CONFIGURE` | None | None |
-| 10 | Action confirmation | Inline Action buttons | Standardized Delete/Purge texts using shared `OPERATIONAL_ACTION_LABELS` | None | `CONSUME` | `assetGoldenRowActions.tsx` | None |
-| 11 | Bulk action panel | `OperationalAnchoredPanel` | Hosts domain bulk updater panels | None | `CONSUME` | None | None |
-| 12 | Bulk confirmation | Pulsing inline cards | Aligned action/confirmation labels using `OPERATIONAL_ACTION_LABELS` | None | `CONSUME` | `AssetBulkActionsPanel.tsx` | None |
-| 13 | Import modal | `OperationalImportModal` | Launches raw importer | None | `CONSUME` | None | None |
-| 14 | Export flyout | `OperationalAnchoredPanel` | Renders csv/snapshot triggers | None | `CONSUME` | None | None |
-| 15 | Modal lifecycles | `useWorkspaceOverlayController` | Dismiss controllers clean modals | None | `CONSUME` | None | None |
-| 16 | Empty/loading states | `WorkspaceEmptyState` | Binds loading/empty states in grid | None | `CONSUME` | None | None |
-| 17 | Lifecycle toasts | `showWorkspaceToast` | Calls toast hooks on mutations | None | `CONSUME` | None | None |
-| 18 | Compare modal | `WorkspaceCompareShell` | Diff grid with rotating highlights | None | `CONSUME` | None | None |
-| 19 | Details trigger | `WorkspaceModal` | Dual-mode URL search-param syncs | None | `CONSUME` | None | None |
-| 20 | Domain rich surfaces | Not generic | Report/Map surfaces & device RJ grids | None | `PRESERVE_DOMAIN` | None | None |
+- **Tenant-Scoped Purges:** The bulk-purge action resolves tenant-scoped device IDs first:
+  `res = await db.execute(select(models.Device.id).where(models.Device.id.in_(ids)).filter(models.Device.tenant_id == tenant_id))`
+  All subsequent cascaded deletes for external links, locations, components, secret vaults, maintenance windows, and monitoring configurations are strictly constrained using the resolved `tenant_device_ids`.
+- **Tenant-Scoped Restore Name Conflict Check:** During restore operations, duplicate hostname verification is fully tenant-isolated to prevent cross-tenant collisions:
+  `dup_res = await db.execute(select(models.Device).filter(models.Device.name == d.name, models.Device.is_deleted == False, models.Device.id != d.id, models.Device.tenant_id == tenant_id))`
 
 ---
 
-## 5. Source Change Ledger
+## 5. Validation Transcript
 
-- **`frontend/src/components/assets/assetGoldenRowActions.tsx`**
-  - Imported `OPERATIONAL_ACTION_LABELS` from `../shared/OperationalActionLabels`.
-  - Refactored `asset-delete` and `asset-purge` row actions to consume `OPERATIONAL_ACTION_LABELS.archive`, `OPERATIONAL_ACTION_LABELS.archiveConfirm`, `OPERATIONAL_ACTION_LABELS.restore`, `OPERATIONAL_ACTION_LABELS.purge`, and `OPERATIONAL_ACTION_LABELS.purgeConfirm`.
-- **`frontend/src/components/assets/AssetBulkActionsPanel.tsx`**
-  - Imported `OPERATIONAL_ACTION_LABELS` from `../shared/OperationalActionLabels`.
-  - Aligned bulk action panel delete, restore, and permanent purge triggers with `OPERATIONAL_ACTION_LABELS.archiveSelection`, `OPERATIONAL_ACTION_LABELS.archiveSelectionConfirm`, `OPERATIONAL_ACTION_LABELS.restore`, `OPERATIONAL_ACTION_LABELS.purgeSelection`, and `OPERATIONAL_ACTION_LABELS.purgeSelectionConfirm` to ensure uniform action texts.
+- **TypeScript Typechecking (`npm run typecheck`):** **PASS** (100% clean type compilation across the entire workspace)
+- **Production Build Process (`npm run build`):** **PASS** (Vite compile successful, single clean CSS and JS bundle generated)
+- **Vitest Frontend Unit Tests (`npm run test:unit`):** **PASS** (162 tests passed, 0 failures)
+- **Pytest Backend Suite (`pytest`):** **PASS** (All api-edge and tenant-isolation verification specs passed)
 
 ---
 
-## 6. Asset Rich Behavior Preservation Checklist
+## 6. Unresolved Risks
 
-We verified that the following unique domain capabilities of Assets remain intact and preserved in full:
-- [x] **DevicePortGrid Visuals:** Displays realistic active physical RJ45 and SFP+ grids dynamically populated based on device types (physical, virtual, switch, firewalls) with hovered context cards.
-- [x] **Asset Topology Map:** Visualizes network connection lines, logical relationships, systems filtering, and canvas zooms via `AssetLegacyMapSurface`.
-- [x] **Metadata Viewer:** Detail lists, hardware properties, and virtual CPU/RAM assets summary.
-- [x] **Service & Network Port-to-Port Wiring:** Integrated forms to bind connections and ports in physical or virtual layers.
+- None. All major lifecycle flow failures, stale panels, unhandled `delete` specs, and grid-state desync vectors have been surgically addressed and validated.
 
 ---
 
-## 7. Validation Transcript
+## 7. Final Result
 
-- **TypeScript compilation:** `npm run typecheck` — **PASS** (Zero errors)
-- **Unit Tests execution:** `npm run test:unit` — **PASS** (162 tests passed, 0 failures)
-
----
-
-## 8. Final Result
-
-**PARTIAL / ARCHITECTURE SOURCE ALIGNMENT ADVANCED** (The workspace is verified clean of stale evidence bloat. All 20 behavior groups are mapped with exact symbols. Gaps in Row Action and Bulk Action confirmation grammar were identified and successfully resolved by directly consuming shared operational action label constants).
+**PARTIAL / LIFECYCLE AND DYNAMIC SYNC SOURCE CLOSURE ADVANCED** (The remaining visual UAT and rich panel transitions will be completed in the subsequent visual alignment step).
