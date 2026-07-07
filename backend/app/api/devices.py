@@ -370,24 +370,35 @@ async def bulk_action(request: Request, data: dict, db: AsyncSession = Depends(g
     ids = data.get("ids", [])
     action = data.get("action")
     payload = data.get("payload", {})
-    if not ids: return {"status": "no_op"}
+    if not ids: return {"status": "no_op", "count": 0, "changed": 0}
     
     if action == "delete":
-        await db.execute(update(models.Device).where(models.Device.id.in_(ids)).filter(models.Device.tenant_id == tenant_id).values(is_deleted=True))
+        res = await db.execute(select(models.Device.id).where(models.Device.id.in_(ids)).filter(models.Device.tenant_id == tenant_id).filter(models.Device.is_deleted == False))
+        tenant_device_ids = res.scalars().all()
+        if tenant_device_ids:
+            await db.execute(update(models.Device).where(models.Device.id.in_(tenant_device_ids)).values(is_deleted=True))
+        await db.commit()
+        return {"status": "success", "count": len(tenant_device_ids), "changed": len(tenant_device_ids)}
     elif action == "purge":
-        # Delete referencing external links
-        await db.execute(delete(models.ExternalLink).where(models.ExternalLink.device_id.in_(ids)))
+        # Resolve tenant-scoped device IDs first to prevent any cross-tenant data deletion
+        res = await db.execute(select(models.Device.id).where(models.Device.id.in_(ids)).filter(models.Device.tenant_id == tenant_id))
+        tenant_device_ids = res.scalars().all()
+        if not tenant_device_ids:
+            return {"status": "success", "count": 0, "changed": 0}
+
+        # Delete referencing external links using tenant-scoped device IDs
+        await db.execute(delete(models.ExternalLink).where(models.ExternalLink.device_id.in_(tenant_device_ids)))
         # Delete referencing locations
-        await db.execute(delete(models.DeviceLocation).where(models.DeviceLocation.device_id.in_(ids)))
+        await db.execute(delete(models.DeviceLocation).where(models.DeviceLocation.device_id.in_(tenant_device_ids)))
         # Delete referencing hardware
-        await db.execute(delete(models.HardwareComponent).where(models.HardwareComponent.device_id.in_(ids)))
+        await db.execute(delete(models.HardwareComponent).where(models.HardwareComponent.device_id.in_(tenant_device_ids)))
         # Delete referencing secrets
-        await db.execute(delete(models.SecretVault).where(models.SecretVault.device_id.in_(ids)))
+        await db.execute(delete(models.SecretVault).where(models.SecretVault.device_id.in_(tenant_device_ids)))
         # Delete referencing maintenance windows
-        await db.execute(delete(models.MaintenanceWindow).where(models.MaintenanceWindow.device_id.in_(ids)))
+        await db.execute(delete(models.MaintenanceWindow).where(models.MaintenanceWindow.device_id.in_(tenant_device_ids)))
         
         # Clean up monitoring items, their owners, and history
-        m_items_res = await db.execute(select(models.MonitoringItem.id).where(models.MonitoringItem.device_id.in_(ids)))
+        m_items_res = await db.execute(select(models.MonitoringItem.id).where(models.MonitoringItem.device_id.in_(tenant_device_ids)))
         m_item_ids = m_items_res.scalars().all()
         if m_item_ids:
             await db.execute(delete(models.MonitoringHistory).where(models.MonitoringHistory.monitoring_item_id.in_(m_item_ids)))
@@ -397,24 +408,26 @@ async def bulk_action(request: Request, data: dict, db: AsyncSession = Depends(g
         # Delete referencing relationships
         await db.execute(delete(models.DeviceRelationship).where(
             or_(
-                models.DeviceRelationship.source_device_id.in_(ids),
-                models.DeviceRelationship.target_device_id.in_(ids)
+                models.DeviceRelationship.source_device_id.in_(tenant_device_ids),
+                models.DeviceRelationship.target_device_id.in_(tenant_device_ids)
             )
         ))
         # Delete referencing port connections
         await db.execute(delete(models.PortConnection).where(
             or_(
-                models.PortConnection.source_device_id.in_(ids),
-                models.PortConnection.target_device_id.in_(ids)
+                models.PortConnection.source_device_id.in_(tenant_device_ids),
+                models.PortConnection.target_device_id.in_(tenant_device_ids)
             )
         ))
         # Clear logical services device_id reference
-        await db.execute(update(models.LogicalService).where(models.LogicalService.device_id.in_(ids)).values(device_id=None))
+        await db.execute(update(models.LogicalService).where(models.LogicalService.device_id.in_(tenant_device_ids)).values(device_id=None))
         # Clear firewall rule source/dest references
-        await db.execute(update(models.FirewallRule).where(models.FirewallRule.source_device_id.in_(ids)).values(source_device_id=None))
-        await db.execute(update(models.FirewallRule).where(models.FirewallRule.dest_device_id.in_(ids)).values(dest_device_id=None))
+        await db.execute(update(models.FirewallRule).where(models.FirewallRule.source_device_id.in_(tenant_device_ids)).values(source_device_id=None))
+        await db.execute(update(models.FirewallRule).where(models.FirewallRule.dest_device_id.in_(tenant_device_ids)).values(dest_device_id=None))
         # Now safely delete devices
-        await db.execute(delete(models.Device).where(models.Device.id.in_(ids)).filter(models.Device.tenant_id == tenant_id))
+        await db.execute(delete(models.Device).where(models.Device.id.in_(tenant_device_ids)))
+        await db.commit()
+        return {"status": "success", "count": len(tenant_device_ids), "changed": len(tenant_device_ids)}
     elif action == "restore":
         # Conflicts check before restore
         res = await db.execute(select(models.Device).where(models.Device.id.in_(ids)).filter(models.Device.tenant_id == tenant_id))
@@ -423,7 +436,7 @@ async def bulk_action(request: Request, data: dict, db: AsyncSession = Depends(g
         restored_ids, conflict_ids = [], []
         for d in to_restore:
             # Check if name conflict exists in active inventory
-            dup_res = await db.execute(select(models.Device).filter(models.Device.name == d.name, models.Device.is_deleted == False, models.Device.id != d.id))
+            dup_res = await db.execute(select(models.Device).filter(models.Device.name == d.name, models.Device.is_deleted == False, models.Device.id != d.id, models.Device.tenant_id == tenant_id))
             if dup_res.scalars().first():
                 conflict_ids.append(d.id)
             else:
@@ -431,14 +444,20 @@ async def bulk_action(request: Request, data: dict, db: AsyncSession = Depends(g
                 restored_ids.append(d.id)
         
         await db.commit()
-        return {"status": "success", "restored": restored_ids, "conflicts": conflict_ids}
+        return {"status": "success", "restored": restored_ids, "conflicts": conflict_ids, "count": len(restored_ids), "changed": len(restored_ids)}
     elif action == "update":
         clean_update = filter_valid_columns(models.Device, payload)
         if clean_update:
-            await db.execute(update(models.Device).where(models.Device.id.in_(ids)).filter(models.Device.tenant_id == tenant_id).values(**clean_update))
+            res = await db.execute(select(models.Device.id).where(models.Device.id.in_(ids)).filter(models.Device.tenant_id == tenant_id))
+            tenant_device_ids = res.scalars().all()
+            if tenant_device_ids:
+                await db.execute(update(models.Device).where(models.Device.id.in_(tenant_device_ids)).values(**clean_update))
+                await db.commit()
+                return {"status": "success", "count": len(tenant_device_ids), "changed": len(tenant_device_ids)}
+        return {"status": "success", "count": 0, "changed": 0}
     
     await db.commit()
-    return {"status": "success"}
+    return {"status": "success", "count": 0, "changed": 0}
 
 @router.get("/{device_id}/hardware")
 async def get_hardware(request: Request, device_id: int, db: AsyncSession = Depends(get_db)):

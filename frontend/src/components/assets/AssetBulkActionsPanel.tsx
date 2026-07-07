@@ -13,7 +13,6 @@ type AssetBulkActionsPanelProps = {
   selectedLabels?: string[]
   onClose: () => void
   onApply: (action: string, payload?: Record<string, any>) => void
-  onRequestConfirm: (title: string, message: string, onConfirm: () => void) => void
 }
 
 const STATUS_OPTIONS = ['Active', 'Offline', 'Failed', 'Retired']
@@ -28,7 +27,6 @@ export function AssetBulkActionsPanel({
   selectedLabels = [],
   onClose,
   onApply,
-  onRequestConfirm,
 }: AssetBulkActionsPanelProps) {
   const [selectedStatus, setSelectedStatus] = React.useState('')
   const [selectedEnv, setSelectedEnv] = React.useState('')
@@ -79,7 +77,6 @@ export function AssetBulkActionsPanel({
                   value={selectedStatus}
                   onChange={setSelectedStatus}
                   options={STATUS_OPTIONS.map((status) => ({ value: status, label: status }))}
-                  quickSelectOptions={STATUS_OPTIONS.map((status) => ({ value: status, label: status }))}
                   placeholder="Choose status"
                   actionLabel="Apply Status"
                   onApply={() => {
@@ -99,7 +96,6 @@ export function AssetBulkActionsPanel({
                   value={selectedEnv}
                   onChange={setSelectedEnv}
                   options={ENV_OPTIONS.map((env) => ({ value: env, label: env }))}
-                  quickSelectOptions={ENV_OPTIONS.map((env) => ({ value: env, label: env }))}
                   placeholder="Choose environment"
                   actionLabel="Apply Environment"
                   onApply={() => {
@@ -109,6 +105,7 @@ export function AssetBulkActionsPanel({
                   disabled={!selectedEnv}
                 />
               ) : null}
+              <div className="mx-1 my-3 h-px bg-slate-800" />
               <button
                 type="button"
                 onClick={() => {
@@ -164,6 +161,8 @@ export function AssetBulkActionsPanel({
                 </div>
                 <ArchiveRestore size={16} className={bulkConfirmAction === 'restore' ? 'text-white' : 'text-emerald-400'} />
               </button>
+
+              <div className="mx-1 my-3 h-px bg-slate-800" />
 
               <button
                 type="button"

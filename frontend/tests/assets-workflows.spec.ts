@@ -87,14 +87,13 @@ test.describe('Assets workflows', () => {
     await page.getByTitle('More actions').filter({ visible: true }).first().click({ force: true })
     await page.waitForTimeout(500)
     await clickResilientButton(page, 'Soft Delete')
+    await page.waitForTimeout(500)
 
-    await page.getByRole('heading', { name: 'Delete asset' }).waitFor({ state: 'visible' })
     const deleteResponsePromise = page.waitForResponse(response =>
       response.url().includes('/api/v1/devices/bulk-action') && response.status() === 200
     )
-    await clickResilientButton(page, 'Confirm')
+    await clickResilientButton(page, 'Confirm Archive?')
     await deleteResponsePromise
-    await expect(page.getByText('Please confirm you want to proceed with this action.')).not.toBeVisible()
 
     // Settle React state before tab switch
     await page.waitForTimeout(1000)
@@ -111,14 +110,13 @@ test.describe('Assets workflows', () => {
     await page.getByTitle('More actions').filter({ visible: true }).first().click({ force: true })
     await page.waitForTimeout(500)
     await clickResilientButton(page, /^Purge$/)
+    await page.waitForTimeout(500)
 
-    await page.getByRole('heading', { name: 'Purge asset' }).waitFor({ state: 'visible' })
     const purgeResponsePromise = page.waitForResponse(response =>
       response.url().includes('/api/v1/devices/bulk-action') && response.status() === 200
     )
-    await clickResilientButton(page, 'Confirm')
+    await clickResilientButton(page, 'Confirm Purge?')
     await purgeResponsePromise
-    await expect(page.getByText('Please confirm you want to proceed with this action.')).not.toBeVisible()
 
     // Verify row has disappeared completely from Purged scope by reloading the page
     await page.goto('/asset')
@@ -141,9 +139,9 @@ test.describe('Assets workflows', () => {
 
     // Open and close import modal cleanly
     await clickResilientButton(page, 'Import')
-    await expect(page.getByText('Data Ingestion Pipeline')).toBeVisible()
+    await expect(page.getByText('Assets Import')).toBeVisible()
     await clickResilientButton(page, 'Close')
-    await expect(page.getByText('Data Ingestion Pipeline')).not.toBeVisible()
+    await expect(page.getByText('Assets Import')).not.toBeVisible()
 
     await page.goto(`/monitoring?id=${monitoring.id}`)
     await expect(page).toHaveURL(/\/monitoring$/)

@@ -361,7 +361,7 @@ export function buildAssetGoldenColumns({
 
   return buildOperationalGridColumnDefinitions({
     utilityColumnsConfig: {
-      includeRecentChange: isIntelligenceExpanded,
+      includeRecentChange: true,
       includeFavorite: true,
       includeWatch: true,
       isIntelligenceExpanded,

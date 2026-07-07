@@ -366,7 +366,7 @@ export default function AssetGoldenOperationalWorkspace() {
                   </span>
                 </ToolbarButton>
               </div>
-              <ToolbarIconButton ref={exportMenuButtonRef as any} onClick={() => toggleOverlay('export')} title="Export asset data">
+              <ToolbarIconButton ref={exportMenuButtonRef as any} onClick={() => toggleOverlay('export')} title="Export asset data" active={showExportMenu}>
                 <Download size={16} />
               </ToolbarIconButton>
               <ToolbarIconButton
@@ -476,7 +476,6 @@ export default function AssetGoldenOperationalWorkspace() {
               selectedLabels={selectedAssets.map((asset: any) => asset.name)}
               onClose={dismissWorkspaceMenus}
               onApply={(action, payload) => workspace.performBulkAction(action, undefined, payload)}
-              onRequestConfirm={(title, message, onConfirm) => workspace.openConfirm(title, message, onConfirm)}
             />
             <OperationalAnchoredPanel
               isOpen={showExportMenu}

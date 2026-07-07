@@ -692,7 +692,7 @@ export function createOperationalUtilityColumns({
       cellClass: OPERATIONAL_GRID_CLASSES.watchCell,
       headerClass: OPERATIONAL_GRID_CLASSES.watchHeader,
       resizable: false,
-      sortable: false,
+      sortable: true,
       filter: false,
       lockVisible: true,
       hide: !isIntelligenceExpanded,
@@ -700,6 +700,7 @@ export function createOperationalUtilityColumns({
       operationalSkipAutoSize: true,
       checkboxSelection: false,
       headerCheckboxSelection: false,
+      valueGetter: (p: any) => hasOperationalId(p.context?.watchIds, p.data?.id) ? 1 : 0,
       cellRenderer: (p: any) => {
         const isWatched = hasOperationalId(p.context?.watchIds, p.data?.id)
         const dataId = p.data?.id
