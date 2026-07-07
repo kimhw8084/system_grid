@@ -50,6 +50,9 @@ We applied highly targeted, surgical edits to completely close outstanding bugs 
 ### `frontend/src/components/shared/OperationalLifecycleContract.ts`
 - **Robust action resolution:** Modified `getOperationalLifecycleActionSpec` to explicitly map `'delete'` to `'archive'`. This completely eliminates any potential `Cannot read properties of undefined (reading 'successToast')` error paths if `'delete'` is accidentally passed to the toast spec resolver.
 
+### `frontend/src/components/shared/OperationalBulkContract.ts`
+- **Raw connection error interceptor:** Modified `showOperationalBulkErrorToast` to intercept raw `'Failed to fetch'` exceptions and convert them into a user-friendly, high-signal alert ("Failed to connect to backend services. Ensure the server is online.") to ensure a seamless and robust golden error handling experience.
+
 ### `frontend/src/components/assets/assetGoldenData.ts`
 - **Details and Quick-Look auto-synchronization:** Introduced robust `useEffect` synchronizers for both `quickLookAsset` and `detailAsset`. 
   - If the active asset is completely purged from the backend pool, the open panels are automatically closed (`null`) and the search-parameter state is cleared.
