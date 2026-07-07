@@ -99,6 +99,7 @@ export function buildAssetGoldenColumns({
       width: 220,
       minWidth: 180,
       maxWidth: 320,
+      onActivate: onOpenDetails,
       hide: hiddenColumns.includes('name'),
     },
     {

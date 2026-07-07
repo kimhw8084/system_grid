@@ -44,6 +44,40 @@ describe('OperationalGridInteractions', () => {
     expect(otherSetSelected).not.toHaveBeenCalled()
   })
 
+  it('does not select or clear selections on a plain click when suppressRowClickSelection is true', () => {
+    const { result } = renderHook(() => useOperationalRowInteractions({ suppressRowClickSelection: true }))
+    const deselectAll = vi.fn()
+    const targetSetSelected = vi.fn()
+    const duplicateSetSelected = vi.fn()
+    const otherSetSelected = vi.fn()
+    const forEachNodeAfterFilterAndSort = vi.fn((callback: (node: any) => void) => {
+      ;[
+        { data: { id: 41 }, setSelected: targetSetSelected },
+        { data: { id: 41 }, setSelected: duplicateSetSelected },
+        { data: { id: 99 }, setSelected: otherSetSelected },
+      ].forEach(callback)
+    })
+
+    act(() => {
+      result.current.handleRowClicked({
+        node: {
+          rowIndex: 4,
+          data: { id: 41 },
+          isSelected: () => false,
+          setSelected: targetSetSelected,
+        },
+        api: { deselectAll, forEachNodeAfterFilterAndSort },
+        event: { target: document.createElement('div') },
+        data: { id: 41 },
+      })
+    })
+
+    expect(deselectAll).not.toHaveBeenCalled()
+    expect(targetSetSelected).not.toHaveBeenCalled()
+    expect(duplicateSetSelected).not.toHaveBeenCalled()
+    expect(otherSetSelected).not.toHaveBeenCalled()
+  })
+
   it('toggles the clicked row for ctrl/meta selection', () => {
     const { result } = renderHook(() => useOperationalRowInteractions())
     const deselectAll = vi.fn()

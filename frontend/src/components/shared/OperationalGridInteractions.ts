@@ -202,10 +202,12 @@ export function useOperationalRowInteractions({
   onRowDoubleClick,
   pendingIds = [],
   selectionScopeKey,
+  suppressRowClickSelection = false,
 }: {
   onRowDoubleClick?: (data: any) => void;
   pendingIds?: number[];
   selectionScopeKey?: string | number | null;
+  suppressRowClickSelection?: boolean;
 } = {}) {
   const selectionAnchorRef = useRef<number | null>(null);
 
@@ -238,7 +240,7 @@ export function useOperationalRowInteractions({
       const shouldSelect = !currentlySelectedIds.includes(clickedId);
       const updated = setLogicalRowSelection(event.api, new Set([clickedId]), shouldSelect);
       if (!updated) event.node.setSelected(shouldSelect);
-    } else {
+    } else if (!suppressRowClickSelection) {
       event.api.deselectAll();
       const updated = setLogicalRowSelection(event.api, new Set([clickedId]), true);
       if (!updated) event.node.setSelected(true);

@@ -267,6 +267,7 @@ export default function AssetGoldenOperationalWorkspace() {
       openDetailAsset(asset)
     }, [openDetailAsset]),
     selectionScopeKey,
+    suppressRowClickSelection: true,
   })
 
   const getRowClass = useCallback((params: any) => (

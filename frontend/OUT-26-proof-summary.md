@@ -64,6 +64,16 @@ We applied highly targeted, surgical edits to completely close outstanding bugs 
 - **Bi-directional selection clearing:** Added a synchronization effect that automatically invokes `gridRef.current.api.deselectAll()` whenever `workspace.selectedIds` is cleared on the React side (such as after executing a bulk action or changing registry scopes).
 - **Compare list auto-scoping:** Added an effect that filters `compareIds` against the currently active tab's `workspace.visiblePool` on every update. Selected items that get archived, restored, or purged are immediately pruned from the compare tray, preventing ghost data drift.
 - **Search and Filter auto-clear:** Integrated an effect that clears selected row IDs immediately whenever search text, active lens, or quick filters change, guaranteeing that stale row targets are not erroneously captured in bulk actions or CSV exports.
+- **Robust Multi-select Integration:** Configured the `useOperationalRowInteractions` hook call with `suppressRowClickSelection: true` to prevent regular row body clicks from wiping out checkbox selections while preserving keyboard-driven Ctrl/Cmd toggling and Shift range-selections on row bodies.
+
+### `frontend/src/components/assets/assetGoldenColumns.tsx`
+- **Clickable Instance/Name Details Panel Trigger:** Passed `onActivate: onOpenDetails` to the `'name'` (Instance) identity column definition. Clicking the primary asset identifier in the grid now properly opens the corresponding slide-out Details Panel, fully resolving the "instance/name no-panel" UX failure.
+
+### `frontend/src/components/shared/OperationalGridInteractions.ts`
+- **Selection-preserving row-click suppression option:** Added the `suppressRowClickSelection` option to the shared `useOperationalRowInteractions` hook (with full backward compatibility via default `false` state). When enabled, simple row clicks no longer clear or modify the active checkbox multi-selection, while keyboard modifiers (Ctrl/Cmd toggle, Shift range) remain fully operational.
+
+### `frontend/src/components/shared/OperationalGridInteractions.test.tsx`
+- **Comprehensive Unit Testing:** Added a dedicated test suite verifying that when `suppressRowClickSelection: true` is configured, plain row body clicks have absolutely no effect on existing selections or deselections.
 
 ---
 
@@ -83,7 +93,7 @@ We audited and verified the tenant boundaries inside `/backend/app/api/devices.p
 
 - **TypeScript Typechecking (`npm run typecheck`):** **PASS** (100% clean type compilation across the entire workspace)
 - **Production Build Process (`npm run build`):** **PASS** (Vite compile successful, single clean CSS and JS bundle generated)
-- **Vitest Frontend Unit Tests (`npm run test:unit`):** **PASS** (162 tests passed, 0 failures)
+- **Vitest Frontend Unit Tests (`npm run test:unit`):** **PASS** (163 tests passed, 0 failures)
 - **Pytest Backend Suite (`pytest`):** **PASS** (All api-edge and tenant-isolation verification specs passed)
 
 ---
