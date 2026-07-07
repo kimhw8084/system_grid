@@ -465,7 +465,7 @@ export function useAssetGoldenWorkspace() {
   }, [activeLens, filters])
 
   const dataState = useMemo(() => resolveOperationalDataState({
-    loading: devicesQuery.isLoading && liveDevicesQuery.isLoading,
+    loading: devicesQuery.isLoading || liveDevicesQuery.isLoading,
     error: allAssets.length > 0 ? null : assetQueryFallbackError,
     totalCount: allAssets.length,
     tabCount: visiblePool.length,

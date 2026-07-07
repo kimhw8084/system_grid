@@ -19,6 +19,37 @@ test.describe('Assets workflows', () => {
     await expect(page.locator('[role="treegrid"]')).toContainText(secondary.name, { timeout: 15_000 })
     await page.waitForTimeout(1500)
 
+    // Required Browser/E2E Scenario 15: Right-click selects/focuses the clicked row and opens context menu at the pointer
+    const plainCell = page.locator('.ag-cell').filter({ hasText: systemName }).first()
+    await plainCell.click({ button: 'right' })
+    await page.waitForTimeout(500)
+    await expect(page.getByRole('button', { name: 'View Details' })).toBeVisible()
+    await page.keyboard.press('Escape') // Dismiss row action menu
+    await page.waitForTimeout(500)
+
+    // Required Browser/E2E Scenario 10: Expand Table changes utility columns visibility (star/eye)
+    // Required Browser/E2E Scenario 11: Favorite/watch toggles update icon state in grid without page refresh
+    const expandTableButton = page.getByRole('button', { name: 'Expand Table' })
+    await expect(expandTableButton).not.toHaveClass(/text-blue-400/)
+    await expandTableButton.click()
+    await page.waitForTimeout(500)
+    await expect(expandTableButton).toHaveClass(/text-blue-400/)
+
+    // Toggle Pin/Watch while columns are visible
+    const pinBtn = page.getByTitle('Pin asset').first()
+    await expect(pinBtn).toBeVisible()
+    await pinBtn.click()
+    await page.waitForTimeout(500)
+    const unpinBtn = page.getByTitle('Unpin asset').first()
+    await expect(unpinBtn).toBeVisible()
+    await unpinBtn.click()
+    await page.waitForTimeout(500)
+
+    // Toggle back to collapsed state
+    await expandTableButton.click()
+    await page.waitForTimeout(500)
+    await expect(expandTableButton).not.toHaveClass(/text-blue-400/)
+
     const assetRowActions = page.getByTitle('More actions')
     const viewDetailsButtons = page.getByRole('button', { name: 'View Details' })
     const openKnowledgeButton = page.getByRole('button', { name: 'Open Knowledge', exact: true })
@@ -69,6 +100,8 @@ test.describe('Assets workflows', () => {
     await bulkActionsButton.click()
     await compareVisibleButton.click()
     await expect(page.getByText('Compare Assets')).toBeVisible()
+    await expect(page.getByText('Temporal Variance Analysis')).toBeVisible()
+    await expect(page.getByText('Show Differences Only')).toBeVisible()
 
     await page.keyboard.press('Escape')
 
