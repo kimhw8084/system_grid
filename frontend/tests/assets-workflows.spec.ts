@@ -1,4 +1,4 @@
-import { clickResilientButton, openToolbarButton, resetBrowserState, seedOperationalScenario, selectGridCheckboxRows, verifyGridRowRobust } from './helpers/sysgrid';
+import { clickResilientButton, fillGridSearch, openToolbarButton, resetBrowserState, seedOperationalScenario, selectGridCheckboxRows, verifyGridRowRobust } from './helpers/sysgrid';
 import { expect } from '@playwright/test';
 import { test } from './helpers/sysgrid-test';
 
@@ -86,8 +86,7 @@ test.describe('Assets workflows', () => {
     await page.keyboard.press('Escape')
 
     await page.goto('/asset')
-    await page.getByPlaceholder('Scan asset matrix...').fill(secondary.name)
-    await page.keyboard.press('Enter')
+    await fillGridSearch(page, 'Scan asset matrix...', secondary.name)
     await verifyGridRowRobust(page, secondary.name)
 
     // Settle layout before action click
@@ -111,8 +110,7 @@ test.describe('Assets workflows', () => {
 
     // Switch to Purged Tab and verify row is present in Deleted scope
     await openToolbarButton(page, /Purged/)
-    await page.getByPlaceholder('Scan asset matrix...').fill(secondary.name)
-    await page.keyboard.press('Enter')
+    await fillGridSearch(page, 'Scan asset matrix...', secondary.name)
     await verifyGridRowRobust(page, secondary.name)
 
     // Settle layout before action click
@@ -134,9 +132,8 @@ test.describe('Assets workflows', () => {
     // Verify row has disappeared completely from Purged scope by reloading the page
     await page.goto('/asset')
     await openToolbarButton(page, /Purged/)
-    await page.getByPlaceholder('Scan asset matrix...').fill(secondary.name)
-    await page.keyboard.press('Enter')
-    await expect(page.locator('[role="treegrid"]').first()).not.toContainText(secondary.name)
+    await fillGridSearch(page, 'Scan asset matrix...', secondary.name)
+    await expect(page.getByText('No assets match the current working view')).toBeVisible()
 
     // E2E Verification of Toolbar Export flyout and Import modal reachability
     const exportBtn = page.getByTitle('Export asset data')
