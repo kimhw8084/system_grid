@@ -17,8 +17,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { showWorkspaceToast } from './shared/WorkspaceToast'
 import {
-  computeFloatingPanelRect,
-  FLOATING_PANEL_EDGE,
   useOperationalRowInteractions,
   useOperationalGroupedSelection,
   useOperationalContextMenu,
@@ -65,7 +63,6 @@ import {
   useOperationalGridRuntime,
   useOperationalSelection,
   usePersistentJsonState,
-  useWorkspaceDismissHandlers,
   useWorkspaceSessionValue,
   useWorkspaceOverlayController,
 } from './shared/OperationalWorkspaceHooks'
@@ -102,7 +99,6 @@ const NETWORK_UI_STATE_KEY = 'sysgrid_network_ui_state_v1'
 const NETWORK_WATCH_STORAGE_KEY = 'sysgrid_network_watch_v1'
 const NETWORK_WORKSPACE_PREFERENCE_KEY = 'network_workspace_state_v1'
 const NETWORK_WORKSPACE_PREFERENCE_VERSION = 2
-const BULK_MENU_MAX_HEIGHT = 560
 const NETWORK_FIXED_WIDTH_COLUMN_IDS = new Set([
   'select',
   'id',
@@ -1236,6 +1232,18 @@ export default function NetworkReal() {
     showViewsMenu,
     hasRowActionMenu,
   })
+
+  useEffect(() => {
+    if (activeOverlay !== 'rowAction' && rowActionMenu) {
+      setRowActionMenu(null)
+    }
+  }, [activeOverlay, rowActionMenu])
+
+  useEffect(() => {
+    if (activeOverlay === 'rowAction' && !rowActionMenu) {
+      dismissOverlays()
+    }
+  }, [activeOverlay, dismissOverlays, rowActionMenu])
 
   const { data: allItems, isLoading, isError, error } = useQuery({
     queryKey: ['network-connections'],
