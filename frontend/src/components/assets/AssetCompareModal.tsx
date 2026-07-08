@@ -3,6 +3,7 @@ import { WorkspaceModal } from '../shared/WorkspaceModal'
 import { WorkspaceCompareShell } from '../shared/WorkspaceModalShells'
 import { StatusPill } from '../shared/StatusPill'
 import { GitCompare } from 'lucide-react'
+import { useEscapeDismiss, useBodyModalFlag } from '../shared/OperationalWorkspacePrimitives'
 
 export function AssetCompareModal({
   items,
@@ -11,6 +12,8 @@ export function AssetCompareModal({
   items: any[]
   onClose: () => void
 }) {
+  useEscapeDismiss(onClose)
+  useBodyModalFlag()
   const [isMaximized, setIsMaximized] = useState(false)
   const [showDiffsOnly, setShowDiffsOnly] = useState(false)
 
