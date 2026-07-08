@@ -283,7 +283,7 @@ export default function AssetGoldenOperationalWorkspace() {
     const hasSelection = workspace.selectedIds.length > 0
     gridRef.current.api.exportDataAsCsv({
       fileName: `SysGrid_Assets_${new Date().toISOString().slice(0, 10)}.csv`,
-      allColumns: false,
+      allColumns: true,
       onlySelected: hasSelection,
     })
     showWorkspaceToast(hasSelection ? 'Exported selected asset rows to CSV' : 'Asset CSV exported')
@@ -300,7 +300,7 @@ export default function AssetGoldenOperationalWorkspace() {
       openDetailAsset(asset)
     }, [openDetailAsset]),
     selectionScopeKey,
-    suppressRowClickSelection: true,
+    suppressRowClickSelection: false,
   })
 
   const getRowClass = useCallback((params: any) => (
@@ -458,10 +458,10 @@ export default function AssetGoldenOperationalWorkspace() {
                   Filters
                 </span>
               </ToolbarButton>
-              <ToolbarButton active={isIntelligenceExpanded} onClick={() => setIsIntelligenceExpanded((current) => !current)} title={isIntelligenceExpanded ? 'Hide Activity Columns' : 'Show Activity Columns'}>
+              <ToolbarButton active={isIntelligenceExpanded} onClick={() => setIsIntelligenceExpanded((current) => !current)} title={isIntelligenceExpanded ? 'Hide Intelligence Columns' : 'Show Intelligence Columns'}>
                 <span className="flex items-center gap-2">
                   {isIntelligenceExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                  Expand Table
+                  Toggle Intelligence
                 </span>
               </ToolbarButton>
             </ToolbarGroup>
