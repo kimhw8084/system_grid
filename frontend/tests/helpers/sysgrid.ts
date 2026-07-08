@@ -38,7 +38,7 @@ async function get(request: APIRequestContext, path: string) {
   return response.json()
 }
 
-async function ensureSettingOption(
+export async function ensureSettingOption(
   request: APIRequestContext,
   category: string,
   value: string,

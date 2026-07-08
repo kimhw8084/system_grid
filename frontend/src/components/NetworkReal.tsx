@@ -19,7 +19,11 @@ import { showWorkspaceToast } from './shared/WorkspaceToast'
 import {
   computeFloatingPanelRect,
   FLOATING_PANEL_EDGE,
+  useOperationalRowInteractions,
+  useOperationalGroupedSelection,
+  useOperationalContextMenu,
 } from './shared/OperationalGridInteractions'
+import { OperationalDataGrid } from './shared/OperationalDataGrid'
 import { apiFetch } from '../api/apiClient'
 import { formatAppDate, formatAppTime, formatAppDay, parseAppDate } from '../utils/dateUtils'
 import { AppDropdown } from './shared/AppDropdown'
@@ -54,16 +58,21 @@ import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from './shar
 import { StatusPill } from './shared/StatusPill'
 import { parseCommaSeparatedValues } from '../utils/dataParsers'
 import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
-import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from './shared/OperationalWorkspaceHooks'
+import {
+  OPERATIONAL_GRID_LAYOUT_POLICIES,
+  useOperationalGridRuntime,
+  useOperationalSelection,
+  usePersistentJsonState,
+  useWorkspaceDismissHandlers,
+  useWorkspaceSessionValue,
+} from './shared/OperationalWorkspaceHooks'
 import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } from './shared/WorkspaceModalShells'
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
 import { OperationalImportModal } from './shared/OperationalImportModal'
 import { downloadOperationalImportFile } from './shared/OperationalImportExport'
-import { OperationalGridMatrix } from './shared/OperationalGridMatrix'
 import {
   OperationalAnchoredPanel,
   OperationalDisplayPanel,
-  OperationalGridSurface,
   OperationalGroupedGridSection,
   OperationalGroupedGridView,
   OperationalSavedViewsPanel,
@@ -706,7 +715,14 @@ export default function NetworkReal() {
   const [compareOpen, setCompareOpen] = useState(false)
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
   
-  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const {
+    selectedIds,
+    setSelectedIds,
+    clearSelection,
+    isSelected,
+    hasSelection,
+    selectedCount,
+  } = useOperationalSelection([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
   const [isBulkSeverityOpen, setIsBulkSeverityOpen] = useState(false)
@@ -736,7 +752,6 @@ export default function NetworkReal() {
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'link_type' | 'direction' | null>(null)
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
   const [pendingIds, setPendingIds] = useState<number[]>([])
-  const selectionAnchorRef = useRef<number | null>(null)
   const displayMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const viewsMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const bulkMenuButtonRef = useRef<HTMLButtonElement | null>(null)
@@ -761,9 +776,42 @@ export default function NetworkReal() {
     syncColumnLayoutState,
     applyColumnLayoutState,
     handleColumnResized,
-  } = useOperationalGridLayout(persistedUiState?.columnLayoutState ?? [], Boolean(activeViewId))
-
-  const groupSelectionsRef = useRef<Record<string, number[]>>({})
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
+    handleGridReady,
+    handleFilterChanged,
+    handleSortChanged,
+  } = useOperationalGridRuntime({
+    initialColumnLayoutState: persistedUiState?.columnLayoutState ?? [],
+    hasSavedViewWidths: Boolean(activeViewId),
+    applyGridState: (config) => {
+      const api = gridRef.current?.api
+      if (!api) return
+      applyOperationalColumnState(api, config.columnLayoutState, preserveExplicitColumnWidths)
+      api.setFilterModel(config.filterModel || {})
+      api.applyColumnState({
+        state: (config.sortModel || []).map((entry: any) => ({ colId: entry.colId, sort: entry.sort as 'asc' | 'desc' })),
+        defaultState: { sort: null },
+        applyOrder: false,
+      })
+    },
+    initialFilterModel: gridFilterModel,
+    initialSortModel: gridSortModel,
+    setGridFilterModel,
+    setGridSortModel,
+    layoutPolicy: OPERATIONAL_GRID_LAYOUT_POLICIES.standard,
+    onBeforeManualResize: () => {
+      clearPendingAutoSize()
+      setTransientManualColumnWidths(true)
+    },
+    onGridApiReady: (event) => {
+      if (typeof window !== 'undefined') {
+        ;(window as any).__DEBUG_NETWORK_GRID_API__ = event.api
+      }
+    },
+  })
 
   useEffect(() => {
     preserveExplicitColumnWidthsRef.current = preserveExplicitColumnWidths
@@ -892,52 +940,6 @@ export default function NetworkReal() {
     }
   }, [buildNetworkWorkspacePreferencePayload, hasUserSettings])
 
-  useEffect(() => {
-    setSelectedIds([])
-    groupSelectionsRef.current = {}
-  }, [groupBy])
-
-  const handleSelectionChanged = useCallback((e: any, groupKey: string = 'raw') => {
-    const selectedNodes = e?.api?.getSelectedNodes?.() || []
-    const ids = selectedNodes.map((n: any) => n.data?.id).filter(Boolean)
-    
-    groupSelectionsRef.current[groupKey] = ids
-    
-    // Aggregate all selections from all groups
-    const allSelected = Array.from(new Set(Object.values(groupSelectionsRef.current).flat()))
-    setSelectedIds(allSelected)
-  }, [])
-
-  const handleColumnMoved = useCallback((event: any) => {
-    if (!event.source.includes('drag')) syncColumnLayoutState(event.api)
-  }, [syncColumnLayoutState])
-
-  const handleDragStopped = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
-  const handleColumnPinned = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
-  const handleColumnVisible = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
-  const handleFilterChanged = useCallback((e: any) => setGridFilterModel(e.api.getFilterModel() || {}), [])
-  const handleNetworkColumnResized = useCallback((event: any) => {
-    const source = event?.source || ''
-    const isAutoResizeSource =
-      source === 'autosizeColumns' ||
-      source === 'sizeColumnsToFit' ||
-      source === 'api' ||
-      source === 'flex'
-
-    if (!isAutoResizeSource) {
-      clearPendingAutoSize()
-      preserveExplicitColumnWidthsRef.current = true
-      setTransientManualColumnWidths(true)
-    }
-
-    handleColumnResized(event)
-  }, [clearPendingAutoSize, handleColumnResized, setTransientManualColumnWidths])
-  
-  const handleSortChanged = useCallback((e: any) => {
-    const nextSortModel = e.api.getColumnState().filter((col: any) => col.sort).map((col: any) => ({ colId: col.colId, sort: col.sort }))
-    setGridSortModel(nextSortModel)
-  }, [])
-
   const handleRowId = useCallback((params: any) => String(params.data.id), [])
   const openNetworkDetail = useCallback((item: any, replace: boolean = false) => {
     if (!item?.id) return
@@ -954,29 +956,11 @@ export default function NetworkReal() {
     navigate({ search: nextParams.toString() ? `?${nextParams.toString()}` : '' }, { replace })
   }, [navigate, searchParams])
 
-  const openRowActionMenuAtPoint = useCallback((item: any, x: number, y: number) => {
-    setRowActionMenu({
-      item,
-      point: { x, y },
-    })
-  }, [])
-
-  const handleCellContextMenu = useCallback((e: any) => {
-    if (!e?.data) return
-    const mouseEvent = e.event as MouseEvent
-    mouseEvent?.preventDefault?.()
-    openRowActionMenuAtPoint(e.data, mouseEvent.clientX, mouseEvent.clientY)
-  }, [openRowActionMenuAtPoint])
-
-  const handleGridReady = useCallback((event: any) => {
-    if (typeof window !== 'undefined') {
-      ;(window as any).__DEBUG_NETWORK_GRID_API__ = event.api
-    }
-    // Immediately apply layout if we have it to prevent squish
-    if (columnLayoutState.length > 0) {
-      applyOperationalColumnState(event.api, columnLayoutState, preserveExplicitColumnWidths)
-    }
-  }, [columnLayoutState, preserveExplicitColumnWidths])
+  const { handleCellContextMenu, openRowActionMenuAtPoint } = useOperationalContextMenu({
+    onOpenRowActionMenu: useCallback((item, point) => {
+      setRowActionMenu({ item, point })
+    }, []),
+  })
 
   const autoSizeNetworkColumns = useCallback(() => {
     if (!gridRef.current?.api || preserveExplicitColumnWidthsRef.current) return
@@ -1097,56 +1081,6 @@ export default function NetworkReal() {
     if (selectedIds.length < 2 || selectedIds.length > 5) return
     setCompareOpen(true)
   }
-
-  const shouldIgnoreRowSelection = (target: EventTarget | null) => {
-    const element = target as HTMLElement | null
-    if (!element) return false
-    return Boolean(
-      element.closest('button, a, input, textarea, select, label') ||
-      element.closest('.ag-selection-checkbox') ||
-      element.closest('.ag-checkbox-input-wrapper') ||
-      element.closest('.row-action-menu-container')
-    )
-  }
-
-  const handleRowClicked = useCallback((event: any) => {
-    if (!event?.node || shouldIgnoreRowSelection(event.event?.target)) return
-    if (event.data && pendingIds.includes(event.data.id)) return
-    const mouseEvent = event.event as MouseEvent | undefined
-    const isToggleSelection = Boolean(mouseEvent?.metaKey || mouseEvent?.ctrlKey)
-    const isRangeSelection = Boolean(mouseEvent?.shiftKey)
-
-    if (isRangeSelection && selectionAnchorRef.current !== null) {
-      const currentIndex = event.node.rowIndex
-      if (currentIndex === null || currentIndex === undefined) return
-
-      const start = Math.min(selectionAnchorRef.current, currentIndex)
-      const end = Math.max(selectionAnchorRef.current, currentIndex)
-      event.api.deselectAll()
-      event.api.forEachNodeAfterFilterAndSort((node: any) => {
-        if (node.rowIndex >= start && node.rowIndex <= end && !pendingIds.includes(node.data?.id)) {
-          node.setSelected(true)
-        }
-      })
-      return
-    }
-
-    if (isToggleSelection) {
-      event.node.setSelected(!event.node.isSelected())
-      selectionAnchorRef.current = event.node.rowIndex
-      return
-    }
-
-    event.api.deselectAll()
-    event.node.setSelected(true)
-    selectionAnchorRef.current = event.node.rowIndex
-  }, [pendingIds])
-
-  const handleRowDoubleClicked = useCallback((event: any) => {
-    if (!event?.data || shouldIgnoreRowSelection(event.event?.target)) return
-    if (pendingIds.includes(event.data.id)) return
-    openNetworkDetail(event.data)
-  }, [openNetworkDetail, pendingIds])
 
   const renderPrimaryRowActions = (item: any) => {
     const isPending = pendingIds.includes(item.id)
@@ -1432,6 +1366,8 @@ export default function NetworkReal() {
     queryFn: async () => (await apiFetch('/api/v1/networks/connections?include_deleted=true')).json()
   })
 
+  console.log("NETWORK QUERY STATE:", { allItems: allItems?.length, isLoading, isError, error: error?.message })
+
   const activeNetworkQueryError = isError ? error : null
 
   const networkDiagnosticDetail = useMemo(() => buildOperationalDiagnosticDetail({
@@ -1569,6 +1505,53 @@ export default function NetworkReal() {
     return () => window.clearTimeout(timer)
   }, [autoSizeNetworkColumns, displayedItemsInOrder, fontSize, hiddenColumns, isIntelligenceExpanded])
 
+  const selectionScopeKey = useMemo(() => {
+    const visibleIds = displayedItemsInOrder.map((item: any) => item.id).join(',')
+    return `${activeTab}:${groupBy}:${visibleIds}`
+  }, [activeTab, displayedItemsInOrder, groupBy])
+
+  const { handleSelectionChanged } = useOperationalGroupedSelection({
+    setSelectedIds,
+    selectionScopeKey,
+  })
+
+  const { handleRowClicked, handleRowDoubleClicked } = useOperationalRowInteractions({
+    onRowDoubleClick: openNetworkDetail,
+    pendingIds,
+    selectionScopeKey,
+  })
+
+  const networkGridRuntime = useMemo(() => ({
+    preserveExplicitColumnWidths,
+    handleGridReady,
+    handleColumnResized,
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
+    handleFilterChanged,
+    handleSortChanged,
+  }), [
+    preserveExplicitColumnWidths,
+    handleGridReady,
+    handleColumnResized,
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
+    handleFilterChanged,
+    handleSortChanged,
+  ])
+
+  const networkRowInteractions = useMemo(() => ({
+    handleRowClicked,
+    handleRowDoubleClicked,
+  }), [handleRowClicked, handleRowDoubleClicked])
+
+  const networkContextMenu = useMemo(() => ({
+    handleCellContextMenu,
+  }), [handleCellContextMenu])
+
   const selectedItems = useMemo(
     () => displayedItems.filter((item: any) => selectedIds.includes(item.id)),
     [displayedItems, selectedIds]
@@ -1641,10 +1624,6 @@ export default function NetworkReal() {
     setActiveTab(target.is_deleted ? 'deleted' : 'active')
     setDetailItem(target)
   }, [allItems, idParam, navigate, searchParams])
-
-  useEffect(() => {
-    selectionAnchorRef.current = null
-  }, [activeTab, items])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -2705,45 +2684,29 @@ export default function NetworkReal() {
       }>
 
       {groupBy === 'raw' ? (
-	        <OperationalGridSurface
-            className="monitoring-grid-shell monitoring-grid"
-            style={{ 
-              '--ag-font-size': `${fontSize}px`,
-              '--ag-font-family': "'Inter', sans-serif",
-            } as React.CSSProperties}
-            loading={isLoading}
-            loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
-            loadingLabel={<p className="text-[10px] font-semibold text-blue-400">Scanning network matrix...</p>}
-          >
-	          <OperationalGridMatrix
-            gridRef={gridRef}
-	            rowData={displayedItemsInOrder || []} 
-	            columnDefs={columnDefs} 
-            autoSizeStrategy={autoSizeStrategy}
-            colResizeDefault="normal"
-            fontSize={fontSize}
-            rowDensity={rowDensity}
-            context={gridContext}
-            getRowId={handleRowId}
-            onGridReady={handleGridReady}
-	            onSelectionChanged={(e) => handleSelectionChanged(e, 'raw')}
-            onColumnResized={handleNetworkColumnResized}
-            onColumnMoved={handleColumnMoved}
-            onDragStopped={handleDragStopped}
-            onColumnPinned={handleColumnPinned}
-            onColumnVisible={handleColumnVisible}
-            onFilterChanged={handleFilterChanged}
-	            onSortChanged={handleSortChanged}
-            onCellContextMenu={handleCellContextMenu}
-	            onRowClicked={handleRowClicked}
-            onRowDoubleClicked={handleRowDoubleClicked}
-            getRowClass={getRowClass}
-            onFirstDataRendered={handleGridDataUpdated}
-            onRowDataUpdated={handleGridDataUpdated}
-            noRowsLabel="No network data found"
-	          />
-
-	        </OperationalGridSurface>
+        <OperationalDataGrid
+          gridRef={gridRef}
+          rows={displayedItemsInOrder}
+          columnDefs={columnDefs}
+          runtime={networkGridRuntime}
+          rowInteractions={networkRowInteractions}
+          contextMenu={networkContextMenu}
+          onSelectionChanged={(e) => handleSelectionChanged(e, 'raw')}
+          getRowId={handleRowId}
+          getRowClass={getRowClass}
+          selectionScopeKey={selectionScopeKey}
+          context={gridContext}
+          fontSize={fontSize}
+          rowDensity={rowDensity}
+          noRowsLabel="No network data found"
+          loading={isLoading}
+          loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
+          loadingLabel={<p className="text-[10px] font-semibold text-blue-400">Scanning network matrix...</p>}
+          onFirstDataRendered={handleGridDataUpdated}
+          onRowDataUpdated={handleGridDataUpdated}
+          className="monitoring-grid-shell monitoring-grid"
+          suppressRowClickSelection={false}
+        />
       ) : (
         <OperationalGroupedGridView
           summary={(
@@ -2791,40 +2754,26 @@ export default function NetworkReal() {
                 onToggle={() => setCollapsedGroups((current) => ({ ...current, [section.key]: !current[section.key] }))}
               >
                 {!isCollapsed && (
-                  <OperationalGridSurface
+                  <OperationalDataGrid
+                    rows={section.items}
+                    columnDefs={columnDefs}
+                    runtime={networkGridRuntime}
+                    rowInteractions={networkRowInteractions}
+                    contextMenu={networkContextMenu}
+                    onSelectionChanged={(e) => handleSelectionChanged(e, section.key)}
+                    getRowId={handleRowId}
+                    getRowClass={getRowClass}
+                    selectionScopeKey={selectionScopeKey}
+                    context={gridContext}
+                    fontSize={fontSize}
+                    rowDensity={rowDensity}
+                    noRowsLabel="No network data found"
+                    height={`${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px`}
+                    onFirstDataRendered={handleGridDataUpdated}
+                    onRowDataUpdated={handleGridDataUpdated}
                     className="monitoring-grid-shell monitoring-grid w-full"
-                    style={{ 
-                      '--ag-font-size': `${fontSize}px`,
-                      '--ag-font-family': "'Inter', sans-serif",
-                      height: `${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px`
-                    } as React.CSSProperties}
-                  >
-                    <OperationalGridMatrix
-                      rowData={section.items} 
-                      columnDefs={columnDefs} 
-                      autoSizeStrategy={autoSizeStrategy}
-                      colResizeDefault="normal"
-                      fontSize={fontSize}
-                      rowDensity={rowDensity}
-                      context={gridContext}
-                      getRowId={handleRowId}
-                      onSelectionChanged={(e) => handleSelectionChanged(e, section.key)}
-                      onColumnResized={handleNetworkColumnResized}
-                      onColumnMoved={handleColumnMoved}
-                      onDragStopped={handleDragStopped}
-                      onColumnPinned={handleColumnPinned}
-                      onColumnVisible={handleColumnVisible}
-                      onFilterChanged={handleFilterChanged}
-                      onSortChanged={handleSortChanged}
-                      onCellContextMenu={handleCellContextMenu}
-                      onRowClicked={handleRowClicked}
-                      onRowDoubleClicked={handleRowDoubleClicked}
-                      getRowClass={getRowClass}
-                      onFirstDataRendered={handleGridDataUpdated}
-                      onRowDataUpdated={handleGridDataUpdated}
-                      noRowsLabel="No network data found"
-                    />
-                  </OperationalGridSurface>
+                    suppressRowClickSelection={false}
+                  />
                 )}
               </OperationalGroupedGridSection>
             )
@@ -3343,7 +3292,7 @@ function NetworkDetailModal({ item, onClose, onEdit, onDelete, onOpenAsset, onOp
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
       title={
         <div className="flex items-center gap-3">
-          <span>{detailTitle}</span>
+          <span>Connection Forensics</span>
           <WorkspaceShareHeader id={String(item.id)} title={detailTitle} />
         </div>
       }
