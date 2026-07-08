@@ -27,4 +27,69 @@ describe('OperationalRowActionMenu', () => {
     expect(container).not.toBeNull()
     expect(container?.style.zIndex).toBe(String(WORKSPACE_LAYER_Z.rowActionMenu))
   })
+
+  it('renders confirmation text and class style when confirming is true', () => {
+    const { getByRole } = render(
+      <OperationalRowActionMenu
+        meta="ID 1"
+        title="Alpha"
+        onClose={() => {}}
+        cursorX={240}
+        cursorY={180}
+        sections={[
+          {
+            id: 'archive',
+            items: [
+              {
+                id: 'asset-delete',
+                label: 'Archive',
+                confirmLabel: 'Confirm Archive?',
+                icon: () => null,
+                onClick: () => {},
+                confirming: true,
+              },
+            ],
+          },
+        ]}
+      />
+    )
+
+    const button = getByRole('button', { name: 'Confirm Archive?' })
+    expect(button).not.toBeNull()
+    expect(button.className).toContain('bg-rose-600')
+    expect(button.className).toContain('animate-pulse')
+  })
+
+  it('renders normal label text when confirming is false', () => {
+    const { getByRole } = render(
+      <OperationalRowActionMenu
+        meta="ID 1"
+        title="Alpha"
+        onClose={() => {}}
+        cursorX={240}
+        cursorY={180}
+        sections={[
+          {
+            id: 'archive',
+            items: [
+              {
+                id: 'asset-delete',
+                label: 'Archive',
+                confirmLabel: 'Confirm Archive?',
+                icon: () => null,
+                onClick: () => {},
+                confirming: false,
+              },
+            ],
+          },
+        ]}
+      />
+    )
+
+    const button = getByRole('button', { name: 'Archive' })
+    expect(button).not.toBeNull()
+    expect(button.className).not.toContain('bg-rose-600')
+    expect(button.className).not.toContain('animate-pulse')
+  })
 })
+

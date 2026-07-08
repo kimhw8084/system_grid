@@ -351,3 +351,62 @@ async def test_device_subresources_and_resource_routes(seeded_admin_tenant):
     assert delete_secret.status_code == 200
     delete_hw = await client.delete(f"/api/v1/devices/hardware/{hw['id']}", headers=headers)
     assert delete_hw.status_code == 200
+
+
+@pytest.mark.anyio
+async def test_devices_bulk_purge_with_far_mode_assets(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    tenant_id = seeded_admin_tenant["tenant_id"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(tenant_id)}
+    await _ensure_admin(seeded_admin_tenant)
+
+    # 1. Create asset (device)
+    device = await _create_device(
+        client,
+        headers,
+        name="FAR-PURGE-ASSET-01",
+        system="FAR-PURGE-SYS",
+        serial_number="FAR-PURGE-SN",
+        asset_tag="FAR-PURGE-AT",
+    )
+
+    # 2. Create FAR failure mode associated with this asset
+    mode_res = await client.post(
+        "/api/v1/far/modes",
+        json={
+            "system_name": "FAR-PURGE-SYS",
+            "title": "FAR-PURGE-MODE-01",
+            "effect": "Purge testing with far_mode_assets",
+            "severity": 5,
+            "occurrence": 3,
+            "detection": 2,
+            "affected_assets": [device["id"]],
+        },
+        headers=headers,
+    )
+    assert mode_res.status_code == 200, mode_res.text
+    mode = mode_res.json()
+    assert device["id"] in [asset["id"] for asset in mode["affected_assets"]]
+
+    # 3. Call bulk-action purge
+    purge_res = await client.post(
+        "/api/v1/devices/bulk-action",
+        json={"ids": [device["id"]], "action": "purge"},
+        headers=headers,
+    )
+    assert purge_res.status_code == 200, purge_res.text
+    assert purge_res.json()["status"] == "success"
+    assert purge_res.json()["count"] == 1
+
+    # 4. Verify the asset is completely gone from devices
+    include_deleted = await client.get("/api/v1/devices?include_deleted=true", headers=headers)
+    assert include_deleted.status_code == 200
+    ids = {item["id"] for item in include_deleted.json()}
+    assert device["id"] not in ids
+
+    # 5. Verify the FAR failure mode still exists but no longer has the purged asset
+    modes_res = await client.get("/api/v1/far/modes", headers=headers)
+    assert modes_res.status_code == 200
+    refreshed_mode = next(item for item in modes_res.json() if item["id"] == mode["id"])
+    assert device["id"] not in [asset["id"] for asset in refreshed_mode["affected_assets"]]
+
