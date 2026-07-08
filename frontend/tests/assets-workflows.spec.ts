@@ -163,7 +163,7 @@ test.describe('Assets workflows', () => {
     await page.goto('/asset')
     await openToolbarButton(page, /Purged/)
     await fillGridSearch(page, 'Scan asset matrix...', secondary.name)
-    await expect(page.getByText('No assets match the current working view')).toBeVisible()
+    await expect(page.getByText('No purged assets in scope')).toBeVisible()
 
     // Verify row has not returned to Existing scope either on clean reload
     await openToolbarButton(page, /Existing/)

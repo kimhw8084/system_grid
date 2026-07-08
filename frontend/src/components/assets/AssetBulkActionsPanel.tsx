@@ -1,5 +1,5 @@
 import React from 'react'
-import { ArchiveRestore, Trash2, Zap } from 'lucide-react'
+import { Zap } from 'lucide-react'
 import { OperationalAnchoredPanel } from '../shared/OperationalWorkspaceShells'
 import { WorkspaceFloatingPanel } from '../shared/OperationalWorkspacePrimitives'
 import { WorkspaceFlyoutActionCard, WorkspaceFlyoutDropdownEditor } from '../shared/WorkspaceFlyout'
@@ -31,7 +31,7 @@ export function AssetBulkActionsPanel({
 }: AssetBulkActionsPanelProps) {
   const [selectedStatus, setSelectedStatus] = React.useState('')
   const [selectedEnv, setSelectedEnv] = React.useState('')
-  const [expandedSection, setExpandedSection] = React.useState<'status' | 'environment' | null>(null)
+  const [expandedSection, setExpandedSection] = React.useState<'status' | 'environment' | 'delete' | 'restore' | 'purge' | null>(null)
   const [bulkConfirmAction, setBulkConfirmAction] = React.useState<'delete' | 'restore' | 'purge' | null>(null)
 
   React.useEffect(() => {
@@ -106,91 +106,109 @@ export function AssetBulkActionsPanel({
                   disabled={!selectedEnv}
                 />
               ) : null}
-              <div className="mx-1 my-3 h-px bg-slate-800" />
-              <button
-                type="button"
+              <WorkspaceFlyoutActionCard
+                title={OPERATIONAL_ACTION_LABELS.archiveSelection}
+                active={expandedSection === 'delete'}
                 onClick={() => {
-                  if (bulkConfirmAction !== 'delete') {
-                    setBulkConfirmAction('delete')
-                    return
-                  }
-                  onApply('delete')
-                  onClose()
+                  setExpandedSection(expandedSection === 'delete' ? null : 'delete')
+                  setBulkConfirmAction(null)
                 }}
-                className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-all ${
-                  bulkConfirmAction === 'delete'
-                    ? 'border-rose-500 bg-rose-600 animate-pulse text-white'
-                    : 'border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10'
-                }`}
-              >
-                <div>
-                  <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${bulkConfirmAction === 'delete' ? 'text-white' : 'text-rose-400'}`}>
-                    {bulkConfirmAction === 'delete' ? OPERATIONAL_ACTION_LABELS.archiveSelectionConfirm : OPERATIONAL_ACTION_LABELS.archiveSelection}
+              />
+              {expandedSection === 'delete' ? (
+                <div className="rounded-lg border border-slate-800 bg-[#0b1220] p-3 space-y-3">
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Move the current selection to the Purged registry scope.
                   </p>
-                  <p className={`pt-1 text-[11px] ${bulkConfirmAction === 'delete' ? 'text-rose-100' : 'text-slate-400'}`}>
-                    {bulkConfirmAction === 'delete' ? 'Click again to move selected assets to Purged registry.' : 'Move the current selection to the Purged registry scope.'}
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (bulkConfirmAction !== 'delete') {
+                        setBulkConfirmAction('delete')
+                        return
+                      }
+                      onApply('delete')
+                      onClose()
+                    }}
+                    className={`w-full rounded-lg border px-4 py-2.5 text-center text-[10px] font-black uppercase tracking-wider transition-all ${
+                      bulkConfirmAction === 'delete'
+                        ? 'border-rose-500 bg-rose-600 animate-pulse text-white'
+                        : 'border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'
+                    }`}
+                  >
+                    {bulkConfirmAction === 'delete' ? OPERATIONAL_ACTION_LABELS.archiveSelectionConfirm : 'Archive selected assets'}
+                  </button>
                 </div>
-                <Trash2 size={16} className={bulkConfirmAction === 'delete' ? 'text-white' : 'text-rose-400'} />
-              </button>
+              ) : null}
             </>
           ) : (
             <>
-              <button
-                type="button"
+              <WorkspaceFlyoutActionCard
+                title={OPERATIONAL_ACTION_LABELS.restore}
+                active={expandedSection === 'restore'}
                 onClick={() => {
-                  if (bulkConfirmAction !== 'restore') {
-                    setBulkConfirmAction('restore')
-                    return
-                  }
-                  onApply('restore')
-                  onClose()
+                  setExpandedSection(expandedSection === 'restore' ? null : 'restore')
+                  setBulkConfirmAction(null)
                 }}
-                className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-all ${
-                  bulkConfirmAction === 'restore'
-                    ? 'border-emerald-500 bg-emerald-600 animate-pulse text-white'
-                    : 'border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10'
-                }`}
-              >
-                <div>
-                  <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${bulkConfirmAction === 'restore' ? 'text-white' : 'text-emerald-400'}`}>
-                    {bulkConfirmAction === 'restore' ? 'Confirm Bulk Restore?' : OPERATIONAL_ACTION_LABELS.restore}
+              />
+              {expandedSection === 'restore' ? (
+                <div className="rounded-lg border border-slate-800 bg-[#0b1220] p-3 space-y-3">
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Return the current selection to the Existing registry scope.
                   </p>
-                  <p className={`pt-1 text-[11px] ${bulkConfirmAction === 'restore' ? 'text-emerald-100' : 'text-slate-400'}`}>
-                    {bulkConfirmAction === 'restore' ? 'Click again to return selected assets to Existing registry.' : 'Return the current selection to the Existing registry scope.'}
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (bulkConfirmAction !== 'restore') {
+                        setBulkConfirmAction('restore')
+                        return
+                      }
+                      onApply('restore')
+                      onClose()
+                    }}
+                    className={`w-full rounded-lg border px-4 py-2.5 text-center text-[10px] font-black uppercase tracking-wider transition-all ${
+                      bulkConfirmAction === 'restore'
+                        ? 'border-emerald-500 bg-emerald-600 animate-pulse text-white'
+                        : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                    }`}
+                  >
+                    {bulkConfirmAction === 'restore' ? 'Confirm Restore?' : 'Restore selected assets'}
+                  </button>
                 </div>
-                <ArchiveRestore size={16} className={bulkConfirmAction === 'restore' ? 'text-white' : 'text-emerald-400'} />
-              </button>
+              ) : null}
 
-              <div className="mx-1 my-3 h-px bg-slate-800" />
-
-              <button
-                type="button"
+              <WorkspaceFlyoutActionCard
+                title={OPERATIONAL_ACTION_LABELS.purgeSelection}
+                active={expandedSection === 'purge'}
                 onClick={() => {
-                  if (bulkConfirmAction !== 'purge') {
-                    setBulkConfirmAction('purge')
-                    return
-                  }
-                  onApply('purge')
-                  onClose()
+                  setExpandedSection(expandedSection === 'purge' ? null : 'purge')
+                  setBulkConfirmAction(null)
                 }}
-                className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-all ${
-                  bulkConfirmAction === 'purge'
-                    ? 'border-rose-500 bg-rose-600 animate-pulse text-white'
-                    : 'border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10'
-                }`}
-              >
-                <div>
-                  <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${bulkConfirmAction === 'purge' ? 'text-white' : 'text-rose-400'}`}>
-                    {bulkConfirmAction === 'purge' ? OPERATIONAL_ACTION_LABELS.purgeSelectionConfirm : OPERATIONAL_ACTION_LABELS.purgeSelection}
+              />
+              {expandedSection === 'purge' ? (
+                <div className="rounded-lg border border-slate-800 bg-[#0b1220] p-3 space-y-3">
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Permanently remove the current selection from the registry. THIS CANNOT BE UNDONE.
                   </p>
-                  <p className={`pt-1 text-[11px] ${bulkConfirmAction === 'purge' ? 'text-rose-100' : 'text-slate-400'}`}>
-                    {bulkConfirmAction === 'purge' ? 'Click again to permanently delete selected assets. THIS CANNOT BE UNDONE.' : 'Permanently remove the current selection from the registry.'}
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (bulkConfirmAction !== 'purge') {
+                        setBulkConfirmAction('purge')
+                        return
+                      }
+                      onApply('purge')
+                      onClose()
+                    }}
+                    className={`w-full rounded-lg border px-4 py-2.5 text-center text-[10px] font-black uppercase tracking-wider transition-all ${
+                      bulkConfirmAction === 'purge'
+                        ? 'border-rose-500 bg-rose-600 animate-pulse text-white'
+                        : 'border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'
+                    }`}
+                  >
+                    {bulkConfirmAction === 'purge' ? OPERATIONAL_ACTION_LABELS.purgeSelectionConfirm : 'Purge selected assets'}
+                  </button>
                 </div>
-                <Trash2 size={16} className={bulkConfirmAction === 'purge' ? 'text-white' : 'text-rose-400'} />
-              </button>
+              ) : null}
             </>
           )}
         </div>

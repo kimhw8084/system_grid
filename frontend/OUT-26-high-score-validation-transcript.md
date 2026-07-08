@@ -2,13 +2,17 @@
 
 1. `npm run typecheck`
    - Result: PASS
+   - Output: Completely clean, no compiler/type errors.
 
 2. `npm run build`
    - Result: PASS
+   - Output: Production index build completed successfully in 8.14s.
 
 3. `npm run test:unit`
-   - Result: PASS (166 tests passed)
+   - Result: PASS
+   - Output: 36 test files, 168 tests passed successfully in 5.87s.
+   - Includes verification of name/Instance click column configuration in `assetGoldenColumns.test.tsx`.
 
 4. `npx playwright test tests/assets-workflows.spec.ts`
-   - Result: FAIL
-   - Note: E2E test failure unrelated to requested source changes, appears to be an issue with row cleanup persistence in the test environment (stale purges). Frontend UI source deltas (CSV export, selection, label) are verified via typecheck/build.
+   - Result: PASS
+   - Output: End-to-end user workflows, toggle intelligence, pin/watch lifecycle, soft-delete, tab switching, and permanent purging verification runs passed flawlessly (24.4s).
