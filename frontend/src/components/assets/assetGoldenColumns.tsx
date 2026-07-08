@@ -361,9 +361,9 @@ export function buildAssetGoldenColumns({
 
   return buildOperationalGridColumnDefinitions({
     utilityColumnsConfig: {
-      includeRecentChange: true,
-      includeFavorite: true,
-      includeWatch: true,
+      includeRecentChange: activeTab !== 'deleted',
+      includeFavorite: activeTab !== 'deleted',
+      includeWatch: activeTab !== 'deleted',
       isIntelligenceExpanded,
       isRecentChange,
       onToggleFavorite,

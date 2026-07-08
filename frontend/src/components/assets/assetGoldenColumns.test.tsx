@@ -1,75 +1,103 @@
+import React from 'react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { buildAssetGoldenColumns } from './assetGoldenColumns'
 
-describe('AssetGoldenColumns', () => {
-  it('builds column definitions and enforces that name/Instance does not have onActivate or panel triggers', () => {
-    const isRecentChange = vi.fn().mockReturnValue(false)
-    const onOpenQuickLook = vi.fn()
-    const onOpenDetails = vi.fn()
-    const onOpenEdit = vi.fn()
-    const getConsoleUrl = vi.fn().mockReturnValue(null)
-    const onOpenRowActions = vi.fn()
-    const onToggleFavorite = vi.fn()
-    const onToggleWatch = vi.fn()
-
-    const columns = buildAssetGoldenColumns({
-      activeTab: 'inventory',
+describe('AssetGoldenColumns Hardening', () => {
+  const getMockArgs = () => {
+    return {
+      activeTab: 'inventory' as const,
       hiddenColumns: [],
       fontSize: 11,
       isIntelligenceExpanded: false,
-      isRecentChange,
-      onOpenQuickLook,
-      onOpenDetails,
-      onOpenEdit,
-      getConsoleUrl,
-      onOpenRowActions,
-      onToggleFavorite,
-      onToggleWatch,
-    })
+      isRecentChange: vi.fn().mockReturnValue(false),
+      onOpenQuickLook: vi.fn(),
+      onOpenDetails: vi.fn(),
+      onOpenEdit: vi.fn(),
+      getConsoleUrl: vi.fn().mockReturnValue('http://test-console-url'),
+      onOpenRowActions: vi.fn(),
+      onToggleFavorite: vi.fn(),
+      onToggleWatch: vi.fn(),
+    }
+  }
 
-    // Find the identity column (Instance / name)
+  it('proves name/Instance identity column renders a non-button plain text element and does not call details trigger on click', () => {
+    const args = getMockArgs()
+    const columns = buildAssetGoldenColumns(args)
+
+    // 1. Find the identity column (Instance / name)
     const identityCol = columns.find((col: any) => col.field === 'name')
     expect(identityCol).toBeDefined()
     expect(identityCol?.headerName).toBe('Instance')
+
+    // 2. Render its cell renderer output
+    const value = 'db-primary-01'
+    const mockData = { id: 42, name: value }
+    const cellElement = identityCol?.cellRenderer({ value, data: mockData })
     
-    // Ensure it does not have onActivate or panel activation triggers
-    expect(identityCol?.onActivate).toBeUndefined()
-    expect(identityCol?.onCellClicked).toBeUndefined()
+    const { container } = render(<>{cellElement}</>)
+
+    // Verify it rendered a plain span, NOT a button
+    const span = container.querySelector('span')
+    expect(span).toBeInTheDocument()
+    expect(span).toHaveTextContent('db-primary-01')
+    
+    const button = container.querySelector('button')
+    expect(button).toBeNull()
+
+    // 3. Proves clicking it does NOT call onOpenDetails
+    if (span) {
+      fireEvent.click(span)
+    }
+    expect(args.onOpenDetails).not.toHaveBeenCalled()
   })
 
-  it('correctly configures intelligence columns based on isIntelligenceExpanded', () => {
-    const columnsCollapsed = buildAssetGoldenColumns({
-      activeTab: 'inventory',
-      hiddenColumns: [],
-      fontSize: 11,
-      isIntelligenceExpanded: false,
-      isRecentChange: vi.fn(),
-      onOpenQuickLook: vi.fn(),
-      onOpenDetails: vi.fn(),
-      onOpenEdit: vi.fn(),
-      getConsoleUrl: vi.fn(),
-      onOpenRowActions: vi.fn(),
-      onToggleFavorite: vi.fn(),
-      onToggleWatch: vi.fn(),
-    })
+  it('proves the action column contains an explicit open details button that fires onOpenDetails when clicked', () => {
+    const args = getMockArgs()
+    const columns = buildAssetGoldenColumns(args)
 
-    const columnsExpanded = buildAssetGoldenColumns({
-      activeTab: 'inventory',
-      hiddenColumns: [],
-      fontSize: 11,
-      isIntelligenceExpanded: true,
-      isRecentChange: vi.fn(),
-      onOpenQuickLook: vi.fn(),
-      onOpenDetails: vi.fn(),
-      onOpenEdit: vi.fn(),
-      getConsoleUrl: vi.fn(),
-      onOpenRowActions: vi.fn(),
-      onToggleFavorite: vi.fn(),
-      onToggleWatch: vi.fn(),
-    })
+    // 1. Find the action column
+    const actionCol = columns.find((col: any) => col.colId === 'row_actions')
+    expect(actionCol).toBeDefined()
 
-    // Expanded columns list should differ or include intelligence column states
-    expect(columnsCollapsed.length).toBeGreaterThan(0)
-    expect(columnsExpanded.length).toBeGreaterThan(0)
+    // 2. Render its action buttons
+    const mockData = { id: 42, name: 'db-primary-01' }
+    const actionsElement = actionCol?.cellRenderer({ data: mockData })
+    render(<>{actionsElement}</>)
+
+    // 3. Verify Open details action button exists and is clickable
+    const openDetailsButton = screen.getByTitle('Open details')
+    expect(openDetailsButton).toBeInTheDocument()
+
+    // 4. Click the button and prove it invokes onOpenDetails with the correct asset data
+    fireEvent.click(openDetailsButton)
+    expect(args.onOpenDetails).toHaveBeenCalledWith(mockData)
+  })
+
+  it('proves intelligence expanded/collapsed mode changes actual utility/column output in a meaningful way', () => {
+    const argsCollapsed = getMockArgs()
+    argsCollapsed.isIntelligenceExpanded = false
+    const columnsCollapsed = buildAssetGoldenColumns(argsCollapsed)
+
+    const argsExpanded = getMockArgs()
+    argsExpanded.isIntelligenceExpanded = true
+    const columnsExpanded = buildAssetGoldenColumns(argsExpanded)
+
+    // Utility columns expected to toggle hide state
+    const utilityFields = ['recent_change', 'favorite', 'watch']
+
+    utilityFields.forEach((field) => {
+      const colCollapsed = columnsCollapsed.find((col: any) => col.colId === field)
+      const colExpanded = columnsExpanded.find((col: any) => col.colId === field)
+
+      expect(colCollapsed).toBeDefined()
+      expect(colExpanded).toBeDefined()
+
+      // When collapsed, hide should be true
+      expect(colCollapsed?.hide).toBe(true)
+
+      // When expanded, hide should be false
+      expect(colExpanded?.hide).toBe(false)
+    })
   })
 })

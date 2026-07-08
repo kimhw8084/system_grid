@@ -125,7 +125,7 @@ export function buildAssetGoldenRowActionSections({
       id: 'followOptions',
       columns: 3,
       items: [
-        {
+        !isDeletedScope ? {
           id: 'watch',
           label: Array.isArray(watchIds) && watchIds.map(Number).includes(Number(asset.id)) ? 'Unwatch' : 'Watch',
           icon: Array.isArray(watchIds) && watchIds.map(Number).includes(Number(asset.id)) ? EyeOff : Eye,
@@ -134,8 +134,8 @@ export function buildAssetGoldenRowActionSections({
             if (onToggleWatch) onToggleWatch(Number(asset.id))
             onCloseMenu()
           },
-        },
-        {
+        } : null,
+        !isDeletedScope ? {
           id: 'favorite',
           label: Array.isArray(favoriteIds) && favoriteIds.map(Number).includes(Number(asset.id)) ? 'Unpin' : 'Pin',
           icon: Star,
@@ -144,7 +144,7 @@ export function buildAssetGoldenRowActionSections({
             if (onToggleFavorite) onToggleFavorite(Number(asset.id))
             onCloseMenu()
           },
-        },
+        } : null,
         {
           id: 'asset-copy-id',
           label: 'Copy Asset ID',
