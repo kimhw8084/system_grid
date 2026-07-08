@@ -98,4 +98,168 @@ test.describe('Network workflows', () => {
     await clickResilientButton(page, 'Confirm De-activation?')
     await expect(page.locator('[role="treegrid"]')).not.toContainText(farm, { timeout: 30000 })
   })
+
+  test('supports manual selection, modifiers, menu overlays, display configurations, and grouped grid parity', async ({ page, sysApi: request }) => {
+    await resetBrowserState(page)
+    const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const farm = `PW-NET-MANUAL-${stamp}`
+    await ensureSettingOption(request, 'NetworkFarm', farm)
+
+    const source = await createAsset(request, {
+      name: `PW-MAN-SRC-${stamp}`,
+      system: `PW-MAN-SYS-${stamp}`,
+      status: 'Active',
+      model: 'R650',
+      type: 'Physical',
+      serial_number: `PW-MAN-SRC-SN-${stamp}`,
+      asset_tag: `PW-MAN-SRC-AT-${stamp}`,
+      owner: 'net-owner',
+      business_unit: 'Operations'
+    })
+    const peerA = await createAsset(request, {
+      name: `PW-MAN-PEER-A-${stamp}`,
+      system: `PW-MAN-SYS-${stamp}`,
+      status: 'Active',
+      model: 'R650',
+      type: 'Physical',
+      serial_number: `PW-MAN-PEER-A-SN-${stamp}`,
+      asset_tag: `PW-MAN-PEER-A-AT-${stamp}`,
+      owner: 'net-owner',
+      business_unit: 'Operations'
+    })
+    const peerB = await createAsset(request, {
+      name: `PW-MAN-PEER-B-${stamp}`,
+      system: `PW-MAN-SYS-${stamp}`,
+      status: 'Active',
+      model: 'R650',
+      type: 'Physical',
+      serial_number: `PW-MAN-PEER-B-SN-${stamp}`,
+      asset_tag: `PW-MAN-PEER-B-AT-${stamp}`,
+      owner: 'net-owner',
+      business_unit: 'Operations'
+    })
+
+    const connA = await createConnection(request, {
+      device_a_id: source.id,
+      source_port: 'eth0',
+      device_b_id: peerA.id,
+      target_port: 'eth1',
+      link_type: 'Data',
+      speed_gbps: 10,
+      unit: 'Gbps',
+      status: 'Active',
+      farm
+    })
+    const connB = await createConnection(request, {
+      device_a_id: source.id,
+      source_port: 'eth2',
+      device_b_id: peerB.id,
+      target_port: 'eth3',
+      link_type: 'Management',
+      speed_gbps: 1,
+      unit: 'Gbps',
+      status: 'Planned',
+      farm
+    })
+    const connC = await createConnection(request, {
+      device_a_id: source.id,
+      source_port: 'eth4',
+      device_b_id: peerB.id,
+      target_port: 'eth5',
+      link_type: 'Backup',
+      speed_gbps: 5,
+      unit: 'Gbps',
+      status: 'Maintenance',
+      farm
+    })
+
+    // 1. Verify Deep-linked route opens detail modal with visible dynamic identity
+    await page.goto(`/network?id=${connA.id}`)
+    await expect(page.getByRole('heading', { name: 'Connection Forensics' })).toBeVisible()
+    const expectedTitle = `${source.name}:eth0 ↔ ${peerA.name}:eth1`
+    await expect(page.getByRole('heading', { name: expectedTitle })).toBeVisible()
+    
+    // Close the detail modal via footer close button
+    await clickResilientButton(page, 'Close')
+    await expect(page.getByRole('heading', { name: 'Connection Forensics' })).not.toBeVisible()
+
+    // 2. Load the network grid
+    await page.goto('/network')
+    await expect(page.getByText('Scanning network matrix...')).not.toBeVisible({ timeout: 15000 })
+    await page.getByPlaceholder('Scan matrix...').fill(farm)
+
+    const rows = page.locator('.ag-center-cols-container .ag-row')
+    await expect(rows).toHaveCount(3, { timeout: 15000 })
+
+    // 3. Prove manual normal row selection (single click)
+    await rows.nth(0).locator('.ag-cell').first().click()
+    await expect(rows.nth(0)).toHaveClass(/ag-row-selected/)
+    await expect(rows.nth(1)).not.toHaveClass(/ag-row-selected/)
+    await expect(rows.nth(2)).not.toHaveClass(/ag-row-selected/)
+
+    // 4. Prove Ctrl/Cmd toggle selection
+    const isMac = process.platform === 'darwin'
+    const modifier = isMac ? 'Meta' : 'Control'
+    await rows.nth(1).locator('.ag-cell').first().click({ modifiers: [modifier] })
+    await expect(rows.nth(0)).toHaveClass(/ag-row-selected/)
+    await expect(rows.nth(1)).toHaveClass(/ag-row-selected/)
+    await expect(rows.nth(2)).not.toHaveClass(/ag-row-selected/)
+
+    // 5. Prove Shift range selection
+    // Single click on Row 0 first to clear other selections
+    await rows.nth(0).locator('.ag-cell').first().click()
+    await expect(rows.nth(0)).toHaveClass(/ag-row-selected/)
+    await expect(rows.nth(1)).not.toHaveClass(/ag-row-selected/)
+    await expect(rows.nth(2)).not.toHaveClass(/ag-row-selected/)
+
+    // Shift-click Row 2
+    await rows.nth(2).locator('.ag-cell').first().click({ modifiers: ['Shift'] })
+    await expect(rows.nth(0)).toHaveClass(/ag-row-selected/)
+    await expect(rows.nth(1)).toHaveClass(/ag-row-selected/)
+    await expect(rows.nth(2)).toHaveClass(/ag-row-selected/)
+
+    // 6. Prove bulk menu enables after selection
+    await page.getByRole('button', { name: 'Bulk Actions' }).click()
+    await expect(page.locator('.bulk-menu-container')).toBeVisible({ timeout: 5000 })
+    // Close the bulk menu by pressing Escape to avoid pointer interception
+    await page.keyboard.press('Escape')
+    await expect(page.locator('.bulk-menu-container')).not.toBeVisible()
+
+    // 7. Prove row action menu opens from a row
+    await page.locator('.row-action-trigger').first().click()
+    await expect(page.locator('div.row-action-menu-container')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText('Row actions')).toBeVisible()
+    // Close row action menu via Escape
+    await page.keyboard.press('Escape')
+    await expect(page.locator('div.row-action-menu-container')).not.toBeVisible()
+
+    // 8. Prove display menu opens
+    await page.getByRole('button', { name: 'Display' }).click()
+    await expect(page.getByText('Display density')).toBeVisible({ timeout: 5000 })
+
+    // 9. Prove Grouped grid renders and grouped selection works
+    // Change Group By in Display menu to "Status"
+    await page.getByRole('button', { name: 'Raw Rows' }).click()
+    await page.getByRole('button', { name: 'Status', exact: true }).click()
+    
+    // The grid should now show grouped layout
+    await expect(page.getByText('Grouped network matrix')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Active' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Planned' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Maintenance' })).toBeVisible()
+
+    // Select a row inside "Active" group and see aggregation updates
+    const activeSection = page.locator('section.glass-panel').filter({ has: page.getByRole('heading', { name: 'Active' }) })
+    await activeSection.locator('.ag-center-cols-container .ag-row').nth(0).locator('.ag-cell').first().click()
+    await expect(activeSection.locator('.ag-center-cols-container .ag-row').nth(0)).toHaveClass(/ag-row-selected/)
+    await expect(activeSection.getByText('1 connections · 1 selected')).toBeVisible()
+
+    // Cancel grouping
+    await page.getByRole('button', { name: 'Cancel' }).click()
+    await expect(page.getByText('Grouped network matrix')).not.toBeVisible()
+
+    // 10. Prove saved views menu opens
+    await page.getByRole('button', { name: 'Views' }).click()
+    await expect(page.getByText('Saved views')).toBeVisible({ timeout: 5000 })
+  })
 })

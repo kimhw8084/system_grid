@@ -1366,8 +1366,6 @@ export default function NetworkReal() {
     queryFn: async () => (await apiFetch('/api/v1/networks/connections?include_deleted=true')).json()
   })
 
-  console.log("NETWORK QUERY STATE:", { allItems: allItems?.length, isLoading, isError, error: error?.message })
-
   const activeNetworkQueryError = isError ? error : null
 
   const networkDiagnosticDetail = useMemo(() => buildOperationalDiagnosticDetail({
@@ -3292,7 +3290,9 @@ function NetworkDetailModal({ item, onClose, onEdit, onDelete, onOpenAsset, onOp
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
       title={
         <div className="flex items-center gap-3">
-          <span>Connection Forensics</span>
+          <span className="sr-only">Connection Forensics</span>
+          <span className="text-slate-400 font-normal">Connection Forensics:</span>
+          <span>{detailTitle}</span>
           <WorkspaceShareHeader id={String(item.id)} title={detailTitle} />
         </div>
       }

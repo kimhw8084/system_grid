@@ -236,8 +236,10 @@ export function useOperationalRowInteractions({
     }
 
     if (isToggleSelection) {
-      const currentlySelectedIds = normalizeSelectedNodeIds(event.api?.getSelectedNodes?.() || []);
-      const shouldSelect = !currentlySelectedIds.includes(clickedId);
+      const isRealBrowserClick = typeof MouseEvent !== 'undefined' && event.event instanceof MouseEvent;
+      const shouldSelect = (suppressRowClickSelection || !isRealBrowserClick)
+        ? !normalizeSelectedNodeIds(event.api?.getSelectedNodes?.() || []).includes(clickedId)
+        : event.node.isSelected();
       const updated = setLogicalRowSelection(event.api, new Set([clickedId]), shouldSelect);
       if (!updated) event.node.setSelected(shouldSelect);
     } else if (!suppressRowClickSelection) {
@@ -247,7 +249,7 @@ export function useOperationalRowInteractions({
     }
 
     selectionAnchorRef.current = clickedId;
-  }, [pendingIds]);
+  }, [pendingIds, suppressRowClickSelection]);
 
   const handleRowDoubleClicked = useCallback((event: any) => {
     if (!event?.data || shouldIgnoreRowSelection(event.event?.target)) return;
