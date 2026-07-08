@@ -1,6 +1,7 @@
 import { clickResilientButton, fillGridSearch, openToolbarButton, resetBrowserState, seedOperationalScenario, selectGridCheckboxRows, verifyGridRowRobust } from './helpers/sysgrid';
 import { expect } from '@playwright/test';
 import { test } from './helpers/sysgrid-test';
+import fs from 'fs';
 
 test.describe('Assets workflows', () => {
   test.use({ viewport: { width: 1920, height: 1080 } })
@@ -175,9 +176,28 @@ test.describe('Assets workflows', () => {
     await expect(page.getByRole('button', { name: /^Export CSV/ })).toBeEnabled()
     await expect(page.getByRole('button', { name: /^Snapshot/ })).toBeEnabled()
     await expect(page.getByRole('button', { name: /^Export Template/ })).toBeEnabled()
-    // Dismiss export flyout by clicking outside
-    await page.mouse.click(10, 10)
-    await expect(page.getByRole('button', { name: /^Export CSV/ })).not.toBeVisible()
+
+    // Capture the client-side CSV download
+    const downloadPromise = page.waitForEvent('download')
+    await page.getByRole('button', { name: /^Export CSV/ }).click()
+    const download = await downloadPromise
+
+    // Verify downloaded filename structure
+    expect(download.suggestedFilename()).toContain('SysGrid_Assets_')
+    expect(download.suggestedFilename().endsWith('.csv')).toBe(true)
+
+    // Read download content via local file system
+    const downloadPath = await download.path()
+    const csvContent = fs.readFileSync(downloadPath, 'utf8')
+    // Verify column headers exist inside exported CSV (e.g. Instance, System, Type or Status headers)
+    expect(csvContent).toContain('Instance')
+    expect(csvContent).toContain('System')
+    expect(csvContent).toContain('Type')
+    expect(csvContent).toContain('Status')
+    expect(csvContent).toContain(secondary.name)
+
+    // Settle layouts
+    await page.waitForTimeout(500)
 
     // Target B.5: Import shared modal paste parsing and load to builder proof
     await clickResilientButton(page, 'Import')
