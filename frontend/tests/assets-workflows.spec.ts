@@ -60,7 +60,7 @@ test.describe('Assets workflows', () => {
     const compareVisibleButton = page.getByRole('button', { name: 'Compare', exact: true })
 
     await assetRowActions.first().click({ force: true })
-    await viewDetailsButtons.last().click({ force: true })
+    await viewDetailsButtons.filter({ visible: true }).first().click({ force: true })
     await expect(page.getByText(primary.name).first()).toBeVisible({ timeout: 20000 })
     await expect(page.getByText('Suggested Runbooks Now')).toBeVisible()
     await expect(farRisksButton).toBeVisible()
@@ -77,7 +77,7 @@ test.describe('Assets workflows', () => {
     await page.keyboard.press('Enter')
     await expect(page.locator('[role="treegrid"]')).toContainText(primary.name, { timeout: 15_000 })
     await assetRowActions.first().click({ force: true })
-    await viewDetailsButtons.last().click({ force: true })
+    await viewDetailsButtons.filter({ visible: true }).first().click({ force: true })
 
     await expect(farRisksButton).toBeEnabled()
     await farRisksButton.click({ force: true })
@@ -88,7 +88,7 @@ test.describe('Assets workflows', () => {
     await page.keyboard.press('Enter')
     await expect(page.locator('[role="treegrid"]')).toContainText(primary.name, { timeout: 15_000 })
     await assetRowActions.first().click({ force: true })
-    await viewDetailsButtons.last().click({ force: true })
+    await viewDetailsButtons.filter({ visible: true }).first().click({ force: true })
     await auditButton.click({ force: true })
     await expect(page).toHaveURL(new RegExp(`/logs\\?target_table=devices&target_id=${primary.id}`))
     await expect(page.getByText(`Scoped: devices // ${primary.id}`)).toBeVisible()
@@ -110,6 +110,52 @@ test.describe('Assets workflows', () => {
     await page.waitForTimeout(300)
     await expect(rows.nth(0)).not.toHaveClass(/ag-row-selected/)
 
+    // Target B.2: Name/Instance click no-panel behavior proof
+    const nameCell = rows.nth(0).locator('.ag-cell').nth(1)
+    await nameCell.click()
+    await page.waitForTimeout(300)
+    // Verify name-cell click does NOT trigger details side panel/modal opening
+    await expect(page.getByText('Suggested Runbooks Now')).not.toBeVisible()
+
+    // Explicit Details button click DOES open details
+    await page.getByTitle('More actions').filter({ visible: true }).first().click({ force: true })
+    await page.getByRole('button', { name: 'View Details' }).click({ force: true })
+    await expect(page.getByText('Suggested Runbooks Now')).toBeVisible()
+
+    // Re-goto assets to reset UI state
+    await page.goto('/asset')
+    await page.getByPlaceholder('Scan asset matrix...').fill(systemName)
+    await page.keyboard.press('Enter')
+    await expect(page.locator('[role="treegrid"]')).toContainText(primary.name, { timeout: 15_000 })
+    await page.waitForTimeout(500)
+
+    // Select rows and check bulk actions
+    await selectGridCheckboxRows(page, [0, 1])
+
+    // Target B.1: Bulk action expandable inline panel grammar proof
+    await bulkActionsButton.click()
+    await page.waitForTimeout(300)
+    // Destructive confirm buttons must not be stacked outside cards
+    await expect(page.getByRole('button', { name: 'Confirm Archive?' })).not.toBeVisible()
+
+    // Expand Archive Selection card
+    const archiveCard = page.getByText('Archive Selection')
+    await expect(archiveCard).toBeVisible()
+    await archiveCard.click()
+    await page.waitForTimeout(300)
+
+    // Confirm button inside expanded action card
+    const archiveActionBtn = page.getByRole('button', { name: 'Archive selected assets' })
+    await expect(archiveActionBtn).toBeVisible()
+    await archiveActionBtn.click()
+    await page.waitForTimeout(300)
+    await expect(page.getByRole('button', { name: 'Confirm Archive?' })).toBeVisible()
+
+    // Close bulk actions panel
+    await bulkActionsButton.click()
+    await page.waitForTimeout(300)
+
+    // Launch Compare Modal (proves shared Compare modal behavior and Escape dismissal)
     await selectGridCheckboxRows(page, [0, 1])
     await bulkActionsButton.click()
     await compareVisibleButton.click()
@@ -118,6 +164,7 @@ test.describe('Assets workflows', () => {
     await expect(page.getByText('Show Differences Only')).toBeVisible()
 
     await page.keyboard.press('Escape')
+    await page.waitForTimeout(300)
 
     await page.goto('/asset')
     await fillGridSearch(page, 'Scan asset matrix...', secondary.name)
@@ -131,6 +178,35 @@ test.describe('Assets workflows', () => {
     // Dismiss export flyout by clicking outside
     await page.mouse.click(10, 10)
     await expect(page.getByRole('button', { name: /^Export CSV/ })).not.toBeVisible()
+
+    // Target B.5: Import shared modal paste parsing and load to builder proof
+    await clickResilientButton(page, 'Import')
+    await expect(page.getByText('Assets Import')).toBeVisible()
+
+    // Switch to Paste tab
+    await page.getByRole('button', { name: 'Paste CSV / Grid' }).click()
+    await page.waitForTimeout(300)
+
+    // Paste asset spreadsheet data
+    const pasteArea = page.getByPlaceholder('Paste CSV with headers, or paste spreadsheet cells directly...')
+    await expect(pasteArea).toBeVisible()
+    await pasteArea.fill(`name,system,type,status,model\nPW-IMPORTED-ASSET-01,${systemName},Physical,Active,R740`)
+    await page.waitForTimeout(300)
+
+    // Click "Load Into Builder" to process spreadsheet parsing
+    await page.getByRole('button', { name: 'Load Into Builder' }).click()
+    await page.waitForTimeout(500)
+
+    // Verify parser parsed cells and transitioned to builder layout
+    await expect(page.getByText('Manual Data Builder')).toBeVisible()
+    await expect(page.locator('tbody tr input').first()).toHaveValue('PW-IMPORTED-ASSET-01')
+
+    // Close import modal cleanly (handling dirty state guard)
+    await clickResilientButton(page, 'Close')
+    await page.waitForTimeout(300)
+    await clickResilientButton(page, 'Discard Changes')
+    await page.waitForTimeout(300)
+    await expect(page.getByText('Assets Import')).not.toBeVisible()
 
     // Settle layout before action click
     await page.waitForTimeout(1000)
@@ -154,6 +230,19 @@ test.describe('Assets workflows', () => {
     await openToolbarButton(page, /Purged/)
     await fillGridSearch(page, 'Scan asset matrix...', secondary.name)
     await verifyGridRowRobust(page, secondary.name)
+
+    // Target B.3: Deleted/purged scope suppression proof
+    const purgedRowActions = page.getByTitle('More actions').filter({ visible: true }).first()
+    await purgedRowActions.click({ force: true })
+    await page.waitForTimeout(500)
+    // Assert active-only actions are completely suppressed/not visible in the row menu
+    await expect(page.getByRole('button', { name: 'Pin' })).not.toBeVisible()
+    await expect(page.getByRole('button', { name: 'Unpin' })).not.toBeVisible()
+    await expect(page.getByRole('button', { name: 'Watch' })).not.toBeVisible()
+    await expect(page.getByRole('button', { name: 'Unwatch' })).not.toBeVisible()
+    await expect(page.getByRole('button', { name: 'Edit Configuration' })).not.toBeVisible()
+    await page.keyboard.press('Escape') // Dismiss row action menu
+    await page.waitForTimeout(500)
 
     // Settle layout before action click
     await page.waitForTimeout(1000)

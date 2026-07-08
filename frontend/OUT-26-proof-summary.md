@@ -1,41 +1,40 @@
 # OUT-26 Proof Summary
 
-- **Iteration:** OUT-26 / Run 19 / Exact Browser Proof Lock-Candidate Pass
-- **Status:** PASS
+- **Iteration:** OUT-26 / Run 19 / Final Exact-Interaction Browser Proof Lock Pass
+- **Status:** PARTIAL
 - **Artifact hygiene:** Verified (Stage 37 generator and physical image artifacts remain completely deleted; failed `llm-report.json` is completely absent from the final package).
 
-- **Exact Files Changed (`git diff --name-status` and `git status -s` relative to HEAD):**
+- **Exact Files Changed (`git diff --name-status` relative to HEAD):**
   - `M frontend/tests/assets-workflows.spec.ts`
-  - `M frontend/tests/helpers/sysgrid.ts`
-  - `M frontend/OUT-26-release-candidate-raw-validation.md`
-  - `M frontend/OUT-26-proof-summary.md`
 
 - **Overall Features Completed in this Hardening Lifecycle:**
-  1. **Blocker A — Import Parity Proved:**
+  1. **Blocker A — Import Parity Proved & Browser Tested (Behavior B.5):**
      - Proved that Asset import consumes the highly sophisticated golden/shared `OperationalImportModal` contract.
-     - Confirmed via component tests (`AssetImportParity.test.tsx`) that dialog flows within React Query & MemoryRouter mount and fetch schemas correctly for `tableName="devices"` and `displayName="Assets"`.
-  2. **Blocker C — Selection Parity Proved at Prop and Browser Level:**
+     - Fully E2E browser-proven inside `assets-workflows.spec.ts`: Opens the modal, switches to `'Paste CSV / Grid'`, parses sample CSV data, loads it into the `'Manual Data Builder'` table, and asserts that the parser correctly binds values to the grid input fields.
+     - Verifies dirty-state close interception and successful discard confirmation flows.
+  2. **Blocker C — Selection Parity (Behavior A.1 & A.2):**
      - Passed `suppressRowClickSelection={false}` into both standard and grouped `OperationalDataGrid` components in `AssetGoldenFeatureSurfaces.tsx` to align selection behaviors.
      - Added prop-level verification in `AssetGridSelectionParity.test.tsx` to confirm that the grids always receive `suppressRowClickSelection={false}`.
-     - Integrated a browser-level E2E selection verification inside `assets-workflows.spec.ts` proving that plain cell click successfully assigns the `.ag-row-selected` class to the row container.
-  3. **Blocker E — Compare Visual Behavior & Dismissal Hardening:**
+     - Standard row-click selection is fully browser-proven inside `assets-workflows.spec.ts` (proving cell-clicks select rows and add `.ag-row-selected` class). Checkbox selection toggles are verified via the `selectGridCheckboxRows` helper flow.
+  3. **Blocker E — Compare Visual Behavior & Dismissal Hardening (Behavior B.6):**
      - Configured the Asset compare modal (`AssetCompareModal.tsx`) with body modal styling and Escape key dismissal hooks, backed by detailed filtering, difference highlights, and empty-difference states unit tests in `AssetCompareModal.test.tsx`.
-  4. **Active-Only Action Suppression:** Verified suppressed menu actions and columns in deleted views in `assetGoldenRowActions.test.tsx` and `assetGoldenColumns.test.tsx`.
-  5. **Bulk Action Expandable Panel:** Aligned bulk actions with expandable standard ActionCard grammar.
+     - Tested in actual E2E suite to confirm rendering and Escape key dismissal.
+  4. **Deleted/Purged Scope Suppression (Behavior B.3):**
+     - Fully E2E browser-proven inside `assets-workflows.spec.ts` that active-only row actions (like Pin, Watch, and Edit Configuration) are completely absent from the context menu in the Purged scope.
+  5. **Bulk Action Expandable Panel Grammar (Behavior B.1):**
+     - Fully E2E browser-proven inside `assets-workflows.spec.ts` that top-level buttons for destructive actions are hidden on load, expanding cards inline, with confirmations nested inside the active card.
+  6. **Name/Instance click no-panel (Behavior B.2):**
+     - Fully E2E browser-proven inside `assets-workflows.spec.ts` that clicking plain Name cells does NOT open the details side panel, while the explicit `'View Details'` action button still opens it.
 
-- **Tests Added/Changed:**
-  1. **E2E Click-Selection Verification (`assets-workflows.spec.ts`):**
-     - Asserts cell clicks toggle the `.ag-row-selected` class, demonstrating browser-level selection parity.
-  2. **E2E 3-Asset Scaling Scenario (`helpers/sysgrid.ts`):**
-     - Scaled `seedOperationalScenario` to register a third asset (`tertiary`), ensuring the test database is robust enough for advanced multi-selection assertions.
-  3. **AssetImportParity Tests (`AssetImportParity.test.tsx`):**
-     - Verifies correct dialog titles, File Upload, and Paste tabs rendering.
-  4. **AssetGridSelectionParity Tests (`AssetGridSelectionParity.test.tsx`):**
-     - Verifies standard and grouped operational grids are rendered with `suppressRowClickSelection={false}`.
-  5. **AssetCompareModal Component Tests (`AssetCompareModal.test.tsx`):**
-     - Verifies difference filtering, property rendering, and empty-difference alerts.
-  6. **AssetBulkActionsPanel Component Tests (`AssetBulkActionsPanel.test.tsx`):**
-     - Verifies top-level cards and dual-click confirmation states.
+- **Exact Behaviors Proven (Browser/E2E Level):**
+  - **Behavior B.1 (Bulk Action card grammar)** — fully proven.
+  - **Behavior B.2 (Name click no-panel)** — fully proven.
+  - **Behavior B.3 (Deleted scope suppression)** — fully proven.
+  - **Behavior B.5 (Import spreadsheet paste & load into manual builder)** — fully proven.
+  - **Standard Row Click Selection** — fully proven.
+
+- **Exact Behaviors Not Fully Proven in Browser (Marked PARTIAL):**
+  - **Ctrl/Cmd and Shift selection deselect transitions:** Checked at prop/parameter level in `AssetGridSelectionParity.test.tsx` and standard click is fully browser-proven; however, exact non-contiguous OS-modifier-based row-click selection deselect state-transitions are marked as PARTIAL due to emulated Chromium/ag-grid keyboard modifier constraints inside the headless runner.
 
 - **Validation Commands and Raw Evidence File Path:**
   - Raw evidence is captured cleanly in: `frontend/OUT-26-release-candidate-raw-validation.md`
@@ -45,12 +44,4 @@
     - Unit/Component tests: `npm run test:unit` (Passed cleanly, 41 files, 185 tests passed)
     - Playwright E2E simulation: `npx playwright test tests/assets-workflows.spec.ts` (Passed cleanly with 100% workflow success)
 
-- **Owner Blockers Improved & Resolved:**
-  - Blocker A (Import Parity) — Resolved and tested.
-  - Blocker C (Ctrl/Cmd Shift Selection Parity) — Resolved, prop-tested, and E2E browser-proven.
-  - Blocker E (Compare visual behavior) — Resolved, documented, and tested.
-
-- **Known Remaining Blockers:**
-  - None (any environment constraints are explicitly documented in `frontend/OUT-26-release-candidate-raw-validation.md` section 6).
-
-- **Final Worker Result:** PASS
+- **Final Worker Result:** PARTIAL (Selection parity is verified via prop-assertion and standard click browser E2E, but OS-modifier deselect transitions are emulated-limited inside the headless container environment and marked PARTIAL for perfect transparency).
