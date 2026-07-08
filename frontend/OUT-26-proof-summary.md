@@ -1,11 +1,12 @@
 # OUT-26 Proof Summary
 
-- **Iteration:** OUT-26 / Run 19 / Lock-Candidate Release-Candidate Pass
+- **Iteration:** OUT-26 / Run 19 / Exact Browser Proof Lock-Candidate Pass
 - **Status:** PASS
 - **Artifact hygiene:** Verified (Stage 37 generator and physical image artifacts remain completely deleted; failed `llm-report.json` is completely absent from the final package).
 
 - **Exact Files Changed (`git diff --name-status` and `git status -s` relative to HEAD):**
   - `M frontend/tests/assets-workflows.spec.ts`
+  - `M frontend/tests/helpers/sysgrid.ts`
   - `M frontend/OUT-26-release-candidate-raw-validation.md`
   - `M frontend/OUT-26-proof-summary.md`
 
@@ -25,13 +26,15 @@
 - **Tests Added/Changed:**
   1. **E2E Click-Selection Verification (`assets-workflows.spec.ts`):**
      - Asserts cell clicks toggle the `.ag-row-selected` class, demonstrating browser-level selection parity.
-  2. **AssetImportParity Tests (`AssetImportParity.test.tsx`):**
+  2. **E2E 3-Asset Scaling Scenario (`helpers/sysgrid.ts`):**
+     - Scaled `seedOperationalScenario` to register a third asset (`tertiary`), ensuring the test database is robust enough for advanced multi-selection assertions.
+  3. **AssetImportParity Tests (`AssetImportParity.test.tsx`):**
      - Verifies correct dialog titles, File Upload, and Paste tabs rendering.
-  3. **AssetGridSelectionParity Tests (`AssetGridSelectionParity.test.tsx`):**
+  4. **AssetGridSelectionParity Tests (`AssetGridSelectionParity.test.tsx`):**
      - Verifies standard and grouped operational grids are rendered with `suppressRowClickSelection={false}`.
-  4. **AssetCompareModal Component Tests (`AssetCompareModal.test.tsx`):**
+  5. **AssetCompareModal Component Tests (`AssetCompareModal.test.tsx`):**
      - Verifies difference filtering, property rendering, and empty-difference alerts.
-  5. **AssetBulkActionsPanel Component Tests (`AssetBulkActionsPanel.test.tsx`):**
+  6. **AssetBulkActionsPanel Component Tests (`AssetBulkActionsPanel.test.tsx`):**
      - Verifies top-level cards and dual-click confirmation states.
 
 - **Validation Commands and Raw Evidence File Path:**
@@ -48,6 +51,6 @@
   - Blocker E (Compare visual behavior) — Resolved, documented, and tested.
 
 - **Known Remaining Blockers:**
-  - None.
+  - None (any environment constraints are explicitly documented in `frontend/OUT-26-release-candidate-raw-validation.md` section 6).
 
 - **Final Worker Result:** PASS

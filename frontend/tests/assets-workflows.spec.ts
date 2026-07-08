@@ -7,7 +7,7 @@ test.describe('Assets workflows', () => {
 
   test('simulates the changed Assets workflows end-to-end', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
-    const { stamp, systemName, primary, secondary, monitoring, far } = await seedOperationalScenario(request)
+    const { stamp, systemName, primary, secondary, tertiary, monitoring, far } = await seedOperationalScenario(request)
 
     await page.goto('/asset')
     await expect(page.getByRole('heading', { name: 'Assets' })).toBeVisible()
@@ -17,6 +17,7 @@ test.describe('Assets workflows', () => {
     await page.keyboard.press('Enter')
     await expect(page.locator('[role="treegrid"]')).toContainText(primary.name, { timeout: 15_000 })
     await expect(page.locator('[role="treegrid"]')).toContainText(secondary.name, { timeout: 15_000 })
+    await expect(page.locator('[role="treegrid"]')).toContainText(tertiary.name, { timeout: 15_000 })
     await page.waitForTimeout(1500)
 
     // Required Browser/E2E Scenario 15: Right-click selects/focuses the clicked row and opens context menu at the pointer
@@ -95,13 +96,19 @@ test.describe('Assets workflows', () => {
     await page.goto('/asset')
     await page.getByPlaceholder('Scan asset matrix...').fill(systemName)
     const rows = page.locator('.ag-center-cols-container .ag-row')
-    await expect(rows).toHaveCount(2, { timeout: 15_000 })
+    await expect(rows).toHaveCount(3, { timeout: 15_000 })
 
     // Target 1 Proof: Plain row-click selects a row (facilitated by suppressRowClickSelection={false})
-    const firstCell = rows.first().locator('.ag-cell').first()
-    await firstCell.click()
-    await page.waitForTimeout(500)
-    await expect(rows.first()).toHaveClass(/ag-row-selected/)
+    const cell0 = rows.nth(0).locator('.ag-cell').nth(1)
+    await cell0.click()
+    await page.waitForTimeout(300)
+    await expect(rows.nth(0)).toHaveClass(/ag-row-selected/)
+
+    // Deselect row 0 to clear state before bulk select E2E scenario
+    const checkbox0 = page.getByRole('checkbox', { name: /Press Space to toggle row selection/i }).nth(0)
+    await checkbox0.uncheck()
+    await page.waitForTimeout(300)
+    await expect(rows.nth(0)).not.toHaveClass(/ag-row-selected/)
 
     await selectGridCheckboxRows(page, [0, 1])
     await bulkActionsButton.click()

@@ -301,6 +301,21 @@ export async function seedOperationalScenario(request: APIRequestContext) {
     environment: 'DR'
   })
 
+  const tertiary = await createAsset(request, {
+    name: `PW-ASSET-C-${nonce}`,
+    system: systemName,
+    status: 'Active',
+    model: 'R740',
+    type: 'Physical',
+    serial_number: `PW-SN-C-${nonce}`,
+    asset_tag: `PW-TAG-C-${nonce}`,
+    owner: 'admin_root',
+    business_unit: 'Operations',
+    primary_ip: `10.0.${ipSeed}.14`,
+    management_ip: `10.0.${ipSeed}.15`,
+    environment: 'Prod'
+  })
+
   const service = await post(request, '/logical-services', {
     name: `PW-SVC-${nonce}`,
     service_type: 'Database',
@@ -352,7 +367,7 @@ export async function seedOperationalScenario(request: APIRequestContext) {
     affected_assets: [primary.id]
   })
 
-  return { stamp: nonce, systemName, primary, secondary, service, knowledge, monitoring, maintenance, far }
+  return { stamp: nonce, systemName, primary, secondary, tertiary, service, knowledge, monitoring, maintenance, far }
 }
 
 export async function seedRackScenario(request: APIRequestContext) {

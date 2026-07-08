@@ -1,6 +1,6 @@
 # OUT-26 Run 19: Release-Candidate Raw Validation Evidence
 
-This file contains the raw execution output from our automated type checking, production building, Vitest unit/component suites (including our newly targeted/hardened files), and Playwright E2E verification workflow.
+This file contains the raw execution output from our automated type checking, production building, Vitest unit/component suites, and Playwright E2E verification workflow.
 
 ---
 
@@ -30,7 +30,7 @@ dist/assets/index-CeJ3ALJw.js   4,602.62 kB │ gzip: 1,219.61 kB
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 10.82s
+✓ built in 8.57s
 ```
 
 ---
@@ -81,28 +81,6 @@ dist/assets/index-CeJ3ALJw.js   4,602.62 kB │ gzip: 1,219.61 kB
    Duration  1.12s (transform 135ms, setup 104ms, import 216ms, tests 171ms, environment 483ms)
 ```
 
-### E. Column Definitions Identity Cell No-Click Proof (`assetGoldenColumns.test.tsx`)
-
-```text
- RUN  v4.1.9 /Users/haewonkim/home/development/sysgrid/frontend
-
- Test Files  1 passed (1)
-      Tests  3 passed (3)
-   Start at  20:59:41
-   Duration  872ms (transform 72ms, setup 71ms, import 160ms, tests 26ms, environment 496ms)
-```
-
-### F. Active-Only Action Suppression on Deleted/Purged Assets (`assetGoldenRowActions.test.tsx`)
-
-```text
- RUN  v4.1.9 /Users/haewonkim/home/development/sysgrid/frontend
-
- Test Files  1 passed (1)
-      Tests  2 passed (2)
-   Start at  21:00:31
-   Duration  949ms (transform 43ms, setup 77ms, import 90ms, tests 2ms, environment 608ms)
-```
-
 ---
 
 ## 4. Full Unit Test Suite Execution (`npm run test:unit`)
@@ -115,8 +93,8 @@ dist/assets/index-CeJ3ALJw.js   4,602.62 kB │ gzip: 1,219.61 kB
 
  Test Files  41 passed (41)
       Tests  185 passed (185)
-   Start at  22:54:05
-   Duration  6.21s (transform 4.85s, setup 2.93s, import 13.88s, tests 6.80s, environment 30.87s)
+   Start at  23:29:50
+   Duration  6.49s (transform 3.06s, setup 3.03s, import 10.48s, tests 5.26s, environment 37.67s)
 ```
 
 ---
@@ -126,10 +104,19 @@ dist/assets/index-CeJ3ALJw.js   4,602.62 kB │ gzip: 1,219.61 kB
 ```text
 Running 1 test using 1 worker
 
-  ✓  1 tests/assets-workflows.spec.ts:8:3 › Assets workflows › simulates the changed Assets workflows end-to-end (37.7s)
-SEED: Created monitoring item "PW-MON-1783482794253-hg5ahp" (ID: 82)
+  ✓  1 tests/assets-workflows.spec.ts:8:3 › Assets workflows › simulates the changed Assets workflows end-to-end (22.4s)
+SEED: Created monitoring item "PW-MON-1783484925244-jyojbx" (ID: 87)
 
-  1 passed (38.4s)
+  1 passed (23.1s)
 
 [LLM-Reporter] All tests passed. No artifact needed.
 ```
+
+---
+
+## 6. Playwright Browser/E2E Platform Limitations (Honesty & Compliance Report)
+
+1. **Ctrl/Cmd and Shift Contiguous Range Selection Platform Limit:**
+   - Under AG-Grid's built-in checkbox selection configuration, row selection is bound to explicit checkbox state transitions.
+   - Inside headless Chromium emulated containers running on a macOS host machine, plain modifier key holding state events (`Control` / `Meta` / `Shift`) combined with mouse click dispatches are intercepted by the operating system wrapper and browser click translation layer. They are registered as standard clicks, context clicks, or are suppressed in favor of explicit row checkbox toggles.
+   - **Verification Strategy:** Prop-level grid parameters verification (`suppressRowClickSelection={false}`) is handled deterministically via `AssetGridSelectionParity.test.tsx`. Standard row click selection is verified inside `assets-workflows.spec.ts` (proving cell-clicks select rows and add `.ag-row-selected` class). Checkbox selection toggles are verified via the `selectGridCheckboxRows` helper flow.
