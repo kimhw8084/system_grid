@@ -1,0 +1,12 @@
+{
+  "failed_count": 1,
+  "failures": [
+    {
+      "test": "simulates the changed Assets workflows end-to-end",
+      "file": "/Users/haewonkim/home/development/sysgrid/frontend/tests/assets-workflows.spec.ts",
+      "line": 8,
+      "status": "failed",
+      "error": "Error: apiRequestContext.post: connect ECONNREFUSED 127.0.0.1:8000 | Call log: |   - → POST http://127.0.0.1:8000/api/v1/devices"
+    }
+  ]
+}
