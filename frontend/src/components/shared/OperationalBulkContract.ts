@@ -55,7 +55,7 @@ export const estimateRowActionHeaderTextWidth = (text: string, extraPadding = 0)
 )
 
 export const showOperationalBulkErrorToast = (message: string) => {
-  const cleanMessage = message === 'Failed to fetch'
+  const cleanMessage = String(message || '').toLowerCase().includes('fetch')
     ? 'Failed to connect to backend services. Ensure the server is online.'
     : message
   showWorkspaceToast(`Bulk operation failed: ${cleanMessage}`, { type: 'error' })

@@ -127,9 +127,10 @@ export default function AssetGoldenOperationalWorkspace() {
   }, [activeOverlay, dismissOverlays, workspace.rowActionMenu])
 
   const openRowActionMenuAtPoint = useCallback((asset: any, x: number, y: number) => {
+    setRowDeleteConfirmId(null)
     setRowActionMenu({ asset, x, y })
     openOverlay('rowAction')
-  }, [openOverlay, setRowActionMenu])
+  }, [openOverlay, setRowActionMenu, setRowDeleteConfirmId])
 
   const { handleCellContextMenu } = useOperationalContextMenu({
     onOpenRowActionMenu: useCallback((asset, point) => {

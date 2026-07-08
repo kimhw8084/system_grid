@@ -424,6 +424,8 @@ async def bulk_action(request: Request, data: dict, db: AsyncSession = Depends(g
         # Clear firewall rule source/dest references
         await db.execute(update(models.FirewallRule).where(models.FirewallRule.source_device_id.in_(tenant_device_ids)).values(source_device_id=None))
         await db.execute(update(models.FirewallRule).where(models.FirewallRule.dest_device_id.in_(tenant_device_ids)).values(dest_device_id=None))
+        # Delete referencing far failure mode associations
+        await db.execute(delete(models.far_mode_assets).where(models.far_mode_assets.c.device_id.in_(tenant_device_ids)))
         # Now safely delete devices
         await db.execute(delete(models.Device).where(models.Device.id.in_(tenant_device_ids)))
         await db.commit()

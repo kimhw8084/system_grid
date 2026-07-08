@@ -31,8 +31,9 @@ export const buildOperationalLifecycleToastMessage = ({
   }
 
   const actionSpec = getOperationalLifecycleActionSpec(action)
-  if (!actionSpec) {
-    const fallbackLabel = (action as string) === 'delete' ? 'Archived' : (action.charAt(0).toUpperCase() + action.slice(1))
+  if (!actionSpec || !actionSpec.successToast) {
+    const actionStr = String(action || 'completed')
+    const fallbackLabel = actionStr === 'delete' ? 'Archived' : (actionStr.charAt(0).toUpperCase() + actionStr.slice(1))
     return `${fallbackLabel} ${changedCount} of ${totalSelected} ${selectedRecordLabel}.`
   }
   return `${actionSpec.successToast} ${changedCount} of ${totalSelected} ${selectedRecordLabel}.`

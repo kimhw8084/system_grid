@@ -62,4 +62,18 @@ describe('buildOperationalLifecycleToastMessage', () => {
       changedCount: 2,
     })).toBe('Permanently purged 2 of 3 selected records.')
   })
+
+  it('gracefully handles missing, undefined, or unknown actions without throwing', () => {
+    expect(buildOperationalLifecycleToastMessage({
+      action: undefined as any,
+      totalSelected: 3,
+      changedCount: 2,
+    })).toBe('Completed 2 of 3 selected records.')
+
+    expect(buildOperationalLifecycleToastMessage({
+      action: 'unknown_action' as any,
+      totalSelected: 3,
+      changedCount: 2,
+    })).toBe('Unknown_action 2 of 3 selected records.')
+  })
 })
