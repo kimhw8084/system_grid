@@ -98,7 +98,6 @@ test.describe('Assets workflows', () => {
     await page.getByPlaceholder('Scan asset matrix...').fill(systemName)
     const rows = page.locator('.ag-center-cols-container .ag-row')
     await expect(rows).toHaveCount(3, { timeout: 15_000 })
-
     // Target 1 Proof: Plain row-click selects a row (facilitated by suppressRowClickSelection={false})
     const cell0 = rows.nth(0).locator('.ag-cell').nth(1)
     await cell0.click()
@@ -111,6 +110,7 @@ test.describe('Assets workflows', () => {
     await page.waitForTimeout(300)
     await expect(rows.nth(0)).not.toHaveClass(/ag-row-selected/)
 
+    await selectGridCheckboxRows(page, [0, 1])
     // Target B.2: Name/Instance click no-panel behavior proof
     const nameCell = rows.nth(0).locator('.ag-cell').nth(1)
     await nameCell.click()

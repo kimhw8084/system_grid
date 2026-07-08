@@ -104,10 +104,10 @@ dist/assets/index-CeJ3ALJw.js   4,602.62 kB │ gzip: 1,219.61 kB
 ```text
 Running 1 test using 1 worker
 
-  ✓  1 tests/assets-workflows.spec.ts:9:3 › Assets workflows › simulates the changed Assets workflows end-to-end (29.5s)
-SEED: Created monitoring item "PW-MON-1783519242850-lrfwq3" (ID: 95)
+  ✓  1 tests/assets-workflows.spec.ts:9:3 › Assets workflows › simulates the changed Assets workflows end-to-end (29.4s)
+SEED: Created monitoring item "PW-MON-1783520539836-csz4qu" (ID: 98)
 
-  1 passed (30.1s)
+  1 passed (30.0s)
 
 [LLM-Reporter] All tests passed. No artifact needed.
 ```
