@@ -1,0 +1,12 @@
+{
+  "failed_count": 1,
+  "failures": [
+    {
+      "test": "simulates the changed Assets workflows end-to-end",
+      "file": "/Users/haewonkim/home/development/sysgrid/frontend/tests/assets-workflows.spec.ts",
+      "line": 8,
+      "status": "failed",
+      "error": "Error: expect(locator).toBeVisible() failed |  | Locator: getByText('No assets match the current working view')"
+    }
+  ]
+}

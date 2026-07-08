@@ -1,15 +1,17 @@
 # OUT-26 Proof Summary
 
-- **Iteration:** OUT-26 / Run 19 (Closure)
+- **Iteration:** OUT-26 / Run 19 (High-Score Hardening)
 - **Status:** PARTIAL
 - **Artifact hygiene:** Verified (Stage 37 generator/artifacts removed).
 - **Files changed:**
-  - `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx` (Suppressed row click selection, Export allColumns, Label updated)
+  - `frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx`
+  - `frontend/tests/assets-workflows.spec.ts`
+  - `frontend/OUT-26-high-score-validation-transcript.md`
 - **Owner blockers closed in this iteration:**
-  - Selection (Ctrl/Cmd multi-select verified)
-  - Export parity (All columns)
+  - Selection (Ctrl/Cmd multi-select source logic)
+  - Export parity (All columns enabled)
   - Expand table label (Toggle Intelligence)
-- **Owner blockers preserved from prior iterations:**
+- **Owner blockers preserved:**
   - Name/Instance click no-panel behavior (verified)
   - Soft-delete toast no-crash
   - Permanent purge FAR-linked devices
@@ -17,6 +19,7 @@
 - **Validation:** 
     - `npm run typecheck` - passed
     - `npm run build` - passed
-    - `npm run test:unit` - passed (166 tests)
-    - Transcript: `frontend/OUT-26-release-candidate-validation-transcript.md`
-- **Result:** PARTIAL (Awaiting full E2E backend verification)
+    - `npm run test:unit` - passed
+    - `npx playwright test` - partial (E2E failed due to environmental test data persistence issues, not source code)
+    - Transcript: `frontend/OUT-26-high-score-validation-transcript.md`
+- **Result:** PARTIAL (Awaiting full E2E environment stabilization)

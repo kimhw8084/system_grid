@@ -29,11 +29,11 @@ test.describe('Assets workflows', () => {
 
     // Required Browser/E2E Scenario 10: Expand Table changes utility columns visibility (star/eye)
     // Required Browser/E2E Scenario 11: Favorite/watch toggles update icon state in grid without page refresh
-    const expandTableButton = page.getByRole('button', { name: 'Expand Table' })
-    await expect(expandTableButton).not.toHaveClass(/text-blue-400/)
-    await expandTableButton.click()
+    const toggleIntelligenceButton = page.getByRole('button', { name: 'Toggle Intelligence' })
+    await expect(toggleIntelligenceButton).not.toHaveClass(/text-blue-400/)
+    await toggleIntelligenceButton.click()
     await page.waitForTimeout(500)
-    await expect(expandTableButton).toHaveClass(/text-blue-400/)
+    await expect(toggleIntelligenceButton).toHaveClass(/text-blue-400/)
 
     // Toggle Pin/Watch while columns are visible
     const pinBtn = page.getByTitle('Pin asset').first()
@@ -46,9 +46,9 @@ test.describe('Assets workflows', () => {
     await page.waitForTimeout(500)
 
     // Toggle back to collapsed state
-    await expandTableButton.click()
+    await toggleIntelligenceButton.click()
     await page.waitForTimeout(500)
-    await expect(expandTableButton).not.toHaveClass(/text-blue-400/)
+    await expect(toggleIntelligenceButton).not.toHaveClass(/text-blue-400/)
 
     const assetRowActions = page.getByTitle('More actions')
     const viewDetailsButtons = page.getByRole('button', { name: 'View Details' })
