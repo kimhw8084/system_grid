@@ -30,7 +30,7 @@ dist/assets/index-CeJ3ALJw.js   4,602.62 kB │ gzip: 1,219.61 kB
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 11.77s
+✓ built in 10.82s
 ```
 
 ---
@@ -115,8 +115,8 @@ dist/assets/index-CeJ3ALJw.js   4,602.62 kB │ gzip: 1,219.61 kB
 
  Test Files  41 passed (41)
       Tests  185 passed (185)
-   Start at  21:51:21
-   Duration  5.95s (transform 4.39s, setup 3.20s, import 10.39s, tests 3.69s, environment 32.68s)
+   Start at  22:54:05
+   Duration  6.21s (transform 4.85s, setup 2.93s, import 13.88s, tests 6.80s, environment 30.87s)
 ```
 
 ---
@@ -126,10 +126,10 @@ dist/assets/index-CeJ3ALJw.js   4,602.62 kB │ gzip: 1,219.61 kB
 ```text
 Running 1 test using 1 worker
 
-  ✓  1 tests/assets-workflows.spec.ts:8:3 › Assets workflows › simulates the changed Assets workflows end-to-end (22.5s)
-SEED: Created monitoring item "PW-MON-1783479095038-a2yaei" (ID: 80)
+  ✓  1 tests/assets-workflows.spec.ts:8:3 › Assets workflows › simulates the changed Assets workflows end-to-end (37.7s)
+SEED: Created monitoring item "PW-MON-1783482794253-hg5ahp" (ID: 82)
 
-  1 passed (23.5s)
+  1 passed (38.4s)
 
 [LLM-Reporter] All tests passed. No artifact needed.
 ```

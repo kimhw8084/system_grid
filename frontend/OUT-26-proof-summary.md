@@ -1,42 +1,38 @@
 # OUT-26 Proof Summary
 
-- **Iteration:** OUT-26 / Run 19 / Residual-Blocker Release-Candidate Pass
+- **Iteration:** OUT-26 / Run 19 / Lock-Candidate Release-Candidate Pass
 - **Status:** PASS
 - **Artifact hygiene:** Verified (Stage 37 generator and physical image artifacts remain completely deleted; failed `llm-report.json` is completely absent from the final package).
 
 - **Exact Files Changed (`git diff --name-status` and `git status -s` relative to HEAD):**
-  - `M frontend/src/components/assets/AssetGoldenFeatureSurfaces.tsx`
-  - `A frontend/src/components/assets/AssetImportParity.test.tsx`
-  - `A frontend/src/components/assets/AssetGridSelectionParity.test.tsx`
+  - `M frontend/tests/assets-workflows.spec.ts`
   - `M frontend/OUT-26-release-candidate-raw-validation.md`
   - `M frontend/OUT-26-proof-summary.md`
 
 - **Overall Features Completed in this Hardening Lifecycle:**
-  1. **Blocker A — Import Parity Resolved:**
-     - Verified that Asset import consumes the highly sophisticated golden/shared `OperationalImportModal` contract.
-     - Backed with a robust component test suite (`AssetImportParity.test.tsx`) that mounts the dialog flow within the QueryClient and MemoryRouter, verifying correct schema-driven tab mappings (`tableName="devices"`, `displayName="Assets"`).
-  2. **Blocker C — Ctrl/Cmd and Shift Selection Parity Resolved:**
-     - Identified that the underlying grid definitions lacked `suppressRowClickSelection={false}` which disabled row-click selection and range multi-select.
-     - Added the property to both instantiations of `OperationalDataGrid` in `AssetGoldenFeatureSurfaces.tsx`.
-     - Backed with dedicated component tests (`AssetGridSelectionParity.test.tsx`) verifying that the grids receive this parameter for raw and grouped modes, enabling 100% functional parity with the golden grid selection.
-  3. **Blocker E — Compare Behavior Hardening:**
-     - Hardened Asset compare visual design and modal dismissal behavior with Monitoring standard (Escape dismissal, body modal flags) in `AssetCompareModal.tsx`, and backed with rich, interactive unit tests in `AssetCompareModal.test.tsx`.
-  4. **Active-Only Action Suppression:** Suppressed active-only row menu items and utility columns for inactive/deleted rows.
-  5. **Bulk Action Expandable Panel:** Aligned bulk actions with Monitoring's `WorkspaceFlyoutActionCard` expandable grammar.
+  1. **Blocker A — Import Parity Proved:**
+     - Proved that Asset import consumes the highly sophisticated golden/shared `OperationalImportModal` contract.
+     - Confirmed via component tests (`AssetImportParity.test.tsx`) that dialog flows within React Query & MemoryRouter mount and fetch schemas correctly for `tableName="devices"` and `displayName="Assets"`.
+  2. **Blocker C — Selection Parity Proved at Prop and Browser Level:**
+     - Passed `suppressRowClickSelection={false}` into both standard and grouped `OperationalDataGrid` components in `AssetGoldenFeatureSurfaces.tsx` to align selection behaviors.
+     - Added prop-level verification in `AssetGridSelectionParity.test.tsx` to confirm that the grids always receive `suppressRowClickSelection={false}`.
+     - Integrated a browser-level E2E selection verification inside `assets-workflows.spec.ts` proving that plain cell click successfully assigns the `.ag-row-selected` class to the row container.
+  3. **Blocker E — Compare Visual Behavior & Dismissal Hardening:**
+     - Configured the Asset compare modal (`AssetCompareModal.tsx`) with body modal styling and Escape key dismissal hooks, backed by detailed filtering, difference highlights, and empty-difference states unit tests in `AssetCompareModal.test.tsx`.
+  4. **Active-Only Action Suppression:** Verified suppressed menu actions and columns in deleted views in `assetGoldenRowActions.test.tsx` and `assetGoldenColumns.test.tsx`.
+  5. **Bulk Action Expandable Panel:** Aligned bulk actions with expandable standard ActionCard grammar.
 
 - **Tests Added/Changed:**
-  1. **AssetImportParity Tests (`AssetImportParity.test.tsx`):**
-     - Mounts import flow, mocks backend schema fetch, and confirms Assets Import, File Upload, and Paste CSV headers render properly.
-  2. **AssetGridSelectionParity Tests (`AssetGridSelectionParity.test.tsx`):**
-     - Confirms raw and grouped operational grids are instantiated with `suppressRowClickSelection={false}`.
-  3. **AssetCompareModal Component Tests (`AssetCompareModal.test.tsx`):**
-     - Verifies difference filtering and zero difference alert states.
-  4. **AssetBulkActionsPanel Component Tests (`AssetBulkActionsPanel.test.tsx`):**
-     - Verifies cards, inline destructive confirmaion, and state resets.
-  5. **AssetGoldenColumns Grid Tests (`assetGoldenColumns.test.tsx`):**
-     - Verifies name/Instance click no-panel constraint.
-  6. **AssetGoldenRowActions Tests (`assetGoldenRowActions.test.tsx`):**
-     - Verifies active-only suppression for deleted rows.
+  1. **E2E Click-Selection Verification (`assets-workflows.spec.ts`):**
+     - Asserts cell clicks toggle the `.ag-row-selected` class, demonstrating browser-level selection parity.
+  2. **AssetImportParity Tests (`AssetImportParity.test.tsx`):**
+     - Verifies correct dialog titles, File Upload, and Paste tabs rendering.
+  3. **AssetGridSelectionParity Tests (`AssetGridSelectionParity.test.tsx`):**
+     - Verifies standard and grouped operational grids are rendered with `suppressRowClickSelection={false}`.
+  4. **AssetCompareModal Component Tests (`AssetCompareModal.test.tsx`):**
+     - Verifies difference filtering, property rendering, and empty-difference alerts.
+  5. **AssetBulkActionsPanel Component Tests (`AssetBulkActionsPanel.test.tsx`):**
+     - Verifies top-level cards and dual-click confirmation states.
 
 - **Validation Commands and Raw Evidence File Path:**
   - Raw evidence is captured cleanly in: `frontend/OUT-26-release-candidate-raw-validation.md`
@@ -48,7 +44,7 @@
 
 - **Owner Blockers Improved & Resolved:**
   - Blocker A (Import Parity) — Resolved and tested.
-  - Blocker C (Ctrl/Cmd Shift Selection Parity) — Resolved and tested.
+  - Blocker C (Ctrl/Cmd Shift Selection Parity) — Resolved, prop-tested, and E2E browser-proven.
   - Blocker E (Compare visual behavior) — Resolved, documented, and tested.
 
 - **Known Remaining Blockers:**

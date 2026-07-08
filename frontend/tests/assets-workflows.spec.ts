@@ -96,6 +96,13 @@ test.describe('Assets workflows', () => {
     await page.getByPlaceholder('Scan asset matrix...').fill(systemName)
     const rows = page.locator('.ag-center-cols-container .ag-row')
     await expect(rows).toHaveCount(2, { timeout: 15_000 })
+
+    // Target 1 Proof: Plain row-click selects a row (facilitated by suppressRowClickSelection={false})
+    const firstCell = rows.first().locator('.ag-cell').first()
+    await firstCell.click()
+    await page.waitForTimeout(500)
+    await expect(rows.first()).toHaveClass(/ag-row-selected/)
+
     await selectGridCheckboxRows(page, [0, 1])
     await bulkActionsButton.click()
     await compareVisibleButton.click()
