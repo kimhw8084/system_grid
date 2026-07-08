@@ -22,6 +22,8 @@ import {
   useOperationalRowInteractions,
   useOperationalGroupedSelection,
   useOperationalContextMenu,
+  getPointFloatingStyle,
+  useOperationalDismissController,
 } from './shared/OperationalGridInteractions'
 import { OperationalDataGrid } from './shared/OperationalDataGrid'
 import { apiFetch } from '../api/apiClient'
@@ -65,6 +67,7 @@ import {
   usePersistentJsonState,
   useWorkspaceDismissHandlers,
   useWorkspaceSessionValue,
+  useWorkspaceOverlayController,
 } from './shared/OperationalWorkspaceHooks'
 import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } from './shared/WorkspaceModalShells'
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
@@ -348,75 +351,6 @@ const slugifyViewId = (value: string) =>
 
 // 
 
-const getAnchoredFloatingStyle = ({
-  rect,
-  width,
-  height,
-  zIndex,
-  offset = 4
-}: {
-  rect: DOMRect
-  width: number
-  height: number
-  zIndex: number
-  offset?: number
-}) => {
-  const vW = window.innerWidth
-  const vH = window.innerHeight
-  
-  // Pivot logic: align right edge of menu to right edge of trigger
-  let left = rect.right - width
-  let top = rect.bottom + offset
-
-  // Viewport containment and flipping
-  if (left < FLOATING_PANEL_EDGE) left = rect.left
-  if (top + height > vH - FLOATING_PANEL_EDGE) top = rect.top - height - offset
-  
-  left = Math.max(FLOATING_PANEL_EDGE, Math.min(left, vW - width - FLOATING_PANEL_EDGE))
-  top = Math.max(FLOATING_PANEL_EDGE, Math.min(top, vH - height - FLOATING_PANEL_EDGE))
-
-  return {
-    position: 'fixed' as const,
-    top: Math.floor(top),
-    left: Math.floor(left),
-    width,
-    maxHeight: `calc(100vh - ${FLOATING_PANEL_EDGE * 2}px)`,
-    zIndex
-  }
-}
-
-const getPointFloatingStyle = ({
-  x,
-  y,
-  width,
-  height,
-  zIndex,
-}: {
-  x: number
-  y: number
-  width: number
-  height: number
-  zIndex: number
-}) => {
-  const rect = computeFloatingPanelRect({
-    x,
-    y,
-    preferredWidth: width,
-    preferredHeight: height,
-    viewportWidth: window.innerWidth,
-    viewportHeight: window.innerHeight,
-  })
-
-  return {
-    position: 'fixed' as const,
-    left: rect.left,
-    top: rect.top,
-    width: rect.width,
-    maxHeight: rect.maxHeight,
-    zIndex,
-  }
-}
-
 // Isolated component to prevent UI state changes (menus) from triggering AgGrid recalculations
 const getMonitorGroupValue = (item: any, field: string) => {
   if (field === 'notification_method') return item.notification_method || 'No notification path'
@@ -698,8 +632,6 @@ export default function NetworkReal() {
   // --- STYLE LABORATORY STATE ---
   const [fontSize, setFontSize] = useState(persistedUiState?.fontSize ?? 11)
   const [rowDensity, setRowDensity] = useState(persistedUiState?.rowDensity ?? 8)
-  const [showDisplayMenu, setShowDisplayMenu] = useState(false)
-  const [showViewsMenu, setShowViewsMenu] = useState(false)
   const [showRegistry, setShowRegistry] = useState(false)
   const [hiddenColumns, setHiddenColumns] = useState<string[]>(persistedUiState?.hiddenColumns ?? ['created_at', 'updated_at'])
   const [activeTab, setActiveTab] = useState<'active' | 'deleted'>(persistedUiState?.activeTab === 'deleted' ? 'deleted' : 'active')
@@ -723,7 +655,19 @@ export default function NetworkReal() {
     hasSelection,
     selectedCount,
   } = useOperationalSelection([])
-  const [showBulkMenu, setShowBulkMenu] = useState(false)
+
+  const {
+    activeOverlay,
+    isOverlayOpen,
+    openOverlay,
+    toggleOverlay,
+    closeOverlay,
+    dismissOverlays,
+  } = useWorkspaceOverlayController()
+
+  const showDisplayMenu = isOverlayOpen('display')
+  const showViewsMenu = isOverlayOpen('views')
+  const showBulkMenu = isOverlayOpen('bulk')
   const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
   const [isBulkSeverityOpen, setIsBulkSeverityOpen] = useState(false)
   const [isBulkNotifyOpen, setIsBulkNotifyOpen] = useState(false)
@@ -732,6 +676,7 @@ export default function NetworkReal() {
   const [detailDeleteConfirm, setDetailDeleteConfirm] = useState(false)
   const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<number | null>(null)
   const [rowActionMenu, setRowActionMenu] = useState<{ item: any; point: { x: number; y: number } } | null>(null)
+  const hasRowActionMenu = activeOverlay === 'rowAction' && Boolean(rowActionMenu)
   const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
   const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
   const [gridSortModel, setGridSortModel] = useState<any[]>([{ colId: 'favorite', sort: 'desc' }])
@@ -752,12 +697,9 @@ export default function NetworkReal() {
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'link_type' | 'direction' | null>(null)
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
   const [pendingIds, setPendingIds] = useState<number[]>([])
-  const displayMenuButtonRef = useRef<HTMLButtonElement | null>(null)
-  const viewsMenuButtonRef = useRef<HTMLButtonElement | null>(null)
-  const bulkMenuButtonRef = useRef<HTMLButtonElement | null>(null)
-  const [displayMenuStyle, setDisplayMenuStyle] = useState<React.CSSProperties>({})
-  const [viewsMenuStyle, setViewsMenuStyle] = useState<React.CSSProperties>({})
-  const [bulkMenuStyle, setBulkMenuStyle] = useState<React.CSSProperties>({})
+  const { triggerRef: displayMenuButtonRef, panelRef: displayMenuPanelRef, panelStyle: displayMenuStyle } = useWorkspaceAnchoredLayer(showDisplayMenu, { minWidth: 320 })
+  const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
+  const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
   const lastUndoRef = useRef<any>(null)
   const [newViewName, setNewViewName] = useState('')
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
@@ -959,7 +901,8 @@ export default function NetworkReal() {
   const { handleCellContextMenu, openRowActionMenuAtPoint } = useOperationalContextMenu({
     onOpenRowActionMenu: useCallback((item, point) => {
       setRowActionMenu({ item, point })
-    }, []),
+      openOverlay('rowAction')
+    }, [openOverlay]),
   })
 
   const autoSizeNetworkColumns = useCallback(() => {
@@ -1042,26 +985,8 @@ export default function NetworkReal() {
     openRowActionMenuAtPoint(item, event.clientX, event.clientY)
   }
 
-  const positionUtilityWindow = (button: HTMLButtonElement | null, width: number, height: number, zIndex: number) => {
-    if (!button) {
-      return {
-        position: 'fixed' as const,
-        top: 120,
-        left: Math.max(FLOATING_PANEL_EDGE, window.innerWidth - width - 40),
-        width,
-        maxHeight: `calc(100vh - ${FLOATING_PANEL_EDGE * 2}px)`,
-        zIndex
-      }
-    }
-    return getAnchoredFloatingStyle({ rect: button.getBoundingClientRect(), width, height, zIndex, offset: 12 })
-  }
-
   const toggleBulkWindow = () => {
-    setShowBulkMenu((current) => {
-      if (current) return false
-      setBulkMenuStyle(positionUtilityWindow(bulkMenuButtonRef.current, 340, BULK_MENU_MAX_HEIGHT, 1105))
-      return true
-    })
+    toggleOverlay('bulk')
   }
 
   const toggleFavorite = useCallback((monitorId: number) => {
@@ -1291,75 +1216,26 @@ export default function NetworkReal() {
   }
 
   const dismissWorkspaceMenus = useCallback(() => {
-    setShowBulkMenu(false)
+    dismissOverlays()
     setBulkDeleteConfirm(false)
-    setShowDisplayMenu(false)
-    setShowViewsMenu(false)
-    setRowActionMenu(null)
     setRowDeleteConfirmId(null)
-  }, [])
+  }, [dismissOverlays])
 
-  useWorkspaceDismissHandlers({
-    active: showBulkMenu || showDisplayMenu || showViewsMenu || !!rowActionMenu,
+  useOperationalDismissController({
+    active: showBulkMenu || showDisplayMenu || showViewsMenu || hasRowActionMenu,
     onDismiss: dismissWorkspaceMenus,
-    shouldDismiss: (target) => {
-      if (target.closest('[data-workspace-panel]')) return false
-      if (showBulkMenu && !target.closest('.bulk-menu-container') && !target.closest('.bulk-menu-trigger')) return true
-      if (showDisplayMenu && !target.closest('.display-menu-container')) return true
-      if (showViewsMenu && !target.closest('.views-menu-container')) return true
-      if (rowActionMenu && !target.closest('.row-action-menu-container')) return true
-      return false
-    },
+    allTriggerRefs: [bulkMenuButtonRef, displayMenuButtonRef, viewsMenuButtonRef],
+    bulkMenuButtonRef,
+    bulkMenuPanelRef,
+    displayMenuButtonRef,
+    displayMenuPanelRef,
+    viewsMenuButtonRef,
+    viewsMenuPanelRef,
+    showBulkMenu,
+    showDisplayMenu,
+    showViewsMenu,
+    hasRowActionMenu,
   })
-
-  useEffect(() => {
-    const handleContextMenu = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null
-      if (!target) return
-      if (target.closest('.ag-root-wrapper') || target.closest('.row-action-menu-container')) {
-        event.preventDefault()
-      }
-    }
-
-    document.addEventListener('contextmenu', handleContextMenu)
-    return () => document.removeEventListener('contextmenu', handleContextMenu)
-  }, [])
-
-  useEffect(() => {
-    const updateMenuPositions = () => {
-      if (showDisplayMenu && displayMenuButtonRef.current) {
-        setDisplayMenuStyle(getAnchoredFloatingStyle({
-          rect: displayMenuButtonRef.current.getBoundingClientRect(),
-          width: 320,
-          height: 420,
-          zIndex: 1100,
-          offset: 12
-        }))
-      }
-      if (showViewsMenu && viewsMenuButtonRef.current) {
-        setViewsMenuStyle(getAnchoredFloatingStyle({
-          rect: viewsMenuButtonRef.current.getBoundingClientRect(),
-          width: 380,
-          height: 460,
-          zIndex: 1100,
-          offset: 12
-        }))
-      }
-      if (showBulkMenu && bulkMenuButtonRef.current) {
-        setBulkMenuStyle(positionUtilityWindow(bulkMenuButtonRef.current, 340, BULK_MENU_MAX_HEIGHT, 1105))
-      }
-    }
-
-    updateMenuPositions()
-    if (showDisplayMenu || showBulkMenu || showViewsMenu) {
-      window.addEventListener('resize', updateMenuPositions)
-      window.addEventListener('scroll', updateMenuPositions, true)
-      return () => {
-        window.removeEventListener('resize', updateMenuPositions)
-        window.removeEventListener('scroll', updateMenuPositions, true)
-      }
-    }
-  }, [showBulkMenu, showDisplayMenu, showViewsMenu])
 
   const { data: allItems, isLoading, isError, error } = useQuery({
     queryKey: ['network-connections'],
@@ -1655,9 +1531,9 @@ export default function NetworkReal() {
 
   useEffect(() => {
     if (selectedIds.length === 0) {
-      setShowBulkMenu(false)
+      closeOverlay('bulk')
     }
-  }, [selectedIds.length])
+  }, [selectedIds.length, closeOverlay])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -1810,7 +1686,7 @@ export default function NetworkReal() {
     },
     onSuccess: ({ result, action, payload, idsToUse, previousSnapshots }: any) => {
       queryClient.invalidateQueries({ queryKey: ['network-connections'] })
-      setShowBulkMenu(false)
+      closeOverlay('bulk')
       setExpandedBulkSection(null)
         setBulkDraft({ status: '', link_type: '', direction: '' })
       setIsBulkStatusOpen(false)
@@ -2280,7 +2156,7 @@ export default function NetworkReal() {
         <>
           <ToolbarGroup>
             <div className="views-menu-container">
-              <ToolbarButton active={showViewsMenu} onClick={() => setShowViewsMenu(!showViewsMenu)} ref={viewsMenuButtonRef as any}>
+              <ToolbarButton active={showViewsMenu} onClick={() => toggleOverlay('views')} ref={viewsMenuButtonRef as any}>
                 <span className="flex items-center gap-2">
                   <LayoutGrid size={14} />
                   Views
@@ -2288,7 +2164,7 @@ export default function NetworkReal() {
               </ToolbarButton>
             </div>
             <div className="display-menu-container">
-              <ToolbarButton active={showDisplayMenu} onClick={() => setShowDisplayMenu(!showDisplayMenu)} ref={displayMenuButtonRef as any}>
+              <ToolbarButton active={showDisplayMenu} onClick={() => toggleOverlay('display')} ref={displayMenuButtonRef as any}>
                 <span className="flex items-center gap-2">
                   <Sliders size={14} />
                   Display
@@ -2428,7 +2304,8 @@ export default function NetworkReal() {
           <OperationalDisplayPanel
             isOpen={showDisplayMenu}
             panelStyle={displayMenuStyle}
-            onClose={() => setShowDisplayMenu(false)}
+            panelRef={displayMenuPanelRef}
+            onClose={() => closeOverlay('display')}
             fontSize={fontSize}
             onFontSizeChange={setFontSize}
             rowDensity={rowDensity}
@@ -2450,8 +2327,9 @@ export default function NetworkReal() {
           <OperationalSavedViewsPanel
             isOpen={showViewsMenu}
             panelStyle={viewsMenuStyle}
+            panelRef={viewsMenuPanelRef}
             entityLabel="Network"
-            onClose={() => setShowViewsMenu(false)}
+            onClose={() => closeOverlay('views')}
             activeViewId={activeViewId}
             currentViewName={activeViewId ? savedViews.find((view) => view.id === activeViewId)?.name || 'Unsaved working view' : 'Unsaved working view'}
             newViewName={newViewName}
@@ -2469,9 +2347,10 @@ export default function NetworkReal() {
           />
 
           <OperationalAnchoredPanel
-            isOpen={showBulkMenu && !!bulkMenuStyle.top}
+            isOpen={showBulkMenu}
             panelKey="bulk-menu"
             style={bulkMenuStyle}
+            panelRef={bulkMenuPanelRef}
             className="bulk-menu-container"
             yOffset={10}
           >
@@ -2583,7 +2462,7 @@ export default function NetworkReal() {
           </OperationalAnchoredPanel>
 
           <OperationalAnchoredPanel
-            isOpen={!!rowActionMenu}
+            isOpen={hasRowActionMenu}
             panelKey="row-action-menu"
             style={rowActionMenu ? getPointFloatingStyle({
               x: rowActionMenu.point.x,
@@ -2594,7 +2473,7 @@ export default function NetworkReal() {
             }) : { position: 'fixed', top: -9999, left: -9999 }}
             className="row-action-menu-container"
           >
-            {rowActionMenu ? (
+            {hasRowActionMenu && rowActionMenu ? (
               <WorkspaceFloatingPanel kind="context" className="overflow-hidden">
                 <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
                   <div className="min-w-0">
