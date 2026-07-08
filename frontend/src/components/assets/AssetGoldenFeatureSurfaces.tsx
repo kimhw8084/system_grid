@@ -174,6 +174,7 @@ export function AssetGoldenFeatureSurfaces({
                   className="w-full"
                   height={`${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px`}
                   context={gridContext}
+                  suppressRowClickSelection={false}
                 />
               ) : null}
             </OperationalGroupedGridSection>
@@ -201,6 +202,7 @@ export function AssetGoldenFeatureSurfaces({
       noRowsLabel="No assets match the current working set."
       height="calc(100vh - 250px)"
       context={gridContext}
+      suppressRowClickSelection={false}
     />
   )
 }
