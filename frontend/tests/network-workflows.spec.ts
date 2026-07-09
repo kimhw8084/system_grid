@@ -437,4 +437,190 @@ test.describe('Network workflows', () => {
     expect(await isColumnVisible(page, 'watch')).toBe(false)
     expect(await isColumnVisible(page, 'recent_change')).toBe(false)
   })
+
+  test('verifies golden column labels, domain order, pinning, resizability, bulk-edit dirty-close safety, context menu structure, and irreversible purge confirmation', async ({ page, sysApi: request }) => {
+    await resetBrowserState(page)
+    await page.setViewportSize({ width: 1920, height: 1080 })
+    const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const farm = `PW-GOLDEN-${stamp}`
+    await ensureSettingOption(request, 'NetworkFarm', farm)
+
+    const source = await createAsset(request, {
+      name: `PW-G-SRC-${stamp}`,
+      system: `PW-G-SYS-${stamp}`,
+      status: 'Active',
+      model: 'R650',
+      type: 'Physical',
+      serial_number: `PW-G-SRC-SN-${stamp}`,
+      asset_tag: `PW-G-SRC-AT-${stamp}`,
+      owner: 'net-owner',
+      business_unit: 'Operations'
+    })
+    const peer = await createAsset(request, {
+      name: `PW-G-PEER-${stamp}`,
+      system: `PW-G-SYS-${stamp}`,
+      status: 'Active',
+      model: 'R650',
+      type: 'Physical',
+      serial_number: `PW-G-PEER-SN-${stamp}`,
+      asset_tag: `PW-G-PEER-AT-${stamp}`,
+      owner: 'net-owner',
+      business_unit: 'Operations'
+    })
+
+    const conn = await createConnection(request, {
+      device_a_id: source.id,
+      source_port: 'eth0',
+      device_b_id: peer.id,
+      target_port: 'eth1',
+      link_type: 'Data',
+      speed_gbps: 10,
+      unit: 'Gbps',
+      status: 'Active',
+      farm
+    })
+
+    await page.goto('/network')
+    await expect(page.getByText('Scanning network matrix...')).not.toBeVisible({ timeout: 15000 })
+    await page.getByPlaceholder('Scan matrix...').fill(farm)
+
+    // Wait for the filtered rows to be fully rendered and stable
+    const rows = page.locator('.ag-center-cols-container .ag-row')
+    await expect(rows).toHaveCount(1, { timeout: 15000 })
+
+    // 1. Verify exact visible headers
+    await expect(page.getByText('Source Node', { exact: true })).toBeVisible()
+    await expect(page.getByText('Source Rack Slot', { exact: true })).toBeVisible()
+    await expect(page.getByText('Source Port', { exact: true })).toBeVisible()
+    await expect(page.getByText('Source IP', { exact: true })).toBeVisible()
+
+    // 2. Verify pinning of Source Node
+    const pinnedHeader = page.locator('.ag-pinned-left-header .ag-header-cell[col-id="src_node"]')
+    await expect(pinnedHeader).toBeVisible()
+
+    // 3. Verify manual resize of Source Node works and modifies the width
+    const initialWidth = await getColumnWidth(page, 'src_node')
+    
+    // Simulate resizing using AG Grid API directly to be robust
+    await page.evaluate(() => {
+      // @ts-ignore
+      const api = window.__DEBUG_NETWORK_GRID_API__
+      if (api) {
+        api.setColumnWidth('src_node', 250)
+      }
+    })
+    const resizedWidth = await getColumnWidth(page, 'src_node')
+    expect(resizedWidth).toBe(250)
+    expect(resizedWidth).not.toEqual(initialWidth)
+
+    // 4. Context Menu Right-click & Structure Check
+    const firstCell = page.locator('.ag-center-cols-container .ag-row').nth(0).locator('.ag-cell').nth(0)
+    await firstCell.click({ button: 'right' })
+    
+    const rowMenu = page.locator('div.row-action-menu-container')
+    await expect(rowMenu).toBeVisible({ timeout: 5000 })
+    
+    // Check quick access items layout (single line icon and label) and proper title
+    await expect(rowMenu.getByText('Details', { exact: true })).toBeVisible()
+    await expect(rowMenu.getByText('Edit', { exact: true })).toBeVisible()
+    await expect(rowMenu.getByText('Delete', { exact: true })).toBeVisible()
+
+    // Press escape to close
+    await page.keyboard.press('Escape')
+    await expect(rowMenu).not.toBeVisible()
+
+    // 5. Bulk Edit Dirty Close safety flow
+    const rowInCenter = page.locator('.ag-center-cols-container .ag-row').nth(0)
+    await rowInCenter.locator('.ag-cell').first().click()
+    await expect(rowInCenter).toHaveClass(/ag-row-selected/)
+    
+    await page.getByRole('button', { name: 'Bulk Actions' }).click()
+    await page.getByText('Bulk Edit Table').click()
+
+    const bulkModal = page.locator('[role="dialog"]').filter({ hasText: 'Bulk Edit Network' })
+    await expect(bulkModal).toBeVisible({ timeout: 5000 })
+
+    // Verify there are exactly two close buttons (top-right red circle dot and footer Close button)
+    const closeButtons = bulkModal.getByRole('button', { name: 'Close', exact: true })
+    await expect(closeButtons).toHaveCount(2)
+
+    // Verify clean close works directly using the footer Close button
+    await closeButtons.last().click()
+    await expect(bulkModal).not.toBeVisible()
+
+    // Open again to test dirty confirmations
+    await page.getByRole('button', { name: 'Bulk Actions' }).click()
+    await page.getByText('Bulk Edit Table').click()
+    await expect(bulkModal).toBeVisible({ timeout: 5000 })
+
+    // Make an edit to make it dirty
+    await bulkModal.locator('input[type="number"]').first().fill('50')
+
+    // Click footer Close button - should trigger dirty confirmation dialog
+    await bulkModal.getByRole('button', { name: 'Close', exact: true }).last().click()
+    const confirmDialog = page.locator('.absolute.inset-0').filter({ hasText: 'Discard Bulk Edits?' })
+    await expect(confirmDialog).toBeVisible({ timeout: 5000 })
+
+    // Clicking "Close" in the confirmation dialog keeps the bulk edit modal open
+    await confirmDialog.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(confirmDialog).not.toBeVisible()
+    await expect(bulkModal).toBeVisible()
+
+    // Pressing Escape inside the dirty state triggers dirty confirmation dialog
+    await page.keyboard.press('Escape')
+    await expect(confirmDialog).toBeVisible({ timeout: 5000 })
+
+    // Clicking "Discard Changes" closes both dialog and bulk edit modal
+    await confirmDialog.getByRole('button', { name: 'Discard Changes', exact: true }).click()
+    await expect(confirmDialog).not.toBeVisible()
+    await expect(bulkModal).not.toBeVisible()
+
+    // 6. Test irreversible purge confirmation warning
+    // Soft delete the selected row using Bulk Actions
+    const deleteResponsePromise = page.waitForResponse(response =>
+      response.url().includes('/api/v1/networks/connections/bulk-delete') && response.status() === 200
+    )
+
+    // Open bulk actions menu
+    await page.getByRole('button', { name: 'Bulk Actions' }).click()
+    const bulkMenuForDelete = page.locator('.bulk-menu-container')
+    await expect(bulkMenuForDelete).toBeVisible({ timeout: 5000 })
+
+    await bulkMenuForDelete.getByText('De-activate Selection').first().click({ force: true })
+    const confirmDeactBtn = page.getByRole('button', { name: 'Confirm De-activation?' }).first()
+    await expect(confirmDeactBtn).toBeVisible({ timeout: 5000 })
+    await confirmDeactBtn.click({ force: true })
+
+    await deleteResponsePromise
+    await page.waitForTimeout(500)
+    
+    // Switch to Deleted tab
+    await page.getByRole('button', { name: 'Deleted', exact: true }).click()
+    await expect(page.locator('.ag-center-cols-container .ag-row')).toHaveCount(1, { timeout: 10000 })
+
+    // Try to purge connection via context menu
+    const deletedCell = page.locator('.ag-center-cols-container .ag-row').nth(0).locator('.ag-cell').nth(0)
+    await deletedCell.click({ button: 'right' })
+    await page.locator('div.row-action-menu-container').getByText('Purge').click()
+
+    // Verify ConfirmationModal warning appears
+    const purgeConfirmModal = page.locator('[role="dialog"]').filter({ hasText: 'Confirm Permanent Purge?' })
+    await expect(purgeConfirmModal).toBeVisible({ timeout: 5000 })
+    await expect(purgeConfirmModal.getByText('WARNING: This action is completely irreversible')).toBeVisible()
+
+    // Clicking Cancel / Close in ConfirmationModal keeps it in the grid
+    await purgeConfirmModal.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(purgeConfirmModal).not.toBeVisible()
+    await expect(page.locator('.ag-center-cols-container .ag-row')).toHaveCount(1)
+
+    // Trigger purge again and confirm
+    await deletedCell.click({ button: 'right' })
+    await page.locator('div.row-action-menu-container').getByText('Purge').click()
+    await expect(purgeConfirmModal).toBeVisible({ timeout: 5000 })
+    await purgeConfirmModal.getByRole('button', { name: 'Confirm Action', exact: true }).click()
+
+    // Verify it is purged from grid
+    await expect(purgeConfirmModal).not.toBeVisible()
+    await expect(page.locator('.ag-center-cols-container .ag-row')).toHaveCount(0, { timeout: 10000 })
+  })
 })

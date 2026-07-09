@@ -112,7 +112,7 @@ const NETWORK_FAVORITES_STORAGE_KEY = 'sysgrid_network_favorites_v1'
 const NETWORK_UI_STATE_KEY = 'sysgrid_network_ui_state_v1'
 const NETWORK_WATCH_STORAGE_KEY = 'sysgrid_network_watch_v1'
 const NETWORK_WORKSPACE_PREFERENCE_KEY = 'network_workspace_state_v1'
-const NETWORK_WORKSPACE_PREFERENCE_VERSION = 2
+const NETWORK_WORKSPACE_PREFERENCE_VERSION = 3
 const NETWORK_FIXED_WIDTH_COLUMN_IDS = new Set([
   'select',
   'id',
@@ -270,7 +270,7 @@ const normalizeNetworkQuickFilters = (value: any) => ({
   direction: Array.isArray(value?.direction) ? value.direction.filter((entry: any) => typeof entry === 'string' && entry.trim()) : [],
 })
 
-const normalizeNetworkSavedViews = (value: any) => {
+const normalizeNetworkSavedViews = (value: any, forceReorder = false) => {
   const parsed = Array.isArray(value) ? value : []
   const systemIds = new Set(DEFAULT_NETWORK_VIEWS.map((view) => view.id))
   const legacyIds = new Set(['ops', 'incident', 'recovery'])
@@ -286,20 +286,23 @@ const normalizeNetworkSavedViews = (value: any) => {
     ...DEFAULT_NETWORK_VIEWS.map((view) => parsed.find((entry: any) => entry?.id === view.id) || view),
     ...customViews.map((view: any) => ({
       ...view,
-      config: sanitizeNetworkViewConfig(view?.config),
+      config: sanitizeNetworkViewConfig(view?.config, forceReorder),
     })),
   ]
 }
 
-const sanitizeNetworkViewConfig = (config: any) => {
+const sanitizeNetworkViewConfig = (config: any, forceReorder = false) => {
   const safeConfig = config && typeof config === 'object' ? config : {}
   const sanitizeNetworkLayout = (layout: any[], preserveWidths: boolean) => {
     const sanitized = sanitizeOperationalColumnLayout(layout, NETWORK_PERSISTED_COLUMN_IDS, preserveWidths)
-    return [...sanitized].sort((a: any, b: any) => {
-      const aIndex = NETWORK_DEFAULT_COLUMN_ORDER_MAP.get(a?.colId) ?? 1000
-      const bIndex = NETWORK_DEFAULT_COLUMN_ORDER_MAP.get(b?.colId) ?? 1000
-      return aIndex - bIndex
-    })
+    if (forceReorder || sanitized.length === 0) {
+      return [...sanitized].sort((a: any, b: any) => {
+        const aIndex = NETWORK_DEFAULT_COLUMN_ORDER_MAP.get(a?.colId) ?? 1000
+        const bIndex = NETWORK_DEFAULT_COLUMN_ORDER_MAP.get(b?.colId) ?? 1000
+        return aIndex - bIndex
+      })
+    }
+    return sanitized
   }
   return {
     fontSize: Number.isFinite(safeConfig.fontSize) ? safeConfig.fontSize : 11,
@@ -319,10 +322,12 @@ const sanitizeNetworkViewConfig = (config: any) => {
 
 const normalizeNetworkWorkspaceState = (value: any) => {
   if (!value || typeof value !== 'object') return null
+  const incomingVersion = Number(value.version) || 0
+  const isOldVersion = incomingVersion < NETWORK_WORKSPACE_PREFERENCE_VERSION
   const uiState = value.uiState && typeof value.uiState === 'object' ? value.uiState : {}
   const normalized = {
     version: NETWORK_WORKSPACE_PREFERENCE_VERSION,
-    savedViews: normalizeNetworkSavedViews(value.savedViews),
+    savedViews: normalizeNetworkSavedViews(value.savedViews, isOldVersion),
     activeViewId: typeof value.activeViewId === 'string' && value.activeViewId.trim() ? value.activeViewId : null,
     favoriteIds: normalizeNetworkIdList(value.favoriteIds),
     watchIds: normalizeNetworkIdList(value.watchIds),
@@ -336,7 +341,7 @@ const normalizeNetworkWorkspaceState = (value: any) => {
       quickFilters: normalizeNetworkQuickFilters(uiState.quickFilters),
       groupBy: typeof uiState.groupBy === 'string' && NETWORK_VALID_GROUP_BY.has(uiState.groupBy) ? uiState.groupBy : 'raw',
       showFilterBar: uiState.showFilterBar !== false,
-      columnLayoutState: sanitizeNetworkViewConfig({ columnLayoutState: Array.isArray(uiState.columnLayoutState) ? uiState.columnLayoutState : [] }).columnLayoutState,
+      columnLayoutState: sanitizeNetworkViewConfig({ columnLayoutState: Array.isArray(uiState.columnLayoutState) ? uiState.columnLayoutState : [] }, isOldVersion).columnLayoutState,
       lastVisitedAt: Number.isFinite(uiState.lastVisitedAt) ? uiState.lastVisitedAt : 0,
       searchTerm: typeof uiState.searchTerm === 'string' ? uiState.searchTerm : '',
     }
@@ -1202,6 +1207,7 @@ export default function NetworkReal() {
     if (gridRef.current?.api) {
        gridRef.current.api.setFilterModel({})
        gridRef.current.api.applyColumnState({
+         state: NETWORK_DEFAULT_COLUMN_ORDER.map(colId => ({ colId, pinned: colId === 'src_node' ? 'left' : null })),
          defaultState: { sort: null, pinned: null, hide: false },
          applyOrder: true
        })
@@ -1799,11 +1805,12 @@ export default function NetworkReal() {
       {
         field: 'src_node',
         colId: 'src_node',
-        headerName: 'Src Node',
+        headerName: 'Source Node',
         width: 170,
         minWidth: 120,
         maxWidth: 280,
         pinned: 'left',
+        resizable: true,
         filter: true,
         cellClass: 'text-left flex items-center justify-start font-bold',
         headerClass: 'text-left',
@@ -1812,10 +1819,11 @@ export default function NetworkReal() {
       {
         field: 'src_rack_slot',
         colId: 'src_rack_slot',
-        headerName: 'Src Rack Slot',
+        headerName: 'Source Rack Slot',
         width: 150,
         minWidth: 100,
         maxWidth: 220,
+        resizable: true,
         filter: true,
         cellClass: 'text-left flex items-center justify-start',
         headerClass: 'text-left',
@@ -1824,10 +1832,11 @@ export default function NetworkReal() {
       {
         field: 'src_port',
         colId: 'src_port',
-        headerName: 'Src Port',
+        headerName: 'Source Port',
         width: 130,
         minWidth: 80,
         maxWidth: 180,
+        resizable: true,
         filter: true,
         cellClass: 'text-left flex items-center justify-start',
         headerClass: 'text-left',
@@ -1836,10 +1845,11 @@ export default function NetworkReal() {
       {
         field: 'src_ip',
         colId: 'src_ip',
-        headerName: 'Src IP',
+        headerName: 'Source IP',
         width: 150,
         minWidth: 100,
         maxWidth: 220,
+        resizable: true,
         filter: true,
         cellClass: 'text-left flex items-center justify-start',
         headerClass: 'text-left',
@@ -1852,6 +1862,7 @@ export default function NetworkReal() {
         width: 170,
         minWidth: 120,
         maxWidth: 280,
+        resizable: true,
         filter: true,
         cellClass: 'text-left flex items-center justify-start',
         headerClass: 'text-left',
@@ -1864,6 +1875,7 @@ export default function NetworkReal() {
         width: 150,
         minWidth: 100,
         maxWidth: 220,
+        resizable: true,
         filter: true,
         cellClass: 'text-left flex items-center justify-start',
         headerClass: 'text-left',
@@ -1876,6 +1888,7 @@ export default function NetworkReal() {
         width: 130,
         minWidth: 80,
         maxWidth: 180,
+        resizable: true,
         filter: true,
         cellClass: 'text-left flex items-center justify-start',
         headerClass: 'text-left',
@@ -1888,6 +1901,7 @@ export default function NetworkReal() {
         width: 150,
         minWidth: 100,
         maxWidth: 220,
+        resizable: true,
         filter: true,
         cellClass: 'text-left flex items-center justify-start',
         headerClass: 'text-left',
@@ -1900,6 +1914,7 @@ export default function NetworkReal() {
         width: 120,
         minWidth: 80,
         maxWidth: 160,
+        resizable: true,
         filter: true,
         cellClass: 'text-center flex items-center justify-center',
         headerClass: 'text-center',
@@ -1912,6 +1927,7 @@ export default function NetworkReal() {
         width: 120,
         minWidth: 80,
         maxWidth: 180,
+        resizable: true,
         filter: true,
         cellClass: 'text-center flex items-center justify-center',
         headerClass: 'text-center',
@@ -1924,6 +1940,7 @@ export default function NetworkReal() {
         width: 120,
         minWidth: 80,
         maxWidth: 160,
+        resizable: true,
         filter: true,
         cellClass: 'text-center flex items-center justify-center',
         headerClass: 'text-center',
@@ -1936,6 +1953,7 @@ export default function NetworkReal() {
         width: 110,
         minWidth: 80,
         maxWidth: 150,
+        resizable: true,
         filter: true,
         cellClass: 'text-center flex items-center justify-center',
         headerClass: 'text-center',
@@ -1948,6 +1966,7 @@ export default function NetworkReal() {
         width: 130,
         minWidth: 90,
         maxWidth: 180,
+        resizable: true,
         filter: true,
         cellClass: 'text-center flex items-center justify-center',
         headerClass: 'text-center',
@@ -1960,6 +1979,7 @@ export default function NetworkReal() {
         width: 240,
         minWidth: 150,
         maxWidth: 400,
+        resizable: true,
         filter: true,
         cellClass: 'text-left flex items-center justify-start',
         headerClass: 'text-left',
@@ -1972,6 +1992,7 @@ export default function NetworkReal() {
         width: 180,
         minWidth: 130,
         maxWidth: 220,
+        resizable: true,
         filter: 'agDateColumnFilter',
         cellClass: 'text-center flex items-center justify-center',
         headerClass: 'text-center',
@@ -1989,6 +2010,7 @@ export default function NetworkReal() {
         width: 180,
         minWidth: 130,
         maxWidth: 220,
+        resizable: true,
         filter: 'agDateColumnFilter',
         cellClass: 'text-center flex items-center justify-center',
         headerClass: 'text-center',
@@ -2387,25 +2409,40 @@ export default function NetworkReal() {
                   <div className="mx-1 my-3 h-px bg-slate-800" />
                   <button
                     onClick={() => {
-                      if (!bulkDeleteConfirm) {
-                        setBulkDeleteConfirm(true)
-                        return
+                      if (activeTab === 'deleted') {
+                        openConfirm(
+                          "Confirm Permanent Purge?",
+                          "WARNING: This action is completely irreversible. This will permanently destroy the selected connection(s) from the physical database. This action CANNOT be undone. Are you sure you want to proceed?",
+                          () => {
+                            bulkMutation.mutate({ action: 'purge' })
+                          },
+                          'danger'
+                        )
+                      } else {
+                        if (!bulkDeleteConfirm) {
+                          setBulkDeleteConfirm(true)
+                          return
+                        }
+                        bulkMutation.mutate({ action: 'delete' })
                       }
-                      bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' })
                     }}
-                    onMouseLeave={() => setBulkDeleteConfirm(false)}
+                    onMouseLeave={() => {
+                      if (activeTab !== 'deleted') {
+                        setBulkDeleteConfirm(false)
+                      }
+                    }}
                     disabled={bulkMutation.isPending}
                     className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
-                      bulkDeleteConfirm 
+                      (bulkDeleteConfirm && activeTab !== 'deleted')
                         ? 'border-rose-500 bg-rose-600 animate-pulse' 
                         : 'border-rose-900/70 bg-rose-950/70 hover:bg-rose-950'
                     } disabled:opacity-50`}
                   >
-                    <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
+                    <p className={`text-[10px] font-semibold ${(bulkDeleteConfirm && activeTab !== 'deleted') ? 'text-white' : 'text-rose-300'}`}>
                       {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
-                        bulkDeleteConfirm 
-                          ? (activeTab === 'deleted' ? 'Confirm Permanent Purge?' : 'Confirm De-activation?') 
-                          : (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purge : 'De-activate Selection')
+                        activeTab === 'deleted'
+                          ? OPERATIONAL_ACTION_LABELS.purge
+                          : (bulkDeleteConfirm ? 'Confirm De-activation?' : 'De-activate Selection')
                       )}
                     </p>
                   </button>
@@ -2460,9 +2497,21 @@ export default function NetworkReal() {
                   variant: 'inline' as OperationalRowActionVariant,
                   confirming: rowDeleteConfirmId === item.id,
                   onClick: () => {
-                    if (rowDeleteConfirmId !== item.id) { setRowDeleteConfirmId(item.id); return }
-                    bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [item.id] });
-                    setRowActionMenu(null); setRowDeleteConfirmId(null);
+                    if (activeTab === 'deleted') {
+                      setRowActionMenu(null);
+                      openConfirm(
+                        "Confirm Permanent Purge?",
+                        "WARNING: This action is completely irreversible. This will permanently destroy this connection from the physical database. This action CANNOT be undone. Are you sure you want to proceed?",
+                        () => {
+                          bulkMutation.mutate({ action: 'purge', ids: [item.id] })
+                        },
+                        'danger'
+                      )
+                    } else {
+                      if (rowDeleteConfirmId !== item.id) { setRowDeleteConfirmId(item.id); return }
+                      bulkMutation.mutate({ action: 'delete', ids: [item.id] });
+                      setRowActionMenu(null); setRowDeleteConfirmId(null);
+                    }
                   }
                 }
               ]
@@ -2625,12 +2674,24 @@ export default function NetworkReal() {
             onOpenHistory={() => {}}
             onOpenBkm={() => {}}
             onDelete={(connection: any) => {
-              if (!detailDeleteConfirm) {
-                setDetailDeleteConfirm(true)
-                return
+              if (activeTab === 'deleted') {
+                openConfirm(
+                  "Confirm Permanent Purge?",
+                  "WARNING: This action is completely irreversible. This will permanently destroy this connection from the physical database. This action CANNOT be undone. Are you sure you want to proceed?",
+                  () => {
+                    bulkMutation.mutate({ action: 'purge', ids: [connection.id] })
+                    closeNetworkDetail()
+                  },
+                  'danger'
+                )
+              } else {
+                if (!detailDeleteConfirm) {
+                  setDetailDeleteConfirm(true)
+                  return
+                }
+                bulkMutation.mutate({ action: 'delete', ids: [connection.id] })
+                closeNetworkDetail()
               }
-              bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [connection.id] })
-              closeNetworkDetail()
             }}
             onOpenAsset={(deviceId: number) => navigate(`/asset?id=${deviceId}`)}
             onOpenKnowledge={(knowledgeId: number) => navigate(`/knowledge?id=${knowledgeId}`)}
@@ -2703,9 +2764,9 @@ function CompareConnectionsModal({ items, onClose }: any) {
   const fields = useMemo(() => [
     { label: 'Status', getValue: (item: any) => item.status || 'Unknown' },
     { label: 'Farm', getValue: (item: any) => item.farm || 'N/A' },
-    { label: 'Src Node', getValue: (item: any) => item.src_node || item.server_a || 'N/A' },
-    { label: 'Src Rack Slot', getValue: (item: any) => item.src_rack_slot || 'N/A' },
-    { label: 'Src Port', getValue: (item: any) => item.src_port || 'N/A' },
+    { label: 'Source Node', getValue: (item: any) => item.src_node || item.server_a || 'N/A' },
+    { label: 'Source Rack Slot', getValue: (item: any) => item.src_rack_slot || 'N/A' },
+    { label: 'Source Port', getValue: (item: any) => item.src_port || 'N/A' },
     { label: 'Peer Node', getValue: (item: any) => item.peer_node || item.server_b || 'N/A' },
     { label: 'Peer Rack Slot', getValue: (item: any) => item.peer_rack_slot || 'N/A' },
     { label: 'Peer Port', getValue: (item: any) => item.peer_port || 'N/A' },
