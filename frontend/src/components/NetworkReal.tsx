@@ -24,6 +24,12 @@ import {
   useOperationalDismissController,
 } from './shared/OperationalGridInteractions'
 import {
+  OperationalRowActionMenu,
+  OperationalRowActionSectionModel,
+  OperationalRowActionTone,
+  OperationalRowActionVariant,
+} from './shared/OperationalRowActionMenu'
+import {
   createOperationalUtilityColumns,
 } from './shared/OperationalGridStandard'
 import {
@@ -194,8 +200,6 @@ const NETWORK_PERSISTED_COLUMN_IDS = new Set([
   'recent_change',
   'favorite',
   'watch',
-  'status',
-  'farm',
   'src_node',
   'src_rack_slot',
   'src_port',
@@ -205,6 +209,8 @@ const NETWORK_PERSISTED_COLUMN_IDS = new Set([
   'peer_port',
   'peer_ip',
   'type',
+  'farm',
+  'status',
   'speed',
   'direction',
   'purpose',
@@ -218,8 +224,6 @@ const NETWORK_DEFAULT_COLUMN_ORDER = [
   'recent_change',
   'favorite',
   'watch',
-  'status',
-  'farm',
   'src_node',
   'src_rack_slot',
   'src_port',
@@ -229,6 +233,8 @@ const NETWORK_DEFAULT_COLUMN_ORDER = [
   'peer_port',
   'peer_ip',
   'type',
+  'farm',
+  'status',
   'speed',
   'direction',
   'purpose',
@@ -1738,6 +1744,8 @@ export default function NetworkReal() {
             }
           }
         })
+      } else if (action === 'purge') {
+        showWorkspaceToast(result?.summary || 'Permanently purged connection(s). This action is irreversible.', { type: 'success' })
       } else {
         showWorkspaceToast(result?.summary || 'Updated network links', { type: 'success' })
       }
@@ -1789,40 +1797,25 @@ export default function NetworkReal() {
     const defs = [
       ...utilityColumns,
       {
-        field: 'status',
-        colId: 'status',
-        headerName: 'Status',
-        width: 120,
-        filter: true,
-        cellClass: 'text-center flex items-center justify-center',
-        headerClass: 'text-center',
-        cellRenderer: (p: any) => <StatusPill value={p.value || 'Active'} fontSize={fontSize} />,
-      },
-      {
-        field: 'farm',
-        colId: 'farm',
-        headerName: 'Farm',
-        width: 120,
-        filter: true,
-        cellClass: 'text-center flex items-center justify-center',
-        headerClass: 'text-center',
-        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
-      },
-      {
         field: 'src_node',
         colId: 'src_node',
         headerName: 'Src Node',
         width: 170,
+        minWidth: 120,
+        maxWidth: 280,
+        pinned: 'left',
         filter: true,
-        cellClass: 'text-left flex items-center justify-start',
+        cellClass: 'text-left flex items-center justify-start font-bold',
         headerClass: 'text-left',
-        cellRenderer: (p: any) => renderText(p.value, 'text-slate-200'),
+        cellRenderer: (p: any) => renderText(p.value, 'text-slate-200 font-bold'),
       },
       {
         field: 'src_rack_slot',
         colId: 'src_rack_slot',
         headerName: 'Src Rack Slot',
         width: 150,
+        minWidth: 100,
+        maxWidth: 220,
         filter: true,
         cellClass: 'text-left flex items-center justify-start',
         headerClass: 'text-left',
@@ -1833,6 +1826,8 @@ export default function NetworkReal() {
         colId: 'src_port',
         headerName: 'Src Port',
         width: 130,
+        minWidth: 80,
+        maxWidth: 180,
         filter: true,
         cellClass: 'text-left flex items-center justify-start',
         headerClass: 'text-left',
@@ -1843,6 +1838,8 @@ export default function NetworkReal() {
         colId: 'src_ip',
         headerName: 'Src IP',
         width: 150,
+        minWidth: 100,
+        maxWidth: 220,
         filter: true,
         cellClass: 'text-left flex items-center justify-start',
         headerClass: 'text-left',
@@ -1853,6 +1850,8 @@ export default function NetworkReal() {
         colId: 'peer_node',
         headerName: 'Peer Node',
         width: 170,
+        minWidth: 120,
+        maxWidth: 280,
         filter: true,
         cellClass: 'text-left flex items-center justify-start',
         headerClass: 'text-left',
@@ -1863,6 +1862,8 @@ export default function NetworkReal() {
         colId: 'peer_rack_slot',
         headerName: 'Peer Rack Slot',
         width: 150,
+        minWidth: 100,
+        maxWidth: 220,
         filter: true,
         cellClass: 'text-left flex items-center justify-start',
         headerClass: 'text-left',
@@ -1873,6 +1874,8 @@ export default function NetworkReal() {
         colId: 'peer_port',
         headerName: 'Peer Port',
         width: 130,
+        minWidth: 80,
+        maxWidth: 180,
         filter: true,
         cellClass: 'text-left flex items-center justify-start',
         headerClass: 'text-left',
@@ -1883,6 +1886,8 @@ export default function NetworkReal() {
         colId: 'peer_ip',
         headerName: 'Peer IP',
         width: 150,
+        minWidth: 100,
+        maxWidth: 220,
         filter: true,
         cellClass: 'text-left flex items-center justify-start',
         headerClass: 'text-left',
@@ -1893,16 +1898,44 @@ export default function NetworkReal() {
         colId: 'type',
         headerName: 'Type',
         width: 120,
+        minWidth: 80,
+        maxWidth: 160,
         filter: true,
         cellClass: 'text-center flex items-center justify-center',
         headerClass: 'text-center',
         cellRenderer: (p: any) => renderText(p.value, 'text-blue-300 font-semibold'),
       },
       {
+        field: 'farm',
+        colId: 'farm',
+        headerName: 'Farm',
+        width: 120,
+        minWidth: 80,
+        maxWidth: 180,
+        filter: true,
+        cellClass: 'text-center flex items-center justify-center',
+        headerClass: 'text-center',
+        cellRenderer: (p: any) => renderText(p.value, 'text-slate-300'),
+      },
+      {
+        field: 'status',
+        colId: 'status',
+        headerName: 'Status',
+        width: 120,
+        minWidth: 80,
+        maxWidth: 160,
+        filter: true,
+        cellClass: 'text-center flex items-center justify-center',
+        headerClass: 'text-center',
+        cellRenderer: (p: any) => <StatusPill value={p.value || 'Active'} fontSize={fontSize} />,
+      },
+      {
         field: 'speed',
         colId: 'speed',
         headerName: 'Speed',
         width: 110,
+        minWidth: 80,
+        maxWidth: 150,
         filter: true,
         cellClass: 'text-center flex items-center justify-center',
         headerClass: 'text-center',
@@ -1913,6 +1946,8 @@ export default function NetworkReal() {
         colId: 'direction',
         headerName: 'Direction',
         width: 130,
+        minWidth: 90,
+        maxWidth: 180,
         filter: true,
         cellClass: 'text-center flex items-center justify-center',
         headerClass: 'text-center',
@@ -1923,6 +1958,8 @@ export default function NetworkReal() {
         colId: 'purpose',
         headerName: 'Purpose',
         width: 240,
+        minWidth: 150,
+        maxWidth: 400,
         filter: true,
         cellClass: 'text-left flex items-center justify-start',
         headerClass: 'text-left',
@@ -1933,6 +1970,8 @@ export default function NetworkReal() {
         colId: 'created_at',
         headerName: 'Created',
         width: 180,
+        minWidth: 130,
+        maxWidth: 220,
         filter: 'agDateColumnFilter',
         cellClass: 'text-center flex items-center justify-center',
         headerClass: 'text-center',
@@ -1948,6 +1987,8 @@ export default function NetworkReal() {
         colId: 'updated_at',
         headerName: 'Updated',
         width: 180,
+        minWidth: 130,
+        maxWidth: 220,
         filter: 'agDateColumnFilter',
         cellClass: 'text-center flex items-center justify-center',
         headerClass: 'text-center',
@@ -2371,102 +2412,73 @@ export default function NetworkReal() {
             </WorkspaceFloatingPanel>
           </OperationalAnchoredPanel>
 
-          <OperationalAnchoredPanel
-            isOpen={hasRowActionMenu}
-            panelKey="row-action-menu"
-            style={rowActionMenu ? getPointFloatingStyle({
-              x: rowActionMenu.point.x,
-              y: rowActionMenu.point.y,
-              width: 320,
-              height: 420,
-              zIndex: 1110,
-            }) : { position: 'fixed', top: -9999, left: -9999 }}
-            className="row-action-menu-container"
-          >
-            {hasRowActionMenu && rowActionMenu ? (
-              <WorkspaceFloatingPanel kind="context" className="overflow-hidden">
-                <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-[10px] font-semibold text-slate-400">Row actions</p>
-                    <p className="pt-1 text-[11px] font-semibold text-slate-100">ID {rowActionMenu.item.id} · {rowActionMenu.item.device_name || 'No target asset linked'}</p>
-                    <p className="truncate pt-1 text-[12px] text-slate-300">{rowActionMenu.item.title}</p>
-                  </div>
-                  <button
-                    onClick={() => setRowActionMenu(null)}
-                    className="ml-3 flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-slate-400 transition-all hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
-                    aria-label="Close row actions"
-                  >
-                    <X size={13} />
-                  </button>
-                </div>
-                <div className="max-h-[calc(100vh-180px)] overflow-y-auto p-2.5 custom-scrollbar">
-                  <div className="px-3 py-1">
-                    <p className="text-[10px] font-semibold text-slate-400">Quick access</p>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 px-2 pb-3 border-b border-slate-800 mb-2">
-                    <button
-                      onClick={() => {
-                        openNetworkDetail(rowActionMenu.item)
-                        setRowActionMenu(null)
-                      }}
-                      className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-blue-400 transition-all hover:border-blue-500/30 hover:bg-blue-600/10 active:scale-95"
-                    >
-                      <Maximize2 size={14} />
-                      Details
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEditingItem(rowActionMenu.item)
-                        setIsFormOpen(true)
-                        setRowActionMenu(null)
-                      }}
-                      className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-emerald-400 transition-all hover:border-emerald-500/30 hover:bg-emerald-600/10 active:scale-95"
-                    >
-                      <Edit2 size={14} />
-                      Edit
-                    </button>
-                  </div>
-
-                  <div className="mx-2 my-2 h-px bg-slate-800" />
-                {activeTab === 'deleted' && (
-                  <button
-                    onClick={() => {
-                      bulkMutation.mutate({ action: 'restore', ids: [rowActionMenu.item.id] })
-                      setRowActionMenu(null)
-                    }}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300 transition-all hover:bg-emerald-950/80"
-                  >
-                    <Undo2 size={14} />
-                    Restore Connection
-                  </button>
-                )}
-                <button
-                  onClick={() => {
-                    const item = rowActionMenu.item
-                    if (rowDeleteConfirmId !== item.id) {
-                      setRowDeleteConfirmId(item.id)
-                      return
-                    }
-                    bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [item.id] })
-                    setRowActionMenu(null)
-                    setRowDeleteConfirmId(null)
-                  }}
-                  onMouseLeave={() => setRowDeleteConfirmId(null)}
-                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] transition-all ${
-                    rowDeleteConfirmId === rowActionMenu.item.id
-                      ? 'bg-rose-600 text-white animate-pulse'
-                      : 'text-rose-300 hover:bg-rose-950/80'
-                  }`}
-                >
-                  <Trash2 size={14} />
-                    {rowDeleteConfirmId === rowActionMenu.item.id
-                    ? (activeTab === 'active' ? 'Confirm Delete?' : 'Confirm Purge?')
-                    : (activeTab === 'active' ? 'Delete' : 'Purge')}
-                </button>
-                </div>
-              </WorkspaceFloatingPanel>
-            ) : null}
-          </OperationalAnchoredPanel>
+        {hasRowActionMenu && rowActionMenu && (() => {
+          const item = rowActionMenu.item
+          const detailTitle = item.title || `${item.src_node || item.server_a || 'Unknown'} ↔ ${item.peer_node || item.server_b || 'Unknown'}`
+          const sections: OperationalRowActionSectionModel[] = [
+            {
+              id: 'quickAccess',
+              columns: 2 as 2,
+              items: [
+                { 
+                  id: 'details', 
+                  label: 'Details', 
+                  icon: Maximize2, 
+                  tone: 'info' as OperationalRowActionTone, 
+                  onClick: () => { openNetworkDetail(item); setRowActionMenu(null); } 
+                },
+                { 
+                  id: 'edit', 
+                  label: 'Edit', 
+                  icon: Edit2, 
+                  tone: 'success' as OperationalRowActionTone, 
+                  onClick: () => { setEditingItem(item); setIsFormOpen(true); setRowActionMenu(null); } 
+                },
+              ]
+            },
+            {
+              id: 'archive',
+              columns: 1 as 1,
+              items: [
+                ...(activeTab === 'deleted' ? [
+                  { 
+                    id: 'restore', 
+                    label: 'Restore', 
+                    icon: Undo2, 
+                    tone: 'success' as OperationalRowActionTone, 
+                    variant: 'inline' as OperationalRowActionVariant, 
+                    onClick: () => { bulkMutation.mutate({ action: 'restore', ids: [item.id] }); setRowActionMenu(null); } 
+                  }
+                ] : []),
+                {
+                  id: 'archive',
+                  label: rowDeleteConfirmId === item.id 
+                    ? (activeTab === 'active' ? 'Confirm Delete?' : 'Confirm Purge?') 
+                    : (activeTab === 'active' ? 'Delete' : 'Purge'),
+                  icon: Trash2,
+                  tone: 'danger' as OperationalRowActionTone,
+                  variant: 'inline' as OperationalRowActionVariant,
+                  confirming: rowDeleteConfirmId === item.id,
+                  onClick: () => {
+                    if (rowDeleteConfirmId !== item.id) { setRowDeleteConfirmId(item.id); return }
+                    bulkMutation.mutate({ action: activeTab === 'active' ? 'delete' : 'purge', ids: [item.id] });
+                    setRowActionMenu(null); setRowDeleteConfirmId(null);
+                  }
+                }
+              ]
+            }
+          ]
+          return (
+            <OperationalRowActionMenu
+              onClose={() => setRowActionMenu(null)}
+              meta={`ID ${item.id} · ${item.device_name || 'No target asset linked'}`}
+              title={detailTitle}
+              cursorX={rowActionMenu.point.x}
+              cursorY={rowActionMenu.point.y}
+              sections={sections}
+            />
+          )
+        })()}
         </>
       }>
 
@@ -2926,7 +2938,36 @@ function BulkEditTableModal({ items, teams, operators, linkPurposeOptions, farmO
   })))
   const [isMaximized, setIsMaximized] = useState(false)
 
-  useEscapeDismiss(onClose)
+  const isDirty = useMemo(() => {
+    return rows.some((row: any) => {
+      const original = items.find((item: any) => item.id === row.id)
+      if (!original) return false
+      
+      const origStatus = original.status || ''
+      const origLinkType = original.link_type || original.category || ''
+      const origDirection = original.direction || ''
+      const origFarm = original.farm || ''
+      const origPurpose = original.purpose || ''
+      const origSpeedGbps = original.speed_gbps ?? ''
+      const origUnit = original.unit || 'Gbps'
+      const origCableType = original.cable_type || ''
+      const origRequestLink = original.request_link || ''
+      const origIsActive = original.is_active !== false
+
+      return (
+        row.status !== origStatus ||
+        row.link_type !== origLinkType ||
+        row.direction !== origDirection ||
+        row.farm !== origFarm ||
+        row.purpose !== origPurpose ||
+        row.speed_gbps !== origSpeedGbps ||
+        row.unit !== origUnit ||
+        row.cable_type !== origCableType ||
+        row.request_link !== origRequestLink ||
+        row.is_active !== origIsActive
+      )
+    })
+  }, [rows, items])
 
   const mergeOptionsWithCurrentValue = useCallback((options: Array<{ value: string; label: string }>, value: string) => {
     const current = value ? [{ value, label: value }] : []
@@ -2975,9 +3016,11 @@ function BulkEditTableModal({ items, teams, operators, linkPurposeOptions, farmO
       title="Bulk Edit Network"
       subtitle="Safe table-based edits for selected connections."
       icon={<Edit2 size={20} />}
+      isDirty={isDirty}
+      dirtyConfirmTitle="Discard Bulk Edits?"
+      dirtyConfirmMessage="You have unsaved bulk edits. Close this window and discard them?"
       footerRight={
         <div className="flex items-center gap-3">
-          <ToolbarButton onClick={onClose}>Close</ToolbarButton>
           <ToolbarButton 
             onClick={() => mutation.mutate()} 
             disabled={mutation.isPending} 

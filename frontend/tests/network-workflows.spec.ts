@@ -292,6 +292,9 @@ test.describe('Network workflows', () => {
     await page.getByRole('button', { name: 'Raw Rows' }).click()
     await page.getByRole('button', { name: 'Status', exact: true }).click()
     
+    // Toggle the display menu closed
+    await displayTrigger.click()
+    
     // The grid should now show grouped layout
     await expect(page.getByText('Grouped network matrix')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Active' })).toBeVisible()
