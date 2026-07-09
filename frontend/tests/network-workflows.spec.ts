@@ -13,6 +13,8 @@ import {
   ensureSettingOption,
   resetBrowserState,
   getPrimaryGrid,
+  waitForColumnRendered,
+  waitForColumnHidden,
 } from './helpers/sysgrid';
 import { expect } from '@playwright/test';
 import { test } from './helpers/sysgrid-test';
@@ -408,8 +410,8 @@ test.describe('Network workflows', () => {
     // Expand intelligence columns
     await page.getByTitle('Show Activity Columns').click()
 
-    // Wait until watch column is visible in DOM instead of a fixed timeout
-    await expect(page.locator('.ag-header-cell[col-id="watch"]').first()).toBeVisible({ timeout: 10000 })
+    // Wait until watch column is visible in DOM using custom helper
+    await waitForColumnRendered(page, 'watch')
 
     // Verify expanded column geometry from state
     const watchVisibleExpanded = await isColumnVisible(page, 'watch')
@@ -433,8 +435,8 @@ test.describe('Network workflows', () => {
     // Collapse back
     await page.getByTitle('Hide Activity Columns').click()
     
-    // Wait until watch column is no longer visible in DOM instead of a fixed timeout
-    await expect(page.locator('.ag-header-cell[col-id="watch"]').first()).not.toBeVisible({ timeout: 10000 })
+    // Wait until watch column is no longer visible in DOM using custom helper
+    await waitForColumnHidden(page, 'watch')
     
     expect(await isColumnVisible(page, 'watch')).toBe(false)
     expect(await isColumnVisible(page, 'recent_change')).toBe(false)

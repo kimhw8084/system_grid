@@ -632,3 +632,13 @@ export async function clickResilientButton(page: Page, ...names: (string | RegEx
 export async function verifyGridRowRobust(page: Page, searchString: string | RegExp) {
   await expect(page.locator('.ag-cell').filter({ hasText: searchString }).first()).toBeVisible({ timeout: 15000 });
 }
+
+export async function waitForColumnRendered(page: Page, colId: string, timeout = 10000) {
+  const selector = `.ag-header-cell[col-id="${colId}"]`
+  await page.locator(selector).first().waitFor({ state: 'visible', timeout })
+}
+
+export async function waitForColumnHidden(page: Page, colId: string, timeout = 10000) {
+  const selector = `.ag-header-cell[col-id="${colId}"]`
+  await page.locator(selector).first().waitFor({ state: 'hidden', timeout })
+}
