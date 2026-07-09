@@ -117,8 +117,8 @@ test.describe('Network workflows', () => {
     const bulkMenu = page.locator('.bulk-menu-container')
     await expect(bulkMenu).toBeVisible({ timeout: 5000 })
     
-    // Assert bulk menu anchoring geometry near its trigger
-    await expectMenuAnchoredNearTrigger(page, bulkTrigger, bulkMenu)
+    // Assert bulk menu anchoring geometry near its trigger with bottom constraint and viewport margin
+    await expectMenuAnchoredNearTrigger(page, bulkTrigger, bulkMenu, { allowedSide: 'bottom', viewportMarginPx: 10 })
 
     const deactBtn = bulkMenu.getByText('De-activate Selection').first()
     await expect(deactBtn).toBeVisible({ timeout: 5000 })
@@ -211,8 +211,8 @@ test.describe('Network workflows', () => {
     const expectedTitle = `${source.name}:eth0 ↔ ${peerA.name}:eth1`
     await expect(page.getByRole('heading', { name: expectedTitle })).toBeVisible()
     
-    // Close the detail modal via footer close button
-    await clickResilientButton(page, 'Close')
+    // Close the detail modal via footer close button inside the modal dialog
+    await page.locator('[role="dialog"] button:has-text("Close")').last().click()
     await expect(page.getByRole('heading', { name: 'Connection Forensics' })).not.toBeVisible()
 
     // 2. Load the network grid
@@ -256,8 +256,8 @@ test.describe('Network workflows', () => {
     const bulkMenu = page.locator('.bulk-menu-container')
     await expect(bulkMenu).toBeVisible({ timeout: 5000 })
     
-    // Assert bulk menu is anchored near its trigger
-    await expectMenuAnchoredNearTrigger(page, bulkTrigger, bulkMenu)
+    // Assert bulk menu is anchored near its trigger with bottom constraint and viewport margin
+    await expectMenuAnchoredNearTrigger(page, bulkTrigger, bulkMenu, { allowedSide: 'bottom', viewportMarginPx: 10 })
 
     // Close the bulk menu by pressing Escape to avoid pointer interception
     await page.keyboard.press('Escape')
@@ -270,8 +270,8 @@ test.describe('Network workflows', () => {
     await expect(rowActionMenu).toBeVisible({ timeout: 5000 })
     await expect(page.getByText('Row actions')).toBeVisible()
 
-    // Assert row action menu is anchored near its trigger
-    await expectMenuAnchoredNearTrigger(page, rowActionTrigger, rowActionMenu)
+    // Assert row action menu is anchored near its trigger with bottom constraint and viewport margin
+    await expectMenuAnchoredNearTrigger(page, rowActionTrigger, rowActionMenu, { allowedSide: 'bottom', viewportMarginPx: 10 })
 
     // Close row action menu via Escape
     await page.keyboard.press('Escape')
@@ -284,8 +284,8 @@ test.describe('Network workflows', () => {
     await expect(displayMenu).toBeVisible({ timeout: 5000 })
     await expect(page.getByText('Display density')).toBeVisible()
 
-    // Assert display menu is anchored near its trigger
-    await expectMenuAnchoredNearTrigger(page, displayTrigger, displayMenu)
+    // Assert display menu is anchored near its trigger with bottom constraint and viewport margin
+    await expectMenuAnchoredNearTrigger(page, displayTrigger, displayMenu, { allowedSide: 'bottom', viewportMarginPx: 10 })
 
     // 9. Prove Grouped grid renders and grouped selection works
     // Change Group By in Display menu to "Status"
@@ -319,8 +319,8 @@ test.describe('Network workflows', () => {
     await expect(viewsMenu).toBeVisible({ timeout: 5000 })
     await expect(page.getByText('Saved views')).toBeVisible()
 
-    // Assert saved views menu is anchored near its trigger
-    await expectMenuAnchoredNearTrigger(page, viewsTrigger, viewsMenu)
+    // Assert saved views menu is anchored near its trigger with bottom constraint and viewport margin
+    await expectMenuAnchoredNearTrigger(page, viewsTrigger, viewsMenu, { allowedSide: 'bottom', viewportMarginPx: 10 })
 
     // Dismiss views menu by pressing escape
     await page.keyboard.press('Escape')
@@ -356,13 +356,6 @@ test.describe('Network workflows', () => {
     expect(actionWidth).toBe(208)
 
     // Prove actual rendered DOM geometry and widths in collapsed state
-    const states = await page.evaluate(() => {
-      // @ts-ignore
-      const api = window.__DEBUG_NETWORK_GRID_API__
-      return api ? api.getColumnState() : []
-    })
-    console.log('COLUMN STATES AT GEOMETRY ASSERTION TIME:', JSON.stringify(states, null, 2))
-
     await expectColumnRenderedWidth(page, 'select', 64, 64)
     await expectColumnRenderedWidth(page, 'id', 90, 90)
     await expectColumnRenderedWidth(page, 'favorite', 80, 80)

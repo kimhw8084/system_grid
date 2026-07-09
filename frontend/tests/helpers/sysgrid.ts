@@ -497,22 +497,44 @@ export async function isColumnVisible(page: Page, colId: string): Promise<boolea
   }, colId)
 }
 
-export async function getGridHeaderBox(page: Page, colId: string) {
+export async function getGridHeaderBox(page: Page, colId: string): Promise<{ x: number; y: number; width: number; height: number }> {
   const selector = `.ag-header-cell[col-id="${colId}"]`
   const element = page.locator(selector).first()
+  await expect(element).toBeAttached({ timeout: 10000 })
   await expect(element).toBeVisible({ timeout: 10000 })
-  const box = await element.boundingBox()
-  if (!box) throw new Error(`Could not get bounding box for header cell of column: ${colId}`)
+
+  const box = await element.evaluate((el) => {
+    const rect = el.getBoundingClientRect()
+    const style = window.getComputedStyle(el)
+    const isHidden = style.display === 'none' || style.visibility === 'hidden' || rect.width === 0 || rect.height === 0
+    if (isHidden) return null
+    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+  })
+
+  if (!box) {
+    throw new Error(`Header cell for column col-id="${colId}" is not attached, hidden, or has zero width/height.`)
+  }
   return box
 }
 
-export async function getGridCellBox(page: Page, colId: string, rowIndex = 0) {
+export async function getGridCellBox(page: Page, colId: string, rowIndex = 0): Promise<{ x: number; y: number; width: number; height: number }> {
   const rowSelector = `.ag-row[row-index="${rowIndex}"]`
   const cellSelector = `${rowSelector} .ag-cell[col-id="${colId}"]`
   const cell = page.locator(cellSelector).first()
+  await expect(cell).toBeAttached({ timeout: 10000 })
   await expect(cell).toBeVisible({ timeout: 10000 })
-  const box = await cell.boundingBox()
-  if (!box) throw new Error(`Could not get bounding box for cell of column: ${colId} at row ${rowIndex}`)
+
+  const box = await cell.evaluate((el) => {
+    const rect = el.getBoundingClientRect()
+    const style = window.getComputedStyle(el)
+    const isHidden = style.display === 'none' || style.visibility === 'hidden' || rect.width === 0 || rect.height === 0
+    if (isHidden) return null
+    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+  })
+
+  if (!box) {
+    throw new Error(`Body cell for column col-id="${colId}" at rowIndex=${rowIndex} is not attached, hidden, or has zero width/height.`)
+  }
   return box
 }
 
@@ -525,26 +547,87 @@ export async function expectColumnRenderedWidth(page: Page, colId: string, min: 
 export async function expectHeaderBodyAligned(page: Page, colId: string, tolerancePx = 2) {
   const headerBox = await getGridHeaderBox(page, colId)
   const cellBox = await getGridCellBox(page, colId, 0)
-  expect(Math.abs(headerBox.x - cellBox.x)).toBeLessThanOrEqual(tolerancePx)
-  expect(Math.abs(headerBox.width - cellBox.width)).toBeLessThanOrEqual(tolerancePx)
+  
+  const xDiff = Math.abs(headerBox.x - cellBox.x)
+  const wDiff = Math.abs(headerBox.width - cellBox.width)
+
+  if (xDiff > tolerancePx || wDiff > tolerancePx) {
+    throw new Error(
+      `Header/Body alignment mismatch for column "${colId}".\n` +
+      `Header: x=${headerBox.x.toFixed(1)}, width=${headerBox.width.toFixed(1)}\n` +
+      `Body Cell: x=${cellBox.x.toFixed(1)}, width=${cellBox.width.toFixed(1)}\n` +
+      `Differences: x-diff=${xDiff.toFixed(1)}px, width-diff=${wDiff.toFixed(1)}px (tolerance=${tolerancePx}px)`
+    )
+  }
 }
 
 export async function expectNoBrokenGridOverflow(page: Page, gridLocator: Locator) {
   await expect(gridLocator).toBeVisible()
-  const box = await gridLocator.boundingBox()
-  expect(box).not.toBeNull()
-  if (box) {
-    expect(box.width).toBeGreaterThan(100)
-    expect(box.height).toBeGreaterThan(100)
-  }
-  const viewport = page.locator('.ag-body-viewport').first()
-  if (await viewport.isVisible()) {
-    const vpBox = await viewport.boundingBox()
-    expect(vpBox).not.toBeNull()
-    if (vpBox) {
-      expect(vpBox.width).toBeGreaterThan(0)
-      expect(vpBox.height).toBeGreaterThan(0)
+  
+  const result = await gridLocator.evaluate((gridEl) => {
+    const rootWrapper = gridEl.closest('.ag-root-wrapper') || gridEl.querySelector('.ag-root-wrapper') || gridEl
+    const centerViewport = rootWrapper.querySelector('.ag-center-cols-viewport')
+    const bodyViewport = centerViewport || rootWrapper.querySelector('.ag-body-viewport') || gridEl.querySelector('.ag-body-viewport') || gridEl.closest('.ag-body-viewport')
+    const headerViewport = rootWrapper.querySelector('.ag-header-viewport') || gridEl.querySelector('.ag-header-viewport') || gridEl.closest('.ag-header-viewport')
+    
+    if (!rootWrapper) return { ok: false, error: 'Could not find .ag-root-wrapper element' }
+    if (!bodyViewport) return { ok: false, error: 'Could not find .ag-body-viewport element' }
+    if (!headerViewport) return { ok: false, error: 'Could not find .ag-header-viewport element' }
+
+    const wrapperRect = rootWrapper.getBoundingClientRect()
+    const bodyRect = bodyViewport.getBoundingClientRect()
+    const headerRect = headerViewport.getBoundingClientRect()
+
+    if (wrapperRect.width === 0 || wrapperRect.height === 0) {
+      return { ok: false, error: 'Grid root wrapper has zero width or height' }
     }
+    if (bodyRect.width === 0 || bodyRect.height === 0) {
+      return { ok: false, error: 'Grid body viewport has zero width or height' }
+    }
+
+    // Header and body viewports must be consistent in width
+    const viewportWidthDiff = Math.abs(headerRect.width - bodyRect.width)
+    if (viewportWidthDiff > 10) {
+      return { ok: false, error: `Grid header viewport and body viewport widths are not consistent (diff: ${viewportWidthDiff}px, header: ${headerRect.width}px, body: ${bodyRect.width}px)` }
+    }
+
+    // Check pinned vs center container overlap
+    const pinnedLeft = rootWrapper.querySelector('.ag-pinned-left-cols-container')
+    const pinnedRight = rootWrapper.querySelector('.ag-pinned-right-cols-container')
+
+    if (pinnedLeft && centerViewport) {
+      const leftRect = pinnedLeft.getBoundingClientRect()
+      const centerRect = centerViewport.getBoundingClientRect()
+      if (leftRect.width > 0 && centerRect.left < leftRect.right - 1) {
+        return { ok: false, error: `Pinned left container overlaps center viewport (center left: ${centerRect.left}, pinned right: ${leftRect.right})` }
+      }
+    }
+
+    if (pinnedRight && centerViewport) {
+      const rightRect = pinnedRight.getBoundingClientRect()
+      const centerRect = centerViewport.getBoundingClientRect()
+      if (rightRect.width > 0 && centerRect.right > rightRect.left + 1) {
+        return { ok: false, error: `Pinned right container overlaps center viewport (center right: ${centerRect.right}, pinned left: ${rightRect.left})` }
+      }
+    }
+
+    // Check cells are not clipped to zero width or extremely narrow (< 10px) if they are supposed to be rendered
+    const cells = Array.from(rootWrapper.querySelectorAll('.ag-cell'))
+    for (const cell of cells) {
+      const rect = cell.getBoundingClientRect()
+      const style = window.getComputedStyle(cell)
+      const isHidden = style.display === 'none' || style.visibility === 'hidden'
+      if (!isHidden && rect.width < 10) {
+        const colId = cell.getAttribute('col-id') || 'unknown'
+        return { ok: false, error: `Rendered cell for column "${colId}" is unusably narrow (${rect.width}px)` }
+      }
+    }
+
+    return { ok: true }
+  })
+
+  if (!result.ok) {
+    throw new Error(`Broken Grid Layout/Overflow detected: ${result.error}`)
   }
 }
 
@@ -552,22 +635,75 @@ export async function expectMenuAnchoredNearTrigger(
   page: Page,
   triggerLocator: Locator,
   menuLocator: Locator,
-  options: { maxDistancePx?: number } = {}
+  options: {
+    maxDistancePx?: number
+    allowedSide?: 'left' | 'right' | 'top' | 'bottom' | 'any'
+    viewportMarginPx?: number
+  } = {}
 ) {
   const maxDistance = options.maxDistancePx ?? 400
+  const allowedSide = options.allowedSide ?? 'any'
+  const margin = options.viewportMarginPx ?? 10
+
   await expect(triggerLocator).toBeVisible()
   await expect(menuLocator).toBeVisible()
+
   const triggerBox = await triggerLocator.boundingBox()
   const menuBox = await menuLocator.boundingBox()
-  expect(triggerBox).not.toBeNull()
-  expect(menuBox).not.toBeNull()
-  if (triggerBox && menuBox) {
-    const tx = triggerBox.x + triggerBox.width / 2
-    const ty = triggerBox.y + triggerBox.height / 2
-    const mx = menuBox.x + menuBox.width / 2
-    const my = menuBox.y + menuBox.height / 2
-    const dist = Math.sqrt(Math.pow(tx - mx, 2) + Math.pow(ty - my, 2))
-    expect(dist).toBeLessThanOrEqual(maxDistance)
+
+  if (!triggerBox || triggerBox.width === 0 || triggerBox.height === 0) {
+    throw new Error('Trigger box is either null or has zero size')
+  }
+  if (!menuBox || menuBox.width === 0 || menuBox.height === 0) {
+    throw new Error('Menu box is either null or has zero size')
+  }
+
+  // Get viewport dimensions
+  const viewportSize = page.viewportSize()
+  if (viewportSize) {
+    // 1. Viewport containment checks
+    if (
+      menuBox.x < margin ||
+      menuBox.y < margin ||
+      menuBox.x + menuBox.width > viewportSize.width - margin ||
+      menuBox.y + menuBox.height > viewportSize.height - margin
+    ) {
+      throw new Error(
+        `Menu is not contained within the viewport boundaries (margin ${margin}px).\n` +
+        `Viewport: ${viewportSize.width}x${viewportSize.height}\n` +
+        `Menu: x=${menuBox.x}, y=${menuBox.y}, w=${menuBox.width}, h=${menuBox.height}`
+      )
+    }
+  }
+
+  // 2. Center-to-center distance check
+  const tx = triggerBox.x + triggerBox.width / 2
+  const ty = triggerBox.y + triggerBox.height / 2
+  const mx = menuBox.x + menuBox.width / 2
+  const my = menuBox.y + menuBox.height / 2
+  const dist = Math.sqrt(Math.pow(tx - mx, 2) + Math.pow(ty - my, 2))
+
+  if (dist > maxDistance) {
+    throw new Error(`Menu is detached from trigger (distance ${dist.toFixed(1)}px exceeds limit of ${maxDistance}px)`)
+  }
+
+  // 3. Side constraints check
+  if (allowedSide === 'bottom') {
+    if (menuBox.y < triggerBox.y + triggerBox.height - 5) {
+      throw new Error(`Menu expected to be below trigger, but menu y (${menuBox.y}) is above trigger bottom (${triggerBox.y + triggerBox.height})`)
+    }
+  } else if (allowedSide === 'top') {
+    if (menuBox.y + menuBox.height > triggerBox.y + 5) {
+      throw new Error(`Menu expected to be above trigger, but menu bottom (${menuBox.y + menuBox.height}) is below trigger top (${triggerBox.y})`)
+    }
+  } else if (allowedSide === 'right') {
+    if (menuBox.x < triggerBox.x - 5) {
+      throw new Error(`Menu expected to be aligned right of trigger, but menu x (${menuBox.x}) is left of trigger x (${triggerBox.x})`)
+    }
+  } else if (allowedSide === 'left') {
+    if (menuBox.x + menuBox.width > triggerBox.x + triggerBox.width + 5) {
+      throw new Error(`Menu expected to be aligned left of trigger, but menu right (${menuBox.x + menuBox.width}) is right of trigger right (${triggerBox.x + triggerBox.width})`)
+    }
   }
 }
 
@@ -605,40 +741,67 @@ export async function expectToast(page: Page, message: string | RegExp) {
 }
 
 export async function waitForAppIdle(page: Page) {
-  const loaders = ['Scanning monitoring matrix...', 'Synchronizing Matrix...', 'Scanning infrastructure registry...', 'Synchronizing Intelligence Matrix...', 'Loading...'];
+  const loaders = ['Scanning monitoring matrix...', 'Synchronizing Matrix...', 'Scanning infrastructure registry...', 'Synchronizing Intelligence Matrix...', 'Loading...']
   for (const loader of loaders) {
-    await page.getByText(loader).waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+    await page.getByText(loader).waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {})
   }
 }
 
 export async function clickResilientButton(page: Page, ...names: (string | RegExp)[]) {
   for (const name of names) {
-    const btn = page.getByRole('button', { name }).first();
+    const btn = page.getByRole('button', { name }).first()
     if (await btn.isVisible().catch(() => false)) {
-      await btn.click({ force: true });
-      return;
+      await btn.click({ force: true })
+      return
     }
   }
   for (const name of names) {
-    const btn = page.getByText(name).first();
+    const btn = page.getByText(name).first()
     if (await btn.isVisible().catch(() => false)) {
-      await btn.click({ force: true });
-      return;
+      await btn.click({ force: true })
+      return
     }
   }
-  throw new Error(`Could not find resilient button matching any of: ${names.join(', ')}`);
+  throw new Error(`Could not find resilient button matching any of: ${names.join(', ')}`)
 }
 
 export async function verifyGridRowRobust(page: Page, searchString: string | RegExp) {
-  await expect(page.locator('.ag-cell').filter({ hasText: searchString }).first()).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('.ag-cell').filter({ hasText: searchString }).first()).toBeVisible({ timeout: 15000 })
 }
 
 export async function waitForColumnRendered(page: Page, colId: string, timeout = 10000) {
   const selector = `.ag-header-cell[col-id="${colId}"]`
-  await page.locator(selector).first().waitFor({ state: 'visible', timeout })
+  const loc = page.locator(selector).first()
+  await loc.waitFor({ state: 'visible', timeout })
+  
+  await expect.poll(async () => {
+    const box = await loc.boundingBox()
+    return box && box.width > 0 && box.height > 0
+  }, {
+    message: `Waiting for column "${colId}" to render with a non-zero bounding box`,
+    timeout,
+  }).toBeTruthy()
 }
 
 export async function waitForColumnHidden(page: Page, colId: string, timeout = 10000) {
   const selector = `.ag-header-cell[col-id="${colId}"]`
-  await page.locator(selector).first().waitFor({ state: 'hidden', timeout })
+  
+  await expect.poll(async () => {
+    const loc = page.locator(selector)
+    const count = await loc.count()
+    if (count === 0) return true
+    for (let i = 0; i < count; i++) {
+      const isVisible = await loc.nth(i).isVisible()
+      if (isVisible) {
+        const box = await loc.nth(i).boundingBox()
+        if (box && box.width > 0) {
+          return false
+        }
+      }
+    }
+    return true
+  }, {
+    message: `Waiting for column "${colId}" to be hidden`,
+    timeout,
+  }).toBeTruthy()
 }
