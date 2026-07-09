@@ -56,10 +56,34 @@ export async function resetBrowserState(page: Page) {
   const testResetToken = `pw-reset-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   const testUserId = process.env.USER_ID || 'haewon.kim'
   
+  const cleanState = {
+    savedViews: [],
+    activeViewId: null,
+    favoriteIds: [],
+    watchIds: [],
+    uiState: {
+      activeTab: 'active',
+      fontSize: 11,
+      rowDensity: 8,
+      hiddenColumns: [],
+      quickFilters: { status: [], severity: [], platform: [], owner: [] },
+      groupBy: 'raw',
+      showFilterBar: true,
+      columnLayoutState: [],
+      lastVisitedAt: 0,
+      searchTerm: '',
+    }
+  }
+
   // Clear backend user settings
   try {
     await page.request.post(`${apiBase}/settings/user/settings`, {
       data: {
+        monitoring_workspace_state_v2: cleanState,
+        asset_real_workspace_state_v1: cleanState,
+        network_workspace_state_v1: cleanState,
+        services_workspace_state_v1: cleanState,
+        vendor_workspace_state_v1: cleanState,
         monitoring_ui_state: null,
         asset_ui_state: null,
         project_ui_state: null,
@@ -74,6 +98,17 @@ export async function resetBrowserState(page: Page) {
     })
   } catch (e) {
     console.error('Failed to clear backend settings:', e)
+  }
+
+  // Direct clean up of localStorage and sessionStorage on the app origin
+  try {
+    await page.goto('/')
+    await page.evaluate(() => {
+      window.localStorage.clear()
+      window.sessionStorage.clear()
+    })
+  } catch (e) {
+    // ignore
   }
 
   await page.addInitScript(({ injectedApiOrigin, resetToken, userId }) => {
@@ -460,6 +495,80 @@ export async function isColumnVisible(page: Page, colId: string): Promise<boolea
     const col = api.getColumnState().find((c: any) => c.colId === id)
     return col ? !col.hide : false
   }, colId)
+}
+
+export async function getGridHeaderBox(page: Page, colId: string) {
+  const selector = `.ag-header-cell[col-id="${colId}"]`
+  const element = page.locator(selector).first()
+  await expect(element).toBeVisible({ timeout: 10000 })
+  const box = await element.boundingBox()
+  if (!box) throw new Error(`Could not get bounding box for header cell of column: ${colId}`)
+  return box
+}
+
+export async function getGridCellBox(page: Page, colId: string, rowIndex = 0) {
+  const rowSelector = `.ag-row[row-index="${rowIndex}"]`
+  const cellSelector = `${rowSelector} .ag-cell[col-id="${colId}"]`
+  const cell = page.locator(cellSelector).first()
+  await expect(cell).toBeVisible({ timeout: 10000 })
+  const box = await cell.boundingBox()
+  if (!box) throw new Error(`Could not get bounding box for cell of column: ${colId} at row ${rowIndex}`)
+  return box
+}
+
+export async function expectColumnRenderedWidth(page: Page, colId: string, min: number, max: number) {
+  const box = await getGridHeaderBox(page, colId)
+  expect(box.width).toBeGreaterThanOrEqual(min)
+  expect(box.width).toBeLessThanOrEqual(max)
+}
+
+export async function expectHeaderBodyAligned(page: Page, colId: string, tolerancePx = 2) {
+  const headerBox = await getGridHeaderBox(page, colId)
+  const cellBox = await getGridCellBox(page, colId, 0)
+  expect(Math.abs(headerBox.x - cellBox.x)).toBeLessThanOrEqual(tolerancePx)
+  expect(Math.abs(headerBox.width - cellBox.width)).toBeLessThanOrEqual(tolerancePx)
+}
+
+export async function expectNoBrokenGridOverflow(page: Page, gridLocator: Locator) {
+  await expect(gridLocator).toBeVisible()
+  const box = await gridLocator.boundingBox()
+  expect(box).not.toBeNull()
+  if (box) {
+    expect(box.width).toBeGreaterThan(100)
+    expect(box.height).toBeGreaterThan(100)
+  }
+  const viewport = page.locator('.ag-body-viewport').first()
+  if (await viewport.isVisible()) {
+    const vpBox = await viewport.boundingBox()
+    expect(vpBox).not.toBeNull()
+    if (vpBox) {
+      expect(vpBox.width).toBeGreaterThan(0)
+      expect(vpBox.height).toBeGreaterThan(0)
+    }
+  }
+}
+
+export async function expectMenuAnchoredNearTrigger(
+  page: Page,
+  triggerLocator: Locator,
+  menuLocator: Locator,
+  options: { maxDistancePx?: number } = {}
+) {
+  const maxDistance = options.maxDistancePx ?? 400
+  await expect(triggerLocator).toBeVisible()
+  await expect(menuLocator).toBeVisible()
+  const triggerBox = await triggerLocator.boundingBox()
+  const menuBox = await menuLocator.boundingBox()
+  expect(triggerBox).not.toBeNull()
+  expect(menuBox).not.toBeNull()
+  if (triggerBox && menuBox) {
+    const tx = triggerBox.x + triggerBox.width / 2
+    const ty = triggerBox.y + triggerBox.height / 2
+    const mx = menuBox.x + menuBox.width / 2
+    const my = menuBox.y + menuBox.height / 2
+    const dist = Math.sqrt(Math.pow(tx - mx, 2) + Math.pow(ty - my, 2))
+    expect(dist).toBeLessThanOrEqual(maxDistance)
+  }
 }
 
 export async function gotoView(page: Page, path: string, heading: string | RegExp) {
