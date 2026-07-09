@@ -1,4 +1,4 @@
-import { clickResilientButton } from './helpers/sysgrid';
+import { clickResilientButton, getColumnWidth, isColumnVisible } from './helpers/sysgrid';
 import { expect } from '@playwright/test';
 import { test } from './helpers/sysgrid-test';
 import { createAsset, createConnection, ensureSettingOption, resetBrowserState } from './helpers/sysgrid'
@@ -102,6 +102,8 @@ test.describe('Network workflows', () => {
   })
 
   test('supports manual selection, modifiers, menu overlays, display configurations, and grouped grid parity', async ({ page, sysApi: request }) => {
+    page.on('console', msg => console.log('BROWSER CONSOLE:', msg.text()))
+    page.on('pageerror', err => console.log('BROWSER PAGEERROR:', err))
     await resetBrowserState(page)
     const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     const farm = `PW-NET-MANUAL-${stamp}`
@@ -263,5 +265,60 @@ test.describe('Network workflows', () => {
     // 10. Prove saved views menu opens
     await page.getByRole('button', { name: 'Views' }).click()
     await expect(page.getByText('Saved views')).toBeVisible({ timeout: 5000 })
+    // Dismiss views menu by pressing escape
+    await page.keyboard.press('Escape')
+
+    // 11. Prove column-width and grid geometry assertions
+    // Verify initial column geometry (intelligence collapsed)
+    const selectWidth = await getColumnWidth(page, 'select')
+    const idWidth = await getColumnWidth(page, 'id')
+    const favoriteWidth = await getColumnWidth(page, 'favorite')
+    const actionWidth = await getColumnWidth(page, 'row_actions')
+
+    const selectVisible = await isColumnVisible(page, 'select')
+    const idVisible = await isColumnVisible(page, 'id')
+    const favoriteVisible = await isColumnVisible(page, 'favorite')
+    const watchVisible = await isColumnVisible(page, 'watch')
+    const recentVisible = await isColumnVisible(page, 'recent_change')
+    const actionVisible = await isColumnVisible(page, 'row_actions')
+
+    expect(selectVisible).toBe(true)
+    expect(selectWidth).toBe(64)
+    
+    expect(idVisible).toBe(true)
+    expect(idWidth).toBe(90)
+    
+    expect(favoriteVisible).toBe(true)
+    expect(favoriteWidth).toBe(80) // Favorite remains visible by default
+    
+    expect(watchVisible).toBe(false) // Watch is hidden/collapsed by default
+    expect(recentVisible).toBe(false) // Recent Change is hidden/collapsed by default
+    
+    expect(actionVisible).toBe(true)
+    expect(actionWidth).toBe(208)
+
+    // Expand intelligence columns
+    await page.getByTitle('Show Activity Columns').click()
+    await page.waitForTimeout(200) // Wait for AG Grid layout and render
+
+    // Verify expanded column geometry
+    const watchVisibleExpanded = await isColumnVisible(page, 'watch')
+    const recentVisibleExpanded = await isColumnVisible(page, 'recent_change')
+    
+    const watchWidthExpanded = await getColumnWidth(page, 'watch')
+    const recentWidthExpanded = await getColumnWidth(page, 'recent_change')
+    
+    expect(watchVisibleExpanded).toBe(true)
+    expect(watchWidthExpanded).toBe(85)
+    
+    expect(recentVisibleExpanded).toBe(true)
+    expect(recentWidthExpanded).toBe(80)
+
+    // Collapse back
+    await page.getByTitle('Hide Activity Columns').click()
+    await page.waitForTimeout(200)
+    
+    expect(await isColumnVisible(page, 'watch')).toBe(false)
+    expect(await isColumnVisible(page, 'recent_change')).toBe(false)
   })
 })

@@ -161,6 +161,9 @@ export type OperationalUtilityColumnsConfig = {
   includeFavorite?: boolean
   includeWatch?: boolean
   isIntelligenceExpanded?: boolean
+  hideRecentChange?: boolean
+  hideFavorite?: boolean
+  hideWatch?: boolean
   isRecentChange: (item: any) => boolean
   onToggleFavorite: (id: number) => void
   onToggleWatch: (id: number) => void

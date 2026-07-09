@@ -445,10 +445,20 @@ export async function seedRackScenario(request: APIRequestContext) {
 export async function getColumnWidth(page: Page, colId: string): Promise<number> {
   return page.evaluate((id) => {
     // @ts-ignore
-    const api = window.__MONITORING_GRID_API__ || window.__ASSET_GRID_API__ || window.__PROJECT_GRID_API__
+    const api = window.__MONITORING_GRID_API__ || window.__ASSET_GRID_API__ || window.__PROJECT_GRID_API__ || window.__DEBUG_NETWORK_GRID_API__
     if (!api) return 0
     const col = api.getColumnState().find((c: any) => c.colId === id)
     return col ? col.width : 0
+  }, colId)
+}
+
+export async function isColumnVisible(page: Page, colId: string): Promise<boolean> {
+  return page.evaluate((id) => {
+    // @ts-ignore
+    const api = window.__MONITORING_GRID_API__ || window.__ASSET_GRID_API__ || window.__PROJECT_GRID_API__ || window.__DEBUG_NETWORK_GRID_API__
+    if (!api) return false
+    const col = api.getColumnState().find((c: any) => c.colId === id)
+    return col ? !col.hide : false
   }, colId)
 }
 

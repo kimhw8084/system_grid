@@ -1773,10 +1773,13 @@ export default function NetworkReal() {
     )
 
     const utilityColumns = createOperationalUtilityColumns({
-      includeRecentChange: isIntelligenceExpanded,
+      includeRecentChange: true,
       includeFavorite: true,
-      includeWatch: isIntelligenceExpanded,
+      includeWatch: true,
       isIntelligenceExpanded,
+      hideRecentChange: !isIntelligenceExpanded,
+      hideFavorite: false,
+      hideWatch: !isIntelligenceExpanded,
       isRecentChange,
       onToggleFavorite: toggleFavorite,
       onToggleWatch: toggleWatch,
