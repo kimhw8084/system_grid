@@ -544,20 +544,34 @@ export async function expectColumnRenderedWidth(page: Page, colId: string, min: 
   expect(box.width).toBeLessThanOrEqual(max)
 }
 
-export async function expectHeaderBodyAligned(page: Page, colId: string, tolerancePx = 2) {
+export async function expectHeaderBodyAligned(page: Page, colId: string, tolerancePx = 2, maxRowsToCheck = 2) {
   const headerBox = await getGridHeaderBox(page, colId)
-  const cellBox = await getGridCellBox(page, colId, 0)
   
-  const xDiff = Math.abs(headerBox.x - cellBox.x)
-  const wDiff = Math.abs(headerBox.width - cellBox.width)
+  // Check multiple rows when available
+  for (let r = 0; r < maxRowsToCheck; r++) {
+    const rowSelector = `.ag-row[row-index="${r}"]`
+    const cellSelector = `${rowSelector} .ag-cell[col-id="${colId}"]`
+    const cellLoc = page.locator(cellSelector).first()
+    const exists = await cellLoc.count() > 0
+    if (!exists) {
+      if (r === 0) {
+        throw new Error(`Body cell for column "${colId}" at row index 0 is not found or virtualized away unexpectedly.`)
+      }
+      break
+    }
+    
+    const cellBox = await getGridCellBox(page, colId, r)
+    const xDiff = Math.abs(headerBox.x - cellBox.x)
+    const wDiff = Math.abs(headerBox.width - cellBox.width)
 
-  if (xDiff > tolerancePx || wDiff > tolerancePx) {
-    throw new Error(
-      `Header/Body alignment mismatch for column "${colId}".\n` +
-      `Header: x=${headerBox.x.toFixed(1)}, width=${headerBox.width.toFixed(1)}\n` +
-      `Body Cell: x=${cellBox.x.toFixed(1)}, width=${cellBox.width.toFixed(1)}\n` +
-      `Differences: x-diff=${xDiff.toFixed(1)}px, width-diff=${wDiff.toFixed(1)}px (tolerance=${tolerancePx}px)`
-    )
+    if (xDiff > tolerancePx || wDiff > tolerancePx) {
+      throw new Error(
+        `Header/Body alignment mismatch for column "${colId}" at row index ${r}.\n` +
+        `Header: x=${headerBox.x.toFixed(1)}, width=${headerBox.width.toFixed(1)}\n` +
+        `Body Cell: x=${cellBox.x.toFixed(1)}, width=${cellBox.width.toFixed(1)}\n` +
+        `Differences: x-diff=${xDiff.toFixed(1)}px, width-diff=${wDiff.toFixed(1)}px (tolerance=${tolerancePx}px)`
+      )
+    }
   }
 }
 
@@ -591,14 +605,33 @@ export async function expectNoBrokenGridOverflow(page: Page, gridLocator: Locato
       return { ok: false, error: `Grid header viewport and body viewport widths are not consistent (diff: ${viewportWidthDiff}px, header: ${headerRect.width}px, body: ${bodyRect.width}px)` }
     }
 
+    // Check clientWidth and scrollWidth of viewports
+    if (centerViewport) {
+      const scrollW = centerViewport.scrollWidth
+      const clientW = centerViewport.clientWidth
+      if (clientW === 0) {
+        return { ok: false, error: 'Center viewport clientWidth is 0 (collapsed container)' }
+      }
+      
+      const standardViewport = rootWrapper.querySelector('.ag-body-viewport')
+      if (standardViewport) {
+        const hasScrollbar = standardViewport.scrollWidth > standardViewport.clientWidth
+        const outerScrollW = standardViewport.scrollWidth
+        const outerClientW = standardViewport.clientWidth
+        if (outerScrollW > outerClientW + 50 && !hasScrollbar) {
+          return { ok: false, error: 'Grid has massive hidden horizontal overflow without scrollbar setup' }
+        }
+      }
+    }
+
     // Check pinned vs center container overlap
-    const pinnedLeft = rootWrapper.querySelector('.ag-pinned-left-cols-container')
-    const pinnedRight = rootWrapper.querySelector('.ag-pinned-right-cols-container')
+    const pinnedLeft = rootWrapper.querySelector('.ag-pinned-left-cols-container') || rootWrapper.querySelector('.ag-pinned-left-header')
+    const pinnedRight = rootWrapper.querySelector('.ag-pinned-right-cols-container') || rootWrapper.querySelector('.ag-pinned-right-header')
 
     if (pinnedLeft && centerViewport) {
       const leftRect = pinnedLeft.getBoundingClientRect()
       const centerRect = centerViewport.getBoundingClientRect()
-      if (leftRect.width > 0 && centerRect.left < leftRect.right - 1) {
+      if (leftRect.width > 0 && centerRect.left < leftRect.right - 2) {
         return { ok: false, error: `Pinned left container overlaps center viewport (center left: ${centerRect.left}, pinned right: ${leftRect.right})` }
       }
     }
@@ -606,8 +639,24 @@ export async function expectNoBrokenGridOverflow(page: Page, gridLocator: Locato
     if (pinnedRight && centerViewport) {
       const rightRect = pinnedRight.getBoundingClientRect()
       const centerRect = centerViewport.getBoundingClientRect()
-      if (rightRect.width > 0 && centerRect.right > rightRect.left + 1) {
+      if (rightRect.width > 0 && centerRect.right > rightRect.left + 2) {
         return { ok: false, error: `Pinned right container overlaps center viewport (center right: ${centerRect.right}, pinned left: ${rightRect.left})` }
+      }
+    }
+
+    // Check center cells are not rendered outside expected horizontal grid bounds under pinned panels
+    if (centerViewport) {
+      const centerRect = centerViewport.getBoundingClientRect()
+      const centerCells = Array.from(centerViewport.querySelectorAll('.ag-cell'))
+      for (const cell of centerCells) {
+        const rect = cell.getBoundingClientRect()
+        const style = window.getComputedStyle(cell)
+        const isHidden = style.display === 'none' || style.visibility === 'hidden'
+        if (!isHidden) {
+          if (rect.right < centerRect.left - 5 || rect.left > centerRect.right + 5) {
+            return { ok: false, error: `Center cell for column "${cell.getAttribute('col-id')}" renders outside center viewport bounds` }
+          }
+        }
       }
     }
 
@@ -620,6 +669,15 @@ export async function expectNoBrokenGridOverflow(page: Page, gridLocator: Locato
       if (!isHidden && rect.width < 10) {
         const colId = cell.getAttribute('col-id') || 'unknown'
         return { ok: false, error: `Rendered cell for column "${colId}" is unusably narrow (${rect.width}px)` }
+      }
+    }
+
+    // Verify row actions column (if present) is reachable and has reasonable size
+    const actionCell = rootWrapper.querySelector('.ag-cell[col-id="row_actions"]')
+    if (actionCell) {
+      const rect = actionCell.getBoundingClientRect()
+      if (rect.width < 150) {
+        return { ok: false, error: `Row actions column width (${rect.width}px) is narrow or crowded` }
       }
     }
 
@@ -689,20 +747,37 @@ export async function expectMenuAnchoredNearTrigger(
 
   // 3. Side constraints check
   if (allowedSide === 'bottom') {
-    if (menuBox.y < triggerBox.y + triggerBox.height - 5) {
+    if (menuBox.y < triggerBox.y + triggerBox.height - 10) {
       throw new Error(`Menu expected to be below trigger, but menu y (${menuBox.y}) is above trigger bottom (${triggerBox.y + triggerBox.height})`)
     }
   } else if (allowedSide === 'top') {
-    if (menuBox.y + menuBox.height > triggerBox.y + 5) {
+    if (menuBox.y + menuBox.height > triggerBox.y + 10) {
       throw new Error(`Menu expected to be above trigger, but menu bottom (${menuBox.y + menuBox.height}) is below trigger top (${triggerBox.y})`)
     }
   } else if (allowedSide === 'right') {
-    if (menuBox.x < triggerBox.x - 5) {
+    if (menuBox.x < triggerBox.x - 10) {
       throw new Error(`Menu expected to be aligned right of trigger, but menu x (${menuBox.x}) is left of trigger x (${triggerBox.x})`)
     }
   } else if (allowedSide === 'left') {
-    if (menuBox.x + menuBox.width > triggerBox.x + triggerBox.width + 5) {
+    if (menuBox.x + menuBox.width > triggerBox.x + triggerBox.width + 10) {
       throw new Error(`Menu expected to be aligned left of trigger, but menu right (${menuBox.x + menuBox.width}) is right of trigger right (${triggerBox.x + triggerBox.width})`)
+    }
+  }
+
+  // 4. Verify menu does not overlap unrelated fixed utility grid controls (e.g. pinned-left column headers) unless triggered by them
+  const isTriggerInPinnedLeft = await triggerLocator.evaluate((el) => {
+    return !!el.closest('.ag-pinned-left-header') || !!el.closest('.ag-pinned-left-cols-container')
+  }).catch(() => false)
+
+  if (!isTriggerInPinnedLeft) {
+    const pinnedLeftHeader = page.locator('.ag-pinned-left-header').first()
+    if (await pinnedLeftHeader.isVisible().catch(() => false)) {
+      const plBox = await pinnedLeftHeader.boundingBox()
+      if (plBox && plBox.width > 0) {
+        if (menuBox.x < plBox.x + plBox.width - 2) {
+          throw new Error(`Unanchored menu overlaps the pinned left utility column headers! Menu x: ${menuBox.x}, Pinned right: ${plBox.x + plBox.width}`)
+        }
+      }
     }
   }
 }

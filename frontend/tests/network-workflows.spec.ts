@@ -372,11 +372,11 @@ test.describe('Network workflows', () => {
     const statusBox = await getGridHeaderBox(page, 'status')
     expect(statusBox.width).toBeGreaterThanOrEqual(100)
 
-    // Prove header-body alignment for utility and status columns
-    await expectHeaderBodyAligned(page, 'select')
-    await expectHeaderBodyAligned(page, 'id')
-    await expectHeaderBodyAligned(page, 'favorite')
-    await expectHeaderBodyAligned(page, 'status')
+    // Prove header-body alignment for utility and status columns across multiple rows
+    await expectHeaderBodyAligned(page, 'select', 2, 2)
+    await expectHeaderBodyAligned(page, 'id', 2, 2)
+    await expectHeaderBodyAligned(page, 'favorite', 2, 2)
+    await expectHeaderBodyAligned(page, 'status', 2, 2)
 
     // Scroll farm into view using AG Grid API to handle virtualization
     await page.evaluate(() => {
@@ -385,10 +385,10 @@ test.describe('Network workflows', () => {
       if (api) api.ensureColumnVisible('farm')
     })
 
-    // Now 'farm' column is scrolled into view and rendered in the DOM
+    // Now 'farm' column is scrolled into view and rendered in the DOM with multi-row alignment proof
     const farmBox = await getGridHeaderBox(page, 'farm')
     expect(farmBox.width).toBeGreaterThanOrEqual(100)
-    await expectHeaderBodyAligned(page, 'farm')
+    await expectHeaderBodyAligned(page, 'farm', 2, 2)
 
     // Scroll back status into view
     await page.evaluate(() => {
@@ -419,11 +419,11 @@ test.describe('Network workflows', () => {
     expect(recentVisibleExpanded).toBe(true)
     expect(recentWidthExpanded).toBe(80)
 
-    // Prove actual rendered DOM geometry and alignment for watch and recent_change in expanded state
+    // Prove actual rendered DOM geometry and alignment for watch and recent_change in expanded state with multi-row proof
     await expectColumnRenderedWidth(page, 'watch', 85, 85)
     await expectColumnRenderedWidth(page, 'recent_change', 80, 80)
-    await expectHeaderBodyAligned(page, 'watch')
-    await expectHeaderBodyAligned(page, 'recent_change')
+    await expectHeaderBodyAligned(page, 'watch', 2, 2)
+    await expectHeaderBodyAligned(page, 'recent_change', 2, 2)
 
     // Collapse back
     await page.getByTitle('Hide Activity Columns').click()
