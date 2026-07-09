@@ -65,6 +65,7 @@ import {
   usePersistentJsonState,
   useWorkspaceSessionValue,
   useWorkspaceOverlayController,
+  useOperationalWorkspaceController,
 } from './shared/OperationalWorkspaceHooks'
 import { WorkspaceCompareShell, WorkspaceDossierShell, WorkspaceHistoryShell } from './shared/WorkspaceModalShells'
 import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
@@ -674,7 +675,15 @@ export default function NetworkReal() {
   const [rowActionMenu, setRowActionMenu] = useState<{ item: any; point: { x: number; y: number } } | null>(null)
   const hasRowActionMenu = activeOverlay === 'rowAction' && Boolean(rowActionMenu)
   const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
-  const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
+  const {
+    filterModel: gridFilterModel,
+    setFilterModel: setGridFilterModel,
+    quickFilters,
+    setQuickFilters,
+  } = useOperationalWorkspaceController({
+    initialFilterModel: {},
+    initialQuickFilters: persistedUiState?.quickFilters ?? { status: [] as string[], farm: [] as string[], type: [] as string[], direction: [] as string[] },
+  })
   const [gridSortModel, setGridSortModel] = useState<any[]>([{ colId: 'favorite', sort: 'desc' }])
   const [savedViews, setSavedViews] = usePersistentJsonState<any[]>(NETWORK_VIEW_STORAGE_KEY, () => {
     return initialWorkspaceState?.savedViews ?? normalizeNetworkSavedViews([])
@@ -686,7 +695,6 @@ export default function NetworkReal() {
   )
   const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>(NETWORK_FAVORITES_STORAGE_KEY, initialWorkspaceState?.favoriteIds ?? [])
   const [watchIds, setWatchIds] = usePersistentJsonState<number[]>(NETWORK_WATCH_STORAGE_KEY, initialWorkspaceState?.watchIds ?? [])
-  const [quickFilters, setQuickFilters] = useState(persistedUiState?.quickFilters ?? { status: [] as string[], farm: [] as string[], type: [] as string[], direction: [] as string[] })
   const [searchTerm, setSearchTerm] = useState(persistedUiState?.searchTerm ?? '')
   const [groupBy, setGroupBy] = useState<string>(persistedUiState?.groupBy ?? 'raw')
   const [bulkDraft, setBulkDraft] = useState({ status: '', link_type: '', direction: '' })
@@ -1213,6 +1221,7 @@ export default function NetworkReal() {
 
   const dismissWorkspaceMenus = useCallback(() => {
     dismissOverlays()
+    setExpandedBulkSection(null)
     setBulkDeleteConfirm(false)
     setRowDeleteConfirmId(null)
   }, [dismissOverlays])
