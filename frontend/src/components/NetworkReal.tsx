@@ -3078,6 +3078,7 @@ function BulkEditTableModal({ items, teams, operators, linkPurposeOptions, farmO
       subtitle="Safe table-based edits for selected connections."
       icon={<Edit2 size={20} />}
       isDirty={isDirty}
+      hideFooterClose={true}
       dirtyConfirmTitle="Discard Bulk Edits?"
       dirtyConfirmMessage="You have unsaved bulk edits. Close this window and discard them?"
       footerRight={
