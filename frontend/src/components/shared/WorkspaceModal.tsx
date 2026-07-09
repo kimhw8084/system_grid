@@ -131,7 +131,7 @@ export function WorkspaceModal({
                     type="button"
                     onClick={() => requestDiscard()}
                     className="group flex h-3 w-3 items-center justify-center rounded-full bg-[#ff5f57] transition-all hover:bg-[#ff5f57]/80"
-                    title="Close"
+                    title="Dismiss"
                   >
                     <X size={8} strokeWidth={4} className="text-[#4c0000] opacity-0 transition-opacity group-hover:opacity-100" />
                   </button>

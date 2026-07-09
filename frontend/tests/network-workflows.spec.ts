@@ -19,6 +19,19 @@ import {
 import { expect } from '@playwright/test';
 import { test } from './helpers/sysgrid-test';
 
+async function dragHeaderResize(page: any, colId: string, deltaX: number) {
+  const handle = page.locator(`.ag-header-cell[col-id="${colId}"] .ag-header-cell-resize`).first()
+  await expect(handle).toBeVisible()
+  const box = await handle.boundingBox()
+  if (!box) throw new Error(`No resize handle box for column ${colId}`)
+  const startX = box.x + box.width / 2
+  const startY = box.y + box.height / 2
+  await page.mouse.move(startX, startY)
+  await page.mouse.down()
+  await page.mouse.move(startX + deltaX, startY, { steps: 18 })
+  await page.mouse.up()
+}
+
 test.describe('Network workflows', () => {
   test('supports deep-linked forensics, unit edits, and bulk sever from the grid', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
@@ -441,6 +454,22 @@ test.describe('Network workflows', () => {
   test('verifies golden column labels, domain order, pinning, resizability, bulk-edit dirty-close safety, context menu structure, and irreversible purge confirmation', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
     await page.setViewportSize({ width: 1920, height: 1080 })
+
+    // Seed an old bad layout state (version 1) in localStorage to prove that the preference migration/reset guard automatically restores domain order on page load!
+    await page.goto('/') // Navigate to landing first to mount localStorage context
+    await page.evaluate(() => {
+      window.localStorage.setItem('network_workspace_state_v1', JSON.stringify({
+        version: 1, // Stale version!
+        uiState: {
+          columnLayoutState: [
+            { colId: 'status' },
+            { colId: 'src_node' },
+            { colId: 'type' }
+          ]
+        }
+      }))
+    })
+
     const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     const farm = `PW-GOLDEN-${stamp}`
     await ensureSettingOption(request, 'NetworkFarm', farm)
@@ -488,32 +517,123 @@ test.describe('Network workflows', () => {
     const rows = page.locator('.ag-center-cols-container .ag-row')
     await expect(rows).toHaveCount(1, { timeout: 15000 })
 
+    // Query full list of column headers from AG Grid API directly to verify exact wording
+    // This is 100% immune to horizontal virtualization DOM clipping of offscreen columns
+    const headerNames = await page.evaluate(() => {
+      // @ts-ignore
+      const api = window.__DEBUG_NETWORK_GRID_API__
+      if (!api) return []
+      return api.getColumns().map((col: any) => {
+        const def = col.getColDef()
+        return def.headerName || def.field || ''
+      })
+    })
+
     // 1. Verify exact visible headers
-    await expect(page.getByText('Source Node', { exact: true })).toBeVisible()
-    await expect(page.getByText('Source Rack Slot', { exact: true })).toBeVisible()
-    await expect(page.getByText('Source Port', { exact: true })).toBeVisible()
-    await expect(page.getByText('Source IP', { exact: true })).toBeVisible()
+    const expectedHeaders = [
+      'Source Node', 'Source Rack Slot', 'Source Port', 'Source IP',
+      'Peer Node', 'Peer Rack Slot', 'Peer Port', 'Peer IP',
+      'Type', 'Farm', 'Status', 'Speed', 'Direction', 'Purpose',
+      'Created', 'Updated'
+    ]
+    for (const headerName of expectedHeaders) {
+      expect(headerNames).toContain(headerName)
+    }
 
-    // 2. Verify pinning of Source Node
-    const pinnedHeader = page.locator('.ag-pinned-left-header .ag-header-cell[col-id="src_node"]')
-    await expect(pinnedHeader).toBeVisible()
-
-    // 3. Verify manual resize of Source Node works and modifies the width
-    const initialWidth = await getColumnWidth(page, 'src_node')
-    
-    // Simulate resizing using AG Grid API directly to be robust
+    // Scroll Source Node and Status visible to prepare for pinning and resizing
     await page.evaluate(() => {
       // @ts-ignore
       const api = window.__DEBUG_NETWORK_GRID_API__
       if (api) {
-        api.setColumnWidth('src_node', 250)
+        api.ensureColumnVisible('src_node')
+        api.ensureColumnVisible('status')
       }
     })
-    const resizedWidth = await getColumnWidth(page, 'src_node')
-    expect(resizedWidth).toBe(250)
-    expect(resizedWidth).not.toEqual(initialWidth)
+    await page.waitForTimeout(500)
 
-    // 4. Context Menu Right-click & Structure Check
+    // 2. Verify complete default domain column sequence (proves stale layout was successfully migrated)
+    const columnOrder = await page.evaluate(() => {
+      // @ts-ignore
+      const api = window.__DEBUG_NETWORK_GRID_API__
+      if (!api) return []
+      return api.getColumns().map((col: any) => col.getColId())
+    })
+    const domainColIds = [
+      'src_node', 'src_rack_slot', 'src_port', 'src_ip',
+      'peer_node', 'peer_rack_slot', 'peer_port', 'peer_ip',
+      'type', 'farm', 'status', 'speed', 'direction', 'purpose',
+      'created_at', 'updated_at'
+    ]
+    const filteredOrder = columnOrder.filter(id => domainColIds.includes(id))
+    expect(filteredOrder).toEqual(domainColIds)
+
+    // 3. Verify pinning of Source Node and stability during horizontal scroll
+    const srcNodeHeader = page.locator('.ag-pinned-left-header .ag-header-cell[col-id="src_node"]').first()
+    await expect(srcNodeHeader).toBeVisible()
+    const initialHeaderBox = await srcNodeHeader.boundingBox()
+    if (!initialHeaderBox) throw new Error('No bounding box found for Source Node header')
+
+    // Scroll horizontally to prove freezing
+    await page.evaluate(() => {
+      const centerViewport = document.querySelector('.ag-body-viewport')
+      if (centerViewport) {
+        centerViewport.scrollLeft = 500
+      }
+    })
+    await page.waitForTimeout(500)
+
+    // Assert coordinates are completely stable (Source Node remains frozen on screen left)
+    const scrolledHeaderBox = await srcNodeHeader.boundingBox()
+    if (!scrolledHeaderBox) throw new Error('No bounding box found for scrolled Source Node header')
+    expect(scrolledHeaderBox.x).toEqual(initialHeaderBox.x)
+
+    // Scroll back to center
+    await page.evaluate(() => {
+      const centerViewport = document.querySelector('.ag-body-viewport')
+      if (centerViewport) {
+        centerViewport.scrollLeft = 0
+      }
+    })
+    await page.waitForTimeout(500)
+
+    // 4. Verify column widths are sane & Status column is compact
+    const statusWidth = await getColumnWidth(page, 'status')
+    expect(statusWidth).toBeLessThan(180) // compact!
+
+    // Verify no domain column is unconstrained/unreasonably stretched (all under 500px)
+    for (const colId of domainColIds) {
+      const w = await getColumnWidth(page, colId)
+      expect(w).toBeLessThan(500)
+    }
+
+    // 5. Verify real mouse drag resize gesture works for Source Node and Status
+    const initialSrcNodeWidth = await getColumnWidth(page, 'src_node')
+    await dragHeaderResize(page, 'src_node', 80)
+    await page.waitForTimeout(500)
+    const draggedSrcNodeWidth = await getColumnWidth(page, 'src_node')
+    expect(draggedSrcNodeWidth).toBeGreaterThan(initialSrcNodeWidth)
+
+    // Verify header-body alignment still holds after resize
+    await expectHeaderBodyAligned(page, 'src_node', 1, 1)
+
+    // Scroll status into view again to guarantee it is visible in the DOM
+    await page.evaluate(() => {
+      // @ts-ignore
+      const api = window.__DEBUG_NETWORK_GRID_API__
+      if (api) api.ensureColumnVisible('status')
+    })
+    await page.waitForTimeout(500)
+
+    const initialStatusWidth = await getColumnWidth(page, 'status')
+    // Drag status smaller (negative deltaX) to prove resizability while safely avoiding status maxWidth limit
+    await dragHeaderResize(page, 'status', -40)
+    await page.waitForTimeout(500)
+    const draggedStatusWidth = await getColumnWidth(page, 'status')
+    expect(draggedStatusWidth).toBeLessThan(initialStatusWidth)
+
+    await expectHeaderBodyAligned(page, 'status', 1, 1)
+
+    // 6. Context Menu Right-click & Structure Check
     const firstCell = page.locator('.ag-center-cols-container .ag-row').nth(0).locator('.ag-cell').nth(0)
     await firstCell.click({ button: 'right' })
     
@@ -529,7 +649,7 @@ test.describe('Network workflows', () => {
     await page.keyboard.press('Escape')
     await expect(rowMenu).not.toBeVisible()
 
-    // 5. Bulk Edit Dirty Close safety flow
+    // 7. Bulk Edit Dirty Close safety flow
     const rowInCenter = page.locator('.ag-center-cols-container .ag-row').nth(0)
     await rowInCenter.locator('.ag-cell').first().click()
     await expect(rowInCenter).toHaveClass(/ag-row-selected/)
@@ -540,12 +660,12 @@ test.describe('Network workflows', () => {
     const bulkModal = page.locator('[role="dialog"]').filter({ hasText: 'Bulk Edit Network' })
     await expect(bulkModal).toBeVisible({ timeout: 5000 })
 
-    // Verify there are exactly two close buttons (top-right red circle dot and footer Close button)
+    // Verify there is exactly one close button (the footer Close button, since top-right is named Dismiss)
     const closeButtons = bulkModal.getByRole('button', { name: 'Close', exact: true })
-    await expect(closeButtons).toHaveCount(2)
+    await expect(closeButtons).toHaveCount(1)
 
-    // Verify clean close works directly using the footer Close button
-    await closeButtons.last().click()
+    // Verify clean close works directly
+    await closeButtons.click()
     await expect(bulkModal).not.toBeVisible()
 
     // Open again to test dirty confirmations
@@ -556,8 +676,8 @@ test.describe('Network workflows', () => {
     // Make an edit to make it dirty
     await bulkModal.locator('input[type="number"]').first().fill('50')
 
-    // Click footer Close button - should trigger dirty confirmation dialog
-    await bulkModal.getByRole('button', { name: 'Close', exact: true }).last().click()
+    // Click Close button - should trigger dirty confirmation dialog
+    await bulkModal.getByRole('button', { name: 'Close', exact: true }).click()
     const confirmDialog = page.locator('.absolute.inset-0').filter({ hasText: 'Discard Bulk Edits?' })
     await expect(confirmDialog).toBeVisible({ timeout: 5000 })
 
