@@ -23,6 +23,13 @@ import {
   getPointFloatingStyle,
   useOperationalDismissController,
 } from './shared/OperationalGridInteractions'
+import {
+  createOperationalUtilityColumns,
+} from './shared/OperationalGridStandard'
+import {
+  applyOperationalActionColumn,
+  OPERATIONAL_GRID_WIDTHS,
+} from './shared/OperationalGridContract'
 import { OperationalDataGrid } from './shared/OperationalDataGrid'
 import { apiFetch } from '../api/apiClient'
 import { formatAppDate, formatAppTime, formatAppDay, parseAppDate } from '../utils/dateUtils'
@@ -1765,134 +1772,19 @@ export default function NetworkReal() {
       </span>
     )
 
+    const utilityColumns = createOperationalUtilityColumns({
+      includeRecentChange: isIntelligenceExpanded,
+      includeFavorite: true,
+      includeWatch: isIntelligenceExpanded,
+      isIntelligenceExpanded,
+      isRecentChange,
+      onToggleFavorite: toggleFavorite,
+      onToggleWatch: toggleWatch,
+      itemLabel: 'connection',
+    })
+
     const defs = [
-      {
-        colId: 'select',
-        headerName: '',
-        width: 48,
-        checkboxSelection: true,
-        headerCheckboxSelection: true,
-        pinned: 'left',
-        cellClass: 'flex items-center justify-center border-r border-white/5',
-        headerClass: 'flex items-center justify-center border-r border-white/5',
-        suppressSizeToFit: true,
-        sortable: false,
-        filter: false,
-        lockVisible: true,
-      },
-      {
-        colId: 'id',
-        field: 'id',
-        headerName: 'ID',
-        width: 90,
-        pinned: 'left',
-        cellClass: 'text-center font-bold text-slate-500 border-r border-white/5 flex items-center justify-center',
-        headerClass: 'text-center border-r border-white/5',
-        filter: 'agNumberColumnFilter',
-        lockVisible: true,
-      },
-      {
-        colId: 'recent_change',
-        headerName: 'Chg',
-        field: 'recent_change',
-        width: 80,
-        pinned: 'left',
-        sortable: false,
-        filter: false,
-        lockVisible: true,
-        cellClass: 'text-center border-r border-white/5 flex items-center justify-center !overflow-visible',
-        headerClass: 'text-center border-r border-white/5',
-        hide: !isIntelligenceExpanded,
-        cellRenderer: (p: any) => {
-          if (!p.data || !isRecentChange(p.data)) return null
-          const dateStr = formatAppDate(p.data.updated_at || p.data.created_at)
-          const author = p.data.created_by_user_id || 'System'
-          return (
-            <div className="group relative flex items-center justify-center h-full w-full">
-              <div className="absolute h-10 w-10 rounded-lg bg-[radial-gradient(circle,_rgba(251,191,36,0.2)_0%,_transparent_70%)] blur-md animate-pulse" />
-              <span className="relative z-[1] block h-2.5 w-2.5 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]" />
-              <div className="invisible group-hover:visible absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-[2000] w-52 p-3 rounded-lg border border-white/10 bg-slate-950/90 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl pointer-events-none transition-all duration-300 transform scale-95 group-hover:scale-100 opacity-0 group-hover:opacity-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-400">Recent Activity</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[11px] text-slate-100 font-bold leading-tight">{dateStr}</p>
-                  <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/5">
-                    <User size={10} className="text-slate-500" />
-                    <p className="text-[9px] text-slate-500 font-bold tracking-widest">@{author}</p>
-                  </div>
-                </div>
-                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-950/90" />
-              </div>
-            </div>
-          )
-        },
-      },
-      {
-        colId: 'favorite',
-        headerName: 'Fav',
-        field: 'favorite',
-        width: 80,
-        pinned: 'left',
-        cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
-        headerClass: 'text-center border-r border-white/5',
-        sortable: true,
-        filter: false,
-        lockVisible: true,
-        valueGetter: (p: any) => p.context?.favoriteIds?.includes(p.data?.id) ? 1 : 0,
-        cellRenderer: (p: any) => {
-          const isFavorite = p.context?.favoriteIds?.includes(p.data?.id)
-          return (
-            <div className="flex h-full w-full items-center justify-center">
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  toggleFavorite(p.data.id)
-                }}
-                title={isFavorite ? 'Unpin connection' : 'Pin connection'}
-                className={`rounded-lg p-1 transition-all flex items-center justify-center ${isFavorite ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}
-              >
-                <Star size={15} className={isFavorite ? 'fill-current' : ''} />
-              </button>
-            </div>
-          )
-        },
-      },
-      {
-        colId: 'watch',
-        headerName: 'Watch',
-        field: 'watch',
-        width: 85,
-        pinned: 'left',
-        cellClass: 'text-center border-r border-white/5 flex items-center justify-center',
-        headerClass: 'text-center border-r border-white/5',
-        sortable: false,
-        filter: false,
-        lockVisible: true,
-        hide: !isIntelligenceExpanded,
-        cellRenderer: (p: any) => {
-          const isWatched = p.context?.watchIds?.includes(p.data?.id)
-          return (
-            <div className="flex h-full w-full items-center justify-center">
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  toggleWatch(p.data.id)
-                }}
-                title={isWatched ? 'Unfollow connection' : 'Follow connection'}
-                className={`rounded-lg p-1 transition-all flex items-center justify-center ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}
-              >
-                <Eye size={15} className={isWatched ? 'fill-current' : ''} />
-              </button>
-            </div>
-          )
-        },
-      },
+      ...utilityColumns,
       {
         field: 'status',
         colId: 'status',
@@ -2063,18 +1955,16 @@ export default function NetworkReal() {
           </div>
         ) : renderText('N/A'),
       },
-      {
+      applyOperationalActionColumn({
         colId: 'row_actions',
         headerName: 'Action',
-        width: 210,
-        pinned: 'right',
         cellClass: 'text-right pr-3 flex items-center justify-end',
         headerClass: 'text-center',
         sortable: false,
         filter: false,
         cellRenderer: (p: any) => p.data ? renderPrimaryRowActions(p.data) : null,
         lockVisible: true,
-      },
+      }, OPERATIONAL_GRID_WIDTHS.standardAction),
     ]
   
   // Inject saved layout state (widths, pinned, sort) into definitions before first render
