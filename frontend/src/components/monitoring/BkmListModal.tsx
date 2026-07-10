@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
-import { Monitor, X, Plus, Search, BookOpen, Clock, Trash2, MessageSquare } from 'lucide-react'
+import { Monitor, X, Plus, Search, BookOpen, Clock, Trash2, MessageSquare, ExternalLink } from 'lucide-react'
 import { WorkspaceModal } from '../shared/WorkspaceModal'
 import { 
   WorkspaceSplitView, 
@@ -16,7 +16,19 @@ import { showWorkspaceToast } from '../shared/WorkspaceToast'
 import { formatAppDate } from '../../utils/dateUtils'
 
 
-export function BkmListModal({ docs, monitorId, onOpenBkm, onClose }: { docs: any[]; monitorId: number; onOpenBkm: (id: number) => void; onClose: () => void }) {
+export function BkmListModal({
+  docs,
+  monitorId,
+  onOpenBkm,
+  onOpenKnowledge,
+  onClose,
+}: {
+  docs: any[]
+  monitorId: number
+  onOpenBkm: (id: number) => void
+  onOpenKnowledge: (id: number) => void
+  onClose: () => void
+}) {
   useBodyModalFlag()
   const [isMaximized, setIsMaximized] = useState(false)
   const queryClient = useQueryClient()
@@ -195,6 +207,14 @@ export function BkmListModal({ docs, monitorId, onOpenBkm, onClose }: { docs: an
                       </button>
                    </div>
                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => onOpenKnowledge(doc.id)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-2 text-[9px] font-black uppercase tracking-widest text-blue-300 transition-all hover:bg-blue-500/20"
+                        title="Open Recovery BKM"
+                      >
+                         <ExternalLink size={12} />
+                         <span>Open Recovery BKM</span>
+                      </button>
                       <button 
                         onClick={() => toggleRecoveryDoc(doc.id)}
                         className="p-2 text-slate-700 hover:text-rose-500 transition-colors bg-white/[0.02] border border-white/5 rounded-lg"

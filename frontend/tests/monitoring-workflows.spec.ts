@@ -7,6 +7,7 @@ import {
   expectWorkspaceRoute,
   fillGridSearch,
   getPrimaryGrid,
+  getWorkspaceLogicalRowByText,
   getWorkspaceRoot,
   gotoView,
   openToolbarButton,
@@ -44,6 +45,23 @@ async function dragHeaderResize(page: any, colId: string, deltaX: number) {
   await page.mouse.up()
 }
 
+async function openMonitoringDetailFromLogicalRow(page: any, title: string) {
+  const logicalRow = await getWorkspaceLogicalRowByText(page, 'monitoring', title)
+  const candidates = [logicalRow.center, logicalRow.pinned]
+
+  for (const fragment of candidates) {
+    if (!fragment) continue
+    await fragment.click()
+    const action = getWorkspaceRoot(page, 'monitoring').getByTitle('Open details').first()
+    if (await action.isVisible().catch(() => false)) {
+      await action.click()
+      return logicalRow
+    }
+  }
+
+  throw new Error(`Could not find an "Open details" action on the monitoring row for "${title}"`)
+}
+
 test.describe('Monitoring workflows', () => {
   test('preserves lifecycle status, recovery linking, and knowledge jump paths', async ({ page, request }) => {
     await resetBrowserState(page)
@@ -59,34 +77,14 @@ test.describe('Monitoring workflows', () => {
     expect(extraKnowledgeResponse.ok()).toBeTruthy()
     const extraKnowledge = await extraKnowledgeResponse.json()
 
-    await gotoView(page, '/monitoring', 'Monitoring', 'monitoring')
-    
-    // Wait for allItems in the frontend
-    await page.waitForFunction(() => {
-       // @ts-ignore
-       return window.__DEBUG_ALL_ITEMS__ && window.__DEBUG_ALL_ITEMS__.length > 0
-    }, { timeout: 30000 })
-
-    const itemsInFrontend = await page.evaluate(() => {
-       // @ts-ignore
-       return window.__DEBUG_ALL_ITEMS__ || []
-    })
-    console.log(`DEBUG: Found ${itemsInFrontend.length} items in frontend window`)
-
-    await fillGridSearch(page, 'Scan matrix...', monitoring.title, 'monitoring')
-    await expect(getPrimaryGrid(page, 'monitoring')).toContainText(monitoring.title)
-    await expect(getPrimaryGrid(page, 'monitoring')).toContainText('Existing')
-
-    await page.evaluate((id) => {
-      window.history.pushState({}, '', `/monitoring?id=${id}`)
-      window.dispatchEvent(new PopStateEvent('popstate'))
-    }, monitoring.id)
+    await page.goto(`/monitoring?id=${monitoring.id}`)
     await expectWorkspaceRoute(page, '/monitoring')
     await expect(getWorkspaceRoot(page, 'monitoring')).toBeVisible()
-    await expect(page.getByRole('dialog').getByText(monitoring.title, { exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: monitoring.title, exact: true }).first()).toBeVisible()
     await clickResilientButton(page, 'Recovery')
-    await expect(page.getByText('Recovery Procedures').last()).toBeVisible()
-    await expect(page.getByText(knowledge.title)).toBeVisible()
+    const recoveryDialog = page.locator('[role="dialog"]').filter({ has: page.getByRole('heading', { name: 'Recovery Procedures' }) }).last()
+    await expect(recoveryDialog).toBeVisible()
+    await expect(recoveryDialog.getByText(knowledge.title, { exact: true })).toBeVisible()
 
     await clickResilientButton(page, 'Link Procedure')
     await page.getByPlaceholder('Search Knowledge Base by title or category...').fill(extraKnowledge.title)
@@ -98,10 +96,10 @@ test.describe('Monitoring workflows', () => {
     await page.getByRole('button').filter({ hasText: /^PW-RUNBOOK-/ }).click()
     await expect(page.getByText('Recovery procedure').first()).toBeVisible()
     await page.keyboard.press('Escape')
-    const recoveryList = page.locator('[role="dialog"]').filter({ has: page.getByRole('heading', { name: 'Recovery Procedures' }) }).last()
-    await recoveryList.locator('button[title="Close"]').click({ force: true })
-    await page.goto(`/knowledge?id=${knowledge.id}`)
+    await expect(recoveryDialog).toBeVisible()
+    await recoveryDialog.getByRole('button', { name: 'Open Recovery BKM', exact: true }).first().click()
     await expect(page).toHaveURL(new RegExp(`/knowledge\\?id=${knowledge.id}`))
+    await expect(page.getByText(knowledge.title, { exact: true }).first()).toBeVisible()
     await expect(page.getByText('Recovery procedure').first()).toBeVisible()
   })
 
@@ -181,7 +179,7 @@ test.describe('Monitoring workflows', () => {
     await gotoView(page, '/monitoring', 'Monitoring', 'monitoring')
     await fillGridSearch(page, 'Scan matrix...', monitoring.title, 'monitoring')
     await expect(getPrimaryGrid(page, 'monitoring')).toContainText(monitoring.title)
-    await getWorkspaceRoot(page, 'monitoring').getByTitle('Open details').first().click()
+    await openMonitoringDetailFromLogicalRow(page, monitoring.title)
     await expect(page.getByRole('dialog').getByText(monitoring.title, { exact: true })).toBeVisible()
     await clickResilientButton(page, 'Edit Monitor')
     await expect(page.getByText('Update Monitoring')).toBeVisible()
@@ -199,10 +197,23 @@ test.describe('Monitoring workflows', () => {
     await gotoView(page, '/monitoring', 'Monitoring', 'monitoring')
     await fillGridSearch(page, 'Scan matrix...', updatedTitle, 'monitoring')
     await expect(getPrimaryGrid(page, 'monitoring')).toContainText(updatedTitle)
-    await expect(getWorkspaceRoot(page, 'monitoring').getByText(monitoring.title, { exact: true })).not.toBeVisible()
-    await getWorkspaceRoot(page, 'monitoring').getByTitle('Open details').first().click()
+    await expect(getPrimaryGrid(page, 'monitoring').getByText(monitoring.title, { exact: true })).toHaveCount(0)
+    const updatedRow = await openMonitoringDetailFromLogicalRow(page, updatedTitle)
     await expect(page.getByRole('dialog').getByText(updatedTitle, { exact: true })).toBeVisible()
     await expect(page.getByText(updatedPurpose)).toBeVisible()
+
+    const coldPage = await page.context().newPage()
+    await coldPage.goto(`/monitoring?id=${monitoring.id}`)
+    await expectWorkspaceRoute(coldPage, '/monitoring')
+    await expect(getWorkspaceRoot(coldPage, 'monitoring')).toBeVisible()
+    await expect(coldPage.getByRole('heading', { name: updatedTitle, exact: true }).first()).toBeVisible()
+    await expect(coldPage.getByText(updatedPurpose).first()).toBeVisible()
+    await expect(coldPage).toHaveURL(new RegExp(`/monitoring\\?id=${monitoring.id}$`))
+    expect(updatedRow.rowKey.length).toBeGreaterThan(0)
+    await coldPage.keyboard.press('Escape')
+    await expect(coldPage.getByRole('heading', { name: updatedTitle, exact: true }).first()).not.toBeVisible()
+    await expect(coldPage).toHaveURL(/\/monitoring(?:\?.*)?$/)
+    await coldPage.close()
   })
 
   test('keeps default title sizing dynamic and preserves human resized widths only in saved views', async ({ page, request }) => {
@@ -267,12 +278,11 @@ test.describe('Monitoring workflows', () => {
     expect(createdTitleWidth).toBeGreaterThanOrEqual(170)
     expect(createdTitleWidth).toBeLessThanOrEqual(340)
     const titleHeader = getWorkspaceRoot(page, 'monitoring').locator('.ag-header-cell[col-id="title"]').first()
-    const titleCell = getWorkspaceRoot(page, 'monitoring')
-      .locator('.ag-pinned-left-cols-container .ag-row')
-      .filter({ hasText: createdLongTitle })
-      .first()
-      .locator('.ag-cell[col-id="title"]')
-      .first()
+    const logicalRow = await getWorkspaceLogicalRowByText(page, 'monitoring', createdLongTitle)
+    const titleCell = (logicalRow.pinned ?? logicalRow.center)?.locator('.ag-cell[col-id="title"]').first()
+    if (!titleCell) {
+      throw new Error(`Missing title cell for monitoring logical row ${logicalRow.rowKey}`)
+    }
     await expect(titleHeader).toBeVisible()
     await expect(titleCell).toBeVisible()
     await expect.poll(async () => {
@@ -281,6 +291,7 @@ test.describe('Monitoring workflows', () => {
       if (!headerBox || !cellBox) return false
       return Math.abs(headerBox.width - cellBox.width) <= 1
     }).toBeTruthy()
+    await expect.poll(async () => titleCell.evaluate((node) => node.scrollWidth <= node.clientWidth + 1)).toBeTruthy()
 
     const manualViewWidth = 420
     const restoredDefaultAssetWidth = await getColumnWidth(page, 'device_name')

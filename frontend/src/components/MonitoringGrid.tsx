@@ -577,19 +577,6 @@ export default function MonitoringGrid() {
   })
 
   const fetchMonitoringDetail = useCallback(async (id: string) => {
-    try {
-      const cachedItems = JSON.parse(
-        window.sessionStorage.getItem(MONITORING_DETAIL_CACHE_KEY) ||
-        window.localStorage.getItem(MONITORING_DETAIL_CACHE_KEY) ||
-        'null'
-      )
-      const cachedItem = Array.isArray(cachedItems)
-        ? cachedItems.find((item: any) => String(item.id) === id)
-        : null
-      if (cachedItem) return cachedItem
-    } catch {
-      // Fall through to the authoritative list request.
-    }
     const response = await apiFetch('/api/v1/monitoring?include_deleted=true')
     const items = await response.json()
     return Array.isArray(items) ? items.find((item: any) => String(item.id) === id) : null
@@ -2467,6 +2454,12 @@ export default function MonitoringGrid() {
             docs={bkmPopup.docs} 
             monitorId={bkmPopup.monitorId}
             onOpenBkm={setActiveBkm} 
+            onOpenKnowledge={(knowledgeId) => {
+              setBkmPopup(null)
+              setActiveBkm(null)
+              detailRoute.finishTransition()
+              navigate(`/knowledge?id=${knowledgeId}`)
+            }}
             onClose={() => { setBkmPopup(null); detailRoute.finishTransition(); }} 
           />
         )}

@@ -680,9 +680,19 @@ export function useOperationalDetailRoute({
       if (fetchDetailItem) {
         const requestId = ++detailRequestRef.current
         let cancelled = false
+        if (detailItem && String(detailItem.id) !== idParam) {
+          skipStateToUrlSyncRef.current = true
+          setDetailItem(null)
+        }
         fetchDetailItem(idParam)
           .then((resolvedItem) => {
-            if (cancelled || requestId !== detailRequestRef.current || !resolvedItem) return
+            if (cancelled || requestId !== detailRequestRef.current) return
+            if (!resolvedItem) {
+              skipStateToUrlSyncRef.current = true
+              setDetailItem(null)
+              clearDetailRoute()
+              return
+            }
             if (setActiveTab) {
               const isDeleted = resolvedItem.is_deleted || resolvedItem.status === 'Deleted' || resolvedItem.status === 'Archived'
               setActiveTab(isDeleted ? 'deleted' : 'active')
@@ -708,7 +718,7 @@ export function useOperationalDetailRoute({
       setActiveTab(isDeleted ? 'deleted' : 'active')
     }
 
-    if (!detailItem || String(detailItem.id) !== idParam) {
+    if (!detailItem || String(detailItem.id) !== idParam || detailItem !== target) {
       skipStateToUrlSyncRef.current = true
       setDetailItem(target)
     }
@@ -729,12 +739,13 @@ export function useOperationalDetailRoute({
         setSearchParams(nextParams, { replace: true })
       }
     } else {
+      if (idParam) return
       if (nextParams.has('id')) {
         nextParams.delete('id')
         setSearchParams(nextParams, { replace: true })
       }
     }
-  }, [detailItem, setSearchParams, isEditOpen, isHistoryOpen, isLinkOpen])
+  }, [detailItem, idParam, setSearchParams, isEditOpen, isHistoryOpen, isLinkOpen])
 
   const finishTransition = useCallback(() => {
     isTransitioningRef.current = false

@@ -1,7 +1,7 @@
 import React from 'react'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import { Link, createMemoryRouter, RouterProvider } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { useOperationalDetailRoute, useWorkspaceOverlayController } from './OperationalWorkspaceHooks'
 import { WorkspaceModal } from './WorkspaceModal'
@@ -53,6 +53,27 @@ function DetailRouteHarness() {
       <div data-testid="detail-state">{detailItem ? String(detailItem.id) : 'none'}</div>
     </div>
   )
+}
+
+function AsyncDetailRouteHarness({
+  fetchDetailItem,
+}: {
+  fetchDetailItem: (id: string) => Promise<any>
+}) {
+  const [detailItem, setDetailItem] = React.useState<any>({ id: 2, name: 'Stale detail' })
+  const items = React.useMemo(() => ([
+    { id: 1, name: 'Service One', is_deleted: false },
+    { id: 2, name: 'Service Two', is_deleted: false },
+  ]), [])
+
+  useOperationalDetailRoute({
+    allItems: items,
+    detailItem,
+    setDetailItem,
+    fetchDetailItem,
+  })
+
+  return <div data-testid="async-detail-state">{detailItem ? detailItem.name : 'none'}</div>
 }
 
 describe('useOperationalDirtyGuard navigation protection', () => {
@@ -226,6 +247,41 @@ describe('useOperationalDetailRoute history sync', () => {
     await act(async () => {
       await router.navigate(1)
     })
+
+    await waitFor(() => {
+      expect(router.state.location.search).toBe('?id=1')
+      expect(screen.getByTestId('detail-state').textContent).toBe('1')
+    })
+  })
+
+  it('clears stale detail while an unmatched route resolves and applies the authoritative response', async () => {
+    const fetchDetailItem = vi.fn(async () => ({ id: 3, name: 'Authoritative detail', is_deleted: false }))
+    const router = createMemoryRouter([
+      { path: '/services', element: <AsyncDetailRouteHarness fetchDetailItem={fetchDetailItem} /> },
+    ], {
+      initialEntries: ['/services?id=3'],
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('async-detail-state').textContent).toBe('none')
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('async-detail-state').textContent).toBe('Authoritative detail')
+    })
+    expect(fetchDetailItem).toHaveBeenCalledWith('3')
+  })
+
+  it('does not clear an incoming id route before detail state catches up', async () => {
+    const router = createMemoryRouter([
+      { path: '/services', element: <DetailRouteHarness /> },
+    ], {
+      initialEntries: ['/services?id=1'],
+    })
+
+    render(<RouterProvider router={router} />)
 
     await waitFor(() => {
       expect(router.state.location.search).toBe('?id=1')

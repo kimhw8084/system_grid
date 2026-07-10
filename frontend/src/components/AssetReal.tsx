@@ -2911,6 +2911,11 @@ export default function AssetReal() {
             docs={bkmPopup.docs} 
             monitorId={bkmPopup.monitorId}
             onOpenBkm={setActiveBkm} 
+            onOpenKnowledge={(knowledgeId) => {
+              setBkmPopup(null)
+              setActiveBkm(null)
+              navigate(`/knowledge?id=${knowledgeId}`)
+            }}
             onClose={() => setBkmPopup(null)} 
           />
         )}

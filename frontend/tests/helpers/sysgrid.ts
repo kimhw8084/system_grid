@@ -4,6 +4,11 @@ const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
 const apiOrigin = apiBase.replace(/\/api\/v1$/, '')
 const testUserId = process.env.USER_ID || 'haewon.kim'
 export type WorkspaceId = 'monitoring' | 'network' | 'assets'
+export type LogicalGridRow = {
+  rowKey: string
+  pinned: Locator | null
+  center: Locator | null
+}
 
 const browserStateKeys = [
   'monitoring_workspace_state_v2',
@@ -832,6 +837,45 @@ export function getWorkspaceGrid(page: Page, workspace: WorkspaceId): Locator {
 
 export function getWorkspaceRows(page: Page, workspace: WorkspaceId): Locator {
   return getWorkspaceGrid(page, workspace).locator('.ag-center-cols-container .ag-row')
+}
+
+export async function getWorkspaceLogicalRowByText(page: Page, workspace: WorkspaceId, text: string | RegExp): Promise<LogicalGridRow> {
+  const root = getWorkspaceRoot(page, workspace)
+  const escapedText = typeof text === 'string' ? text : text.source
+  const matchedRow = root
+    .locator('.ag-pinned-left-cols-container .ag-row, .ag-center-cols-container .ag-row')
+    .filter({ hasText: text })
+    .first()
+
+  await expect(matchedRow, `Expected a visible ${workspace} grid row matching "${escapedText}"`).toBeVisible({ timeout: 15000 })
+
+  const rowIdentity = await matchedRow.evaluate((node) => {
+    const rowId = node.getAttribute('row-id')
+    if (rowId) return { selector: 'row-id', value: rowId }
+    const rowIndex = node.getAttribute('row-index')
+    if (rowIndex) return { selector: 'row-index', value: rowIndex }
+    return null
+  })
+
+  if (!rowIdentity) {
+    throw new Error(`Matched ${workspace} grid row for "${escapedText}" is missing both row-id and row-index attributes.`)
+  }
+
+  const selector = `.ag-row[${rowIdentity.selector}="${rowIdentity.value}"]`
+  const pinnedLocator = root.locator(`.ag-pinned-left-cols-container ${selector}`)
+  const centerLocator = root.locator(`.ag-center-cols-container ${selector}`)
+  const pinned = await pinnedLocator.count() > 0 ? pinnedLocator.first() : null
+  const center = await centerLocator.count() > 0 ? centerLocator.first() : null
+
+  if (!pinned && !center) {
+    throw new Error(`Resolved ${workspace} logical row "${escapedText}" (${rowIdentity.selector}=${rowIdentity.value}) but could not find pinned or center row fragments.`)
+  }
+
+  return {
+    rowKey: rowIdentity.value,
+    pinned,
+    center,
+  }
 }
 
 export function getWorkspaceRowByText(page: Page, workspace: WorkspaceId, text: string | RegExp): Locator {
