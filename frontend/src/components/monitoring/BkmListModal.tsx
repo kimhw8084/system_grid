@@ -45,9 +45,11 @@ export function BkmListModal({
   }, [docs])
 
   const [linkedDocs, setLinkedDocs] = useState<MonitoringRecoveryDoc[]>(normalizedDocs)
+  const [savedDocs, setSavedDocs] = useState<MonitoringRecoveryDoc[]>(normalizedDocs)
 
   useEffect(() => {
     setLinkedDocs(normalizedDocs)
+    setSavedDocs(normalizedDocs)
   }, [normalizedDocs])
 
   const { data: knowledgeEntries } = useQuery({
@@ -69,7 +71,9 @@ export function BkmListModal({
     mutationFn: async (nextDocs: MonitoringRecoveryDoc[]) => {
       const res = await apiFetch(`/api/v1/monitoring/${monitorId}`, {
         method: 'PUT',
-        body: JSON.stringify({ recovery_docs: nextDocs })
+        body: JSON.stringify({
+          recovery_docs: nextDocs.map((doc) => ({ id: doc.id, note: doc.note || null }))
+        })
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: res.statusText }))
@@ -78,6 +82,7 @@ export function BkmListModal({
       return res.json()
     },
     onSuccess: (data: any) => {
+      setSavedDocs(linkedDocs)
       queryClient.invalidateQueries({ queryKey: ['monitoring-items'] })
       queryClient.invalidateQueries({ queryKey: ['monitoring-history', monitorId] })
       showWorkspaceToast('Synchronized recovery procedures', { type: 'success' })
@@ -86,8 +91,8 @@ export function BkmListModal({
   })
 
   const isDirty = useMemo(() => {
-    return JSON.stringify(linkedDocs) !== JSON.stringify(normalizedDocs)
-  }, [linkedDocs, normalizedDocs])
+    return JSON.stringify(linkedDocs) !== JSON.stringify(savedDocs)
+  }, [linkedDocs, savedDocs])
 
   const toggleRecoveryDoc = (id: number) => {
     const isLinked = linkedDocs.some(d => d.id === id)

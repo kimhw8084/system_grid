@@ -1,0 +1,47 @@
+PASS (3) FAIL (2)
+
+1. preserves lifecycle status, recovery linking, and knowledge jump paths
+   Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+   
+   Locator: getByRole('heading', { name: 'PW-MON-1783659623711-r9fq9e', exact: true }).first()
+   Expected: visible
+   Timeout: 15000ms
+   Error: element(s) not found
+   
+   Call log:
+   [2m  - Expect "toBeVisible" with timeout 15000ms[22m
+   [2m  - waiting for getByRole('heading', { name: 'PW-MON-1783659623711-r9fq9e', exact: true }).first()[22m
+   
+   
+     81 |     await expectWorkspaceRoute(page, '/monitoring')
+     82 |     await expect(getWorkspaceRoot(page, 'monitoring')).toBeVisible()
+   > 83 |     await expect(page.getByRole('heading', { name: monitoring.title, exact: true }).first()).toBeVisible()
+        |                                                                                              ^
+     84 |     await clickResilientButton(page, 'Recovery')
+     85 |     const recoveryDialog = page.locator('[role="dialog"]').filter({ has: page.getByRole('heading', { name: 'Recovery Procedures' }) }).last()
+     86 |     await expect(recoveryDialog).toBeVisible()
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:83:94
+2. edits an existing monitor without save errors and persists the updated fields
+   Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+   
+   Locator: getByRole('heading', { name: 'PW-MON-1783659645301-ssx1gq-EDITED', exact: true }).first()
+   Expected: visible
+   Timeout: 15000ms
+   Error: element(s) not found
+   
+   Call log:
+   [2m  - Expect "toBeVisible" with timeout 15000ms[22m
+   [2m  - waiting for getByRole('heading', { name: 'PW-MON-1783659645301-ssx1gq-EDITED', exact: true }).first()[22m
+   
+   
+     207 |     await expectWorkspaceRoute(coldPage, '/monitoring')
+     208 |     await expect(getWorkspaceRoot(coldPage, 'monitoring')).toBeVisible()
+   > 209 |     await expect(coldPage.getByRole('heading', { name: updatedTitle, exact: true }).first()).toBeVisible()
+         |                                                                                              ^
+     210 |     await expect(coldPage.getByText(updatedPurpose).first()).toBeVisible()
+     211 |     await expect(coldPage).toHaveURL(new RegExp(`/monitoring\\?id=${monitoring.id}$`))
+     212 |     expect(updatedRow.rowKey.length).toBeGreaterThan(0)
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:209:94
+
+Time: 50312ms
+[full output: ~/Library/Application Support/rtk/tee/1783659672_playwright.log]

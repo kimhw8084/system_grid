@@ -1,0 +1,95 @@
+(node:88750) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 5 tests using 1 worker
+
+(node:88780) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:88780) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:88780) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+SEED: Created monitoring item "PW-MON-1783683679852-4z0q9v" (ID: 554)
+  ✘  1 tests/monitoring-workflows.spec.ts:66:3 › Monitoring workflows › preserves lifecycle status, recovery linking, and knowledge jump paths (1.0m)
+(node:93340) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:93340) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:93340) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+SEED: Created monitoring item "PW-MON-1783683740232-r7rsrg" (ID: 555)
+SEED: Created monitoring item "PW-MON-OPS-1783683740232-r7rsrg-A" (ID: 556)
+SEED: Created monitoring item "PW-MON-OPS-1783683740232-r7rsrg-B" (ID: 557)
+  ✓  2 tests/monitoring-workflows.spec.ts:106:3 › Monitoring workflows › supports bulk undo, compare, and persisted display state (3.9s)
+SEED: Created monitoring item "PW-MON-1783683744110-keo8uo" (ID: 558)
+  ✓  3 tests/monitoring-workflows.spec.ts:173:3 › Monitoring workflows › edits an existing monitor without save errors and persists the updated fields (4.0s)
+SEED: Created monitoring item "PW-MON-1783683748128-u2sun5" (ID: 559)
+SEED: Created monitoring item "PW-MON-CREATED-LONG-1783683748608-THIS TITLE SHOULD FORCE A MUCH WIDER DEFAULT COLUMN AFTER CREATE WITH ADDITIONAL LONG SUFFIX SEGMENTS AAA BBB CCC DDD EEE FFF GGG HHH III JJJ" (ID: 560)
+  ✓  4 tests/monitoring-workflows.spec.ts:219:3 › Monitoring workflows › keeps default title sizing dynamic and preserves human resized widths only in saved views (4.4s)
+SEED: Created monitoring item "PW-MON-1783683752533-4s265f" (ID: 561)
+  ✓  5 tests/monitoring-workflows.spec.ts:364:3 › Monitoring workflows › imports monitoring rows through the shared operational import modal (3.1s)
+
+
+  1) tests/monitoring-workflows.spec.ts:66:3 › Monitoring workflows › preserves lifecycle status, recovery linking, and knowledge jump paths 
+
+    [31mTest timeout of 60000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 60000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[role="dialog"]').filter({ has: getByRole('heading', { name: 'Recovery Procedures' }) }).last().getByRole('button', { name: 'Open Recovery BKM', exact: true }).first()[22m
+    [2m    - locator resolved to <button title="Open Recovery BKM" class="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-2 text-[9px] font-black uppercase tracking-widest text-blue-300 transition-all hover:bg-blue-500/20">…</button>[22m
+    [2m  - attempting click action[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <div class="absolute inset-0 z-[3600] flex items-center justify-center bg-[#020617]/82 p-4 backdrop-blur-sm">…</div> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m    - waiting 20ms[22m
+    [2m    2 × waiting for element to be visible, enabled and stable[22m
+    [2m      - element is visible, enabled and stable[22m
+    [2m      - scrolling into view if needed[22m
+    [2m      - done scrolling[22m
+    [2m      - <div class="absolute inset-0 z-[3600] flex items-center justify-center bg-[#020617]/82 p-4 backdrop-blur-sm">…</div> intercepts pointer events[22m
+    [2m    - retrying click action[22m
+    [2m      - waiting 100ms[22m
+    [2m    108 × waiting for element to be visible, enabled and stable[22m
+    [2m        - element is visible, enabled and stable[22m
+    [2m        - scrolling into view if needed[22m
+    [2m        - done scrolling[22m
+    [2m        - <div class="absolute inset-0 z-[3600] flex items-center justify-center bg-[#020617]/82 p-4 backdrop-blur-sm">…</div> intercepts pointer events[22m
+    [2m      - retrying click action[22m
+    [2m        - waiting 500ms[22m
+    [2m    - waiting for element to be visible, enabled and stable[22m
+
+
+       98 |     await page.keyboard.press('Escape')
+       99 |     await expect(recoveryDialog).toBeVisible()
+    > 100 |     await recoveryDialog.getByRole('button', { name: 'Open Recovery BKM', exact: true }).first().click()
+          |                                                                                                  ^
+      101 |     await expect(page).toHaveURL(new RegExp(`/knowledge\\?id=${knowledge.id}`))
+      102 |     await expect(page.getByText(knowledge.title, { exact: true }).first()).toBeVisible()
+      103 |     await expect(page.getByText('Recovery procedure').first()).toBeVisible()
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:100:98
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/monitoring-workflows-Monit-8eab9-ng-and-knowledge-jump-paths/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/monitoring-workflows-Monit-8eab9-ng-and-knowledge-jump-paths/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/monitoring-workflows-Monit-8eab9-ng-and-knowledge-jump-paths/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/monitoring-workflows-Monit-8eab9-ng-and-knowledge-jump-paths/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/monitoring-workflows-Monit-8eab9-ng-and-knowledge-jump-paths/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests/monitoring-workflows.spec.ts:66:3 › Monitoring workflows › preserves lifecycle status, recovery linking, and knowledge jump paths 
+  4 passed (1.3m)
+
+[LLM-Reporter] Emitted token-optimized failure artifact to /Users/haewonkim/home/development/sysgrid/frontend/llm-report.json

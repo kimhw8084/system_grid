@@ -608,33 +608,37 @@ export function useOperationalDetailRoute({
   isLinkOpen?: boolean
 }) {
   const [searchParams, setSearchParams] = useSearchParams()
+  const search = searchParams.toString()
   const idParam = searchParams.get('id')
   const isTransitioningRef = useRef(false)
   const skipStateToUrlSyncRef = useRef(false)
   const detailRequestRef = useRef(0)
+  const pendingDetailRouteRef = useRef<string | null | undefined>(undefined)
 
   const clearDetailRoute = useCallback((options?: { replace?: boolean }) => {
     const replace = options?.replace ?? true
-    const nextParams = new URLSearchParams(window.location.search)
+    const nextParams = new URLSearchParams(search)
     if (nextParams.has('id')) {
       nextParams.delete('id')
       setSearchParams(nextParams, { replace })
     }
-  }, [setSearchParams])
+  }, [search, setSearchParams])
 
   const openDetail = useCallback((item: any, options?: { replace?: boolean }) => {
     const replace = options?.replace ?? true
     isTransitioningRef.current = false
+    pendingDetailRouteRef.current = item ? String(item.id) : null
     setDetailItem(item)
     if (item) {
-      const nextParams = new URLSearchParams(window.location.search)
+      const nextParams = new URLSearchParams(search)
       nextParams.set('id', String(item.id))
       setSearchParams(nextParams, { replace })
     }
-  }, [setDetailItem, setSearchParams])
+  }, [search, setDetailItem, setSearchParams])
 
   const closeDetail = useCallback((options?: { replace?: boolean }) => {
     isTransitioningRef.current = false
+    pendingDetailRouteRef.current = null
     setDetailItem(null)
     clearDetailRoute(options)
   }, [setDetailItem, clearDetailRoute])
@@ -664,6 +668,11 @@ export function useOperationalDetailRoute({
   useEffect(() => {
     if (!Array.isArray(allItems)) return
 
+    if (pendingDetailRouteRef.current !== undefined) {
+      if (pendingDetailRouteRef.current !== idParam) return
+      pendingDetailRouteRef.current = undefined
+    }
+
     // If we are currently transitioning or a modal is open, don't sync from URL
     if (isTransitioningRef.current || isEditOpen || isHistoryOpen || isLinkOpen) return
 
@@ -678,6 +687,7 @@ export function useOperationalDetailRoute({
     const target = allItems.find((item: any) => String(item.id) === idParam)
     if (!target) {
       if (fetchDetailItem) {
+        if (detailItem && String(detailItem.id) === idParam) return
         const requestId = ++detailRequestRef.current
         let cancelled = false
         if (detailItem && String(detailItem.id) !== idParam) {
@@ -732,7 +742,7 @@ export function useOperationalDetailRoute({
       return
     }
 
-    const nextParams = new URLSearchParams(window.location.search)
+    const nextParams = new URLSearchParams(search)
     if (detailItem) {
       if (nextParams.get('id') !== String(detailItem.id)) {
         nextParams.set('id', String(detailItem.id))
@@ -745,7 +755,7 @@ export function useOperationalDetailRoute({
         setSearchParams(nextParams, { replace: true })
       }
     }
-  }, [detailItem, idParam, setSearchParams, isEditOpen, isHistoryOpen, isLinkOpen])
+  }, [detailItem, idParam, search, setSearchParams, isEditOpen, isHistoryOpen, isLinkOpen])
 
   const finishTransition = useCallback(() => {
     isTransitioningRef.current = false

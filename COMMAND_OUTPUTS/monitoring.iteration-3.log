@@ -1,0 +1,47 @@
+PASS (3) FAIL (2)
+
+1. preserves lifecycle status, recovery linking, and knowledge jump paths
+   Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+   
+   Locator: getByRole('dialog').getByText('PW-MON-1783654080073-fkbjq4', { exact: true })
+   Expected: visible
+   Timeout: 15000ms
+   Error: element(s) not found
+   
+   Call log:
+   [2m  - Expect "toBeVisible" with timeout 15000ms[22m
+   [2m  - waiting for getByRole('dialog').getByText('PW-MON-1783654080073-fkbjq4', { exact: true })[22m
+   
+   
+     80 |     await page.goto(`/monitoring?id=${monitoring.id}`)
+     81 |     await expectWorkspaceRoute(page, '/monitoring')
+   > 82 |     await expect(page.getByRole('dialog').getByText(monitoring.title, { exact: true })).toBeVisible()
+        |                                                                                         ^
+     83 |     await clickResilientButton(page, 'Recovery')
+     84 |     await expect(page.getByText('Recovery Procedures').last()).toBeVisible()
+     85 |     await expect(page.getByText(knowledge.title)).toBeVisible()
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:82:89
+2. edits an existing monitor without save errors and persists the updated fields
+   Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+   
+   Locator: getByRole('dialog').getByText('PW-MON-1783654102323-n3bk2b', { exact: true })
+   Expected: visible
+   Timeout: 15000ms
+   Error: element(s) not found
+   
+   Call log:
+   [2m  - Expect "toBeVisible" with timeout 15000ms[22m
+   [2m  - waiting for getByRole('dialog').getByText('PW-MON-1783654102323-n3bk2b', { exact: true })[22m
+   
+   
+     175 |
+     176 |     await gotoView(page, `/monitoring?id=${monitoring.id}`, 'Monitoring', 'monitoring')
+   > 177 |     await expect(page.getByRole('dialog').getByText(monitoring.title, { exact: true })).toBeVisible()
+         |                                                                                         ^
+     178 |     await clickResilientButton(page, 'Edit Monitor')
+     179 |     await expect(page.getByText('Update Monitoring')).toBeVisible()
+     180 |
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:177:89
+
+Time: 47033ms
+[full output: ~/Library/Application Support/rtk/tee/1783654125_playwright.log]

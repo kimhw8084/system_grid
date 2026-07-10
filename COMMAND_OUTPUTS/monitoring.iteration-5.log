@@ -1,0 +1,9 @@
+PASS (3) FAIL (2)
+
+1. preserves lifecycle status, recovery linking, and knowledge jump paths
+   [31mTest timeout of 60000ms exceeded.[39m
+2. edits an existing monitor without save errors and persists the updated fields
+   [31mTest timeout of 60000ms exceeded.[39m
+
+Time: 133714ms
+[full output: ~/Library/Application Support/rtk/tee/1783654551_playwright.log]

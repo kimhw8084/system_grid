@@ -1,0 +1,75 @@
+6:45:55 AM [vite] warning: `esbuild` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `oxc` instead.
+6:45:55 AM [vite] warning: `optimizeDeps.esbuildOptions` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `optimizeDeps.rolldownOptions` instead.
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic', jsxImportSource: undefined }`
+
+ RUN  v4.1.9 /Users/haewonkim/home/development/sysgrid/frontend
+
+
+<--- Last few GCs --->
+
+[3971:0x120008000]   106415 ms: Scavenge (during sweeping) 4090.8 (4094.5) -> 4088.9 (4094.5) MB, pooled: 0.0 MB, 0.76 / 0.00 ms (average mu = 0.308, current mu = 0.279) allocation failure; 
+[3971:0x120008000]   107349 ms: Incremental Mark-Compact (reduce) 4093.7 (4097.2) -> 4088.6 (4091.5) MB, pooled: 0.0 MB, 794.87 / 0.00 ms (+ 9.7 ms in 74 steps since start of marking, biggest step 5.0 ms, walltime since start of marking 819 ms) (average m
+FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 0x104bc22a0 node::OOMErrorHandler(char const*, v8::OOMDetails const&) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+ 2: 0x104ef62a4 v8::Utils::ReportOOMFailure(v8::internal::Isolate*, char const*, v8::OOMDetails const&) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+ 3: 0x104ef6254 v8::internal::V8::FatalProcessOutOfMemory(v8::internal::Isolate*, char const*, v8::OOMDetails const&) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+ 4: 0x1050aca64 v8::internal::Heap::IsLoadingInitialized() const [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+ 5: 0x1050abf00 v8::internal::Heap::CheckIneffectiveMarkCompact(unsigned long, unsigned long, double) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+ 6: 0x1050ab3bc v8::internal::Heap::CollectGarbage(v8::internal::AllocationSpace, v8::internal::GarbageCollectionReason, v8::GCCallbackFlags, v8::internal::PerformHeapLimitCheck, v8::internal::PerformIneffectiveMarkCompactCheck) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+ 7: 0x1050a2778 v8::internal::HeapAllocator::CollectGarbageAndRetryAllocation(v8::base::FunctionRef<bool ()>, v8::internal::AllocationType) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+ 8: 0x1050a2678 v8::internal::HeapAllocator::RetryCustomAllocate(v8::base::FunctionRef<bool ()>, v8::internal::AllocationType) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+ 9: 0x1050a2148 v8::internal::HeapAllocator::RetryCustomAllocateOrFail(v8::base::FunctionRef<bool ()>, v8::internal::AllocationType) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+10: 0x1050a20a0 v8::internal::HeapAllocator::AllocateRawSlowPath(v8::internal::HeapAllocator::AllocationRetryMode, int, v8::internal::AllocationType, v8::internal::AllocationOrigin, v8::internal::AllocationAlignment, v8::internal::AllocationHint) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+11: 0x10508854c v8::internal::Factory::NewFillerObject(int, v8::internal::AllocationAlignment, v8::internal::AllocationType, v8::internal::AllocationOrigin) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+12: 0x1053a544c v8::internal::Runtime_AllocateInYoungGeneration(int, unsigned long*, v8::internal::Isolate*) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+13: 0x1049c4cac Builtins_CEntry_Return1_ArgvOnStack_NoBuiltinExit [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+14: 0x140d4cd00 
+15: 0x140d7e2ec 
+16: 0x140d32450 
+17: 0x140942470 
+18: 0x10494e834 Builtins_RunMicrotasks [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+19: 0x10491e678 Builtins_JSRunMicrotasksEntry [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+20: 0x10500e26c v8::internal::(anonymous namespace)::Invoke(v8::internal::Isolate*, v8::internal::(anonymous namespace)::InvokeParams const&) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+21: 0x10500e928 v8::internal::(anonymous namespace)::InvokeWithTryCatch(v8::internal::Isolate*, v8::internal::(anonymous namespace)::InvokeParams const&) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+22: 0x10500ea18 v8::internal::Execution::TryRunMicrotasks(v8::internal::Isolate*, v8::internal::MicrotaskQueue*) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+23: 0x105031758 v8::internal::MicrotaskQueue::RunMicrotasks(v8::internal::Isolate*) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+24: 0x105031574 v8::internal::MicrotaskQueue::PerformCheckpointInternal(v8::Isolate*) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+25: 0x104b07f80 node::InternalCallbackScope::Close() [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+26: 0x104b07e10 node::InternalCallbackScope::~InternalCallbackScope() [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+27: 0x104b71670 node::Environment::RunTimers(uv_timer_s*) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+28: 0x1003d781c uv__run_timers [/opt/homebrew/Cellar/libuv/1.52.1/lib/libuv.1.0.0.dylib]
+29: 0x1003dac90 uv_run [/opt/homebrew/Cellar/libuv/1.52.1/lib/libuv.1.0.0.dylib]
+30: 0x104b08fa4 node::SpinEventLoopInternal(node::Environment*) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+31: 0x104bf0fcc node::NodeMainInstance::Run(node::ExitCode*, node::Environment*) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+32: 0x104bf0d00 node::NodeMainInstance::Run() [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+33: 0x104b944dc node::Start(int, char**) [/opt/homebrew/Cellar/node/26.0.0/lib/libnode.147.dylib]
+34: 0x198626b98 start [/usr/lib/dyld]
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: [vitest-pool]: Worker forks emitted error.
+ ❯ EventEmitter.onTaskError node_modules/vitest/dist/chunks/cli-api.24X8XwN1.js:3459:21
+ ❯ EventEmitter.emit node:events:509:20
+ ❯ ChildProcess.emitUnexpectedExit node_modules/vitest/dist/chunks/cli-api.24X8XwN1.js:3025:22
+ ❯ ChildProcess.emit node:events:509:20
+ ❯ Process.ChildProcess._handle.onexit node:internal/child_process:294:12
+
+Caused by: Error: Worker exited unexpectedly
+ ❯ ChildProcess.emitUnexpectedExit node_modules/vitest/dist/chunks/cli-api.24X8XwN1.js:3023:33
+ ❯ ChildProcess.emit node:events:509:20
+ ❯ Process.ChildProcess._handle.onexit node:internal/child_process:294:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files   (1)
+      Tests  2 passed (13)
+     Errors  1 error
+   Start at  06:45:55
+   Duration  107.39s (transform 60ms, setup 62ms, import 232ms, tests 0ms, environment 483ms)
+

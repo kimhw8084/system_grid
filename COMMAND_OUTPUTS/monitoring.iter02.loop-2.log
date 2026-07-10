@@ -1,0 +1,26 @@
+PASS (4) FAIL (1)
+
+1. preserves lifecycle status, recovery linking, and knowledge jump paths
+   Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+   
+   Locator: getByRole('dialog').getByText('PW-MON-1783656381674-pdsawg', { exact: true })
+   Expected: visible
+   Timeout: 15000ms
+   Error: element(s) not found
+   
+   Call log:
+   [2m  - Expect "toBeVisible" with timeout 15000ms[22m
+   [2m  - waiting for getByRole('dialog').getByText('PW-MON-1783656381674-pdsawg', { exact: true })[22m
+   
+   
+     81 |     await expectWorkspaceRoute(page, '/monitoring')
+     82 |     await expect(getWorkspaceRoot(page, 'monitoring')).toBeVisible()
+   > 83 |     await expect(page.getByRole('dialog').getByText(monitoring.title, { exact: true })).toBeVisible()
+        |                                                                                         ^
+     84 |     await clickResilientButton(page, 'Recovery')
+     85 |     await expect(page.getByText('Recovery Procedures').last()).toBeVisible()
+     86 |     await expect(page.getByText(knowledge.title)).toBeVisible()
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:83:89
+
+Time: 34304ms
+[full output: ~/Library/Application Support/rtk/tee/1783656414_playwright.log]

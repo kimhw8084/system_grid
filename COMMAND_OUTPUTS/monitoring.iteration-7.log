@@ -1,0 +1,47 @@
+PASS (3) FAIL (2)
+
+1. preserves lifecycle status, recovery linking, and knowledge jump paths
+   Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+   
+   Locator: getByText('Operational Triage Instruction')
+   Expected: visible
+   Timeout: 15000ms
+   Error: element(s) not found
+   
+   Call log:
+   [2m  - Expect "toBeVisible" with timeout 15000ms[22m
+   [2m  - waiting for getByText('Operational Triage Instruction')[22m
+   
+   
+     91 |     await clickResilientButton(page, /Close Search/i)
+     92 |     await page.getByRole('button').filter({ hasText: /^PW-RUNBOOK-/ }).click()
+   > 93 |     await expect(page.getByText('Operational Triage Instruction')).toBeVisible()
+        |                                                                    ^
+     94 |     await page.keyboard.press('Escape')
+     95 |
+     96 |     await gotoView(page, '/monitoring', 'Monitoring', 'monitoring')
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:93:68
+2. imports monitoring rows through the shared operational import modal
+   Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+   
+   Locator: getByText('Unknown Target Asset: UNKNOWN-ASSET').first()
+   Expected: visible
+   Timeout: 15000ms
+   Error: element(s) not found
+   
+   Call log:
+   [2m  - Expect "toBeVisible" with timeout 15000ms[22m
+   [2m  - waiting for getByText('Unknown Target Asset: UNKNOWN-ASSET').first()[22m
+   
+   
+     350 |     await expect(page.getByText('VALID').first()).toBeVisible()
+     351 |     await expect(page.getByText('INVALID').first()).toBeVisible()
+   > 352 |     await expect(page.getByText('Unknown Target Asset: UNKNOWN-ASSET').first()).toBeVisible()
+         |                                                                                 ^
+     353 |
+     354 |     const importButton = page.getByRole('button', { name: /^Import(?: \d+)?$/ }).last()
+     355 |     await expect(importButton).toBeVisible()
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:352:81
+
+Time: 49433ms
+[full output: ~/Library/Application Support/rtk/tee/1783654732_playwright.log]

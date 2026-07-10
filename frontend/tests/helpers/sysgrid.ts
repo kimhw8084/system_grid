@@ -8,6 +8,7 @@ export type LogicalGridRow = {
   rowKey: string
   pinned: Locator | null
   center: Locator | null
+  action: (name: string | RegExp) => Locator
 }
 
 const browserStateKeys = [
@@ -861,20 +862,31 @@ export async function getWorkspaceLogicalRowByText(page: Page, workspace: Worksp
     throw new Error(`Matched ${workspace} grid row for "${escapedText}" is missing both row-id and row-index attributes.`)
   }
 
-  const selector = `.ag-row[${rowIdentity.selector}="${rowIdentity.value}"]`
+  const escapedValue = await page.evaluate((value) => CSS.escape(value), rowIdentity.value)
+  const selector = `.ag-row[${rowIdentity.selector}=${escapedValue}]`
   const pinnedLocator = root.locator(`.ag-pinned-left-cols-container ${selector}`)
   const centerLocator = root.locator(`.ag-center-cols-container ${selector}`)
+  const actionLocator = root.locator(`.ag-pinned-right-cols-container ${selector}`)
   const pinned = await pinnedLocator.count() > 0 ? pinnedLocator.first() : null
   const center = await centerLocator.count() > 0 ? centerLocator.first() : null
+  const actions = await actionLocator.count() > 0 ? actionLocator.first() : null
 
   if (!pinned && !center) {
     throw new Error(`Resolved ${workspace} logical row "${escapedText}" (${rowIdentity.selector}=${rowIdentity.value}) but could not find pinned or center row fragments.`)
+  }
+
+  const action = (name: string | RegExp) => {
+    const fragments = [pinned, center, actions].filter((fragment): fragment is Locator => fragment !== null)
+    const candidates = fragments.map((fragment) => fragment.getByRole('button', { name }))
+    const rowAction = candidates.slice(1).reduce((combined, candidate) => combined.or(candidate), candidates[0])
+    return rowAction.describe(`${workspace} logical row ${rowIdentity.selector}=${rowIdentity.value} action ${String(name)}`)
   }
 
   return {
     rowKey: rowIdentity.value,
     pinned,
     center,
+    action,
   }
 }
 

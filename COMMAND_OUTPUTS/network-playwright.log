@@ -1,0 +1,14 @@
+
+Running 3 tests using 1 worker
+
+(node:89840) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:89840) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 tests/network-workflows.spec.ts:36:3 › Network workflows › supports deep-linked forensics, unit edits, and bulk sever from the grid (6.0s)
+  ✓  2 tests/network-workflows.spec.ts:146:3 › Network workflows › supports manual selection, modifiers, menu overlays, display configurations, and grouped grid parity (8.0s)
+  ✓  3 tests/network-workflows.spec.ts:454:3 › Network workflows › verifies golden column labels, domain order, pinning, resizability, bulk-edit dirty-close safety, context menu structure, and irreversible purge confirmation (9.1s)
+
+  3 passed (23.6s)
+
+[LLM-Reporter] All tests passed. No artifact needed.

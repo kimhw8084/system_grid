@@ -1,0 +1,20 @@
+PASS (3) FAIL (2)
+
+1. preserves lifecycle status, recovery linking, and knowledge jump paths
+   Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+   
+   Received: [31mfalse[39m
+   
+     78 |
+     79 |     const detailContractResponse = await request.get(`${apiBase}/monitoring/${monitoring.id}`)
+   > 80 |     expect(detailContractResponse.ok()).toBeTruthy()
+        |                                         ^
+     81 |     await getWorkspaceRoot(page, 'monitoring').locator('button[title="View Details"]').first().click()
+     82 |     await expect(page.getByRole('dialog').getByText(monitoring.title, { exact: true })).toBeVisible()
+     83 |     await clickResilientButton(page, 'Recovery')
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:80:41
+2. edits an existing monitor without save errors and persists the updated fields
+   [31mTest timeout of 60000ms exceeded.[39m
+
+Time: 75517ms
+[full output: ~/Library/Application Support/rtk/tee/1783654325_playwright.log]

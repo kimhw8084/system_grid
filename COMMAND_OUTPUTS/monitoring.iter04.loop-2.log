@@ -1,0 +1,117 @@
+
+Running 5 tests using 1 worker
+
+(node:26624) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26624) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+SEED: Created monitoring item "PW-MON-1783684290916-gbywus" (ID: 572)
+  ✘  1 tests/monitoring-workflows.spec.ts:57:3 › Monitoring workflows › preserves lifecycle status, recovery linking, and knowledge jump paths (3.2s)
+(node:27214) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:27214) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+SEED: Created monitoring item "PW-MON-1783684294365-ipb9ai" (ID: 573)
+SEED: Created monitoring item "PW-MON-OPS-1783684294365-ipb9ai-A" (ID: 574)
+SEED: Created monitoring item "PW-MON-OPS-1783684294365-ipb9ai-B" (ID: 575)
+  ✓  2 tests/monitoring-workflows.spec.ts:99:3 › Monitoring workflows › supports bulk undo, compare, and persisted display state (3.8s)
+SEED: Created monitoring item "PW-MON-1783684298144-yblyx3" (ID: 576)
+  ✘  3 tests/monitoring-workflows.spec.ts:166:3 › Monitoring workflows › edits an existing monitor without save errors and persists the updated fields (17.0s)
+(node:29024) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:29024) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+SEED: Created monitoring item "PW-MON-1783684315716-5evo8q" (ID: 577)
+SEED: Created monitoring item "PW-MON-CREATED-LONG-1783684316200-THIS TITLE SHOULD FORCE A MUCH WIDER DEFAULT COLUMN AFTER CREATE WITH ADDITIONAL LONG SUFFIX SEGMENTS AAA BBB CCC DDD EEE FFF GGG HHH III JJJ" (ID: 578)
+  ✓  4 tests/monitoring-workflows.spec.ts:212:3 › Monitoring workflows › keeps default title sizing dynamic and preserves human resized widths only in saved views (4.6s)
+SEED: Created monitoring item "PW-MON-1783684320317-hzk1xq" (ID: 579)
+  ✓  5 tests/monitoring-workflows.spec.ts:357:3 › Monitoring workflows › imports monitoring rows through the shared operational import modal (2.9s)
+
+
+  1) tests/monitoring-workflows.spec.ts:57:3 › Monitoring workflows › preserves lifecycle status, recovery linking, and knowledge jump paths 
+
+    Error: locator.click: Error: strict mode violation: locator('[role="dialog"]').filter({ has: getByRole('heading', { name: 'PW-RUNBOOK-1783684290916-gbywus', exact: true }) }).last().getByRole('button', { name: 'Close', exact: true }) resolved to 2 elements:
+        1) <button type="button" title="Close" class="group flex h-3 w-3 items-center justify-center rounded-full bg-[#ff5f57] transition-all hover:bg-[#ff5f57]/80">…</button> aka getByRole('button', { name: 'Close' }).nth(2)
+        2) <button type="button" class="h-9 inline-flex items-center justify-center gap-2 rounded-lg px-3 py-0 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap shrink-0 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 bg-white/5 text-slate-400 border border-white/5 hover:border-white/10 hover:text-white whitespace-nowrap">Close</button> aka getByRole('button', { name: 'Close' }).nth(3)
+
+    Call log:
+    [2m  - waiting for locator('[role="dialog"]').filter({ has: getByRole('heading', { name: 'PW-RUNBOOK-1783684290916-gbywus', exact: true }) }).last().getByRole('button', { name: 'Close', exact: true })[22m
+
+
+      88 |     await expect(page.getByText('Recovery procedure').first()).toBeVisible()
+      89 |     const bkmDetailDialog = page.locator('[role="dialog"]').filter({ has: page.getByRole('heading', { name: knowledge.title, exact: true }) }).last()
+    > 90 |     await bkmDetailDialog.getByRole('button', { name: 'Close', exact: true }).click()
+         |                                                                               ^
+      91 |     await expect(bkmDetailDialog).not.toBeVisible()
+      92 |     await expect(recoveryDialog).toBeVisible()
+      93 |     await recoveryDialog.getByRole('button', { name: 'Open Recovery BKM', exact: true }).first().click()
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:90:79
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/monitoring-workflows-Monit-8eab9-ng-and-knowledge-jump-paths/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/monitoring-workflows-Monit-8eab9-ng-and-knowledge-jump-paths/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/monitoring-workflows-Monit-8eab9-ng-and-knowledge-jump-paths/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/monitoring-workflows-Monit-8eab9-ng-and-knowledge-jump-paths/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/monitoring-workflows-Monit-8eab9-ng-and-knowledge-jump-paths/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) tests/monitoring-workflows.spec.ts:166:3 › Monitoring workflows › edits an existing monitor without save errors and persists the updated fields 
+
+    Error: Expected an "Open details" action on the monitoring row for "PW-MON-1783684298144-yblyx3"
+
+    [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: monitoring logical row row-id=576 action Open details
+    Expected: visible
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expected an "Open details" action on the monitoring row for "PW-MON-1783684298144-yblyx3" with timeout 15000ms[22m
+    [2m  - waiting for locator('[data-workspace="monitoring"]:visible').filter({ has: getByRole('heading') }).first().locator('.ag-pinned-left-cols-container .ag-row[row-id=\\35 76]').first().getByRole('button', { name: 'Open details' }).or(locator('[data-workspace="monitoring"]:visible').filter({ has: getByRole('heading') }).first().locator('.ag-center-cols-container .ag-row[row-id=\\35 76]').first().getByRole('button', { name: 'Open details' }))[22m
+
+
+      49 |   const logicalRow = await getWorkspaceLogicalRowByText(page, 'monitoring', title)
+      50 |   const action = logicalRow.action('Open details')
+    > 51 |   await expect(action, `Expected an "Open details" action on the monitoring row for "${title}"`).toBeVisible()
+         |                                                                                                  ^
+      52 |   await action.click()
+      53 |   return logicalRow
+      54 | }
+        at openMonitoringDetailFromLogicalRow (/Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:51:98)
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:175:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/monitoring-workflows-Monit-bc272-persists-the-updated-fields/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/monitoring-workflows-Monit-bc272-persists-the-updated-fields/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/monitoring-workflows-Monit-bc272-persists-the-updated-fields/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/monitoring-workflows-Monit-bc272-persists-the-updated-fields/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/monitoring-workflows-Monit-bc272-persists-the-updated-fields/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    tests/monitoring-workflows.spec.ts:57:3 › Monitoring workflows › preserves lifecycle status, recovery linking, and knowledge jump paths 
+    tests/monitoring-workflows.spec.ts:166:3 › Monitoring workflows › edits an existing monitor without save errors and persists the updated fields 
+  3 passed (33.2s)
+
+[LLM-Reporter] Emitted token-optimized failure artifact to /Users/haewonkim/home/development/sysgrid/frontend/llm-report.json

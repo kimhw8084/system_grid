@@ -1,0 +1,13 @@
+
+Running 1 test using 1 worker
+
+(node:731) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:731) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+SEED: Created monitoring item "PW-MON-1783685224084-9a71sk" (ID: 645)
+  ✓  1 tests/assets-workflows.spec.ts:9:3 › Assets workflows › simulates the changed Assets workflows end-to-end (30.9s)
+
+  1 passed (31.5s)
+
+[LLM-Reporter] All tests passed. No artifact needed.

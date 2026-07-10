@@ -1,0 +1,36 @@
+PASS (4) FAIL (1)
+
+1. preserves lifecycle status, recovery linking, and knowledge jump paths
+   Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+   
+   Locator: getByText('Recovery procedure')
+   Expected: visible
+   Error: strict mode violation: getByText('Recovery procedure') resolved to 214 elements:
+       1) <p class="text-[11px] text-slate-500 line-clamp-3 leading-relaxed font-medium">Recovery procedure</p> aka getByText('Recovery procedure').first()
+       2) <p class="text-[11px] text-slate-500 line-clamp-3 leading-relaxed font-medium">Recovery procedure</p> aka getByText('Recovery procedure').nth(1)
+       3) <p class="text-[11px] text-slate-500 line-clamp-3 leading-relaxed font-medium">Recovery procedure</p> aka getByText('Recovery procedure').nth(2)
+       4) <p class="text-[11px] text-slate-500 line-clamp-3 leading-relaxed font-medium">Recovery procedure</p> aka getByText('Recovery procedure').nth(3)
+       5) <p class="text-[11px] text-slate-500 line-clamp-3 leading-relaxed font-medium">Recovery procedure</p> aka getByText('Recovery procedure').nth(4)
+       6) <p class="text-[11px] text-slate-500 line-clamp-3 leading-relaxed font-medium">Recovery procedure</p> aka getByText('Recovery procedure').nth(5)
+       7) <p class="text-[11px] text-slate-500 line-clamp-3 leading-relaxed font-medium">Recovery procedure</p> aka locator('div:nth-child(9) > .flex-1 > .text-\\[11px\\]')
+       8) <p class="text-[11px] text-slate-500 line-clamp-3 leading-relaxed font-medium">Recovery procedure</p> aka locator('div:nth-child(10) > .flex-1 > .text-\\[11px\\]')
+       9) <p class="text-[11px] text-slate-500 line-clamp-3 leading-relaxed font-medium">Recovery procedure</p> aka locator('div:nth-child(11) > .flex-1 > .text-\\[11px\\]')
+       10) <p class="text-[11px] text-slate-500 line-clamp-3 leading-relaxed font-medium">Recovery procedure</p> aka locator('div:nth-child(12) > .flex-1 > .text-\\[11px\\]')
+       ...
+   
+   Call log:
+   [2m  - Expect "toBeVisible" with timeout 15000ms[22m
+   [2m  - waiting for getByText('Recovery procedure')[22m
+   
+   
+      96 |     await page.goto(`/knowledge?id=${knowledge.id}`)
+      97 |     await expect(page).toHaveURL(new RegExp(`/knowledge\\?id=${knowledge.id}`))
+   >  98 |     await expect(page.getByText('Recovery procedure')).toBeVisible()
+         |                                                        ^
+      99 |   })
+     100 |
+     101 |   test('supports bulk undo, compare, and persisted display state', async ({ page, request }) => {
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:98:56
+
+Time: 20376ms
+[full output: ~/Library/Application Support/rtk/tee/1783656015_playwright.log]

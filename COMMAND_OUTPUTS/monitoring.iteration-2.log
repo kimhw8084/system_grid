@@ -1,0 +1,70 @@
+PASS (2) FAIL (3)
+
+1. preserves lifecycle status, recovery linking, and knowledge jump paths
+   Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+   
+   Locator: getByRole('dialog').getByText('PW-MON-1783653928144-l336hd', { exact: true })
+   Expected: visible
+   Timeout: 15000ms
+   Error: element(s) not found
+   
+   Call log:
+   [2m  - Expect "toBeVisible" with timeout 15000ms[22m
+   [2m  - waiting for getByRole('dialog').getByText('PW-MON-1783653928144-l336hd', { exact: true })[22m
+   
+   
+     80 |     await page.goto(`/monitoring?id=${monitoring.id}`)
+     81 |     await expectWorkspaceRoute(page, '/monitoring')
+   > 82 |     await expect(page.getByRole('dialog').getByText(monitoring.title, { exact: true })).toBeVisible()
+        |                                                                                         ^
+     83 |     await clickResilientButton(page, 'Recovery')
+     84 |     await expect(page.getByText('Recovery Procedures').last()).toBeVisible()
+     85 |     await expect(page.getByText(knowledge.title)).toBeVisible()
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:82:89
+2. edits an existing monitor without save errors and persists the updated fields
+   Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+   
+   Locator: getByRole('dialog').getByText('PW-MON-1783653949828-puhzgf', { exact: true })
+   Expected: visible
+   Timeout: 15000ms
+   Error: element(s) not found
+   
+   Call log:
+   [2m  - Expect "toBeVisible" with timeout 15000ms[22m
+   [2m  - waiting for getByRole('dialog').getByText('PW-MON-1783653949828-puhzgf', { exact: true })[22m
+   
+   
+     175 |
+     176 |     await gotoView(page, `/monitoring?id=${monitoring.id}`, 'Monitoring', 'monitoring')
+   > 177 |     await expect(page.getByRole('dialog').getByText(monitoring.title, { exact: true })).toBeVisible()
+         |                                                                                         ^
+     178 |     await clickResilientButton(page, 'Edit Monitor')
+     179 |     await expect(page.getByText('Update Monitoring')).toBeVisible()
+     180 |
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:177:89
+3. imports monitoring rows through the shared operational import modal
+   Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeEnabled[2m([22m[2m)[22m failed
+   
+   Locator:  getByRole('button', { name: /^Import(?: \d+)?$/ }).last()
+   Expected: enabled
+   Received: disabled
+   Timeout:  15000ms
+   
+   Call log:
+   [2m  - Expect "toBeEnabled" with timeout 15000ms[22m
+   [2m  - waiting for getByRole('button', { name: /^Import(?: \d+)?$/ }).last()[22m
+   [2m    33 × locator resolved to <button disabled type="button" class="h-9 inline-flex items-center justify-center gap-2 rounded-lg px-3 py-0 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap shrink-0 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-500 !inline-flex !flex-row !items-center !justify-center gap-2 px-8 !whitespace-nowrap">…</button>[22m
+   [2m       - unexpected value "disabled"[22m
+   
+   
+     349 |     const importButton = page.getByRole('button', { name: /^Import(?: \d+)?$/ }).last()
+     350 |     await expect(importButton).toBeVisible()
+   > 351 |     await expect(importButton).toBeEnabled()
+         |                                ^
+     352 |     await importButton.click()
+     353 |     await expectToast(page, /Imported 1 row/i)
+     354 |     await expect(page.getByRole('heading', { name: 'Monitoring Import' })).not.toBeVisible()
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:351:32
+
+Time: 61660ms
+[full output: ~/Library/Application Support/rtk/tee/1783653988_playwright.log]

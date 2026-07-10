@@ -1,0 +1,19 @@
+PASS (4) FAIL (1)
+
+1. preserves lifecycle status, recovery linking, and knowledge jump paths
+   Error: Could not find resilient button matching any of: /PW-RECOVERY-EXTRA-1783654613594-0w79ik/i
+   
+      at helpers/sysgrid.ts:903
+   
+     901 |     }
+     902 |   }
+   > 903 |   throw new Error(`Could not find resilient button matching any of: ${names.join(', ')}`)
+         |         ^
+     904 | }
+     905 |
+     906 | export async function verifyGridRowRobust(page: Page, searchString: string | RegExp) {
+       at clickResilientButton (/Users/haewonkim/home/development/sysgrid/frontend/tests/helpers/sysgrid.ts:903:9)
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:87:5
+
+Time: 17908ms
+[full output: ~/Library/Application Support/rtk/tee/1783654630_playwright.log]

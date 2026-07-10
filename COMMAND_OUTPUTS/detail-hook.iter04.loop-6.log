@@ -1,0 +1,12 @@
+6:58:34 AM [vite] warning: `esbuild` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `oxc` instead.
+6:58:34 AM [vite] warning: `optimizeDeps.esbuildOptions` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `optimizeDeps.rolldownOptions` instead.
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic', jsxImportSource: undefined }`
+
+ RUN  v4.1.9 /Users/haewonkim/home/development/sysgrid/frontend
+
+
+ Test Files  1 passed (1)
+      Tests  13 passed (13)
+   Start at  06:58:34
+   Duration  884ms (transform 67ms, setup 56ms, import 197ms, tests 140ms, environment 423ms)
+

@@ -76,6 +76,14 @@ function AsyncDetailRouteHarness({
   return <div data-testid="async-detail-state">{detailItem ? detailItem.name : 'none'}</div>
 }
 
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise
+  })
+  return { promise, resolve }
+}
+
 describe('useOperationalDirtyGuard navigation protection', () => {
   it('does not block untouched navigation', async () => {
     const router = createMemoryRouter([
@@ -287,5 +295,68 @@ describe('useOperationalDetailRoute history sync', () => {
       expect(router.state.location.search).toBe('?id=1')
       expect(screen.getByTestId('detail-state').textContent).toBe('1')
     })
+  })
+
+  it('ignores a stale authoritative response after the route target changes', async () => {
+    const requestA = deferred<any>()
+    const requestB = deferred<any>()
+    const unknownRequest = deferred<any>()
+    const fetchDetailItem = vi.fn((id: string) => {
+      if (id === '3') return requestA.promise
+      if (id === '4') return requestB.promise
+      return unknownRequest.promise
+    })
+    const router = createMemoryRouter([
+      { path: '/services', element: <AsyncDetailRouteHarness fetchDetailItem={fetchDetailItem} /> },
+    ], {
+      initialEntries: ['/services?id=3'],
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('async-detail-state').textContent).toBe('none')
+      expect(router.state.location.search).toBe('?id=3')
+    })
+
+    await act(async () => {
+      await router.navigate('/services?id=4')
+    })
+    expect(screen.getByTestId('async-detail-state').textContent).toBe('none')
+    expect(router.state.location.search).toBe('?id=4')
+
+    await act(async () => {
+      requestB.resolve({ id: 4, name: 'Current detail', is_deleted: false })
+      await requestB.promise
+    })
+    await waitFor(() => {
+      expect(screen.getByTestId('async-detail-state').textContent).toBe('Current detail')
+      expect(router.state.location.search).toBe('?id=4')
+    })
+
+    await act(async () => {
+      requestA.resolve({ id: 3, name: 'Stale detail A', is_deleted: false })
+      await requestA.promise
+    })
+    expect(screen.getByTestId('async-detail-state').textContent).toBe('Current detail')
+    expect(screen.queryByText('Stale detail A')).not.toBeInTheDocument()
+
+    await act(async () => {
+      await router.navigate('/services?id=5')
+    })
+    await waitFor(() => {
+      expect(screen.getByTestId('async-detail-state').textContent).toBe('none')
+      expect(router.state.location.search).toBe('?id=5')
+    })
+
+    await act(async () => {
+      unknownRequest.resolve(null)
+      await unknownRequest.promise
+    })
+    await waitFor(() => {
+      expect(screen.getByTestId('async-detail-state').textContent).toBe('none')
+      expect(router.state.location.search).toBe('')
+    })
+    expect(screen.queryByText('Stale detail A')).not.toBeInTheDocument()
   })
 })

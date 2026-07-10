@@ -1,0 +1,71 @@
+
+Running 5 tests using 1 worker
+
+(node:44470) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:44470) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+SEED: Created monitoring item "PW-MON-1783684541756-y33wdb" (ID: 581)
+  ✘  1 tests/monitoring-workflows.spec.ts:57:3 › Monitoring workflows › preserves lifecycle status, recovery linking, and knowledge jump paths (18.5s)
+(node:46209) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:46209) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+SEED: Created monitoring item "PW-MON-1783684560364-7d0dio" (ID: 582)
+SEED: Created monitoring item "PW-MON-OPS-1783684560364-7d0dio-A" (ID: 583)
+SEED: Created monitoring item "PW-MON-OPS-1783684560364-7d0dio-B" (ID: 584)
+  ✓  2 tests/monitoring-workflows.spec.ts:99:3 › Monitoring workflows › supports bulk undo, compare, and persisted display state (3.6s)
+SEED: Created monitoring item "PW-MON-1783684563954-0oshvy" (ID: 585)
+  ✓  3 tests/monitoring-workflows.spec.ts:166:3 › Monitoring workflows › edits an existing monitor without save errors and persists the updated fields (4.1s)
+SEED: Created monitoring item "PW-MON-1783684568059-9sn0sp" (ID: 586)
+SEED: Created monitoring item "PW-MON-CREATED-LONG-1783684568519-THIS TITLE SHOULD FORCE A MUCH WIDER DEFAULT COLUMN AFTER CREATE WITH ADDITIONAL LONG SUFFIX SEGMENTS AAA BBB CCC DDD EEE FFF GGG HHH III JJJ" (ID: 587)
+  ✓  4 tests/monitoring-workflows.spec.ts:212:3 › Monitoring workflows › keeps default title sizing dynamic and preserves human resized widths only in saved views (4.3s)
+SEED: Created monitoring item "PW-MON-1783684572335-hiicp5" (ID: 588)
+  ✓  5 tests/monitoring-workflows.spec.ts:357:3 › Monitoring workflows › imports monitoring rows through the shared operational import modal (2.9s)
+
+
+  1) tests/monitoring-workflows.spec.ts:57:3 › Monitoring workflows › preserves lifecycle status, recovery linking, and knowledge jump paths 
+
+    Error: [2mexpect([22m[31mpage[39m[2m).[22mtoHaveURL[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Expected pattern: [32m/\/knowledge\?id=393/[39m
+    Received string:  [31m"http://127.0.0.1:5173/monitoring"[39m
+    Timeout: 15000ms
+
+    Call log:
+    [2m  - Expect "toHaveURL" with timeout 15000ms[22m
+    [2m    32 × unexpected value "http://127.0.0.1:5173/monitoring"[22m
+
+
+      92 |     await expect(recoveryDialog).toBeVisible()
+      93 |     await recoveryDialog.getByRole('button', { name: 'Open Recovery BKM', exact: true }).first().click()
+    > 94 |     await expect(page).toHaveURL(new RegExp(`/knowledge\\?id=${knowledge.id}`))
+         |                        ^
+      95 |     await expect(page.getByText(knowledge.title, { exact: true }).first()).toBeVisible()
+      96 |     await expect(page.getByText('Recovery procedure').first()).toBeVisible()
+      97 |   })
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:94:24
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/monitoring-workflows-Monit-8eab9-ng-and-knowledge-jump-paths/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/monitoring-workflows-Monit-8eab9-ng-and-knowledge-jump-paths/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/monitoring-workflows-Monit-8eab9-ng-and-knowledge-jump-paths/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/monitoring-workflows-Monit-8eab9-ng-and-knowledge-jump-paths/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/monitoring-workflows-Monit-8eab9-ng-and-knowledge-jump-paths/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests/monitoring-workflows.spec.ts:57:3 › Monitoring workflows › preserves lifecycle status, recovery linking, and knowledge jump paths 
+  4 passed (34.6s)
+
+[LLM-Reporter] Emitted token-optimized failure artifact to /Users/haewonkim/home/development/sysgrid/frontend/llm-report.json

@@ -1,0 +1,24 @@
+
+Running 5 tests using 1 worker
+
+(node:4074) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:4074) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+SEED: Created monitoring item "PW-MON-1783685255800-hcux52" (ID: 646)
+  ✓  1 tests/monitoring-workflows.spec.ts:57:3 › Monitoring workflows › preserves lifecycle status, recovery linking, and knowledge jump paths (4.5s)
+SEED: Created monitoring item "PW-MON-1783685260220-bjc4oh" (ID: 647)
+SEED: Created monitoring item "PW-MON-OPS-1783685260220-bjc4oh-A" (ID: 648)
+SEED: Created monitoring item "PW-MON-OPS-1783685260220-bjc4oh-B" (ID: 649)
+  ✓  2 tests/monitoring-workflows.spec.ts:102:3 › Monitoring workflows › supports bulk undo, compare, and persisted display state (3.9s)
+SEED: Created monitoring item "PW-MON-1783685264235-5f2un3" (ID: 650)
+  ✓  3 tests/monitoring-workflows.spec.ts:169:3 › Monitoring workflows › edits an existing monitor without save errors and persists the updated fields (4.1s)
+SEED: Created monitoring item "PW-MON-1783685268196-7d9k4h" (ID: 651)
+SEED: Created monitoring item "PW-MON-CREATED-LONG-1783685268679-THIS TITLE SHOULD FORCE A MUCH WIDER DEFAULT COLUMN AFTER CREATE WITH ADDITIONAL LONG SUFFIX SEGMENTS AAA BBB CCC DDD EEE FFF GGG HHH III JJJ" (ID: 652)
+  ✓  4 tests/monitoring-workflows.spec.ts:215:3 › Monitoring workflows › keeps default title sizing dynamic and preserves human resized widths only in saved views (4.5s)
+SEED: Created monitoring item "PW-MON-1783685272672-6tr1v9" (ID: 653)
+  ✓  5 tests/monitoring-workflows.spec.ts:360:3 › Monitoring workflows › imports monitoring rows through the shared operational import modal (3.0s)
+
+  5 passed (20.4s)
+
+[LLM-Reporter] All tests passed. No artifact needed.

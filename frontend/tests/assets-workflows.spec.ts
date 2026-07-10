@@ -308,7 +308,8 @@ test.describe('Assets workflows', () => {
     await expect(page.getByText('Assets Import')).not.toBeVisible()
 
     await page.goto(`/monitoring?id=${monitoring.id}`)
-    await expect(page).toHaveURL(/\/monitoring$/)
+    await expect(page).toHaveURL(new RegExp(`/monitoring\\?id=${monitoring.id}$`))
     await expect(page.getByRole('heading', { name: 'Monitoring' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: monitoring.title, exact: true }).first()).toBeVisible()
   })
 })

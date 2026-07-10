@@ -42,4 +42,6 @@ frontend-debug-lean.zip
 test-results/
 playwright-report/
 *.log
+!COMMAND_OUTPUTS/
+!COMMAND_OUTPUTS/*.log
 .DS_Store

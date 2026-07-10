@@ -1,0 +1,40 @@
+PASS (3) FAIL (2)
+
+1. preserves lifecycle status, recovery linking, and knowledge jump paths
+   Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+   
+   Locator: getByRole('dialog').getByText('PW-MON-1783656252685-ws2f5t', { exact: true })
+   Expected: visible
+   Timeout: 15000ms
+   Error: element(s) not found
+   
+   Call log:
+   [2m  - Expect "toBeVisible" with timeout 15000ms[22m
+   [2m  - waiting for getByRole('dialog').getByText('PW-MON-1783656252685-ws2f5t', { exact: true })[22m
+   
+   
+     81 |     await expectWorkspaceRoute(page, '/monitoring')
+     82 |     await expect(getWorkspaceRoot(page, 'monitoring')).toBeVisible()
+   > 83 |     await expect(page.getByRole('dialog').getByText(monitoring.title, { exact: true })).toBeVisible()
+        |                                                                                         ^
+     84 |     await clickResilientButton(page, 'Recovery')
+     85 |     await expect(page.getByText('Recovery Procedures').last()).toBeVisible()
+     86 |     await expect(page.getByText(knowledge.title)).toBeVisible()
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:83:89
+2. keeps default title sizing dynamic and preserves human resized widths only in saved views
+   Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBeGreaterThan[2m([22m[32mexpected[39m[2m)[22m
+   
+   Expected: > [32m262[39m
+   Received:   [31m240[39m
+   
+     226 |
+     227 |     const editedTitleWidth = await getColumnWidth(page, 'title')
+   > 228 |     expect(editedTitleWidth).toBeGreaterThan(initialTitleWidth + 40)
+         |                              ^
+     229 |
+     230 |     await createMonitoring(request, {
+     231 |       device_id: primary.id,
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:228:30
+
+Time: 33189ms
+[full output: ~/Library/Application Support/rtk/tee/1783656284_playwright.log]

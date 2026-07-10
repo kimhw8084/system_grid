@@ -1,0 +1,77 @@
+PASS (1) FAIL (4)
+
+1. preserves lifecycle status, recovery linking, and knowledge jump paths
+   Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+   
+   Locator: locator('.ag-center-cols-container')
+   Expected substring: [32m"PW-[7mMON[27m-1783653243232-f3s1mo"[39m
+   Received string:    [31m"PW-[7mASSET-A[27m-1783653243232-f3s1mo[7mExistingN/AHardware[27m"[39m
+   Timeout: 15000ms
+   
+   Call log:
+   [2m  - Expect "toContainText" with timeout 15000ms[22m
+   [2m  - waiting for locator('.ag-center-cols-container')[22m
+   [2m    34 × locator resolved to <div role="rowgroup" class="ag-center-cols-container">…</div>[22m
+   [2m       - unexpected value "PW-ASSET-A-1783653243232-f3s1moExistingN/AHardware"[22m
+   
+   
+     73 |
+     74 |     await page.getByPlaceholder('Scan matrix...').fill(monitoring.title)
+   > 75 |     await expect(page.locator('.ag-center-cols-container')).toContainText(monitoring.title)
+        |                                                             ^
+     76 |     await expect(page.locator('.ag-center-cols-container')).toContainText('Existing')
+     77 |
+     78 |     await page.goto(`/monitoring?id=${monitoring.id}`)
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:75:61
+2. edits an existing monitor without save errors and persists the updated fields
+   Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+   
+   Locator: getByText('PW-MON-1783653265825-87peb1')
+   Expected: visible
+   Timeout: 15000ms
+   Error: element(s) not found
+   
+   Call log:
+   [2m  - Expect "toBeVisible" with timeout 15000ms[22m
+   [2m  - waiting for getByText('PW-MON-1783653265825-87peb1')[22m
+   
+   
+     171 |
+     172 |     await gotoView(page, `/monitoring?id=${monitoring.id}`, 'Monitoring')
+   > 173 |     await expect(page.getByText(monitoring.title)).toBeVisible()
+         |                                                    ^
+     174 |     await clickResilientButton(page, 'Edit Monitor')
+     175 |     await expect(page.getByText('Update Monitoring')).toBeVisible()
+     176 |
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:173:52
+3. keeps default title sizing dynamic and preserves human resized widths only in saved views
+   Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBeGreaterThan[2m([22m[32mexpected[39m[2m)[22m
+   
+   Expected: > [32m340[39m
+   Received:   [31m340[39m
+   
+     233 |
+     234 |     const createdTitleWidth = await getColumnWidth(page, 'title')
+   > 235 |     expect(createdTitleWidth).toBeGreaterThan(editedTitleWidth)
+         |                               ^
+     236 |
+     237 |     const manualViewWidth = 420
+     238 |     const restoredDefaultAssetWidth = await getColumnWidth(page, 'device_name')
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:235:31
+4. imports monitoring rows through the shared operational import modal
+   Error: Could not find resilient button matching any of: Import 1
+   
+      at helpers/sysgrid.ts:847
+   
+     845 |     }
+     846 |   }
+   > 847 |   throw new Error(`Could not find resilient button matching any of: ${names.join(', ')}`)
+         |         ^
+     848 | }
+     849 |
+     850 | export async function verifyGridRowRobust(page: Page, searchString: string | RegExp) {
+       at clickResilientButton (/Users/haewonkim/home/development/sysgrid/frontend/tests/helpers/sysgrid.ts:847:9)
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:327:5
+
+Time: 47977ms
+[full output: ~/Library/Application Support/rtk/tee/1783653290_playwright.log]

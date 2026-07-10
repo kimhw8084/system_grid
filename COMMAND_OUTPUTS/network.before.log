@@ -1,0 +1,30 @@
+PASS (2) FAIL (1)
+
+1. supports deep-linked forensics, unit edits, and bulk sever from the grid
+   Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveCount[2m([22m[32mexpected[39m[2m)[22m failed
+   
+   Locator:  locator('.ag-center-cols-container .ag-row')
+   Expected: [32m2[39m
+   Received: [31m34[39m
+   Timeout:  15000ms
+   
+   Call log:
+   [2m  - Expect "toHaveCount" with timeout 15000ms[22m
+   [2m  - waiting for locator('.ag-center-cols-container .ag-row')[22m
+   [2m    3 × locator resolved to 0 elements[22m
+   [2m      - unexpected value "0"[22m
+   [2m    30 × locator resolved to 34 elements[22m
+   [2m       - unexpected value "34"[22m
+   
+   
+     119 |     await page.getByPlaceholder('Scan matrix...').fill(farm)
+     120 |     const rows = page.locator('.ag-center-cols-container .ag-row')
+   > 121 |     await expect(rows).toHaveCount(2, { timeout: 15000 })
+         |                        ^
+     122 |     const pinnedRows = page.locator('.ag-pinned-left-cols-container .ag-row')
+     123 |     await pinnedRows.nth(0).locator('.ag-selection-checkbox').first().click()
+     124 |     await expect(pinnedRows.nth(0)).toHaveClass(/ag-row-selected/)
+       at /Users/haewonkim/home/development/sysgrid/frontend/tests/network-workflows.spec.ts:121:24
+
+Time: 39379ms
+[full output: ~/Library/Application Support/rtk/tee/1783653270_playwright.log]

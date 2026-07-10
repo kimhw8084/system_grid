@@ -47,19 +47,10 @@ async function dragHeaderResize(page: any, colId: string, deltaX: number) {
 
 async function openMonitoringDetailFromLogicalRow(page: any, title: string) {
   const logicalRow = await getWorkspaceLogicalRowByText(page, 'monitoring', title)
-  const candidates = [logicalRow.center, logicalRow.pinned]
-
-  for (const fragment of candidates) {
-    if (!fragment) continue
-    await fragment.click()
-    const action = getWorkspaceRoot(page, 'monitoring').getByTitle('Open details').first()
-    if (await action.isVisible().catch(() => false)) {
-      await action.click()
-      return logicalRow
-    }
-  }
-
-  throw new Error(`Could not find an "Open details" action on the monitoring row for "${title}"`)
+  const action = logicalRow.action('Open details')
+  await expect(action, `Expected an "Open details" action on the monitoring row for "${title}"`).toBeVisible()
+  await action.click()
+  return logicalRow
 }
 
 test.describe('Monitoring workflows', () => {
@@ -92,10 +83,15 @@ test.describe('Monitoring workflows', () => {
     await expect(extraKnowledgeButton).toBeVisible()
     await extraKnowledgeButton.click()
     await expect(page.getByText(extraKnowledge.title)).toBeVisible()
+    await recoveryDialog.getByRole('button', { name: 'Synchronize Procedures', exact: true }).click()
+    await expectToast(page, 'Synchronized recovery procedures')
+    await expect(recoveryDialog.getByRole('button', { name: 'Synchronize Procedures', exact: true })).toBeDisabled()
     await clickResilientButton(page, /Close Search/i)
     await page.getByRole('button').filter({ hasText: /^PW-RUNBOOK-/ }).click()
     await expect(page.getByText('Recovery procedure').first()).toBeVisible()
-    await page.keyboard.press('Escape')
+    const bkmDetailDialog = page.locator('[role="dialog"]').filter({ has: page.getByRole('heading', { name: knowledge.title, exact: true }) }).last()
+    await bkmDetailDialog.getByTitle('Close').click()
+    await expect(bkmDetailDialog).not.toBeVisible()
     await expect(recoveryDialog).toBeVisible()
     await recoveryDialog.getByRole('button', { name: 'Open Recovery BKM', exact: true }).first().click()
     await expect(page).toHaveURL(new RegExp(`/knowledge\\?id=${knowledge.id}`))

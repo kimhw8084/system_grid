@@ -1,0 +1,82 @@
+6:49:27 AM [vite] warning: `esbuild` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `oxc` instead.
+6:49:27 AM [vite] warning: `optimizeDeps.esbuildOptions` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `optimizeDeps.rolldownOptions` instead.
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic', jsxImportSource: undefined }`
+
+ RUN  v4.1.9 /Users/haewonkim/home/development/sysgrid/frontend
+
+
+<--- Last few GCs --->
+
+[19047:0x140008000]   120007 ms: Mark-Compact 4052.3 (4130.7) -> 4036.7 (4130.9) MB, pooled: 0 MB, 1079.12 / 0.00 ms  (average mu = 0.066, current mu = 0.022) allocation failure; scavenge might not succeed
+[19047:0x140008000]   121029 ms: Mark-Compact 4052.7 (4131.2) -> 4037.1 (4131.2) MB, pooled: 0 MB, 984.25 / 0.00 ms  (average mu = 0.052, current mu = 0.037) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 0x1029ef1e4 node::OOMErrorHandler(char const*, v8::OOMDetails const&) [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+ 2: 0x102beefd8 v8::internal::V8::FatalProcessOutOfMemory(v8::internal::Isolate*, char const*, v8::OOMDetails const&) [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+ 3: 0x102dfcf30 v8::internal::Heap::stack() [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+ 4: 0x102e133a0 v8::internal::Heap::CollectGarbage(v8::internal::AllocationSpace, v8::internal::GarbageCollectionReason, v8::GCCallbackFlags)::$_1::operator()() const [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+ 5: 0x102e12c34 void heap::base::Stack::SetMarkerAndCallbackImpl<v8::internal::Heap::CollectGarbage(v8::internal::AllocationSpace, v8::internal::GarbageCollectionReason, v8::GCCallbackFlags)::$_1>(heap::base::Stack*, void*, void const*) [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+ 6: 0x1035a8d54 PushAllRegistersAndIterateStack [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+ 7: 0x102dfb0f0 v8::internal::Heap::CollectGarbage(v8::internal::AllocationSpace, v8::internal::GarbageCollectionReason, v8::GCCallbackFlags) [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+ 8: 0x102def8b8 v8::internal::HeapAllocator::AllocateRawWithLightRetrySlowPath(int, v8::internal::AllocationType, v8::internal::AllocationOrigin, v8::internal::AllocationAlignment) [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+ 9: 0x102df00f0 v8::internal::HeapAllocator::AllocateRawWithRetryOrFailSlowPath(int, v8::internal::AllocationType, v8::internal::AllocationOrigin, v8::internal::AllocationAlignment) [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+10: 0x102dd3410 v8::internal::Factory::NewFillerObject(int, v8::internal::AllocationAlignment, v8::internal::AllocationType, v8::internal::AllocationOrigin) [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+11: 0x1031eeae4 v8::internal::Runtime_AllocateInYoungGeneration(int, unsigned long*, v8::internal::Isolate*) [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+12: 0x1036b1af4 Builtins_CEntry_Return1_ArgvOnStack_NoBuiltinExit [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+13: 0x1036fe418 Builtins_CreateShallowObjectLiteral [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+14: 0x109579c68 
+15: 0x10966ac78 
+16: 0x1099ca6dc 
+17: 0x10954fa90 
+18: 0x10954c954 
+19: 0x1099f94d4 
+20: 0x1095552a8 
+21: 0x1099fa338 
+22: 0x103649498 Builtins_RunMicrotasks [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+23: 0x10361aaf4 Builtins_JSRunMicrotasksEntry [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+24: 0x102d54e6c v8::internal::(anonymous namespace)::Invoke(v8::internal::Isolate*, v8::internal::(anonymous namespace)::InvokeParams const&) [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+25: 0x102d55714 v8::internal::(anonymous namespace)::InvokeWithTryCatch(v8::internal::Isolate*, v8::internal::(anonymous namespace)::InvokeParams const&) [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+26: 0x102d5584c v8::internal::Execution::TryRunMicrotasks(v8::internal::Isolate*, v8::internal::MicrotaskQueue*) [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+27: 0x102d82ac8 v8::internal::MicrotaskQueue::RunMicrotasks(v8::internal::Isolate*) [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+28: 0x102d8324c v8::internal::MicrotaskQueue::PerformCheckpoint(v8::Isolate*) [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+29: 0x1028f99a8 node::InternalCallbackScope::Close() [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+30: 0x1028f9474 node::InternalCallbackScope::~InternalCallbackScope() [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+31: 0x10298383c node::Environment::RunTimers(uv_timer_s*) [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+32: 0x1035f5220 uv__run_timers [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+33: 0x1035f89f4 uv_run [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+34: 0x1028fa508 node::SpinEventLoopInternal(node::Environment*) [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+35: 0x102a38154 node::NodeMainInstance::Run() [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+36: 0x1029ae364 node::Start(int, char**) [/Users/haewonkim/.npm/_npx/1c42e2583fe60b26/node_modules/node/bin/node]
+37: 0x198626b98 start [/usr/lib/dyld]
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: [vitest-pool]: Worker forks emitted error.
+ ❯ EventEmitter.onTaskError node_modules/vitest/dist/chunks/cli-api.24X8XwN1.js:3459:21
+ ❯ EventEmitter.emit node:events:518:28
+ ❯ ChildProcess.emitUnexpectedExit node_modules/vitest/dist/chunks/cli-api.24X8XwN1.js:3025:22
+ ❯ ChildProcess.emit node:events:518:28
+ ❯ Process.ChildProcess._handle.onexit node:internal/child_process:293:12
+
+Caused by: Error: Worker exited unexpectedly
+ ❯ ChildProcess.emitUnexpectedExit node_modules/vitest/dist/chunks/cli-api.24X8XwN1.js:3023:33
+ ❯ ChildProcess.emit node:events:518:28
+ ❯ Process.ChildProcess._handle.onexit node:internal/child_process:293:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files   (1)
+      Tests  2 passed (13)
+     Errors  1 error
+   Start at  06:49:27
+   Duration  121.06s (transform 65ms, setup 57ms, import 197ms, tests 0ms, environment 482ms)
+
