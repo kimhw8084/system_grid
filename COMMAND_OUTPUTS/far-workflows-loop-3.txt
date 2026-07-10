@@ -1,0 +1,17 @@
+
+Running 3 tests using 1 worker
+
+(node:81700) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:81700) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+SEED: Created monitoring item "PW-MON-1783687261652-h2qpi1" (ID: 667)
+  ✓  1 tests/far-workflows.spec.ts:15:3 › FAR workflows › opens deep links and refreshes the wizard when the selected mode changes (2.3s)
+SEED: Created monitoring item "PW-MON-1783687263732-kxj6h9" (ID: 668)
+  ✓  2 tests/far-workflows.spec.ts:45:3 › FAR workflows › removes causes and mitigations from the active FAR detail view (3.4s)
+SEED: Created monitoring item "PW-MON-1783687267144-eynlsf" (ID: 669)
+  ✓  3 tests/far-workflows.spec.ts:79:3 › FAR workflows › navigates to Research and can unlink linked research artifacts (3.2s)
+
+  3 passed (9.5s)
+
+[LLM-Reporter] All tests passed. No artifact needed.

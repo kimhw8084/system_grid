@@ -4,8 +4,7 @@ import {
   resetBrowserState, 
   seedOperationalScenario, 
   createFarCause, 
-  createFarMitigation, 
-  clickResilientButton 
+  createFarMitigation
 } from '../helpers/sysgrid';
 
 test('FAR mitigation deletion resilience: Network Stall + Rapid Click', async ({ page, sysApi: request, chaos, interactionChaos, networkChaos }) => {
@@ -30,7 +29,9 @@ test('FAR mitigation deletion resilience: Network Stall + Rapid Click', async ({
   });
 
   await page.goto(`/far?id=${far.id}`);
-  await clickResilientButton(page, /Strategic Roadmap/i);
+  const roadmapTab = page.getByRole('button', { name: /Strategic Roadmap/i });
+  await expect(roadmapTab).toBeVisible();
+  await roadmapTab.click();
   
   const mitigationRow = page.locator('tr', { hasText: 'Watch the service' });
   const deleteBtn = mitigationRow.getByRole('button').first();

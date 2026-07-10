@@ -26,6 +26,8 @@ import { MonitoringForm } from './monitoring/MonitoringForm'
 import { ProjectForm } from './Projects'
 import { RootCauseFormModal, MitigationFormModal, PreventionFormModal, ResolutionManagerModal } from './shared/FARModals'
 import { EnhancedRcaDetails } from './Research'
+import { OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'
+import { ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -205,7 +207,7 @@ export default function FAR() {
   }
 
   // Queries
-  const { data: modes, isLoading: modesLoading } = useQuery({ 
+  const { data: modes, isLoading: modesLoading, isError: modesError } = useQuery({ 
     queryKey: ['far', 'modes'], 
     queryFn: async () => (await apiFetch('/api/v1/far/modes')).json() 
   })
@@ -215,7 +217,10 @@ export default function FAR() {
     const targetId = parseInt(idParam, 10)
     if (Number.isNaN(targetId)) return
     const mode = modes.find((m: any) => m.id === targetId)
-    if (!mode) return
+    if (!mode) {
+      setSelectedModeId(null)
+      return
+    }
 
     setSearchTerm(mode.title)
     setSelectedModeId(targetId)
@@ -584,53 +589,46 @@ export default function FAR() {
   }, [filteredModes])
 
   return (
-    <div className="h-full flex flex-col space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-6">
-           <div>
-              <h1 className="text-2xl font-bold uppercase tracking-tight  flex items-center gap-2">
-                <Target size={24} className="text-rose-500" /> Failure Matrix
-              </h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Reliability Knowledge Engine // FMEA Studio</p>
-           </div>
+    <OperationalWorkspaceShell
+      workspace="far"
+      className="overflow-hidden"
+      header={{
+        eyebrow: 'Analysis',
+        title: (
+          <div className="flex items-center gap-3">
+            <Target size={22} className="text-rose-500" />
+            <span>Failure Matrix</span>
+          </div>
+        ),
+        subtitle: 'Reliability Knowledge Engine // FMEA Studio',
+        meta: <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">{filteredModes.length} failure vectors in scope</span>,
+      }}
+      toolbarSearch={(
+        <ToolbarSearch value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Scan risk vectors..." />
+      )}
+      toolbarControls={(
+        <ToolbarGroup>
+          <ToolbarIconButton onClick={() => setShowStyleLab(!showStyleLab)} active={showStyleLab} title="Style Laboratory"><Activity size={16} /></ToolbarIconButton>
+          <ToolbarIconButton onClick={() => setShowColumnPicker(!showColumnPicker)} active={showColumnPicker} title="Column Configuration"><Sliders size={16} /></ToolbarIconButton>
+          <ToolbarIconButton onClick={() => setShowRpnHelp(true)} title="RPN Definition Matrix"><HelpCircle size={16} /></ToolbarIconButton>
+          <ToolbarIconButton onClick={() => setShowConfig(true)} title="Matrix Registry Enums"><Settings size={16} /></ToolbarIconButton>
+        </ToolbarGroup>
+      )}
+      toolbarActions={(
+        <ToolbarGroup>
+          <ToolbarButton onClick={() => setShowImportModal(true)} title="Import Bulk Risk Data"><Upload size={14} /> Import</ToolbarButton>
+          <ToolbarButton variant="danger" onClick={() => { setSelectedModeId(null); setShowWizard(true); }}><ShieldAlert size={14} /> Add Failure Mode</ToolbarButton>
+        </ToolbarGroup>
+      )}
+      secondaryToolbar={(
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          <button onClick={() => setSelectedSystems([])} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all ${selectedSystems.length === 0 ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>ALL</button>
+          {availableSystems.map(sys => (
+            <button key={sys} onClick={() => setSelectedSystems(prev => prev.includes(sys) ? prev.filter(s => s !== sys) : [...prev, sys])} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all whitespace-nowrap ${selectedSystems.includes(sys) ? 'bg-white/10 border-white/20 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>{sys}</button>
+          ))}
         </div>
-        
-        <div className="flex items-center space-x-3">
-           <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={14} />
-              <input 
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                placeholder="Scan risk vectors..."
-                className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold uppercase outline-none focus:border-rose-500/50 w-64 transition-all"
-              />
-           </div>
-
-           <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">
-               <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 rounded-lg transition-all ${showStyleLab ? 'bg-rose-500/20 text-rose-400' : 'hover:bg-white/10 text-slate-500'}`} title="Style Laboratory">
-                  <Activity size={16} />
-               </button>
-               <button onClick={() => setShowColumnPicker(!showColumnPicker)} className={`p-1.5 rounded-lg transition-all ${showColumnPicker ? 'bg-rose-500/20 text-rose-400' : 'hover:bg-white/10 text-slate-500'}`} title="Column Configuration">
-                  <Sliders size={16} />
-               </button>
-               <button onClick={() => setShowRpnHelp(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-amber-400 rounded-lg transition-all" title="RPN Definition Matrix">
-                  <HelpCircle size={16} />
-               </button>
-               <button onClick={() => setShowImportModal(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Import Bulk Risk Data">
-                  <Upload size={16} />
-               </button>
-               <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-rose-400 rounded-lg transition-all" title="Matrix Registry Enums">
-                  <Settings size={16} />
-               </button>
-            </div>
-           <button 
-             onClick={() => { setSelectedModeId(null); setShowWizard(true); }}
-             className="bg-rose-600 hover:bg-rose-500 text-white px-6 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-rose-500/10 active:scale-95 transition-all flex items-center gap-2"
-           >
-             <ShieldAlert size={14} /> Add Failure Mode
-           </button>
-        </div>
-      </div>
+      )}
+    >
 
       <AnimatePresence>
         {showStyleLab && (
@@ -651,12 +649,6 @@ export default function FAR() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
-         <button onClick={() => setSelectedSystems([])} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all ${selectedSystems.length === 0 ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>ALL</button>
-         {availableSystems.map(sys => (           <button key={sys} onClick={() => setSelectedSystems(prev => prev.includes(sys) ? prev.filter(s => s !== sys) : [...prev, sys])} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all whitespace-nowrap ${selectedSystems.includes(sys) ? 'bg-white/10 border-white/20 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>{sys}</button>
-         ))}
-      </div>
 
       <div className="flex justify-center gap-4">
          <StatCard id="SRI" label="Reliability Index" value={metrics.sri} suffix="/100" color={metrics.sri > 70 ? "emerald" : "rose"} onHelp={() => setActiveMetricHelp("SRI")} />
@@ -691,6 +683,14 @@ export default function FAR() {
            </div>
 
            <div className="flex-1 glass-panel overflow-hidden ag-theme-alpine-dark relative">
+              {(modesLoading || modesError || (!modesLoading && filteredModes.length === 0)) && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#020617]/85 backdrop-blur-sm">
+                  <WorkspaceEmptyState
+                    title={modesLoading ? 'Loading failure analysis registry' : modesError ? 'Failure analysis registry unavailable' : 'No failure modes in scope'}
+                    description={modesLoading ? 'Retrieving reliability vectors and workflow context.' : modesError ? 'The FAR registry could not be loaded. Retry from the workspace navigation.' : 'Create a failure mode or adjust the current system and search filters.'}
+                  />
+                </div>
+              )}
               <AgGridReact
                 ref={gridRef}
                 rowData={filteredModes || []}
@@ -925,7 +925,7 @@ export default function FAR() {
           />
         )}
       </AnimatePresence>
-    </div>
+    </OperationalWorkspaceShell>
   )
 }
 
@@ -1447,6 +1447,7 @@ function CausalTab({ mode, onUpdate, setBkmGuidanceModal, setResolutionManagerMo
                            </button>
                            <button
                              onClick={() => deleteCauseMutation.mutate(c.id)}
+                             disabled={deleteCauseMutation.isPending && deleteCauseMutation.variables === c.id}
                              className="p-1.5 text-slate-600 hover:text-rose-500 transition-all rounded-lg"
                              title="Purge Attribution"
                            >
@@ -1565,6 +1566,8 @@ function RoadmapTab({ mode, onUpdate }: any) {
   const [activeMitigationModal, setActiveMitigationModal] = useState<any>(null)
   const [activePreventionModal, setActivePreventionModal] = useState<any>(null)
   const [selectedCauseId, setSelectedCauseId] = useState<number | null>(null)
+  const [deletingMitigationId, setDeletingMitigationId] = useState<number | null>(null)
+  const deletingMitigationIdRef = React.useRef<number | null>(null)
   
   const queryClient = useQueryClient()
   const { data: bkms } = useQuery({ queryKey: ['knowledge', 'bkms'], queryFn: async () => (await apiFetch('/api/v1/knowledge/?category=BKM')).json() })
@@ -1580,7 +1583,13 @@ function RoadmapTab({ mode, onUpdate }: any) {
       queryClient.invalidateQueries({ queryKey: ['far', 'modes'] })
       onUpdate()
     },
-    onError: (error: any) => toast.error(error.message || 'Failed to delete mitigation')
+    onError: (error: any) => {
+      setDeletingMitigationId(null)
+      toast.error(error.message || 'Failed to delete mitigation')
+    },
+    onSettled: () => {
+      deletingMitigationIdRef.current = null
+    }
   })
 
   useEffect(() => {
@@ -1588,6 +1597,12 @@ function RoadmapTab({ mode, onUpdate }: any) {
       setSelectedCauseId(mode.causes[0].id)
     }
   }, [mode.causes, selectedCauseId])
+
+  useEffect(() => {
+    if (deletingMitigationId !== null && !mode.mitigations?.some((mitigation: any) => mitigation.id === deletingMitigationId)) {
+      setDeletingMitigationId(null)
+    }
+  }, [deletingMitigationId, mode.mitigations])
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex-1 flex flex-col space-y-6">
@@ -1660,8 +1675,15 @@ function RoadmapTab({ mode, onUpdate }: any) {
                         </td>
                         <td className="px-8 py-5 text-right opacity-0 group-hover:opacity-100 transition-opacity">
                            <button
-                             onClick={() => deleteMitigationMutation.mutate(m.id)}
-                             className="p-2 text-slate-600 hover:text-rose-500 transition-colors"
+                             onClick={() => {
+                               if (deletingMitigationIdRef.current !== null) return
+                               deletingMitigationIdRef.current = m.id
+                               setDeletingMitigationId(m.id)
+                               deleteMitigationMutation.mutate(m.id)
+                             }}
+                             disabled={deletingMitigationId !== null}
+                             className="p-2 text-slate-600 hover:text-rose-500 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                             title="Delete Mitigation"
                            >
                              <Trash2 size={16}/>
                            </button>

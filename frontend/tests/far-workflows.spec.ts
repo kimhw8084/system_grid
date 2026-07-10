@@ -25,6 +25,8 @@ test.describe('FAR workflows', () => {
     })
 
     await page.goto(`/far?id=${far.id}`)
+    await expect(page.locator('[data-workspace="far"]')).toBeVisible()
+    await expect(page).toHaveURL(new RegExp(`/far\\?id=${far.id}$`))
     await expect(page.getByRole('button', { name: /Causal Forensics/i })).toBeVisible()
     await expect(page.getByRole('heading', { name: far.title })).toBeVisible()
 
@@ -59,7 +61,9 @@ test.describe('FAR workflows', () => {
     })
 
     await page.goto(`/far?id=${far.id}`)
-    await clickResilientButton(page, /Strategic Roadmap/i)
+    const roadmapTab = page.getByRole('button', { name: /Strategic Roadmap/i })
+    await expect(roadmapTab).toBeVisible()
+    await roadmapTab.click()
     const mitigationRow = page.locator('tr', { hasText: 'Watch the service and alert on regression' })
     await mitigationRow.hover()
     await mitigationRow.getByRole('button').click()
@@ -88,7 +92,9 @@ test.describe('FAR workflows', () => {
     })
 
     await page.goto(`/far?id=${far.id}`)
-    await clickResilientButton(page, /Research History/i)
+    const researchTab = page.getByRole('button', { name: /Research History/i })
+    await expect(researchTab).toBeVisible()
+    await researchTab.click()
     await expect(page.getByRole('heading', { name: investigation.title })).toBeVisible()
 
     const artifactCard = page.getByRole('heading', { name: investigation.title }).locator('xpath=ancestor::div[contains(@class,"group")][1]')

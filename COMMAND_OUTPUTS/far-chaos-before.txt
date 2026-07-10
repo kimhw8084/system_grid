@@ -1,0 +1,61 @@
+
+Running 1 test using 1 worker
+
+(node:54113) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:54113) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[ChaosController] Registered: interaction-chaos
+[ChaosController] Registered: network-chaos
+SEED: Created monitoring item "PW-MON-1783686891734-al2df6" (ID: 658)
+[ChaosController] Kill Switch: Disabling all chaos tools.
+  ✘  1 tests/resilience/far-chaos.spec.ts:11:1 › FAR mitigation deletion resilience: Network Stall + Rapid Click (17.5s)
+
+
+  1) tests/resilience/far-chaos.spec.ts:11:1 › FAR mitigation deletion resilience: Network Stall + Rapid Click 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeDisabled[2m([22m[2m)[22m failed
+
+    Locator: locator('tr').filter({ hasText: 'Watch the service' }).getByRole('button').first()
+    Expected: disabled
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeDisabled" with timeout 15000ms[22m
+    [2m  - waiting for locator('tr').filter({ hasText: 'Watch the service' }).getByRole('button').first()[22m
+    [2m    3 × locator resolved to <button class="p-2 text-slate-600 hover:text-rose-500 transition-colors">…</button>[22m
+    [2m      - unexpected value "enabled"[22m
+
+
+      47 |   
+      48 |   // Verify UI handles the stall gracefully (e.g., showing a loading indicator)
+    > 49 |   await expect(deleteBtn).toBeDisabled(); 
+         |                           ^
+      50 |   
+      51 |   // 3. Disable network chaos to allow eventual completion
+      52 |   await networkChaos.disable();
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/resilience/far-chaos.spec.ts:49:27
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/resilience-far-chaos-FAR-m-ecbd3-e-Network-Stall-Rapid-Click/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/resilience-far-chaos-FAR-m-ecbd3-e-Network-Stall-Rapid-Click/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/resilience-far-chaos-FAR-m-ecbd3-e-Network-Stall-Rapid-Click/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/resilience-far-chaos-FAR-m-ecbd3-e-Network-Stall-Rapid-Click/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/resilience-far-chaos-FAR-m-ecbd3-e-Network-Stall-Rapid-Click/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests/resilience/far-chaos.spec.ts:11:1 › FAR mitigation deletion resilience: Network Stall + Rapid Click 
+
+[LLM-Reporter] Emitted token-optimized failure artifact to /Users/haewonkim/home/development/sysgrid/frontend/llm-report.json

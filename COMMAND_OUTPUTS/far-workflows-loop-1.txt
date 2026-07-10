@@ -1,0 +1,54 @@
+
+Running 3 tests using 1 worker
+
+(node:70944) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:70944) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+SEED: Created monitoring item "PW-MON-1783687137755-ho6c4n" (ID: 659)
+  ✓  1 tests/far-workflows.spec.ts:15:3 › FAR workflows › opens deep links and refreshes the wizard when the selected mode changes (2.2s)
+SEED: Created monitoring item "PW-MON-1783687139755-ew3wks" (ID: 660)
+  ✓  2 tests/far-workflows.spec.ts:43:3 › FAR workflows › removes causes and mitigations from the active FAR detail view (3.3s)
+SEED: Created monitoring item "PW-MON-1783687143015-ymdrb9" (ID: 661)
+  ✘  3 tests/far-workflows.spec.ts:75:3 › FAR workflows › navigates to Research and can unlink linked research artifacts (1.7s)
+
+
+  1) tests/far-workflows.spec.ts:75:3 › FAR workflows › navigates to Research and can unlink linked research artifacts 
+
+    Error: Could not find resilient button matching any of: /Research History/i
+
+       at helpers/sysgrid.ts:962
+
+      960 |     }
+      961 |   }
+    > 962 |   throw new Error(`Could not find resilient button matching any of: ${names.join(', ')}`)
+          |         ^
+      963 | }
+      964 |
+      965 | export async function verifyGridRowRobust(page: Page, searchString: string | RegExp) {
+        at clickResilientButton (/Users/haewonkim/home/development/sysgrid/frontend/tests/helpers/sysgrid.ts:962:9)
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/far-workflows.spec.ts:91:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/far-workflows-FAR-workflow-4533c-k-linked-research-artifacts/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/far-workflows-FAR-workflow-4533c-k-linked-research-artifacts/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/far-workflows-FAR-workflow-4533c-k-linked-research-artifacts/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/far-workflows-FAR-workflow-4533c-k-linked-research-artifacts/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/far-workflows-FAR-workflow-4533c-k-linked-research-artifacts/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests/far-workflows.spec.ts:75:3 › FAR workflows › navigates to Research and can unlink linked research artifacts 
+  2 passed (7.8s)
+
+[LLM-Reporter] Emitted token-optimized failure artifact to /Users/haewonkim/home/development/sysgrid/frontend/llm-report.json

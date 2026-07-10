@@ -1,0 +1,16 @@
+
+Running 1 test using 1 worker
+
+(node:82919) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:82919) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[ChaosController] Registered: interaction-chaos
+[ChaosController] Registered: network-chaos
+SEED: Created monitoring item "PW-MON-1783687271519-wcu312" (ID: 670)
+[ChaosController] Kill Switch: Disabling all chaos tools.
+  ✓  1 tests/resilience/far-chaos.spec.ts:10:1 › FAR mitigation deletion resilience: Network Stall + Rapid Click (2.6s)
+
+  1 passed (3.0s)
+
+[LLM-Reporter] All tests passed. No artifact needed.

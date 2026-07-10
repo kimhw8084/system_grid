@@ -1,0 +1,52 @@
+
+Running 1 test using 1 worker
+
+(node:77282) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:77282) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[ChaosController] Registered: interaction-chaos
+[ChaosController] Registered: network-chaos
+SEED: Created monitoring item "PW-MON-1783687206254-nb3p9y" (ID: 666)
+[ChaosController] Kill Switch: Disabling all chaos tools.
+  ✘  1 tests/resilience/far-chaos.spec.ts:11:1 › FAR mitigation deletion resilience: Network Stall + Rapid Click (1.9s)
+
+
+  1) tests/resilience/far-chaos.spec.ts:11:1 › FAR mitigation deletion resilience: Network Stall + Rapid Click 
+
+    Error: Could not find resilient button matching any of: /Strategic Roadmap/i
+
+       at helpers/sysgrid.ts:962
+
+      960 |     }
+      961 |   }
+    > 962 |   throw new Error(`Could not find resilient button matching any of: ${names.join(', ')}`)
+          |         ^
+      963 | }
+      964 |
+      965 | export async function verifyGridRowRobust(page: Page, searchString: string | RegExp) {
+        at clickResilientButton (/Users/haewonkim/home/development/sysgrid/frontend/tests/helpers/sysgrid.ts:962:9)
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/resilience/far-chaos.spec.ts:33:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/resilience-far-chaos-FAR-m-ecbd3-e-Network-Stall-Rapid-Click/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/resilience-far-chaos-FAR-m-ecbd3-e-Network-Stall-Rapid-Click/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/resilience-far-chaos-FAR-m-ecbd3-e-Network-Stall-Rapid-Click/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/resilience-far-chaos-FAR-m-ecbd3-e-Network-Stall-Rapid-Click/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/resilience-far-chaos-FAR-m-ecbd3-e-Network-Stall-Rapid-Click/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests/resilience/far-chaos.spec.ts:11:1 › FAR mitigation deletion resilience: Network Stall + Rapid Click 
+
+[LLM-Reporter] Emitted token-optimized failure artifact to /Users/haewonkim/home/development/sysgrid/frontend/llm-report.json
