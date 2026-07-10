@@ -1877,6 +1877,7 @@ export default function MonitoringGrid() {
   const gridContext = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
   return (
    <OperationalWorkspaceShell
+      workspace="monitoring"
       header={{
         eyebrow: "Observability",
         title: (
@@ -2261,6 +2262,7 @@ export default function MonitoringGrid() {
           onRowDataUpdated={handleGridDataUpdated}
           context={gridContext}
           selectionScopeKey={selectionScopeKey}
+          quickFilterText={searchTerm}
           getRowId={handleRowId}
           getRowClass={getRowClass}
           fontSize={fontSize}
@@ -2329,6 +2331,7 @@ export default function MonitoringGrid() {
                     onRowDataUpdated={handleGridDataUpdated}
                     context={gridContext}
                     selectionScopeKey={selectionScopeKey}
+                    quickFilterText={searchTerm}
                     getRowId={handleRowId}
                     getRowClass={getRowClass}
                     fontSize={fontSize}

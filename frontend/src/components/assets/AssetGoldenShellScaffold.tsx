@@ -38,6 +38,7 @@ export default function AssetGoldenShellScaffold({
 }: AssetGoldenShellScaffoldProps) {
   return (
     <OperationalWorkspaceShell
+      workspace="assets"
       className="relative overflow-hidden"
       header={{
         eyebrow: 'Infrastructure',

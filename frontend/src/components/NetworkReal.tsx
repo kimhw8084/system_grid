@@ -2076,6 +2076,7 @@ export default function NetworkReal() {
 
   return (
    <OperationalWorkspaceShell
+      workspace="network"
       className="overflow-hidden"
       header={{
         eyebrow: "Connectivity",

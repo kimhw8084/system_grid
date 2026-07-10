@@ -3,6 +3,28 @@ import { expect, type APIRequestContext, type Locator, type Page } from '@playwr
 const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
 const apiOrigin = apiBase.replace(/\/api\/v1$/, '')
 const testUserId = process.env.USER_ID || 'haewon.kim'
+export type WorkspaceId = 'monitoring' | 'network' | 'assets'
+
+const browserStateKeys = [
+  'monitoring_workspace_state_v2',
+  'asset_real_workspace_state_v1',
+  'network_workspace_state_v1',
+  'services_workspace_state_v1',
+  'vendor_workspace_state_v1',
+  'monitoring_ui_state',
+  'asset_ui_state',
+  'project_ui_state',
+  'far_ui_state',
+  'rca_ui_state',
+  'investigation_ui_state',
+  'settings_ui_state',
+  'sysgrid_monitoring_views_v1',
+  'sysgrid_monitoring_active_view_v1',
+  'sysgrid_monitoring_favorites_v1',
+  'sysgrid_monitoring_ui_state_v1',
+  'sysgrid_monitoring_watch_v1',
+  'sysgrid_monitoring_session_init',
+].join('|')
 
 async function post(request: APIRequestContext, path: string, data: Record<string, any>) {
   const response = await request.post(`${apiBase}${path}`, { 
@@ -104,23 +126,34 @@ export async function resetBrowserState(page: Page) {
   try {
     await page.goto('/')
     await page.evaluate(() => {
-      window.localStorage.clear()
-      window.sessionStorage.clear()
+      const keysToRemove = Object.keys(window.localStorage).filter((key) => (
+        key.startsWith('sysgrid_') || key.startsWith('SYSGRID_') || key.startsWith('__sysgrid_')
+      ))
+      keysToRemove.forEach((key) => window.localStorage.removeItem(key))
+      Object.keys(window.sessionStorage)
+        .filter((key) => key.startsWith('sysgrid_') || key.startsWith('__sysgrid_'))
+        .forEach((key) => window.sessionStorage.removeItem(key))
     })
   } catch (e) {
     // ignore
   }
 
-  await page.addInitScript(({ injectedApiOrigin, resetToken, userId }) => {
+  await page.addInitScript(({ injectedApiOrigin, resetToken, userId, workspaceStateKeys }) => {
+    const workspaceKeys = new Set(workspaceStateKeys.split('|'))
+    const removeWorkspaceState = (storage: Storage) => {
+      Array.from({ length: storage.length }, (_, index) => storage.key(index))
+        .filter((key): key is string => Boolean(key) && workspaceKeys.has(key))
+        .forEach((key) => storage.removeItem(key))
+    }
     const appliedToken = window.sessionStorage.getItem('__sysgrid_pw_bootstrap__')
     if (!appliedToken || appliedToken !== resetToken) {
-      window.localStorage.clear()
-      window.sessionStorage.clear()
+      removeWorkspaceState(window.localStorage)
+      removeWorkspaceState(window.sessionStorage)
       window.sessionStorage.setItem('__sysgrid_pw_bootstrap__', resetToken)
     }
     window.localStorage.setItem('SYSGRID_OVERRIDE_API_URL', injectedApiOrigin)
     window.localStorage.setItem('SYSGRID_USER_ID', userId)
-  }, { injectedApiOrigin: apiOrigin, resetToken: testResetToken, userId: testUserId })
+  }, { injectedApiOrigin: apiOrigin, resetToken: testResetToken, userId: testUserId, workspaceStateKeys: browserStateKeys })
 }
 
 export async function createAsset(request: APIRequestContext, payload: Record<string, any>) {
@@ -789,21 +822,44 @@ export async function expectMenuAnchoredNearTrigger(
   }
 }
 
-export async function gotoView(page: Page, path: string, heading: string | RegExp) {
+export function getWorkspaceRoot(page: Page, workspace: WorkspaceId): Locator {
+  return page.locator(`[data-workspace="${workspace}"]`).filter({ has: page.getByRole('heading') }).first()
+}
+
+export function getWorkspaceGrid(page: Page, workspace: WorkspaceId): Locator {
+  return getWorkspaceRoot(page, workspace).getByRole('treegrid').first()
+}
+
+export function getWorkspaceRows(page: Page, workspace: WorkspaceId): Locator {
+  return getWorkspaceGrid(page, workspace).locator('.ag-center-cols-container .ag-row')
+}
+
+export function getWorkspaceRowByText(page: Page, workspace: WorkspaceId, text: string | RegExp): Locator {
+  return getWorkspaceRows(page, workspace).filter({ hasText: text }).first()
+}
+
+export async function expectWorkspaceRoute(page: Page, path: string | RegExp) {
+  await expect(page).toHaveURL(typeof path === 'string' ? new RegExp(`${path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\?|$)`) : path)
+}
+
+export async function gotoView(page: Page, path: string, heading: string | RegExp, workspace?: WorkspaceId) {
   await page.goto(path)
+  if (workspace) {
+    await expectWorkspaceRoute(page, path.split('?')[0])
+    await expect(getWorkspaceRoot(page, workspace)).toBeVisible()
+  }
   await expect(page.getByRole('heading', { name: heading })).toBeVisible()
 }
 
-export function getPrimaryGrid(page: Page): Locator {
-  return page.locator('[role="treegrid"]')
+export function getPrimaryGrid(page: Page, workspace?: WorkspaceId): Locator {
+  return workspace ? getWorkspaceGrid(page, workspace) : page.locator('[role="treegrid"]').first()
 }
 
-export async function fillGridSearch(page: Page, placeholder: string | RegExp, value: string) {
-  const search = page.getByPlaceholder(placeholder)
+export async function fillGridSearch(page: Page, placeholder: string | RegExp, value: string, workspace?: WorkspaceId) {
+  const search = (workspace ? getWorkspaceRoot(page, workspace) : page).getByPlaceholder(placeholder)
   await search.fill(value)
   await page.keyboard.press('Enter')
-  // Wait for AgGrid to potentially filter
-  await page.waitForTimeout(500)
+  await expect(search).toHaveValue(value)
   return search
 }
 
@@ -832,7 +888,7 @@ export async function waitForAppIdle(page: Page) {
 export async function clickResilientButton(page: Page, ...names: (string | RegExp)[]) {
   for (const name of names) {
     const btn = page.getByRole('button', { name }).first()
-    if (await btn.isVisible().catch(() => false)) {
+    if (await btn.isVisible().catch(() => false) && await btn.isEnabled().catch(() => false)) {
       await btn.click({ force: true })
       return
     }

@@ -25,14 +25,19 @@ export function OperationalWorkspaceFrame({
   commandBar,
   children,
   className = '',
+  workspace,
 }: {
   header: React.ComponentProps<typeof PageHeader>
   commandBar: React.ComponentProps<typeof WorkspaceCommandBar>
   children: React.ReactNode
   className?: string
+  workspace?: string
 }) {
   return (
-    <div className={join('h-full min-h-0 flex flex-col space-y-4', className)}>
+    <div
+      className={join('h-full min-h-0 flex flex-col space-y-4', className)}
+      data-workspace={workspace}
+    >
       <PageHeader {...header} />
       <WorkspaceCommandBar {...commandBar} />
       {children}
@@ -51,6 +56,7 @@ export function OperationalWorkspaceShell({
   floatingPanels,
   children,
   className = '',
+  workspace,
 }: {
   header: React.ComponentProps<typeof PageHeader>
   commandBar?: React.ComponentProps<typeof WorkspaceCommandBar>
@@ -62,6 +68,7 @@ export function OperationalWorkspaceShell({
   floatingPanels?: React.ReactNode
   children: React.ReactNode
   className?: string
+  workspace?: string
 }) {
   const resolvedCommandBar = commandBar ?? {
     left: (
@@ -76,7 +83,7 @@ export function OperationalWorkspaceShell({
   }
 
   return (
-    <OperationalWorkspaceFrame header={header} commandBar={resolvedCommandBar} className={className}>
+    <OperationalWorkspaceFrame header={header} commandBar={resolvedCommandBar} className={className} workspace={workspace}>
       {typeof document !== 'undefined' && floatingPanels ? createPortal(floatingPanels, document.body) : null}
       {children}
     </OperationalWorkspaceFrame>

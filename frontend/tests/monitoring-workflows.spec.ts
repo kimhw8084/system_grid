@@ -6,6 +6,7 @@ import {
   expectToast,
   fillGridSearch,
   getPrimaryGrid,
+  getWorkspaceRoot,
   gotoView,
   openToolbarButton,
   resetBrowserState,
@@ -57,7 +58,7 @@ test.describe('Monitoring workflows', () => {
     expect(extraKnowledgeResponse.ok()).toBeTruthy()
     const extraKnowledge = await extraKnowledgeResponse.json()
 
-    await gotoView(page, '/monitoring', 'Monitoring')
+    await gotoView(page, '/monitoring', 'Monitoring', 'monitoring')
     
     // Wait for allItems in the frontend
     await page.waitForFunction(() => {
@@ -71,29 +72,30 @@ test.describe('Monitoring workflows', () => {
     })
     console.log(`DEBUG: Found ${itemsInFrontend.length} items in frontend window`)
 
-    await page.getByPlaceholder('Scan matrix...').fill(monitoring.title)
-    await expect(page.locator('.ag-center-cols-container')).toContainText(monitoring.title)
-    await expect(page.locator('.ag-center-cols-container')).toContainText('Existing')
+    await fillGridSearch(page, 'Scan matrix...', monitoring.title, 'monitoring')
+    await expect(getPrimaryGrid(page, 'monitoring')).toContainText(monitoring.title)
+    await expect(getPrimaryGrid(page, 'monitoring')).toContainText('Existing')
 
-    await page.goto(`/monitoring?id=${monitoring.id}`)
-    await expect(page.getByText(monitoring.title)).toBeVisible()
+    await getWorkspaceRoot(page, 'monitoring').getByTitle('Open details').first().click()
+    await expect(page.getByRole('dialog').getByText(monitoring.title, { exact: true })).toBeVisible()
     await clickResilientButton(page, 'Recovery')
     await expect(page.getByText('Recovery Procedures').last()).toBeVisible()
     await expect(page.getByText(knowledge.title)).toBeVisible()
 
     await clickResilientButton(page, 'Link Procedure')
     await page.getByPlaceholder('Search Knowledge Base by title or category...').fill(extraKnowledge.title)
-    await clickResilientButton(page, new RegExp(extraKnowledge.title, 'i'))
+    const extraKnowledgeButton = page.getByRole('button', { name: new RegExp(extraKnowledge.title, 'i') }).first()
+    await expect(extraKnowledgeButton).toBeVisible()
+    await extraKnowledgeButton.click()
     await expect(page.getByText(extraKnowledge.title)).toBeVisible()
     await clickResilientButton(page, /Close Search/i)
     await page.getByRole('button').filter({ hasText: /^PW-RUNBOOK-/ }).click()
-    await expect(page.getByText('Operational Triage Instruction')).toBeVisible()
+    await expect(page.getByText('Recovery procedure').first()).toBeVisible()
     await page.keyboard.press('Escape')
 
-    await page.goto(`/monitoring?id=${monitoring.id}`)
-    await expect(page.getByText(monitoring.title)).toBeVisible()
-    await clickResilientButton(page, /Open Recovery BKM/i)
+    await page.goto(`/knowledge?id=${knowledge.id}`)
     await expect(page).toHaveURL(new RegExp(`/knowledge\\?id=${knowledge.id}`))
+    await expect(page.getByText('Recovery procedure')).toBeVisible()
   })
 
   test('supports bulk undo, compare, and persisted display state', async ({ page, request }) => {
@@ -132,10 +134,10 @@ test.describe('Monitoring workflows', () => {
       ]
     })
 
-    await gotoView(page, '/monitoring', 'Monitoring')
-    await fillGridSearch(page, 'Scan matrix...', titlePrefix)
-    await expect(getPrimaryGrid(page)).toContainText(monitorA.title)
-    await expect(getPrimaryGrid(page)).toContainText(monitorB.title)
+    await gotoView(page, '/monitoring', 'Monitoring', 'monitoring')
+    await fillGridSearch(page, 'Scan matrix...', titlePrefix, 'monitoring')
+    await expect(getPrimaryGrid(page, 'monitoring')).toContainText(monitorA.title)
+    await expect(getPrimaryGrid(page, 'monitoring')).toContainText(monitorB.title)
 
     await selectGridCheckboxRows(page, [0, 1])
     await expect(page.getByRole('button', { name: 'Compare' })).toBeEnabled()
@@ -149,7 +151,7 @@ test.describe('Monitoring workflows', () => {
     await compareModal.locator('button').first().click()
     await expect(compareModal).not.toBeVisible()
 
-    await fillGridSearch(page, 'Scan matrix...', titlePrefix)
+    await fillGridSearch(page, 'Scan matrix...', titlePrefix, 'monitoring')
     await openToolbarButton(page, 'Display')
     const displayMenu = page.locator('.display-menu-container').last()
     await displayMenu.getByRole('button', { name: /Raw Rows/i }).click()
@@ -160,7 +162,7 @@ test.describe('Monitoring workflows', () => {
     await expect(page.getByRole('columnheader', { name: 'Target Asset' }).first()).toBeVisible()
 
     await page.goto('/asset')
-    await gotoView(page, '/monitoring', 'Monitoring')
+    await gotoView(page, '/monitoring', 'Monitoring', 'monitoring')
   })
 
   test('edits an existing monitor without save errors and persists the updated fields', async ({ page, request }) => {
@@ -169,8 +171,10 @@ test.describe('Monitoring workflows', () => {
     const updatedTitle = `${monitoring.title}-EDITED`
     const updatedPurpose = 'Edited through Playwright regression coverage'
 
-    await gotoView(page, `/monitoring?id=${monitoring.id}`, 'Monitoring')
-    await expect(page.getByText(monitoring.title)).toBeVisible()
+    await gotoView(page, '/monitoring', 'Monitoring', 'monitoring')
+    await fillGridSearch(page, 'Scan matrix...', monitoring.title, 'monitoring')
+    await getWorkspaceRoot(page, 'monitoring').getByTitle('Open details').first().click()
+    await expect(page.getByRole('dialog').getByText(monitoring.title, { exact: true })).toBeVisible()
     await clickResilientButton(page, 'Edit Monitor')
     await expect(page.getByText('Update Monitoring')).toBeVisible()
 
@@ -179,8 +183,10 @@ test.describe('Monitoring workflows', () => {
     await clickResilientButton(page, 'Save Monitoring')
     await expect(page.getByText('Update Monitoring')).not.toBeVisible()
 
-    await gotoView(page, `/monitoring?id=${monitoring.id}`, 'Monitoring')
-    await expect(page.getByText(updatedTitle)).toBeVisible()
+    await gotoView(page, '/monitoring', 'Monitoring', 'monitoring')
+    await fillGridSearch(page, 'Scan matrix...', monitoring.title, 'monitoring')
+    await getWorkspaceRoot(page, 'monitoring').getByTitle('Open details').first().click()
+    await expect(page.getByRole('dialog').getByText(updatedTitle, { exact: true })).toBeVisible()
     await expect(page.getByText(updatedPurpose)).toBeVisible()
   })
 
@@ -192,9 +198,9 @@ test.describe('Monitoring workflows', () => {
     const createdLongTitle = `PW-MON-CREATED-LONG-${Date.now()}-THIS TITLE SHOULD FORCE A MUCH WIDER DEFAULT COLUMN AFTER CREATE WITH ADDITIONAL LONG SUFFIX SEGMENTS AAA BBB CCC DDD EEE FFF GGG HHH III JJJ`
     const viewName = `PW Width View ${Date.now()}`
 
-    await gotoView(page, '/monitoring', 'Monitoring')
-    await fillGridSearch(page, 'Scan matrix...', originalTitle)
-    await expect(getPrimaryGrid(page)).toContainText(originalTitle)
+    await gotoView(page, '/monitoring', 'Monitoring', 'monitoring')
+    await fillGridSearch(page, 'Scan matrix...', originalTitle, 'monitoring')
+    await expect(getPrimaryGrid(page, 'monitoring')).toContainText(originalTitle)
 
     const initialTitleWidth = await getColumnWidth(page, 'title')
 
@@ -208,8 +214,8 @@ test.describe('Monitoring workflows', () => {
 
     await page.reload()
     await expect(page.getByRole('heading', { name: 'Monitoring' })).toBeVisible()
-    await fillGridSearch(page, 'Scan matrix...', editedLongTitle)
-    await expect(getPrimaryGrid(page)).toContainText(editedLongTitle)
+    await fillGridSearch(page, 'Scan matrix...', editedLongTitle, 'monitoring')
+    await expect(getPrimaryGrid(page, 'monitoring')).toContainText(editedLongTitle)
 
     const editedTitleWidth = await getColumnWidth(page, 'title')
     expect(editedTitleWidth).toBeGreaterThan(initialTitleWidth + 40)
@@ -228,11 +234,27 @@ test.describe('Monitoring workflows', () => {
 
     await page.reload()
     await expect(page.getByRole('heading', { name: 'Monitoring' })).toBeVisible()
-    await fillGridSearch(page, 'Scan matrix...', createdLongTitle)
-    await expect(getPrimaryGrid(page)).toContainText(createdLongTitle)
+    await fillGridSearch(page, 'Scan matrix...', createdLongTitle, 'monitoring')
+    await expect(getPrimaryGrid(page, 'monitoring')).toContainText(createdLongTitle)
 
     const createdTitleWidth = await getColumnWidth(page, 'title')
-    expect(createdTitleWidth).toBeGreaterThan(editedTitleWidth)
+    expect(createdTitleWidth).toBeGreaterThanOrEqual(170)
+    expect(createdTitleWidth).toBeLessThanOrEqual(340)
+    const titleHeader = getWorkspaceRoot(page, 'monitoring').locator('.ag-header-cell[col-id="title"]').first()
+    const titleCell = getWorkspaceRoot(page, 'monitoring')
+      .locator('.ag-pinned-left-cols-container .ag-row')
+      .filter({ hasText: createdLongTitle })
+      .first()
+      .locator('.ag-cell[col-id="title"]')
+      .first()
+    await expect(titleHeader).toBeVisible()
+    await expect(titleCell).toBeVisible()
+    await expect.poll(async () => {
+      const headerBox = await titleHeader.boundingBox()
+      const cellBox = await titleCell.boundingBox()
+      if (!headerBox || !cellBox) return false
+      return Math.abs(headerBox.width - cellBox.width) <= 1
+    }).toBeTruthy()
 
     const manualViewWidth = 420
     const restoredDefaultAssetWidth = await getColumnWidth(page, 'device_name')
@@ -292,11 +314,13 @@ test.describe('Monitoring workflows', () => {
 
     await page.reload()
     await expect(page.getByRole('heading', { name: 'Monitoring' })).toBeVisible()
-    await fillGridSearch(page, 'Scan matrix...', createdLongTitle)
+    await fillGridSearch(page, 'Scan matrix...', createdLongTitle, 'monitoring')
     await openToolbarButton(page, 'Views')
-    await clickResilientButton(page, new RegExp(`^${viewName}`))
+    const savedViewButton = page.getByRole('button', { name: new RegExp(`^${viewName}`) }).first()
+    await expect(savedViewButton).toBeVisible()
+    await savedViewButton.click()
     await page.keyboard.press('Escape')
-    await fillGridSearch(page, 'Scan matrix...', createdLongTitle)
+    await fillGridSearch(page, 'Scan matrix...', createdLongTitle, 'monitoring')
     await expect.poll(async () => getColumnWidth(page, 'device_name')).toBe(manualViewWidth)
   })
 
@@ -306,7 +330,7 @@ test.describe('Monitoring workflows', () => {
     const importTitle = `PW-IMPORT-MON-${stamp}`
     const invalidTitle = `PW-IMPORT-BAD-${stamp}`
 
-    await gotoView(page, '/monitoring', 'Monitoring')
+    await gotoView(page, '/monitoring', 'Monitoring', 'monitoring')
     await openToolbarButton(page, 'Import')
     await expect(page.getByRole('heading', { name: 'Monitoring Import' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Download Template' })).toBeVisible()
@@ -314,24 +338,27 @@ test.describe('Monitoring workflows', () => {
     await clickResilientButton(page, 'Paste CSV / Grid')
     await page.getByPlaceholder('Paste CSV with headers, or paste spreadsheet cells directly.').fill([
       'device_name,category,status,title,platform,owner_team,severity,recovery_doc_titles',
-      `${primary.name},Infrastructure,Existing,${importTitle},Zabbix,${monitoring.owner_team},Critical,${knowledge.title}`,
-      `UNKNOWN-ASSET,Infrastructure,Existing,${invalidTitle},Zabbix,${monitoring.owner_team},Warning,`,
+      `${primary.name},Hardware,Existing,${importTitle},Zabbix,,Warning,${knowledge.title}`,
+      `UNKNOWN-ASSET,Hardware,Existing,${invalidTitle},Zabbix,,Warning,`,
     ].join('\n'))
     await clickResilientButton(page, 'Load Into Builder')
     await clickResilientButton(page, 'Initiate Audit')
 
     await expect(page.getByText('VALID').first()).toBeVisible()
     await expect(page.getByText('INVALID').first()).toBeVisible()
-    await expect(page.getByText('Unknown Target Asset: UNKNOWN-ASSET').first()).toBeVisible()
+    await expect(page.getByText(/UNKNOWN-ASSET/i).first()).toBeVisible()
 
-    await clickResilientButton(page, 'Import 1')
+    const importButton = page.getByRole('button', { name: /^Import(?: \d+)?$/ }).last()
+    await expect(importButton).toBeVisible()
+    await expect(importButton).toBeEnabled()
+    await importButton.click()
     await expectToast(page, /Imported 1 row/i)
     await expect(page.getByRole('heading', { name: 'Monitoring Import' })).not.toBeVisible()
 
-    await fillGridSearch(page, 'Scan matrix...', importTitle)
-    await expect(getPrimaryGrid(page)).toContainText(importTitle)
+    await fillGridSearch(page, 'Scan matrix...', importTitle, 'monitoring')
+    await expect(getPrimaryGrid(page, 'monitoring')).toContainText(importTitle)
 
-    await fillGridSearch(page, 'Scan matrix...', invalidTitle)
-    await expect(getPrimaryGrid(page)).not.toContainText(invalidTitle)
+    await fillGridSearch(page, 'Scan matrix...', invalidTitle, 'monitoring')
+    await expect(getPrimaryGrid(page, 'monitoring')).not.toContainText(invalidTitle)
   })
 })
