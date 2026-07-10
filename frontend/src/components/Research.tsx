@@ -23,6 +23,8 @@ import { ConfigRegistryModal } from './ConfigRegistry'
 import { GaugeSelector } from './FAR'
 import { RootCauseFormModal, MitigationFormModal, PreventionFormModal } from './shared/FARModals'
 import { InvestigationTab } from './shared/InvestigationTab'
+import { OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'
+import { ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
 
 // --- Components ---
 
@@ -199,12 +201,12 @@ export default function Research() {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [selectedYear, setSelectedYear] = useState<string>('ALL')
 
-  const { data: investigations, isLoading } = useQuery({ 
+  const { data: investigations, isLoading, isError: investigationsError } = useQuery({ 
     queryKey: ['investigations'], 
     queryFn: async () => (await apiFetch('/api/v1/investigations/')).json() 
   })
 
-  const { data: rcaRecords, isLoading: rcaLoading } = useQuery({ 
+  const { data: rcaRecords, isLoading: rcaLoading, isError: rcaError } = useQuery({ 
     queryKey: ['rca-records'], 
     queryFn: async () => (await apiFetch('/api/v1/rca/')).json() 
   })
@@ -319,6 +321,11 @@ export default function Research() {
       highest: filteredData.filter((i: any) => i.priority === 'HIGHEST' || i.priority >= 8).length
     }
   }, [filteredData])
+
+  const combinedLoading = combinedData.length === 0 && (isLoading || rcaLoading)
+  const combinedUnavailable = combinedData.length === 0 && investigationsError && rcaError
+  const combinedEmpty = !combinedLoading && !combinedUnavailable && filteredData.length === 0
+  const partialSourceError = combinedData.length > 0 && (investigationsError || rcaError)
 
   const columnDefs = useMemo(() => [
     { 
@@ -560,39 +567,58 @@ export default function Research() {
   ], [setActiveDetails, setActiveModal, setConfirmModal, deleteMutation, fontSize, hiddenColumns]) as any
 
   return (
-    <div className="h-full flex flex-col space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-6">
-           <div>
-              <h1 className="text-2xl font-bold uppercase tracking-tight flex items-center gap-2 text-white">
-                <Shield size={24} className="text-blue-500" /> Research Matrix
-              </h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold ml-1">Unified System Intelligence & RCA Engine</p>
-           </div>
-        </div>
-        
-        <div className="flex items-center space-x-3">
-          <div className="relative group">
-             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" />
-             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Scan research..." className="bg-white/5 border border-white/5 rounded-lg pl-10 pr-4 py-2 text-[10px] font-bold outline-none focus:border-blue-500/50 w-64 transition-all" />
+    <OperationalWorkspaceShell
+      workspace="research"
+      className="overflow-hidden"
+      header={{
+        eyebrow: 'Analysis',
+        title: (
+          <div className="flex items-center gap-3">
+            <Shield size={22} className="text-blue-500" />
+            <span>Research Matrix</span>
           </div>
-
-          <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5 space-x-1">
-             <button onClick={() => setShowStyleLab(!showStyleLab)} className={`p-1.5 hover:bg-white/10 ${showStyleLab ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Toggle Style Lab"><Activity size={16} /></button>
-             <button onClick={() => setShowColumnPicker(!showColumnPicker)} className={`p-1.5 hover:bg-white/10 ${showColumnPicker ? 'text-blue-400 bg-white/10' : 'text-slate-500'} rounded-lg transition-all`} title="Column Picker"><Sliders size={16} /></button>
-             <button onClick={handleExportCSV} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-emerald-400 rounded-lg transition-all" title="Export CSV"><FileText size={16} /></button>
-             <button onClick={handleCopyToClipboard} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Copy to Clipboard"><Clipboard size={16} /></button>
-             <button onClick={() => setShowConfig(true)} className="p-1.5 hover:bg-white/10 text-slate-500 hover:text-blue-400 rounded-lg transition-all" title="Research Config"><Settings size={16} /></button>
-          </div>
-
-          <button 
-            onClick={() => setActiveModal({ title: '', status: 'Open', priority: 'Low', type: null, problem_statement: '', systems: [], target_systems: [] })} 
-            className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-2"
-          >
+        ),
+        subtitle: 'Unified System Intelligence & RCA Engine',
+        meta: (
+          <span className={`text-[9px] font-bold uppercase tracking-widest ${partialSourceError ? 'text-amber-400' : 'text-slate-500'}`}>
+            {combinedData.length} mixed records{partialSourceError ? ' · partial source unavailable' : ''}
+          </span>
+        ),
+      }}
+      toolbarSearch={(
+        <ToolbarSearch value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Scan research..." />
+      )}
+      toolbarControls={(
+        <ToolbarGroup>
+          <ToolbarIconButton onClick={() => setShowStyleLab(!showStyleLab)} active={showStyleLab} title="Toggle Style Lab"><Activity size={16} /></ToolbarIconButton>
+          <ToolbarIconButton onClick={() => setShowColumnPicker(!showColumnPicker)} active={showColumnPicker} title="Column Picker"><Sliders size={16} /></ToolbarIconButton>
+          <ToolbarIconButton onClick={() => setShowConfig(true)} title="Research Config"><Settings size={16} /></ToolbarIconButton>
+        </ToolbarGroup>
+      )}
+      toolbarActions={(
+        <ToolbarGroup>
+          <ToolbarIconButton onClick={handleExportCSV} title="Export CSV"><FileText size={16} /></ToolbarIconButton>
+          <ToolbarIconButton onClick={handleCopyToClipboard} disabled={selectedIds.length === 0} title="Copy to Clipboard"><Clipboard size={16} /></ToolbarIconButton>
+          <ToolbarButton variant="primary" onClick={() => setActiveModal({ title: '', status: 'Open', priority: 'Low', type: null, problem_statement: '', systems: [], target_systems: [] })}>
             <PlusCircle size={14}/> Add Research
-          </button>
+          </ToolbarButton>
+        </ToolbarGroup>
+      )}
+      secondaryToolbar={(
+        <div className="flex items-center gap-2">
+          <span className="mr-2 text-[9px] font-bold uppercase tracking-widest text-slate-500">Record year</span>
+          {availableYears.map(year => (
+            <button
+              key={year}
+              onClick={() => setSelectedYear(year)}
+              className={`px-4 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${selectedYear === year ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              {year}
+            </button>
+          ))}
         </div>
-      </div>
+      )}
+    >
 
       <AnimatePresence>
         {showStyleLab && (
@@ -623,17 +649,6 @@ export default function Research() {
       </AnimatePresence>
 
       <div className="flex flex-col items-center gap-4">
-        <div className="flex items-center gap-2 bg-white/5 p-1 rounded-lg border border-white/5">
-          {availableYears.map(year => (
-            <button
-              key={year}
-              onClick={() => setSelectedYear(year)}
-              className={`px-4 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${selectedYear === year ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-            >
-              {year}
-            </button>
-          ))}
-        </div>
         <div className="flex justify-center gap-3">
           <CompactSummary label="Total Intelligence" value={stats.total} icon={Activity} color="text-blue-400" />
           <CompactSummary label="Under Analysis" value={stats.analyzing} icon={Terminal} color="text-indigo-400" />
@@ -643,10 +658,12 @@ export default function Research() {
       </div>
 
       <div className="flex-1 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative border-white/5">
-        {(isLoading || rcaLoading) && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4 text-blue-400">
-             <RefreshCcw size={32} className="animate-spin" />
-             <p className="text-[10px] font-bold uppercase tracking-[0.3em]">Syncing Intelligence Matrix...</p>
+        {(combinedLoading || combinedUnavailable || combinedEmpty) && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#020617]/85 backdrop-blur-sm">
+             <WorkspaceEmptyState
+               title={combinedLoading ? 'Syncing intelligence matrix' : combinedUnavailable ? 'Research intelligence unavailable' : 'No Research or RCA records in scope'}
+               description={combinedLoading ? 'Loading Research investigations and RCA records.' : combinedUnavailable ? 'Neither Research nor RCA records could be loaded.' : 'Adjust the record year or create a Research or RCA record.'}
+             />
           </div>
         )}
         <AgGridReact
@@ -755,7 +772,7 @@ export default function Research() {
         .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
         .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
       `}</style>
-    </div>
+    </OperationalWorkspaceShell>
   )
 }
 
