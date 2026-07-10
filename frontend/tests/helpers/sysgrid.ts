@@ -823,7 +823,7 @@ export async function expectMenuAnchoredNearTrigger(
 }
 
 export function getWorkspaceRoot(page: Page, workspace: WorkspaceId): Locator {
-  return page.locator(`[data-workspace="${workspace}"]`).filter({ has: page.getByRole('heading') }).first()
+  return page.locator(`[data-workspace="${workspace}"]:visible`).filter({ has: page.getByRole('heading') }).first()
 }
 
 export function getWorkspaceGrid(page: Page, workspace: WorkspaceId): Locator {
@@ -835,7 +835,10 @@ export function getWorkspaceRows(page: Page, workspace: WorkspaceId): Locator {
 }
 
 export function getWorkspaceRowByText(page: Page, workspace: WorkspaceId, text: string | RegExp): Locator {
-  return getWorkspaceRows(page, workspace).filter({ hasText: text }).first()
+  return getWorkspaceRoot(page, workspace)
+    .locator('.ag-pinned-left-cols-container .ag-row, .ag-center-cols-container .ag-row')
+    .filter({ hasText: text })
+    .first()
 }
 
 export async function expectWorkspaceRoute(page: Page, path: string | RegExp) {

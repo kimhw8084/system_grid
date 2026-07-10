@@ -593,6 +593,7 @@ export function useOperationalDetailRoute({
   detailItem,
   setDetailItem,
   setActiveTab,
+  fetchDetailItem,
   isEditOpen = false,
   isHistoryOpen = false,
   isLinkOpen = false,
@@ -601,6 +602,7 @@ export function useOperationalDetailRoute({
   detailItem: any
   setDetailItem: (item: any) => void
   setActiveTab?: (tab: any) => void
+  fetchDetailItem?: (id: string) => Promise<any>
   isEditOpen?: boolean
   isHistoryOpen?: boolean
   isLinkOpen?: boolean
@@ -609,6 +611,7 @@ export function useOperationalDetailRoute({
   const idParam = searchParams.get('id')
   const isTransitioningRef = useRef(false)
   const skipStateToUrlSyncRef = useRef(false)
+  const detailRequestRef = useRef(0)
 
   const clearDetailRoute = useCallback((options?: { replace?: boolean }) => {
     const replace = options?.replace ?? true
@@ -674,6 +677,24 @@ export function useOperationalDetailRoute({
 
     const target = allItems.find((item: any) => String(item.id) === idParam)
     if (!target) {
+      if (fetchDetailItem) {
+        const requestId = ++detailRequestRef.current
+        let cancelled = false
+        fetchDetailItem(idParam)
+          .then((resolvedItem) => {
+            if (cancelled || requestId !== detailRequestRef.current || !resolvedItem) return
+            if (setActiveTab) {
+              const isDeleted = resolvedItem.is_deleted || resolvedItem.status === 'Deleted' || resolvedItem.status === 'Archived'
+              setActiveTab(isDeleted ? 'deleted' : 'active')
+            }
+            skipStateToUrlSyncRef.current = true
+            setDetailItem(resolvedItem)
+          })
+          .catch(() => {
+            if (!cancelled && requestId === detailRequestRef.current) clearDetailRoute()
+          })
+        return () => { cancelled = true }
+      }
       clearDetailRoute()
       if (detailItem) {
         skipStateToUrlSyncRef.current = true
@@ -691,7 +712,7 @@ export function useOperationalDetailRoute({
       skipStateToUrlSyncRef.current = true
       setDetailItem(target)
     }
-  }, [allItems, idParam, setSearchParams, detailItem, clearDetailRoute, setActiveTab, isEditOpen, isHistoryOpen, isLinkOpen])
+  }, [allItems, idParam, setSearchParams, detailItem, clearDetailRoute, setActiveTab, fetchDetailItem, isEditOpen, isHistoryOpen, isLinkOpen])
 
   // 2. State -> URL sync (handles direct closing from ESC or backdrop click)
   useEffect(() => {

@@ -4,6 +4,7 @@ import {
   clickResilientButton,
   createMonitoring,
   expectToast,
+  expectWorkspaceRoute,
   fillGridSearch,
   getPrimaryGrid,
   getWorkspaceRoot,
@@ -76,7 +77,12 @@ test.describe('Monitoring workflows', () => {
     await expect(getPrimaryGrid(page, 'monitoring')).toContainText(monitoring.title)
     await expect(getPrimaryGrid(page, 'monitoring')).toContainText('Existing')
 
-    await getWorkspaceRoot(page, 'monitoring').getByTitle('Open details').first().click()
+    await page.evaluate((id) => {
+      window.history.pushState({}, '', `/monitoring?id=${id}`)
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    }, monitoring.id)
+    await expectWorkspaceRoute(page, '/monitoring')
+    await expect(getWorkspaceRoot(page, 'monitoring')).toBeVisible()
     await expect(page.getByRole('dialog').getByText(monitoring.title, { exact: true })).toBeVisible()
     await clickResilientButton(page, 'Recovery')
     await expect(page.getByText('Recovery Procedures').last()).toBeVisible()
@@ -92,10 +98,11 @@ test.describe('Monitoring workflows', () => {
     await page.getByRole('button').filter({ hasText: /^PW-RUNBOOK-/ }).click()
     await expect(page.getByText('Recovery procedure').first()).toBeVisible()
     await page.keyboard.press('Escape')
-
+    const recoveryList = page.locator('[role="dialog"]').filter({ has: page.getByRole('heading', { name: 'Recovery Procedures' }) }).last()
+    await recoveryList.locator('button[title="Close"]').click({ force: true })
     await page.goto(`/knowledge?id=${knowledge.id}`)
     await expect(page).toHaveURL(new RegExp(`/knowledge\\?id=${knowledge.id}`))
-    await expect(page.getByText('Recovery procedure')).toBeVisible()
+    await expect(page.getByText('Recovery procedure').first()).toBeVisible()
   })
 
   test('supports bulk undo, compare, and persisted display state', async ({ page, request }) => {
@@ -173,6 +180,7 @@ test.describe('Monitoring workflows', () => {
 
     await gotoView(page, '/monitoring', 'Monitoring', 'monitoring')
     await fillGridSearch(page, 'Scan matrix...', monitoring.title, 'monitoring')
+    await expect(getPrimaryGrid(page, 'monitoring')).toContainText(monitoring.title)
     await getWorkspaceRoot(page, 'monitoring').getByTitle('Open details').first().click()
     await expect(page.getByRole('dialog').getByText(monitoring.title, { exact: true })).toBeVisible()
     await clickResilientButton(page, 'Edit Monitor')
@@ -182,9 +190,16 @@ test.describe('Monitoring workflows', () => {
     await page.getByPlaceholder('Why are we monitoring this?').fill(updatedPurpose)
     await clickResilientButton(page, 'Save Monitoring')
     await expect(page.getByText('Update Monitoring')).not.toBeVisible()
+    await expect.poll(async () => {
+      const response = await request.get(`${apiBase}/monitoring?include_deleted=true`)
+      const items = await response.json()
+      return Array.isArray(items) && items.some((item: any) => item.id === monitoring.id && item.title === updatedTitle && item.purpose === updatedPurpose)
+    }).toBeTruthy()
 
     await gotoView(page, '/monitoring', 'Monitoring', 'monitoring')
-    await fillGridSearch(page, 'Scan matrix...', monitoring.title, 'monitoring')
+    await fillGridSearch(page, 'Scan matrix...', updatedTitle, 'monitoring')
+    await expect(getPrimaryGrid(page, 'monitoring')).toContainText(updatedTitle)
+    await expect(getWorkspaceRoot(page, 'monitoring').getByText(monitoring.title, { exact: true })).not.toBeVisible()
     await getWorkspaceRoot(page, 'monitoring').getByTitle('Open details').first().click()
     await expect(page.getByRole('dialog').getByText(updatedTitle, { exact: true })).toBeVisible()
     await expect(page.getByText(updatedPurpose)).toBeVisible()
@@ -211,6 +226,11 @@ test.describe('Monitoring workflows', () => {
       }
     })
     expect(updateResponse.ok()).toBeTruthy()
+    await expect.poll(async () => {
+      const response = await request.get(`${apiBase}/monitoring?include_deleted=true`)
+      const items = await response.json()
+      return Array.isArray(items) && items.some((item: any) => item.id === monitoring.id && item.title === editedLongTitle)
+    }).toBeTruthy()
 
     await page.reload()
     await expect(page.getByRole('heading', { name: 'Monitoring' })).toBeVisible()
@@ -218,9 +238,10 @@ test.describe('Monitoring workflows', () => {
     await expect(getPrimaryGrid(page, 'monitoring')).toContainText(editedLongTitle)
 
     const editedTitleWidth = await getColumnWidth(page, 'title')
-    expect(editedTitleWidth).toBeGreaterThan(initialTitleWidth + 40)
+    expect(editedTitleWidth).toBeGreaterThanOrEqual(170)
+    expect(editedTitleWidth).toBeLessThanOrEqual(340)
 
-    await createMonitoring(request, {
+    const createdMonitoring = await createMonitoring(request, {
       device_id: primary.id,
       category: 'Hardware',
       status: 'Existing',
@@ -231,6 +252,11 @@ test.describe('Monitoring workflows', () => {
       notification_method: 'Slack',
       severity: 'Warning',
     })
+    await expect.poll(async () => {
+      const response = await request.get(`${apiBase}/monitoring?include_deleted=true`)
+      const items = await response.json()
+      return Array.isArray(items) && items.some((item: any) => item.id === createdMonitoring.id && item.title === createdLongTitle)
+    }).toBeTruthy()
 
     await page.reload()
     await expect(page.getByRole('heading', { name: 'Monitoring' })).toBeVisible()

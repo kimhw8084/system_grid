@@ -125,6 +125,7 @@ const MONITORING_UI_STATE_KEY = 'sysgrid_monitoring_ui_state_v1'
 const MONITORING_WATCH_STORAGE_KEY = 'sysgrid_monitoring_watch_v1'
 const MONITORING_WORKSPACE_PREFERENCE_KEY = 'monitoring_workspace_state_v2'
 const MONITORING_WORKSPACE_PREFERENCE_VERSION = 2
+const MONITORING_DETAIL_CACHE_KEY = 'sysgrid_monitoring_detail_cache_v1'
 const BULK_MENU_MAX_HEIGHT = 560
 const MONITORING_BULK_FIELD_LABELS: Record<string, string> = {
   status: 'Status',
@@ -575,6 +576,25 @@ export default function MonitoringGrid() {
     queryFn: async () => (await apiFetch('/api/v1/monitoring?include_deleted=true')).json()
   })
 
+  const fetchMonitoringDetail = useCallback(async (id: string) => {
+    try {
+      const cachedItems = JSON.parse(
+        window.sessionStorage.getItem(MONITORING_DETAIL_CACHE_KEY) ||
+        window.localStorage.getItem(MONITORING_DETAIL_CACHE_KEY) ||
+        'null'
+      )
+      const cachedItem = Array.isArray(cachedItems)
+        ? cachedItems.find((item: any) => String(item.id) === id)
+        : null
+      if (cachedItem) return cachedItem
+    } catch {
+      // Fall through to the authoritative list request.
+    }
+    const response = await apiFetch('/api/v1/monitoring?include_deleted=true')
+    const items = await response.json()
+    return Array.isArray(items) ? items.find((item: any) => String(item.id) === id) : null
+  }, [])
+
   useEffect(() => {
     if (isError) {
         const err = error as any;
@@ -601,6 +621,7 @@ export default function MonitoringGrid() {
     isHistoryOpen: !!historyItem,
     isLinkOpen: false,
     setActiveTab,
+    fetchDetailItem: fetchMonitoringDetail,
   })
 
   // allItems query and detailRoute hook moved to top of component to be in scope for callbacks
@@ -1231,6 +1252,12 @@ export default function MonitoringGrid() {
     if (allItems) {
        // @ts-ignore
        window.__DEBUG_ALL_ITEMS__ = allItems
+       try {
+         window.sessionStorage.setItem(MONITORING_DETAIL_CACHE_KEY, JSON.stringify(allItems))
+         window.localStorage.setItem(MONITORING_DETAIL_CACHE_KEY, JSON.stringify(allItems))
+       } catch {
+         // Session storage is an optimization for deep-link recovery only.
+       }
     }
   }, [allItems])
 
