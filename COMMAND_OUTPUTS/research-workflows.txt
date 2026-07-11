@@ -1,12 +1,20 @@
+OUT-20 Iteration 04 final Research workflow
+started_at=2026-07-11T14:11:29Z
+command=npx playwright test tests/research-workflows.spec.ts
+(node:82427) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
 
 Running 1 test using 1 worker
 
-(node:3644) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(node:82456) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 (Use `node --trace-warnings ...` to show where the warning was created)
-(node:3644) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(node:82456) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:82456) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 (Use `node --trace-warnings ...` to show where the warning was created)
-  ✓  1 tests/research-workflows.spec.ts:23:3 › Research workflows › filters by real years and rejects blank intelligence pulses (3.7s)
+  ✓  1 tests/research-workflows.spec.ts:23:3 › Research workflows › filters by real years and rejects blank intelligence pulses (4.5s)
 
-  1 passed (4.2s)
+  1 passed (5.1s)
 
 [LLM-Reporter] All tests passed. No artifact needed.
+exit_code=0
+finished_at=2026-07-11T14:12:15Z
