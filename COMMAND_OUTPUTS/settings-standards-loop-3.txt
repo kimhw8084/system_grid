@@ -1,0 +1,60 @@
+(node:34839) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+(node:34870) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34870) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:34870) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 tests/settings-standards.spec.ts:6:3 › Settings Standards reference › renders the synchronized reference and exercises shared primitives (17.6s)
+
+
+  1) tests/settings-standards.spec.ts:6:3 › Settings Standards reference › renders the synchronized reference and exercises shared primitives 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: getByTestId('settings-standards-reference')
+    Expected substring: [32m"Runtime WorkspaceModal contract"[39m
+    Received string:    [31m"Operational Standards ReferenceShowcase / specification surface embedded in Settings. Runtime shared contracts and accepted production workspaces remain authoritative when this reference becomes stale.Embedded examplePage header grammarUse the shared primitive for title, subtitle, metadata, and header actions. This example is not a replacement workspace shell.Reference only Header action Create FilterCommand grammarHeader actions establish page scope. Command-bar actions operate on the current view. Optional secondary toolbars provide local controls; contextual row actions and detail actions belong to their record surface. The grammar is shared, while domain action sets differ.Table StandardGrid contracts apply to table-like regions, not every workspace bodyHideOperational grid guidanceMonitoring, Network, and Assets demonstrate accepted data-grid patterns.Utility columnsSelection, identity, state, and row-action columns use actual grid sizing helpers and remain fixed while content columns flex.Logical rowsPinned AG Grid fragments are one logical row for assertions and interaction. Test the row identity, not the first rendered fragment.CapabilitiesSaved views, display controls, import/export, bulk actions, deep links, and detail routes are capability-specific.Grid versus custom bodyGrid regionUse the operational grid contract where a table-like region exists.Custom bodyFAR and Research use accepted custom-body shell patterns and should not be converted into grid-first workspaces.Settings View StandardEmbedded Settings composition and content-bound spacingShowGap StandardUse shared layout rhythm without inventing a universal density promiseShowOperational LexiconTerms separated by scope and authorityShowLayout & Composition DirectivesShared composition without a second production shellShowNotification StandardsSemantic feedback, not invented toast behaviorShowVisual Design TokensRendered from OPERATIONAL_WORKSPACE_VISUALSShowRadius StandardsOne active standard from the shared visual exportShowIconography RegistryEvidence-based semantic guidanceShowCapability MatrixRendered from the shared runtime adapter exportShowTypography & HeadersUse actual shared title, subtitle, metadata, and action primitivesShowInteractive ComponentsCommand controls with accessible names and shared sizingShowModal SchemasSize labels and shell classes derive from WorkspaceModalSize and its runtime helperHidecompactShort confirmations and small forms.w-full max-w-lg max-h-[82vh]standardDefault entity forms and inspections.w-full max-w-3xl max-h-[86vh]wideSplit views and broader analytical content.w-full max-w-5xl max-h-[88vh]workspaceLarge designers, grids, and dossier surfaces.w-full max-w-[1440px] h-full sm:h-auto sm:max-h-[92vh]fullscreenEdge-to-edge focused work.fixed inset-0 w-screen h-screen max-w-none max-h-none z-[4000]WorkspaceModal supplies accessible dialog semantics, Escape and overlay handling, one header close control when the footer close is hidden, and the dirty-state guard. Side panels and row menus are separate surfaces.Empty StatesShared lifecycle surface with reference copy onlyShowOperational Workspace ContractMinimum shared baseline plus workspace-specific adaptersShow"[39m
+    Timeout: 15000ms
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 15000ms[22m
+    [2m  - waiting for getByTestId('settings-standards-reference')[22m
+    [2m    33 × locator resolved to <div class="space-y-6 pb-20 pt-2" data-testid="settings-standards-reference">…</div>[22m
+    [2m       - unexpected value "Operational Standards ReferenceShowcase / specification surface embedded in Settings. Runtime shared contracts and accepted production workspaces remain authoritative when this reference becomes stale.Embedded examplePage header grammarUse the shared primitive for title, subtitle, metadata, and header actions. This example is not a replacement workspace shell.Reference only Header action Create FilterCommand grammarHeader actions establish page scope. Command-bar actions operate on the current view. Optional secondary toolbars provide local controls; contextual row actions and detail actions belong to their record surface. The grammar is shared, while domain action sets differ.Table StandardGrid contracts apply to table-like regions, not every workspace bodyHideOperational grid guidanceMonitoring, Network, and Assets demonstrate accepted data-grid patterns.Utility columnsSelection, identity, state, and row-action columns use actual grid sizing helpers and remain fixed while content columns flex.Logical rowsPinned AG Grid fragments are one logical row for assertions and interaction. Test the row identity, not the first rendered fragment.CapabilitiesSaved views, display controls, import/export, bulk actions, deep links, and detail routes are capability-specific.Grid versus custom bodyGrid regionUse the operational grid contract where a table-like region exists.Custom bodyFAR and Research use accepted custom-body shell patterns and should not be converted into grid-first workspaces.Settings View StandardEmbedded Settings composition and content-bound spacingShowGap StandardUse shared layout rhythm without inventing a universal density promiseShowOperational LexiconTerms separated by scope and authorityShowLayout & Composition DirectivesShared composition without a second production shellShowNotification StandardsSemantic feedback, not invented toast behaviorShowVisual Design TokensRendered from OPERATIONAL_WORKSPACE_VISUALSShowRadius StandardsOne active standard from the shared visual exportShowIconography RegistryEvidence-based semantic guidanceShowCapability MatrixRendered from the shared runtime adapter exportShowTypography & HeadersUse actual shared title, subtitle, metadata, and action primitivesShowInteractive ComponentsCommand controls with accessible names and shared sizingShowModal SchemasSize labels and shell classes derive from WorkspaceModalSize and its runtime helperHidecompactShort confirmations and small forms.w-full max-w-lg max-h-[82vh]standardDefault entity forms and inspections.w-full max-w-3xl max-h-[86vh]wideSplit views and broader analytical content.w-full max-w-5xl max-h-[88vh]workspaceLarge designers, grids, and dossier surfaces.w-full max-w-[1440px] h-full sm:h-auto sm:max-h-[92vh]fullscreenEdge-to-edge focused work.fixed inset-0 w-screen h-screen max-w-none max-h-none z-[4000]WorkspaceModal supplies accessible dialog semantics, Escape and overlay handling, one header close control when the footer close is hidden, and the dirty-state guard. Side panels and row menus are separate surfaces.Empty StatesShared lifecycle surface with reference copy onlyShowOperational Workspace ContractMinimum shared baseline plus workspace-specific adaptersShow"[22m
+
+
+      44 |
+      45 |     await reference.locator('#modals > button').click()
+    > 46 |     await expect(reference).toContainText('Runtime WorkspaceModal contract')
+         |                             ^
+      47 |
+      48 |     await reference.locator('[data-modal-size="standard"]').click()
+      49 |     const dialog = page.getByRole('dialog')
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/settings-standards.spec.ts:46:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/settings-standards-Setting-b1117-exercises-shared-primitives/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/settings-standards-Setting-b1117-exercises-shared-primitives/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/settings-standards-Setting-b1117-exercises-shared-primitives/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/settings-standards-Setting-b1117-exercises-shared-primitives/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/settings-standards-Setting-b1117-exercises-shared-primitives/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests/settings-standards.spec.ts:6:3 › Settings Standards reference › renders the synchronized reference and exercises shared primitives 
+
+[LLM-Reporter] Emitted token-optimized failure artifact to /Users/haewonkim/home/development/sysgrid/frontend/llm-report.json

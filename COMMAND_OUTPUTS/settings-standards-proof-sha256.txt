@@ -1,0 +1,2 @@
+179129c0e0735b19e0e9fbd946e5b00ea6cae73d5a7ef06b546aee43c2f72d5f  COMMAND_OUTPUTS/typecheck.txt
+9ead21097d787579038a7b8c7d81ada114e6aa0a28bab26223a54e83e61e9066  COMMAND_OUTPUTS/settings-standards-workflows.txt
