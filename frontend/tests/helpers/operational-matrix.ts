@@ -4,7 +4,7 @@ export const OPERATIONAL_WORKSPACE_MATRIX = [
     route: '/monitoring',
     source: 'frontend/src/components/MonitoringGrid.tsx',
     shell: 'OperationalWorkspaceShell',
-    selector: 'text=Monitoring',
+    selector: 'h1:has-text("Monitoring")',
     spec: 'frontend/tests/monitoring-workflows.spec.ts',
   },
   {
@@ -12,7 +12,7 @@ export const OPERATIONAL_WORKSPACE_MATRIX = [
     route: '/external',
     source: 'frontend/src/components/External.tsx',
     shell: 'OperationalWorkspaceShell',
-    selector: 'text=External Intelligence',
+    selector: 'h1:has-text("External")',
     spec: 'frontend/tests/external-workflows.spec.ts',
   },
   {
@@ -20,7 +20,7 @@ export const OPERATIONAL_WORKSPACE_MATRIX = [
     route: '/services',
     source: 'frontend/src/components/ServicesReal.tsx',
     shell: 'OperationalWorkspaceShell',
-    selector: 'text=Service Registry',
+    selector: 'h1:has-text("Services")',
     spec: 'frontend/tests/service-workflows.spec.ts',
   },
   {
@@ -28,7 +28,7 @@ export const OPERATIONAL_WORKSPACE_MATRIX = [
     route: '/network',
     source: 'frontend/src/components/NetworkReal.tsx',
     shell: 'OperationalWorkspaceShell',
-    selector: 'text=Network',
+    selector: 'h1:has-text("Network")',
     spec: 'frontend/tests/network-workflows.spec.ts',
   },
   {
@@ -36,7 +36,7 @@ export const OPERATIONAL_WORKSPACE_MATRIX = [
     route: '/far',
     source: 'frontend/src/components/FAR.tsx',
     shell: 'OperationalWorkspaceShell (custom body)',
-    selector: 'text=Failure Inventory Maturity Profile',
+    selector: 'h1:has-text("Failure Matrix")',
     spec: 'frontend/tests/far-workflows.spec.ts',
   },
   {
@@ -44,23 +44,23 @@ export const OPERATIONAL_WORKSPACE_MATRIX = [
     route: '/research',
     source: 'frontend/src/components/Research.tsx',
     shell: 'OperationalWorkspaceShell (custom body)',
-    selector: 'text=Research Matrix',
+    selector: 'h1:has-text("Research")',
     spec: 'frontend/tests/research-workflows.spec.ts',
   },
   {
     key: 'assets',
     route: '/asset',
-    source: 'frontend/src/components/assets/AssetGoldenOperationalWorkspace.tsx',
+    source: 'frontend/src/components/Assets.tsx',
     shell: 'AssetGoldenShellScaffold',
-    selector: 'text=Registry Scope',
+    selector: 'h1:has-text("Assets")',
     spec: 'frontend/tests/assets-workflows.spec.ts',
   },
   {
     key: 'vendors',
     route: '/vendors',
-    source: 'frontend/src/components/VendorsReal.tsx',
+    source: 'frontend/src/components/Vendor.tsx',
     shell: 'OperationalWorkspaceFrame',
-    selector: 'text=Vendors',
+    selector: 'h1:has-text("Vendors")',
     spec: 'frontend/tests/vendor-workflows.spec.ts',
   },
   {
@@ -68,7 +68,7 @@ export const OPERATIONAL_WORKSPACE_MATRIX = [
     route: '/settings?tab=standards',
     source: 'frontend/src/components/SettingsStandards.tsx',
     shell: 'PageHeader / PageToolbar',
-    selector: 'text=Operational Standards Reference',
+    selector: 'h1:has-text("Settings")',
     spec: 'frontend/tests/settings-standards.spec.ts',
   },
 ] as const;

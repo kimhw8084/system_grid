@@ -1,41 +1,41 @@
-OUT-22 Iteration 02 - Locked Workspaces
-Timestamp: 2026-07-20 17:33:08 UTC
+OUT-22 Iteration 03 - Locked Workspaces
+Timestamp: 2026-07-20 19:30:48 UTC
 Command: npx playwright test tests/monitoring-workflows.spec.ts tests/external-workflows.spec.ts tests/service-workflows.spec.ts tests/network-workflows.spec.ts tests/assets-workflows.spec.ts tests/vendor-workflows.spec.ts tests/far-workflows.spec.ts tests/research-workflows.spec.ts tests/settings-standards.spec.ts
 
 STDOUT:
 
 Running 18 tests using 1 worker
 
-SEED: Created monitoring item "PW-MON-1784568789789-3dbs2j" (ID: 984)
-  ✓   1 tests/assets-workflows.spec.ts:9:3 › Assets workflows › simulates the changed Assets workflows end-to-end (34.7s)
-  ✓   2 tests/external-workflows.spec.ts:7:3 › External workflows › matches the workspace shell contract and opens the shared import modal (1.4s)
-  ✓   3 tests/external-workflows.spec.ts:51:3 › External workflows › preserves metadata, supports credentials, and surfaces link failures clearly (6.7s)
-SEED: Created monitoring item "PW-MON-1784568832660-lzprkl" (ID: 985)
-  ✓   4 tests/far-workflows.spec.ts:15:3 › FAR workflows › opens deep links and refreshes the wizard when the selected mode changes (2.2s)
-SEED: Created monitoring item "PW-MON-1784568834805-a81v26" (ID: 986)
-  ✓   5 tests/far-workflows.spec.ts:45:3 › FAR workflows › removes causes and mitigations from the active FAR detail view (3.6s)
-SEED: Created monitoring item "PW-MON-1784568838449-nmbnwi" (ID: 987)
-  ✓   6 tests/far-workflows.spec.ts:79:3 › FAR workflows › navigates to Research and can unlink linked research artifacts (3.2s)
-SEED: Created monitoring item "PW-MON-1784568841862-xrydb2" (ID: 988)
-  ✓   7 tests/monitoring-workflows.spec.ts:57:3 › Monitoring workflows › preserves lifecycle status, recovery linking, and knowledge jump paths (5.2s)
-SEED: Created monitoring item "PW-MON-1784568846841-ghb56y" (ID: 989)
-SEED: Created monitoring item "PW-MON-OPS-1784568846841-ghb56y-A" (ID: 990)
-SEED: Created monitoring item "PW-MON-OPS-1784568846841-ghb56y-B" (ID: 991)
-  ✓   8 tests/monitoring-workflows.spec.ts:102:3 › Monitoring workflows › supports bulk undo, compare, and persisted display state (3.7s)
-SEED: Created monitoring item "PW-MON-1784568850525-fyf10k" (ID: 992)
-  ✓   9 tests/monitoring-workflows.spec.ts:169:3 › Monitoring workflows › edits an existing monitor without save errors and persists the updated fields (4.1s)
-SEED: Created monitoring item "PW-MON-1784568854615-sux9so" (ID: 993)
-SEED: Created monitoring item "PW-MON-CREATED-LONG-1784568855277-THIS TITLE SHOULD FORCE A MUCH WIDER DEFAULT COLUMN AFTER CREATE WITH ADDITIONAL LONG SUFFIX SEGMENTS AAA BBB CCC DDD EEE FFF GGG HHH III JJJ" (ID: 994)
-  ✓  10 tests/monitoring-workflows.spec.ts:215:3 › Monitoring workflows › keeps default title sizing dynamic and preserves human resized widths only in saved views (5.0s)
-SEED: Created monitoring item "PW-MON-1784568859638-272fd8" (ID: 995)
-  ✓  11 tests/monitoring-workflows.spec.ts:360:3 › Monitoring workflows › imports monitoring rows through the shared operational import modal (3.5s)
-  ✓  12 tests/network-workflows.spec.ts:36:3 › Network workflows › supports deep-linked forensics, unit edits, and bulk sever from the grid (6.1s)
-  ✓  13 tests/network-workflows.spec.ts:146:3 › Network workflows › supports manual selection, modifiers, menu overlays, display configurations, and grouped grid parity (8.2s)
+SEED: Created monitoring item "PW-MON-1784575850421-fk47ei" (ID: 1091)
+  ✓   1 tests/assets-workflows.spec.ts:9:3 › Assets workflows › simulates the changed Assets workflows end-to-end (34.6s)
+  ✓   2 tests/external-workflows.spec.ts:7:3 › External workflows › matches the workspace shell contract and opens the shared import modal (1.5s)
+  ✓   3 tests/external-workflows.spec.ts:51:3 › External workflows › preserves metadata, supports credentials, and surfaces link failures clearly (6.8s)
+SEED: Created monitoring item "PW-MON-1784575893328-xg8cfu" (ID: 1092)
+  ✓   4 tests/far-workflows.spec.ts:15:3 › FAR workflows › opens deep links and refreshes the wizard when the selected mode changes (2.3s)
+SEED: Created monitoring item "PW-MON-1784575895612-wkiqha" (ID: 1093)
+  ✓   5 tests/far-workflows.spec.ts:45:3 › FAR workflows › removes causes and mitigations from the active FAR detail view (3.9s)
+SEED: Created monitoring item "PW-MON-1784575899528-b3o5ul" (ID: 1094)
+  ✓   6 tests/far-workflows.spec.ts:79:3 › FAR workflows › navigates to Research and can unlink linked research artifacts (3.4s)
+SEED: Created monitoring item "PW-MON-1784575902971-aq92bl" (ID: 1095)
+  ✓   7 tests/monitoring-workflows.spec.ts:57:3 › Monitoring workflows › preserves lifecycle status, recovery linking, and knowledge jump paths (5.1s)
+SEED: Created monitoring item "PW-MON-1784575908062-3jbbvx" (ID: 1096)
+SEED: Created monitoring item "PW-MON-OPS-1784575908062-3jbbvx-A" (ID: 1097)
+SEED: Created monitoring item "PW-MON-OPS-1784575908062-3jbbvx-B" (ID: 1098)
+  ✓   8 tests/monitoring-workflows.spec.ts:102:3 › Monitoring workflows › supports bulk undo, compare, and persisted display state (3.8s)
+SEED: Created monitoring item "PW-MON-1784575911892-01ou2l" (ID: 1099)
+  ✓   9 tests/monitoring-workflows.spec.ts:169:3 › Monitoring workflows › edits an existing monitor without save errors and persists the updated fields (4.3s)
+SEED: Created monitoring item "PW-MON-1784575916155-c7w7oj" (ID: 1100)
+SEED: Created monitoring item "PW-MON-CREATED-LONG-1784575916934-THIS TITLE SHOULD FORCE A MUCH WIDER DEFAULT COLUMN AFTER CREATE WITH ADDITIONAL LONG SUFFIX SEGMENTS AAA BBB CCC DDD EEE FFF GGG HHH III JJJ" (ID: 1101)
+  ✓  10 tests/monitoring-workflows.spec.ts:215:3 › Monitoring workflows › keeps default title sizing dynamic and preserves human resized widths only in saved views (5.1s)
+SEED: Created monitoring item "PW-MON-1784575921261-q5yyoe" (ID: 1102)
+  ✓  11 tests/monitoring-workflows.spec.ts:360:3 › Monitoring workflows › imports monitoring rows through the shared operational import modal (3.7s)
+  ✓  12 tests/network-workflows.spec.ts:36:3 › Network workflows › supports deep-linked forensics, unit edits, and bulk sever from the grid (6.2s)
+  ✓  13 tests/network-workflows.spec.ts:146:3 › Network workflows › supports manual selection, modifiers, menu overlays, display configurations, and grouped grid parity (7.8s)
   ✓  14 tests/network-workflows.spec.ts:454:3 › Network workflows › verifies golden column labels, domain order, pinning, resizability, bulk-edit dirty-close safety, context menu structure, and irreversible purge confirmation (9.0s)
-  ✓  15 tests/research-workflows.spec.ts:23:3 › Research workflows › filters by real years and rejects blank intelligence pulses (3.1s)
+  ✓  15 tests/research-workflows.spec.ts:23:3 › Research workflows › filters by real years and rejects blank intelligence pulses (3.5s)
   ✓  16 tests/service-workflows.spec.ts:9:3 › Service workflows › tolerates malformed metadata and clears deep-link state on close (3.5s)
-  ✓  17 tests/settings-standards.spec.ts:6:3 › Settings Standards reference › renders the synchronized reference and exercises shared primitives (2.2s)
-  ✓  18 tests/vendor-workflows.spec.ts:7:3 › Vendor workflows › creates a vendor, updates the profile, and registers a contract (2.7s)
+  ✓  17 tests/settings-standards.spec.ts:6:3 › Settings Standards reference › renders the synchronized reference and exercises shared primitives (2.3s)
+  ✓  18 tests/vendor-workflows.spec.ts:7:3 › Vendor workflows › creates a vendor, updates the profile, and registers a contract (3.0s)
 
   18 passed (1.8m)
 
@@ -48,11 +48,11 @@ To open last HTML report run:
 
 
 STDERR:
-(node:98274) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:48047) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
-(node:98394) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:48081) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 
 
-Exit Code: 0
+Exit Code: 0 (Individual exits: 0)
 Emitted count: 18 tests passed

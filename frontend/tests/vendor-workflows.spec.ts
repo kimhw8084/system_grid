@@ -42,7 +42,7 @@ test.describe('Vendor workflows', () => {
     await contractModal.locator('select').first().selectOption('Completed')
     await contractModal.locator('input[type="date"]').first().fill('2030-01-01')
     await contractModal.locator('input[type="date"]').nth(1).fill('2030-12-31')
-    await contractModal.getByRole('button', { name: /Register Contract/i }).click({ force: true })
+    await contractModal.getByRole('button', { name: /Register Contract/i }).click()
 
     await expect(page.getByText('Contract Synchronized')).toBeVisible()
     await expect(detailsPanel.getByText(contractTitle)).toBeVisible()

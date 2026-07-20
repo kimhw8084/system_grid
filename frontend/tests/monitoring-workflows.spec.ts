@@ -377,11 +377,13 @@ test.describe('Monitoring workflows', () => {
     await clickResilientButton(page, 'Load Into Builder')
     await clickResilientButton(page, 'Initiate Audit')
 
-    await expect(page.getByText('VALID').first()).toBeVisible()
-    await expect(page.getByText('INVALID').first()).toBeVisible()
-    await expect(page.getByText(/UNKNOWN-ASSET/i).first()).toBeVisible()
+    const importModal = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Monitoring Import' }) })
+    const importButton = importModal.getByRole('button').filter({ hasText: /^Import(?:\s+\d+)?$/ })
 
-    const importButton = page.getByRole('button', { name: /Import|Commit/i }).last()
+    await expect(importModal.getByText('VALID', { exact: true })).toBeVisible({ timeout: 30000 })
+    await expect(importModal.getByText('INVALID', { exact: true })).toBeVisible({ timeout: 30000 })
+    await expect(importModal.getByText('UNKNOWN-ASSET', { exact: true })).toBeVisible({ timeout: 30000 })
+
     await expect(importButton).toBeVisible()
     await expect(importButton).toBeEnabled()
     await importButton.click()

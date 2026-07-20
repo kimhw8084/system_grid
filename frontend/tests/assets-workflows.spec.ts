@@ -157,8 +157,10 @@ test.describe('Assets workflows', () => {
     await page.waitForTimeout(300)
 
     // Launch Compare Modal (proves shared Compare modal behavior and Escape dismissal)
-    await page.waitForTimeout(1000)
-    await bulkActionsButton.click()
+    // The two rows are already semantically selected from above, unlocking the Compare action
+    await expect(compareVisibleButton).toBeEnabled()
+
+    // Open and verify Compare Modal opens correctly for selected rows
     await compareVisibleButton.click()
     await expect(page.getByText('Compare Assets')).toBeVisible()
     await expect(page.getByText('Temporal Variance Analysis')).toBeVisible()

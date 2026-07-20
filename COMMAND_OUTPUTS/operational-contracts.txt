@@ -1,6 +1,6 @@
-OUT-22 Iteration 02 - Operational Contracts
-Timestamp: 2026-07-20 17:32:53 UTC
-Command: npm --prefix frontend run check:operational-contracts
+OUT-22 Iteration 03 - Operational Contracts
+Timestamp: 2026-07-20 19:30:24 UTC
+Command: npm --prefix frontend run check:operational-contracts && npm --prefix frontend run test:unit -- src/operational-capabilities.test.ts
 
 STDOUT:
 
@@ -28,8 +28,26 @@ Form contracts check passed.
 All shell contracts validated.
 
 
+> system-grid-frontend@1.2.4 test:unit
+> vitest run src/operational-capabilities.test.ts
+
+
+ RUN  v4.1.9 /Users/haewonkim/home/development/sysgrid/frontend
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  14:30:26
+   Duration  653ms (transform 19ms, setup 58ms, import 9ms, tests 2ms, environment 480ms)
+
+
+
 STDERR:
 
+2:30:26 PM [vite] warning: `esbuild` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `oxc` instead.
+2:30:26 PM [vite] warning: `optimizeDeps.esbuildOptions` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `optimizeDeps.rolldownOptions` instead.
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic', jsxImportSource: undefined }`
 
-Exit Code: 0
-Emitted count: 4 contract families validated
+
+Exit Code: 0 (Individual exits: 0, 0)
+Emitted count: 4 contract families validated + 2 capability invariants verified

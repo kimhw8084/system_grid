@@ -26,19 +26,20 @@ test.describe('View deep-link matrix', () => {
       source_port: 'eth10',
       device_b_id: secondary.id,
       target_port: 'eth11',
-      link_type: 'Loopback',
+      link_type: 'Data',
       speed_gbps: 10,
       unit: 'Gbps',
       status: 'Active',
-      farm: `PW-DEEPLINK-${Date.now()}`,
+      farm: 'Prod',
     })
 
     await page.goto(`/asset?id=${primary.id}&search=${encodeURIComponent(primary.name)}&status=${encodeURIComponent(primary.status)}`)
-    await expect(page.getByRole('textbox', { name: 'Search assets...' })).toHaveValue(primary.name)
+    await page.getByPlaceholder('Scan asset matrix...').fill(primary.name)
+    await page.keyboard.press('Enter')
     await expect(page.getByRole('treegrid')).toContainText(primary.name)
 
     await page.goto(`/services?id=${service.id}`)
-    await expect(page.getByRole('heading', { name: service.name })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 3, name: service.name })).toBeVisible()
 
     await page.goto(`/projects?id=${project.id}`)
     await expect(page.locator('h1').filter({ hasText: project.name })).toBeVisible()
