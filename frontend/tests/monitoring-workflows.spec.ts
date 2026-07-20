@@ -381,7 +381,7 @@ test.describe('Monitoring workflows', () => {
     await expect(page.getByText('INVALID').first()).toBeVisible()
     await expect(page.getByText(/UNKNOWN-ASSET/i).first()).toBeVisible()
 
-    const importButton = page.getByRole('button', { name: /^Import(?: \d+)?$/ }).last()
+    const importButton = page.getByRole('button', { name: /Import|Commit/i }).last()
     await expect(importButton).toBeVisible()
     await expect(importButton).toBeEnabled()
     await importButton.click()

@@ -923,9 +923,9 @@ export async function fillGridSearch(page: Page, placeholder: string | RegExp, v
 }
 
 export async function selectGridCheckboxRows(page: Page, indices: number[]) {
-  const checkboxes = page.getByRole('checkbox', { name: /Press Space to toggle row selection/i })
+  const checkboxes = page.locator('.ag-selection-checkbox')
   for (const index of indices) {
-    await checkboxes.nth(index).check()
+    await checkboxes.nth(index).click()
   }
 }
 

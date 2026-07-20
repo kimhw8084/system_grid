@@ -1375,7 +1375,7 @@ function VendorCreateForm({ item, onClose, onSuccess }: any) {
   })
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-10">
+    <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/80 backdrop-blur-md p-10">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[500px] p-10 rounded-lg border border-blue-500/30 flex flex-col">
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
           <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><Briefcase size={24} />{item?.id ? 'Edit Vendor' : 'New Vendor'}</h2>
@@ -1831,7 +1831,7 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
   const updatePcItem  = (index: number, field: string, value: any) => { const newPcs  = [...formData.pcs];     newPcs[index]  = { ...newPcs[index],  [field]: value }; setFormData({ ...formData, pcs:  newPcs  }) }
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-10">
+    <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/95 backdrop-blur-md p-10">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[1200px] max-h-[90vh] p-10 rounded-lg border border-blue-500/30 overflow-y-auto custom-scrollbar flex flex-col">
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
           <div className="flex items-center gap-6">
@@ -2005,7 +2005,7 @@ function ContractRegistrationForm({ item, onClose, onSave, isSaving }: any) {
   const updateField = (field: string, value: any) => setFormData({ ...formData, [field]: value })
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-10">
+    <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/95 backdrop-blur-md p-10">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[600px] p-10 rounded-lg border border-blue-500/30 flex flex-col">
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
           <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><FileText size={24} />New Contract</h2>
@@ -2080,7 +2080,7 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
   const addSOW = () => { const newSow = { work_description: '', frequency: '', response: '', objective_description: '', importance: 'Medium' }; const sow = [...(formData.scope_of_work || []), newSow]; setFormData({ ...formData, scope_of_work: sow }); setHasChanges(true); setSelectedSowIndex(sow.length - 1); setIsEditingSow(true) }
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-10">
+    <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/95 backdrop-blur-md p-10">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[1200px] max-h-[95vh] p-10 rounded-lg border border-blue-500/30 overflow-y-auto custom-scrollbar flex flex-col">
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
           <div className="flex items-center gap-6">

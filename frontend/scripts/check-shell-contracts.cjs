@@ -9,8 +9,8 @@ const WORKSPACE_SHELLS = {
   'src/components/NetworkReal.tsx': 'OperationalWorkspaceShell',
   'src/components/FAR.tsx': 'OperationalWorkspaceShell',
   'src/components/Research.tsx': 'OperationalWorkspaceShell',
-  'src/components/Assets.tsx': 'AssetGoldenShellScaffold',
-  'src/components/Vendor.tsx': 'OperationalWorkspaceFrame',
+  'src/components/assets/AssetGoldenOperationalWorkspace.tsx': 'AssetGoldenShellScaffold',
+  'src/components/VendorsReal.tsx': 'OperationalWorkspaceFrame',
 };
 
 function checkShellContract() {

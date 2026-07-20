@@ -13,7 +13,7 @@ test.describe('Smoke Tests', () => {
       await page.goto(workspace.route)
       
       // Ensure the canonical selector is visible, indicating the page loaded correctly
-      await expect(page.locator(workspace.selector)).toBeVisible({ timeout: 30000 })
+      await expect(page.locator(workspace.selector).first()).toBeVisible({ timeout: 30000 })
       
       // Ensure the URL matches the canonical route (allowing for query params)
       await expect(page).toHaveURL(new RegExp(workspace.route.split('?')[0]))

@@ -101,7 +101,7 @@ test.describe('External workflows', () => {
     await page.getByPlaceholder('Readonly feed access').fill('Readonly feed access')
     await clickResilientButton(page, /Register Credential Reference/i)
     await expect(page.getByText('Credential Added')).toBeVisible()
-    await expect(page.getByText(`Partner token ${stamp}`)).toBeVisible()
+    await expect(page.getByText(`Partner token ${stamp}`).first()).toBeVisible()
     await expect(page.getByText(`vault://partner/${stamp}/token`)).toBeVisible()
 
     await expect(page.getByText('Jane Doe').first()).toBeVisible()
@@ -110,13 +110,21 @@ test.describe('External workflows', () => {
     await editModal.locator('select').first().selectOption('Virtual Server')
     await expect(editModal.locator('input[value="hypervisor"]')).toBeVisible()
     await editModal.getByText('Close', { exact: true }).evaluate((node: HTMLElement) => node.click())
+    await page.getByRole('button', { name: 'Discard Changes' }).click()
 
-    await page.route('**/api/v1/intelligence/links', async route => {
-      await route.fulfill({
-        status: 500,
-        contentType: 'application/json',
-        body: JSON.stringify({ detail: 'Simulated interconnect failure' })
-      })
+    await page.goto(`/external?id=${externalEntity.id}`)
+    await expect(page.getByText('Mission Summary')).toBeVisible()
+
+    await page.route(/\/api\/v1\/intelligence\/links/, async route => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ detail: 'Simulated interconnect failure' })
+        })
+      } else {
+        await route.continue()
+      }
     })
     await expect(page.getByRole('button', { name: /Map Link/i })).toBeVisible()
     await clickResilientButton(page, 'Map Link')
@@ -126,11 +134,15 @@ test.describe('External workflows', () => {
     await linkModal.locator('select').nth(2).selectOption(String(internalAsset.id))
     await linkModal.getByPlaceholder('e.g., Daily DB Synchronization Feed').fill('Partner feed ingress')
     await clickResilientButton(page, /Save Link/i)
-    await expect(page.getByRole('status').filter({ hasText: 'Simulated interconnect failure' })).toBeVisible()
+    await expect(page.getByText('Simulated interconnect failure').first()).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Establish External Link' })).toBeVisible()
     await linkModal.getByText('Close', { exact: true }).click()
+    await page.getByRole('button', { name: 'Discard Changes' }).click()
 
-    await page.unroute('**/api/v1/intelligence/links')
+    await page.goto(`/external?id=${externalEntity.id}`)
+    await expect(page.getByText('Mission Summary')).toBeVisible()
+
+    await page.unroute(/\/api\/v1\/intelligence\/links/)
     await expect(page.getByRole('button', { name: /Map Link/i })).toBeVisible()
     await clickResilientButton(page, 'Map Link')
     const successLinkModal = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Establish External Link' }) })

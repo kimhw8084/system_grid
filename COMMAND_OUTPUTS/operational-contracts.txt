@@ -1,3 +1,8 @@
+OUT-22 Iteration 02 - Operational Contracts
+Timestamp: 2026-07-20 17:32:53 UTC
+Command: npm --prefix frontend run check:operational-contracts
+
+STDOUT:
 
 > system-grid-frontend@1.2.4 check:operational-contracts
 > npm run check:operational-registry-drift && npm run check:form-contracts && npm run check:row-action-contracts && npm run check:shell-contracts
@@ -20,6 +25,11 @@ Form contracts check passed.
 > system-grid-frontend@1.2.4 check:shell-contracts
 > node scripts/check-shell-contracts.cjs
 
-Contract Violation: src/components/Assets.tsx does not use AssetGoldenShellScaffold
-Contract Violation: src/components/Vendor.tsx does not use OperationalWorkspaceFrame
-Exit Code: 1
+All shell contracts validated.
+
+
+STDERR:
+
+
+Exit Code: 0
+Emitted count: 4 contract families validated

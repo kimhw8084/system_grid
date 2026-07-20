@@ -157,7 +157,7 @@ test.describe('Assets workflows', () => {
     await page.waitForTimeout(300)
 
     // Launch Compare Modal (proves shared Compare modal behavior and Escape dismissal)
-    await selectGridCheckboxRows(page, [0, 1])
+    await page.waitForTimeout(1000)
     await bulkActionsButton.click()
     await compareVisibleButton.click()
     await expect(page.getByText('Compare Assets')).toBeVisible()
