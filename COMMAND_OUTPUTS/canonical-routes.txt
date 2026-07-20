@@ -1,0 +1,273 @@
+(node:93998) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 12 tests using 1 worker
+
+(node:94234) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘   1 frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: monitoring (/monitoring) (149ms)
+(node:94287) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘   2 frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: external (/external) (65ms)
+(node:94549) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘   3 frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: services (/services) (66ms)
+(node:94554) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘   4 frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: network (/network) (74ms)
+(node:94784) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘   5 frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: far (/far) (65ms)
+(node:94811) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘   6 frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: research (/research) (65ms)
+(node:94816) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘   7 frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: assets (/asset) (85ms)
+(node:95025) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘   8 frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: vendors (/vendors) (65ms)
+(node:95063) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘   9 frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: settings-standards (/settings?tab=standards) (64ms)
+(node:95068) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘  10 frontend/tests/smoke.spec.ts:31:5 › Smoke Tests › Page Load: / (84ms)
+(node:95314) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘  11 frontend/tests/smoke.spec.ts:31:5 › Smoke Tests › Page Load: /projects (66ms)
+(node:95347) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘  12 frontend/tests/smoke.spec.ts:31:5 › Smoke Tests › Page Load: /racks (81ms)
+
+
+  1) frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: monitoring (/monitoring) 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/monitoring", waiting until "load"[22m
+
+
+      11 |   for (const workspace of OPERATIONAL_WORKSPACE_MATRIX) {
+      12 |     test(`Canonical Page Load: ${workspace.key} (${workspace.route})`, async ({ page }) => {
+    > 13 |       await page.goto(workspace.route)
+         |                  ^
+      14 |       
+      15 |       // Ensure the canonical selector is visible, indicating the page loaded correctly
+      16 |       await expect(page.locator(workspace.selector)).toBeVisible({ timeout: 30000 })
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/smoke.spec.ts:13:18
+
+    Error Context: test-results/frontend-tests-smoke-Smoke-ceb9f-Load-monitoring-monitoring-/error-context.md
+
+  2) frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: external (/external) ───
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/external", waiting until "load"[22m
+
+
+      11 |   for (const workspace of OPERATIONAL_WORKSPACE_MATRIX) {
+      12 |     test(`Canonical Page Load: ${workspace.key} (${workspace.route})`, async ({ page }) => {
+    > 13 |       await page.goto(workspace.route)
+         |                  ^
+      14 |       
+      15 |       // Ensure the canonical selector is visible, indicating the page loaded correctly
+      16 |       await expect(page.locator(workspace.selector)).toBeVisible({ timeout: 30000 })
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/smoke.spec.ts:13:18
+
+    Error Context: test-results/frontend-tests-smoke-Smoke-603dc-age-Load-external-external-/error-context.md
+
+  3) frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: services (/services) ───
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/services", waiting until "load"[22m
+
+
+      11 |   for (const workspace of OPERATIONAL_WORKSPACE_MATRIX) {
+      12 |     test(`Canonical Page Load: ${workspace.key} (${workspace.route})`, async ({ page }) => {
+    > 13 |       await page.goto(workspace.route)
+         |                  ^
+      14 |       
+      15 |       // Ensure the canonical selector is visible, indicating the page loaded correctly
+      16 |       await expect(page.locator(workspace.selector)).toBeVisible({ timeout: 30000 })
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/smoke.spec.ts:13:18
+
+    Error Context: test-results/frontend-tests-smoke-Smoke-794a7-age-Load-services-services-/error-context.md
+
+  4) frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: network (/network) ─────
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/network", waiting until "load"[22m
+
+
+      11 |   for (const workspace of OPERATIONAL_WORKSPACE_MATRIX) {
+      12 |     test(`Canonical Page Load: ${workspace.key} (${workspace.route})`, async ({ page }) => {
+    > 13 |       await page.goto(workspace.route)
+         |                  ^
+      14 |       
+      15 |       // Ensure the canonical selector is visible, indicating the page loaded correctly
+      16 |       await expect(page.locator(workspace.selector)).toBeVisible({ timeout: 30000 })
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/smoke.spec.ts:13:18
+
+    Error Context: test-results/frontend-tests-smoke-Smoke-b8a13--Page-Load-network-network-/error-context.md
+
+  5) frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: far (/far) ─────────────
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/far", waiting until "load"[22m
+
+
+      11 |   for (const workspace of OPERATIONAL_WORKSPACE_MATRIX) {
+      12 |     test(`Canonical Page Load: ${workspace.key} (${workspace.route})`, async ({ page }) => {
+    > 13 |       await page.goto(workspace.route)
+         |                  ^
+      14 |       
+      15 |       // Ensure the canonical selector is visible, indicating the page loaded correctly
+      16 |       await expect(page.locator(workspace.selector)).toBeVisible({ timeout: 30000 })
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/smoke.spec.ts:13:18
+
+    Error Context: test-results/frontend-tests-smoke-Smoke-87755-anonical-Page-Load-far-far-/error-context.md
+
+  6) frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: research (/research) ───
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/research", waiting until "load"[22m
+
+
+      11 |   for (const workspace of OPERATIONAL_WORKSPACE_MATRIX) {
+      12 |     test(`Canonical Page Load: ${workspace.key} (${workspace.route})`, async ({ page }) => {
+    > 13 |       await page.goto(workspace.route)
+         |                  ^
+      14 |       
+      15 |       // Ensure the canonical selector is visible, indicating the page loaded correctly
+      16 |       await expect(page.locator(workspace.selector)).toBeVisible({ timeout: 30000 })
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/smoke.spec.ts:13:18
+
+    Error Context: test-results/frontend-tests-smoke-Smoke-ec07a-age-Load-research-research-/error-context.md
+
+  7) frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: assets (/asset) ────────
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/asset", waiting until "load"[22m
+
+
+      11 |   for (const workspace of OPERATIONAL_WORKSPACE_MATRIX) {
+      12 |     test(`Canonical Page Load: ${workspace.key} (${workspace.route})`, async ({ page }) => {
+    > 13 |       await page.goto(workspace.route)
+         |                  ^
+      14 |       
+      15 |       // Ensure the canonical selector is visible, indicating the page loaded correctly
+      16 |       await expect(page.locator(workspace.selector)).toBeVisible({ timeout: 30000 })
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/smoke.spec.ts:13:18
+
+    Error Context: test-results/frontend-tests-smoke-Smoke-9ef4d-cal-Page-Load-assets-asset-/error-context.md
+
+  8) frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: vendors (/vendors) ─────
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/vendors", waiting until "load"[22m
+
+
+      11 |   for (const workspace of OPERATIONAL_WORKSPACE_MATRIX) {
+      12 |     test(`Canonical Page Load: ${workspace.key} (${workspace.route})`, async ({ page }) => {
+    > 13 |       await page.goto(workspace.route)
+         |                  ^
+      14 |       
+      15 |       // Ensure the canonical selector is visible, indicating the page loaded correctly
+      16 |       await expect(page.locator(workspace.selector)).toBeVisible({ timeout: 30000 })
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/smoke.spec.ts:13:18
+
+    Error Context: test-results/frontend-tests-smoke-Smoke-8a527--Page-Load-vendors-vendors-/error-context.md
+
+  9) frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: settings-standards (/settings?tab=standards) 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/settings?tab=standards", waiting until "load"[22m
+
+
+      11 |   for (const workspace of OPERATIONAL_WORKSPACE_MATRIX) {
+      12 |     test(`Canonical Page Load: ${workspace.key} (${workspace.route})`, async ({ page }) => {
+    > 13 |       await page.goto(workspace.route)
+         |                  ^
+      14 |       
+      15 |       // Ensure the canonical selector is visible, indicating the page loaded correctly
+      16 |       await expect(page.locator(workspace.selector)).toBeVisible({ timeout: 30000 })
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/smoke.spec.ts:13:18
+
+    Error Context: test-results/frontend-tests-smoke-Smoke-495cf-rds-settings-tab-standards-/error-context.md
+
+  10) frontend/tests/smoke.spec.ts:31:5 › Smoke Tests › Page Load: / ───────────────────────────────
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/", waiting until "load"[22m
+
+
+      30 |   for (const route of otherRoutes) {
+      31 |     test(`Page Load: ${route.path}`, async ({ page }) => {
+    > 32 |       await page.goto(route.path)
+         |                  ^
+      33 |       await expect(page.locator('body')).toContainText(route.expectedText, { timeout: 30000 })
+      34 |     })
+      35 |   }
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/smoke.spec.ts:32:18
+
+    Error Context: test-results/frontend-tests-smoke-Smoke-Tests-Page-Load-/error-context.md
+
+  11) frontend/tests/smoke.spec.ts:31:5 › Smoke Tests › Page Load: /projects ───────────────────────
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/projects", waiting until "load"[22m
+
+
+      30 |   for (const route of otherRoutes) {
+      31 |     test(`Page Load: ${route.path}`, async ({ page }) => {
+    > 32 |       await page.goto(route.path)
+         |                  ^
+      33 |       await expect(page.locator('body')).toContainText(route.expectedText, { timeout: 30000 })
+      34 |     })
+      35 |   }
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/smoke.spec.ts:32:18
+
+    Error Context: test-results/frontend-tests-smoke-Smoke-Tests-Page-Load-projects/error-context.md
+
+  12) frontend/tests/smoke.spec.ts:31:5 › Smoke Tests › Page Load: /racks ──────────────────────────
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/racks", waiting until "load"[22m
+
+
+      30 |   for (const route of otherRoutes) {
+      31 |     test(`Page Load: ${route.path}`, async ({ page }) => {
+    > 32 |       await page.goto(route.path)
+         |                  ^
+      33 |       await expect(page.locator('body')).toContainText(route.expectedText, { timeout: 30000 })
+      34 |     })
+      35 |   }
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/smoke.spec.ts:32:18
+
+    Error Context: test-results/frontend-tests-smoke-Smoke-Tests-Page-Load-racks/error-context.md
+
+  12 failed
+    frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: monitoring (/monitoring) 
+    frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: external (/external) ────
+    frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: services (/services) ────
+    frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: network (/network) ──────
+    frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: far (/far) ──────────────
+    frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: research (/research) ────
+    frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: assets (/asset) ─────────
+    frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: vendors (/vendors) ──────
+    frontend/tests/smoke.spec.ts:12:5 › Smoke Tests › Canonical Page Load: settings-standards (/settings?tab=standards) 
+    frontend/tests/smoke.spec.ts:31:5 › Smoke Tests › Page Load: / ─────────────────────────────────
+    frontend/tests/smoke.spec.ts:31:5 › Smoke Tests › Page Load: /projects ─────────────────────────
+    frontend/tests/smoke.spec.ts:31:5 › Smoke Tests › Page Load: /racks ────────────────────────────
+Exit Code: 1

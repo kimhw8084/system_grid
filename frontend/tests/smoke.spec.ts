@@ -1,49 +1,36 @@
 import { test, expect } from '@playwright/test'
 import { resetBrowserState } from './helpers/sysgrid'
+import { OPERATIONAL_WORKSPACE_MATRIX } from './helpers/operational-matrix'
 
 test.describe('Smoke Tests', () => {
   test.beforeEach(async ({ page }) => {
     await resetBrowserState(page)
   })
 
-  const routes = [
+  // Canonical route coverage based on operational matrix
+  for (const workspace of OPERATIONAL_WORKSPACE_MATRIX) {
+    test(`Canonical Page Load: ${workspace.key} (${workspace.route})`, async ({ page }) => {
+      await page.goto(workspace.route)
+      
+      // Ensure the canonical selector is visible, indicating the page loaded correctly
+      await expect(page.locator(workspace.selector)).toBeVisible({ timeout: 30000 })
+      
+      // Ensure the URL matches the canonical route (allowing for query params)
+      await expect(page).toHaveURL(new RegExp(workspace.route.split('?')[0]))
+    })
+  }
+
+  // Legacy/Dashboard coverage
+  const otherRoutes = [
     { path: '/', expectedText: /Stability Index/i },
     { path: '/projects', expectedText: /Strategic/i },
     { path: '/racks', expectedText: /Racks/i },
-    { path: '/asset', expectedText: /Registry/i },
-    { path: '/services', expectedText: /Service Registry/i },
-    { path: '/external', expectedText: /Intelligence/i },
-    { path: '/network', expectedText: /Network/i },
-    { path: '/monitoring', expectedText: /Monitoring/i },
-    { path: '/settings', expectedText: /Infrastructure/i },
   ]
 
-  for (const route of routes) {
+  for (const route of otherRoutes) {
     test(`Page Load: ${route.path}`, async ({ page }) => {
-      const consoleErrors: string[] = []
-      page.on('console', msg => {
-        if (msg.type() === 'error') {
-          // Ignore some common benign errors if necessary, but for smoke tests we want clean console
-          consoleErrors.push(msg.text())
-        }
-      })
-
       await page.goto(route.path)
-      
-      // Use a longer timeout for smoke tests to account for initial data fetching
       await expect(page.locator('body')).toContainText(route.expectedText, { timeout: 30000 })
-      
-      // Verify no critical text missing (redundant with containText but good for clarity)
-      const bodyText = await page.innerText('body')
-      expect(bodyText.length).toBeGreaterThan(0)
-
-      // We allow some console errors if they are related to missing assets/404s on data fetch 
-      // which might be expected in a fresh dev env, but let's see how it goes.
-      // For now, let's be strict and see what fails.
-      if (consoleErrors.length > 0) {
-        console.warn(`Console errors on ${route.path}:`, consoleErrors)
-      }
-      // expect(consoleErrors).toEqual([]) // Commented out for now to avoid failing on benign dev errors
     })
   }
 })

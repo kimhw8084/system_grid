@@ -1,0 +1,428 @@
+(node:95442) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 18 tests using 6 workers
+
+(node:95667) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:95666) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:95668) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:95665) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:95663) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:95664) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘   4 frontend/tests/external-workflows.spec.ts:7:3 › External workflows › matches the workspace shell contract and opens the shared import modal (382ms)
+  ✘   2 frontend/tests/research-workflows.spec.ts:23:3 › Research workflows › filters by real years and rejects blank intelligence pulses (368ms)
+(node:95925) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:95926) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘   7 frontend/tests/external-workflows.spec.ts:51:3 › External workflows › preserves metadata, supports credentials, and surfaces link failures clearly (1.6s)
+  ✘   8 frontend/tests/service-workflows.spec.ts:9:3 › Service workflows › tolerates malformed metadata and clears deep-link state on close (1.6s)
+(node:96186) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:96187) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘  10 frontend/tests/vendor-workflows.spec.ts:7:3 › Vendor workflows › creates a vendor, updates the profile, and registers a contract (99ms)
+  ✘   9 frontend/tests/settings-standards.spec.ts:6:3 › Settings Standards reference › renders the synchronized reference and exercises shared primitives (121ms)
+SEED: Created monitoring item "PW-MON-1784553362482-gjnycp" (ID: 697)
+SEED: Created monitoring item "PW-MON-1784553362527-2je5mj" (ID: 698)
+  ✘   3 frontend/tests/assets-workflows.spec.ts:9:3 › Assets workflows › simulates the changed Assets workflows end-to-end (3.3s)
+SEED: Created monitoring item "PW-MON-1784553362565-dqyh7w" (ID: 699)
+  ✘   5 frontend/tests/far-workflows.spec.ts:15:3 › FAR workflows › opens deep links and refreshes the wizard when the selected mode changes (3.4s)
+  ✘   6 frontend/tests/network-workflows.spec.ts:36:3 › Network workflows › supports deep-linked forensics, unit edits, and bulk sever from the grid (3.3s)
+  ✘   1 frontend/tests/monitoring-workflows.spec.ts:57:3 › Monitoring workflows › preserves lifecycle status, recovery linking, and knowledge jump paths (3.4s)
+(node:96284) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:96285) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:96286) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+SEED: Created monitoring item "PW-MON-1784553366177-jrwage" (ID: 700)
+SEED: Created monitoring item "PW-MON-1784553366181-xa77f4" (ID: 701)
+  ✘  12 frontend/tests/network-workflows.spec.ts:146:3 › Network workflows › supports manual selection, modifiers, menu overlays, display configurations, and grouped grid parity (1.4s)
+  ✘  11 frontend/tests/far-workflows.spec.ts:45:3 › FAR workflows › removes causes and mitigations from the active FAR detail view (1.5s)
+SEED: Created monitoring item "PW-MON-OPS-1784553366181-xa77f4-A" (ID: 702)
+SEED: Created monitoring item "PW-MON-OPS-1784553366181-xa77f4-B" (ID: 703)
+  ✘  13 frontend/tests/monitoring-workflows.spec.ts:102:3 › Monitoring workflows › supports bulk undo, compare, and persisted display state (1.5s)
+(node:96571) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:96572) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:96573) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✘  14 frontend/tests/network-workflows.spec.ts:454:3 › Network workflows › verifies golden column labels, domain order, pinning, resizability, bulk-edit dirty-close safety, context menu structure, and irreversible purge confirmation (105ms)
+SEED: Created monitoring item "PW-MON-1784553368032-cku8in" (ID: 704)
+SEED: Created monitoring item "PW-MON-1784553368107-ruwvu9" (ID: 705)
+  ✘  15 frontend/tests/far-workflows.spec.ts:79:3 › FAR workflows › navigates to Research and can unlink linked research artifacts (869ms)
+  ✘  16 frontend/tests/monitoring-workflows.spec.ts:169:3 › Monitoring workflows › edits an existing monitor without save errors and persists the updated fields (789ms)
+(node:96781) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+SEED: Created monitoring item "PW-MON-1784553369252-yb8o4q" (ID: 706)
+  ✘  17 frontend/tests/monitoring-workflows.spec.ts:215:3 › Monitoring workflows › keeps default title sizing dynamic and preserves human resized widths only in saved views (449ms)
+(node:96849) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+SEED: Created monitoring item "PW-MON-1784553370116-wxj8m1" (ID: 707)
+  ✘  18 frontend/tests/monitoring-workflows.spec.ts:360:3 › Monitoring workflows › imports monitoring rows through the shared operational import modal (456ms)
+
+
+  1) frontend/tests/assets-workflows.spec.ts:9:3 › Assets workflows › simulates the changed Assets workflows end-to-end 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/asset", waiting until "load"[22m
+
+
+      11 |     const { stamp, systemName, primary, secondary, tertiary, monitoring, far } = await seedOperationalScenario(request)
+      12 |
+    > 13 |     await page.goto('/asset')
+         |                ^
+      14 |     await expect(page.getByRole('heading', { name: 'Assets' })).toBeVisible()
+      15 |     await expect(page.getByText('Syncing asset registry...')).not.toBeVisible()
+      16 |
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/assets-workflows.spec.ts:13:16
+
+    Error Context: test-results/frontend-tests-assets-work-cc9f9-Assets-workflows-end-to-end/error-context.md
+
+  2) frontend/tests/external-workflows.spec.ts:7:3 › External workflows › matches the workspace shell contract and opens the shared import modal 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/external", waiting until "load"[22m
+
+
+      32 |     })
+      33 |
+    > 34 |     await page.goto('/external')
+         |                ^
+      35 |     await expect(page.getByRole('heading', { name: 'External' })).toBeVisible()
+      36 |     await expect(page.getByRole('button', { name: 'Views' })).toBeVisible()
+      37 |     await expect(page.getByRole('button', { name: 'Display' })).toBeVisible()
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/external-workflows.spec.ts:34:16
+
+    Error Context: test-results/frontend-tests-external-wo-cedd9-ens-the-shared-import-modal/error-context.md
+
+  3) frontend/tests/external-workflows.spec.ts:51:3 › External workflows › preserves metadata, supports credentials, and surfaces link failures clearly 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/external?id=34", waiting until "load"[22m
+
+
+      88 |     })
+      89 |
+    > 90 |     await page.goto(`/external?id=${externalEntity.id}`)
+         |                ^
+      91 |     await expect(page.getByRole('heading', { name: 'External' })).toBeVisible()
+      92 |     const detailsPanel = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: externalEntity.name }) })
+      93 |     await expect(page.getByText('Mission Summary')).toBeVisible()
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/external-workflows.spec.ts:90:16
+
+    Error Context: test-results/frontend-tests-external-wo-488ba-faces-link-failures-clearly/error-context.md
+
+  4) frontend/tests/far-workflows.spec.ts:15:3 › FAR workflows › opens deep links and refreshes the wizard when the selected mode changes 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/far?id=415", waiting until "load"[22m
+
+
+      25 |     })
+      26 |
+    > 27 |     await page.goto(`/far?id=${far.id}`)
+         |                ^
+      28 |     await expect(page.locator('[data-workspace="far"]')).toBeVisible()
+      29 |     await expect(page).toHaveURL(new RegExp(`/far\\?id=${far.id}$`))
+      30 |     await expect(page.getByRole('button', { name: /Causal Forensics/i })).toBeVisible()
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/far-workflows.spec.ts:27:16
+
+    Error Context: test-results/frontend-tests-far-workflo-0b013-n-the-selected-mode-changes/error-context.md
+
+  5) frontend/tests/far-workflows.spec.ts:45:3 › FAR workflows › removes causes and mitigations from the active FAR detail view 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/far?id=418", waiting until "load"[22m
+
+
+      61 |     })
+      62 |
+    > 63 |     await page.goto(`/far?id=${far.id}`)
+         |                ^
+      64 |     const roadmapTab = page.getByRole('button', { name: /Strategic Roadmap/i })
+      65 |     await expect(roadmapTab).toBeVisible()
+      66 |     await roadmapTab.click()
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/far-workflows.spec.ts:63:16
+
+    Error Context: test-results/frontend-tests-far-workflo-6d2bf--the-active-FAR-detail-view/error-context.md
+
+  6) frontend/tests/far-workflows.spec.ts:79:3 › FAR workflows › navigates to Research and can unlink linked research artifacts 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/far?id=420", waiting until "load"[22m
+
+
+      92 |     })
+      93 |
+    > 94 |     await page.goto(`/far?id=${far.id}`)
+         |                ^
+      95 |     const researchTab = page.getByRole('button', { name: /Research History/i })
+      96 |     await expect(researchTab).toBeVisible()
+      97 |     await researchTab.click()
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/far-workflows.spec.ts:94:16
+
+    Error Context: test-results/frontend-tests-far-workflo-1b781-k-linked-research-artifacts/error-context.md
+
+  7) frontend/tests/monitoring-workflows.spec.ts:57:3 › Monitoring workflows › preserves lifecycle status, recovery linking, and knowledge jump paths 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/monitoring?id=699", waiting until "load"[22m
+
+
+      69 |     const extraKnowledge = await extraKnowledgeResponse.json()
+      70 |
+    > 71 |     await page.goto(`/monitoring?id=${monitoring.id}`)
+         |                ^
+      72 |     await expectWorkspaceRoute(page, '/monitoring')
+      73 |     await expect(getWorkspaceRoot(page, 'monitoring')).toBeVisible()
+      74 |     await expect(page.getByRole('heading', { name: monitoring.title, exact: true }).first()).toBeVisible()
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:71:16
+
+    Error Context: test-results/frontend-tests-monitoring--84cec-ng-and-knowledge-jump-paths/error-context.md
+
+  8) frontend/tests/monitoring-workflows.spec.ts:102:3 › Monitoring workflows › supports bulk undo, compare, and persisted display state 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/monitoring", waiting until "load"[22m
+
+
+       at frontend/tests/helpers/sysgrid.ts:905
+
+      903 |
+      904 | export async function gotoView(page: Page, path: string, heading: string | RegExp, workspace?: WorkspaceId) {
+    > 905 |   await page.goto(path)
+          |              ^
+      906 |   if (workspace) {
+      907 |     await expectWorkspaceRoute(page, path.split('?')[0])
+      908 |     await expect(getWorkspaceRoot(page, workspace)).toBeVisible()
+        at gotoView (/Users/haewonkim/home/development/sysgrid/frontend/tests/helpers/sysgrid.ts:905:14)
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:138:11
+
+    Error Context: test-results/frontend-tests-monitoring--50a58-and-persisted-display-state/error-context.md
+
+  9) frontend/tests/monitoring-workflows.spec.ts:169:3 › Monitoring workflows › edits an existing monitor without save errors and persists the updated fields 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/monitoring", waiting until "load"[22m
+
+
+       at frontend/tests/helpers/sysgrid.ts:905
+
+      903 |
+      904 | export async function gotoView(page: Page, path: string, heading: string | RegExp, workspace?: WorkspaceId) {
+    > 905 |   await page.goto(path)
+          |              ^
+      906 |   if (workspace) {
+      907 |     await expectWorkspaceRoute(page, path.split('?')[0])
+      908 |     await expect(getWorkspaceRoot(page, workspace)).toBeVisible()
+        at gotoView (/Users/haewonkim/home/development/sysgrid/frontend/tests/helpers/sysgrid.ts:905:14)
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:175:11
+
+    Error Context: test-results/frontend-tests-monitoring--a1dd4-persists-the-updated-fields/error-context.md
+
+  10) frontend/tests/monitoring-workflows.spec.ts:215:3 › Monitoring workflows › keeps default title sizing dynamic and preserves human resized widths only in saved views 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/monitoring", waiting until "load"[22m
+
+
+       at frontend/tests/helpers/sysgrid.ts:905
+
+      903 |
+      904 | export async function gotoView(page: Page, path: string, heading: string | RegExp, workspace?: WorkspaceId) {
+    > 905 |   await page.goto(path)
+          |              ^
+      906 |   if (workspace) {
+      907 |     await expectWorkspaceRoute(page, path.split('?')[0])
+      908 |     await expect(getWorkspaceRoot(page, workspace)).toBeVisible()
+        at gotoView (/Users/haewonkim/home/development/sysgrid/frontend/tests/helpers/sysgrid.ts:905:14)
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:223:11
+
+    Error Context: test-results/frontend-tests-monitoring--4cbb7--widths-only-in-saved-views/error-context.md
+
+  11) frontend/tests/monitoring-workflows.spec.ts:360:3 › Monitoring workflows › imports monitoring rows through the shared operational import modal 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/monitoring", waiting until "load"[22m
+
+
+       at frontend/tests/helpers/sysgrid.ts:905
+
+      903 |
+      904 | export async function gotoView(page: Page, path: string, heading: string | RegExp, workspace?: WorkspaceId) {
+    > 905 |   await page.goto(path)
+          |              ^
+      906 |   if (workspace) {
+      907 |     await expectWorkspaceRoute(page, path.split('?')[0])
+      908 |     await expect(getWorkspaceRoot(page, workspace)).toBeVisible()
+        at gotoView (/Users/haewonkim/home/development/sysgrid/frontend/tests/helpers/sysgrid.ts:905:14)
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/monitoring-workflows.spec.ts:366:11
+
+    Error Context: test-results/frontend-tests-monitoring--d027d-ed-operational-import-modal/error-context.md
+
+  12) frontend/tests/network-workflows.spec.ts:36:3 › Network workflows › supports deep-linked forensics, unit edits, and bulk sever from the grid 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/network?id=638", waiting until "load"[22m
+
+
+       98 |     })
+       99 |
+    > 100 |     await page.goto(`/network?id=${connA.id}`)
+          |                ^
+      101 |     await expect(page.getByRole('heading', { name: 'Connection Forensics' })).toBeVisible()
+      102 |     await expect(page.getByText(source.name).first()).toBeVisible()
+      103 |     await clickResilientButton(page, 'Edit Connection')
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/network-workflows.spec.ts:100:16
+
+    Error Context: test-results/frontend-tests-network-wor-855ef-nd-bulk-sever-from-the-grid/error-context.md
+
+  13) frontend/tests/network-workflows.spec.ts:146:3 › Network workflows › supports manual selection, modifiers, menu overlays, display configurations, and grouped grid parity 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/network?id=640", waiting until "load"[22m
+
+
+      220 |
+      221 |     // 1. Verify Deep-linked route opens detail modal with visible dynamic identity
+    > 222 |     await page.goto(`/network?id=${connA.id}`)
+          |                ^
+      223 |     await expect(page.getByRole('heading', { name: 'Connection Forensics' })).toBeVisible()
+      224 |     const expectedTitle = `${source.name}:eth0 ↔ ${peerA.name}:eth1`
+      225 |     await expect(page.getByRole('heading', { name: expectedTitle })).toBeVisible()
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/network-workflows.spec.ts:222:16
+
+    Error Context: test-results/frontend-tests-network-wor-e21f0-ons-and-grouped-grid-parity/error-context.md
+
+  14) frontend/tests/network-workflows.spec.ts:454:3 › Network workflows › verifies golden column labels, domain order, pinning, resizability, bulk-edit dirty-close safety, context menu structure, and irreversible purge confirmation 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/", waiting until "load"[22m
+
+
+      457 |
+      458 |     // Seed an old bad layout state (version 1) in localStorage to prove that the preference migration/reset guard automatically restores domain order on page load!
+    > 459 |     await page.goto('/') // Navigate to landing first to mount localStorage context
+          |                ^
+      460 |     await page.evaluate(() => {
+      461 |       window.localStorage.setItem('network_workspace_state_v1', JSON.stringify({
+      462 |         version: 1, // Stale version!
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/network-workflows.spec.ts:459:16
+
+    Error Context: test-results/frontend-tests-network-wor-cfd94-versible-purge-confirmation/error-context.md
+
+  15) frontend/tests/research-workflows.spec.ts:23:3 › Research workflows › filters by real years and rejects blank intelligence pulses 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/research", waiting until "load"[22m
+
+
+      57 |     expect(rcaResponse.ok()).toBeTruthy()
+      58 |
+    > 59 |     await page.goto('/research')
+         |                ^
+      60 |     const workspace = page.locator('[data-workspace="research"]')
+      61 |     await expect(workspace).toBeVisible()
+      62 |     await expect(workspace.getByRole('heading', { name: 'Research Matrix' })).toBeVisible()
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/research-workflows.spec.ts:59:16
+
+    Error Context: test-results/frontend-tests-research-wo-ef68f-s-blank-intelligence-pulses/error-context.md
+
+  16) frontend/tests/service-workflows.spec.ts:9:3 › Service workflows › tolerates malformed metadata and clears deep-link state on close 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/services?id=678", waiting until "load"[22m
+
+
+      43 |     expect(purgeResponse.ok()).toBeTruthy()
+      44 |
+    > 45 |     await page.goto(`/services?id=${activeService.id}`)
+         |                ^
+      46 |     await expect(page.getByText(activeService.name)).toBeVisible()
+      47 |     await clickResilientButton(page, 'Editor')
+      48 |     await expect(page.getByText('Commit Metadata')).toBeVisible()
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/service-workflows.spec.ts:45:16
+
+    Error Context: test-results/frontend-tests-service-wor-01eb7-rs-deep-link-state-on-close/error-context.md
+
+  17) frontend/tests/settings-standards.spec.ts:6:3 › Settings Standards reference › renders the synchronized reference and exercises shared primitives 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/settings?tab=standards", waiting until "load"[22m
+
+
+       6 |   test('renders the synchronized reference and exercises shared primitives', async ({ page }) => {
+       7 |     await resetBrowserState(page)
+    >  8 |     await page.goto('/settings?tab=standards')
+         |                ^
+       9 |
+      10 |     const reference = page.getByTestId('settings-standards-reference')
+      11 |     await expect(reference).toBeVisible()
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/settings-standards.spec.ts:8:16
+
+    Error Context: test-results/frontend-tests-settings-st-270ce-exercises-shared-primitives/error-context.md
+
+  18) frontend/tests/vendor-workflows.spec.ts:7:3 › Vendor workflows › creates a vendor, updates the profile, and registers a contract 
+
+    Error: page.goto: Protocol error (Page.navigate): Cannot navigate to invalid URL
+    Call log:
+    [2m  - navigating to "/vendors", waiting until "load"[22m
+
+
+      11 |     const contractTitle = `PW-CONTRACT-${stamp}`
+      12 |
+    > 13 |     await page.goto('/vendors')
+         |                ^
+      14 |     await expect(page.getByRole('heading', { name: 'Vendors' })).toBeVisible()
+      15 |
+      16 |     await clickResilientButton(page, /\+ Add Vendor/i)
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/vendor-workflows.spec.ts:13:16
+
+    Error Context: test-results/frontend-tests-vendor-work-d4b29-le-and-registers-a-contract/error-context.md
+
+  18 failed
+    frontend/tests/assets-workflows.spec.ts:9:3 › Assets workflows › simulates the changed Assets workflows end-to-end 
+    frontend/tests/external-workflows.spec.ts:7:3 › External workflows › matches the workspace shell contract and opens the shared import modal 
+    frontend/tests/external-workflows.spec.ts:51:3 › External workflows › preserves metadata, supports credentials, and surfaces link failures clearly 
+    frontend/tests/far-workflows.spec.ts:15:3 › FAR workflows › opens deep links and refreshes the wizard when the selected mode changes 
+    frontend/tests/far-workflows.spec.ts:45:3 › FAR workflows › removes causes and mitigations from the active FAR detail view 
+    frontend/tests/far-workflows.spec.ts:79:3 › FAR workflows › navigates to Research and can unlink linked research artifacts 
+    frontend/tests/monitoring-workflows.spec.ts:57:3 › Monitoring workflows › preserves lifecycle status, recovery linking, and knowledge jump paths 
+    frontend/tests/monitoring-workflows.spec.ts:102:3 › Monitoring workflows › supports bulk undo, compare, and persisted display state 
+    frontend/tests/monitoring-workflows.spec.ts:169:3 › Monitoring workflows › edits an existing monitor without save errors and persists the updated fields 
+    frontend/tests/monitoring-workflows.spec.ts:215:3 › Monitoring workflows › keeps default title sizing dynamic and preserves human resized widths only in saved views 
+    frontend/tests/monitoring-workflows.spec.ts:360:3 › Monitoring workflows › imports monitoring rows through the shared operational import modal 
+    frontend/tests/network-workflows.spec.ts:36:3 › Network workflows › supports deep-linked forensics, unit edits, and bulk sever from the grid 
+    frontend/tests/network-workflows.spec.ts:146:3 › Network workflows › supports manual selection, modifiers, menu overlays, display configurations, and grouped grid parity 
+    frontend/tests/network-workflows.spec.ts:454:3 › Network workflows › verifies golden column labels, domain order, pinning, resizability, bulk-edit dirty-close safety, context menu structure, and irreversible purge confirmation 
+    frontend/tests/research-workflows.spec.ts:23:3 › Research workflows › filters by real years and rejects blank intelligence pulses 
+    frontend/tests/service-workflows.spec.ts:9:3 › Service workflows › tolerates malformed metadata and clears deep-link state on close 
+    frontend/tests/settings-standards.spec.ts:6:3 › Settings Standards reference › renders the synchronized reference and exercises shared primitives 
+    frontend/tests/vendor-workflows.spec.ts:7:3 › Vendor workflows › creates a vendor, updates the profile, and registers a contract 
+Exit Code: 1
