@@ -45,3 +45,6 @@ playwright-report/
 !COMMAND_OUTPUTS/
 !COMMAND_OUTPUTS/*.log
 .DS_Store
+
+# Generated coverage data
+**/.coverage
