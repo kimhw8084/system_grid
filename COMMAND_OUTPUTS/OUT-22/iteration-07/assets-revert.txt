@@ -1,0 +1,60 @@
+UTC timestamp: 2026-07-22T16:31:22Z
+Exact command: npx playwright test tests/assets-revert.spec.ts --reporter=list
+(node:7127) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+(node:7150) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:7150) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:7150) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+SEED: Created monitoring item "PW-MON-1784737884856-7pb0mb" (ID: 1182)
+  ✘  1 tests/assets-revert.spec.ts:6:3 › Assets Revert lifecycle › reverts the immutable completed row operation after selection changes (19.1s)
+
+
+  1) tests/assets-revert.spec.ts:6:3 › Assets Revert lifecycle › reverts the immutable completed row operation after selection changes 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeEnabled[2m([22m[2m)[22m failed
+
+    Locator: locator('[data-workspace="assets"]:visible').filter({ has: getByRole('heading') }).first().getByRole('button', { name: 'Revert', exact: true })
+    Expected: enabled
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeEnabled" with timeout 15000ms[22m
+    [2m  - waiting for locator('[data-workspace="assets"]:visible').filter({ has: getByRole('heading') }).first().getByRole('button', { name: 'Revert', exact: true })[22m
+
+
+      27 |
+      28 |     const revert = getWorkspaceRoot(page, 'assets').getByRole('button', { name: 'Revert', exact: true })
+    > 29 |     await expect(revert).toBeEnabled()
+         |                          ^
+      30 |     await revert.click()
+      31 |     const confirmation = page.getByRole('dialog').filter({ has: page.getByText('Revert asset operation', { exact: true }) })
+      32 |     await expect(confirmation).toContainText(secondary.name)
+        at /Users/haewonkim/home/development/sysgrid/frontend/tests/assets-revert.spec.ts:29:26
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/assets-revert-Assets-Rever-3c90c-ion-after-selection-changes/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/assets-revert-Assets-Rever-3c90c-ion-after-selection-changes/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/assets-revert-Assets-Rever-3c90c-ion-after-selection-changes/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/assets-revert-Assets-Rever-3c90c-ion-after-selection-changes/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/assets-revert-Assets-Rever-3c90c-ion-after-selection-changes/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    tests/assets-revert.spec.ts:6:3 › Assets Revert lifecycle › reverts the immutable completed row operation after selection changes 
+True exit code: 1

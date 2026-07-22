@@ -1,4 +1,4 @@
-import { clickResilientButton, fillGridSearch, getWorkspaceLogicalRowByText, openToolbarButton, resetBrowserState, seedOperationalScenario, verifyGridRowRobust } from './helpers/sysgrid';
+import { clickResilientButton, fillGridSearch, getWorkspaceLogicalRowByText, getWorkspaceRoot, openToolbarButton, resetBrowserState, seedOperationalScenario, verifyGridRowRobust } from './helpers/sysgrid';
 import { expect } from '@playwright/test';
 import { test } from './helpers/sysgrid-test';
 import fs from 'fs';
@@ -240,19 +240,28 @@ test.describe('Assets workflows', () => {
     await deleteResponsePromise
     expect(deleteRequest.postDataJSON()).toMatchObject({ ids: [secondary.id], action: 'delete' })
 
-    // The golden toolbar action is visible only after a selected lifecycle operation.
-    const revertAction = page.getByRole('button', { name: 'Revert', exact: true })
+    // Change selection to another asset: Revert remains bound to the captured operation, not selection.
+    const primaryLifecycleRow = await getWorkspaceLogicalRowByText(page, 'assets', primary.name)
+    await (await primaryLifecycleRow.cell('name')).click()
+    await expect(primaryLifecycleRow.center!).toHaveClass(/ag-row-selected/)
+
+    const revertAction = getWorkspaceRoot(page, 'assets').getByRole('button', { name: 'Revert', exact: true })
     await expect(revertAction).toBeVisible()
     await expect(revertAction).toBeEnabled()
     await revertAction.click()
     const revertConfirm = page.getByRole('dialog').filter({ has: page.getByText('Revert asset operation', { exact: true }) })
     await expect(revertConfirm).toBeVisible()
+    await expect(revertConfirm).toContainText(secondary.name)
+    const restoreRequestPromise = page.waitForRequest(request => request.url().includes('/api/v1/devices/bulk-action'))
     const restoreResponsePromise = page.waitForResponse(response =>
       response.url().includes('/api/v1/devices/bulk-action') && response.status() === 200
     )
     await revertConfirm.getByRole('button', { name: 'Confirm Action', exact: true }).click()
+    const restoreRequest = await restoreRequestPromise
     await restoreResponsePromise
-    await expect((await getWorkspaceLogicalRowByText(page, 'assets', secondary.name)).center!).toHaveClass(/ag-row-selected/)
+    expect(restoreRequest.postDataJSON()).toMatchObject({ ids: [secondary.id], action: 'restore' })
+    await expect((await getWorkspaceLogicalRowByText(page, 'assets', secondary.name)).center!).toBeVisible()
+    await expect(primaryLifecycleRow.center!).toHaveClass(/ag-row-selected/)
 
     // Archive again so the existing purged-scope proof continues with the same row identity.
     await (await getWorkspaceLogicalRowByText(page, 'assets', secondary.name)).action('More actions').click()

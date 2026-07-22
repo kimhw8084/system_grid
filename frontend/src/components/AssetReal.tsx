@@ -146,6 +146,13 @@ export interface OperatorRecord {
   team?: string
 }
 
+type AssetLifecycleOperation = Readonly<{
+  ids: readonly number[]
+  originalAction: 'delete' | 'restore'
+  inverseAction: 'restore' | 'delete'
+  targetLabels: readonly string[]
+}>
+
 
 const MONITORING_SEVERITIES = [
   { value: 'Critical', label: 'Critical', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30' },
@@ -708,7 +715,7 @@ export default function AssetReal() {
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'link_type' | 'direction' | null>(null)
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
   const [pendingIds, setPendingIds] = useState<number[]>([])
-  const [revertOperation, setRevertOperation] = useState<{ ids: number[], action: 'restore' | 'delete' } | null>(null)
+  const [revertOperation, setRevertOperation] = useState<AssetLifecycleOperation | null>(null)
   const [isReverting, setIsReverting] = useState(false)
   const selectionAnchorRef = useRef<number | null>(null)
   const displayMenuButtonRef = useRef<HTMLButtonElement | null>(null)
@@ -717,7 +724,7 @@ export default function AssetReal() {
   const [displayMenuStyle, setDisplayMenuStyle] = useState<React.CSSProperties>({})
   const [viewsMenuStyle, setViewsMenuStyle] = useState<React.CSSProperties>({})
   const [bulkMenuStyle, setBulkMenuStyle] = useState<React.CSSProperties>({})
-  const lastUndoRef = useRef<any>(null)
+  const lastUndoRef = useRef<AssetLifecycleOperation | null>(null)
   const [newViewName, setNewViewName] = useState('')
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
   const autoSizeFrameRef = useRef<number | null>(null)
@@ -1432,9 +1439,9 @@ export default function AssetReal() {
       .filter((item: any) => activeTab === 'active' ? !item.is_deleted : item.is_deleted)
   }, [allItems, activeTab])
 
-  const canRevert = Boolean(revertOperation && revertOperation.ids.length > 0 && revertOperation.ids.every((id) => {
+  const canRevert = Boolean(!isReverting && revertOperation && revertOperation.ids.length > 0 && !revertOperation.ids.some((id) => pendingIds.includes(id)) && revertOperation.ids.every((id) => {
     const item = allItems?.find((candidate: any) => candidate.id === id)
-    return selectedIds.includes(id) && (revertOperation.action === 'restore' ? Boolean(item?.is_deleted) : !item?.is_deleted)
+    return revertOperation.inverseAction === 'restore' ? Boolean(item?.is_deleted) : !item?.is_deleted
   }))
 
   const platformOptions = useMemo(() => {
@@ -1721,24 +1728,25 @@ export default function AssetReal() {
     queryFn: async () => (await apiFetch('/api/v1/devices/')).json()
   })
 
-  const runUndo = async () => {
-    const undo = lastUndoRef.current
-    if (!undo) return
-    if (undo.mode === 'bulk') {
-      const res = await apiFetch('/api/v1/devices/bulk-action', {
-        method: 'POST',
-        body: JSON.stringify({ ids: undo.ids, action: undo.action })
-      })
-      if (!res.ok) throw new Error(await res.text())
-    }
-    lastUndoRef.current = null
-    queryClient.invalidateQueries({ queryKey: ['asset-real-devices'] })
+  const runUndo = async (operation: AssetLifecycleOperation) => {
+    const res = await apiFetch('/api/v1/devices/bulk-action', {
+      method: 'POST',
+      body: JSON.stringify({ ids: operation.ids, action: operation.inverseAction })
+    })
+    if (!res.ok) throw new Error(await res.text())
+    await queryClient.invalidateQueries({ queryKey: ['asset-real-devices'] })
   }
 
   const executeRevert = async () => {
+    const operation = revertOperation
+    if (!operation) {
+      showWorkspaceToast('No completed asset operation is available to revert', { type: 'error' })
+      return
+    }
     setIsReverting(true)
     try {
-      await runUndo()
+      await runUndo(operation)
+      lastUndoRef.current = null
       setRevertOperation(null)
       showWorkspaceToast('Reverted asset operation', { type: 'success' })
     } catch (error: any) {
@@ -1820,12 +1828,18 @@ export default function AssetReal() {
         return
       }
 
-      if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
-      else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
-      else lastUndoRef.current = null
-      setRevertOperation(lastUndoRef.current ? { ids: [...lastUndoRef.current.ids], action: lastUndoRef.current.action } : null)
+      const operation: AssetLifecycleOperation | null = action === 'delete' || action === 'restore'
+        ? {
+            ids: Object.freeze([...idsToUse]),
+            originalAction: action,
+            inverseAction: action === 'delete' ? 'restore' : 'delete',
+            targetLabels: Object.freeze(previousSnapshots.map((item: any) => String(item.name || item.id))),
+          }
+        : null
+      lastUndoRef.current = operation
+      setRevertOperation(operation)
 
-      if (lastUndoRef.current) {
+      if (operation) {
         showWorkspaceToast(result?.summary || 'Updated assets', {
           onRevert: async () => {
             await executeRevert()
@@ -2439,9 +2453,9 @@ export default function AssetReal() {
         right: (
 	          <>
               <ToolbarButton
-                onClick={() => openConfirm('Revert asset operation', `Revert the last operation for ${revertOperation?.ids.length || 0} selected asset(s)?`, () => { void executeRevert() }, 'warning')}
+                onClick={() => openConfirm('Revert asset operation', `Revert ${revertOperation?.targetLabels.join(', ') || 'the captured assets'}?`, () => { void executeRevert() }, 'warning')}
                 disabled={!canRevert || isReverting}
-                title={canRevert ? 'Revert the last operation for the current selection' : 'Revert is available only for the unchanged selected assets from the last lifecycle operation'}
+                title={canRevert ? 'Revert the last completed lifecycle operation' : 'Revert is unavailable because its captured assets no longer match the expected lifecycle state'}
               >
                 <span className="flex items-center gap-2">
                   <Undo2 size={14} className={isReverting ? 'animate-spin' : ''} />

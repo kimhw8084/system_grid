@@ -1,0 +1,16 @@
+UTC timestamp: 2026-07-22T16:30:48Z
+Exact command: npx playwright test tests/vendor-workflows.spec.ts --reporter=list
+(node:4216) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+(node:4241) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:4241) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:4241) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 tests/vendor-workflows.spec.ts:7:3 › Vendor workflows › creates a vendor, updates the profile, and registers a contract (4.1s)
+
+  1 passed (4.6s)
+True exit code: 0

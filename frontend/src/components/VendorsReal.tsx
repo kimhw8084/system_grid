@@ -1404,11 +1404,11 @@ function VendorCreateForm({ item, onClose, onSuccess }: any) {
         <div className="space-y-6 pt-6">
           <div>
             <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Vendor Name</label>
-            <input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+            <input aria-label="Vendor Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
           </div>
           <div>
             <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Country</label>
-            <select value={formData.country || 'South Korea'} onChange={(e) => setFormData({ ...formData, country: e.target.value })} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all">
+            <select aria-label="Vendor Country" value={formData.country || 'South Korea'} onChange={(e) => setFormData({ ...formData, country: e.target.value })} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all">
               {countryOptions.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
@@ -1618,7 +1618,7 @@ function VendorDetailPanel({ vendor, devices, systems, onClose, onDelete, delete
                         <div>
                           <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Vendor Name</label>
                           {isEditing ? (
-                            <input value={formData.name} onChange={(e) => updateField('name', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+                            <input aria-label="Vendor Name" value={formData.name} onChange={(e) => updateField('name', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
                           ) : (
                             <p className="text-sm font-bold text-white uppercase">{vendor.name}</p>
                           )}
@@ -1626,7 +1626,7 @@ function VendorDetailPanel({ vendor, devices, systems, onClose, onDelete, delete
                         <div>
                           <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Country</label>
                           {isEditing ? (
-                            <select value={formData.country || 'South Korea'} onChange={(e) => updateField('country', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all">
+                            <select aria-label="Vendor Country" value={formData.country || 'South Korea'} onChange={(e) => updateField('country', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all">
                               {countryOptions.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
                             </select>
                           ) : (
@@ -2039,12 +2039,12 @@ function ContractRegistrationForm({ item, onClose, onSave, isSaving }: any) {
           {[{ label: 'Contract Title', field: 'title' }, { label: 'Contract ID', field: 'contract_id' }].map(({ label, field }) => (
             <div key={field}>
               <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">{label}</label>
-              <input value={formData[field] || ''} onChange={(e) => updateField(field, e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
+              <input aria-label={label} value={formData[field] || ''} onChange={(e) => updateField(field, e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
             </div>
           ))}
           <div>
             <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Status</label>
-            <select value={formData.status || 'Drafted'} onChange={(e) => updateField('status', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all">
+            <select aria-label="Contract Status" value={formData.status || 'Drafted'} onChange={(e) => updateField('status', e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all">
               {CONTRACT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
@@ -2052,7 +2052,7 @@ function ContractRegistrationForm({ item, onClose, onSave, isSaving }: any) {
             {[{ label: 'Effective Date', field: 'effective_date' }, { label: 'Expiry Date', field: 'expiry_date' }].map(({ label, field }) => (
               <div key={field}>
                 <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">{label}</label>
-                <input type="date" value={formData[field]?.split('T')[0] || ''} onChange={(e) => updateField(field, e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all" />
+                <input aria-label={label} type="date" value={formData[field]?.split('T')[0] || ''} onChange={(e) => updateField(field, e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white [color-scheme:dark] outline-none focus:border-blue-500/50 transition-all" />
               </div>
             ))}
           </div>

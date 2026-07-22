@@ -6,7 +6,7 @@
       "file": "/Users/haewonkim/home/development/sysgrid/frontend/tests/assets-workflows.spec.ts",
       "line": 9,
       "status": "failed",
-      "error": "Error: expect(locator).toBeVisible() failed |  | Locator: getByRole('button', { name: 'Revert', exact: true })"
+      "error": "Error: Expected a visible assets grid row matching \"PW-ASSET-A-1784737654502-97zwiv\" |  | expect(locator).toBeVisible() failed"
     }
   ]
 }
