@@ -237,6 +237,26 @@ test.describe('Assets workflows', () => {
     await confirmArchiveAction.click()
     await deleteResponsePromise
 
+    // The accepted lifecycle contract exposes a confirmed Revert for exactly the archived row.
+    const revertAction = page.getByRole('button', { name: 'Revert', exact: true })
+    await expect(revertAction).toBeVisible()
+    await revertAction.click()
+    const restoreResponsePromise = page.waitForResponse(response =>
+      response.url().includes('/api/v1/devices/bulk-action') && response.status() === 200
+    )
+    await page.getByRole('button', { name: 'Confirm Undo?', exact: true }).click()
+    await restoreResponsePromise
+    await expect(page.locator('.ag-row-selected')).not.toHaveCount(0)
+
+    // Archive again so the existing purged-scope proof continues with the same row identity.
+    await page.getByTitle('More actions').filter({ visible: true }).click()
+    await page.getByRole('button', { name: 'Archive', exact: true }).click()
+    const secondDeleteResponsePromise = page.waitForResponse(response =>
+      response.url().includes('/api/v1/devices/bulk-action') && response.status() === 200
+    )
+    await page.getByRole('button', { name: 'Confirm Archive?', exact: true }).click()
+    await secondDeleteResponsePromise
+
     // Settle React state before tab switch
 
     // Switch to Purged Tab and verify row is present in Deleted scope

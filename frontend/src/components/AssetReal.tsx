@@ -1728,17 +1728,32 @@ export default function AssetReal() {
     queryClient.invalidateQueries({ queryKey: ['asset-real-devices'] })
   }
 
+  const resolveEligibleBulkIds = (action: string, requestedIds: number[]) => {
+    const requested = new Set(requestedIds)
+    return (allItems || [])
+      .filter((item: any) => {
+        if (!requested.has(item.id)) return false
+        if (action === 'delete') return !item.is_deleted
+        if (action === 'restore') return Boolean(item.is_deleted)
+        return true
+      })
+      .map((item: any) => item.id)
+  }
+
   const bulkMutation = useMutation({
     onMutate: ({ action, ids: overrideIds }: any) => {
-      const idsToUse = overrideIds ?? selectedIds
+      const idsToUse = resolveEligibleBulkIds(action, overrideIds ?? selectedIds)
       setPendingIds(prev => [...new Set([...prev, ...idsToUse])])
     },
     onSettled: (data: any, error: any, variables: any) => {
-      const idsToUse = variables.ids ?? selectedIds
+      const idsToUse = resolveEligibleBulkIds(variables.action, variables.ids ?? selectedIds)
       setPendingIds(prev => prev.filter(id => !idsToUse.includes(id)))
     },
     mutationFn: async ({ action, payload = {}, ids: overrideIds }: any) => {
-      const idsToUse = overrideIds ?? selectedIds
+      const idsToUse = resolveEligibleBulkIds(action, overrideIds ?? selectedIds)
+      if (idsToUse.length === 0) {
+        return { result: { changed: 0, summary: 'No eligible assets selected' }, action, payload, idsToUse, previousSnapshots: [] }
+      }
       const previousSnapshots = (allItems || []).filter((item: any) => idsToUse.includes(item.id)).map((item: any) => ({ ...item }))
       let res
       if (action === 'update') {

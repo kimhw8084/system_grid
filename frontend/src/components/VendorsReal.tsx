@@ -937,7 +937,8 @@ export default function VendorsReal() {
       if (lastUndoRef.current) {
         showWorkspaceToast(`Updated ${idsToUse.length} vendor(s)`, { onRevert: async () => {
           const undo = lastUndoRef.current; if (!undo) return
-          await apiFetch('/api/v1/vendors/bulk-action', { method: 'POST', body: JSON.stringify({ ids: undo.ids, action: undo.action, target: 'vendor' }) })
+          const response = await apiFetch('/api/v1/vendors/bulk-action', { method: 'POST', body: JSON.stringify({ ids: undo.ids, action: undo.action, target: 'vendor' }) })
+          if (!response.ok) throw new Error(await response.text())
           lastUndoRef.current = null; queryClient.invalidateQueries({ queryKey: ['vendors'] })
           showWorkspaceToast('Reverted vendor operation', { type: 'success' })
         }})
@@ -1369,19 +1370,23 @@ function VendorCreateForm({ item, onClose, onSuccess }: any) {
       const url    = data.id ? `/api/v1/vendors/${data.id}` : '/api/v1/vendors/'
       const method = data.id ? 'PUT' : 'POST'
       const res = await apiFetch(url, { method, body: JSON.stringify(data) })
+      if (!res.ok) throw new Error(await res.text())
       return res.json()
     },
     onSuccess: () => { toast.success('Vendor record saved'); onSuccess?.() }
   })
 
   return (
-    <div className={`fixed inset-0 ${WORKSPACE_NESTED_MODAL_LAYER_CLASS} flex items-center justify-center bg-black/80 backdrop-blur-md p-10`}>
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[500px] p-10 rounded-lg border border-blue-500/30 flex flex-col">
-        <div className="flex items-center justify-between border-b border-white/5 pb-6">
-          <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><Briefcase size={24} />{item?.id ? 'Edit Vendor' : 'New Vendor'}</h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
-        </div>
-        <div className="space-y-6 mt-6">
+    <WorkspaceModal
+      isOpen={true}
+      onClose={onClose}
+      size="standard"
+      title={item?.id ? 'Edit Vendor' : 'New Vendor'}
+      subtitle="Vendor registry"
+      icon={<Briefcase size={20} />}
+      footerRight={<ToolbarButton variant="primary" onClick={() => mutation.mutate(formData)} disabled={mutation.isPending}>{mutation.isPending ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} Save Vendor</ToolbarButton>}
+    >
+        <div className="space-y-6 pt-6">
           <div>
             <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Vendor Name</label>
             <input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full bg-slate-900 border border-white/10 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-blue-500/50 transition-all" />
@@ -1393,14 +1398,7 @@ function VendorCreateForm({ item, onClose, onSuccess }: any) {
             </select>
           </div>
         </div>
-        <div className="flex space-x-3 pt-10 mt-auto">
-          <button onClick={onClose} className="flex-1 py-4 text-[11px] font-bold uppercase text-slate-500 hover:text-white transition-colors">Cancel</button>
-          <button onClick={() => mutation.mutate(formData)} className="flex-[2] py-4 bg-blue-600 text-white rounded-lg text-[11px] font-bold uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
-            {mutation.isPending ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16} />} Save Vendor
-          </button>
-        </div>
-      </motion.div>
-    </div>
+    </WorkspaceModal>
   )
 }
 
@@ -1428,15 +1426,23 @@ function VendorDetailPanel({ vendor, devices, systems, onClose, onDelete, delete
   const countryOptions = useMemo(() => (countries && countries.length > 0) ? countries : [{ label: 'South Korea', value: 'South Korea' }, { label: 'USA', value: 'USA' }], [countries])
 
   const vendorMutation = useMutation({
-    mutationFn: async (data: any) => (await apiFetch(`/api/v1/vendors/${vendor.id}`, { method: 'PUT', body: JSON.stringify(data) })).json(),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['vendors'] }); setIsEditing(false); setHasChanges(false); toast.success('Vendor Profile Updated') }
+    mutationFn: async (data: any) => {
+      const response = await apiFetch(`/api/v1/vendors/${vendor.id}`, { method: 'PUT', body: JSON.stringify(data) })
+      if (!response.ok) throw new Error(await response.text())
+      return response.json()
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['vendors'] }); setIsEditing(false); setHasChanges(false); toast.success('Vendor Profile Updated') },
+    onError: (error: any) => showWorkspaceToast(error.message || 'Unable to update vendor profile', { type: 'error' })
   })
   const personnelMutation = useMutation({
     mutationFn: async (data: any) => {
       const url = data.id ? `/api/v1/vendors/personnel/${data.id}` : `/api/v1/vendors/${vendor.id}/personnel`
-      return (await apiFetch(url, { method: data.id ? 'PUT' : 'POST', body: JSON.stringify(data) })).json()
+      const response = await apiFetch(url, { method: data.id ? 'PUT' : 'POST', body: JSON.stringify(data) })
+      if (!response.ok) throw new Error(await response.text())
+      return response.json()
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['vendors'] }); setShowPersonnelModal(null); toast.success('Personnel Updated') }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['vendors'] }); setShowPersonnelModal(null); toast.success('Personnel Updated') },
+    onError: (error: any) => showWorkspaceToast(error.message || 'Unable to update personnel', { type: 'error' })
   })
   const deletePersonnelMutation = useMutation({
     mutationFn: async (id: number) => apiFetch(`/api/v1/vendors/personnel/${id}`, { method: 'DELETE' }),
@@ -1446,9 +1452,12 @@ function VendorDetailPanel({ vendor, devices, systems, onClose, onDelete, delete
     mutationFn: async (data: any) => {
       const payload = { ...data, vendor_id: vendor.id }
       const url = payload.id ? `/api/v1/vendors/contracts/${payload.id}` : `/api/v1/vendors/contracts/`
-      return (await apiFetch(url, { method: payload.id ? 'PUT' : 'POST', body: JSON.stringify(payload) })).json()
+      const response = await apiFetch(url, { method: payload.id ? 'PUT' : 'POST', body: JSON.stringify(payload) })
+      if (!response.ok) throw new Error(await response.text())
+      return response.json()
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['vendors'] }); setShowContractModal(null); setActiveContractDetails(null); toast.success('Contract Synchronized') }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['vendors'] }); setShowContractModal(null); setActiveContractDetails(null); toast.success('Contract Synchronized') },
+    onError: (error: any) => showWorkspaceToast(error.message || 'Unable to save contract', { type: 'error' })
   })
   const deleteContractMutation = useMutation({
     mutationFn: async (id: number) => apiFetch('/api/v1/vendors/bulk-action', { method: 'POST', body: JSON.stringify({ ids: [id], action: 'delete', target: 'contract' }) }),
@@ -1847,7 +1856,7 @@ function PersonnelForm({ item, onClose, onSave, isSaving }: any) {
               </div>
             )}
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
+          <button type="button" aria-label="Close personnel form" onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar mt-8 pr-4">
@@ -2009,7 +2018,7 @@ function ContractRegistrationForm({ item, onClose, onSave, isSaving }: any) {
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-[600px] p-10 rounded-lg border border-blue-500/30 flex flex-col">
         <div className="flex items-center justify-between border-b border-white/5 pb-6">
           <h2 className="text-2xl font-bold uppercase text-blue-400 flex items-center gap-3"><FileText size={24} />New Contract</h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
+          <button type="button" aria-label="Close contract form" onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
         </div>
         <div className="space-y-4 mt-6">
           {[{ label: 'Contract Title', field: 'title' }, { label: 'Contract ID', field: 'contract_id' }].map(({ label, field }) => (
