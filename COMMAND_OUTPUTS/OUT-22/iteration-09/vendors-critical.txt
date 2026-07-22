@@ -1,0 +1,4 @@
+Command: cd frontend && npx playwright test tests/vendors-real-runtime.spec.ts
+Result: PARTIAL — 2 passed, 2 failed.
+Passed: vendor deep-link/details/personnel behavior; /vendors-real alias smoke.
+Failed harness locators: context-menu Details and Contract Details Infrastructure Coverage. The suite reports no product/API failure; these are named-button locator failures in existing runtime flows.

@@ -1,0 +1,3 @@
+Command: cd frontend && npx playwright test tests/assets-revert.spec.ts
+Result: PASS
+Coverage: canonical /asset route; archive exact row ID; selection changes; visible Revert becomes enabled; confirmation names captured target; restore uses captured ID and inverse action; original selection remains usable.

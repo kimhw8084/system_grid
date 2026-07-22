@@ -474,11 +474,12 @@ export default function AssetGoldenOperationalWorkspace() {
             <ToolbarButton
               onClick={() => workspace.revertOperation && workspace.openConfirm(
                 'Revert asset operation',
-                `Revert ${workspace.revertOperation.targetLabels.join(', ')}?`,
+                `Revert ${workspace.revertOperation.targetLabels.length} asset${workspace.revertOperation.targetLabels.length === 1 ? '' : 's'}: ${workspace.revertOperation.targetLabels.join(', ')}?`,
                 () => { void workspace.executeRevert(workspace.revertOperation!) },
               )}
               disabled={!workspace.revertOperation || workspace.isReverting}
-              title={workspace.revertOperation ? 'Revert the last completed lifecycle operation' : 'No completed asset operation is available to revert'}
+              variant={workspace.revertOperation ? 'primary' : 'secondary'}
+              title={workspace.revertOperation ? `Revert ${workspace.revertOperation.targetLabels.length} asset lifecycle change${workspace.revertOperation.targetLabels.length === 1 ? '' : 's'}` : 'Revert becomes available after a completed archive or restore'}
             >
               <span className="flex items-center gap-2">
                 <Undo2 size={14} className={workspace.isReverting ? 'animate-spin' : ''} />

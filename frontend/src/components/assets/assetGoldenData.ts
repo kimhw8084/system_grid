@@ -661,12 +661,12 @@ export function useAssetGoldenWorkspace() {
       setRowActionMenu(null)
       setSelectedIds([])
       if ((result?.action === 'delete' || result?.action === 'restore') && Number(result?.changed || 0) > 0) {
-        setRevertOperation({
+        setRevertOperation(Object.freeze({
           ids: Object.freeze([...result.ids]),
           originalAction: result.action,
           inverseAction: result.action === 'delete' ? 'restore' : 'delete',
           targetLabels: Object.freeze(result.targetLabels || result.ids.map(String)),
-        })
+        }))
       }
       if (result?.action === 'update') {
         showOperationalBulkResultToast({

@@ -1,0 +1,4 @@
+Command: cd frontend && npm run typecheck
+Result: PASS
+Output:
+> tsc --noEmit

@@ -96,6 +96,12 @@ const VENDOR_PERSISTED_COLUMN_IDS = new Set([
   'personnel_count', 'created_at', 'updated_at', 'row_actions',
 ])
 const VENDOR_VALID_GROUP_BY = new Set(['raw', 'country'])
+type VendorLifecycleOperation = Readonly<{
+  ids: readonly number[]
+  originalAction: 'delete' | 'restore'
+  inverseAction: 'restore' | 'delete'
+  targetLabels: readonly string[]
+}>
 //
 
 // ---------------------------------------------------------------------------
@@ -397,7 +403,8 @@ export default function VendorsReal() {
   const displayMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const viewsMenuButtonRef   = useRef<HTMLButtonElement | null>(null)
   const bulkMenuButtonRef    = useRef<HTMLButtonElement | null>(null)
-  const lastUndoRef          = useRef<any>(null)
+  const [revertOperation, setRevertOperation] = useState<VendorLifecycleOperation | null>(null)
+  const [isReverting, setIsReverting] = useState(false)
   const [displayMenuStyle, setDisplayMenuStyle] = useState<React.CSSProperties>({})
   const [viewsMenuStyle,   setViewsMenuStyle]   = useState<React.CSSProperties>({})
   const [bulkMenuStyle,    setBulkMenuStyle]    = useState<React.CSSProperties>({})
@@ -899,26 +906,44 @@ export default function VendorsReal() {
       if (!res.ok) throw new Error(await res.text())
       return { result: await res.json(), action, idsToUse }
     },
-    onSuccess: ({ action, idsToUse }: any) => {
-      queryClient.invalidateQueries({ queryKey: ['vendors'] })
+    onSuccess: async ({ result, action, idsToUse }: any) => {
+      await queryClient.invalidateQueries({ queryKey: ['vendors'] })
       setShowBulkMenu(false)
-      if (action === 'delete') lastUndoRef.current = { action: 'restore', ids: idsToUse }
-      else if (action === 'restore') lastUndoRef.current = { action: 'delete', ids: idsToUse }
-      else lastUndoRef.current = null
-      if (lastUndoRef.current) {
-        showWorkspaceToast(`Updated ${idsToUse.length} vendor(s)`, { onRevert: async () => {
-          const undo = lastUndoRef.current; if (!undo) return
-          const response = await apiFetch('/api/v1/vendors/bulk-action', { method: 'POST', body: JSON.stringify({ ids: undo.ids, action: undo.action, target: 'vendor' }) })
-          if (!response.ok) throw new Error(await response.text())
-          lastUndoRef.current = null; queryClient.invalidateQueries({ queryKey: ['vendors'] })
-          showWorkspaceToast('Reverted vendor operation', { type: 'success' })
-        }})
-      } else {
-        showWorkspaceToast(`Updated ${idsToUse.length} vendor(s)`, { type: 'success' })
+      setSelectedIds([])
+      const changed = Number(result?.changed ?? result?.count ?? idsToUse.length)
+      if ((action === 'delete' || action === 'restore') && changed > 0) {
+        const labels = items.filter((vendor: any) => idsToUse.includes(vendor.id)).map((vendor: any) => vendor.name || String(vendor.id))
+        setRevertOperation(Object.freeze({
+          ids: Object.freeze([...idsToUse]),
+          originalAction: action,
+          inverseAction: action === 'delete' ? 'restore' : 'delete',
+          targetLabels: Object.freeze(labels.length ? labels : idsToUse.map(String)),
+        }))
       }
+      const actionLabel = action === 'restore' ? 'Restored' : 'Archived'
+      showWorkspaceToast(changed === idsToUse.length ? `${actionLabel} ${changed} vendor${changed === 1 ? '' : 's'}` : `${actionLabel} ${changed} of ${idsToUse.length} vendors`, { type: 'success' })
     },
     onError: (e: any) => showWorkspaceToast(`Operation failed: ${e.message}`, { type: 'error' })
   })
+
+  const executeRevert = useCallback(async () => {
+    if (!revertOperation || isReverting) return
+    setIsReverting(true)
+    try {
+      const response = await apiFetch('/api/v1/vendors/bulk-action', {
+        method: 'POST',
+        body: JSON.stringify({ ids: revertOperation.ids, action: revertOperation.inverseAction, target: 'vendor' }),
+      })
+      if (!response.ok) throw new Error(await response.text())
+      await queryClient.invalidateQueries({ queryKey: ['vendors'] })
+      setRevertOperation(null)
+      showWorkspaceToast(`Reverted ${revertOperation.targetLabels.length} vendor lifecycle change${revertOperation.targetLabels.length === 1 ? '' : 's'}`, { type: 'success' })
+    } catch (error: any) {
+      showWorkspaceToast(error?.message || 'Vendor revert failed', { type: 'error' })
+    } finally {
+      setIsReverting(false)
+    }
+  }, [isReverting, queryClient, revertOperation])
 
   // --- ROW PRIMARY ACTIONS ---
   const renderPrimaryRowActions = (item: any) => {
@@ -1020,6 +1045,11 @@ export default function VendorsReal() {
           </div>
         ),
         subtitle: 'Vendor capability, contract intelligence & personnel directory',
+        meta: (
+          <span className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wider text-slate-300">
+            {isLoading ? 'Loading vendors' : `${displayedItems.length} of ${items.length} vendors`}{isFetching && !isLoading ? ' · refreshing' : ''}
+          </span>
+        ),
         actions: (
           <HeaderScopeSwitch
             label="Registry Scope"
@@ -1034,6 +1064,7 @@ export default function VendorsReal() {
         left: (
           <>
             <ToolbarSearch value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search vendors..." />
+            {searchTerm ? <ToolbarButton onClick={() => setSearchTerm('')} variant="quiet" title="Clear vendor search"><X size={14} />Clear</ToolbarButton> : null}
             <ToolbarGroup>
               <div className="views-menu-container">
                 <ToolbarButton active={showViewsMenu} onClick={() => setShowViewsMenu(!showViewsMenu)} ref={viewsMenuButtonRef as any}>
@@ -1074,11 +1105,24 @@ export default function VendorsReal() {
         ) : null,
         right: (
           <>
+            <ToolbarButton
+              onClick={() => revertOperation && openConfirm(
+                'Revert vendor operation',
+                `Revert ${revertOperation.targetLabels.length} vendor${revertOperation.targetLabels.length === 1 ? '' : 's'}: ${revertOperation.targetLabels.join(', ')}?`,
+                () => { void executeRevert() },
+                'info',
+              )}
+              disabled={!revertOperation || isReverting}
+              variant={revertOperation ? 'primary' : 'secondary'}
+              title={revertOperation ? `Revert ${revertOperation.targetLabels.length} completed vendor lifecycle change${revertOperation.targetLabels.length === 1 ? '' : 's'}` : 'Revert becomes available after a completed vendor archive or restore'}
+            >
+              <Undo2 size={14} className={isReverting ? 'animate-spin' : ''} />Revert
+            </ToolbarButton>
             <ToolbarButton onClick={toggleBulkWindow} disabled={selectedIds.length === 0} active={showBulkMenu} title="Bulk actions" className="bulk-menu-trigger" ref={bulkMenuButtonRef as any}>
-              <span className="flex items-center gap-2"><Zap size={14} />Bulk Actions</span>
+              <span className="flex items-center gap-2"><Zap size={14} />Bulk Actions{selectedIds.length ? ` (${selectedIds.length})` : ''}</span>
             </ToolbarButton>
             <ToolbarButton onClick={() => { setEditingItem(null); setIsFormOpen(true) }} variant="primary" className="px-6 py-2">
-              + Add Vendor
+              <Plus size={14} />New Vendor
             </ToolbarButton>
           </>
         ),
