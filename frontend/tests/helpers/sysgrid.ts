@@ -946,20 +946,21 @@ export async function waitForAppIdle(page: Page) {
 
 export async function clickResilientButton(page: Page, ...names: (string | RegExp)[]) {
   for (const name of names) {
-    const btn = page.getByRole('button', { name }).first()
-    if (await btn.isVisible().catch(() => false) && await btn.isEnabled().catch(() => false)) {
-      await btn.click({ force: true })
+    const candidates = page.getByRole('button', { name, exact: typeof name === 'string' })
+    const visibleEnabled: Locator[] = []
+    for (let index = 0; index < await candidates.count(); index += 1) {
+      const candidate = candidates.nth(index)
+      if (await candidate.isVisible() && await candidate.isEnabled()) visibleEnabled.push(candidate)
+    }
+    if (visibleEnabled.length > 1) {
+      throw new Error(`Ambiguous button ${String(name)}: found ${visibleEnabled.length} visible, enabled matches`)
+    }
+    if (visibleEnabled.length === 1) {
+      await visibleEnabled[0].click()
       return
     }
   }
-  for (const name of names) {
-    const btn = page.getByText(name).first()
-    if (await btn.isVisible().catch(() => false)) {
-      await btn.click({ force: true })
-      return
-    }
-  }
-  throw new Error(`Could not find resilient button matching any of: ${names.join(', ')}`)
+  throw new Error(`Could not find one visible, enabled button matching any of: ${names.join(', ')}`)
 }
 
 export async function verifyGridRowRobust(page: Page, searchString: string | RegExp) {

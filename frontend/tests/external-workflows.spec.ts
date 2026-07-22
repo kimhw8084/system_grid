@@ -110,7 +110,7 @@ test.describe('External workflows', () => {
     await editModal.locator('select').first().selectOption('Virtual Server')
     await expect(editModal.locator('input[value="hypervisor"]')).toBeVisible()
     await editModal.getByText('Close', { exact: true }).evaluate((node: HTMLElement) => node.click())
-    await page.getByRole('button', { name: 'Discard Changes' }).click()
+    await clickResilientButton(page, 'Discard Changes')
 
     await page.goto(`/external?id=${externalEntity.id}`)
     await expect(page.getByText('Mission Summary')).toBeVisible()
@@ -137,7 +137,7 @@ test.describe('External workflows', () => {
     await expect(page.locator('.max-w-md').getByText('Simulated interconnect failure')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Establish External Link' })).toBeVisible()
     await linkModal.getByText('Close', { exact: true }).click()
-    await page.getByRole('button', { name: 'Discard Changes' }).click()
+    await clickResilientButton(page, 'Discard Changes')
 
     await page.goto(`/external?id=${externalEntity.id}`)
     await expect(page.getByText('Mission Summary')).toBeVisible()

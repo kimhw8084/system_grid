@@ -176,7 +176,7 @@ test.describe('VendorsReal canonical runtime', () => {
     const download = await downloadPromise
     expect(download.suggestedFilename()).toMatch(/^SysGrid_Vendors_/)
 
-    await page.getByTitle('More actions').first().click()
+    await page.getByTitle('More actions').click()
     const clickMenu = getVisibleRowActionMenu(page)
     await expect(clickMenu).toBeVisible()
     await expect(clickMenu).toContainText('Details')
@@ -186,11 +186,18 @@ test.describe('VendorsReal canonical runtime', () => {
 
     const vendorCell = page.locator('.ag-cell').filter({ hasText: scenario.vendorName }).first()
     await expect(vendorCell).toBeVisible()
+    await vendorCell.scrollIntoViewIfNeeded()
+    await vendorCell.hover()
     const cellBox = await vendorCell.boundingBox()
     expect(cellBox).not.toBeNull()
-    const cursorX = (cellBox?.x || 0) + Math.min((cellBox?.width || 0) / 2, 120)
-    const cursorY = (cellBox?.y || 0) + Math.min((cellBox?.height || 0) / 2, 20)
-    await page.mouse.click(cursorX, cursorY, { button: 'right' })
+    const clickPosition = {
+      x: Math.min((cellBox?.width || 0) / 2, 120),
+      y: Math.min((cellBox?.height || 0) / 2, 20),
+    }
+    await vendorCell.click({ button: 'right', position: clickPosition })
+    const clickedCellBox = await vendorCell.boundingBox()
+    const cursorX = (clickedCellBox?.x || 0) + clickPosition.x
+    const cursorY = (clickedCellBox?.y || 0) + clickPosition.y
 
     const contextMenu = getVisibleRowActionMenu(page)
     await expect(contextMenu).toBeVisible()

@@ -135,11 +135,11 @@ test.describe('Network workflows', () => {
 
     const deactBtn = bulkMenu.getByText('De-activate Selection').first()
     await expect(deactBtn).toBeVisible({ timeout: 5000 })
-    await deactBtn.click({ force: true })
+    await deactBtn.click()
 
     const confirmBtn = page.getByRole('button', { name: 'Confirm De-activation?' }).first()
     await expect(confirmBtn).toBeVisible({ timeout: 5000 })
-    await confirmBtn.click({ force: true })
+    await confirmBtn.click()
     await expect(page.locator('[role="treegrid"]')).not.toContainText(farm, { timeout: 30000 })
   })
 
@@ -225,7 +225,8 @@ test.describe('Network workflows', () => {
     await expect(page.getByRole('heading', { name: expectedTitle })).toBeVisible()
     
     // Close the detail modal via footer close button inside the modal dialog
-    await page.locator('[role="dialog"] button:has-text("Close")').last().click()
+    const forensicsDialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Connection Forensics' }) })
+    await forensicsDialog.getByRole('button', { name: 'Close', exact: true }).filter({ hasText: 'Close' }).click()
     await expect(page.getByRole('heading', { name: 'Connection Forensics' })).not.toBeVisible()
 
     // 2. Load the network grid
@@ -302,8 +303,9 @@ test.describe('Network workflows', () => {
 
     // 9. Prove Grouped grid renders and grouped selection works
     // Change Group By in Display menu to "Status"
-    await page.getByRole('button', { name: 'Raw Rows' }).click()
-    await page.getByRole('button', { name: 'Status', exact: true }).click()
+    await displayMenu.getByRole('button', { name: 'Raw Rows' }).click()
+    const groupOptionsPanel = page.locator('[data-workspace-panel="true"]').filter({ has: page.getByPlaceholder('Search options...') })
+    await groupOptionsPanel.getByRole('button', { name: 'Status', exact: true }).click()
     
     // Toggle the display menu closed
     await displayTrigger.click()
@@ -322,7 +324,8 @@ test.describe('Network workflows', () => {
     await expect(activeSection.getByText('1 connections · 1 selected')).toBeVisible()
 
     // Cancel grouping
-    await page.getByRole('button', { name: 'Cancel' }).click()
+    const groupedHeader = page.getByText('Grouped network matrix', { exact: true }).locator('..').locator('..')
+    await groupedHeader.getByRole('button', { name: 'Cancel' }).click()
     await expect(page.getByText('Grouped network matrix')).not.toBeVisible()
 
     // Wait until raw rows are fully rendered and visible again
@@ -748,8 +751,8 @@ test.describe('Network workflows', () => {
     await rowInCenter.locator('.ag-cell').first().click()
     await expect(rowInCenter).toHaveClass(/ag-row-selected/)
     
-    await page.getByRole('button', { name: 'Bulk Actions' }).click()
-    await page.getByText('Bulk Edit Table').click()
+    await clickResilientButton(page, 'Bulk Actions')
+    await page.locator('.bulk-menu-container').getByText('Bulk Edit Table', { exact: true }).click()
 
     const bulkModal = page.locator('[role="dialog"]').filter({ hasText: 'Bulk Edit Network' })
     await expect(bulkModal).toBeVisible({ timeout: 5000 })
@@ -763,8 +766,8 @@ test.describe('Network workflows', () => {
     await expect(bulkModal).not.toBeVisible()
 
     // Open again to test dirty confirmations
-    await page.getByRole('button', { name: 'Bulk Actions' }).click()
-    await page.getByText('Bulk Edit Table').click()
+    await clickResilientButton(page, 'Bulk Actions')
+    await page.locator('.bulk-menu-container').getByText('Bulk Edit Table', { exact: true }).click()
     await expect(bulkModal).toBeVisible({ timeout: 5000 })
 
     // Make an edit to make it dirty
@@ -773,7 +776,7 @@ test.describe('Network workflows', () => {
     const confirmDialog = page.locator('.absolute.inset-0').filter({ hasText: 'Discard Bulk Edits?' })
 
     // Route A: Backdrop/Overlay Click dirty safety trigger
-    await page.locator('[role="dialog"]').first().click({ position: { x: 5, y: 5 } })
+    await bulkModal.click({ position: { x: 5, y: 5 } })
     await expect(confirmDialog).toBeVisible({ timeout: 5000 })
     // Click Close inside safety popup to return to editing
     await confirmDialog.getByRole('button', { name: 'Close', exact: true }).click()
@@ -803,26 +806,27 @@ test.describe('Network workflows', () => {
     )
 
     // Open bulk actions menu
-    await page.getByRole('button', { name: 'Bulk Actions' }).click()
+    await clickResilientButton(page, 'Bulk Actions')
     const bulkMenuForDelete = page.locator('.bulk-menu-container')
     await expect(bulkMenuForDelete).toBeVisible({ timeout: 5000 })
 
-    await bulkMenuForDelete.getByText('De-activate Selection').first().click({ force: true })
+    await bulkMenuForDelete.getByText('De-activate Selection', { exact: true }).click()
     const confirmDeactBtn = page.getByRole('button', { name: 'Confirm De-activation?' }).first()
     await expect(confirmDeactBtn).toBeVisible({ timeout: 5000 })
-    await confirmDeactBtn.click({ force: true })
+    await confirmDeactBtn.click()
 
     await deleteResponsePromise
     
     // Switch to Deleted tab dynamically by waiting for row count in Active grid viewport to settle at 0
     await expect(page.locator('.ag-center-cols-container .ag-row')).toHaveCount(0, { timeout: 10000 })
-    await page.getByRole('button', { name: 'Deleted', exact: true }).click()
+    await clickResilientButton(page, 'Deleted')
     await expect(page.locator('.ag-center-cols-container .ag-row')).toHaveCount(1, { timeout: 10000 })
 
     // Try to purge connection via context menu
     const deletedCell = page.locator('.ag-center-cols-container .ag-row').nth(0).locator('.ag-cell').nth(0)
     await deletedCell.click({ button: 'right' })
-    await page.locator('div.row-action-menu-container').getByText('Purge').click()
+    const deletedRowMenu = page.locator('div.row-action-menu-container')
+    await deletedRowMenu.getByText('Purge', { exact: true }).click()
 
     // Verify ConfirmationModal warning appears
     const purgeConfirmModal = page.locator('[role="dialog"]').filter({ hasText: 'Confirm Permanent Purge?' })
@@ -836,7 +840,7 @@ test.describe('Network workflows', () => {
 
     // Trigger purge again and confirm
     await deletedCell.click({ button: 'right' })
-    await page.locator('div.row-action-menu-container').getByText('Purge').click()
+    await deletedRowMenu.getByText('Purge', { exact: true }).click()
     await expect(purgeConfirmModal).toBeVisible({ timeout: 5000 })
     await purgeConfirmModal.getByRole('button', { name: 'Confirm Action', exact: true }).click()
 

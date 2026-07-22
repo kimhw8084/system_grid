@@ -12,6 +12,10 @@ import { OPERATIONAL_WORKSPACE_VISUALS } from './OperationalWorkspace'
 import { ToolbarButton } from './LayoutPrimitives'
 import { useOperationalDirtyGuard } from './OperationalWorkspaceHooks'
 
+export const WORKSPACE_MODAL_LAYER_CLASS = 'z-[3500]'
+export const WORKSPACE_MODAL_CONFIRM_LAYER_CLASS = 'z-[3600]'
+export const WORKSPACE_NESTED_MODAL_LAYER_CLASS = 'z-[3700]'
+
 interface WorkspaceModalProps {
   isOpen: boolean
   onClose: () => void
@@ -102,7 +106,7 @@ export function WorkspaceModal({
   const modal = (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-[3500] flex items-center justify-center bg-[#020617]/80 p-4 backdrop-blur-sm sm:p-6 lg:p-8"
+        className={`fixed inset-0 ${WORKSPACE_MODAL_LAYER_CLASS} flex items-center justify-center bg-[#020617]/80 p-4 backdrop-blur-sm sm:p-6 lg:p-8`}
         role="dialog"
         aria-modal="true"
         onMouseDown={(event) => {
@@ -175,7 +179,7 @@ export function WorkspaceModal({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 z-[3600] flex items-center justify-center bg-[#020617]/82 p-4 backdrop-blur-sm"
+              className={`absolute inset-0 ${WORKSPACE_MODAL_CONFIRM_LAYER_CLASS} flex items-center justify-center bg-[#020617]/82 p-4 backdrop-blur-sm`}
             >
               <motion.div
                 initial={{ opacity: 0, scale: 0.96, y: 12 }}
