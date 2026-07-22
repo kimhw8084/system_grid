@@ -8,7 +8,7 @@ IFS=$'\n\t'
 #   ./scripts/ship-ai-review.sh "commit message" [changed|quick|daily|fresh|audit|full]
 #
 # Package the current commit without creating or pushing a new commit:
-#   ./scripts/ship-ai-review.sh --no-commit --no-push --mode audit --checks smart
+#   ./scripts/ship-ai-review.sh --no-commit --no-push
 #
 # Explicit multi-commit review range:
 #   ./scripts/ship-ai-review.sh --no-commit --base <PRE_RUN_COMMIT> --head HEAD --mode audit
@@ -17,9 +17,9 @@ IFS=$'\n\t'
 #   ../sysgrid-ai-review-capsule.zip
 
 PROGRAM="$(basename "$0")"
-SCRIPT_VERSION="2026.07.21.5"
+SCRIPT_VERSION="2026.07.21.7-fast"
 DEFAULT_MODE="full"
-DEFAULT_CHECKS="full"
+DEFAULT_CHECKS="none"
 DEFAULT_OUTPUT_NAME="sysgrid-ai-review-capsule.zip"
 
 usage() {
@@ -29,10 +29,10 @@ Usage:
 
 Backward-compatible examples:
   ./scripts/ship-ai-review.sh "OUT-22 Iteration 04: harden production guards"
-  # The one-argument form commits, pushes, runs full bounded checks, and builds the full capsule.
+  # The one-argument form commits, pushes, skips duplicate test execution, and builds the full capsule.
 
 Package the current commit without a new commit:
-  ./scripts/ship-ai-review.sh --no-commit --no-push --mode audit --checks smart
+  ./scripts/ship-ai-review.sh --no-commit --no-push
 
 Package an explicit run range:
   ./scripts/ship-ai-review.sh --no-commit --base <PRE_RUN_COMMIT> --head HEAD --mode audit
@@ -42,16 +42,16 @@ Modes:
   quick    Small same-chat review with shallow context.
   daily    Normal after-prompt review capsule.
   fresh    Strong capsule for a brand-new AI review chat.
-  audit    Default. Strict production/regression review package.
+  audit    Strict production/regression review package.
   full     Default. Largest supported non-repository-dump package.
   minimal, standard, deep are accepted compatibility aliases.
 
 Options:
   --message TEXT             Commit message. Required only when dirty changes must be committed.
-  --mode MODE                Capsule mode. Default: audit.
+  --mode MODE                Capsule mode. Default: full.
   --base REF                 Explicit review base. Strongly preferred for multi-commit runs.
   --head REF                 Review head. Default: HEAD after any optional commit.
-  --checks LEVEL             none | smart | full. Default: full.
+  --checks LEVEL             none | smart | full. Default: none (fast handoff).
   --goal TEXT                Goal included in the AI review brief.
   --generator PATH           Capsule generator. Default: scripts/create-ai-review-capsule.cjs.
   --output PATH              Final zip destination.
@@ -62,8 +62,8 @@ Options:
   --allow-empty              Permit an empty base..head range. Not recommended.
   --strict-checks            Exit nonzero after packaging when any captured check failed.
   --keep-evidence            Keep generated COMMAND_OUTPUTS/_SHIP_AI_REVIEW after packaging.
-  --check-timeout-min N      Per-command timeout. Default: 8.
-  --total-check-min N        Total smart/full check budget. Default: 25.
+  --check-timeout-min N      Per-command timeout when checks are explicit. Default: 12.
+  --total-check-min N        Total smart/full check budget. Default: 45.
   --max-smart-checks N       Maximum smart checks. Default: 6.
   --quiet-checks              Capture check output without streaming it live.
   --debug                     Enable shell tracing with file and line numbers.
@@ -86,7 +86,8 @@ Safety:
   - In --no-commit mode, permits only the wrapper/generator/exclusion-policy edits needed to run the review.
   - Refuses base == head and empty diffs unless --allow-empty is explicit.
   - Captures Git provenance, commit series, patch data, repository inventory, environment versions,
-    dependency manifests, generated command outputs, and a production-review brief.
+    dependency manifests, existing command outputs, and a production-review brief.
+  - Does not rerun tests by default; --checks smart/full is an explicit diagnostic mode.
   - Verifies zip integrity, unsafe paths, range evidence, diff evidence, and command evidence.
 USAGE
 }
@@ -369,6 +370,7 @@ SAFE_DIR_NAMES = {
     "test-results", ".ai-review-latest", ".next", ".cache", ".turbo"
 }
 SAFE_EXTENSIONS = {".pyc", ".pyo"}
+SAFE_EVIDENCE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 
 def status_entries():
     raw = subprocess.check_output(
@@ -393,10 +395,15 @@ def status_entries():
 def is_safe(path):
     p = pathlib.PurePosixPath(path.replace("\\", "/"))
     parts = set(p.parts)
+    in_generated_evidence_dir = any(
+        part.endswith("-evidence") or part.startswith("stage") and part.endswith("evidence")
+        for part in p.parts[:-1]
+    )
     return (
         p.name in SAFE_FILE_NAMES
         or bool(parts & SAFE_DIR_NAMES)
         or p.suffix.lower() in SAFE_EXTENSIONS
+        or (in_generated_evidence_dir and p.suffix.lower() in SAFE_EVIDENCE_EXTENSIONS)
     )
 
 removed = []
