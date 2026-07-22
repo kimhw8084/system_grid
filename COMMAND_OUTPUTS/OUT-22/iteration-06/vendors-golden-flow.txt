@@ -1,0 +1,8 @@
+UTC timestamp: 2026-07-22T15:31:56Z
+Exact command: rtk npx playwright test tests/vendor-workflows.spec.ts
+True exit code: 0
+Test count: 1 passed
+Raw output:
+PASS (1) FAIL (0)
+
+Time: 4624ms

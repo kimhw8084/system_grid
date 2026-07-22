@@ -734,9 +734,13 @@ export default function VendorsReal() {
   }, [showBulkMenu, showDisplayMenu, showViewsMenu])
 
   // --- DATA QUERIES ---
-  const { data: allVendors, isLoading } = useQuery({
+  const { data: allVendors, isLoading, isFetching, isError, error: vendorsError, refetch: refetchVendors } = useQuery({
     queryKey: ['vendors'],
-    queryFn: async () => (await apiFetch('/api/v1/vendors/')).json()
+    queryFn: async () => {
+      const response = await apiFetch('/api/v1/vendors/')
+      if (!response.ok) throw new Error(await response.text())
+      return response.json()
+    }
   })
   const { data: devices } = useQuery({
     queryKey: ['devices'],
@@ -1039,6 +1043,7 @@ export default function VendorsReal() {
   // ===========================================================================
   return (
     <OperationalWorkspaceFrame
+      workspace="vendors"
       header={{
         eyebrow: 'Resources',
         title: (
@@ -1075,6 +1080,7 @@ export default function VendorsReal() {
               </div>
               <ToolbarIconButton onClick={handleExportCSV} title="Export CSV"><FileText size={16} /></ToolbarIconButton>
               <ToolbarIconButton onClick={handleCopyToClipboard} title="Copy to clipboard"><Clipboard size={16} /></ToolbarIconButton>
+              <ToolbarIconButton onClick={() => { void refetchVendors() }} title="Refresh vendor registry" disabled={isFetching}><RefreshCcw size={16} className={isFetching ? 'animate-spin' : ''} /></ToolbarIconButton>
               <ToolbarIconButton onClick={() => setShowRegistry(true)} title="Registry configuration"><Settings size={16} /></ToolbarIconButton>
             </ToolbarGroup>
             <ToolbarGroup>
@@ -1216,7 +1222,16 @@ export default function VendorsReal() {
         document.body
       )}
 
-      {groupBy === 'raw' ? (
+      {isError ? (
+        <OperationalGridSurface className="vendor-grid-shell vendor-grid">
+          <WorkspaceEmptyState
+            icon={<AlertCircle size={28} />}
+            title="Vendor registry unavailable"
+            description={vendorsError instanceof Error ? vendorsError.message : 'Unable to load vendor records. Retry when the service is available.'}
+            action={<ToolbarButton variant="primary" onClick={() => { void refetchVendors() }}>Retry</ToolbarButton>}
+          />
+        </OperationalGridSurface>
+      ) : groupBy === 'raw' ? (
         <OperationalGridSurface
           className="vendor-grid-shell vendor-grid"
           style={{ '--ag-font-size': `${fontSize}px`, '--ag-font-family': "'Inter', sans-serif" } as React.CSSProperties}
@@ -1249,7 +1264,7 @@ export default function VendorsReal() {
             getRowClass={getRowClass}
             onFirstDataRendered={handleGridDataUpdated}
             onRowDataUpdated={handleGridDataUpdated}
-            noRowsLabel="No vendor records found"
+            noRowsLabel={items.length === 0 ? 'No vendor records found' : 'No vendors match current filters'}
           />
         </OperationalGridSurface>
       ) : (

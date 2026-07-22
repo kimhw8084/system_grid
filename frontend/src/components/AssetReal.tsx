@@ -708,6 +708,8 @@ export default function AssetReal() {
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'link_type' | 'direction' | null>(null)
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
   const [pendingIds, setPendingIds] = useState<number[]>([])
+  const [revertOperation, setRevertOperation] = useState<{ ids: number[], action: 'restore' | 'delete' } | null>(null)
+  const [isReverting, setIsReverting] = useState(false)
   const selectionAnchorRef = useRef<number | null>(null)
   const displayMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const viewsMenuButtonRef = useRef<HTMLButtonElement | null>(null)
@@ -1430,6 +1432,11 @@ export default function AssetReal() {
       .filter((item: any) => activeTab === 'active' ? !item.is_deleted : item.is_deleted)
   }, [allItems, activeTab])
 
+  const canRevert = Boolean(revertOperation && revertOperation.ids.length > 0 && revertOperation.ids.every((id) => {
+    const item = allItems?.find((candidate: any) => candidate.id === id)
+    return selectedIds.includes(id) && (revertOperation.action === 'restore' ? Boolean(item?.is_deleted) : !item?.is_deleted)
+  }))
+
   const platformOptions = useMemo(() => {
     const values = Array.from(new Set((items || []).map((item: any) => item.system).filter(Boolean)))
     return values.sort().map((value) => ({ value, label: value }))
@@ -1728,6 +1735,19 @@ export default function AssetReal() {
     queryClient.invalidateQueries({ queryKey: ['asset-real-devices'] })
   }
 
+  const executeRevert = async () => {
+    setIsReverting(true)
+    try {
+      await runUndo()
+      setRevertOperation(null)
+      showWorkspaceToast('Reverted asset operation', { type: 'success' })
+    } catch (error: any) {
+      showWorkspaceToast(error.message || 'Undo failed', { type: 'error' })
+    } finally {
+      setIsReverting(false)
+    }
+  }
+
   const resolveEligibleBulkIds = (action: string, requestedIds: number[]) => {
     const requested = new Set(requestedIds)
     return (allItems || [])
@@ -1803,16 +1823,12 @@ export default function AssetReal() {
       if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
       else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
       else lastUndoRef.current = null
+      setRevertOperation(lastUndoRef.current ? { ids: [...lastUndoRef.current.ids], action: lastUndoRef.current.action } : null)
 
       if (lastUndoRef.current) {
         showWorkspaceToast(result?.summary || 'Updated assets', {
           onRevert: async () => {
-            try {
-              await runUndo()
-              showWorkspaceToast('Reverted asset operation', { type: 'success' })
-            } catch (error: any) {
-              showWorkspaceToast(error.message || 'Undo failed', { type: 'error' })
-            }
+            await executeRevert()
           }
         })
       } else {
@@ -2422,6 +2438,16 @@ export default function AssetReal() {
         ) : null,
         right: (
 	          <>
+              <ToolbarButton
+                onClick={() => openConfirm('Revert asset operation', `Revert the last operation for ${revertOperation?.ids.length || 0} selected asset(s)?`, () => { void executeRevert() }, 'warning')}
+                disabled={!canRevert || isReverting}
+                title={canRevert ? 'Revert the last operation for the current selection' : 'Revert is available only for the unchanged selected assets from the last lifecycle operation'}
+              >
+                <span className="flex items-center gap-2">
+                  <Undo2 size={14} className={isReverting ? 'animate-spin' : ''} />
+                  Revert
+                </span>
+              </ToolbarButton>
               {MONITORING_SUPPORTS_COMPARE && (
                 <ToolbarButton
                   onClick={openCompare}

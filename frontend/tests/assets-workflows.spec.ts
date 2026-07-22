@@ -43,7 +43,6 @@ test.describe('Assets workflows', () => {
 
     // Toggle back to collapsed state
     await toggleIntelligenceButton.click()
-    await page.waitForTimeout(500)
     await expect(toggleIntelligenceButton).not.toHaveClass(/text-blue-400/)
 
     const assetRowActions = page.getByTitle('More actions')
@@ -105,8 +104,8 @@ test.describe('Assets workflows', () => {
 
     const primaryCompareRow = await getWorkspaceLogicalRowByText(page, 'assets', primary.name)
     const secondaryCompareRow = await getWorkspaceLogicalRowByText(page, 'assets', secondary.name)
-    await primaryCompareRow.pinned!.locator('.ag-cell[col-id="name"]').click()
-    await secondaryCompareRow.pinned!.locator('.ag-cell[col-id="name"]').click({ modifiers: [multiSelectModifier] })
+    await (await primaryCompareRow.cell('name')).click()
+    await (await secondaryCompareRow.cell('name')).click({ modifiers: [multiSelectModifier] })
     await expect(primaryCompareRow.center!).toHaveClass(/ag-row-selected/)
     await expect(secondaryCompareRow.center!).toHaveClass(/ag-row-selected/)
     // Target B.2: Name/Instance click no-panel behavior proof
@@ -129,8 +128,8 @@ test.describe('Assets workflows', () => {
     // Select the intended assets by row identity, not by viewport order.
     const primaryBulkRow = await getWorkspaceLogicalRowByText(page, 'assets', primary.name)
     const secondaryBulkRow = await getWorkspaceLogicalRowByText(page, 'assets', secondary.name)
-    await primaryBulkRow.pinned!.locator('.ag-cell[col-id="name"]').click()
-    await secondaryBulkRow.pinned!.locator('.ag-cell[col-id="name"]').click({ modifiers: [multiSelectModifier] })
+    await (await primaryBulkRow.cell('name')).click()
+    await (await secondaryBulkRow.cell('name')).click({ modifiers: [multiSelectModifier] })
     await expect(primaryBulkRow.center!).toHaveClass(/ag-row-selected/)
     await expect(secondaryBulkRow.center!).toHaveClass(/ag-row-selected/)
 
@@ -225,31 +224,38 @@ test.describe('Assets workflows', () => {
 
     // Settle layout before action click
 
-    // E2E Verification of Soft-Delete and Scope-Switch lifecycle
-    await page.getByTitle('More actions').filter({ visible: true }).click()
+    // E2E Verification of Soft-Delete and Scope-Switch lifecycle by semantic row identity.
+    const secondaryLifecycleRow = await getWorkspaceLogicalRowByText(page, 'assets', secondary.name)
+    await secondaryLifecycleRow.action('More actions').click()
     const archiveRowAction = page.getByRole('button', { name: 'Archive', exact: true })
     await archiveRowAction.click()
 
+    const deleteRequestPromise = page.waitForRequest(request => request.url().includes('/api/v1/devices/bulk-action'))
     const deleteResponsePromise = page.waitForResponse(response =>
       response.url().includes('/api/v1/devices/bulk-action') && response.status() === 200
     )
     const confirmArchiveAction = page.getByRole('button', { name: 'Confirm Archive?', exact: true })
     await confirmArchiveAction.click()
+    const deleteRequest = await deleteRequestPromise
     await deleteResponsePromise
+    expect(deleteRequest.postDataJSON()).toMatchObject({ ids: [secondary.id], action: 'delete' })
 
-    // The accepted lifecycle contract exposes a confirmed Revert for exactly the archived row.
+    // The golden toolbar action is visible only after a selected lifecycle operation.
     const revertAction = page.getByRole('button', { name: 'Revert', exact: true })
     await expect(revertAction).toBeVisible()
+    await expect(revertAction).toBeEnabled()
     await revertAction.click()
+    const revertConfirm = page.getByRole('dialog').filter({ has: page.getByText('Revert asset operation', { exact: true }) })
+    await expect(revertConfirm).toBeVisible()
     const restoreResponsePromise = page.waitForResponse(response =>
       response.url().includes('/api/v1/devices/bulk-action') && response.status() === 200
     )
-    await page.getByRole('button', { name: 'Confirm Undo?', exact: true }).click()
+    await revertConfirm.getByRole('button', { name: 'Confirm Action', exact: true }).click()
     await restoreResponsePromise
-    await expect(page.locator('.ag-row-selected')).not.toHaveCount(0)
+    await expect((await getWorkspaceLogicalRowByText(page, 'assets', secondary.name)).center!).toHaveClass(/ag-row-selected/)
 
     // Archive again so the existing purged-scope proof continues with the same row identity.
-    await page.getByTitle('More actions').filter({ visible: true }).click()
+    await (await getWorkspaceLogicalRowByText(page, 'assets', secondary.name)).action('More actions').click()
     await page.getByRole('button', { name: 'Archive', exact: true }).click()
     const secondDeleteResponsePromise = page.waitForResponse(response =>
       response.url().includes('/api/v1/devices/bulk-action') && response.status() === 200

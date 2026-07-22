@@ -1,0 +1,10 @@
+UTC timestamp: 2026-07-22T15:32:34Z
+Exact command: rtk proxy npx playwright test tests/assets-workflows.spec.ts
+True exit code: 0
+Test count: 1 test launched
+Raw output:
+(node:95314) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+
+Running 1 test using 1 worker
+
+SEED: Created monitoring item "PW-MON-1784734322841-s73eka" (ID: 1177)

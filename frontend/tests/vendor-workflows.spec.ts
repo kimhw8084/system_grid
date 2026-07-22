@@ -1,4 +1,4 @@
-import { clickResilientButton } from './helpers/sysgrid';
+import { clickResilientButton, getWorkspaceLogicalRowByText } from './helpers/sysgrid';
 import { expect } from '@playwright/test';
 import { test } from './helpers/sysgrid-test';
 import { resetBrowserState } from './helpers/sysgrid'
@@ -30,7 +30,7 @@ test.describe('Vendor workflows', () => {
     const vendorNameCell = page.locator('.ag-pinned-left-cols-container .ag-cell[col-id="name"]', { hasText: vendorName })
     await vendorNameCell.click()
     await expect(page.getByRole('button', { name: 'Bulk Actions', exact: true })).toBeEnabled()
-    await page.locator('.ag-pinned-right-cols-container').getByTitle('Open details').first().click()
+    await (await getWorkspaceLogicalRowByText(page, 'vendors', vendorName)).action('Open details').click()
     const detailsPanel = page.getByRole('dialog').filter({ hasText: vendorName })
     await expect(detailsPanel).toBeVisible()
 

@@ -3,11 +3,12 @@ import { expect, type APIRequestContext, type Locator, type Page } from '@playwr
 const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
 const apiOrigin = apiBase.replace(/\/api\/v1$/, '')
 const testUserId = process.env.USER_ID || 'haewon.kim'
-export type WorkspaceId = 'monitoring' | 'network' | 'assets'
+export type WorkspaceId = 'monitoring' | 'network' | 'assets' | 'vendors'
 export type LogicalGridRow = {
   rowKey: string
   pinned: Locator | null
   center: Locator | null
+  cell: (columnId: string) => Promise<Locator>
   action: (name: string | RegExp) => Locator
 }
 
@@ -882,10 +883,22 @@ export async function getWorkspaceLogicalRowByText(page: Page, workspace: Worksp
     return rowAction.describe(`${workspace} logical row ${rowIdentity.selector}=${rowIdentity.value} action ${String(name)}`)
   }
 
+  const cell = async (columnId: string) => {
+    const fragments = [pinned, center, actions].filter((fragment): fragment is Locator => fragment !== null)
+    const candidates = fragments.map((fragment) => fragment.locator(`.ag-cell[col-id="${columnId}"]`))
+    const counts = await Promise.all(candidates.map((candidate) => candidate.count()))
+    const total = counts.reduce((sum, count) => sum + count, 0)
+    if (total !== 1) {
+      throw new Error(`Expected exactly one ${workspace} logical row ${rowIdentity.selector}=${rowIdentity.value} cell for col-id="${columnId}" across pinned, center, and action fragments; found ${total}.`)
+    }
+    return candidates[counts.findIndex((count) => count === 1)]
+  }
+
   return {
     rowKey: rowIdentity.value,
     pinned,
     center,
+    cell,
     action,
   }
 }
