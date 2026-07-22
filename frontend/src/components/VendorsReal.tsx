@@ -97,7 +97,7 @@ const VENDOR_PERSISTED_COLUMN_IDS = new Set([
   'personnel_count', 'created_at', 'updated_at', 'row_actions',
 ])
 const VENDOR_VALID_GROUP_BY = new Set(['raw', 'country'])
-// 
+//
 
 // ---------------------------------------------------------------------------
 // Helper utilities

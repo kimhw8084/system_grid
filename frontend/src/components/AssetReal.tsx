@@ -8,7 +8,7 @@ import { sql } from '@codemirror/lang-sql'
 import { javascript } from '@codemirror/lang-javascript'
 import {
   Activity, Plus, Search, Filter, ExternalLink,
-  Trash2, Edit2, Shield, Cpu, Database, Network, 
+  Trash2, Edit2, Shield, Cpu, Database, Network,
   Globe, Bell, Info, ChevronRight, X, Check, Save,
   AlertCircle, Clock, Zap, Settings, ArrowRightLeft, Briefcase, UserCheck, Code,
   BookOpen, Eye, EyeOff, FileText, User, Users, Mail, MessageSquare, Monitor, MoreVertical,
@@ -373,7 +373,7 @@ const getAnchoredFloatingStyle = ({
 }) => {
   const vW = window.innerWidth
   const vH = window.innerHeight
-  
+
   // Pivot logic: align right edge of menu to right edge of trigger
   let left = rect.right - width
   let top = rect.bottom + offset
@@ -381,7 +381,7 @@ const getAnchoredFloatingStyle = ({
   // Viewport containment and flipping
   if (left < FLOATING_PANEL_EDGE) left = rect.left
   if (top + height > vH - FLOATING_PANEL_EDGE) top = rect.top - height - offset
-  
+
   left = Math.max(FLOATING_PANEL_EDGE, Math.min(left, vW - width - FLOATING_PANEL_EDGE))
   top = Math.max(FLOATING_PANEL_EDGE, Math.min(top, vH - height - FLOATING_PANEL_EDGE))
 
@@ -477,8 +477,8 @@ const sanitizeMonitoringPayload = (item: any) => {
   if (Array.isArray(next.recovery_docs)) {
     next.recovery_docs = next.recovery_docs.map((d: any) => {
       if (typeof d === 'number') return { id: d }
-      return { 
-        id: Number(d.id), 
+      return {
+        id: Number(d.id),
         note: d.note || '',
         added_at: d.added_at || null
       }
@@ -662,7 +662,7 @@ export default function AssetReal() {
     }
   }, [hasStoredFavoriteIds, hasStoredWatchIds, localWorkspaceState, remoteWorkspaceState])
   const persistedUiState = initialWorkspaceState?.uiState ?? null
-  
+
   // --- STYLE LABORATORY STATE ---
   const [fontSize, setFontSize] = useState(persistedUiState?.fontSize ?? 11)
   const [rowDensity, setRowDensity] = useState(persistedUiState?.rowDensity ?? 8)
@@ -684,7 +684,7 @@ export default function AssetReal() {
   const [activeBkm, setActiveBkm] = useState<any>(null)
   const [compareOpen, setCompareOpen] = useState(false)
   const [showBulkEditModal, setShowBulkEditModal] = useState(false)
-  
+
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
   const [isBulkStatusOpen, setIsBulkStatusOpen] = useState(false)
@@ -881,9 +881,9 @@ export default function AssetReal() {
   const handleSelectionChanged = useCallback((e: any, groupKey: string = 'raw') => {
     const selectedNodes = e?.api?.getSelectedNodes?.() || []
     const ids = selectedNodes.map((n: any) => n.data?.id).filter(Boolean)
-    
+
     groupSelectionsRef.current[groupKey] = ids
-    
+
     // Aggregate all selections from all groups
     const allSelected = Array.from(new Set(Object.values(groupSelectionsRef.current).flat()))
     setSelectedIds(allSelected)
@@ -913,7 +913,7 @@ export default function AssetReal() {
 
     handleColumnResized(event)
   }, [clearPendingAutoSize, handleColumnResized, setTransientManualColumnWidths])
-  
+
   const handleSortChanged = useCallback((e: any) => {
     const nextSortModel = e.api.getColumnState().filter((col: any) => col.sort).map((col: any) => ({ colId: col.colId, sort: col.sort }))
     setGridSortModel(nextSortModel)
@@ -995,9 +995,9 @@ export default function AssetReal() {
     return classes
   }, [pendingIds])
 
-  const { data: settingsOptions } = useQuery({ 
-    queryKey: ['settings-options'], 
-    queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json()) 
+  const { data: settingsOptions } = useQuery({
+    queryKey: ['settings-options'],
+    queryFn: async () => (await (await apiFetch('/api/v1/settings/options')).json())
   })
   const { data: operators } = useQuery({
     queryKey: ['operators'],
@@ -1490,7 +1490,7 @@ export default function AssetReal() {
           .filter(Boolean)
           .join(' ')
           .toLowerCase()
-        
+
         if (!haystack.includes(query)) return false
       }
       if (quickFilters.status.length > 0 && !quickFilters.status.includes(item.status)) return false
@@ -1507,7 +1507,7 @@ export default function AssetReal() {
       const aFavorite = favoriteIds.includes(a.id) ? 1 : 0
       const bFavorite = favoriteIds.includes(b.id) ? 1 : 0
       if (aFavorite !== bFavorite) return bFavorite - aFavorite
-      
+
       // If no favorite difference, check grid sort model
       if (gridSortModel.length) {
         for (const sort of gridSortModel) {
@@ -1821,7 +1821,7 @@ export default function AssetReal() {
       setIsBulkStatusOpen(false)
       setIsBulkSeverityOpen(false)
       setIsBulkNotifyOpen(false)
-      
+
       const changedCount = Number(result?.changed ?? idsToUse.length)
       if (changedCount <= 0) {
         lastUndoRef.current = null
@@ -1868,7 +1868,7 @@ export default function AssetReal() {
         initialFlex: undefined,
       }
     }
-    
+
     const renderText = (value: any, className = '') => (
       <span
         title={value == null ? '' : String(value)}
@@ -2280,7 +2280,7 @@ export default function AssetReal() {
         lockVisible: true,
       },
     ]
-  
+
   // Inject saved layout state (widths, pinned, sort) into definitions before first render
   const mergedDefs = defs.map((col: any) => {
     if (col.children) {
@@ -2661,15 +2661,15 @@ export default function AssetReal() {
                     onMouseLeave={() => setBulkDeleteConfirm(false)}
                     disabled={bulkMutation.isPending}
                     className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
-                      bulkDeleteConfirm 
-                        ? 'border-rose-500 bg-rose-600 animate-pulse' 
+                      bulkDeleteConfirm
+                        ? 'border-rose-500 bg-rose-600 animate-pulse'
                         : 'border-rose-900/70 bg-rose-950/70 hover:bg-rose-950'
                     } disabled:opacity-50`}
                   >
                     <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
                       {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
-                        bulkDeleteConfirm 
-                          ? (activeTab === 'deleted' ? 'Confirm Permanent Purge?' : 'Confirm Archive?') 
+                        bulkDeleteConfirm
+                          ? (activeTab === 'deleted' ? 'Confirm Permanent Purge?' : 'Confirm Archive?')
                           : (activeTab === 'deleted' ? OPERATIONAL_ACTION_LABELS.purge : 'Archive Selection')
                       )}
                     </p>
@@ -2779,7 +2779,7 @@ export default function AssetReal() {
       {groupBy === 'raw' ? (
 	        <OperationalGridSurface
             className="monitoring-grid-shell monitoring-grid"
-            style={{ 
+            style={{
               '--ag-font-size': `${fontSize}px`,
               '--ag-font-family': "'Inter', sans-serif",
             } as React.CSSProperties}
@@ -2789,8 +2789,8 @@ export default function AssetReal() {
           >
 	          <OperationalGridMatrix
             gridRef={gridRef}
-	            rowData={displayedItemsInOrder || []} 
-	            columnDefs={columnDefs} 
+	            rowData={displayedItemsInOrder || []}
+	            columnDefs={columnDefs}
             autoSizeStrategy={autoSizeStrategy}
             colResizeDefault="normal"
             fontSize={fontSize}
@@ -2824,20 +2824,20 @@ export default function AssetReal() {
               <p className="pt-1 text-[12px] font-semibold text-slate-100">Sorted by {groupOptions.find((option) => option.value === groupBy)?.label || groupBy}</p>
             </div>
             <div className="flex items-center gap-3">
-               <button 
+               <button
                  onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: false }), {}))}
                  className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
                >
                  Expand All
                </button>
-               <button 
+               <button
                  onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: true }), {}))}
                  className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
                >
                  Collapse All
                </button>
                <div className="w-px h-6 bg-white/10 mx-1" />
-               <button 
+               <button
                  onClick={() => setGroupBy('raw')}
                  className="px-3 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-[9px] font-semibold text-rose-400 hover:bg-rose-500/20 transition-all flex items-center gap-2"
                >
@@ -2871,15 +2871,15 @@ export default function AssetReal() {
                 {!isCollapsed && (
                   <OperationalGridSurface
                     className="monitoring-grid-shell monitoring-grid w-full"
-                    style={{ 
+                    style={{
                       '--ag-font-size': `${fontSize}px`,
                       '--ag-font-family': "'Inter', sans-serif",
                       height: `${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px`
                     } as React.CSSProperties}
                   >
                     <OperationalGridMatrix
-                      rowData={section.items} 
-                      columnDefs={columnDefs} 
+                      rowData={section.items}
+                      columnDefs={columnDefs}
                       autoSizeStrategy={autoSizeStrategy}
                       colResizeDefault="normal"
                       fontSize={fontSize}
@@ -2921,7 +2921,7 @@ export default function AssetReal() {
         notificationMethods={notificationMethods}
       />
 
-      <ConfirmationModal 
+      <ConfirmationModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
         onConfirm={() => { confirmModal.onConfirm?.(); setConfirmModal((prev: any) => ({ ...prev, isOpen: false })); }}
@@ -2961,17 +2961,17 @@ export default function AssetReal() {
         {historyItem && <MonitoringHistoryModal key={`monitoring-history-${historyItem.id}`} item={historyItem} onClose={() => setHistoryItem(null)} />}
         {recipientPopup && <RecipientsModal key={`monitoring-recipients-${recipientPopup.method}-${recipientPopup.recipients.join('|')}`} recipients={recipientPopup.recipients} method={recipientPopup.method} onClose={() => setRecipientPopup(null)} />}
         {bkmPopup && (
-          <BkmListModal 
+          <BkmListModal
             key={`monitoring-bkm-list-${bkmPopup.monitorId ?? 'none'}-${bkmPopup.docs.join('-')}`}
-            docs={bkmPopup.docs} 
+            docs={bkmPopup.docs}
             monitorId={bkmPopup.monitorId}
-            onOpenBkm={setActiveBkm} 
+            onOpenBkm={setActiveBkm}
             onOpenKnowledge={(knowledgeId) => {
               setBkmPopup(null)
               setActiveBkm(null)
               navigate(`/knowledge?id=${knowledgeId}`)
             }}
-            onClose={() => setBkmPopup(null)} 
+            onClose={() => setBkmPopup(null)}
           />
         )}
         {activeBkm && <BkmDetailModal key={`monitoring-bkm-detail-${activeBkm}`} bkmId={activeBkm} onClose={() => setActiveBkm(null)} />}
@@ -3093,18 +3093,18 @@ function CompareMonitorsModal({ items, onClose }: any) {
                 </div>
                 <h4 className="text-sm font-black text-white truncate mb-1">{item.title}</h4>
                 <p className="text-[9px] font-bold text-slate-500 tracking-widest truncate">{item.device_name || 'No Target Asset'}</p>
-                
+
                 <div className="mt-6 space-y-2.5">
                   {fields.map(f => {
                     const val = f.getValue(item)
                     const diffSet = diffMap[f.label]
                     const colorIndex = diffSet ? diffSet.indexOf(val) : -1
                     return (
-                      <CompareRow 
-                        key={f.label} 
-                        label={f.label} 
-                        value={val} 
-                        multiline={f.multiline} 
+                      <CompareRow
+                        key={f.label}
+                        label={f.label}
+                        value={val}
+                        multiline={f.multiline}
                         colorIndex={colorIndex}
                       />
                     )
@@ -3121,7 +3121,7 @@ function CompareMonitorsModal({ items, onClose }: any) {
 
 function CompareRow({ label, value, multiline = false, colorIndex = -1 }: { label: string; value: string; multiline?: boolean; colorIndex?: number }) {
   const isDiff = colorIndex !== -1
-  
+
   const diffStyles = [
     { border: 'border-amber-500/30', bg: 'bg-amber-500/5', text: 'text-amber-400', val: 'text-amber-200' },
     { border: 'border-sky-500/30', bg: 'bg-sky-500/5', text: 'text-sky-400', val: 'text-sky-200' },
@@ -3145,7 +3145,7 @@ function CompareRow({ label, value, multiline = false, colorIndex = -1 }: { labe
 
 function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose, onApply, severities, notificationMethods }: any) {
     const [val, setVal] = useState('')
-    
+
     useEffect(() => { setVal(''); }, [isStatusOpen, isSeverityOpen, isNotifyOpen]);
     useEscapeDismiss(onClose)
     useBodyModalFlag()
@@ -3162,9 +3162,9 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
             footerRight={
               <div className="flex items-center gap-3">
                 <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
-                <ToolbarButton 
-                  disabled={!val} 
-                  onClick={() => onApply('status', val)} 
+                <ToolbarButton
+                  disabled={!val}
+                  onClick={() => onApply('status', val)}
                   variant="primary"
                 >
                   Apply Status
@@ -3197,9 +3197,9 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
             footerRight={
               <div className="flex items-center gap-3">
                 <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
-                <ToolbarButton 
-                  disabled={!val} 
-                  onClick={() => onApply('link_type', val)} 
+                <ToolbarButton
+                  disabled={!val}
+                  onClick={() => onApply('link_type', val)}
                   variant="danger"
                 >
                   Apply Type
@@ -3232,9 +3232,9 @@ function BulkActionModals({ isStatusOpen, isSeverityOpen, isNotifyOpen, onClose,
             footerRight={
               <div className="flex items-center gap-3">
                 <ToolbarButton onClick={onClose}>Cancel</ToolbarButton>
-                <ToolbarButton 
-                  disabled={!val} 
-                  onClick={() => onApply('direction', val)} 
+                <ToolbarButton
+                  disabled={!val}
+                  onClick={() => onApply('direction', val)}
                   variant="primary"
                 >
                   Apply Direction
@@ -3327,9 +3327,9 @@ function BulkEditTableModal({ items, teams, operators, linkPurposeOptions, farmO
       footerRight={
         <div className="flex items-center gap-3">
           <ToolbarButton onClick={onClose}>Close</ToolbarButton>
-          <ToolbarButton 
-            onClick={() => mutation.mutate()} 
-            disabled={mutation.isPending} 
+          <ToolbarButton
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending}
             variant="primary"
             className="px-8 whitespace-nowrap"
           >
@@ -3823,8 +3823,8 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
       footerRight={
         <div className="flex items-center gap-3">
             <ToolbarButton onClick={() => onEdit?.(item)}>Edit Connection</ToolbarButton>
-            <ToolbarButton 
-              variant="danger" 
+            <ToolbarButton
+              variant="danger"
               onClick={() => {
                 if (deleteConfirm) {
                   const action = item.is_deleted ? 'Purged' : 'Archived';
@@ -3838,8 +3838,8 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
               }}
               className={deleteConfirm ? 'animate-pulse bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : ''}
             >
-              {deleteConfirm 
-                ? (item.is_deleted ? 'Confirm Purge?' : 'Confirm Archive?') 
+              {deleteConfirm
+                ? (item.is_deleted ? 'Confirm Purge?' : 'Confirm Archive?')
                 : (item.is_deleted ? 'Purge' : 'Archive')}
             </ToolbarButton>
         </div>
@@ -4015,8 +4015,8 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
             footerRight={
                <div className="flex items-center gap-3">
                   <ToolbarButton onClick={() => setInterventionDoc(null)}>Cancel</ToolbarButton>
-                  <ToolbarButton 
-                    variant="primary" 
+                  <ToolbarButton
+                    variant="primary"
                     onClick={() => {
                        const id = interventionDoc.id;
                        setInterventionDoc(null);
@@ -4038,7 +4038,7 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
                       "{interventionDoc.note}"
                    </p>
                 </div>
-                
+
                 <div className="flex items-start gap-4 px-1">
                    <div className="mt-1 p-1.5 bg-blue-500/10 rounded-full text-blue-400"><Info size={12} /></div>
                    <div className="flex-1">
@@ -4594,8 +4594,8 @@ function MonitoringHistoryModal({ item, onClose }: any) {
   }))
 
   const newer = indexedVersions?.[Math.min(...selectedIndices)]
-  const older = selectedIndices.length > 1 
-    ? indexedVersions?.[Math.max(...selectedIndices)] 
+  const older = selectedIndices.length > 1
+    ? indexedVersions?.[Math.max(...selectedIndices)]
     : (selectedIndices[0] + 1 < indexedVersions.length ? indexedVersions[selectedIndices[0] + 1] : null)
 
   const getDiff = (curr: any, prev: any) => {
@@ -4670,12 +4670,12 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                     const isSelected = selectedIndices.includes(idx);
                     const isNewest = idx === Math.min(...selectedIndices);
                     return (
-                      <button 
+                      <button
                         key={h.id}
                         onClick={() => toggleSelection(idx)}
                         className={`w-full p-4 rounded-lg border text-left transition-all relative group overflow-hidden ${
-                          isSelected 
-                            ? isNewest ? 'bg-blue-600/20 border-blue-500/40 shadow-lg shadow-blue-500/5' : 'bg-slate-800 border-slate-600' 
+                          isSelected
+                            ? isNewest ? 'bg-blue-600/20 border-blue-500/40 shadow-lg shadow-blue-500/5' : 'bg-slate-800 border-slate-600'
                             : 'bg-white/5 border-white/5 hover:border-white/10'
                         }`}
                       >
@@ -4714,7 +4714,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                                 {formatAppTime(h.created_at)}
                              </span>
                            </div>
-                           <button 
+                           <button
                              onClick={(e) => {
                                e.stopPropagation();
                                toast.promise(apiFetch(`/api/v1/monitoring/${item.id}/restore/${h.id}`, { method: 'POST' }), {
@@ -4750,7 +4750,7 @@ function MonitoringHistoryModal({ item, onClose }: any) {
                     </div>
                  </div>
               </div>
-              
+
               <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
                  {diffs.length > 0 ? (
                     <div className="space-y-6">

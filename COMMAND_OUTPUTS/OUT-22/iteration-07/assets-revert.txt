@@ -14,7 +14,11 @@ SEED: Created monitoring item "PW-MON-1784737884856-7pb0mb" (ID: 1182)
   ✘  1 tests/assets-revert.spec.ts:6:3 › Assets Revert lifecycle › reverts the immutable completed row operation after selection changes (19.1s)
 
 
+<<<<<<< HEAD
   1) tests/assets-revert.spec.ts:6:3 › Assets Revert lifecycle › reverts the immutable completed row operation after selection changes 
+=======
+  1) tests/assets-revert.spec.ts:6:3 › Assets Revert lifecycle › reverts the immutable completed row operation after selection changes
+>>>>>>> 6bbe4220 (out-22)
 
     Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeEnabled[2m([22m[2m)[22m failed
 
@@ -56,5 +60,9 @@ SEED: Created monitoring item "PW-MON-1784737884856-7pb0mb" (ID: 1182)
     ────────────────────────────────────────────────────────────────────────────────────────────────
 
   1 failed
+<<<<<<< HEAD
     tests/assets-revert.spec.ts:6:3 › Assets Revert lifecycle › reverts the immutable completed row operation after selection changes 
+=======
+    tests/assets-revert.spec.ts:6:3 › Assets Revert lifecycle › reverts the immutable completed row operation after selection changes
+>>>>>>> 6bbe4220 (out-22)
 True exit code: 1
