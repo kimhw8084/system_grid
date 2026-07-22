@@ -4,7 +4,6 @@
 // transplanted verbatim from Vendor.tsx.
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import { createPortal } from 'react-dom'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -20,7 +19,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { showWorkspaceToast } from './shared/WorkspaceToast'
 import {
-  computeFloatingPanelRect,
   FLOATING_PANEL_EDGE,
 } from './shared/OperationalGridInteractions'
 import { apiFetch } from '../api/apiClient'
@@ -62,7 +60,8 @@ import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHa
 import { WorkspaceDossierShell } from './shared/WorkspaceModalShells'
 import { OperationalImportModal } from './shared/OperationalImportModal'
 import { OperationalGridMatrix } from './shared/OperationalGridMatrix'
-import { OperationalDisplayPanel, OperationalGridSurface, OperationalSavedViewsPanel, OperationalWorkspaceFrame } from './shared/OperationalWorkspaceShells'
+import { OperationalDisplayPanel, OperationalGridSurface, OperationalSavedViewsPanel, OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'
+import { OperationalRowActionMenu, type OperationalRowActionSectionModel } from './shared/OperationalRowActionMenu'
 import {
   applyOperationalColumnSizing,
   applyOperationalColumnState,
@@ -202,38 +201,6 @@ const getAnchoredFloatingStyle = ({ rect, width, height, zIndex, offset = 4 }: {
   left = Math.max(FLOATING_PANEL_EDGE, Math.min(left, vW - width - FLOATING_PANEL_EDGE))
   top  = Math.max(FLOATING_PANEL_EDGE, Math.min(top,  vH - height - FLOATING_PANEL_EDGE))
   return { position: 'fixed' as const, top: Math.floor(top), left: Math.floor(left), width, maxHeight: `calc(100vh - ${FLOATING_PANEL_EDGE * 2}px)`, zIndex }
-}
-
-const getPointFloatingStyle = ({
-  x,
-  y,
-  width,
-  height,
-  zIndex,
-}: {
-  x: number
-  y: number
-  width: number
-  height: number
-  zIndex: number
-}) => {
-  const rect = computeFloatingPanelRect({
-    x,
-    y,
-    preferredWidth: width,
-    preferredHeight: height,
-    viewportWidth: window.innerWidth,
-    viewportHeight: window.innerHeight,
-  })
-
-  return {
-    position: 'fixed' as const,
-    left: rect.left,
-    top: rect.top,
-    width: rect.width,
-    maxHeight: rect.maxHeight,
-    zIndex,
-  }
 }
 
 const getVendorGroupValue = (item: any, field: string) => {
@@ -1042,7 +1009,7 @@ export default function VendorsReal() {
   // RENDER
   // ===========================================================================
   return (
-    <OperationalWorkspaceFrame
+    <OperationalWorkspaceShell
       workspace="vendors"
       header={{
         eyebrow: 'Resources',
@@ -1120,9 +1087,7 @@ export default function VendorsReal() {
           ...(activeFilterChips.length > 0 ? [{ id: 'clear-all', label: 'Clear All', onRemove: () => { setSearchTerm(''); setGridFilterModel({}); setQuickFilters({ country: [] as string[], contractStatus: [] as string[] }); gridRef.current?.api?.setFilterModel({}) } }] : []),
         ],
       }}
-    >
-
-      {typeof document !== 'undefined' && createPortal(
+      floatingPanels={
         <>
           <OperationalDisplayPanel
             isOpen={showDisplayMenu} panelStyle={displayMenuStyle} onClose={() => setShowDisplayMenu(false)}
@@ -1165,62 +1130,38 @@ export default function VendorsReal() {
             )}
           </AnimatePresence>
 
-          <AnimatePresence>
-            {rowActionMenu && (
-              <motion.div
-                key="vendor-row-action-menu"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 8 }}
-                style={getPointFloatingStyle({
-                  x: rowActionMenu.point.x,
-                  y: rowActionMenu.point.y,
-                  width: 320,
-                  height: 360,
-                  zIndex: 1110,
-                })}
-                className="row-action-menu-container"
-              >
-                <WorkspaceFloatingPanel kind="context" className="overflow-hidden">
-                  <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-[10px] font-semibold text-slate-400">Row actions</p>
-                      <p className="pt-1 text-[11px] font-semibold text-slate-100">{rowActionMenu.item.name}</p>
-                      <p className="text-[9px] text-slate-500">{rowActionMenu.item.country || 'No region'}</p>
-                    </div>
-                    <button onClick={() => setRowActionMenu(null)} className="ml-3 flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-slate-400 transition-all hover:bg-white/[0.08] hover:text-white" aria-label="Close row actions"><X size={13} /></button>
-                  </div>
-                  <div className="max-h-[calc(100vh-180px)] overflow-y-auto p-2.5 custom-scrollbar">
-                    <div className="grid grid-cols-2 gap-2 px-2 pb-3 border-b border-slate-800 mb-2">
-                      <button onClick={() => { setDetailItem(rowActionMenu.item); setRowActionMenu(null) }} className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-blue-400 transition-all hover:border-blue-500/30 hover:bg-blue-600/10 active:scale-95"><Maximize2 size={14} />Details</button>
-                      <button onClick={() => { setEditingItem(rowActionMenu.item); setIsFormOpen(true); setRowActionMenu(null) }} className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 py-3 text-[9px] font-black uppercase tracking-[0.1em] text-emerald-400 transition-all hover:border-emerald-500/30 hover:bg-emerald-600/10 active:scale-95"><Edit2 size={14} />Edit</button>
-                      <button onClick={() => { toggleWatch(rowActionMenu.item.id) }} className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase text-slate-200 transition-all hover:bg-slate-900">
-                        {watchIds.includes(rowActionMenu.item.id) ? <><EyeOff size={12} className="text-slate-400" />Unwatch</> : <><Eye size={12} className="text-sky-400" />Watch</>}
-                      </button>
-                      <button onClick={() => { toggleFavorite(rowActionMenu.item.id) }} className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-[10px] font-black uppercase text-slate-200 transition-all hover:bg-slate-900">
-                        {favoriteIds.includes(rowActionMenu.item.id) ? <><Star size={12} className="fill-amber-400 text-amber-400" />Unpin</> : <><Star size={12} className="text-amber-400" />Pin</>}
-                      </button>
-                    </div>
-                    <div className="mx-2 my-2 h-px bg-slate-800" />
-                    <button
-                      onClick={() => {
-                        const item = rowActionMenu.item
-                        if (rowDeleteConfirmId !== item.id) { setRowDeleteConfirmId(item.id); return }
-                        bulkMutation.mutate({ action: 'delete', ids: [item.id] }); setRowActionMenu(null); setRowDeleteConfirmId(null)
-                      }}
-                      onMouseLeave={() => setRowDeleteConfirmId(null)}
-                      className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.16em] transition-all ${rowDeleteConfirmId === rowActionMenu.item.id ? 'bg-rose-600 text-white animate-pulse' : 'text-rose-300 hover:bg-rose-950/80'}`}
-                    >
-                      <Trash2 size={14} />{rowDeleteConfirmId === rowActionMenu.item.id ? 'Confirm Archive?' : 'Archive Vendor'}
-                    </button>
-                  </div>
-                </WorkspaceFloatingPanel>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </>,
-        document.body
-      )}
+          {rowActionMenu && (
+            <OperationalRowActionMenu
+              cursorX={rowActionMenu.point.x}
+              cursorY={rowActionMenu.point.y}
+              onClose={() => setRowActionMenu(null)}
+              meta={`ID ${rowActionMenu.item.id} · ${rowActionMenu.item.country || 'No region'}`}
+              title={rowActionMenu.item.name}
+              sections={[
+                { id: 'quickAccess', columns: 2, items: [
+                  { id: 'details', label: 'Details', icon: Maximize2, tone: 'info', onClick: () => { setDetailItem(rowActionMenu.item); setRowActionMenu(null) } },
+                  { id: 'edit', label: 'Edit', icon: Edit2, tone: 'success', onClick: () => { setEditingItem(rowActionMenu.item); setIsFormOpen(true); setRowActionMenu(null) } },
+                ] },
+                { id: 'followOptions', columns: 2, items: [
+                  { id: 'watch', label: watchIds.includes(rowActionMenu.item.id) ? 'Unwatch' : 'Watch', icon: watchIds.includes(rowActionMenu.item.id) ? EyeOff : Eye, tone: 'neutral', onClick: () => toggleWatch(rowActionMenu.item.id) },
+                  { id: 'pin', label: favoriteIds.includes(rowActionMenu.item.id) ? 'Unpin' : 'Pin', icon: Star, tone: 'warning', onClick: () => toggleFavorite(rowActionMenu.item.id) },
+                ] },
+                { id: 'archive', columns: 1, items: [{
+                  id: 'archive', label: 'Archive', icon: Trash2, tone: 'danger', variant: 'inline',
+                  confirming: rowDeleteConfirmId === rowActionMenu.item.id, confirmLabel: 'Confirm Archive?',
+                  disabled: pendingIds.includes(rowActionMenu.item.id),
+                  onClick: () => {
+                    const item = rowActionMenu.item
+                    if (rowDeleteConfirmId !== item.id) { setRowDeleteConfirmId(item.id); return }
+                    bulkMutation.mutate({ action: 'delete', ids: [item.id] }); setRowActionMenu(null); setRowDeleteConfirmId(null)
+                  },
+                }] },
+              ] as OperationalRowActionSectionModel[]}
+            />
+          )}
+        </>
+      }
+    >
 
       {isError ? (
         <OperationalGridSurface className="vendor-grid-shell vendor-grid">
@@ -1367,7 +1308,7 @@ export default function VendorsReal() {
         .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
         .row-action-trigger { opacity: 1; }
       `}</style>
-    </OperationalWorkspaceFrame>
+    </OperationalWorkspaceShell>
   )
 }
 

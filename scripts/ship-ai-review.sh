@@ -17,7 +17,7 @@ IFS=$'\n\t'
 #   ../sysgrid-ai-review-capsule.zip
 
 PROGRAM="$(basename "$0")"
-SCRIPT_VERSION="2026.07.21.7-fast"
+SCRIPT_VERSION="2026.07.21.8-fast"
 DEFAULT_MODE="full"
 DEFAULT_CHECKS="none"
 DEFAULT_OUTPUT_NAME="sysgrid-ai-review-capsule.zip"
@@ -688,10 +688,19 @@ write_header "$EVIDENCE_DIR/commit-patches.patch" "Commit-by-commit binary-safe 
 } >> "$EVIDENCE_DIR/commit-patches.patch"
 
 write_header "$EVIDENCE_DIR/diff-check.txt" "Git diff whitespace and conflict-marker check"
+# `git diff --check` is an evidence-producing diagnostic. A nonzero result must
+# be captured, not intercepted by the global ERR trap before the capsule exists.
+PREVIOUS_ERR_TRAP="$(trap -p ERR || true)"
+trap - ERR
 set +e
 git diff --check "$BASE_COMMIT" "$HEAD_COMMIT" -- >> "$EVIDENCE_DIR/diff-check.txt" 2>&1
 DIFF_CHECK_RC=$?
 set -e
+if [[ -n "$PREVIOUS_ERR_TRAP" ]]; then
+  eval "$PREVIOUS_ERR_TRAP"
+else
+  trap on_error ERR
+fi
 printf '\nexit_code: %s\n' "$DIFF_CHECK_RC" >> "$EVIDENCE_DIR/diff-check.txt"
 (( DIFF_CHECK_RC == 0 )) || CHECK_FAILURES=$((CHECK_FAILURES + 1))
 
@@ -965,10 +974,18 @@ write_header "$EVIDENCE_DIR/check-summary.txt" "Captured check summary"
 
 # Discover generator capabilities rather than assuming every repository has identical flags.
 GEN_HELP_FILE="$(mktemp "${TMPDIR:-/tmp}/capsule-help.XXXXXX")"
+# Generator capability discovery is also intentionally nonfatal.
+PREVIOUS_ERR_TRAP="$(trap -p ERR || true)"
+trap - ERR
 set +e
 node "$GENERATOR" --help > "$GEN_HELP_FILE" 2>&1
 HELP_RC=$?
 set -e
+if [[ -n "$PREVIOUS_ERR_TRAP" ]]; then
+  eval "$PREVIOUS_ERR_TRAP"
+else
+  trap on_error ERR
+fi
 if (( HELP_RC != 0 )); then
   warn "generator --help exited $HELP_RC; continuing with flags used by the existing SysGrid wrapper"
 fi

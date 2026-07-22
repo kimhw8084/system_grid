@@ -34,6 +34,13 @@ export type AssetQuickFilters = {
   owner: string[]
 }
 
+type AssetLifecycleOperation = Readonly<{
+  ids: readonly number[]
+  originalAction: 'delete' | 'restore'
+  inverseAction: 'restore' | 'delete'
+  targetLabels: readonly string[]
+}>
+
 const DEFAULT_HIDDEN_COLUMNS = [
   'is_deleted',
 ]
@@ -362,6 +369,8 @@ export function useAssetGoldenWorkspace() {
   const [showRegistryModal, setShowRegistryModal] = useState(false)
   const [confirmState, setConfirmState] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
   const [rowActionMenu, setRowActionMenu] = useState<{ asset: any; x: number; y: number } | null>(null)
+  const [revertOperation, setRevertOperation] = useState<AssetLifecycleOperation | null>(null)
+  const [isReverting, setIsReverting] = useState(false)
 
   const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>('sysgrid_asset_favorites', [])
   const [watchIds, setWatchIds] = usePersistentJsonState<number[]>('sysgrid_asset_watches', [])
@@ -605,8 +614,13 @@ export function useAssetGoldenWorkspace() {
     queryClient.invalidateQueries({ queryKey: ['asset-golden-connections'] })
   }, [queryClient])
 
+  const refreshAssetLifecycle = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: ['asset-golden-devices'] }),
+    [queryClient],
+  )
+
   const bulkMutation = useMutation({
-    mutationFn: async ({ action, ids, payload }: { action: string; ids: number[]; payload?: Record<string, any> }) => {
+    mutationFn: async ({ action, ids, payload, targetLabels }: { action: string; ids: number[]; payload?: Record<string, any>; targetLabels?: string[] }) => {
       if (action === 'update') {
         await Promise.all(ids.map(async (id) => {
           const response = await apiFetch(`/api/v1/devices/${id}`, {
@@ -619,6 +633,7 @@ export function useAssetGoldenWorkspace() {
           action,
           ids,
           payload,
+          targetLabels,
           changed: ids.length,
           totalSelected: ids.length,
           unchanged: 0,
@@ -635,15 +650,24 @@ export function useAssetGoldenWorkspace() {
         action,
         ids,
         payload,
+        targetLabels,
         totalSelected: ids.length,
         changed: Number(result?.changed ?? result?.count ?? ids.length),
         unchanged: Number(result?.unchanged ?? 0),
       }
     },
-    onSuccess: (result: any) => {
-      refreshAll()
+    onSuccess: async (result: any) => {
+      await refreshAssetLifecycle()
       setRowActionMenu(null)
       setSelectedIds([])
+      if ((result?.action === 'delete' || result?.action === 'restore') && Number(result?.changed || 0) > 0) {
+        setRevertOperation({
+          ids: Object.freeze([...result.ids]),
+          originalAction: result.action,
+          inverseAction: result.action === 'delete' ? 'restore' : 'delete',
+          targetLabels: Object.freeze(result.targetLabels || result.ids.map(String)),
+        })
+      }
       if (result?.action === 'update') {
         showOperationalBulkResultToast({
           action: 'update',
@@ -678,8 +702,31 @@ export function useAssetGoldenWorkspace() {
       showWorkspaceToast('Select at least one asset first', { type: 'error' })
       return
     }
-    bulkMutation.mutate({ action, ids: targetIds, payload })
-  }, [bulkMutation, selectedIds])
+    bulkMutation.mutate({
+      action,
+      ids: targetIds,
+      payload,
+      targetLabels: allAssets.filter((asset) => targetIds.includes(asset.id)).map((asset) => asset.name || String(asset.id)),
+    })
+  }, [allAssets, bulkMutation, selectedIds])
+
+  const executeRevert = useCallback(async (operation: AssetLifecycleOperation) => {
+    setIsReverting(true)
+    try {
+      const response = await apiFetch('/api/v1/devices/bulk-action', {
+        method: 'POST',
+        body: JSON.stringify({ action: operation.inverseAction, ids: operation.ids }),
+      })
+      if (!response.ok) throw new Error(await response.text())
+      await refreshAssetLifecycle()
+      setRevertOperation(null)
+      showWorkspaceToast('Reverted asset operation', { type: 'success' })
+    } catch (error: any) {
+      showWorkspaceToast(error?.message || 'Revert failed', { type: 'error' })
+    } finally {
+      setIsReverting(false)
+    }
+  }, [refreshAssetLifecycle])
 
   const toggleColumn = useCallback((field: string) => {
     setHiddenColumns((current) => current.includes(field) ? current.filter((entry) => entry !== field) : [...current, field])
@@ -807,6 +854,9 @@ export function useAssetGoldenWorkspace() {
     reportAssetId,
     reportFocusSection,
     refreshAll,
+    revertOperation,
+    isReverting,
+    executeRevert,
     relationships: Array.isArray(relationshipsQuery.data) ? relationshipsQuery.data : [],
     rowActionMenu,
     rowDensity,

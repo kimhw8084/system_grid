@@ -724,7 +724,6 @@ export default function AssetReal() {
   const [displayMenuStyle, setDisplayMenuStyle] = useState<React.CSSProperties>({})
   const [viewsMenuStyle, setViewsMenuStyle] = useState<React.CSSProperties>({})
   const [bulkMenuStyle, setBulkMenuStyle] = useState<React.CSSProperties>({})
-  const lastUndoRef = useRef<AssetLifecycleOperation | null>(null)
   const [newViewName, setNewViewName] = useState('')
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
   const autoSizeFrameRef = useRef<number | null>(null)
@@ -1737,16 +1736,10 @@ export default function AssetReal() {
     await queryClient.invalidateQueries({ queryKey: ['asset-real-devices'] })
   }
 
-  const executeRevert = async () => {
-    const operation = revertOperation
-    if (!operation) {
-      showWorkspaceToast('No completed asset operation is available to revert', { type: 'error' })
-      return
-    }
+  const executeRevert = async (operation: AssetLifecycleOperation) => {
     setIsReverting(true)
     try {
       await runUndo(operation)
-      lastUndoRef.current = null
       setRevertOperation(null)
       showWorkspaceToast('Reverted asset operation', { type: 'success' })
     } catch (error: any) {
@@ -1813,8 +1806,8 @@ export default function AssetReal() {
       const result = await res.json()
       return { result, action, payload, idsToUse, previousSnapshots }
     },
-    onSuccess: ({ result, action, payload, idsToUse, previousSnapshots }: any) => {
-      queryClient.invalidateQueries({ queryKey: ['asset-real-devices'] })
+    onSuccess: async ({ result, action, payload, idsToUse, previousSnapshots }: any) => {
+      await queryClient.invalidateQueries({ queryKey: ['asset-real-devices'] })
       setShowBulkMenu(false)
       setExpandedBulkSection(null)
         setBulkDraft({ status: '', link_type: '', direction: '' })
@@ -1824,7 +1817,6 @@ export default function AssetReal() {
 
       const changedCount = Number(result?.changed ?? idsToUse.length)
       if (changedCount <= 0) {
-        lastUndoRef.current = null
         return
       }
 
@@ -1836,13 +1828,12 @@ export default function AssetReal() {
             targetLabels: Object.freeze(previousSnapshots.map((item: any) => String(item.name || item.id))),
           }
         : null
-      lastUndoRef.current = operation
       setRevertOperation(operation)
 
       if (operation) {
         showWorkspaceToast(result?.summary || 'Updated assets', {
           onRevert: async () => {
-            await executeRevert()
+            await executeRevert(operation)
           }
         })
       } else {
@@ -2324,6 +2315,7 @@ export default function AssetReal() {
 
   return (
    <OperationalWorkspaceFrame
+      workspace="assets"
       header={{
         eyebrow: "Infrastructure",
         title: (
@@ -2453,7 +2445,7 @@ export default function AssetReal() {
         right: (
 	          <>
               <ToolbarButton
-                onClick={() => openConfirm('Revert asset operation', `Revert ${revertOperation?.targetLabels.join(', ') || 'the captured assets'}?`, () => { void executeRevert() }, 'warning')}
+                onClick={() => revertOperation && openConfirm('Revert asset operation', `Revert ${revertOperation.targetLabels.join(', ')}?`, () => { void executeRevert(revertOperation) }, 'warning')}
                 disabled={!canRevert || isReverting}
                 title={canRevert ? 'Revert the last completed lifecycle operation' : 'Revert is unavailable because its captured assets no longer match the expected lifecycle state'}
               >
