@@ -1326,7 +1326,7 @@ export default function VendorsReal() {
               title={rowActionMenu.item.name}
               sections={[
                 { id: 'quickAccess', columns: 2, items: [
-                  { id: 'details', label: 'Details', icon: Maximize2, tone: 'info', onClick: () => { setDetailItem(rowActionMenu.item); setRowActionMenu(null) } },
+                  { id: 'details', label: 'Details', ariaLabel: 'Details', icon: Maximize2, tone: 'info', onClick: () => { setDetailItem(rowActionMenu.item); setRowActionMenu(null) } },
                   { id: 'edit', label: 'Edit', icon: Edit2, tone: 'success', onClick: () => { setEditingItem(rowActionMenu.item); setIsFormOpen(true); setRowActionMenu(null) } },
                 ] },
                 { id: 'followOptions', columns: 2, items: [
