@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { showWorkspaceToast } from '../shared/WorkspaceToast'
+import { showWorkspaceRevertToast, showWorkspaceToast } from '../shared/WorkspaceToast'
 import {
   FLOATING_PANEL_EDGE,
 } from '../shared/OperationalGridInteractions'
@@ -59,8 +59,16 @@ import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, Tool
 import { useOperationalGridLayout, usePersistentJsonState, useWorkspaceDismissHandlers, useWorkspaceSessionValue } from '../shared/OperationalWorkspaceHooks'
 import { WorkspaceDossierShell } from '../shared/WorkspaceModalShells'
 import { OperationalImportModal } from '../shared/OperationalImportModal'
-import { OperationalGridMatrix } from '../shared/OperationalGridMatrix'
-import { OperationalDisplayPanel, OperationalGridSurface, OperationalSavedViewsPanel, OperationalWorkspaceShell } from '../shared/OperationalWorkspaceShells'
+import { OperationalDataGrid } from '../shared/OperationalDataGrid'
+import { resolveOperationalDataState } from '../shared/OperationalDataState'
+import {
+  OperationalAnchoredPanel,
+  OperationalDisplayPanel,
+  OperationalGroupedGridSection,
+  OperationalGroupedGridView,
+  OperationalSavedViewsPanel,
+  OperationalWorkspaceShell,
+} from '../shared/OperationalWorkspaceShells'
 import { OperationalRowActionMenu, type OperationalRowActionSectionModel } from '../shared/OperationalRowActionMenu'
 import {
   applyOperationalColumnSizing,
@@ -68,7 +76,6 @@ import {
   autoSizeOperationalColumns,
   getOperationalColumnLayoutSnapshot,
   normalizeOperationalColumnLayout,
-  OPERATIONAL_GRID_AUTO_SIZE_STRATEGY,
   sanitizeOperationalColumnLayout,
   sanitizeOperationalFilterModel,
   sanitizeOperationalSortModel,
@@ -360,6 +367,7 @@ export default function VendorsReal() {
   const [hiddenColumns,   setHiddenColumns]   = useState<string[]>(persistedUiState?.hiddenColumns ?? ['created_at', 'updated_at'])
   const [showFilterBar,   setShowFilterBar]   = useState<boolean>(persistedUiState?.showFilterBar ?? true)
   const [isIntelligenceExpanded, setIsIntelligenceExpanded] = useState(false)
+  const [registryScope, setRegistryScope] = useState<'active' | 'deleted'>('active')
 
   // Modals
   const [isFormOpen,       setIsFormOpen]       = useState(false)
@@ -488,6 +496,13 @@ export default function VendorsReal() {
     const ids = (e?.api?.getSelectedNodes?.() || []).map((n: any) => n.data?.id).filter(Boolean)
     groupSelectionsRef.current[groupKey] = ids
     setSelectedIds(Array.from(new Set(Object.values(groupSelectionsRef.current).flat())))
+  }, [])
+
+  const clearVendorSelection = useCallback(() => {
+    groupSelectionsRef.current = {}
+    selectionAnchorRef.current = null
+    setSelectedIds([])
+    gridRef.current?.api?.deselectAll?.()
   }, [])
 
   const handleColumnMoved    = useCallback((event: any) => { if (!event.source.includes('drag')) syncColumnLayoutState(event.api) }, [syncColumnLayoutState])
@@ -752,11 +767,17 @@ export default function VendorsReal() {
   }, [allVendors])
 
   const lifecycleCounts = useMemo(() => {
-    if (!Array.isArray(processedVendors)) return { active: 0 }
-    return { active: processedVendors.filter((v: any) => !v.is_deleted).length }
+    if (!Array.isArray(processedVendors)) return { existing: 0, archived: 0 }
+    return {
+      existing: processedVendors.filter((vendor: any) => !vendor.is_deleted).length,
+      archived: processedVendors.filter((vendor: any) => Boolean(vendor.is_deleted)).length,
+    }
   }, [processedVendors])
 
-  const items = useMemo(() => processedVendors.filter((v: any) => !v.is_deleted), [processedVendors])
+  const items = useMemo(
+    () => processedVendors.filter((vendor: any) => registryScope === 'deleted' ? Boolean(vendor.is_deleted) : !vendor.is_deleted),
+    [processedVendors, registryScope]
+  )
 
   const countryOptions = useMemo(() => {
     const vals = Array.from(new Set((items || []).map((v: any) => v.country).filter(Boolean)))
@@ -794,6 +815,28 @@ export default function VendorsReal() {
       return true
     })
   }, [items, quickFilters, searchTerm])
+
+  const vendorDataState = useMemo(() => resolveOperationalDataState({
+    loading: isLoading,
+    error: isError ? vendorsError : undefined,
+    totalCount: processedVendors.length,
+    tabCount: items.length,
+    visibleCount: displayedItems.length,
+    emptyLabel: 'No vendor records found',
+    filteredLabel: 'No vendors match current filters',
+    tabEmptyKind: registryScope === 'deleted' ? 'deleted-empty' : 'active-empty',
+    tabEmptyLabel: registryScope === 'deleted' ? 'No archived vendors' : 'No active vendors',
+    errorTitle: 'Vendor registry unavailable',
+    errorDescription: 'Unable to load vendor records. Retry when the service is available.',
+    emptyTitle: 'No vendor records',
+    emptyDescription: 'Add a vendor to begin building the partner registry.',
+    filteredTitle: 'No matching vendors',
+    filteredDescription: 'Clear search or filters to restore the vendor table.',
+    tabEmptyTitle: registryScope === 'deleted' ? 'No archived vendors' : 'No active vendors',
+    tabEmptyDescription: registryScope === 'deleted'
+      ? 'Archived vendors will appear here.'
+      : 'Restore an archived vendor or add a new vendor.',
+  }), [displayedItems.length, isError, isLoading, items.length, processedVendors.length, registryScope, vendorsError])
 
   const sortedItemsForGrouped = useMemo(() => {
     return [...displayedItems].sort((a: any, b: any) => {
@@ -908,7 +951,7 @@ export default function VendorsReal() {
     onSuccess: async ({ result, action, idsToUse }: any) => {
       await queryClient.invalidateQueries({ queryKey: ['vendors'] })
       setShowBulkMenu(false)
-      setSelectedIds([])
+      clearVendorSelection()
       const changed = Number(result?.changed ?? result?.count ?? idsToUse.length)
       if ((action === 'delete' || action === 'restore') && changed > 0) {
         const labels = items.filter((vendor: any) => idsToUse.includes(vendor.id)).map((vendor: any) => vendor.name || String(vendor.id))
@@ -918,9 +961,9 @@ export default function VendorsReal() {
           inverseAction: action === 'delete' ? 'restore' : 'delete',
           targetLabels: Object.freeze(labels.length ? labels : idsToUse.map(String)),
         })
-        showWorkspaceToast(
+        showWorkspaceRevertToast(
           `${action === 'restore' ? 'Restored' : 'Archived'} ${operation.targetLabels.length} vendor${operation.targetLabels.length === 1 ? '' : 's'}`,
-          { type: 'success', onRevert: () => { void executeRevert(operation) } },
+          () => { void executeRevert(operation) },
         )
         return
       }
@@ -1015,14 +1058,27 @@ export default function VendorsReal() {
       return lockFixed(applyOperationalColumnSizing(col, layout, preserveExplicitColumnWidths), layout)
     })
     if (columnLayoutState.length > 0) {
-      const orderMap = new Map(columnLayoutState.map((col: any, index: number) => [col.colId, index]))
+      const orderMap = new Map<string, number>(columnLayoutState.map((col: any, index: number) => [String(col.colId), index] as [string, number]))
       return [...mergedDefs].sort((a: any, b: any) => (orderMap.get(a.colId || a.field) ?? 1000) - (orderMap.get(b.colId || b.field) ?? 1000))
     }
     return mergedDefs
   }, [fontSize, hiddenColumns, columnLayoutState, isIntelligenceExpanded, preserveExplicitColumnWidths]) as any
 
-  const gridContext  = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
-  const autoSizeStrategy = useMemo(() => (preserveExplicitColumnWidths ? undefined : OPERATIONAL_GRID_AUTO_SIZE_STRATEGY), [preserveExplicitColumnWidths])
+  const gridContext = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
+  const vendorGridRuntime = useMemo(() => ({
+    preserveExplicitColumnWidths,
+    handleGridReady,
+    handleColumnResized: handleVendorColumnResized,
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
+    handleFilterChanged,
+    handleSortChanged,
+  }), [handleColumnMoved, handleColumnPinned, handleColumnVisible, handleDragStopped, handleFilterChanged, handleGridReady, handleSortChanged, handleVendorColumnResized, preserveExplicitColumnWidths])
+  const vendorRowInteractions = useMemo(() => ({ handleRowClicked, handleRowDoubleClicked }), [handleRowClicked, handleRowDoubleClicked])
+  const vendorContextMenu = useMemo(() => ({ handleCellContextMenu }), [handleCellContextMenu])
+  const selectionScopeKey = `${registryScope}:${groupBy}`
 
   const groupOptions = [
     { value: 'raw',     label: 'Raw Rows' },
@@ -1044,123 +1100,234 @@ export default function VendorsReal() {
           </div>
         ),
         subtitle: 'Vendor capability, contract intelligence & personnel directory',
-        meta: (
-          <span className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wider text-slate-300">
-            {isLoading ? 'Loading vendors' : `${displayedItems.length} of ${items.length} vendors`}{isFetching && !isLoading ? ' · refreshing' : ''}
-          </span>
-        ),
         actions: (
           <HeaderScopeSwitch
             label="Registry Scope"
-            summary={`${lifecycleCounts.active} active partners`}
-            value="active"
-            onChange={() => {}}
-            options={[{ label: 'Active', value: 'active' }]}
+            summary={`${lifecycleCounts.existing} existing · ${lifecycleCounts.archived} archived`}
+            value={registryScope}
+            onChange={(next) => {
+              setRegistryScope(next as 'active' | 'deleted')
+              clearVendorSelection()
+            }}
+            options={[
+              { label: 'Existing', value: 'active' },
+              { label: 'Archived', value: 'deleted' },
+            ]}
           />
         ),
       }}
-      commandBar={{
-        left: (
-          <>
-            <ToolbarSearch value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search vendors..." />
-            {searchTerm ? <ToolbarButton onClick={() => setSearchTerm('')} variant="quiet" title="Clear vendor search"><X size={14} />Clear</ToolbarButton> : null}
-            <ToolbarGroup>
-              <div className="views-menu-container">
-                <ToolbarButton active={showViewsMenu} onClick={() => setShowViewsMenu(!showViewsMenu)} ref={viewsMenuButtonRef as any}>
-                  <span className="flex items-center gap-2"><LayoutGrid size={14} />Views</span>
-                </ToolbarButton>
-              </div>
-              <div className="display-menu-container">
-                <ToolbarButton active={showDisplayMenu} onClick={() => setShowDisplayMenu(!showDisplayMenu)} ref={displayMenuButtonRef as any}>
-                  <span className="flex items-center gap-2"><Sliders size={14} />Display</span>
-                </ToolbarButton>
-              </div>
-              <ToolbarIconButton onClick={handleExportCSV} title="Export CSV"><FileText size={16} /></ToolbarIconButton>
-              <ToolbarIconButton onClick={handleCopyToClipboard} title="Copy to clipboard"><Clipboard size={16} /></ToolbarIconButton>
-              <ToolbarIconButton onClick={() => { void refetchVendors() }} title="Refresh vendor registry" disabled={isFetching}><RefreshCcw size={16} className={isFetching ? 'animate-spin' : ''} /></ToolbarIconButton>
-              <ToolbarIconButton onClick={() => setShowRegistry(true)} title="Registry configuration"><Settings size={16} /></ToolbarIconButton>
-            </ToolbarGroup>
-            <ToolbarGroup>
-              <ToolbarButton onClick={() => setShowImportModal(true)} title="Import vendor rows">
-                <span className="flex items-center gap-2">
-                  <Upload size={14} />
-                  Import
-                </span>
-              </ToolbarButton>
-              <ToolbarButton active={showFilterBar} onClick={() => setShowFilterBar((c) => !c)} title={showFilterBar ? 'Hide filters' : 'Show filters'}>
-                <span className="flex items-center gap-2">{showFilterBar ? <EyeOff size={14} /> : <Eye size={14} />}Filters</span>
-              </ToolbarButton>
-              <ToolbarButton active={isIntelligenceExpanded} onClick={() => setIsIntelligenceExpanded(!isIntelligenceExpanded)} title={isIntelligenceExpanded ? 'Hide activity columns' : 'Show activity columns'}>
-                <span className="flex items-center gap-2">{isIntelligenceExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}Activity</span>
-              </ToolbarButton>
-            </ToolbarGroup>
-          </>
-        ),
-        secondary: showFilterBar ? (
-          <div className="grid w-full gap-3 md:grid-cols-2">
-            <AppDropdown multi value={quickFilters.country} onChange={(val) => setQuickFilters((c) => ({ ...c, country: val }))} options={countryOptions} label="Country Filter" placeholder="All regions" />
-            <AppDropdown multi value={quickFilters.contractStatus} onChange={(val) => setQuickFilters((c) => ({ ...c, contractStatus: val }))} options={[{ value: 'active', label: 'Active' }, { value: 'expiring', label: 'Expiring (30d)' }, { value: 'expired', label: 'Expired' }]} label="Contract Status" placeholder="All statuses" />
-          </div>
-        ) : null,
-        right: (
-          <>
-            <ToolbarButton onClick={toggleBulkWindow} disabled={selectedIds.length === 0} active={showBulkMenu} title="Bulk actions" className="bulk-menu-trigger" ref={bulkMenuButtonRef as any}>
-              <span className="flex items-center gap-2"><Zap size={14} />Bulk Actions</span>
+      toolbarSearch={(
+        <ToolbarSearch
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
+          placeholder="Search vendors..."
+        />
+      )}
+      toolbarControls={(
+        <>
+          {searchTerm ? (
+            <ToolbarButton onClick={() => setSearchTerm('')} variant="quiet" title="Clear vendor search">
+              <X size={14} />
+              Clear
             </ToolbarButton>
-            <ToolbarButton onClick={() => { setEditingItem(null); setIsFormOpen(true) }} variant="primary" className="px-6 py-2">
-              <Plus size={14} /><span>New Vendor</span><span className="sr-only">+ Add Vendor</span>
+          ) : null}
+          <ToolbarGroup>
+            <div className="views-menu-container">
+              <ToolbarButton
+                active={showViewsMenu}
+                onClick={() => {
+                  setShowViewsMenu((current) => !current)
+                  setShowDisplayMenu(false)
+                  setShowBulkMenu(false)
+                }}
+                ref={viewsMenuButtonRef as any}
+              >
+                <span className="flex items-center gap-2"><LayoutGrid size={14} />Views</span>
+              </ToolbarButton>
+            </div>
+            <div className="display-menu-container">
+              <ToolbarButton
+                active={showDisplayMenu}
+                onClick={() => {
+                  setShowDisplayMenu((current) => !current)
+                  setShowViewsMenu(false)
+                  setShowBulkMenu(false)
+                }}
+                ref={displayMenuButtonRef as any}
+              >
+                <span className="flex items-center gap-2"><Sliders size={14} />Display</span>
+              </ToolbarButton>
+            </div>
+            <ToolbarIconButton onClick={handleExportCSV} title="Export CSV"><FileText size={16} /></ToolbarIconButton>
+            <ToolbarIconButton onClick={handleCopyToClipboard} title="Copy to clipboard"><Clipboard size={16} /></ToolbarIconButton>
+            <ToolbarIconButton onClick={() => { void refetchVendors() }} title="Refresh vendor registry" disabled={isFetching}>
+              <RefreshCcw size={16} className={isFetching ? 'animate-spin' : ''} />
+            </ToolbarIconButton>
+            <ToolbarIconButton onClick={() => setShowRegistry(true)} title="Registry configuration"><Settings size={16} /></ToolbarIconButton>
+          </ToolbarGroup>
+          <ToolbarGroup>
+            <ToolbarButton onClick={() => setShowImportModal(true)} title="Import vendor rows">
+              <span className="flex items-center gap-2"><Upload size={14} />Import</span>
             </ToolbarButton>
-          </>
-        ),
-        filterChips: [
-          ...activeFilterChips,
-          ...(activeFilterChips.length > 0 ? [{ id: 'clear-all', label: 'Clear All', onRemove: () => { setSearchTerm(''); setGridFilterModel({}); setQuickFilters({ country: [] as string[], contractStatus: [] as string[] }); gridRef.current?.api?.setFilterModel({}) } }] : []),
-        ],
-      }}
+            <ToolbarButton
+              active={showFilterBar}
+              onClick={() => setShowFilterBar((current) => !current)}
+              title={showFilterBar ? 'Hide filters' : 'Show filters'}
+            >
+              <span className="flex items-center gap-2">{showFilterBar ? <EyeOff size={14} /> : <Eye size={14} />}Filters</span>
+            </ToolbarButton>
+            <ToolbarButton
+              active={isIntelligenceExpanded}
+              onClick={() => setIsIntelligenceExpanded((current) => !current)}
+              title={isIntelligenceExpanded ? 'Hide activity columns' : 'Show activity columns'}
+            >
+              <span className="flex items-center gap-2">{isIntelligenceExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}Activity</span>
+            </ToolbarButton>
+          </ToolbarGroup>
+        </>
+      )}
+      secondaryToolbar={showFilterBar ? (
+        <div className="grid w-full gap-3 md:grid-cols-2">
+          <AppDropdown
+            multi
+            value={quickFilters.country}
+            onChange={(value) => setQuickFilters((current) => ({ ...current, country: value }))}
+            options={countryOptions}
+            label="Country Filter"
+            placeholder="All regions"
+          />
+          <AppDropdown
+            multi
+            value={quickFilters.contractStatus}
+            onChange={(value) => setQuickFilters((current) => ({ ...current, contractStatus: value }))}
+            options={[
+              { value: 'active', label: 'Active' },
+              { value: 'expiring', label: 'Expiring (30d)' },
+              { value: 'expired', label: 'Expired' },
+            ]}
+            label="Contract Status"
+            placeholder="All statuses"
+          />
+        </div>
+      ) : null}
+      toolbarActions={(
+        <>
+          <ToolbarButton
+            onClick={toggleBulkWindow}
+            disabled={selectedIds.length === 0}
+            active={showBulkMenu}
+            title="Bulk actions"
+            className="bulk-menu-trigger"
+            ref={bulkMenuButtonRef as any}
+          >
+            <span className="flex items-center gap-2"><Zap size={14} />Bulk Actions</span>
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => { setEditingItem(null); setIsFormOpen(true) }}
+            variant="primary"
+            className="px-6 py-2"
+          >
+            + Add Vendor
+          </ToolbarButton>
+        </>
+      )}
+      filterChips={[
+        ...activeFilterChips,
+        ...(activeFilterChips.length > 0 ? [{
+          id: 'clear-all',
+          label: 'Clear All',
+          onRemove: () => {
+            setSearchTerm('')
+            setGridFilterModel({})
+            setQuickFilters({ country: [] as string[], contractStatus: [] as string[] })
+            gridRef.current?.api?.setFilterModel({})
+          },
+        }] : []),
+      ]}
       floatingPanels={
         <>
           <OperationalDisplayPanel
-            isOpen={showDisplayMenu} panelStyle={displayMenuStyle} onClose={() => setShowDisplayMenu(false)}
-            fontSize={fontSize} onFontSizeChange={setFontSize} rowDensity={rowDensity} onRowDensityChange={setRowDensity}
-            groupBy={groupBy} onGroupByChange={setGroupBy} groupOptions={groupOptions}
-            columns={columnDefs} hiddenColumns={hiddenColumns}
-            onToggleColumn={(field) => { if (hiddenColumns.includes(field)) setHiddenColumns(hiddenColumns.filter(e => e !== field)); else setHiddenColumns([...hiddenColumns, field]) }}
+            isOpen={showDisplayMenu}
+            panelStyle={displayMenuStyle}
+            onClose={dismissWorkspaceMenus}
+            fontSize={fontSize}
+            onFontSizeChange={setFontSize}
+            rowDensity={rowDensity}
+            onRowDensityChange={setRowDensity}
+            groupBy={groupBy}
+            onGroupByChange={setGroupBy}
+            groupOptions={groupOptions}
+            columns={columnDefs}
+            hiddenColumns={hiddenColumns}
+            onToggleColumn={(field) => {
+              setHiddenColumns((current) => current.includes(field)
+                ? current.filter((entry) => entry !== field)
+                : [...current, field])
+            }}
           />
 
           <OperationalSavedViewsPanel
-            isOpen={showViewsMenu} panelStyle={viewsMenuStyle} entityLabel="Vendors" onClose={() => setShowViewsMenu(false)}
-            activeViewId={activeViewId} currentViewName={activeViewId ? savedViews.find(v => v.id === activeViewId)?.name || 'Unsaved working view' : 'Unsaved working view'}
-            newViewName={newViewName} onNewViewNameChange={setNewViewName} onCreateView={createViewFromCurrent}
-            onApplySystemDefault={applySystemDefault} savedViews={savedViews} defaultViewIds={new Set()}
-            onApplyView={applySavedView} onOverwriteView={saveCurrentToView} onDeleteView={deleteView}
-            describeView={(view: any) => view.config?.groupBy && view.config.groupBy !== 'raw' ? `Grouped by ${groupOptions.find(o => o.value === view.config.groupBy)?.label || view.config.groupBy}` : 'Raw vendor table'}
+            isOpen={showViewsMenu}
+            panelStyle={viewsMenuStyle}
+            entityLabel="Vendors"
+            onClose={dismissWorkspaceMenus}
+            activeViewId={activeViewId}
+            currentViewName={activeViewId ? savedViews.find((view) => view.id === activeViewId)?.name || 'Unsaved working view' : 'Unsaved working view'}
+            newViewName={newViewName}
+            onNewViewNameChange={setNewViewName}
+            onCreateView={createViewFromCurrent}
+            onApplySystemDefault={applySystemDefault}
+            savedViews={savedViews}
+            defaultViewIds={new Set()}
+            onApplyView={applySavedView}
+            onOverwriteView={saveCurrentToView}
+            onDeleteView={deleteView}
+            describeView={(view: any) => view.config?.groupBy && view.config.groupBy !== 'raw'
+              ? `Grouped by ${groupOptions.find((option) => option.value === view.config.groupBy)?.label || view.config.groupBy}`
+              : 'Raw vendor table'}
           />
 
-          <AnimatePresence>
-            {showBulkMenu && !!bulkMenuStyle.top && (
-              <motion.div key="vendor-bulk-menu" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={bulkMenuStyle} className="bulk-menu-container">
-                <WorkspaceFloatingPanel kind="context" className="max-h-[480px] overflow-y-auto custom-scrollbar p-3">
-                  <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
-                    <p className="text-[10px] font-semibold text-slate-400">Bulk actions</p>
-                    <p className="pt-1 text-[12px] font-semibold text-slate-100">{selectedIds.length} vendors selected</p>
-                  </div>
-                  <div className="mx-1 my-3 h-px bg-slate-800" />
-                  <button
-                    onClick={() => { if (!bulkDeleteConfirm) { setBulkDeleteConfirm(true); return } bulkMutation.mutate({ action: 'delete' }) }}
-                    onMouseLeave={() => setBulkDeleteConfirm(false)}
-                    disabled={bulkMutation.isPending}
-                    className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${bulkDeleteConfirm ? 'border-rose-500 bg-rose-600 animate-pulse' : 'border-rose-900/70 bg-rose-950/70 hover:bg-rose-950'} disabled:opacity-50`}
-                  >
-                    <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
-                      {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (bulkDeleteConfirm ? 'Confirm Archive?' : 'Archive Selection')}
-                    </p>
-                  </button>
-                </WorkspaceFloatingPanel>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <OperationalAnchoredPanel
+            isOpen={showBulkMenu}
+            style={bulkMenuStyle}
+            panelKey="vendor-bulk-menu"
+            className="bulk-menu-container"
+            yOffset={10}
+          >
+            <WorkspaceFloatingPanel kind="context" className="max-h-[560px] overflow-y-auto custom-scrollbar p-3">
+              <div className="mb-3 rounded-lg border border-slate-800 bg-slate-950 px-4 py-3">
+                <p className="text-[10px] font-semibold text-slate-400">Bulk actions</p>
+                <p className="pt-1 text-[12px] font-semibold text-slate-100">{selectedIds.length} vendors selected</p>
+              </div>
+              {registryScope === 'deleted' ? (
+                <button
+                  onClick={() => bulkMutation.mutate({ action: 'restore' })}
+                  disabled={bulkMutation.isPending}
+                  className="w-full rounded-lg border border-emerald-900/70 bg-emerald-950/70 px-4 py-3 text-left transition-all hover:bg-emerald-950 disabled:opacity-50"
+                >
+                  <p className="text-[10px] font-semibold text-emerald-300">
+                    {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : 'Restore Selection'}
+                  </p>
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    if (!bulkDeleteConfirm) { setBulkDeleteConfirm(true); return }
+                    bulkMutation.mutate({ action: 'delete' })
+                  }}
+                  onMouseLeave={() => setBulkDeleteConfirm(false)}
+                  disabled={bulkMutation.isPending}
+                  className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${bulkDeleteConfirm ? 'border-rose-500 bg-rose-600 animate-pulse' : 'border-rose-900/70 bg-rose-950/70 hover:bg-rose-950'} disabled:opacity-50`}
+                >
+                  <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
+                    {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (bulkDeleteConfirm ? 'Confirm Archive?' : 'Archive Selection')}
+                  </p>
+                </button>
+              )}
+            </WorkspaceFloatingPanel>
+          </OperationalAnchoredPanel>
 
-          {rowActionMenu && (
+          {rowActionMenu ? (
             <OperationalRowActionMenu
               cursorX={rowActionMenu.point.x}
               cursorY={rowActionMenu.point.y}
@@ -1176,124 +1343,134 @@ export default function VendorsReal() {
                   { id: 'watch', label: watchIds.includes(rowActionMenu.item.id) ? 'Unwatch' : 'Watch', icon: watchIds.includes(rowActionMenu.item.id) ? EyeOff : Eye, tone: 'neutral', onClick: () => toggleWatch(rowActionMenu.item.id) },
                   { id: 'pin', label: favoriteIds.includes(rowActionMenu.item.id) ? 'Unpin' : 'Pin', icon: Star, tone: 'warning', onClick: () => toggleFavorite(rowActionMenu.item.id) },
                 ] },
-                { id: 'archive', columns: 1, items: [{
-                  id: 'archive', label: 'Archive', icon: Trash2, tone: 'danger', variant: 'inline',
-                  confirming: rowDeleteConfirmId === rowActionMenu.item.id, confirmLabel: 'Confirm Archive?',
-                  disabled: pendingIds.includes(rowActionMenu.item.id),
-                  onClick: () => {
-                    const item = rowActionMenu.item
-                    if (rowDeleteConfirmId !== item.id) { setRowDeleteConfirmId(item.id); return }
-                    bulkMutation.mutate({ action: 'delete', ids: [item.id] }); setRowActionMenu(null); setRowDeleteConfirmId(null)
-                  },
-                }] },
+                registryScope === 'deleted'
+                  ? { id: 'restore', columns: 1, items: [{
+                      id: 'restore', label: 'Restore', icon: HistoryIcon, tone: 'success', variant: 'inline',
+                      disabled: pendingIds.includes(rowActionMenu.item.id),
+                      onClick: () => {
+                        bulkMutation.mutate({ action: 'restore', ids: [rowActionMenu.item.id] })
+                        setRowActionMenu(null)
+                      },
+                    }] }
+                  : { id: 'archive', columns: 1, items: [{
+                      id: 'archive', label: 'Archive', icon: Trash2, tone: 'danger', variant: 'inline',
+                      confirming: rowDeleteConfirmId === rowActionMenu.item.id,
+                      confirmLabel: 'Confirm Archive?',
+                      disabled: pendingIds.includes(rowActionMenu.item.id),
+                      onClick: () => {
+                        const item = rowActionMenu.item
+                        if (rowDeleteConfirmId !== item.id) { setRowDeleteConfirmId(item.id); return }
+                        bulkMutation.mutate({ action: 'delete', ids: [item.id] })
+                        setRowActionMenu(null)
+                        setRowDeleteConfirmId(null)
+                      },
+                    }] },
               ] as OperationalRowActionSectionModel[]}
             />
-          )}
+          ) : null}
         </>
       }
     >
 
-      {isError ? (
-        <OperationalGridSurface className="vendor-grid-shell vendor-grid">
-          <WorkspaceEmptyState
-            icon={<AlertCircle size={28} />}
-            title="Vendor registry unavailable"
-            description={vendorsError instanceof Error ? vendorsError.message : 'Unable to load vendor records. Retry when the service is available.'}
-            action={<ToolbarButton variant="primary" onClick={() => { void refetchVendors() }}>Retry</ToolbarButton>}
-          />
-        </OperationalGridSurface>
-      ) : groupBy === 'raw' ? (
-        <OperationalGridSurface
-          className="vendor-grid-shell vendor-grid"
-          style={{ '--ag-font-size': `${fontSize}px`, '--ag-font-family': "'Inter', sans-serif" } as React.CSSProperties}
+      {groupBy === 'raw' ? (
+        <OperationalDataGrid
+          gridRef={gridRef}
+          rows={sortedItemsForGrouped}
+          columnDefs={columnDefs}
+          runtime={vendorGridRuntime}
+          rowInteractions={vendorRowInteractions}
+          contextMenu={vendorContextMenu}
+          fontSize={fontSize}
+          rowDensity={rowDensity}
+          context={gridContext}
+          selectionScopeKey={selectionScopeKey}
+          getRowId={handleRowId}
+          onSelectionChanged={(event) => handleSelectionChanged(event, 'raw')}
+          getRowClass={getRowClass}
+          onFirstDataRendered={handleGridDataUpdated}
+          onRowDataUpdated={handleGridDataUpdated}
+          dataState={vendorDataState}
+          noRowsLabel={vendorDataState.noRowsLabel}
           loading={isLoading}
           loadingIcon={<RefreshCcw size={32} className="text-blue-400 animate-spin" />}
-          loadingLabel={<p className="text-[10px] font-semibold text-blue-400">Loading vendor registry...</p>}
-        >
-          <OperationalGridMatrix
-            gridRef={gridRef}
-            rowData={sortedItemsForGrouped}
-            columnDefs={columnDefs}
-            autoSizeStrategy={autoSizeStrategy}
-            colResizeDefault="normal"
-            fontSize={fontSize}
-            rowDensity={rowDensity}
-            context={gridContext}
-            getRowId={handleRowId}
-            onGridReady={handleGridReady}
-            onSelectionChanged={(e) => handleSelectionChanged(e, 'raw')}
-            onColumnResized={handleVendorColumnResized}
-            onColumnMoved={handleColumnMoved}
-            onDragStopped={handleDragStopped}
-            onColumnPinned={handleColumnPinned}
-            onColumnVisible={handleColumnVisible}
-            onFilterChanged={handleFilterChanged}
-            onSortChanged={handleSortChanged}
-            onCellContextMenu={handleCellContextMenu}
-            onRowClicked={handleRowClicked}
-            onRowDoubleClicked={handleRowDoubleClicked}
-            suppressRowClickSelection={false}
-            getRowClass={getRowClass}
-            onFirstDataRendered={handleGridDataUpdated}
-            onRowDataUpdated={handleGridDataUpdated}
-            noRowsLabel={items.length === 0 ? 'No vendor records found' : 'No vendors match current filters'}
-          />
-        </OperationalGridSurface>
+          loadingLabel={<p className="text-[10px] font-semibold text-blue-400">Scanning vendor registry...</p>}
+          suppressRowClickSelection={false}
+        />
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 custom-scrollbar">
-          <div className="rounded-lg border border-white/5 bg-black/20 px-6 py-4 flex items-center justify-between">
+        <OperationalGroupedGridView
+          summary={(
             <div>
-              <p className="text-[10px] font-semibold text-slate-400">Grouped vendor matrix</p>
-              <p className="pt-1 text-[12px] font-semibold text-slate-100">Sorted by {groupOptions.find(o => o.value === groupBy)?.label || groupBy}</p>
+              <p className="text-[10px] font-semibold text-slate-400">Grouped vendor registry</p>
+              <p className="pt-1 text-[12px] font-semibold text-slate-100">Sorted by {groupOptions.find((option) => option.value === groupBy)?.label || groupBy}</p>
             </div>
-            <div className="flex items-center gap-3">
-              <button onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: false }), {}))} className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all">Expand All</button>
-              <button onClick={() => setCollapsedGroups(groupedSections.reduce((acc: any, s: any) => ({ ...acc, [s.key]: true }), {}))} className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all">Collapse All</button>
-              <button onClick={() => setGroupBy('raw')} className="px-3 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-[9px] font-semibold text-rose-400 hover:bg-rose-500/20 transition-all flex items-center gap-2"><X size={12} /><span>Cancel</span></button>
-            </div>
-          </div>
-          {groupedSections.map((section) => {
-            const isCollapsed = collapsedGroups[section.key]
-            const selCount = section.items.filter((item: any) => selectedIds.includes(item.id)).length
-            return (
-              <section key={section.key} className="glass-panel overflow-hidden rounded-lg border border-white/5">
-                <button type="button" onClick={() => setCollapsedGroups((c) => ({ ...c, [section.key]: !c[section.key] }))} className="flex w-full items-center justify-between gap-4 border-b border-white/5 bg-white/[0.03] px-5 py-4 text-left transition-all hover:bg-white/[0.05]">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-[9px] font-semibold text-blue-400">{groupOptions.find(o => o.value === groupBy)?.label}</span>
-                      <h3 className="text-sm font-semibold text-slate-100">{section.label}</h3>
-                    </div>
-                    <p className="pt-1 text-[11px] text-slate-400">{section.items.length} vendors{selCount ? ` · ${selCount} selected` : ''}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="rounded-lg border border-white/5 bg-black/30 px-2.5 py-1 text-[9px] font-semibold text-slate-300">{section.items.length}</span>
-                    {isCollapsed ? <ChevronDown size={16} className="text-slate-500" /> : <ChevronUp size={16} className="text-slate-500" />}
-                  </div>
-                </button>
-                {!isCollapsed && (
-                  <OperationalGridSurface
-                    className="vendor-grid-shell vendor-grid w-full"
-                    style={{ '--ag-font-size': `${fontSize}px`, '--ag-font-family': "'Inter', sans-serif", height: `${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px` } as React.CSSProperties}
+          )}
+          actions={(
+            <>
+              <button
+                onClick={() => setCollapsedGroups(groupedSections.reduce((accumulator: any, section: any) => ({ ...accumulator, [section.key]: false }), {}))}
+                className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+              >
+                Expand All
+              </button>
+              <button
+                onClick={() => setCollapsedGroups(groupedSections.reduce((accumulator: any, section: any) => ({ ...accumulator, [section.key]: true }), {}))}
+                className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+              >
+                Collapse All
+              </button>
+              <div className="w-px h-6 bg-white/10 mx-1" />
+              <button
+                onClick={() => setGroupBy('raw')}
+                className="px-3 py-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-[9px] font-semibold text-rose-400 hover:bg-rose-500/20 transition-all flex items-center gap-2"
+              >
+                <X size={12} />
+                <span>Cancel</span>
+              </button>
+            </>
+          )}
+          sections={(
+            <>
+              {groupedSections.map((section) => {
+                const isCollapsed = collapsedGroups[section.key]
+                const selectedCount = section.items.filter((item: any) => selectedIds.includes(item.id)).length
+                return (
+                  <OperationalGroupedGridSection
+                    key={section.key}
+                    labelMeta={<span className="text-[9px] font-semibold text-blue-400">{groupOptions.find((option) => option.value === groupBy)?.label}</span>}
+                    label={section.label}
+                    count={section.items.length}
+                    countLabel="vendors"
+                    selectedCount={selectedCount}
+                    collapsed={isCollapsed}
+                    onToggle={() => setCollapsedGroups((current) => ({ ...current, [section.key]: !current[section.key] }))}
                   >
-                    <OperationalGridMatrix
-                      rowData={section.items} columnDefs={columnDefs} autoSizeStrategy={autoSizeStrategy}
-                      colResizeDefault="normal" fontSize={fontSize} rowDensity={rowDensity} context={gridContext}
-                      getRowId={handleRowId}
-                      onSelectionChanged={(e) => handleSelectionChanged(e, section.key)}
-                      onColumnResized={handleVendorColumnResized} onColumnMoved={handleColumnMoved}
-                      onDragStopped={handleDragStopped} onColumnPinned={handleColumnPinned} onColumnVisible={handleColumnVisible}
-                      onFilterChanged={handleFilterChanged} onSortChanged={handleSortChanged} onCellContextMenu={handleCellContextMenu}
-                      onRowClicked={handleRowClicked} onRowDoubleClicked={handleRowDoubleClicked}
-                      suppressRowClickSelection={false}
-                      getRowClass={getRowClass} onFirstDataRendered={handleGridDataUpdated} onRowDataUpdated={handleGridDataUpdated}
-                      noRowsLabel="No vendors in this group"
-                    />
-                  </OperationalGridSurface>
-                )}
-              </section>
-            )
-          })}
-        </div>
+                    {!isCollapsed ? (
+                      <OperationalDataGrid
+                        rows={section.items}
+                        columnDefs={columnDefs}
+                        runtime={vendorGridRuntime}
+                        rowInteractions={vendorRowInteractions}
+                        contextMenu={vendorContextMenu}
+                        fontSize={fontSize}
+                        rowDensity={rowDensity}
+                        context={gridContext}
+                        selectionScopeKey={selectionScopeKey}
+                        getRowId={handleRowId}
+                        onSelectionChanged={(event) => handleSelectionChanged(event, section.key)}
+                        getRowClass={getRowClass}
+                        onFirstDataRendered={handleGridDataUpdated}
+                        onRowDataUpdated={handleGridDataUpdated}
+                        noRowsLabel="No vendors in this group"
+                        height={`${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px`}
+                        suppressRowClickSelection={false}
+                      />
+                    ) : null}
+                  </OperationalGroupedGridSection>
+                )
+              })}
+            </>
+          )}
+        />
       )}
 
       <ConfirmationModal isOpen={confirmModal.isOpen} onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })} onConfirm={() => { confirmModal.onConfirm?.(); setConfirmModal((prev: any) => ({ ...prev, isOpen: false })); }} title={confirmModal.title} message={confirmModal.message} variant={confirmModal.variant} />
@@ -1325,21 +1502,6 @@ export default function VendorsReal() {
         <ConfigRegistryModal key="vendor-config-registry" isOpen={showRegistry} onClose={() => setShowRegistry(false)} title="Vendor Matrix Enumerations" sections={[ { title: 'Country List', category: 'VendorCountry', icon: Globe }, { title: 'Device Type', category: 'VendorDeviceType', icon: Monitor } ]} />
       </AnimatePresence>
 
-      <style>{`
-        .ag-theme-alpine-dark {
-          --ag-background-color: #1a1b26;
-          --ag-header-background-color: #24283b;
-          --ag-border-color: rgba(255, 255, 255, 0.05);
-          --ag-foreground-color: #f1f5f9;
-          --ag-header-foreground-color: #3b82f6;
-        }
-        .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; font-size: ${fontSize}px !important; justify-content: center !important; white-space: nowrap !important; }
-        .ag-cell { display: flex; align-items: center; justify-content: center !important; font-weight: 700 !important; font-size: ${fontSize}px !important; }
-        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
-        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
-        .row-action-trigger { opacity: 1; }
-      `}</style>
     </OperationalWorkspaceShell>
   )
 }
