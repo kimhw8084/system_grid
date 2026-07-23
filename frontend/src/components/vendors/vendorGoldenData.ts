@@ -2,7 +2,7 @@ import { parseAppDate } from '../../utils/dateUtils'
 import type { Vendor, VendorTableRow } from './vendorGoldenTypes'
 
 export const VENDOR_QUERY_KEY = ['vendors'] as const
-export const VENDOR_LIST_ENDPOINT = '/api/v1/vendors/'
+export const VENDOR_LIST_ENDPOINT = '/api/v1/vendors/?include_deleted=true'
 export const VENDOR_LIFECYCLE_ENDPOINT = '/api/v1/vendors/bulk-action'
 
 /** The single stable table adapter consumed by raw and grouped Vendor grids. */

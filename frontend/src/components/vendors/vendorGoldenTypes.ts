@@ -19,7 +19,7 @@ export type VendorContract = {
   scope?: unknown
   coverage?: unknown
   schedule?: unknown
-  covered_systems?: number[]
+  covered_systems?: Array<string | number>
   covered_assets?: number[]
   [key: string]: unknown
 }

@@ -20,6 +20,8 @@ import toast from 'react-hot-toast'
 import { showWorkspaceRevertToast, showWorkspaceToast } from '../shared/WorkspaceToast'
 import {
   FLOATING_PANEL_EDGE,
+  useOperationalGroupedSelection,
+  useOperationalRowInteractions,
 } from '../shared/OperationalGridInteractions'
 import { apiFetch } from '../../api/apiClient'
 import { formatAppDate, formatAppTime, formatAppDay, parseAppDate } from '../../utils/dateUtils'
@@ -71,7 +73,6 @@ import {
 } from '../shared/OperationalWorkspaceShells'
 import { OperationalRowActionMenu, type OperationalRowActionSectionModel } from '../shared/OperationalRowActionMenu'
 import {
-  applyOperationalColumnSizing,
   applyOperationalColumnState,
   autoSizeOperationalColumns,
   getOperationalColumnLayoutSnapshot,
@@ -81,6 +82,15 @@ import {
   sanitizeOperationalSortModel,
 } from '../shared/OperationalGridSizing'
 import { WorkspaceShareHeader } from '../shared/WorkspaceShareHeader'
+import { renderOperationalActionButtons } from '../shared/OperationalGridStandard'
+import { buildVendorGoldenColumns } from './vendorGoldenColumns'
+import {
+  VENDOR_LIFECYCLE_ENDPOINT,
+  VENDOR_LIST_ENDPOINT,
+  VENDOR_QUERY_KEY,
+  toVendorTableRows,
+} from './vendorGoldenData'
+import type { Vendor, VendorLifecycleOperation, VendorTableRow } from './vendorGoldenTypes'
 
 // ---------------------------------------------------------------------------
 // Storage keys (vendor-namespaced to avoid collisions with monitoring)
@@ -94,21 +104,41 @@ const VENDOR_WORKSPACE_PREFERENCE_KEY     = 'vendor_workspace_state_v1'
 const VENDOR_WORKSPACE_PREFERENCE_VERSION = 1
 const BULK_MENU_MAX_HEIGHT = 480
 const VENDOR_FIXED_WIDTH_COLUMN_IDS = new Set([
-  'select', 'id', 'favorite', 'watch', 'row_actions',
+  'select', 'id', 'recent_change', 'favorite', 'watch', 'row_actions',
 ])
 const VENDOR_PERSISTED_COLUMN_IDS = new Set([
-  'select', 'id', 'favorite', 'watch',
+  'select', 'id', 'recent_change', 'favorite', 'watch',
   'name', 'country', 'primary_personnel_name', 'primary_personnel_email',
   'active_contract_count', 'contract_count', 'earliest_expiry_date',
   'personnel_count', 'created_at', 'updated_at', 'row_actions',
 ])
 const VENDOR_VALID_GROUP_BY = new Set(['raw', 'country'])
-type VendorLifecycleOperation = Readonly<{
-  ids: readonly number[]
-  originalAction: 'delete' | 'restore'
-  inverseAction: 'restore' | 'delete'
-  targetLabels: readonly string[]
-}>
+
+const VENDOR_COUNTRY_FALLBACK_OPTIONS = [
+  { label: 'South Korea', value: 'South Korea' },
+  { label: 'USA', value: 'USA' },
+]
+
+function buildVendorCountryOptions(configuredOptions: unknown, currentCountry?: unknown) {
+  const normalizedConfigured = Array.isArray(configuredOptions)
+    ? configuredOptions.flatMap((option: any) => {
+        const value = String(option?.value ?? option?.label ?? option ?? '').trim()
+        if (!value) return []
+        return [{ label: String(option?.label ?? option?.value ?? option).trim() || value, value }]
+      })
+    : []
+
+  const currentValue = String(currentCountry ?? '').trim()
+  const combined = [
+    ...VENDOR_COUNTRY_FALLBACK_OPTIONS,
+    ...normalizedConfigured,
+    ...(currentValue ? [{ label: currentValue, value: currentValue }] : []),
+  ]
+
+  return combined.filter((option, index, options) =>
+    options.findIndex((candidate) => candidate.value === option.value) === index,
+  )
+}
 //
 
 // ---------------------------------------------------------------------------
@@ -384,7 +414,6 @@ export default function VendorsReal() {
   const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<number | null>(null)
   const [rowActionMenu,      setRowActionMenu]      = useState<{ item: any; point: { x: number; y: number } } | null>(null)
   const [pendingIds,         setPendingIds]         = useState<number[]>([])
-  const selectionAnchorRef    = useRef<number | null>(null)
 
   // Grid state
   const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
@@ -421,13 +450,13 @@ export default function VendorsReal() {
   const vendorPreferenceSyncRef      = useRef<string | null>(null)
   const vendorPreferenceSyncTimeout  = useRef<number | null>(null)
   const preserveExplicitColumnWidthsRef = useRef(false)
+  const missingDeepLinkRef = useRef<string | null>(null)
 
   const {
     columnLayoutState, setColumnLayoutState, setTransientManualColumnWidths,
     preserveExplicitColumnWidths, syncColumnLayoutState, applyColumnLayoutState, handleColumnResized,
   } = useOperationalGridLayout(persistedUiState?.columnLayoutState ?? [], Boolean(activeViewId))
 
-  const groupSelectionsRef = useRef<Record<string, number[]>>({})
 
   useEffect(() => { preserveExplicitColumnWidthsRef.current = preserveExplicitColumnWidths }, [preserveExplicitColumnWidths])
 
@@ -488,23 +517,7 @@ export default function VendorsReal() {
     return () => { if (vendorPreferenceSyncTimeout.current !== null) { window.clearTimeout(vendorPreferenceSyncTimeout.current); vendorPreferenceSyncTimeout.current = null } }
   }, [buildVendorWorkspacePreferencePayload, hasUserSettings])
 
-  // The golden grid keeps the exact vendor IDs selected when switching raw/grouped modes.
-  // Each grouped grid contributes its own slice; the raw grid remains the single source on return.
-
   // --- EVENT HANDLERS ---
-  const handleSelectionChanged = useCallback((e: any, groupKey = 'raw') => {
-    const ids = (e?.api?.getSelectedNodes?.() || []).map((n: any) => n.data?.id).filter(Boolean)
-    groupSelectionsRef.current[groupKey] = ids
-    setSelectedIds(Array.from(new Set(Object.values(groupSelectionsRef.current).flat())))
-  }, [])
-
-  const clearVendorSelection = useCallback(() => {
-    groupSelectionsRef.current = {}
-    selectionAnchorRef.current = null
-    setSelectedIds([])
-    gridRef.current?.api?.deselectAll?.()
-  }, [])
-
   const handleColumnMoved    = useCallback((event: any) => { if (!event.source.includes('drag')) syncColumnLayoutState(event.api) }, [syncColumnLayoutState])
   const handleDragStopped    = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
   const handleColumnPinned   = useCallback((event: any) => syncColumnLayoutState(event.api), [syncColumnLayoutState])
@@ -551,39 +564,10 @@ export default function VendorsReal() {
   }, [clearPendingAutoSize, syncColumnLayoutState])
   const handleGridDataUpdated = useCallback(() => autoSizeVendorColumns(), [autoSizeVendorColumns])
   const getRowClass = useCallback((params: any) => {
-    let classes = params.node.rowIndex % 2 === 0 ? 'vendor-grid-row-even' : 'vendor-grid-row-odd'
-    if (params.data && pendingIds.includes(params.data.id)) classes += ' row-ghost opacity-40 grayscale pointer-events-none'
-    return classes
+    if (params.data && pendingIds.includes(params.data.id)) return 'row-ghost opacity-40 grayscale pointer-events-none'
+    return ''
   }, [pendingIds])
 
-  const shouldIgnoreRowSelection = (target: EventTarget | null) => {
-    const el = target as HTMLElement | null
-    if (!el) return false
-    return Boolean(el.closest('button, a, input, textarea, select, label') || el.closest('.ag-selection-checkbox') || el.closest('.row-action-menu-container'))
-  }
-  const handleRowClicked = useCallback((event: any) => {
-    if (!event?.node || shouldIgnoreRowSelection(event.event?.target)) return
-    if (event.data && pendingIds.includes(event.data.id)) return
-    const mouseEvent = event.event as MouseEvent | undefined
-    const isToggle = Boolean(mouseEvent?.metaKey || mouseEvent?.ctrlKey)
-    const isRange  = Boolean(mouseEvent?.shiftKey)
-    if (isRange && selectionAnchorRef.current !== null) {
-      const currentIndex = event.node.rowIndex
-      if (currentIndex == null) return
-      const start = Math.min(selectionAnchorRef.current, currentIndex)
-      const end   = Math.max(selectionAnchorRef.current, currentIndex)
-      event.api.deselectAll()
-      event.api.forEachNodeAfterFilterAndSort((node: any) => { if (node.rowIndex >= start && node.rowIndex <= end && !pendingIds.includes(node.data?.id)) node.setSelected(true) })
-      return
-    }
-    if (isToggle) { event.node.setSelected(!event.node.isSelected()); selectionAnchorRef.current = event.node.rowIndex; return }
-    event.api.deselectAll(); event.node.setSelected(true); selectionAnchorRef.current = event.node.rowIndex
-  }, [pendingIds])
-  const handleRowDoubleClicked = useCallback((event: any) => {
-    if (!event?.data || shouldIgnoreRowSelection(event.event?.target)) return
-    if (pendingIds.includes(event.data.id)) return
-    setDetailItem(event.data)
-  }, [pendingIds])
 
   // --- TOOLBAR ACTIONS ---
   const handleExportCSV = () => {
@@ -723,9 +707,9 @@ export default function VendorsReal() {
 
   // --- DATA QUERIES ---
   const { data: allVendors, isLoading, isFetching, isError, error: vendorsError, refetch: refetchVendors } = useQuery({
-    queryKey: ['vendors'],
+    queryKey: VENDOR_QUERY_KEY,
     queryFn: async () => {
-      const response = await apiFetch('/api/v1/vendors/')
+      const response = await apiFetch(VENDOR_LIST_ENDPOINT)
       if (!response.ok) throw new Error(await response.text())
       return response.json()
     }
@@ -739,32 +723,11 @@ export default function VendorsReal() {
     queryFn: async () => (await apiFetch('/api/v1/settings/options?category=LogicalSystem')).json()
   })
 
-  // Processed rows with computed aggregate fields for grid display
-  const processedVendors = useMemo(() => {
-    if (!allVendors || !Array.isArray(allVendors)) return []
-    return allVendors.map((v: any) => {
-      const contracts = v.contracts || []
-      const personnel = v.personnel || []
-      const primary   = personnel.find((p: any) => p.id === v.primary_personnel_id)
-      const now = new Date()
-      const activeContracts = contracts.filter((c: any) => {
-        const start = parseAppDate(c.effective_date)
-        const end   = parseAppDate(c.expiry_date)
-        return (!start || start <= now) && (!end || end >= now) && c.status === 'Completed'
-      })
-      const expiryDates = contracts.map((c: any) => parseAppDate(c.expiry_date)).filter(Boolean).map((d: any) => d!.getTime())
-      return {
-        ...v,
-        primary_personnel_name:  primary?.name         || null,
-        primary_personnel_email: primary?.company_email || null,
-        primary_personnel_phone: primary?.phone         || null,
-        active_contract_count:   activeContracts.length,
-        contract_count:          contracts.length,
-        earliest_expiry_date:    expiryDates.length > 0 ? new Date(Math.min(...expiryDates)).toISOString() : null,
-        personnel_count:         personnel.length,
-      }
-    })
-  }, [allVendors])
+  // One typed Vendor row adapter feeds raw and grouped grids.
+  const processedVendors = useMemo<VendorTableRow[]>(
+    () => Array.isArray(allVendors) ? toVendorTableRows(allVendors as Vendor[]) : [],
+    [allVendors]
+  )
 
   const lifecycleCounts = useMemo(() => {
     if (!Array.isArray(processedVendors)) return { existing: 0, archived: 0 }
@@ -847,6 +810,27 @@ export default function VendorsReal() {
     })
   }, [displayedItems, favoriteIds])
 
+  const selectionScopeKey = useMemo(() => {
+    const visibleIds = sortedItemsForGrouped.map((vendor) => vendor.id).join(',')
+    return `${registryScope}:${groupBy}:${visibleIds}`
+  }, [groupBy, registryScope, sortedItemsForGrouped])
+
+  const { handleSelectionChanged, resetGroupedSelection } = useOperationalGroupedSelection({
+    setSelectedIds,
+    selectionScopeKey,
+  })
+
+  const clearVendorSelection = useCallback(() => {
+    resetGroupedSelection()
+    gridRef.current?.api?.deselectAll?.()
+  }, [resetGroupedSelection])
+
+  const { handleRowClicked, handleRowDoubleClicked } = useOperationalRowInteractions({
+    onRowDoubleClick: (vendor) => setDetailItem(vendor),
+    pendingIds,
+    selectionScopeKey,
+  })
+
   const groupedSections = useMemo(() => {
     if (groupBy === 'raw') return []
     const sections = sortedItemsForGrouped.reduce((acc: Array<{ key: string; label: string; items: any[] }>, item: any) => {
@@ -897,7 +881,6 @@ export default function VendorsReal() {
   const selectedItems = useMemo(() => displayedItems.filter((item: any) => selectedIds.includes(item.id)), [displayedItems, selectedIds])
 
   useEffect(() => { if (!displayedItems.length) return; const t = window.setTimeout(() => autoSizeVendorColumns(), 0); return () => window.clearTimeout(t) }, [autoSizeVendorColumns, displayedItems, fontSize, hiddenColumns, isIntelligenceExpanded])
-  useEffect(() => { selectionAnchorRef.current = null }, [items])
   useEffect(() => { if (selectedIds.length === 0) setShowBulkMenu(false) }, [selectedIds.length])
   useEffect(() => { if (gridRef.current?.api) gridRef.current.api.refreshCells({ columns: ['favorite', 'watch'], force: true }) }, [favoriteIds, watchIds])
   useEffect(() => { if (!activeViewId || !gridRef.current?.api) return; applySavedView(activeViewId) }, [activeViewId, items.length])
@@ -931,138 +914,146 @@ export default function VendorsReal() {
     const target = processedVendors.find((v: any) => String(v.id) === idParam)
     if (!target) {
       setDetailItem((current: any) => (current && String(current.id) === idParam ? null : current))
-      const nextParams = new URLSearchParams(searchParams); nextParams.delete('id')
-      navigate({ search: nextParams.toString() ? `?${nextParams.toString()}` : '' }, { replace: true })
+      if (missingDeepLinkRef.current !== idParam) {
+        missingDeepLinkRef.current = idParam
+        showWorkspaceToast(`Vendor ID ${idParam} was not found or is not accessible`, { type: 'error' })
+      }
       return
     }
+    missingDeepLinkRef.current = null
     setDetailItem(target)
   }, [allVendors, processedVendors, idParam, navigate, searchParams])
 
-  // --- BULK MUTATION ---
+  const executeRevert = useCallback(async (operation: VendorLifecycleOperation) => {
+    try {
+      const response = await apiFetch(VENDOR_LIFECYCLE_ENDPOINT, {
+        method: 'POST',
+        body: JSON.stringify({ ids: [...operation.ids], action: operation.inverseAction, target: 'vendor' }),
+      })
+      if (!response.ok) throw new Error(await response.text())
+      await queryClient.invalidateQueries({ queryKey: VENDOR_QUERY_KEY })
+      showWorkspaceToast(
+        `Reverted ${operation.targetLabels.length} vendor lifecycle change${operation.targetLabels.length === 1 ? '' : 's'}`,
+        { type: 'success' },
+      )
+    } catch (error: any) {
+      const message = error?.message || 'Vendor revert failed'
+      showWorkspaceToast(`Revert failed: ${message}. Retry`, {
+        type: 'error',
+        onRevert: () => { void executeRevert(operation) },
+      })
+    }
+  }, [queryClient])
+
+  // --- BULK / ROW LIFECYCLE MUTATION ---
   const bulkMutation = useMutation({
-    onMutate: ({ ids: overrideIds }: any) => { const ids = overrideIds ?? selectedIds; setPendingIds(prev => [...new Set([...prev, ...ids])]) },
-    onSettled: (_: any, __: any, variables: any) => { const ids = variables.ids ?? selectedIds; setPendingIds(prev => prev.filter(id => !ids.includes(id))) },
-    mutationFn: async ({ action, ids: overrideIds }: any) => {
-      const idsToUse = overrideIds ?? selectedIds
-      const res = await apiFetch('/api/v1/vendors/bulk-action', { method: 'POST', body: JSON.stringify({ ids: idsToUse, action, target: 'vendor' }) })
-      if (!res.ok) throw new Error(await res.text())
-      return { result: await res.json(), action, idsToUse }
+    onMutate: ({ ids: overrideIds }: { action: 'delete' | 'restore'; ids?: number[] }) => {
+      const ids = Array.from(new Set(overrideIds ?? selectedIds))
+      setPendingIds((current) => Array.from(new Set([...current, ...ids])))
+      return { ids }
     },
-    onSuccess: async ({ result, action, idsToUse }: any) => {
-      await queryClient.invalidateQueries({ queryKey: ['vendors'] })
+    onSettled: (_data: unknown, _error: unknown, variables: { action: 'delete' | 'restore'; ids?: number[] }, context?: { ids: number[] }) => {
+      const ids = context?.ids ?? variables.ids ?? selectedIds
+      setPendingIds((current) => current.filter((id) => !ids.includes(id)))
+    },
+    mutationFn: async ({ action, ids: overrideIds }: { action: 'delete' | 'restore'; ids?: number[] }) => {
+      const idsToUse = Array.from(new Set(overrideIds ?? selectedIds))
+      if (idsToUse.length === 0) throw new Error('Select at least one vendor')
+
+      // Capture labels and inverse behavior before the request and before any query refresh.
+      const labels = processedVendors
+        .filter((vendor) => idsToUse.includes(vendor.id))
+        .map((vendor) => vendor.name || String(vendor.id))
+      const operation: VendorLifecycleOperation = Object.freeze({
+        ids: Object.freeze([...idsToUse]),
+        originalAction: action,
+        inverseAction: action === 'delete' ? 'restore' : 'delete',
+        targetLabels: Object.freeze(labels.length ? labels : idsToUse.map(String)),
+      })
+
+      const response = await apiFetch(VENDOR_LIFECYCLE_ENDPOINT, {
+        method: 'POST',
+        body: JSON.stringify({ ids: idsToUse, action, target: 'vendor' }),
+      })
+      if (!response.ok) throw new Error(await response.text())
+      return { result: await response.json(), operation }
+    },
+    onSuccess: async ({ result, operation }: { result: any; operation: VendorLifecycleOperation }) => {
+      await queryClient.invalidateQueries({ queryKey: VENDOR_QUERY_KEY })
       setShowBulkMenu(false)
       clearVendorSelection()
-      const changed = Number(result?.changed ?? result?.count ?? idsToUse.length)
-      if ((action === 'delete' || action === 'restore') && changed > 0) {
-        const labels = items.filter((vendor: any) => idsToUse.includes(vendor.id)).map((vendor: any) => vendor.name || String(vendor.id))
-        const operation: VendorLifecycleOperation = Object.freeze({
-          ids: Object.freeze([...idsToUse]),
-          originalAction: action,
-          inverseAction: action === 'delete' ? 'restore' : 'delete',
-          targetLabels: Object.freeze(labels.length ? labels : idsToUse.map(String)),
-        })
+
+      const changed = Number(result?.changed ?? result?.count ?? operation.ids.length)
+      if (changed > 0) {
         showWorkspaceRevertToast(
-          `${action === 'restore' ? 'Restored' : 'Archived'} ${operation.targetLabels.length} vendor${operation.targetLabels.length === 1 ? '' : 's'}`,
+          `${operation.originalAction === 'restore' ? 'Restored' : 'Archived'} ${changed} vendor${changed === 1 ? '' : 's'}`,
           () => { void executeRevert(operation) },
         )
         return
       }
-      const actionLabel = action === 'restore' ? 'Restored' : 'Archived'
-      showWorkspaceToast(changed === idsToUse.length ? `${actionLabel} ${changed} vendor${changed === 1 ? '' : 's'}` : `${actionLabel} ${changed} of ${idsToUse.length} vendors`, { type: 'success' })
+
+      showWorkspaceToast('No vendor records changed', { type: 'error' })
     },
-    onError: (e: any) => showWorkspaceToast(`Operation failed: ${e.message}`, { type: 'error' })
+    onError: (error: any) => showWorkspaceToast(`Operation failed: ${error?.message || 'Unknown error'}`, { type: 'error' }),
   })
 
-  const executeRevert = useCallback(async (operation: VendorLifecycleOperation) => {
-    try {
-      const response = await apiFetch('/api/v1/vendors/bulk-action', {
-        method: 'POST',
-        body: JSON.stringify({ ids: operation.ids, action: operation.inverseAction, target: 'vendor' }),
-      })
-      if (!response.ok) throw new Error(await response.text())
-      await queryClient.invalidateQueries({ queryKey: ['vendors'] })
-      showWorkspaceToast(`Reverted ${operation.targetLabels.length} vendor lifecycle change${operation.targetLabels.length === 1 ? '' : 's'}`, { type: 'success' })
-    } catch (error: any) {
-      showWorkspaceToast(error?.message || 'Vendor revert failed', { type: 'error' })
-    }
-  }, [queryClient])
-
   // --- ROW PRIMARY ACTIONS ---
-  const renderPrimaryRowActions = (item: any) => {
+  const renderPrimaryRowActions = useCallback((item: VendorTableRow) => {
     const isPending = pendingIds.includes(item.id)
     return (
-      <div className={`flex items-center justify-end gap-1.5 pr-2 ${isPending ? 'opacity-20 grayscale pointer-events-none' : ''}`}>
-        <button type="button" onClick={(e) => { e.stopPropagation(); setDetailItem(item) }} title="Open details" className="rounded-lg p-1 text-blue-400 transition-all hover:bg-blue-400/10 active:scale-90">
-          <Maximize2 size={13} />
-        </button>
-        <button type="button" onClick={(e) => { e.stopPropagation(); setEditingItem(item); setIsFormOpen(true) }} title="Edit vendor" className="rounded-lg p-1 text-emerald-400 transition-all hover:bg-emerald-400/10 active:scale-90">
-          <Edit2 size={13} />
-        </button>
-        <button type="button" onClick={(e: any) => openRowActionMenu(e, item)} title="More actions" className="row-action-trigger row-action-menu-container rounded-lg p-1 text-slate-400 transition-all hover:bg-slate-400/10 hover:text-white active:scale-90">
-          <MoreVertical size={13} />
-        </button>
+      <div className={isPending ? 'opacity-20 grayscale pointer-events-none' : ''}>
+        {renderOperationalActionButtons(
+          <>
+            <button
+              type="button"
+              onClick={(event) => { event.stopPropagation(); setDetailItem(item) }}
+              title="Open details"
+              className="rounded-lg p-1 text-blue-400 transition-all hover:bg-blue-400/10 active:scale-90"
+            >
+              <Maximize2 size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={(event) => { event.stopPropagation(); setEditingItem(item); setIsFormOpen(true) }}
+              title="Edit vendor"
+              className="rounded-lg p-1 text-emerald-400 transition-all hover:bg-emerald-400/10 active:scale-90"
+            >
+              <Edit2 size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={(event: any) => openRowActionMenu(event, item)}
+              title="More actions"
+              className="row-action-trigger row-action-menu-container rounded-lg p-1 text-slate-400 transition-all hover:bg-slate-400/10 hover:text-white active:scale-90"
+            >
+              <MoreVertical size={13} />
+            </button>
+          </>
+        )}
       </div>
     )
-  }
+  }, [pendingIds])
 
   // --- COLUMN DEFINITIONS ---
-  const columnDefs = useMemo(() => {
-    const layoutById = new Map(columnLayoutState.map((col: any) => [col.colId, col]))
-    const lockFixed = (column: any, layout?: any) => {
-      const colId = column.colId || column.field
-      const lockedWidth = layout?.width ?? column.width ?? column.initialWidth
-      if (!VENDOR_FIXED_WIDTH_COLUMN_IDS.has(colId) || lockedWidth == null) return column
-      return { ...column, width: lockedWidth, initialWidth: lockedWidth, minWidth: lockedWidth, maxWidth: lockedWidth, flex: undefined, initialFlex: undefined }
-    }
-    const defs = [
-      { colId: 'select', headerName: '', width: 48, checkboxSelection: true, headerCheckboxSelection: true, pinned: 'left', cellClass: 'flex items-center justify-center border-r border-white/5', headerClass: 'flex items-center justify-center border-r border-white/5', suppressSizeToFit: true, sortable: false, filter: false, lockVisible: true },
-      { colId: 'id', field: 'id', headerName: 'ID', width: 80, pinned: 'left', cellClass: 'text-center font-bold text-slate-500 border-r border-white/5 flex items-center justify-center', headerClass: 'text-center border-r border-white/5', filter: 'agNumberColumnFilter', lockVisible: true },
-      { colId: 'favorite', headerName: 'Fav', field: 'favorite', width: 70, pinned: 'left', cellClass: 'text-center border-r border-white/5 flex items-center justify-center', headerClass: 'text-center border-r border-white/5', sortable: true, filter: false, lockVisible: true,
-        valueGetter: (p: any) => p.context?.favoriteIds?.includes(p.data?.id) ? 1 : 0,
-        cellRenderer: (p: any) => {
-          const isFav = p.context?.favoriteIds?.includes(p.data?.id)
-          return (<div className="flex h-full w-full items-center justify-center"><button onClick={(e) => { e.stopPropagation(); toggleFavorite(p.data.id) }} title={isFav ? 'Unpin vendor' : 'Pin vendor'} className={`rounded-lg p-1 transition-all flex items-center justify-center ${isFav ? 'text-amber-300' : 'text-slate-600 hover:text-slate-300'}`}><Star size={15} className={isFav ? 'fill-current' : ''} /></button></div>)
-        }
-      },
-      { colId: 'watch', headerName: 'Watch', field: 'watch', width: 80, pinned: 'left', cellClass: 'text-center border-r border-white/5 flex items-center justify-center', headerClass: 'text-center border-r border-white/5', sortable: false, filter: false, lockVisible: true, hide: !isIntelligenceExpanded,
-        cellRenderer: (p: any) => {
-          const isWatched = p.context?.watchIds?.includes(p.data?.id)
-          return (<div className="flex h-full w-full items-center justify-center"><button onClick={(e) => { e.stopPropagation(); toggleWatch(p.data.id) }} title={isWatched ? 'Unwatch' : 'Watch'} className={`rounded-lg p-1 transition-all flex items-center justify-center ${isWatched ? 'text-sky-300' : 'text-slate-600 hover:text-slate-300'}`}><Eye size={15} className={isWatched ? 'fill-current' : ''} /></button></div>)
-        }
-      },
-      { field: 'name', headerName: 'Vendor Name', width: 200, filter: true, pinned: 'left', cellClass: 'font-bold text-left tracking-tight flex items-center', headerClass: 'text-left', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }} className="block min-w-0 truncate whitespace-nowrap overflow-hidden text-ellipsis uppercase">{p.value}</span>, hide: hiddenColumns.includes('name') },
-      { field: 'country', headerName: 'Country', width: 130, filter: true, cellClass: 'text-center font-bold flex items-center justify-center', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? <span style={{ fontSize: `${fontSize}px` }} className="font-bold">{p.value}</span> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold">N/A</span>, hide: hiddenColumns.includes('country') },
-      { field: 'primary_personnel_name', headerName: 'Primary Contact', width: 180, filter: true, cellClass: 'text-center flex items-center justify-center', headerClass: 'text-center', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }} className="font-bold">{p.value || '---'}</span>, hide: hiddenColumns.includes('primary_personnel_name') },
-      { field: 'primary_personnel_email', headerName: 'Email', width: 200, filter: true, cellClass: 'font-mono text-blue-400 flex items-center', headerClass: 'text-center', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || '---'}</span>, hide: hiddenColumns.includes('primary_personnel_email') },
-      { field: 'active_contract_count', headerName: 'Active Contracts', width: 140, filter: 'agNumberColumnFilter', cellClass: 'text-center font-bold text-emerald-400 flex items-center justify-center', headerClass: 'text-center', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value ?? 0}</span>, hide: hiddenColumns.includes('active_contract_count') },
-      { field: 'contract_count', headerName: 'Total Contracts', width: 130, filter: 'agNumberColumnFilter', cellClass: 'text-center font-bold flex items-center justify-center', headerClass: 'text-center', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value ?? 0}</span>, hide: hiddenColumns.includes('contract_count') },
-      { field: 'earliest_expiry_date', headerName: 'Earliest Expiry', width: 140, filter: 'agDateColumnFilter', cellClass: 'text-center flex items-center justify-center', headerClass: 'text-center',
-        cellRenderer: (p: any) => {
-          if (!p.value) return <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500 font-bold">—</span>
-          const date = parseAppDate(p.value)
-          const isExpired  = date && date < new Date()
-          const isExpiring = !isExpired && date && date < new Date(Date.now() + 30 * 24 * 3600 * 1000)
-          return <span style={{ fontSize: `${fontSize}px` }} className={`font-bold ${isExpired ? 'text-rose-500' : isExpiring ? 'text-amber-400' : 'text-emerald-500'}`}>{formatAppDay(p.value)}</span>
-        },
-        hide: hiddenColumns.includes('earliest_expiry_date')
-      },
-      { field: 'personnel_count', headerName: 'Personnel', width: 110, filter: 'agNumberColumnFilter', cellClass: 'text-center font-bold flex items-center justify-center', headerClass: 'text-center', cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value ?? 0}</span>, hide: hiddenColumns.includes('personnel_count') },
-      { field: 'created_at', headerName: 'Created', width: 170, filter: 'agDateColumnFilter', cellClass: 'text-center font-bold text-slate-500 flex items-center justify-center', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? <div className="flex items-center gap-2"><Clock size={12} className="opacity-40" /><span style={{ fontSize: `${fontSize}px` }}>{formatAppDate(p.value)}</span></div> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500">—</span>, hide: hiddenColumns.includes('created_at') },
-      { field: 'updated_at', headerName: 'Updated', width: 170, filter: 'agDateColumnFilter', cellClass: 'text-center font-bold text-slate-500 flex items-center justify-center', headerClass: 'text-center', cellRenderer: (p: any) => p.value ? <div className="flex items-center gap-2"><Clock size={12} className="opacity-40" /><span style={{ fontSize: `${fontSize}px` }}>{formatAppDate(p.value)}</span></div> : <span style={{ fontSize: `${fontSize}px` }} className="text-slate-500">—</span>, hide: hiddenColumns.includes('updated_at') },
-      { colId: 'row_actions', headerName: 'Action', width: 180, pinned: 'right', cellClass: 'text-right pr-3 flex items-center justify-end', headerClass: 'text-center', sortable: false, filter: false, cellRenderer: (p: any) => p.data ? renderPrimaryRowActions(p.data) : null, lockVisible: true },
-    ]
-
-    const mergedDefs = defs.map((col: any) => {
-      const colId  = col.colId || col.field
-      const layout = layoutById.get(colId)
-      return lockFixed(applyOperationalColumnSizing(col, layout, preserveExplicitColumnWidths), layout)
-    })
-    if (columnLayoutState.length > 0) {
-      const orderMap = new Map<string, number>(columnLayoutState.map((col: any, index: number) => [String(col.colId), index] as [string, number]))
-      return [...mergedDefs].sort((a: any, b: any) => (orderMap.get(a.colId || a.field) ?? 1000) - (orderMap.get(b.colId || b.field) ?? 1000))
-    }
-    return mergedDefs
-  }, [fontSize, hiddenColumns, columnLayoutState, isIntelligenceExpanded, preserveExplicitColumnWidths]) as any
+  const columnDefs = useMemo(() => buildVendorGoldenColumns({
+    fontSize,
+    hiddenColumns,
+    columnLayoutState,
+    preserveExplicitColumnWidths,
+    isIntelligenceExpanded,
+    isRecentChange,
+    onToggleFavorite: toggleFavorite,
+    onToggleWatch: toggleWatch,
+    renderPrimaryRowActions,
+  }), [
+    columnLayoutState,
+    fontSize,
+    hiddenColumns,
+    isIntelligenceExpanded,
+    isRecentChange,
+    preserveExplicitColumnWidths,
+    renderPrimaryRowActions,
+  ])
 
   const gridContext = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
   const vendorGridRuntime = useMemo(() => ({
@@ -1078,7 +1069,6 @@ export default function VendorsReal() {
   }), [handleColumnMoved, handleColumnPinned, handleColumnVisible, handleDragStopped, handleFilterChanged, handleGridReady, handleSortChanged, handleVendorColumnResized, preserveExplicitColumnWidths])
   const vendorRowInteractions = useMemo(() => ({ handleRowClicked, handleRowDoubleClicked }), [handleRowClicked, handleRowDoubleClicked])
   const vendorContextMenu = useMemo(() => ({ handleCellContextMenu }), [handleCellContextMenu])
-  const selectionScopeKey = `${registryScope}:${groupBy}`
 
   const groupOptions = [
     { value: 'raw',     label: 'Raw Rows' },
@@ -1481,7 +1471,7 @@ export default function VendorsReal() {
             key={`vendor-form-${editingItem?.id || 'new'}`}
             item={editingItem}
             onClose={() => setIsFormOpen(false)}
-            onSuccess={() => { queryClient.invalidateQueries({ queryKey: ['vendors'] }); setIsFormOpen(false) }}
+            onSuccess={() => { queryClient.invalidateQueries({ queryKey: VENDOR_QUERY_KEY }); setIsFormOpen(false) }}
           />
         )}
         {detailItem && (
@@ -1513,7 +1503,7 @@ function VendorCreateForm({ item, onClose, onSuccess }: any) {
   const queryClient = useQueryClient()
   const [formData, setFormData] = useState({ name: '', country: 'South Korea', ...item })
   const { data: countries } = useQuery({ queryKey: ['settings', 'VendorCountry'], queryFn: async () => (await apiFetch('/api/v1/settings/options?category=VendorCountry')).json() })
-  const countryOptions = useMemo(() => (countries && countries.length > 0) ? countries : [{ label: 'South Korea', value: 'South Korea' }, { label: 'USA', value: 'USA' }], [countries])
+  const countryOptions = useMemo(() => buildVendorCountryOptions(countries, formData.country), [countries, formData.country])
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
@@ -1573,7 +1563,7 @@ function VendorDetailPanel({ vendor, devices, systems, onClose, onDelete, delete
   const updateField = (field: string, value: any) => { setFormData({ ...formData, [field]: value }); setHasChanges(true) }
 
   const { data: countries } = useQuery({ queryKey: ['settings', 'VendorCountry'], queryFn: async () => (await apiFetch('/api/v1/settings/options?category=VendorCountry')).json() })
-  const countryOptions = useMemo(() => (countries && countries.length > 0) ? countries : [{ label: 'South Korea', value: 'South Korea' }, { label: 'USA', value: 'USA' }], [countries])
+  const countryOptions = useMemo(() => buildVendorCountryOptions(countries, formData.country), [countries, formData.country])
 
   const vendorMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -1581,7 +1571,7 @@ function VendorDetailPanel({ vendor, devices, systems, onClose, onDelete, delete
       if (!response.ok) throw new Error(await response.text())
       return response.json()
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['vendors'] }); setIsEditing(false); setHasChanges(false); toast.success('Vendor Profile Updated') },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: VENDOR_QUERY_KEY }); setIsEditing(false); setHasChanges(false); toast.success('Vendor Profile Updated') },
     onError: (error: any) => showWorkspaceToast(error.message || 'Unable to update vendor profile', { type: 'error' })
   })
   const personnelMutation = useMutation({
@@ -1591,12 +1581,12 @@ function VendorDetailPanel({ vendor, devices, systems, onClose, onDelete, delete
       if (!response.ok) throw new Error(await response.text())
       return response.json()
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['vendors'] }); setShowPersonnelModal(null); toast.success('Personnel Updated') },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: VENDOR_QUERY_KEY }); setShowPersonnelModal(null); toast.success('Personnel Updated') },
     onError: (error: any) => showWorkspaceToast(error.message || 'Unable to update personnel', { type: 'error' })
   })
   const deletePersonnelMutation = useMutation({
     mutationFn: async (id: number) => apiFetch(`/api/v1/vendors/personnel/${id}`, { method: 'DELETE' }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['vendors'] }); toast.success('Personnel Removed') }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: VENDOR_QUERY_KEY }); toast.success('Personnel Removed') }
   })
   const contractMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -1606,12 +1596,12 @@ function VendorDetailPanel({ vendor, devices, systems, onClose, onDelete, delete
       if (!response.ok) throw new Error(await response.text())
       return response.json()
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['vendors'] }); setShowContractModal(null); setActiveContractDetails(null); toast.success('Contract Synchronized') },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: VENDOR_QUERY_KEY }); setShowContractModal(null); setActiveContractDetails(null); toast.success('Contract Synchronized') },
     onError: (error: any) => showWorkspaceToast(error.message || 'Unable to save contract', { type: 'error' })
   })
   const deleteContractMutation = useMutation({
-    mutationFn: async (id: number) => apiFetch('/api/v1/vendors/bulk-action', { method: 'POST', body: JSON.stringify({ ids: [id], action: 'delete', target: 'contract' }) }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['vendors'] }); toast.success('Contract Terminated') }
+    mutationFn: async (id: number) => apiFetch(VENDOR_LIFECYCLE_ENDPOINT, { method: 'POST', body: JSON.stringify({ ids: [id], action: 'delete', target: 'contract' }) }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: VENDOR_QUERY_KEY }); toast.success('Contract Terminated') }
   })
 
   const primaryPersonnel = vendor.personnel?.find((p: any) => p.id === vendor.primary_personnel_id)
@@ -2215,7 +2205,13 @@ function ContractDetailsForm({ item, devices, systems, onClose, onSave, isSaving
   const [isEditingSow, setIsEditingSow]   = useState(false)
 
   const statusOptions = CONTRACT_STATUSES
-  const usedSystems = useMemo(() => Array.isArray(systems) ? systems : [], [systems])
+  const usedSystems = useMemo(() => (
+    Array.isArray(systems)
+      ? systems.map((system: any) => typeof system === 'string'
+          ? { label: system, value: system }
+          : { label: system?.label ?? system?.value ?? String(system), value: system?.value ?? system?.label ?? String(system) })
+      : []
+  ), [systems])
   const filteredAssets = useMemo(() => {
     if (!Array.isArray(devices)) return []
     if (!formData.covered_systems?.length) return []

@@ -1,0 +1,12 @@
+{
+  "failed_count": 1,
+  "failures": [
+    {
+      "test": "creates a vendor, updates the profile, and registers a contract",
+      "file": "/Users/haewonkim/home/development/sysgrid/frontend/tests/vendor-workflows.spec.ts",
+      "line": 7,
+      "status": "timedOut",
+      "error": "Test timeout of 60000ms exceeded."
+    }
+  ]
+}
