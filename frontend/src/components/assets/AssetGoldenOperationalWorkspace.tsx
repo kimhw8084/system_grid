@@ -13,7 +13,6 @@ import {
   Settings,
   Sliders,
   Upload,
-  Undo2,
   Zap,
 } from 'lucide-react'
 import { ToolbarButton, ToolbarGroup, ToolbarIconButton } from '../shared/LayoutPrimitives'
@@ -471,21 +470,6 @@ export default function AssetGoldenOperationalWorkspace() {
         secondaryToolbar={secondaryToolbar}
         toolbarActions={(
           <>
-            <ToolbarButton
-              onClick={() => workspace.revertOperation && workspace.openConfirm(
-                'Revert asset operation',
-                `Revert ${workspace.revertOperation.targetLabels.length} asset${workspace.revertOperation.targetLabels.length === 1 ? '' : 's'}: ${workspace.revertOperation.targetLabels.join(', ')}?`,
-                () => { void workspace.executeRevert(workspace.revertOperation!) },
-              )}
-              disabled={!workspace.revertOperation || workspace.isReverting}
-              variant={workspace.revertOperation ? 'primary' : 'secondary'}
-              title={workspace.revertOperation ? `Revert ${workspace.revertOperation.targetLabels.length} asset lifecycle change${workspace.revertOperation.targetLabels.length === 1 ? '' : 's'}` : 'Revert becomes available after a completed archive or restore'}
-            >
-              <span className="flex items-center gap-2">
-                <Undo2 size={14} className={workspace.isReverting ? 'animate-spin' : ''} />
-                Revert
-              </span>
-            </ToolbarButton>
             <ToolbarButton onClick={() => {
               dismissWorkspaceMenus()
               setCompareIds(workspace.selectedIds.slice(0, 5))

@@ -1,0 +1,4 @@
+Command: cd frontend && npx playwright test tests/vendors-real-runtime.spec.ts
+Result: PARTIAL — 2 passed, 2 failed.
+Passed: canonical detail deep-link/personnel flow and /vendors-real alias.
+Failed: existing harness cannot find context-menu Details button and Contract Details Infrastructure Coverage button. No API or mutation assertion failed before those locator failures.

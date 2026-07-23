@@ -12,7 +12,7 @@ import {
   AlertCircle, Clock, Zap, Settings, Briefcase, UserCheck, FileText, User, Users,
   Mail, Monitor, MoreVertical, Download, Copy, ChevronDown, ChevronUp, Layers,
   RefreshCcw, Tag, Sliders, Clipboard, Maximize2, Minimize2, Star, GitCompare,
-  Undo2, List, LayoutGrid, Upload, HistoryIcon, Shield, Eye, EyeOff, Phone,
+  List, LayoutGrid, Upload, HistoryIcon, Shield, Eye, EyeOff, Phone,
   ShieldCheck, ArrowRight, Server, Key, Terminal, Flag, Check as CheckIcon
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -403,8 +403,6 @@ export default function VendorsReal() {
   const displayMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const viewsMenuButtonRef   = useRef<HTMLButtonElement | null>(null)
   const bulkMenuButtonRef    = useRef<HTMLButtonElement | null>(null)
-  const [revertOperation, setRevertOperation] = useState<VendorLifecycleOperation | null>(null)
-  const [isReverting, setIsReverting] = useState(false)
   const [displayMenuStyle, setDisplayMenuStyle] = useState<React.CSSProperties>({})
   const [viewsMenuStyle,   setViewsMenuStyle]   = useState<React.CSSProperties>({})
   const [bulkMenuStyle,    setBulkMenuStyle]    = useState<React.CSSProperties>({})
@@ -482,7 +480,8 @@ export default function VendorsReal() {
     return () => { if (vendorPreferenceSyncTimeout.current !== null) { window.clearTimeout(vendorPreferenceSyncTimeout.current); vendorPreferenceSyncTimeout.current = null } }
   }, [buildVendorWorkspacePreferencePayload, hasUserSettings])
 
-  useEffect(() => { setSelectedIds([]); groupSelectionsRef.current = {} }, [groupBy])
+  // The golden grid keeps the exact vendor IDs selected when switching raw/grouped modes.
+  // Each grouped grid contributes its own slice; the raw grid remains the single source on return.
 
   // --- EVENT HANDLERS ---
   const handleSelectionChanged = useCallback((e: any, groupKey = 'raw') => {
@@ -913,12 +912,17 @@ export default function VendorsReal() {
       const changed = Number(result?.changed ?? result?.count ?? idsToUse.length)
       if ((action === 'delete' || action === 'restore') && changed > 0) {
         const labels = items.filter((vendor: any) => idsToUse.includes(vendor.id)).map((vendor: any) => vendor.name || String(vendor.id))
-        setRevertOperation(Object.freeze({
+        const operation: VendorLifecycleOperation = Object.freeze({
           ids: Object.freeze([...idsToUse]),
           originalAction: action,
           inverseAction: action === 'delete' ? 'restore' : 'delete',
           targetLabels: Object.freeze(labels.length ? labels : idsToUse.map(String)),
-        }))
+        })
+        showWorkspaceToast(
+          `${action === 'restore' ? 'Restored' : 'Archived'} ${operation.targetLabels.length} vendor${operation.targetLabels.length === 1 ? '' : 's'}`,
+          { type: 'success', onRevert: () => { void executeRevert(operation) } },
+        )
+        return
       }
       const actionLabel = action === 'restore' ? 'Restored' : 'Archived'
       showWorkspaceToast(changed === idsToUse.length ? `${actionLabel} ${changed} vendor${changed === 1 ? '' : 's'}` : `${actionLabel} ${changed} of ${idsToUse.length} vendors`, { type: 'success' })
@@ -926,24 +930,19 @@ export default function VendorsReal() {
     onError: (e: any) => showWorkspaceToast(`Operation failed: ${e.message}`, { type: 'error' })
   })
 
-  const executeRevert = useCallback(async () => {
-    if (!revertOperation || isReverting) return
-    setIsReverting(true)
+  const executeRevert = useCallback(async (operation: VendorLifecycleOperation) => {
     try {
       const response = await apiFetch('/api/v1/vendors/bulk-action', {
         method: 'POST',
-        body: JSON.stringify({ ids: revertOperation.ids, action: revertOperation.inverseAction, target: 'vendor' }),
+        body: JSON.stringify({ ids: operation.ids, action: operation.inverseAction, target: 'vendor' }),
       })
       if (!response.ok) throw new Error(await response.text())
       await queryClient.invalidateQueries({ queryKey: ['vendors'] })
-      setRevertOperation(null)
-      showWorkspaceToast(`Reverted ${revertOperation.targetLabels.length} vendor lifecycle change${revertOperation.targetLabels.length === 1 ? '' : 's'}`, { type: 'success' })
+      showWorkspaceToast(`Reverted ${operation.targetLabels.length} vendor lifecycle change${operation.targetLabels.length === 1 ? '' : 's'}`, { type: 'success' })
     } catch (error: any) {
       showWorkspaceToast(error?.message || 'Vendor revert failed', { type: 'error' })
-    } finally {
-      setIsReverting(false)
     }
-  }, [isReverting, queryClient, revertOperation])
+  }, [queryClient])
 
   // --- ROW PRIMARY ACTIONS ---
   const renderPrimaryRowActions = (item: any) => {
@@ -1105,19 +1104,6 @@ export default function VendorsReal() {
         ) : null,
         right: (
           <>
-            <ToolbarButton
-              onClick={() => revertOperation && openConfirm(
-                'Revert vendor operation',
-                `Revert ${revertOperation.targetLabels.length} vendor${revertOperation.targetLabels.length === 1 ? '' : 's'}: ${revertOperation.targetLabels.join(', ')}?`,
-                () => { void executeRevert() },
-                'info',
-              )}
-              disabled={!revertOperation || isReverting}
-              variant={revertOperation ? 'primary' : 'secondary'}
-              title={revertOperation ? `Revert ${revertOperation.targetLabels.length} completed vendor lifecycle change${revertOperation.targetLabels.length === 1 ? '' : 's'}` : 'Revert becomes available after a completed vendor archive or restore'}
-            >
-              <Undo2 size={14} className={isReverting ? 'animate-spin' : ''} />Revert
-            </ToolbarButton>
             <ToolbarButton onClick={toggleBulkWindow} disabled={selectedIds.length === 0} active={showBulkMenu} title="Bulk actions" className="bulk-menu-trigger" ref={bulkMenuButtonRef as any}>
               <span className="flex items-center gap-2"><Zap size={14} />Bulk Actions{selectedIds.length ? ` (${selectedIds.length})` : ''}</span>
             </ToolbarButton>

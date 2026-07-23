@@ -1,0 +1,3 @@
+Command: cd frontend && npx playwright test tests/assets-revert.spec.ts
+Result: PASS (1)
+Coverage: canonical /asset has no persistent toolbar Revert; archive creates top-right WorkspaceToast Revert; toast callback sends captured asset ID with restore inverse action; restored asset is visible.

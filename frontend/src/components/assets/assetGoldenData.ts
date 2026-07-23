@@ -369,7 +369,6 @@ export function useAssetGoldenWorkspace() {
   const [showRegistryModal, setShowRegistryModal] = useState(false)
   const [confirmState, setConfirmState] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
   const [rowActionMenu, setRowActionMenu] = useState<{ asset: any; x: number; y: number } | null>(null)
-  const [revertOperation, setRevertOperation] = useState<AssetLifecycleOperation | null>(null)
   const [isReverting, setIsReverting] = useState(false)
 
   const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>('sysgrid_asset_favorites', [])
@@ -661,12 +660,17 @@ export function useAssetGoldenWorkspace() {
       setRowActionMenu(null)
       setSelectedIds([])
       if ((result?.action === 'delete' || result?.action === 'restore') && Number(result?.changed || 0) > 0) {
-        setRevertOperation(Object.freeze({
+        const operation: AssetLifecycleOperation = Object.freeze({
           ids: Object.freeze([...result.ids]),
           originalAction: result.action,
           inverseAction: result.action === 'delete' ? 'restore' : 'delete',
           targetLabels: Object.freeze(result.targetLabels || result.ids.map(String)),
-        }))
+        })
+        showWorkspaceToast(
+          `${result.action === 'delete' ? 'Archived' : 'Restored'} ${operation.targetLabels.length} asset${operation.targetLabels.length === 1 ? '' : 's'}`,
+          { type: 'success', onRevert: () => { void executeRevert(operation) } },
+        )
+        return
       }
       if (result?.action === 'update') {
         showOperationalBulkResultToast({
@@ -719,7 +723,6 @@ export function useAssetGoldenWorkspace() {
       })
       if (!response.ok) throw new Error(await response.text())
       await refreshAssetLifecycle()
-      setRevertOperation(null)
       showWorkspaceToast('Reverted asset operation', { type: 'success' })
     } catch (error: any) {
       showWorkspaceToast(error?.message || 'Revert failed', { type: 'error' })
@@ -854,7 +857,6 @@ export function useAssetGoldenWorkspace() {
     reportAssetId,
     reportFocusSection,
     refreshAll,
-    revertOperation,
     isReverting,
     executeRevert,
     relationships: Array.isArray(relationshipsQuery.data) ? relationshipsQuery.data : [],
