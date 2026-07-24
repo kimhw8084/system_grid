@@ -216,7 +216,7 @@ test.describe('Architecture workflows', () => {
     await expect(page.getByRole('heading', { name: 'Service Logic' })).toBeVisible()
     await clickResilientButton(page, new RegExp(targetService.name, 'i'))
     await page.getByLabel(`Move ${targetService.name} lane left`).click()
-    await clickResilientButton(page, /^Logic$/)
+    await clickResilientButton(page, `Add logic step to ${targetService.name}`)
     await expect(page.getByText('Orphan Steps: 1')).toBeVisible()
     await clickResilientButton(page, /Undo/i)
     await expect(page.locator('input[value="NEW STEP"]')).not.toBeVisible()
@@ -226,14 +226,14 @@ test.describe('Architecture workflows', () => {
 
     await clickResilientButton(page, 'Exit')
     await expect(page.getByText('Unsaved Workflow')).toBeVisible()
-    await clickResilientButton(page, 'Cancel')
+    await clickResilientButton(page, 'Continue Editing')
 
     await clickResilientButton(page, /Sync Workflow/i)
     await expect(page.getByText('Workflow Manifest Synchronized')).toBeVisible()
     await clickResilientButton(page, 'Exit')
     await expect(page.getByRole('heading', { name: 'Service Logic' })).not.toBeVisible()
 
-    await clickResilientButton(page, 'SYNC_PATH')
+    await clickResilientButton(page, 'Select edge SYNC_PATH')
     await clickResilientButton(page, /Service Logic Builder/i)
     await expect(page.getByText(targetService.name)).toBeVisible()
     await expect(page.locator('input[value="VALIDATE PAYLOAD"]')).toBeVisible()

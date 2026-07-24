@@ -316,14 +316,18 @@ const ParticipantLaneHeader = ({ lane, onRemove, isPrimary, onAddNode, onMoveLef
     </div>
     
     <div className="flex items-center gap-1.5">
-      <button 
-        onClick={(e) => { e.stopPropagation(); onAddNode(lane.id, 'process'); }} 
+      <button
+        type="button"
+        aria-label={`Add logic step to ${lane.label}`}
+        onClick={(e) => { e.stopPropagation(); onAddNode(lane.id, 'process'); }}
         className="flex-1 py-2 bg-sky-400/10 hover:bg-sky-400/90 text-sky-200 hover:text-slate-950 border border-sky-300/15 rounded-lg text-[7px] font-bold uppercase tracking-[0.28em] transition-all flex items-center justify-center gap-1.5"
       >
         <Plus size={10}/> <span>Logic</span>
       </button>
-      <button 
-        onClick={(e) => { e.stopPropagation(); onAddNode(lane.id, 'diamond'); }} 
+      <button
+        type="button"
+        aria-label={`Add condition step to ${lane.label}`}
+        onClick={(e) => { e.stopPropagation(); onAddNode(lane.id, 'diamond'); }}
         className="flex-1 py-2 bg-amber-400/10 hover:bg-amber-400/90 text-amber-200 hover:text-slate-950 border border-amber-300/15 rounded-lg text-[7px] font-bold uppercase tracking-[0.28em] transition-all flex items-center justify-center gap-1.5"
       >
         <Diamond size={10}/> <span>Cond</span>
@@ -883,6 +887,9 @@ const ServiceLevelFlowInner = ({ edge, sourceNode, targetNode, onClose, onSave }
           isOpen={showExitPrompt}
           title="Unsaved Workflow"
           message="Exit the service-level swimlane builder and lose unsaved changes?"
+          cancelText="Continue Editing"
+          confirmText="Discard Workflow"
+          variant="warning"
           onConfirm={() => {
             setShowExitPrompt(false)
             setIsDirty(false)

@@ -9,6 +9,7 @@ interface ConfirmationModalProps {
   title: string
   message: string
   confirmText?: string
+  cancelText?: string
   variant?: 'danger' | 'info' | 'warning' | 'success'
 }
 
@@ -18,7 +19,8 @@ export const ConfirmationModal = ({
   onConfirm, 
   title, 
   message, 
-  confirmText = 'Confirm Action', 
+  confirmText = 'Confirm Action',
+  cancelText = 'Close',
   variant = 'info'
 }: ConfirmationModalProps) => {
   const getVariantIcon = () => {
@@ -56,7 +58,7 @@ export const ConfirmationModal = ({
             onClick={onClose} 
             className="rounded-lg border border-white/10 bg-black/20 px-4 py-2 text-[10px] font-black uppercase text-slate-500 transition-all hover:text-white"
           >
-            Close
+            {cancelText}
           </button>
           <button
             type="button"
