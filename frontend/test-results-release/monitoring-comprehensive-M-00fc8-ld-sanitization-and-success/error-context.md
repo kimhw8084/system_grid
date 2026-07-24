@@ -1,0 +1,1083 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: monitoring-comprehensive.spec.ts >> Monitoring Comprehensive Functional Coverage >> Add Monitor: Validate field sanitization and success
+- Location: tests/monitoring-comprehensive.spec.ts:14:3
+
+# Error details
+
+```
+Test timeout of 60000ms exceeded.
+```
+
+```
+Error: locator.fill: Test timeout of 60000ms exceeded.
+Call log:
+  - waiting for getByPlaceholder('Monitor Title')
+
+```
+
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - link "SYSGRID" [ref=e6] [cursor=pointer]:
+          - /url: /
+          - img [ref=e8]
+          - generic [ref=e10]: SYSGRID
+        - button [ref=e11] [cursor=pointer]:
+          - img [ref=e12]
+      - navigation [ref=e13]:
+        - generic [ref=e14]:
+          - button "OPERATIONS" [ref=e15] [cursor=pointer]:
+            - generic [ref=e16]: OPERATIONS
+            - img [ref=e17]
+          - generic [ref=e20]:
+            - link "Home" [ref=e21] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e22]:
+                - img [ref=e23]
+                - generic [ref=e28]: Home
+            - link "Projects" [ref=e29] [cursor=pointer]:
+              - /url: /projects
+              - generic [ref=e30]:
+                - img [ref=e31]
+                - generic [ref=e34]: Projects
+            - link "Monitoring" [ref=e35] [cursor=pointer]:
+              - /url: /monitoring
+              - generic [ref=e36]:
+                - img [ref=e37]
+                - generic [ref=e39]: Monitoring
+        - generic [ref=e41]:
+          - button "INFRASTRUCTURE" [ref=e42] [cursor=pointer]:
+            - generic [ref=e43]: INFRASTRUCTURE
+            - img [ref=e44]
+          - generic [ref=e47]:
+            - link "Assets" [ref=e48] [cursor=pointer]:
+              - /url: /asset
+              - generic [ref=e49]:
+                - img [ref=e50]
+                - generic [ref=e53]: Assets
+            - link "Racks" [ref=e54] [cursor=pointer]:
+              - /url: /racks
+              - generic [ref=e55]:
+                - img [ref=e56]
+                - generic [ref=e60]: Racks
+            - link "Services" [ref=e61] [cursor=pointer]:
+              - /url: /services
+              - generic [ref=e62]:
+                - img [ref=e63]
+                - generic [ref=e67]: Services
+            - link "External" [ref=e68] [cursor=pointer]:
+              - /url: /external
+              - generic [ref=e69]:
+                - img [ref=e70]
+                - generic [ref=e76]: External
+        - generic [ref=e77]:
+          - button "CONNECTIVITY" [ref=e78] [cursor=pointer]:
+            - generic [ref=e79]: CONNECTIVITY
+            - img [ref=e80]
+          - generic [ref=e83]:
+            - link "Network" [ref=e84] [cursor=pointer]:
+              - /url: /network
+              - generic [ref=e85]:
+                - img [ref=e86]
+                - generic [ref=e91]: Network
+            - link "Architecture" [ref=e92] [cursor=pointer]:
+              - /url: /architecture
+              - generic [ref=e93]:
+                - img [ref=e94]
+                - generic [ref=e98]: Architecture
+        - generic [ref=e99]:
+          - button "ANALYSIS" [ref=e100] [cursor=pointer]:
+            - generic [ref=e101]: ANALYSIS
+            - img [ref=e102]
+          - generic [ref=e105]:
+            - link "FAR" [ref=e106] [cursor=pointer]:
+              - /url: /far
+              - generic [ref=e107]:
+                - img [ref=e108]
+                - generic [ref=e110]: FAR
+            - link "Research" [ref=e111] [cursor=pointer]:
+              - /url: /research
+              - generic [ref=e112]:
+                - img [ref=e113]
+                - generic [ref=e116]: Research
+        - generic [ref=e117]:
+          - button "RESOURCES" [ref=e118] [cursor=pointer]:
+            - generic [ref=e119]: RESOURCES
+            - img [ref=e120]
+          - generic [ref=e123]:
+            - link "Vendors" [ref=e124] [cursor=pointer]:
+              - /url: /vendors
+              - generic [ref=e125]:
+                - img [ref=e126]
+                - generic [ref=e129]: Vendors
+            - link "Knowledge" [ref=e130] [cursor=pointer]:
+              - /url: /knowledge
+              - generic [ref=e131]:
+                - img [ref=e132]
+                - generic [ref=e135]: Knowledge
+      - generic [ref=e136]:
+        - 'button "Haewon Kim ID: 1" [ref=e137] [cursor=pointer]':
+          - img [ref=e139]
+          - generic [ref=e142]:
+            - generic [ref=e143]: Haewon Kim
+            - generic [ref=e144]: "ID: 1"
+        - generic [ref=e145]:
+          - button "Dark" [ref=e146] [cursor=pointer]:
+            - generic [ref=e148]: Dark
+          - button "Light" [ref=e149] [cursor=pointer]:
+            - generic [ref=e151]: Light
+      - paragraph [ref=e153]: 1.2.6
+    - main [ref=e154]:
+      - generic [ref=e156]:
+        - generic [ref=e157]:
+          - button "Patch Notes" [ref=e158] [cursor=pointer]
+          - button "Search assets, projects, or incidents... ⌘ K" [ref=e159] [cursor=pointer]:
+            - img [ref=e160]
+            - generic [ref=e163]: Search assets, projects, or incidents...
+            - generic [ref=e164]:
+              - generic [ref=e165]: ⌘
+              - generic [ref=e166]: K
+        - generic [ref=e167]:
+          - button "Active Database Local Demo" [ref=e169] [cursor=pointer]:
+            - img [ref=e171]
+            - generic [ref=e175]:
+              - generic [ref=e176]: Active Database
+              - generic [ref=e177]: Local Demo
+            - img [ref=e178]
+          - generic [ref=e180]:
+            - generic [ref=e181]: System Status
+            - generic [ref=e182]:
+              - generic [ref=e183]: Operational
+              - generic [ref=e184]: 2ms
+          - button "Notifications" [ref=e185] [cursor=pointer]:
+            - img [ref=e186]
+          - button [ref=e190] [cursor=pointer]:
+            - img [ref=e191]
+          - link [ref=e200] [cursor=pointer]:
+            - /url: /settings
+            - img [ref=e201]
+      - generic [ref=e205]:
+        - generic [ref=e206]:
+          - generic [ref=e207]:
+            - generic [ref=e208]: Observability
+            - generic [ref=e209]:
+              - heading "Monitoring" [level=1] [ref=e210]:
+                - generic [ref=e211]:
+                  - img [ref=e212]
+                  - generic [ref=e214]: Monitoring
+              - paragraph [ref=e215]: Centralized monitoring configuration and operational status
+          - generic [ref=e217]:
+            - generic [ref=e218]:
+              - paragraph [ref=e219]: Registry Scope
+              - paragraph [ref=e220]: 150 existing · 2 archived
+            - generic [ref=e221]:
+              - button "Existing" [ref=e222] [cursor=pointer]
+              - button "Archived" [ref=e223] [cursor=pointer]
+        - generic [ref=e224]:
+          - generic [ref=e225]:
+            - generic [ref=e226]:
+              - generic [ref=e227]:
+                - img
+                - textbox "Scan matrix..." [ref=e228]
+              - generic [ref=e229]:
+                - button "Views" [ref=e231] [cursor=pointer]:
+                  - generic [ref=e232]:
+                    - img [ref=e233]
+                    - text: Views
+                - button "Display" [ref=e239] [cursor=pointer]:
+                  - generic [ref=e240]:
+                    - img [ref=e241]
+                    - text: Display
+                - button "Export CSV" [ref=e242] [cursor=pointer]:
+                  - img [ref=e243]
+                - button "Copy to clipboard" [ref=e246] [cursor=pointer]:
+                  - img [ref=e247]
+                - button "Registry configuration" [ref=e250] [cursor=pointer]:
+                  - img [ref=e251]
+              - generic [ref=e254]:
+                - button "Import" [ref=e255] [cursor=pointer]:
+                  - generic [ref=e256]:
+                    - img [ref=e257]
+                    - text: Import
+                - button "Filters" [ref=e260] [cursor=pointer]:
+                  - generic [ref=e261]:
+                    - img [ref=e262]
+                    - text: Filters
+                - button "Activity" [ref=e267] [cursor=pointer]:
+                  - generic [ref=e268]:
+                    - img [ref=e269]
+                    - text: Activity
+            - generic [ref=e274]:
+              - button "Compare" [disabled] [ref=e275]:
+                - generic [ref=e276]:
+                  - img [ref=e277]
+                  - text: Compare
+              - button "Bulk Actions" [disabled] [ref=e282]:
+                - generic [ref=e283]:
+                  - img [ref=e284]
+                  - text: Bulk Actions
+              - button "+ Add Monitoring" [active] [ref=e286] [cursor=pointer]
+          - generic [ref=e289]:
+            - generic [ref=e290]:
+              - generic [ref=e293]: Status Filter
+              - button "All statuses" [ref=e295] [cursor=pointer]:
+                - generic [ref=e296]: All statuses
+                - img [ref=e297]
+            - generic [ref=e299]:
+              - generic [ref=e302]: Severity Filter
+              - button "All severities" [ref=e304] [cursor=pointer]:
+                - generic [ref=e305]: All severities
+                - img [ref=e306]
+            - generic [ref=e308]:
+              - generic [ref=e311]: Platform Filter
+              - button "All platforms" [ref=e313] [cursor=pointer]:
+                - generic [ref=e314]: All platforms
+                - img [ref=e315]
+            - generic [ref=e317]:
+              - generic [ref=e320]: Owner Filter
+              - button "All owners" [ref=e322] [cursor=pointer]:
+                - generic [ref=e323]: All owners
+                - img [ref=e324]
+        - generic [ref=e328]:
+          - treegrid [ref=e330]:
+            - rowgroup [ref=e331]:
+              - row "ID Title" [ref=e332]:
+                - columnheader [ref=e333]:
+                  - generic [ref=e334]:
+                    - checkbox [ref=e335]
+                    - text: 
+                  - text: 
+                  - generic: 
+                - columnheader "ID" [ref=e336]:
+                  - text: 
+                  - generic [ref=e337] [cursor=pointer]: 
+                  - generic [ref=e338] [cursor=pointer]: ID
+                  - text: 
+                  - generic:    
+                - columnheader "Title" [ref=e339]:
+                  - text: 
+                  - generic [ref=e341] [cursor=pointer]: 
+                  - generic [ref=e342] [cursor=pointer]: Title
+                  - text: 
+                  - generic:    
+            - rowgroup [ref=e343]:
+              - row "Target Asset Status Owners Category" [ref=e344]:
+                - columnheader "Target Asset" [ref=e345]:
+                  - text: 
+                  - generic [ref=e347] [cursor=pointer]: 
+                  - generic [ref=e348] [cursor=pointer]: Target Asset
+                  - text: 
+                  - generic:    
+                - columnheader "Status" [ref=e349]:
+                  - text: 
+                  - generic [ref=e351] [cursor=pointer]: 
+                  - generic [ref=e352] [cursor=pointer]: Status
+                  - text: 
+                  - generic:    
+                - columnheader "Owners" [ref=e353]:
+                  - text: 
+                  - generic [ref=e355] [cursor=pointer]: 
+                  - generic [ref=e356] [cursor=pointer]: Owners
+                  - text: 
+                  - generic:    
+                - columnheader "Category" [ref=e357]:
+                  - text: 
+                  - generic [ref=e359] [cursor=pointer]: 
+                  - generic [ref=e360] [cursor=pointer]: Category
+                  - text: 
+                  - generic:    
+            - rowgroup [ref=e361]:
+              - row "Action" [ref=e362]:
+                - columnheader "Action" [ref=e363]:
+                  - text: 
+                  - generic [ref=e364]: Action
+                  - text: 
+                  - generic: 
+            - rowgroup [ref=e365]:
+              - 'row "Press Space to toggle row selection (unchecked)  1 BI-ANALYTICS-P-161: Auth Error" [ref=e366]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e367]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e368]
+                  - text: 
+                - gridcell "1" [ref=e369]
+                - 'gridcell "BI-ANALYTICS-P-161: Auth Error" [ref=e370]':
+                  - generic [ref=e371]: "BI-ANALYTICS-P-161: Auth Error"
+              - 'row "Press Space to toggle row selection (unchecked)  2 ERP-P-076: Latency Spike" [ref=e372]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e373]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e374]
+                  - text: 
+                - gridcell "2" [ref=e375]
+                - 'gridcell "ERP-P-076: Latency Spike" [ref=e376]':
+                  - generic [ref=e377]: "ERP-P-076: Latency Spike"
+              - 'row "Press Space to toggle row selection (unchecked)  3 SECURITY-V-196: Auth Error" [ref=e378]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e379]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e380]
+                  - text: 
+                - gridcell "3" [ref=e381]
+                - 'gridcell "SECURITY-V-196: Auth Error" [ref=e382]':
+                  - generic [ref=e383]: "SECURITY-V-196: Auth Error"
+              - 'row "Press Space to toggle row selection (unchecked)  4 SECURITY-P-113: Disk Full" [ref=e384]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e385]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e386]
+                  - text: 
+                - gridcell "4" [ref=e387]
+                - 'gridcell "SECURITY-P-113: Disk Full" [ref=e388]':
+                  - generic [ref=e389]: "SECURITY-P-113: Disk Full"
+              - 'row "Press Space to toggle row selection (unchecked)  5 BI-ANALYTICS-S-190: Latency Spike" [ref=e390]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e391]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e392]
+                  - text: 
+                - gridcell "5" [ref=e393]
+                - 'gridcell "BI-ANALYTICS-S-190: Latency Spike" [ref=e394]':
+                  - generic [ref=e395]: "BI-ANALYTICS-S-190: Latency Spike"
+              - 'row "Press Space to toggle row selection (unchecked)  6 MANUFACTURING-P-119: CPU High" [ref=e396]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e397]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e398]
+                  - text: 
+                - gridcell "6" [ref=e399]
+                - 'gridcell "MANUFACTURING-P-119: CPU High" [ref=e400]':
+                  - generic [ref=e401]: "MANUFACTURING-P-119: CPU High"
+              - 'row "Press Space to toggle row selection (unchecked)  7 MANUFACTURING-P-102: Auth Error" [ref=e402]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e403]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e404]
+                  - text: 
+                - gridcell "7" [ref=e405]
+                - 'gridcell "MANUFACTURING-P-102: Auth Error" [ref=e406]':
+                  - generic [ref=e407]: "MANUFACTURING-P-102: Auth Error"
+              - 'row "Press Space to toggle row selection (unchecked)  8 MES-P-030: Disk Full" [ref=e408]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e409]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e410]
+                  - text: 
+                - gridcell "8" [ref=e411]
+                - 'gridcell "MES-P-030: Disk Full" [ref=e412]':
+                  - generic [ref=e413]: "MES-P-030: Disk Full"
+              - 'row "Press Space to toggle row selection (unchecked)  9 BI-ANALYTICS-P-016: Disk Full" [ref=e414]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e415]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e416]
+                  - text: 
+                - gridcell "9" [ref=e417]
+                - 'gridcell "BI-ANALYTICS-P-016: Disk Full" [ref=e418]':
+                  - generic [ref=e419]: "BI-ANALYTICS-P-016: Disk Full"
+              - 'row "Press Space to toggle row selection (unchecked)  10 MES-P-022: Latency Spike" [ref=e420]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e421]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e422]
+                  - text: 
+                - gridcell "10" [ref=e423]
+                - 'gridcell "MES-P-022: Latency Spike" [ref=e424]':
+                  - generic [ref=e425]: "MES-P-022: Latency Spike"
+              - 'row "Press Space to toggle row selection (unchecked)  11 FINANCE-P-048: CPU High" [ref=e426]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e427]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e428]
+                  - text: 
+                - gridcell "11" [ref=e429]
+                - 'gridcell "FINANCE-P-048: CPU High" [ref=e430]':
+                  - generic [ref=e431]: "FINANCE-P-048: CPU High"
+              - 'row "Press Space to toggle row selection (unchecked)  12 FINANCE-V-179: Auth Error" [ref=e432]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e433]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e434]
+                  - text: 
+                - gridcell "12" [ref=e435]
+                - 'gridcell "FINANCE-V-179: Auth Error" [ref=e436]':
+                  - generic [ref=e437]: "FINANCE-V-179: Auth Error"
+              - 'row "Press Space to toggle row selection (unchecked)  13 MANUFACTURING-S-083: Disk Full" [ref=e438]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e439]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e440]
+                  - text: 
+                - gridcell "13" [ref=e441]
+                - 'gridcell "MANUFACTURING-S-083: Disk Full" [ref=e442]':
+                  - generic [ref=e443]: "MANUFACTURING-S-083: Disk Full"
+              - 'row "Press Space to toggle row selection (unchecked)  14 MES-P-116: Latency Spike" [ref=e444]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e445]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e446]
+                  - text: 
+                - gridcell "14" [ref=e447]
+                - 'gridcell "MES-P-116: Latency Spike" [ref=e448]':
+                  - generic [ref=e449]: "MES-P-116: Latency Spike"
+              - 'row "Press Space to toggle row selection (unchecked)  15 BI-ANALYTICS-V-154: Auth Error" [ref=e450]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e451]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e452]
+                  - text: 
+                - gridcell "15" [ref=e453]
+                - 'gridcell "BI-ANALYTICS-V-154: Auth Error" [ref=e454]':
+                  - generic [ref=e455]: "BI-ANALYTICS-V-154: Auth Error"
+              - 'row "Press Space to toggle row selection (unchecked)  16 FINANCE-P-079: CPU High" [ref=e456]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e457]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e458]
+                  - text: 
+                - gridcell "16" [ref=e459]
+                - 'gridcell "FINANCE-P-079: CPU High" [ref=e460]':
+                  - generic [ref=e461]: "FINANCE-P-079: CPU High"
+              - 'row "Press Space to toggle row selection (unchecked)  17 SCADA-P-046: Auth Error" [ref=e462]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e463]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e464]
+                  - text: 
+                - gridcell "17" [ref=e465]
+                - 'gridcell "SCADA-P-046: Auth Error" [ref=e466]':
+                  - generic [ref=e467]: "SCADA-P-046: Auth Error"
+              - 'row "Press Space to toggle row selection (unchecked)  18 ERP-V-163: Disk Full" [ref=e468]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e469]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e470]
+                  - text: 
+                - gridcell "18" [ref=e471]
+                - 'gridcell "ERP-V-163: Disk Full" [ref=e472]':
+                  - generic [ref=e473]: "ERP-V-163: Disk Full"
+              - 'row "Press Space to toggle row selection (unchecked)  19 ERP-V-163: Auth Error" [ref=e474]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e475]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e476]
+                  - text: 
+                - gridcell "19" [ref=e477]
+                - 'gridcell "ERP-V-163: Auth Error" [ref=e478]':
+                  - generic [ref=e479]: "ERP-V-163: Auth Error"
+              - 'row "Press Space to toggle row selection (unchecked)  20 SCADA-P-032: Disk Full" [ref=e480]':
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e481]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e482]
+                  - text: 
+                - gridcell "20" [ref=e483]
+                - 'gridcell "SCADA-P-032: Disk Full" [ref=e484]':
+                  - generic [ref=e485]: "SCADA-P-032: Disk Full"
+            - rowgroup [ref=e486]:
+              - row "BI-ANALYTICS-P-161 Existing Haewon Kim Hardware" [ref=e487]:
+                - gridcell "BI-ANALYTICS-P-161" [ref=e488]:
+                  - generic [ref=e489]: BI-ANALYTICS-P-161
+                - gridcell "Existing" [ref=e490]:
+                  - generic [ref=e492]: Existing
+                - gridcell "Haewon Kim" [ref=e493]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e495]: Haewon Kim
+                - gridcell "Hardware" [ref=e496]:
+                  - generic [ref=e497]: Hardware
+              - row "ERP-P-076 Existing Haewon Kim Hardware" [ref=e498]:
+                - gridcell "ERP-P-076" [ref=e499]:
+                  - generic [ref=e500]: ERP-P-076
+                - gridcell "Existing" [ref=e501]:
+                  - generic [ref=e503]: Existing
+                - gridcell "Haewon Kim" [ref=e504]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e506]: Haewon Kim
+                - gridcell "Hardware" [ref=e507]:
+                  - generic [ref=e508]: Hardware
+              - row "SECURITY-V-196 Planned Haewon Kim Application" [ref=e509]:
+                - gridcell "SECURITY-V-196" [ref=e510]:
+                  - generic [ref=e511]: SECURITY-V-196
+                - gridcell "Planned" [ref=e512]:
+                  - generic [ref=e514]: Planned
+                - gridcell "Haewon Kim" [ref=e515]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e517]: Haewon Kim
+                - gridcell "Application" [ref=e518]:
+                  - generic [ref=e519]: Application
+              - row "SECURITY-P-113 Cancelled Haewon Kim Network" [ref=e520]:
+                - gridcell "SECURITY-P-113" [ref=e521]:
+                  - generic [ref=e522]: SECURITY-P-113
+                - gridcell "Cancelled" [ref=e523]:
+                  - generic [ref=e525]: Cancelled
+                - gridcell "Haewon Kim" [ref=e526]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e528]: Haewon Kim
+                - gridcell "Network" [ref=e529]:
+                  - generic [ref=e530]: Network
+              - row "BI-ANALYTICS-S-190 Existing Haewon Kim Hardware" [ref=e531]:
+                - gridcell "BI-ANALYTICS-S-190" [ref=e532]:
+                  - generic [ref=e533]: BI-ANALYTICS-S-190
+                - gridcell "Existing" [ref=e534]:
+                  - generic [ref=e536]: Existing
+                - gridcell "Haewon Kim" [ref=e537]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e539]: Haewon Kim
+                - gridcell "Hardware" [ref=e540]:
+                  - generic [ref=e541]: Hardware
+              - row "MANUFACTURING-P-119 Planned Haewon Kim Network" [ref=e542]:
+                - gridcell "MANUFACTURING-P-119" [ref=e543]:
+                  - generic [ref=e544]: MANUFACTURING-P-119
+                - gridcell "Planned" [ref=e545]:
+                  - generic [ref=e547]: Planned
+                - gridcell "Haewon Kim" [ref=e548]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e550]: Haewon Kim
+                - gridcell "Network" [ref=e551]:
+                  - generic [ref=e552]: Network
+              - row "MANUFACTURING-P-102 Planned Haewon Kim Application" [ref=e553]:
+                - gridcell "MANUFACTURING-P-102" [ref=e554]:
+                  - generic [ref=e555]: MANUFACTURING-P-102
+                - gridcell "Planned" [ref=e556]:
+                  - generic [ref=e558]: Planned
+                - gridcell "Haewon Kim" [ref=e559]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e561]: Haewon Kim
+                - gridcell "Application" [ref=e562]:
+                  - generic [ref=e563]: Application
+              - row "MES-P-030 Cancelled Haewon Kim Synthetic" [ref=e564]:
+                - gridcell "MES-P-030" [ref=e565]:
+                  - generic [ref=e566]: MES-P-030
+                - gridcell "Cancelled" [ref=e567]:
+                  - generic [ref=e569]: Cancelled
+                - gridcell "Haewon Kim" [ref=e570]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e572]: Haewon Kim
+                - gridcell "Synthetic" [ref=e573]:
+                  - generic [ref=e574]: Synthetic
+              - row "BI-ANALYTICS-P-016 Existing Haewon Kim Synthetic" [ref=e575]:
+                - gridcell "BI-ANALYTICS-P-016" [ref=e576]:
+                  - generic [ref=e577]: BI-ANALYTICS-P-016
+                - gridcell "Existing" [ref=e578]:
+                  - generic [ref=e580]: Existing
+                - gridcell "Haewon Kim" [ref=e581]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e583]: Haewon Kim
+                - gridcell "Synthetic" [ref=e584]:
+                  - generic [ref=e585]: Synthetic
+              - row "MES-P-022 Cancelled Haewon Kim Hardware" [ref=e586]:
+                - gridcell "MES-P-022" [ref=e587]:
+                  - generic [ref=e588]: MES-P-022
+                - gridcell "Cancelled" [ref=e589]:
+                  - generic [ref=e591]: Cancelled
+                - gridcell "Haewon Kim" [ref=e592]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e594]: Haewon Kim
+                - gridcell "Hardware" [ref=e595]:
+                  - generic [ref=e596]: Hardware
+              - row "FINANCE-P-048 Existing Haewon Kim Hardware" [ref=e597]:
+                - gridcell "FINANCE-P-048" [ref=e598]:
+                  - generic [ref=e599]: FINANCE-P-048
+                - gridcell "Existing" [ref=e600]:
+                  - generic [ref=e602]: Existing
+                - gridcell "Haewon Kim" [ref=e603]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e605]: Haewon Kim
+                - gridcell "Hardware" [ref=e606]:
+                  - generic [ref=e607]: Hardware
+              - row "FINANCE-V-179 Cancelled Haewon Kim Network" [ref=e608]:
+                - gridcell "FINANCE-V-179" [ref=e609]:
+                  - generic [ref=e610]: FINANCE-V-179
+                - gridcell "Cancelled" [ref=e611]:
+                  - generic [ref=e613]: Cancelled
+                - gridcell "Haewon Kim" [ref=e614]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e616]: Haewon Kim
+                - gridcell "Network" [ref=e617]:
+                  - generic [ref=e618]: Network
+              - row "MANUFACTURING-S-083 Planned Haewon Kim Hardware" [ref=e619]:
+                - gridcell "MANUFACTURING-S-083" [ref=e620]:
+                  - generic [ref=e621]: MANUFACTURING-S-083
+                - gridcell "Planned" [ref=e622]:
+                  - generic [ref=e624]: Planned
+                - gridcell "Haewon Kim" [ref=e625]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e627]: Haewon Kim
+                - gridcell "Hardware" [ref=e628]:
+                  - generic [ref=e629]: Hardware
+              - row "MES-P-116 Cancelled Haewon Kim Synthetic" [ref=e630]:
+                - gridcell "MES-P-116" [ref=e631]:
+                  - generic [ref=e632]: MES-P-116
+                - gridcell "Cancelled" [ref=e633]:
+                  - generic [ref=e635]: Cancelled
+                - gridcell "Haewon Kim" [ref=e636]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e638]: Haewon Kim
+                - gridcell "Synthetic" [ref=e639]:
+                  - generic [ref=e640]: Synthetic
+              - row "BI-ANALYTICS-V-154 Cancelled Haewon Kim Application" [ref=e641]:
+                - gridcell "BI-ANALYTICS-V-154" [ref=e642]:
+                  - generic [ref=e643]: BI-ANALYTICS-V-154
+                - gridcell "Cancelled" [ref=e644]:
+                  - generic [ref=e646]: Cancelled
+                - gridcell "Haewon Kim" [ref=e647]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e649]: Haewon Kim
+                - gridcell "Application" [ref=e650]:
+                  - generic [ref=e651]: Application
+              - row "FINANCE-P-079 Planned Haewon Kim Synthetic" [ref=e652]:
+                - gridcell "FINANCE-P-079" [ref=e653]:
+                  - generic [ref=e654]: FINANCE-P-079
+                - gridcell "Planned" [ref=e655]:
+                  - generic [ref=e657]: Planned
+                - gridcell "Haewon Kim" [ref=e658]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e660]: Haewon Kim
+                - gridcell "Synthetic" [ref=e661]:
+                  - generic [ref=e662]: Synthetic
+              - row "SCADA-P-046 Existing Haewon Kim Synthetic" [ref=e663]:
+                - gridcell "SCADA-P-046" [ref=e664]:
+                  - generic [ref=e665]: SCADA-P-046
+                - gridcell "Existing" [ref=e666]:
+                  - generic [ref=e668]: Existing
+                - gridcell "Haewon Kim" [ref=e669]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e671]: Haewon Kim
+                - gridcell "Synthetic" [ref=e672]:
+                  - generic [ref=e673]: Synthetic
+              - row "ERP-V-163 Existing Haewon Kim Hardware" [ref=e674]:
+                - gridcell "ERP-V-163" [ref=e675]:
+                  - generic [ref=e676]: ERP-V-163
+                - gridcell "Existing" [ref=e677]:
+                  - generic [ref=e679]: Existing
+                - gridcell "Haewon Kim" [ref=e680]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e682]: Haewon Kim
+                - gridcell "Hardware" [ref=e683]:
+                  - generic [ref=e684]: Hardware
+              - row "ERP-V-163 Existing Haewon Kim Hardware" [ref=e685]:
+                - gridcell "ERP-V-163" [ref=e686]:
+                  - generic [ref=e687]: ERP-V-163
+                - gridcell "Existing" [ref=e688]:
+                  - generic [ref=e690]: Existing
+                - gridcell "Haewon Kim" [ref=e691]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e693]: Haewon Kim
+                - gridcell "Hardware" [ref=e694]:
+                  - generic [ref=e695]: Hardware
+              - row "SCADA-P-032 Existing Haewon Kim Synthetic" [ref=e696]:
+                - gridcell "SCADA-P-032" [ref=e697]:
+                  - generic [ref=e698]: SCADA-P-032
+                - gridcell "Existing" [ref=e699]:
+                  - generic [ref=e701]: Existing
+                - gridcell "Haewon Kim" [ref=e702]:
+                  - generic "Haewon Kim (Primary Support) - haewon.kim" [ref=e704]: Haewon Kim
+                - gridcell "Synthetic" [ref=e705]:
+                  - generic [ref=e706]: Synthetic
+            - rowgroup [ref=e707]:
+              - row [ref=e708]:
+                - gridcell [ref=e709]:
+                  - generic [ref=e711]:
+                    - button "Open details" [ref=e712] [cursor=pointer]:
+                      - img [ref=e713]
+                    - button "Edit configuration" [ref=e718] [cursor=pointer]:
+                      - img [ref=e719]
+                    - button "View history" [ref=e721] [cursor=pointer]:
+                      - img [ref=e722]
+                    - button "Knowledge documents" [ref=e725] [cursor=pointer]:
+                      - img [ref=e726]
+                    - button "More actions" [ref=e729] [cursor=pointer]:
+                      - img [ref=e730]
+              - row [ref=e734]:
+                - gridcell [ref=e735]:
+                  - generic [ref=e737]:
+                    - button "Open details" [ref=e738] [cursor=pointer]:
+                      - img [ref=e739]
+                    - button "Edit configuration" [ref=e744] [cursor=pointer]:
+                      - img [ref=e745]
+                    - button "View history" [ref=e747] [cursor=pointer]:
+                      - img [ref=e748]
+                    - button "Knowledge documents" [ref=e751] [cursor=pointer]:
+                      - img [ref=e752]
+                    - button "More actions" [ref=e755] [cursor=pointer]:
+                      - img [ref=e756]
+              - row [ref=e760]:
+                - gridcell [ref=e761]:
+                  - generic [ref=e763]:
+                    - button "Open details" [ref=e764] [cursor=pointer]:
+                      - img [ref=e765]
+                    - button "Edit configuration" [ref=e770] [cursor=pointer]:
+                      - img [ref=e771]
+                    - button "View history" [ref=e773] [cursor=pointer]:
+                      - img [ref=e774]
+                    - button "Knowledge documents" [ref=e777] [cursor=pointer]:
+                      - img [ref=e778]
+                    - button "More actions" [ref=e781] [cursor=pointer]:
+                      - img [ref=e782]
+              - row [ref=e786]:
+                - gridcell [ref=e787]:
+                  - generic [ref=e789]:
+                    - button "Open details" [ref=e790] [cursor=pointer]:
+                      - img [ref=e791]
+                    - button "Edit configuration" [ref=e796] [cursor=pointer]:
+                      - img [ref=e797]
+                    - button "View history" [ref=e799] [cursor=pointer]:
+                      - img [ref=e800]
+                    - button "Knowledge documents" [ref=e803] [cursor=pointer]:
+                      - img [ref=e804]
+                    - button "More actions" [ref=e807] [cursor=pointer]:
+                      - img [ref=e808]
+              - row [ref=e812]:
+                - gridcell [ref=e813]:
+                  - generic [ref=e815]:
+                    - button "Open details" [ref=e816] [cursor=pointer]:
+                      - img [ref=e817]
+                    - button "Edit configuration" [ref=e822] [cursor=pointer]:
+                      - img [ref=e823]
+                    - button "View history" [ref=e825] [cursor=pointer]:
+                      - img [ref=e826]
+                    - button "Knowledge documents" [ref=e829] [cursor=pointer]:
+                      - img [ref=e830]
+                    - button "More actions" [ref=e833] [cursor=pointer]:
+                      - img [ref=e834]
+              - row [ref=e838]:
+                - gridcell [ref=e839]:
+                  - generic [ref=e841]:
+                    - button "Open details" [ref=e842] [cursor=pointer]:
+                      - img [ref=e843]
+                    - button "Edit configuration" [ref=e848] [cursor=pointer]:
+                      - img [ref=e849]
+                    - button "View history" [ref=e851] [cursor=pointer]:
+                      - img [ref=e852]
+                    - button "Knowledge documents" [ref=e855] [cursor=pointer]:
+                      - img [ref=e856]
+                    - button "More actions" [ref=e859] [cursor=pointer]:
+                      - img [ref=e860]
+              - row [ref=e864]:
+                - gridcell [ref=e865]:
+                  - generic [ref=e867]:
+                    - button "Open details" [ref=e868] [cursor=pointer]:
+                      - img [ref=e869]
+                    - button "Edit configuration" [ref=e874] [cursor=pointer]:
+                      - img [ref=e875]
+                    - button "View history" [ref=e877] [cursor=pointer]:
+                      - img [ref=e878]
+                    - button "Knowledge documents" [ref=e881] [cursor=pointer]:
+                      - img [ref=e882]
+                    - button "More actions" [ref=e885] [cursor=pointer]:
+                      - img [ref=e886]
+              - row [ref=e890]:
+                - gridcell [ref=e891]:
+                  - generic [ref=e893]:
+                    - button "Open details" [ref=e894] [cursor=pointer]:
+                      - img [ref=e895]
+                    - button "Edit configuration" [ref=e900] [cursor=pointer]:
+                      - img [ref=e901]
+                    - button "View history" [ref=e903] [cursor=pointer]:
+                      - img [ref=e904]
+                    - button "Knowledge documents" [ref=e907] [cursor=pointer]:
+                      - img [ref=e908]
+                    - button "More actions" [ref=e911] [cursor=pointer]:
+                      - img [ref=e912]
+              - row [ref=e916]:
+                - gridcell [ref=e917]:
+                  - generic [ref=e919]:
+                    - button "Open details" [ref=e920] [cursor=pointer]:
+                      - img [ref=e921]
+                    - button "Edit configuration" [ref=e926] [cursor=pointer]:
+                      - img [ref=e927]
+                    - button "View history" [ref=e929] [cursor=pointer]:
+                      - img [ref=e930]
+                    - button "Knowledge documents" [ref=e933] [cursor=pointer]:
+                      - img [ref=e934]
+                    - button "More actions" [ref=e937] [cursor=pointer]:
+                      - img [ref=e938]
+              - row [ref=e942]:
+                - gridcell [ref=e943]:
+                  - generic [ref=e945]:
+                    - button "Open details" [ref=e946] [cursor=pointer]:
+                      - img [ref=e947]
+                    - button "Edit configuration" [ref=e952] [cursor=pointer]:
+                      - img [ref=e953]
+                    - button "View history" [ref=e955] [cursor=pointer]:
+                      - img [ref=e956]
+                    - button "Knowledge documents" [ref=e959] [cursor=pointer]:
+                      - img [ref=e960]
+                    - button "More actions" [ref=e963] [cursor=pointer]:
+                      - img [ref=e964]
+              - row [ref=e968]:
+                - gridcell [ref=e969]:
+                  - generic [ref=e971]:
+                    - button "Open details" [ref=e972] [cursor=pointer]:
+                      - img [ref=e973]
+                    - button "Edit configuration" [ref=e978] [cursor=pointer]:
+                      - img [ref=e979]
+                    - button "View history" [ref=e981] [cursor=pointer]:
+                      - img [ref=e982]
+                    - button "Knowledge documents" [ref=e985] [cursor=pointer]:
+                      - img [ref=e986]
+                    - button "More actions" [ref=e989] [cursor=pointer]:
+                      - img [ref=e990]
+              - row [ref=e994]:
+                - gridcell [ref=e995]:
+                  - generic [ref=e997]:
+                    - button "Open details" [ref=e998] [cursor=pointer]:
+                      - img [ref=e999]
+                    - button "Edit configuration" [ref=e1004] [cursor=pointer]:
+                      - img [ref=e1005]
+                    - button "View history" [ref=e1007] [cursor=pointer]:
+                      - img [ref=e1008]
+                    - button "Knowledge documents" [ref=e1011] [cursor=pointer]:
+                      - img [ref=e1012]
+                    - button "More actions" [ref=e1015] [cursor=pointer]:
+                      - img [ref=e1016]
+              - row [ref=e1020]:
+                - gridcell [ref=e1021]:
+                  - generic [ref=e1023]:
+                    - button "Open details" [ref=e1024] [cursor=pointer]:
+                      - img [ref=e1025]
+                    - button "Edit configuration" [ref=e1030] [cursor=pointer]:
+                      - img [ref=e1031]
+                    - button "View history" [ref=e1033] [cursor=pointer]:
+                      - img [ref=e1034]
+                    - button "Knowledge documents" [ref=e1037] [cursor=pointer]:
+                      - img [ref=e1038]
+                    - button "More actions" [ref=e1041] [cursor=pointer]:
+                      - img [ref=e1042]
+              - row [ref=e1046]:
+                - gridcell [ref=e1047]:
+                  - generic [ref=e1049]:
+                    - button "Open details" [ref=e1050] [cursor=pointer]:
+                      - img [ref=e1051]
+                    - button "Edit configuration" [ref=e1056] [cursor=pointer]:
+                      - img [ref=e1057]
+                    - button "View history" [ref=e1059] [cursor=pointer]:
+                      - img [ref=e1060]
+                    - button "Knowledge documents" [ref=e1063] [cursor=pointer]:
+                      - img [ref=e1064]
+                    - button "More actions" [ref=e1067] [cursor=pointer]:
+                      - img [ref=e1068]
+              - row [ref=e1072]:
+                - gridcell [ref=e1073]:
+                  - generic [ref=e1075]:
+                    - button "Open details" [ref=e1076] [cursor=pointer]:
+                      - img [ref=e1077]
+                    - button "Edit configuration" [ref=e1082] [cursor=pointer]:
+                      - img [ref=e1083]
+                    - button "View history" [ref=e1085] [cursor=pointer]:
+                      - img [ref=e1086]
+                    - button "Knowledge documents" [ref=e1089] [cursor=pointer]:
+                      - img [ref=e1090]
+                    - button "More actions" [ref=e1093] [cursor=pointer]:
+                      - img [ref=e1094]
+              - row [ref=e1098]:
+                - gridcell [ref=e1099]:
+                  - generic [ref=e1101]:
+                    - button "Open details" [ref=e1102] [cursor=pointer]:
+                      - img [ref=e1103]
+                    - button "Edit configuration" [ref=e1108] [cursor=pointer]:
+                      - img [ref=e1109]
+                    - button "View history" [ref=e1111] [cursor=pointer]:
+                      - img [ref=e1112]
+                    - button "Knowledge documents" [ref=e1115] [cursor=pointer]:
+                      - img [ref=e1116]
+                    - button "More actions" [ref=e1119] [cursor=pointer]:
+                      - img [ref=e1120]
+              - row [ref=e1124]:
+                - gridcell [ref=e1125]:
+                  - generic [ref=e1127]:
+                    - button "Open details" [ref=e1128] [cursor=pointer]:
+                      - img [ref=e1129]
+                    - button "Edit configuration" [ref=e1134] [cursor=pointer]:
+                      - img [ref=e1135]
+                    - button "View history" [ref=e1137] [cursor=pointer]:
+                      - img [ref=e1138]
+                    - button "Knowledge documents" [ref=e1141] [cursor=pointer]:
+                      - img [ref=e1142]
+                    - button "More actions" [ref=e1145] [cursor=pointer]:
+                      - img [ref=e1146]
+              - row [ref=e1150]:
+                - gridcell [ref=e1151]:
+                  - generic [ref=e1153]:
+                    - button "Open details" [ref=e1154] [cursor=pointer]:
+                      - img [ref=e1155]
+                    - button "Edit configuration" [ref=e1160] [cursor=pointer]:
+                      - img [ref=e1161]
+                    - button "View history" [ref=e1163] [cursor=pointer]:
+                      - img [ref=e1164]
+                    - button "Knowledge documents" [ref=e1167] [cursor=pointer]:
+                      - img [ref=e1168]
+                    - button "More actions" [ref=e1171] [cursor=pointer]:
+                      - img [ref=e1172]
+              - row [ref=e1176]:
+                - gridcell [ref=e1177]:
+                  - generic [ref=e1179]:
+                    - button "Open details" [ref=e1180] [cursor=pointer]:
+                      - img [ref=e1181]
+                    - button "Edit configuration" [ref=e1186] [cursor=pointer]:
+                      - img [ref=e1187]
+                    - button "View history" [ref=e1189] [cursor=pointer]:
+                      - img [ref=e1190]
+                    - button "Knowledge documents" [ref=e1193] [cursor=pointer]:
+                      - img [ref=e1194]
+                    - button "More actions" [ref=e1197] [cursor=pointer]:
+                      - img [ref=e1198]
+              - row [ref=e1202]:
+                - gridcell [ref=e1203]:
+                  - generic [ref=e1205]:
+                    - button "Open details" [ref=e1206] [cursor=pointer]:
+                      - img [ref=e1207]
+                    - button "Edit configuration" [ref=e1212] [cursor=pointer]:
+                      - img [ref=e1213]
+                    - button "View history" [ref=e1215] [cursor=pointer]:
+                      - img [ref=e1216]
+                    - button "Knowledge documents" [ref=e1219] [cursor=pointer]:
+                      - img [ref=e1220]
+                    - button "More actions" [ref=e1223] [cursor=pointer]:
+                      - img [ref=e1224]
+            - rowgroup
+            - rowgroup
+            - rowgroup
+            - rowgroup
+            - rowgroup
+            - rowgroup
+            - rowgroup
+            - rowgroup
+            - rowgroup
+          - text:    
+      - generic [ref=e1228]:
+        - generic [ref=e1229]:
+          - generic [ref=e1230]:
+            - img [ref=e1231]
+            - generic [ref=e1234]: "YOUR TIME (America/Chicago): 01:30:41"
+          - generic [ref=e1235]:
+            - img [ref=e1236]
+            - generic [ref=e1239]: "SOUTH KOREA (KST): 15:30:41"
+        - generic [ref=e1240]: VERSION 1.2.6
+  - dialog [ref=e1241]:
+    - generic [ref=e1242]:
+      - generic [ref=e1244]:
+        - generic [ref=e1245]:
+          - generic [ref=e1246]:
+            - button "Close" [ref=e1248] [cursor=pointer]:
+              - img [ref=e1249]
+            - button "Maximize" [ref=e1252] [cursor=pointer]:
+              - img [ref=e1253]
+          - img [ref=e1259]
+          - generic [ref=e1262]:
+            - heading "Add Monitoring" [level=2] [ref=e1263]
+            - generic [ref=e1264]:
+              - generic [ref=e1265]: Configure monitoring targets, logic, and alert routing.
+              - generic [ref=e1267]:
+                - generic [ref=e1268]: Planned
+                - generic [ref=e1269]: Warning
+                - generic [ref=e1271]: Datadog
+        - generic [ref=e1273]:
+          - button "Context" [ref=e1274] [cursor=pointer]:
+            - generic [ref=e1276]: Context
+          - button "Logic" [ref=e1277] [cursor=pointer]:
+            - generic [ref=e1279]: Logic
+          - button "Alerting" [ref=e1280] [cursor=pointer]:
+            - generic [ref=e1282]: Alerting
+      - generic [ref=e1284]:
+        - generic [ref=e1285]:
+          - generic [ref=e1286]:
+            - generic [ref=e1287]:
+              - generic [ref=e1288]: Monitoring Item Title*
+              - 'textbox "e.g. CORE-DB: High CPU Load Alert" [ref=e1289]'
+            - generic [ref=e1291]:
+              - generic [ref=e1292]: Status*
+              - button "Planned" [ref=e1294] [cursor=pointer]:
+                - generic [ref=e1295]: Planned
+                - img [ref=e1296]
+            - generic [ref=e1299]:
+              - generic [ref=e1300]: Severity*
+              - button "Warning" [ref=e1302] [cursor=pointer]:
+                - generic [ref=e1303]: Warning
+                - img [ref=e1304]
+          - generic [ref=e1306]:
+            - generic [ref=e1308]:
+              - generic [ref=e1309]: Logic Category*
+              - button "Select option" [ref=e1311] [cursor=pointer]:
+                - generic [ref=e1312]: Select option
+                - img [ref=e1313]
+            - generic [ref=e1316]:
+              - text: Target Platform
+              - button "Datadog" [ref=e1318] [cursor=pointer]:
+                - generic [ref=e1319]: Datadog
+                - img [ref=e1320]
+        - generic [ref=e1324]:
+          - generic [ref=e1325]:
+            - button "Target identity Asset + scope Define scope, secure console access, and linked service coverage. Hide" [ref=e1326] [cursor=pointer]:
+              - generic [ref=e1327]:
+                - generic [ref=e1328]:
+                  - heading "Target identity" [level=3] [ref=e1329]
+                  - generic [ref=e1330]: Asset + scope
+                - paragraph [ref=e1331]: Define scope, secure console access, and linked service coverage.
+              - generic [ref=e1333]: Hide
+            - generic [ref=e1335]:
+              - generic [ref=e1336]:
+                - generic [ref=e1337]:
+                  - generic [ref=e1338]:
+                    - heading "Registry asset and service scope" [level=3] [ref=e1339]
+                    - paragraph [ref=e1340]: Link a registry asset and select the services covered by this monitor.
+                  - generic [ref=e1341]: 0 linked
+                - generic [ref=e1342]:
+                  - generic [ref=e1343]:
+                    - text: Registry Asset
+                    - button "Select asset" [ref=e1345] [cursor=pointer]:
+                      - generic [ref=e1346]: Select asset
+                      - img [ref=e1347]
+                  - generic [ref=e1350]:
+                    - paragraph [ref=e1351]: Choose an asset first
+                    - paragraph [ref=e1352]: Asset-linked services appear here after a registry asset is selected.
+              - generic [ref=e1353]:
+                - generic [ref=e1354]:
+                  - text: Monitoring URL
+                  - generic [ref=e1355]:
+                    - img [ref=e1356]
+                    - textbox "https://console.internal/..." [ref=e1359]
+                - generic [ref=e1360]:
+                  - heading "Scope Summary" [level=4] [ref=e1361]
+                  - generic [ref=e1362]:
+                    - generic [ref=e1363]:
+                      - generic [ref=e1364]: Primary Asset
+                      - generic [ref=e1365]: Unlinked
+                    - generic [ref=e1366]:
+                      - generic [ref=e1367]: System
+                      - generic [ref=e1368]: Unlinked
+          - generic [ref=e1369]:
+            - button "Operational purpose Document why the monitor exists and what the alert means. Hide" [ref=e1370] [cursor=pointer]:
+              - generic [ref=e1371]:
+                - heading "Operational purpose" [level=3] [ref=e1373]
+                - paragraph [ref=e1374]: Document why the monitor exists and what the alert means.
+              - generic [ref=e1376]: Hide
+            - generic [ref=e1377]:
+              - generic [ref=e1378]:
+                - text: Purpose
+                - textbox "Why are we monitoring this?" [ref=e1379]
+              - generic [ref=e1380]:
+                - text: Impact
+                - textbox "What happens when this monitor triggers?" [ref=e1381]
+          - generic [ref=e1382]:
+            - button "Ownership Team owner Team and individual ownership are both optional and can coexist. Hide" [ref=e1383] [cursor=pointer]:
+              - generic [ref=e1384]:
+                - generic [ref=e1385]:
+                  - heading "Ownership" [level=3] [ref=e1386]
+                  - generic [ref=e1387]: Team owner
+                - paragraph [ref=e1388]: Team and individual ownership are both optional and can coexist.
+              - generic [ref=e1390]: Hide
+            - generic [ref=e1391]:
+              - button "Team owner" [ref=e1392] [cursor=pointer]
+              - button "Individual owners" [ref=e1393] [cursor=pointer]
+            - generic [ref=e1395]:
+              - generic [ref=e1396]:
+                - text: Owner Team(s)
+                - textbox "Comma-separated team names" [ref=e1397]
+              - paragraph [ref=e1398]: Optional. Use comma-separated team names from the registered team list.
+              - button "Allowed team names" [ref=e1399] [cursor=pointer]
+      - generic [ref=e1401]:
+        - button "Monitor Paused" [disabled] [ref=e1403]:
+          - generic [ref=e1405]: Monitor Paused
+        - generic [ref=e1407]:
+          - button "Close" [ref=e1408] [cursor=pointer]
+          - button "Add Monitoring" [ref=e1410] [cursor=pointer]:
+            - img [ref=e1411]
+            - generic [ref=e1413]: Add Monitoring
+```
+
+# Test source
+
+```ts
+  1  | import { test, expect } from '@playwright/test';
+  2  | import { clickResilientButton, resetBrowserState } from './helpers/sysgrid';
+  3  | 
+  4  | test.describe('Monitoring Comprehensive Functional Coverage', () => {
+  5  |   test.beforeEach(async ({ page }) => {
+  6  |     // 1. Hardened Error Monitoring
+  7  |     page.on('console', msg => { if (msg.type() === 'error') throw new Error(msg.text()); });
+  8  |     page.on('pageerror', err => { throw new Error(err.message); });
+  9  |     await resetBrowserState(page);
+  10 |     await page.goto('/monitoring');
+  11 |   });
+  12 | 
+  13 |   // 1. CRUD: Add
+  14 |   test('Add Monitor: Validate field sanitization and success', async ({ page }) => {
+  15 |     await clickResilientButton(page, /Add Monitoring/i);
+> 16 |     await page.getByPlaceholder('Monitor Title').fill('Coverage-Test-Add');
+     |                                                  ^ Error: locator.fill: Test timeout of 60000ms exceeded.
+  17 |     await page.getByPlaceholder('Description').fill('Exhaustive-Test');
+  18 |     await clickResilientButton(page, /Add Monitoring/i);
+  19 |     await expect(page.getByText('Coverage-Test-Add')).toBeVisible();
+  20 |   });
+  21 | 
+  22 |   // 2. CRUD: Edit
+  23 |   test('Edit Monitor: Validate state propagation and save', async ({ page }) => {
+  24 |     await page.locator('.ag-row').first().click();
+  25 |     await clickResilientButton(page, /Edit/i);
+  26 |     await page.getByPlaceholder('Monitor Title').fill('Coverage-Test-Update');
+  27 |     await clickResilientButton(page, /Save/i);
+  28 |     await expect(page.getByText('Coverage-Test-Update')).toBeVisible();
+  29 |   });
+  30 | 
+  31 |   // 3. Validation: Missing Required Fields
+  32 |   test('Validation: Triggers error on empty title', async ({ page }) => {
+  33 |     await clickResilientButton(page, /Add Monitoring/i);
+  34 |     await clickResilientButton(page, /Add Monitoring/i);
+  35 |     await expect(page.getByText('Title is required')).toBeVisible();
+  36 |   });
+  37 | });
+  38 | 
+```

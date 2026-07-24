@@ -211,7 +211,7 @@ test.describe('Architecture workflows', () => {
     await clickResilientButton(page, /Initialize/i)
     await expect(page.getByText('Payments Engineering')).toBeVisible()
 
-    await clickResilientButton(page, 'SYNC_PATH')
+    await clickResilientButton(page, 'Select edge SYNC_PATH')
     await clickResilientButton(page, /Service Logic Builder/i)
     await expect(page.getByRole('heading', { name: 'Service Logic' })).toBeVisible()
     await clickResilientButton(page, new RegExp(targetService.name, 'i'))

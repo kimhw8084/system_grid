@@ -1,0 +1,12 @@
+{
+  "failed_count": 1,
+  "failures": [
+    {
+      "test": "persists service-level swimlane workflows and protects against accidental exit",
+      "file": "/Users/haewonkim/home/development/sysgrid/frontend/tests/architecture-workflows.spec.ts",
+      "line": 133,
+      "status": "failed",
+      "error": "Error: Ambiguous button /^Logic$/: found 3 visible, enabled matches"
+    }
+  ]
+}

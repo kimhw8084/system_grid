@@ -1,0 +1,1014 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: service-workflows.spec.ts >> Service workflows >> tolerates malformed metadata and clears deep-link state on close
+- Location: tests/service-workflows.spec.ts:9:3
+
+# Error details
+
+```
+Error: expect(locator).toBeVisible() failed
+
+Locator: getByRole('dialog').filter({ hasText: 'Edit Service' }).getByText('Configuration Metadata', { exact: true })
+Expected: visible
+Error: strict mode violation: getByRole('dialog').filter({ hasText: 'Edit Service' }).getByText('Configuration Metadata', { exact: true }) resolved to 2 elements:
+    1) <span class="text-[9px] font-bold uppercase tracking-widest text-slate-500 ">Configuration Metadata</span> aka getByText('Configuration Metadata').first()
+    2) <span class="text-[9px] font-bold uppercase tracking-widest text-slate-500 ">Configuration Metadata</span> aka locator('#service-record-form').getByText('Configuration Metadata', { exact: true })
+
+Call log:
+  - Expect "toBeVisible" with timeout 15000ms
+  - waiting for getByRole('dialog').filter({ hasText: 'Edit Service' }).getByText('Configuration Metadata', { exact: true })
+
+```
+
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - link "SYSGRID" [ref=e6] [cursor=pointer]:
+          - /url: /
+          - img [ref=e8]
+          - generic [ref=e10]: SYSGRID
+        - button [ref=e11] [cursor=pointer]:
+          - img [ref=e12]
+      - navigation [ref=e13]:
+        - generic [ref=e14]:
+          - button "OPERATIONS" [ref=e15] [cursor=pointer]:
+            - generic [ref=e16]: OPERATIONS
+            - img [ref=e17]
+          - generic [ref=e20]:
+            - link "Home" [ref=e21] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e22]:
+                - img [ref=e23]
+                - generic [ref=e28]: Home
+            - link "Projects" [ref=e29] [cursor=pointer]:
+              - /url: /projects
+              - generic [ref=e30]:
+                - img [ref=e31]
+                - generic [ref=e34]: Projects
+            - link "Monitoring" [ref=e35] [cursor=pointer]:
+              - /url: /monitoring
+              - generic [ref=e36]:
+                - img [ref=e37]
+                - generic [ref=e39]: Monitoring
+        - generic [ref=e40]:
+          - button "INFRASTRUCTURE" [ref=e41] [cursor=pointer]:
+            - generic [ref=e42]: INFRASTRUCTURE
+            - img [ref=e43]
+          - generic [ref=e46]:
+            - link "Assets" [ref=e47] [cursor=pointer]:
+              - /url: /asset
+              - generic [ref=e48]:
+                - img [ref=e49]
+                - generic [ref=e52]: Assets
+            - link "Racks" [ref=e53] [cursor=pointer]:
+              - /url: /racks
+              - generic [ref=e54]:
+                - img [ref=e55]
+                - generic [ref=e59]: Racks
+            - link "Services" [ref=e60] [cursor=pointer]:
+              - /url: /services
+              - generic [ref=e61]:
+                - img [ref=e62]
+                - generic [ref=e66]: Services
+            - link "External" [ref=e68] [cursor=pointer]:
+              - /url: /external
+              - generic [ref=e69]:
+                - img [ref=e70]
+                - generic [ref=e76]: External
+        - generic [ref=e77]:
+          - button "CONNECTIVITY" [ref=e78] [cursor=pointer]:
+            - generic [ref=e79]: CONNECTIVITY
+            - img [ref=e80]
+          - generic [ref=e83]:
+            - link "Network" [ref=e84] [cursor=pointer]:
+              - /url: /network
+              - generic [ref=e85]:
+                - img [ref=e86]
+                - generic [ref=e91]: Network
+            - link "Architecture" [ref=e92] [cursor=pointer]:
+              - /url: /architecture
+              - generic [ref=e93]:
+                - img [ref=e94]
+                - generic [ref=e98]: Architecture
+        - generic [ref=e99]:
+          - button "ANALYSIS" [ref=e100] [cursor=pointer]:
+            - generic [ref=e101]: ANALYSIS
+            - img [ref=e102]
+          - generic [ref=e105]:
+            - link "FAR" [ref=e106] [cursor=pointer]:
+              - /url: /far
+              - generic [ref=e107]:
+                - img [ref=e108]
+                - generic [ref=e110]: FAR
+            - link "Research" [ref=e111] [cursor=pointer]:
+              - /url: /research
+              - generic [ref=e112]:
+                - img [ref=e113]
+                - generic [ref=e116]: Research
+        - generic [ref=e117]:
+          - button "RESOURCES" [ref=e118] [cursor=pointer]:
+            - generic [ref=e119]: RESOURCES
+            - img [ref=e120]
+          - generic [ref=e123]:
+            - link "Vendors" [ref=e124] [cursor=pointer]:
+              - /url: /vendors
+              - generic [ref=e125]:
+                - img [ref=e126]
+                - generic [ref=e129]: Vendors
+            - link "Knowledge" [ref=e130] [cursor=pointer]:
+              - /url: /knowledge
+              - generic [ref=e131]:
+                - img [ref=e132]
+                - generic [ref=e135]: Knowledge
+      - generic [ref=e136]:
+        - 'button "Haewon Kim ID: 1" [ref=e137] [cursor=pointer]':
+          - img [ref=e139]
+          - generic [ref=e142]:
+            - generic [ref=e143]: Haewon Kim
+            - generic [ref=e144]: "ID: 1"
+        - generic [ref=e145]:
+          - button "Dark" [ref=e146] [cursor=pointer]:
+            - generic [ref=e148]: Dark
+          - button "Light" [ref=e149] [cursor=pointer]:
+            - generic [ref=e151]: Light
+      - paragraph [ref=e153]: 1.2.6
+    - main [ref=e154]:
+      - generic [ref=e156]:
+        - generic [ref=e157]:
+          - button "Patch Notes" [ref=e158] [cursor=pointer]
+          - button "Search assets, projects, or incidents... ⌘ K" [ref=e159] [cursor=pointer]:
+            - img [ref=e160]
+            - generic [ref=e163]: Search assets, projects, or incidents...
+            - generic [ref=e164]:
+              - generic [ref=e165]: ⌘
+              - generic [ref=e166]: K
+        - generic [ref=e167]:
+          - button "Active Database Local Demo" [ref=e169] [cursor=pointer]:
+            - img [ref=e171]
+            - generic [ref=e175]:
+              - generic [ref=e176]: Active Database
+              - generic [ref=e177]: Local Demo
+            - img [ref=e178]
+          - generic [ref=e180]:
+            - generic [ref=e181]: System Status
+            - generic [ref=e182]:
+              - generic [ref=e183]: Operational
+              - generic [ref=e184]: 7ms
+          - button "Notifications" [ref=e185] [cursor=pointer]:
+            - img [ref=e186]
+          - button [ref=e190] [cursor=pointer]:
+            - img [ref=e191]
+          - link [ref=e200] [cursor=pointer]:
+            - /url: /settings
+            - img [ref=e201]
+      - generic [ref=e205]:
+        - generic [ref=e206]:
+          - generic [ref=e207]:
+            - generic [ref=e208]: Services
+            - generic [ref=e209]:
+              - heading "Services" [level=1] [ref=e210]:
+                - generic [ref=e211]:
+                  - img [ref=e212]
+                  - generic [ref=e214]: Services
+              - paragraph [ref=e215]: Centralized logical service registry and operational ownership view
+          - generic [ref=e217]:
+            - generic [ref=e218]:
+              - paragraph [ref=e219]: Service Scope
+              - paragraph [ref=e220]: 366 active · 4 deleted
+            - generic [ref=e221]:
+              - button "Active" [ref=e222] [cursor=pointer]
+              - button "Deleted" [ref=e223] [cursor=pointer]
+        - generic [ref=e224]:
+          - generic [ref=e225]:
+            - generic [ref=e226]:
+              - generic [ref=e227]:
+                - img
+                - textbox "Search services, hosts, or metadata..." [ref=e228]
+              - generic [ref=e229]:
+                - button "Views" [ref=e231] [cursor=pointer]:
+                  - generic [ref=e232]:
+                    - img [ref=e233]
+                    - text: Views
+                - button "Display" [ref=e239] [cursor=pointer]:
+                  - generic [ref=e240]:
+                    - img [ref=e241]
+                    - text: Display
+                - button "Export CSV" [ref=e242] [cursor=pointer]:
+                  - img [ref=e243]
+                - button "Copy to clipboard" [ref=e246] [cursor=pointer]:
+                  - img [ref=e247]
+                - button "Registry configuration" [ref=e250] [cursor=pointer]:
+                  - img [ref=e251]
+              - generic [ref=e254]:
+                - button "Import" [ref=e255] [cursor=pointer]:
+                  - generic [ref=e256]:
+                    - img [ref=e257]
+                    - text: Import
+                - button "Filters" [ref=e260] [cursor=pointer]:
+                  - generic [ref=e261]:
+                    - img [ref=e262]
+                    - text: Filters
+                - button "Activity" [ref=e267] [cursor=pointer]:
+                  - generic [ref=e268]:
+                    - img [ref=e269]
+                    - text: Activity
+            - generic [ref=e274]:
+              - button "Compare" [disabled] [ref=e275]:
+                - generic [ref=e276]:
+                  - img [ref=e277]
+                  - text: Compare
+              - button "Bulk Actions" [disabled] [ref=e282]:
+                - generic [ref=e283]:
+                  - img [ref=e284]
+                  - text: Bulk Actions
+              - button "+ Add Service" [ref=e286] [cursor=pointer]
+          - generic [ref=e289]:
+            - generic [ref=e290]:
+              - generic [ref=e293]: Status Filter
+              - button "All statuses" [ref=e295] [cursor=pointer]:
+                - generic [ref=e296]: All statuses
+                - img [ref=e297]
+            - generic [ref=e299]:
+              - generic [ref=e302]: Environment Filter
+              - button "All environments" [ref=e304] [cursor=pointer]:
+                - generic [ref=e305]: All environments
+                - img [ref=e306]
+            - generic [ref=e308]:
+              - generic [ref=e311]: Type Filter
+              - button "All types" [ref=e313] [cursor=pointer]:
+                - generic [ref=e314]: All types
+                - img [ref=e315]
+            - generic [ref=e317]:
+              - generic [ref=e320]: Host Filter
+              - button "All hosts" [ref=e322] [cursor=pointer]:
+                - generic [ref=e323]: All hosts
+                - img [ref=e324]
+        - generic [ref=e328]:
+          - treegrid [ref=e330]:
+            - rowgroup [ref=e331]:
+              - row "ID Name" [ref=e332]:
+                - columnheader [ref=e333]:
+                  - generic [ref=e334]:
+                    - checkbox [ref=e335]
+                    - text: 
+                  - text: 
+                  - generic: 
+                - columnheader "ID" [ref=e336]:
+                  - text: 
+                  - generic [ref=e337] [cursor=pointer]: 
+                  - generic [ref=e338] [cursor=pointer]: ID
+                  - text: 
+                  - generic:    
+                - columnheader "Name" [ref=e339]:
+                  - text: 
+                  - generic [ref=e341] [cursor=pointer]: 
+                  - generic [ref=e342] [cursor=pointer]: Name
+                  - text: 
+                  - generic:    
+            - rowgroup [ref=e343]:
+              - row "Host Type Environment Version" [ref=e344]:
+                - columnheader "Host" [ref=e345]:
+                  - text: 
+                  - generic [ref=e347] [cursor=pointer]: 
+                  - generic [ref=e348] [cursor=pointer]: Host
+                  - text: 
+                  - generic:    
+                - columnheader "Type" [ref=e349]:
+                  - text: 
+                  - generic [ref=e351] [cursor=pointer]: 
+                  - generic [ref=e352] [cursor=pointer]: Type
+                  - text: 
+                  - generic:    
+                - columnheader "Environment" [ref=e353]:
+                  - text: 
+                  - generic [ref=e355] [cursor=pointer]: 
+                  - generic [ref=e356] [cursor=pointer]: Environment
+                  - text: 
+                  - generic:    
+                - columnheader "Version" [ref=e357]:
+                  - text: 
+                  - generic [ref=e359] [cursor=pointer]: 
+                  - generic [ref=e360] [cursor=pointer]: Version
+                  - text: 
+                  - generic:    
+            - rowgroup [ref=e361]:
+              - row "Action" [ref=e362]:
+                - columnheader "Action" [ref=e363]:
+                  - text: 
+                  - generic [ref=e364]: Action
+                  - text: 
+                  - generic: 
+            - rowgroup [ref=e365]:
+              - row "Press Space to toggle row selection (unchecked)  1 BI-ANALYTICS-DAT-000-1" [ref=e366]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e367]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e368]
+                  - text: 
+                - gridcell "1" [ref=e369]
+                - gridcell "BI-ANALYTICS-DAT-000-1" [ref=e370]:
+                  - generic [ref=e371]: BI-ANALYTICS-DAT-000-1
+              - row "Press Space to toggle row selection (unchecked)  2 BI-ANALYTICS-DAT-000-2" [ref=e372]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e373]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e374]
+                  - text: 
+                - gridcell "2" [ref=e375]
+                - gridcell "BI-ANALYTICS-DAT-000-2" [ref=e376]:
+                  - generic [ref=e377]: BI-ANALYTICS-DAT-000-2
+              - row "Press Space to toggle row selection (unchecked)  3 MANUFACTURING-API-001-1" [ref=e378]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e379]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e380]
+                  - text: 
+                - gridcell "3" [ref=e381]
+                - gridcell "MANUFACTURING-API-001-1" [ref=e382]:
+                  - generic [ref=e383]: MANUFACTURING-API-001-1
+              - row "Press Space to toggle row selection (unchecked)  4 MANUFACTURING-DAT-001-2" [ref=e384]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e385]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e386]
+                  - text: 
+                - gridcell "4" [ref=e387]
+                - gridcell "MANUFACTURING-DAT-001-2" [ref=e388]:
+                  - generic [ref=e389]: MANUFACTURING-DAT-001-2
+              - row "Press Space to toggle row selection (unchecked)  5 MANUFACTURING-DAT-002-1" [ref=e390]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e391]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e392]
+                  - text: 
+                - gridcell "5" [ref=e393]
+                - gridcell "MANUFACTURING-DAT-002-1" [ref=e394]:
+                  - generic [ref=e395]: MANUFACTURING-DAT-002-1
+              - row "Press Space to toggle row selection (unchecked)  6 MANUFACTURING-API-002-2" [ref=e396]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e397]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e398]
+                  - text: 
+                - gridcell "6" [ref=e399]
+                - gridcell "MANUFACTURING-API-002-2" [ref=e400]:
+                  - generic [ref=e401]: MANUFACTURING-API-002-2
+              - row "Press Space to toggle row selection (unchecked)  7 MANUFACTURING-TOO-003-1" [ref=e402]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e403]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e404]
+                  - text: 
+                - gridcell "7" [ref=e405]
+                - gridcell "MANUFACTURING-TOO-003-1" [ref=e406]:
+                  - generic [ref=e407]: MANUFACTURING-TOO-003-1
+              - row "Press Space to toggle row selection (unchecked)  8 MANUFACTURING-CON-003-2" [ref=e408]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e409]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e410]
+                  - text: 
+                - gridcell "8" [ref=e411]
+                - gridcell "MANUFACTURING-CON-003-2" [ref=e412]:
+                  - generic [ref=e413]: MANUFACTURING-CON-003-2
+              - row "Press Space to toggle row selection (unchecked)  9 MES-WEB-004-1" [ref=e414]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e415]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e416]
+                  - text: 
+                - gridcell "9" [ref=e417]
+                - gridcell "MES-WEB-004-1" [ref=e418]:
+                  - generic [ref=e419]: MES-WEB-004-1
+              - row "Press Space to toggle row selection (unchecked)  10 MES-CON-004-2" [ref=e420]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e421]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e422]
+                  - text: 
+                - gridcell "10" [ref=e423]
+                - gridcell "MES-CON-004-2" [ref=e424]:
+                  - generic [ref=e425]: MES-CON-004-2
+              - row "Press Space to toggle row selection (unchecked)  11 SECURITY-TOO-005-1" [ref=e426]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e427]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e428]
+                  - text: 
+                - gridcell "11" [ref=e429]
+                - gridcell "SECURITY-TOO-005-1" [ref=e430]:
+                  - generic [ref=e431]: SECURITY-TOO-005-1
+              - row "Press Space to toggle row selection (unchecked)  12 SECURITY-DAT-005-2" [ref=e432]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e433]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e434]
+                  - text: 
+                - gridcell "12" [ref=e435]
+                - gridcell "SECURITY-DAT-005-2" [ref=e436]:
+                  - generic [ref=e437]: SECURITY-DAT-005-2
+              - row "Press Space to toggle row selection (unchecked)  13 SECURITY-TOO-006-1" [ref=e438]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e439]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e440]
+                  - text: 
+                - gridcell "13" [ref=e441]
+                - gridcell "SECURITY-TOO-006-1" [ref=e442]:
+                  - generic [ref=e443]: SECURITY-TOO-006-1
+              - row "Press Space to toggle row selection (unchecked)  14 SECURITY-CON-006-2" [ref=e444]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e445]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e446]
+                  - text: 
+                - gridcell "14" [ref=e447]
+                - gridcell "SECURITY-CON-006-2" [ref=e448]:
+                  - generic [ref=e449]: SECURITY-CON-006-2
+              - row "Press Space to toggle row selection (unchecked)  15 MES-MID-007-1" [ref=e450]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e451]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e452]
+                  - text: 
+                - gridcell "15" [ref=e453]
+                - gridcell "MES-MID-007-1" [ref=e454]:
+                  - generic [ref=e455]: MES-MID-007-1
+              - row "Press Space to toggle row selection (unchecked)  16 MES-CON-007-2" [ref=e456]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e457]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e458]
+                  - text: 
+                - gridcell "16" [ref=e459]
+                - gridcell "MES-CON-007-2" [ref=e460]:
+                  - generic [ref=e461]: MES-CON-007-2
+              - row "Press Space to toggle row selection (unchecked)  17 ERP-API-008-1" [ref=e462]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e463]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e464]
+                  - text: 
+                - gridcell "17" [ref=e465]
+                - gridcell "ERP-API-008-1" [ref=e466]:
+                  - generic [ref=e467]: ERP-API-008-1
+              - row "Press Space to toggle row selection (unchecked)  18 ERP-TOO-008-2" [ref=e468]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e469]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e470]
+                  - text: 
+                - gridcell "18" [ref=e471]
+                - gridcell "ERP-TOO-008-2" [ref=e472]:
+                  - generic [ref=e473]: ERP-TOO-008-2
+              - row "Press Space to toggle row selection (unchecked)  19 MES-DAT-009-1" [ref=e474]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e475]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e476]
+                  - text: 
+                - gridcell "19" [ref=e477]
+                - gridcell "MES-DAT-009-1" [ref=e478]:
+                  - generic [ref=e479]: MES-DAT-009-1
+              - row "Press Space to toggle row selection (unchecked)  20 MES-API-009-2" [ref=e480]:
+                - gridcell "Press Space to toggle row selection (unchecked) " [ref=e481]:
+                  - checkbox "Press Space to toggle row selection (unchecked)" [ref=e482]
+                  - text: 
+                - gridcell "20" [ref=e483]
+                - gridcell "MES-API-009-2" [ref=e484]:
+                  - generic [ref=e485]: MES-API-009-2
+            - rowgroup [ref=e486]:
+              - row "BI-ANALYTICS-P-003 Database Production 12.4" [ref=e487]:
+                - gridcell "BI-ANALYTICS-P-003" [ref=e488]:
+                  - generic [ref=e489]: BI-ANALYTICS-P-003
+                - gridcell "Database" [ref=e490]:
+                  - generic [ref=e491]: Database
+                - gridcell "Production" [ref=e492]:
+                  - generic [ref=e493]: Production
+                - gridcell "12.4" [ref=e494]:
+                  - generic [ref=e495]: "12.4"
+              - row "BI-ANALYTICS-P-003 Database Production 12.4" [ref=e496]:
+                - gridcell "BI-ANALYTICS-P-003" [ref=e497]:
+                  - generic [ref=e498]: BI-ANALYTICS-P-003
+                - gridcell "Database" [ref=e499]:
+                  - generic [ref=e500]: Database
+                - gridcell "Production" [ref=e501]:
+                  - generic [ref=e502]: Production
+                - gridcell "12.4" [ref=e503]:
+                  - generic [ref=e504]: "12.4"
+              - row "MANUFACTURING-P-004 API Staging 12.4" [ref=e505]:
+                - gridcell "MANUFACTURING-P-004" [ref=e506]:
+                  - generic [ref=e507]: MANUFACTURING-P-004
+                - gridcell "API" [ref=e508]:
+                  - generic [ref=e509]: API
+                - gridcell "Staging" [ref=e510]:
+                  - generic [ref=e511]: Staging
+                - gridcell "12.4" [ref=e512]:
+                  - generic [ref=e513]: "12.4"
+              - row "MANUFACTURING-P-004 Database Staging 2025.1" [ref=e514]:
+                - gridcell "MANUFACTURING-P-004" [ref=e515]:
+                  - generic [ref=e516]: MANUFACTURING-P-004
+                - gridcell "Database" [ref=e517]:
+                  - generic [ref=e518]: Database
+                - gridcell "Staging" [ref=e519]:
+                  - generic [ref=e520]: Staging
+                - gridcell "2025.1" [ref=e521]:
+                  - generic [ref=e522]: "2025.1"
+              - row "MANUFACTURING-P-005 Database Production 2025.1" [ref=e523]:
+                - gridcell "MANUFACTURING-P-005" [ref=e524]:
+                  - generic [ref=e525]: MANUFACTURING-P-005
+                - gridcell "Database" [ref=e526]:
+                  - generic [ref=e527]: Database
+                - gridcell "Production" [ref=e528]:
+                  - generic [ref=e529]: Production
+                - gridcell "2025.1" [ref=e530]:
+                  - generic [ref=e531]: "2025.1"
+              - row "MANUFACTURING-P-005 API Production 3.7.19" [ref=e532]:
+                - gridcell "MANUFACTURING-P-005" [ref=e533]:
+                  - generic [ref=e534]: MANUFACTURING-P-005
+                - gridcell "API" [ref=e535]:
+                  - generic [ref=e536]: API
+                - gridcell "Production" [ref=e537]:
+                  - generic [ref=e538]: Production
+                - gridcell "3.7.19" [ref=e539]:
+                  - generic [ref=e540]: 3.7.19
+              - row "MANUFACTURING-P-006 ToolStack Development 2024.11" [ref=e541]:
+                - gridcell "MANUFACTURING-P-006" [ref=e542]:
+                  - generic [ref=e543]: MANUFACTURING-P-006
+                - gridcell "ToolStack" [ref=e544]:
+                  - generic [ref=e545]: ToolStack
+                - gridcell "Development" [ref=e546]:
+                  - generic [ref=e547]: Development
+                - gridcell "2024.11" [ref=e548]:
+                  - generic [ref=e549]: "2024.11"
+              - row "MANUFACTURING-P-006 Container Development 2025.1" [ref=e550]:
+                - gridcell "MANUFACTURING-P-006" [ref=e551]:
+                  - generic [ref=e552]: MANUFACTURING-P-006
+                - gridcell "Container" [ref=e553]:
+                  - generic [ref=e554]: Container
+                - gridcell "Development" [ref=e555]:
+                  - generic [ref=e556]: Development
+                - gridcell "2025.1" [ref=e557]:
+                  - generic [ref=e558]: "2025.1"
+              - row "MES-P-007 Web Staging 2024.11" [ref=e559]:
+                - gridcell "MES-P-007" [ref=e560]:
+                  - generic [ref=e561]: MES-P-007
+                - gridcell "Web" [ref=e562]:
+                  - generic [ref=e563]: Web
+                - gridcell "Staging" [ref=e564]:
+                  - generic [ref=e565]: Staging
+                - gridcell "2024.11" [ref=e566]:
+                  - generic [ref=e567]: "2024.11"
+              - row "MES-P-007 Container Staging 12.4" [ref=e568]:
+                - gridcell "MES-P-007" [ref=e569]:
+                  - generic [ref=e570]: MES-P-007
+                - gridcell "Container" [ref=e571]:
+                  - generic [ref=e572]: Container
+                - gridcell "Staging" [ref=e573]:
+                  - generic [ref=e574]: Staging
+                - gridcell "12.4" [ref=e575]:
+                  - generic [ref=e576]: "12.4"
+              - row "SECURITY-P-008 ToolStack Development 2024.11" [ref=e577]:
+                - gridcell "SECURITY-P-008" [ref=e578]:
+                  - generic [ref=e579]: SECURITY-P-008
+                - gridcell "ToolStack" [ref=e580]:
+                  - generic [ref=e581]: ToolStack
+                - gridcell "Development" [ref=e582]:
+                  - generic [ref=e583]: Development
+                - gridcell "2024.11" [ref=e584]:
+                  - generic [ref=e585]: "2024.11"
+              - row "SECURITY-P-008 Database Development 2025.1" [ref=e586]:
+                - gridcell "SECURITY-P-008" [ref=e587]:
+                  - generic [ref=e588]: SECURITY-P-008
+                - gridcell "Database" [ref=e589]:
+                  - generic [ref=e590]: Database
+                - gridcell "Development" [ref=e591]:
+                  - generic [ref=e592]: Development
+                - gridcell "2025.1" [ref=e593]:
+                  - generic [ref=e594]: "2025.1"
+              - row "SECURITY-P-009 ToolStack Production 3.7.19" [ref=e595]:
+                - gridcell "SECURITY-P-009" [ref=e596]:
+                  - generic [ref=e597]: SECURITY-P-009
+                - gridcell "ToolStack" [ref=e598]:
+                  - generic [ref=e599]: ToolStack
+                - gridcell "Production" [ref=e600]:
+                  - generic [ref=e601]: Production
+                - gridcell "3.7.19" [ref=e602]:
+                  - generic [ref=e603]: 3.7.19
+              - row "SECURITY-P-009 Container Production 2024.11" [ref=e604]:
+                - gridcell "SECURITY-P-009" [ref=e605]:
+                  - generic [ref=e606]: SECURITY-P-009
+                - gridcell "Container" [ref=e607]:
+                  - generic [ref=e608]: Container
+                - gridcell "Production" [ref=e609]:
+                  - generic [ref=e610]: Production
+                - gridcell "2024.11" [ref=e611]:
+                  - generic [ref=e612]: "2024.11"
+              - row "MES-P-010 Middleware Staging 3.7.19" [ref=e613]:
+                - gridcell "MES-P-010" [ref=e614]:
+                  - generic [ref=e615]: MES-P-010
+                - gridcell "Middleware" [ref=e616]:
+                  - generic [ref=e617]: Middleware
+                - gridcell "Staging" [ref=e618]:
+                  - generic [ref=e619]: Staging
+                - gridcell "3.7.19" [ref=e620]:
+                  - generic [ref=e621]: 3.7.19
+              - row "MES-P-010 Container Staging 2024.11" [ref=e622]:
+                - gridcell "MES-P-010" [ref=e623]:
+                  - generic [ref=e624]: MES-P-010
+                - gridcell "Container" [ref=e625]:
+                  - generic [ref=e626]: Container
+                - gridcell "Staging" [ref=e627]:
+                  - generic [ref=e628]: Staging
+                - gridcell "2024.11" [ref=e629]:
+                  - generic [ref=e630]: "2024.11"
+              - row "ERP-P-011 API Development 2025.1" [ref=e631]:
+                - gridcell "ERP-P-011" [ref=e632]:
+                  - generic [ref=e633]: ERP-P-011
+                - gridcell "API" [ref=e634]:
+                  - generic [ref=e635]: API
+                - gridcell "Development" [ref=e636]:
+                  - generic [ref=e637]: Development
+                - gridcell "2025.1" [ref=e638]:
+                  - generic [ref=e639]: "2025.1"
+              - row "ERP-P-011 ToolStack Development 12.4" [ref=e640]:
+                - gridcell "ERP-P-011" [ref=e641]:
+                  - generic [ref=e642]: ERP-P-011
+                - gridcell "ToolStack" [ref=e643]:
+                  - generic [ref=e644]: ToolStack
+                - gridcell "Development" [ref=e645]:
+                  - generic [ref=e646]: Development
+                - gridcell "12.4" [ref=e647]:
+                  - generic [ref=e648]: "12.4"
+              - row "MES-P-012 Database Staging 3.7.19" [ref=e649]:
+                - gridcell "MES-P-012" [ref=e650]:
+                  - generic [ref=e651]: MES-P-012
+                - gridcell "Database" [ref=e652]:
+                  - generic [ref=e653]: Database
+                - gridcell "Staging" [ref=e654]:
+                  - generic [ref=e655]: Staging
+                - gridcell "3.7.19" [ref=e656]:
+                  - generic [ref=e657]: 3.7.19
+              - row "MES-P-012 API Staging 2025.1" [ref=e658]:
+                - gridcell "MES-P-012" [ref=e659]:
+                  - generic [ref=e660]: MES-P-012
+                - gridcell "API" [ref=e661]:
+                  - generic [ref=e662]: API
+                - gridcell "Staging" [ref=e663]:
+                  - generic [ref=e664]: Staging
+                - gridcell "2025.1" [ref=e665]:
+                  - generic [ref=e666]: "2025.1"
+            - rowgroup [ref=e667]:
+              - row [ref=e668]:
+                - gridcell [ref=e669]:
+                  - generic [ref=e671]:
+                    - button "Open details" [ref=e672] [cursor=pointer]:
+                      - img [ref=e673]
+                    - button "Edit configuration" [ref=e678] [cursor=pointer]:
+                      - img [ref=e679]
+                    - button "More actions" [ref=e681] [cursor=pointer]:
+                      - img [ref=e682]
+              - row [ref=e686]:
+                - gridcell [ref=e687]:
+                  - generic [ref=e689]:
+                    - button "Open details" [ref=e690] [cursor=pointer]:
+                      - img [ref=e691]
+                    - button "Edit configuration" [ref=e696] [cursor=pointer]:
+                      - img [ref=e697]
+                    - button "More actions" [ref=e699] [cursor=pointer]:
+                      - img [ref=e700]
+              - row [ref=e704]:
+                - gridcell [ref=e705]:
+                  - generic [ref=e707]:
+                    - button "Open details" [ref=e708] [cursor=pointer]:
+                      - img [ref=e709]
+                    - button "Edit configuration" [ref=e714] [cursor=pointer]:
+                      - img [ref=e715]
+                    - button "More actions" [ref=e717] [cursor=pointer]:
+                      - img [ref=e718]
+              - row [ref=e722]:
+                - gridcell [ref=e723]:
+                  - generic [ref=e725]:
+                    - button "Open details" [ref=e726] [cursor=pointer]:
+                      - img [ref=e727]
+                    - button "Edit configuration" [ref=e732] [cursor=pointer]:
+                      - img [ref=e733]
+                    - button "More actions" [ref=e735] [cursor=pointer]:
+                      - img [ref=e736]
+              - row [ref=e740]:
+                - gridcell [ref=e741]:
+                  - generic [ref=e743]:
+                    - button "Open details" [ref=e744] [cursor=pointer]:
+                      - img [ref=e745]
+                    - button "Edit configuration" [ref=e750] [cursor=pointer]:
+                      - img [ref=e751]
+                    - button "More actions" [ref=e753] [cursor=pointer]:
+                      - img [ref=e754]
+              - row [ref=e758]:
+                - gridcell [ref=e759]:
+                  - generic [ref=e761]:
+                    - button "Open details" [ref=e762] [cursor=pointer]:
+                      - img [ref=e763]
+                    - button "Edit configuration" [ref=e768] [cursor=pointer]:
+                      - img [ref=e769]
+                    - button "More actions" [ref=e771] [cursor=pointer]:
+                      - img [ref=e772]
+              - row [ref=e776]:
+                - gridcell [ref=e777]:
+                  - generic [ref=e779]:
+                    - button "Open details" [ref=e780] [cursor=pointer]:
+                      - img [ref=e781]
+                    - button "Edit configuration" [ref=e786] [cursor=pointer]:
+                      - img [ref=e787]
+                    - button "More actions" [ref=e789] [cursor=pointer]:
+                      - img [ref=e790]
+              - row [ref=e794]:
+                - gridcell [ref=e795]:
+                  - generic [ref=e797]:
+                    - button "Open details" [ref=e798] [cursor=pointer]:
+                      - img [ref=e799]
+                    - button "Edit configuration" [ref=e804] [cursor=pointer]:
+                      - img [ref=e805]
+                    - button "More actions" [ref=e807] [cursor=pointer]:
+                      - img [ref=e808]
+              - row [ref=e812]:
+                - gridcell [ref=e813]:
+                  - generic [ref=e815]:
+                    - button "Open details" [ref=e816] [cursor=pointer]:
+                      - img [ref=e817]
+                    - button "Edit configuration" [ref=e822] [cursor=pointer]:
+                      - img [ref=e823]
+                    - button "More actions" [ref=e825] [cursor=pointer]:
+                      - img [ref=e826]
+              - row [ref=e830]:
+                - gridcell [ref=e831]:
+                  - generic [ref=e833]:
+                    - button "Open details" [ref=e834] [cursor=pointer]:
+                      - img [ref=e835]
+                    - button "Edit configuration" [ref=e840] [cursor=pointer]:
+                      - img [ref=e841]
+                    - button "More actions" [ref=e843] [cursor=pointer]:
+                      - img [ref=e844]
+              - row [ref=e848]:
+                - gridcell [ref=e849]:
+                  - generic [ref=e851]:
+                    - button "Open details" [ref=e852] [cursor=pointer]:
+                      - img [ref=e853]
+                    - button "Edit configuration" [ref=e858] [cursor=pointer]:
+                      - img [ref=e859]
+                    - button "More actions" [ref=e861] [cursor=pointer]:
+                      - img [ref=e862]
+              - row [ref=e866]:
+                - gridcell [ref=e867]:
+                  - generic [ref=e869]:
+                    - button "Open details" [ref=e870] [cursor=pointer]:
+                      - img [ref=e871]
+                    - button "Edit configuration" [ref=e876] [cursor=pointer]:
+                      - img [ref=e877]
+                    - button "More actions" [ref=e879] [cursor=pointer]:
+                      - img [ref=e880]
+              - row [ref=e884]:
+                - gridcell [ref=e885]:
+                  - generic [ref=e887]:
+                    - button "Open details" [ref=e888] [cursor=pointer]:
+                      - img [ref=e889]
+                    - button "Edit configuration" [ref=e894] [cursor=pointer]:
+                      - img [ref=e895]
+                    - button "More actions" [ref=e897] [cursor=pointer]:
+                      - img [ref=e898]
+              - row [ref=e902]:
+                - gridcell [ref=e903]:
+                  - generic [ref=e905]:
+                    - button "Open details" [ref=e906] [cursor=pointer]:
+                      - img [ref=e907]
+                    - button "Edit configuration" [ref=e912] [cursor=pointer]:
+                      - img [ref=e913]
+                    - button "More actions" [ref=e915] [cursor=pointer]:
+                      - img [ref=e916]
+              - row [ref=e920]:
+                - gridcell [ref=e921]:
+                  - generic [ref=e923]:
+                    - button "Open details" [ref=e924] [cursor=pointer]:
+                      - img [ref=e925]
+                    - button "Edit configuration" [ref=e930] [cursor=pointer]:
+                      - img [ref=e931]
+                    - button "More actions" [ref=e933] [cursor=pointer]:
+                      - img [ref=e934]
+              - row [ref=e938]:
+                - gridcell [ref=e939]:
+                  - generic [ref=e941]:
+                    - button "Open details" [ref=e942] [cursor=pointer]:
+                      - img [ref=e943]
+                    - button "Edit configuration" [ref=e948] [cursor=pointer]:
+                      - img [ref=e949]
+                    - button "More actions" [ref=e951] [cursor=pointer]:
+                      - img [ref=e952]
+              - row [ref=e956]:
+                - gridcell [ref=e957]:
+                  - generic [ref=e959]:
+                    - button "Open details" [ref=e960] [cursor=pointer]:
+                      - img [ref=e961]
+                    - button "Edit configuration" [ref=e966] [cursor=pointer]:
+                      - img [ref=e967]
+                    - button "More actions" [ref=e969] [cursor=pointer]:
+                      - img [ref=e970]
+              - row [ref=e974]:
+                - gridcell [ref=e975]:
+                  - generic [ref=e977]:
+                    - button "Open details" [ref=e978] [cursor=pointer]:
+                      - img [ref=e979]
+                    - button "Edit configuration" [ref=e984] [cursor=pointer]:
+                      - img [ref=e985]
+                    - button "More actions" [ref=e987] [cursor=pointer]:
+                      - img [ref=e988]
+              - row [ref=e992]:
+                - gridcell [ref=e993]:
+                  - generic [ref=e995]:
+                    - button "Open details" [ref=e996] [cursor=pointer]:
+                      - img [ref=e997]
+                    - button "Edit configuration" [ref=e1002] [cursor=pointer]:
+                      - img [ref=e1003]
+                    - button "More actions" [ref=e1005] [cursor=pointer]:
+                      - img [ref=e1006]
+              - row [ref=e1010]:
+                - gridcell [ref=e1011]:
+                  - generic [ref=e1013]:
+                    - button "Open details" [ref=e1014] [cursor=pointer]:
+                      - img [ref=e1015]
+                    - button "Edit configuration" [ref=e1020] [cursor=pointer]:
+                      - img [ref=e1021]
+                    - button "More actions" [ref=e1023] [cursor=pointer]:
+                      - img [ref=e1024]
+            - rowgroup
+            - rowgroup
+            - rowgroup
+            - rowgroup
+            - rowgroup
+            - rowgroup
+            - rowgroup
+            - rowgroup
+            - rowgroup
+          - text:    
+      - generic [ref=e1028]:
+        - generic [ref=e1029]:
+          - generic [ref=e1030]:
+            - img [ref=e1031]
+            - generic [ref=e1034]: "YOUR TIME (America/Chicago): 01:33:37"
+          - generic [ref=e1035]:
+            - img [ref=e1036]
+            - generic [ref=e1039]: "SOUTH KOREA (KST): 15:33:37"
+        - generic [ref=e1040]: VERSION 1.2.6
+  - dialog [ref=e1041]:
+    - generic [ref=e1042]:
+      - generic [ref=e1045]:
+        - generic [ref=e1046]:
+          - button "Close" [ref=e1048] [cursor=pointer]:
+            - img [ref=e1049]
+          - button "Maximize" [ref=e1052] [cursor=pointer]:
+            - img [ref=e1053]
+        - img [ref=e1059]
+        - generic [ref=e1065]:
+          - heading "Edit Service" [level=2] [ref=e1066]:
+            - generic [ref=e1067]:
+              - generic [ref=e1068]: Edit Service
+              - button "Share direct link" [ref=e1069] [cursor=pointer]:
+                - img [ref=e1070]
+          - generic [ref=e1073]:
+            - generic [ref=e1074]: Service ID 369
+            - generic [ref=e1076]:
+              - generic [ref=e1077]: Existing
+              - generic [ref=e1078]: Database
+              - generic [ref=e1079]: Production
+      - generic [ref=e1083]:
+        - generic [ref=e1084]:
+          - generic [ref=e1085]:
+            - paragraph [ref=e1087]: Core Service Identity
+            - generic [ref=e1088]:
+              - generic [ref=e1089]:
+                - generic [ref=e1090]: Name *
+                - textbox "e.g. ERP DB Prod 01" [ref=e1091]: PW-SVC-ACTIVE-1784874817344-nntnho
+              - generic [ref=e1093]:
+                - generic [ref=e1095]:
+                  - generic [ref=e1096]: Host
+                  - generic [ref=e1097]: "*"
+                - button "PW-SVC-HOST-1784874817344-nntnho [Physical]" [ref=e1099] [cursor=pointer]:
+                  - generic [ref=e1100]: PW-SVC-HOST-1784874817344-nntnho [Physical]
+                  - img [ref=e1101]
+              - generic [ref=e1104]:
+                - generic [ref=e1106]:
+                  - generic [ref=e1107]: Type
+                  - generic [ref=e1108]: "*"
+                - button "Database" [ref=e1110] [cursor=pointer]:
+                  - generic [ref=e1111]: Database
+                  - img [ref=e1112]
+              - generic [ref=e1114]:
+                - generic [ref=e1115]: Deployment Date
+                - textbox [ref=e1116]
+              - generic [ref=e1117]:
+                - generic [ref=e1118]: Version
+                - textbox "v1.0.0" [ref=e1119]
+              - generic [ref=e1120]:
+                - generic [ref=e1121]: Purpose
+                - textbox "Primary transactional store..." [ref=e1122]
+          - generic [ref=e1123]:
+            - paragraph [ref=e1125]: Runtime & Licensing
+            - generic [ref=e1126]:
+              - generic [ref=e1128]:
+                - generic [ref=e1130]:
+                  - generic [ref=e1131]: Status
+                  - generic [ref=e1132]: "*"
+                - button "Existing" [ref=e1134] [cursor=pointer]:
+                  - generic [ref=e1135]: Existing
+                  - img [ref=e1136]
+              - generic [ref=e1139]:
+                - generic [ref=e1141]:
+                  - generic [ref=e1142]: Environment
+                  - generic [ref=e1143]: "*"
+                - button "Production" [ref=e1145] [cursor=pointer]:
+                  - generic [ref=e1146]: Production
+                  - img [ref=e1147]
+              - generic [ref=e1150]:
+                - generic [ref=e1153]: License Type
+                - button "One-time" [ref=e1155] [cursor=pointer]:
+                  - generic [ref=e1156]: One-time
+                  - img [ref=e1157]
+              - generic [ref=e1159]:
+                - generic [ref=e1160]: Expiry Date
+                - textbox [ref=e1161]
+              - generic [ref=e1162]:
+                - generic [ref=e1163]: Manufacturer
+                - textbox "Vendor / publisher" [ref=e1164]
+              - generic [ref=e1165]:
+                - generic [ref=e1166]: Supplier
+                - textbox "Reseller / supplier" [ref=e1167]
+              - generic [ref=e1168]:
+                - generic [ref=e1169]: Cost
+                - spinbutton [ref=e1170]: "0"
+              - generic [ref=e1172]:
+                - generic [ref=e1175]: Currency
+                - button "USD" [ref=e1177] [cursor=pointer]:
+                  - generic [ref=e1178]: USD
+                  - img [ref=e1179]
+        - generic [ref=e1181]:
+          - generic [ref=e1182]:
+            - paragraph [ref=e1183]: Metadata
+            - paragraph [ref=e1184]: Configuration metadata keys follow the selected service type when definitions exist.
+          - generic [ref=e1185]:
+            - generic [ref=e1186]:
+              - generic [ref=e1188]: Configuration Metadata
+              - generic [ref=e1189]:
+                - button [ref=e1190] [cursor=pointer]:
+                  - img [ref=e1191]
+                - button [ref=e1192] [cursor=pointer]:
+                  - img [ref=e1193]
+            - button "+ Append Attribute" [ref=e1200] [cursor=pointer]
+      - generic [ref=e1204]:
+        - button "Close" [ref=e1205] [cursor=pointer]
+        - button "Save Service" [ref=e1206] [cursor=pointer]:
+          - img [ref=e1207]
+          - generic [ref=e1209]: Save Service
+```
+
+# Test source
+
+```ts
+  1  | import { clickResilientButton } from './helpers/sysgrid';
+  2  | import { expect } from '@playwright/test';
+  3  | import { test } from './helpers/sysgrid-test';
+  4  | import { createAsset, createService, resetBrowserState } from './helpers/sysgrid'
+  5  | 
+  6  | const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
+  7  | 
+  8  | test.describe('Service workflows', () => {
+  9  |   test('tolerates malformed metadata and clears deep-link state on close', async ({ page, sysApi: request }) => {
+  10 |     await resetBrowserState(page)
+  11 |     const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  12 | 
+  13 |     const host = await createAsset(request, {
+  14 |       name: `PW-SVC-HOST-${stamp}`,
+  15 |       system: `PW-SVC-SYS-${stamp}`,
+  16 |       status: 'Active',
+  17 |       model: 'R740',
+  18 |       type: 'Physical',
+  19 |       serial_number: `PW-SVC-SN-${stamp}`,
+  20 |       asset_tag: `PW-SVC-AT-${stamp}`,
+  21 |       owner: 'ops',
+  22 |       business_unit: 'Platform'
+  23 |     })
+  24 | 
+  25 |     const activeService = await createService(request, {
+  26 |       name: `PW-SVC-ACTIVE-${stamp}`,
+  27 |       service_type: 'Database',
+  28 |       status: 'Active',
+  29 |       environment: 'Production',
+  30 |       device_id: host.id,
+  31 |       license_key: 'LIC-PW-1234',
+  32 |       config_json: '{bad json'
+  33 |     })
+  34 | 
+  35 |     const purgedService = await createService(request, {
+  36 |       name: `PW-SVC-PURGED-${stamp}`,
+  37 |       service_type: 'Web Server',
+  38 |       status: 'Stopped',
+  39 |       environment: 'DR'
+  40 |     })
+  41 | 
+  42 |     const purgeResponse = await request.delete(`${apiBase}/logical-services/${purgedService.id}`)
+  43 |     expect(purgeResponse.ok()).toBeTruthy()
+  44 | 
+  45 |     await page.goto(`/services?id=${activeService.id}`)
+  46 |     const activeDialog = page.getByRole('dialog').filter({ hasText: activeService.name })
+  47 |     await expect(activeDialog).toBeVisible()
+  48 |     await clickResilientButton(page, 'Edit Service')
+  49 |     
+  50 |     const editDialog = page.getByRole('dialog').filter({ hasText: 'Edit Service' })
+> 51 |     await expect(editDialog.getByText('Configuration Metadata', { exact: true })).toBeVisible()
+     |                                                                                   ^ Error: expect(locator).toBeVisible() failed
+  52 |     await editDialog.getByTitle('Close').click()
+  53 |     await expect(editDialog).not.toBeVisible()
+  54 |     await page.keyboard.press('Escape')
+  55 |     await expect(page).not.toHaveURL(new RegExp(`id=${activeService.id}`))
+  56 | 
+  57 |     await page.goto(`/services?id=${purgedService.id}`)
+  58 |     const purgedDialog = page.getByRole('dialog').filter({ hasText: purgedService.name })
+  59 |     await expect(purgedDialog.getByRole('paragraph').filter({ hasText: 'Stopped' })).toBeVisible()
+  60 |     await expect(purgedDialog.locator('.text-amber-200').filter({ hasText: 'Purge is unavailable' })).toBeVisible()
+  61 |     await expect(purgedDialog.getByRole('heading', { level: 3, name: purgedService.name })).toBeVisible()
+  62 |     await purgedDialog.getByTitle('Close').click()
+  63 |     await expect(page).not.toHaveURL(new RegExp(`id=${purgedService.id}`))
+  64 |   })
+  65 | })
+  66 | 
+```

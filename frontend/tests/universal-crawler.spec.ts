@@ -1,70 +1,82 @@
-import { expect } from '@playwright/test';
-import { test } from './helpers/sysgrid-test';
-import { resetBrowserState, waitForAppIdle } from './helpers/sysgrid';
+import { expect } from '@playwright/test'
+import { test } from './helpers/sysgrid-test'
+import { resetBrowserState, waitForAppIdle } from './helpers/sysgrid'
 
 test.describe('Universal View Resilience Crawler (Automated Chaos)', () => {
-    test('Automatically crawls all views and injects chaos to verify resilience', async ({ page, chaos, interactionChaos, networkChaos }) => {
-        // Increase timeout since this crawls the entire app with chaos
-        test.setTimeout(300_000); 
+  test('Automatically crawls all canonical views and injects bounded chaos @chaos', async ({ page, chaos, interactionChaos, networkChaos }) => {
+    test.setTimeout(900_000)
 
-        // Enable chaos globally
-        await chaos.enable('interaction-chaos');
-        await chaos.enable('network-chaos');
-        await networkChaos.stallRequest('/api/v1', 500); // Latency
+    const routeFailures: string[] = []
+    const runtimeErrors: string[] = []
 
-        await resetBrowserState(page);
-        
-        // Listen for unhandled API errors
-        const errors: string[] = [];
-        page.on('pageerror', err => errors.push(err.message));
-        page.on('response', resp => {
-            if (resp.status() >= 500 && resp.url().includes('/api/')) {
-                errors.push(`API 500 on ${resp.url()}`);
-            }
-        });
+    await chaos.enable('interaction-chaos')
+    await chaos.enable('network-chaos')
+    await networkChaos.stallRequest('/api/v1', 500)
 
-        // 1. Start at Dashboard
-        await page.goto('/');
-        await waitForAppIdle(page);
+    try {
+      await resetBrowserState(page)
 
-        // 2. Extract all navigation links dynamically
-        const navLinks = await page.locator('a[href^="/"]').evaluateAll((links) => {
-            return Array.from(new Set(links.map(l => l.getAttribute('href')).filter(h => h && h.length > 1 && !h.startsWith('http'))));
-        });
-
-        expect(navLinks.length).toBeGreaterThan(0);
-        console.log(`[Auto-Crawler] Discovered ${navLinks.length} views to validate.`);
-
-        // 3. Crawl every discovered view
-        for (const route of navLinks) {
-            console.log(`[Auto-Crawler] Testing view: ${route}`);
-            try {
-                await page.goto(route);
-                await waitForAppIdle(page);
-
-                // Verify basic rendering (no blank screen, no fatal crash)
-                const mainBody = page.locator('main, #root, #app-root').first();
-                await expect(mainBody).toBeVisible();
-
-                // 4. Inject Interaction Chaos
-                const buttons = page.locator('button').filter({ hasNotText: /close/i });
-                const buttonCount = await buttons.count();
-                if (buttonCount > 0) {
-                    const btn = buttons.nth(Math.floor(Math.random() * buttonCount));
-                    if (await btn.isVisible()) {
-                        // Reduce to 1 click to prevent browser crash
-                        await interactionChaos.rapidFireClick(btn, 1);
-                    }
-                }
-
-                // 5. Assert no fatal API errors occurred during the load and interaction of this view
-                expect(errors).toEqual([]);
-            } catch (e) {
-                console.error(`[Auto-Crawler] Skipping view ${route} due to error:`, e);
-                // Continue to next view
-            }
+      page.on('pageerror', (error) => runtimeErrors.push(error.message))
+      page.on('response', (response) => {
+        if (response.status() >= 500 && response.url().includes('/api/')) {
+          runtimeErrors.push(`API ${response.status()} on ${response.url()}`)
         }
-        
-        await chaos.killAll();
-    });
-});
+      })
+
+      await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 30_000 })
+      await waitForAppIdle(page)
+
+      const navLinks = await page.locator('a[href^="/"]').evaluateAll((links) => {
+        const routes = links
+          .map((link) => link.getAttribute('href'))
+          .filter((href): href is string => Boolean(href && href.length > 1 && !href.startsWith('http')))
+          .map((href) => {
+            const url = new URL(href, window.location.origin)
+            return url.pathname
+          })
+        return Array.from(new Set(routes)).sort()
+      })
+
+      expect(navLinks.length).toBeGreaterThan(0)
+      console.log(`[Auto-Crawler] Discovered ${navLinks.length} canonical views to validate.`)
+
+      for (const route of navLinks) {
+        console.log(`[Auto-Crawler] Testing canonical view: ${route}`)
+        runtimeErrors.length = 0
+
+        if (page.isClosed()) {
+          routeFailures.push(`${route}: page closed before navigation`)
+          break
+        }
+
+        try {
+          await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 30_000 })
+          await waitForAppIdle(page)
+
+          const mainBody = page.locator('main, #root, #app-root').first()
+          await expect(mainBody).toBeVisible({ timeout: 15_000 })
+
+          const safeButtons = page
+            .locator('button:not([disabled])')
+            .filter({ hasNotText: /close|delete|remove|archive|purge|logout|exit|restore|revert/i })
+          const buttonCount = await safeButtons.count()
+          if (buttonCount > 0) {
+            const button = safeButtons.first()
+            if (await button.isVisible()) await interactionChaos.rapidFireClick(button, 1)
+          }
+
+          if (runtimeErrors.length > 0) {
+            routeFailures.push(`${route}: ${runtimeErrors.join(' | ')}`)
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          routeFailures.push(`${route}: ${message}`)
+        }
+      }
+    } finally {
+      await chaos.killAll()
+    }
+
+    expect(routeFailures, routeFailures.join('\n')).toEqual([])
+  })
+})
