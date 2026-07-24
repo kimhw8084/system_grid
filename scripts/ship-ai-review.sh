@@ -17,7 +17,7 @@ IFS=$'\n\t'
 #   ../sysgrid-ai-review-capsule.zip
 
 PROGRAM="$(basename "$0")"
-SCRIPT_VERSION="2026.07.21.8-fast"
+SCRIPT_VERSION="2026.07.24.9-artifact-firewall"
 DEFAULT_MODE="full"
 DEFAULT_CHECKS="none"
 DEFAULT_OUTPUT_NAME="sysgrid-ai-review-capsule.zip"
@@ -29,7 +29,7 @@ Usage:
 
 Backward-compatible examples:
   ./scripts/ship-ai-review.sh "OUT-22 Iteration 04: harden production guards"
-  # The one-argument form commits, pushes, skips duplicate test execution, and builds the full capsule.
+  # The one-argument form repairs generated-artifact drift, commits, verifies the capsule, then pushes.
 
 Package the current commit without a new commit:
   ./scripts/ship-ai-review.sh --no-commit --no-push
@@ -65,6 +65,9 @@ Options:
   --check-timeout-min N      Per-command timeout when checks are explicit. Default: 12.
   --total-check-min N        Total smart/full check budget. Default: 45.
   --max-smart-checks N       Maximum smart checks. Default: 6.
+  --artifact-policy POLICY    repair | block. Default: repair.
+  --max-commit-file-mb N      Maximum staged file size. Default: 5 MiB.
+  --max-commit-total-mb N     Maximum staged snapshot total. Default: 25 MiB.
   --quiet-checks              Capture check output without streaming it live.
   --debug                     Enable shell tracing with file and line numbers.
   --dry-run                  Print resolved plan without commit, push, checks, or packaging.
@@ -80,10 +83,13 @@ Base resolution when --base is omitted:
 
 Safety:
   - Refuses merge/rebase/cherry-pick/revert conflicts.
-  - Automatically removes only untracked disposable OS/test artifacts such as .DS_Store, .coverage,
-    __pycache__, .pytest_cache, coverage, playwright-report, test-results, and .ai-review-latest.
-  - Refuses tracked/staged disposable artifacts and all dirty secrets, archives, databases, logs, and binaries.
-  - In --no-commit mode, permits only the wrapper/generator/exclusion-policy edits needed to run the review.
+  - Maintains a managed .gitignore firewall for generated test/evidence artifacts.
+  - In repair mode, automatically untracks and removes generated reports such as test-results*,
+    playwright-report*, stage*-evidence, llm-report.json, and COMMAND_OUTPUTS/_SHIP_AI_REVIEW.
+  - Audits the staged snapshot before commit and blocks generated artifacts, secrets, archives,
+    databases, logs, binaries, oversized files, and oversized total staged payloads.
+  - Delays every push until artifact audit, capsule generation, and capsule verification pass.
+  - In --no-commit mode, permits only clean review packaging; automatic repository repairs require a commit.
   - Refuses base == head and empty diffs unless --allow-empty is explicit.
   - Captures Git provenance, commit series, patch data, repository inventory, environment versions,
     dependency manifests, existing command outputs, and a production-review brief.
@@ -137,6 +143,10 @@ DEBUG=0
 CHECK_TIMEOUT_MIN=12
 TOTAL_CHECK_MIN=45
 MAX_SMART_CHECKS=6
+ARTIFACT_POLICY="${SHIP_AI_ARTIFACT_POLICY:-repair}"
+MAX_COMMIT_FILE_MB="${SHIP_AI_MAX_COMMIT_FILE_MB:-5}"
+MAX_COMMIT_TOTAL_MB="${SHIP_AI_MAX_COMMIT_TOTAL_MB:-25}"
+MAX_CAPSULE_MB="${SHIP_AI_MAX_CAPSULE_MB:-100}"
 POSITIONAL=()
 
 while [[ $# -gt 0 ]]; do
@@ -233,6 +243,21 @@ while [[ $# -gt 0 ]]; do
       MAX_SMART_CHECKS="$2"
       shift 2
       ;;
+    --artifact-policy)
+      [[ $# -ge 2 ]] || die "--artifact-policy requires repair or block"
+      ARTIFACT_POLICY="$2"
+      shift 2
+      ;;
+    --max-commit-file-mb)
+      [[ $# -ge 2 ]] || die "--max-commit-file-mb requires an integer"
+      MAX_COMMIT_FILE_MB="$2"
+      shift 2
+      ;;
+    --max-commit-total-mb)
+      [[ $# -ge 2 ]] || die "--max-commit-total-mb requires an integer"
+      MAX_COMMIT_TOTAL_MB="$2"
+      shift 2
+      ;;
     --quiet-checks)
       QUIET_CHECKS=1
       shift
@@ -279,7 +304,11 @@ case "$CHECK_LEVEL" in
   none|smart|full) ;;
   *) die "invalid --checks level: $CHECK_LEVEL" ;;
 esac
-for n in "$CHECK_TIMEOUT_MIN" "$TOTAL_CHECK_MIN" "$MAX_SMART_CHECKS"; do
+case "$ARTIFACT_POLICY" in
+  repair|block) ;;
+  *) die "invalid --artifact-policy: $ARTIFACT_POLICY" ;;
+esac
+for n in "$CHECK_TIMEOUT_MIN" "$TOTAL_CHECK_MIN" "$MAX_SMART_CHECKS" "$MAX_COMMIT_FILE_MB" "$MAX_COMMIT_TOTAL_MB" "$MAX_CAPSULE_MB"; do
   [[ "$n" =~ ^[0-9]+$ ]] || die "timeout/check limits must be nonnegative integers"
 done
 
@@ -355,144 +384,261 @@ elif command -v sha256sum >/dev/null 2>&1; then
   printf 'wrapper_sha256: '; sha256sum "$SELF_ABS" | awk '{print $1}'
 fi
 
-# Remove only untracked disposable artifacts before evaluating repository dirt.
-# This keeps normal macOS, coverage, and test-report noise from blocking the one-command workflow.
-# Tracked, staged, or modified versions are deliberately not removed and will still fail below.
-AUTO_CLEAN_REPORT="$(python3 - <<'PY_AUTOCLEAN'
+# Generated-artifact firewall. The wrapper owns this policy because test runners and
+# evidence captures routinely create large files that must never enter Git history.
+# Repair mode is the workhorse default: update the managed ignore block, untrack any
+# already-tracked generated artifacts, and remove their working-tree copies. Block mode
+# performs the same detection without modifying the repository.
+ARTIFACT_FIREWALL_REPORT="$(python3 - "$ARTIFACT_POLICY" <<'PY_ARTIFACT_FIREWALL'
 import os
 import pathlib
+import re
 import shutil
 import subprocess
+import sys
 
-SAFE_FILE_NAMES = {".DS_Store", ".coverage"}
-SAFE_DIR_NAMES = {
-    "__pycache__", ".pytest_cache", "coverage", "playwright-report",
-    "test-results", ".ai-review-latest", ".next", ".cache", ".turbo"
-}
-SAFE_EXTENSIONS = {".pyc", ".pyo"}
-SAFE_EVIDENCE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+policy = sys.argv[1]
+repo = pathlib.Path.cwd()
+managed_begin = "# BEGIN SYSGRID SHIP-AI GENERATED ARTIFACT FIREWALL"
+managed_end = "# END SYSGRID SHIP-AI GENERATED ARTIFACT FIREWALL"
+managed_lines = [
+    managed_begin,
+    "**/.DS_Store",
+    "**/.coverage",
+    "**/__pycache__/",
+    "**/.pytest_cache/",
+    "**/coverage/",
+    "**/playwright-report*/",
+    "**/blob-report*/",
+    "**/test-results*/",
+    "**/.ai-review-latest/",
+    "**/.next/",
+    "**/.cache/",
+    "**/.turbo/",
+    "**/stage*-evidence/",
+    "**/llm-report.json",
+    "COMMAND_OUTPUTS/_SHIP_AI_REVIEW/",
+    managed_end,
+]
+
+def run(*args, check=True):
+    return subprocess.run(args, cwd=repo, check=check, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+def generated_reason(raw):
+    p = pathlib.PurePosixPath(raw.replace("\\", "/"))
+    parts = p.parts
+    name = p.name
+    lowered = [part.lower() for part in parts]
+    for part in lowered:
+        if part in {"__pycache__", ".pytest_cache", "coverage", ".nyc_output", ".ai-review-latest", ".next", ".cache", ".turbo"}:
+            return f"generated directory {part}"
+        if part.startswith("playwright-report") or part.startswith("blob-report") or part.startswith("test-results"):
+            return f"generated test-report directory {part}"
+        if re.fullmatch(r"stage\d+-evidence", part):
+            return f"generated evidence directory {part}"
+    if tuple(lowered[:2]) == ("command_outputs", "_ship_ai_review"):
+        return "generated ship evidence"
+    if name in {".DS_Store", ".coverage", "llm-report.json"}:
+        return f"generated file {name}"
+    if p.suffix.lower() in {".pyc", ".pyo"}:
+        return f"generated bytecode {p.suffix.lower()}"
+    return None
 
 def status_entries():
-    raw = subprocess.check_output(
-        ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
-        stderr=subprocess.DEVNULL,
-    )
-    parts = raw.split(b"\0")
+    raw = run("git", "status", "--porcelain=v1", "-z", "--untracked-files=all").stdout
+    fields = raw.split(b"\0")
     i = 0
-    while i < len(parts):
-        entry = parts[i]
+    while i < len(fields):
+        entry = fields[i]
         i += 1
         if not entry:
             continue
         text = entry.decode("utf-8", "surrogateescape")
         status = text[:2]
         path = text[3:] if len(text) >= 4 else ""
-        # In -z porcelain v1, rename/copy records are followed by the second path.
-        if ("R" in status or "C" in status) and i < len(parts):
+        old_path = None
+        if ("R" in status or "C" in status) and i < len(fields):
+            old_path = fields[i].decode("utf-8", "surrogateescape")
             i += 1
-        yield status, path
+        yield status, path, old_path
 
-def is_safe(path):
-    p = pathlib.PurePosixPath(path.replace("\\", "/"))
-    parts = set(p.parts)
-    in_generated_evidence_dir = any(
-        part.endswith("-evidence") or part.startswith("stage") and part.endswith("evidence")
-        for part in p.parts[:-1]
+def update_ignore():
+    path = repo / ".gitignore"
+    existing = path.read_text(encoding="utf-8") if path.exists() else ""
+    pattern = re.compile(
+        rf"(?:^|\n){re.escape(managed_begin)}\n.*?\n{re.escape(managed_end)}(?:\n|$)",
+        re.DOTALL,
     )
-    return (
-        p.name in SAFE_FILE_NAMES
-        or bool(parts & SAFE_DIR_NAMES)
-        or p.suffix.lower() in SAFE_EXTENSIONS
-        or (in_generated_evidence_dir and p.suffix.lower() in SAFE_EVIDENCE_EXTENSIONS)
-    )
+    block = "\n".join(managed_lines) + "\n"
+    if pattern.search(existing):
+        updated = pattern.sub("\n" + block, existing).lstrip("\n")
+    else:
+        updated = existing
+        if updated and not updated.endswith("\n"):
+            updated += "\n"
+        if updated and not updated.endswith("\n\n"):
+            updated += "\n"
+        updated += block
+    if updated != existing:
+        path.write_text(updated, encoding="utf-8")
+        print("ignore_updated\t.gitignore")
 
-removed = []
-for status, rel in status_entries():
-    if status != "??" or not rel or not is_safe(rel):
-        continue
-    target = pathlib.Path(rel)
+tracked_raw = run("git", "ls-files", "-z").stdout
+tracked = [x.decode("utf-8", "surrogateescape") for x in tracked_raw.split(b"\0") if x]
+tracked_generated = [(path, generated_reason(path)) for path in tracked if generated_reason(path)]
+untracked_generated = []
+for status, path, _ in status_entries():
+    if status == "??" and path and generated_reason(path):
+        untracked_generated.append((path, generated_reason(path)))
+
+if policy == "block":
+    for path, reason in tracked_generated:
+        print(f"blocked_tracked\t{path}\t{reason}")
+    for path, reason in untracked_generated:
+        print(f"blocked_untracked\t{path}\t{reason}")
+    if tracked_generated or untracked_generated:
+        raise SystemExit(3)
+    raise SystemExit(0)
+
+update_ignore()
+
+# Remove tracked generated paths from the index first. This stages deletions and
+# ensures the managed .gitignore prevents git add -A from reintroducing them.
+if tracked_generated:
+    paths = [path for path, _ in tracked_generated]
+    for offset in range(0, len(paths), 100):
+        batch = paths[offset:offset + 100]
+        run("git", "rm", "-r", "--cached", "-f", "--ignore-unmatch", "--", *batch)
+    for path, reason in tracked_generated:
+        print(f"tracked_removed\t{path}\t{reason}")
+
+# Delete disposable working-tree copies. Parent cleanup is limited to directories
+# that are themselves classified as generated, never ordinary source directories.
+for path, reason in tracked_generated + untracked_generated:
+    target = repo / path
     try:
         if target.is_symlink() or target.is_file():
             target.unlink(missing_ok=True)
-            removed.append(rel)
         elif target.is_dir():
             shutil.rmtree(target)
-            removed.append(rel.rstrip("/") + "/")
     except FileNotFoundError:
         pass
+    print(f"working_copy_removed\t{path}\t{reason}")
 
-# Remove now-empty safe directories without touching tracked content.
-for root, dirs, files in os.walk(".", topdown=False):
-    p = pathlib.Path(root)
-    if p.name in SAFE_DIR_NAMES:
+for root, dirs, files in os.walk(repo, topdown=False):
+    candidate = pathlib.Path(root)
+    if candidate == repo:
+        continue
+    rel = candidate.relative_to(repo).as_posix()
+    if generated_reason(rel + "/placeholder"):
         try:
-            p.rmdir()
+            candidate.rmdir()
         except OSError:
             pass
+PY_ARTIFACT_FIREWALL
+)" || {
+  rc=$?
+  printf '%s\n' "$ARTIFACT_FIREWALL_REPORT" >&2
+  if [[ "$rc" == "3" ]]; then
+    die "generated artifacts detected under --artifact-policy block"
+  fi
+  die "generated-artifact firewall failed"
+}
 
-for path in sorted(set(removed)):
-    print(path)
-PY_AUTOCLEAN
-)"
-
-if [[ -n "$AUTO_CLEAN_REPORT" ]]; then
-  log "Automatic disposable-artifact cleanup"
-  while IFS= read -r cleaned_path; do
-    [[ -n "$cleaned_path" ]] && printf 'removed untracked disposable artifact: %s\n' "$cleaned_path"
-  done <<< "$AUTO_CLEAN_REPORT"
+if [[ -n "$ARTIFACT_FIREWALL_REPORT" ]]; then
+  log "Generated-artifact firewall"
+  while IFS=$'\t' read -r action path reason; do
+    [[ -n "$action" ]] || continue
+    case "$action" in
+      ignore_updated) printf 'updated managed ignore policy: %s\n' "$path" ;;
+      tracked_removed) printf 'staged generated artifact removal: %s (%s)\n' "$path" "$reason" ;;
+      working_copy_removed) printf 'removed generated working copy: %s (%s)\n' "$path" "$reason" ;;
+      *) printf '%s\t%s\t%s\n' "$action" "$path" "$reason" ;;
+    esac
+  done <<< "$ARTIFACT_FIREWALL_REPORT"
 fi
 
-# Read dirty paths robustly enough for ordinary repository names and validate them against
-# either the uploaded JSON policy or the conservative built-in fallback.
+# Read current dirt for normal workflow decisions.
 mapfile -t DIRTY_PATHS < <(git status --porcelain=v1 --untracked-files=all | sed -E 's/^.. //' | sed -E 's/^.* -> //' || true)
 
-if [[ ${#DIRTY_PATHS[@]} -gt 0 ]]; then
-  FORBIDDEN_REPORT="$(python3 - "$EXCLUSIONS_PATH" "${DIRTY_PATHS[@]}" <<'PY'
-import json, os, pathlib, sys
+# Pre-stage policy rejects unsafe dirty additions/modifications while allowing the
+# firewall's staged deletions of generated artifacts.
+FORBIDDEN_REPORT="$(python3 - "$EXCLUSIONS_PATH" <<'PY_DIRTY_AUDIT'
+import json
+import pathlib
+import re
+import subprocess
+import sys
+
 policy_path = sys.argv[1]
-paths = sys.argv[2:]
 policy = {
     "directories": [".git","node_modules","venv","__pycache__",".pytest_cache","coverage","dist","build","playwright-report","test-results",".ai-review-latest",".next",".cache",".turbo","site-packages"],
-    "fileNames": [".DS_Store",".coverage"],
-    "extensions": [".zip",".tgz",".gz",".rar",".7z",".db",".sqlite",".sqlite3",".db-shm",".db-wal",".log",".pyc",".pyo",".so",".dylib",".dll",".exe",".png",".jpg",".jpeg",".gif",".webp",".ico",".pdf",".mp4",".mov",".avi",".woff",".woff2",".ttf",".otf"],
+    "fileNames": [".DS_Store",".coverage","llm-report.json"],
+    "extensions": [".zip",".tgz",".gz",".rar",".7z",".db",".sqlite",".sqlite3",".db-shm",".db-wal",".log",".pyc",".pyo",".so",".dylib",".dll",".exe",".png",".jpg",".jpeg",".gif",".webp",".ico",".pdf",".mp4",".mov",".avi",".webm",".woff",".woff2",".ttf",".otf"],
     "secretFileNames": [".env",".env.local",".env.local.runtime",".env.production",".env.development"],
     "allowSecretExamples": [".env.example"],
 }
 if policy_path:
-    with open(policy_path, "r", encoding="utf-8") as f:
-        loaded = json.load(f)
-    for k in policy:
-        if k in loaded and isinstance(loaded[k], list):
-            policy[k] = loaded[k]
+    with open(policy_path, "r", encoding="utf-8") as handle:
+        loaded = json.load(handle)
+    for key in policy:
+        if key in loaded and isinstance(loaded[key], list):
+            policy[key] = loaded[key]
 
 dirs = set(policy["directories"])
 files = set(policy["fileNames"])
 secrets = set(policy["secretFileNames"])
 allowed = set(policy["allowSecretExamples"])
 exts = tuple(sorted(policy["extensions"], key=len, reverse=True))
-for raw in paths:
-    p = raw.strip().replace("\\", "/")
-    if not p:
+
+def generated_path(path):
+    p = pathlib.PurePosixPath(path.replace("\\", "/"))
+    for part in [x.lower() for x in p.parts]:
+        if part.startswith("test-results") or part.startswith("playwright-report") or part.startswith("blob-report"):
+            return True
+        if re.fullmatch(r"stage\d+-evidence", part):
+            return True
+    return p.name == "llm-report.json" or tuple(x.lower() for x in p.parts[:2]) == ("command_outputs", "_ship_ai_review")
+
+raw = subprocess.check_output(["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"])
+fields = raw.split(b"\0")
+i = 0
+while i < len(fields):
+    entry = fields[i]
+    i += 1
+    if not entry:
         continue
-    parts = pathlib.PurePosixPath(p).parts
-    name = parts[-1] if parts else p
+    text = entry.decode("utf-8", "surrogateescape")
+    status = text[:2]
+    path = text[3:] if len(text) >= 4 else ""
+    if ("R" in status or "C" in status) and i < len(fields):
+        i += 1
+    if not path:
+        continue
+    # Pure deletions are the expected artifact-repair output.
+    if status.strip() == "D" or ("D" in status and "A" not in status and "M" not in status and "R" not in status and "C" not in status):
+        continue
+    p = pathlib.PurePosixPath(path.replace("\\", "/"))
+    parts = p.parts
+    name = p.name
     reason = None
-    if any(part in dirs for part in parts[:-1]):
+    if generated_path(path):
+        reason = "generated artifact escaped firewall"
+    elif any(part in dirs for part in parts[:-1]):
         reason = "excluded directory"
     elif name in files:
         reason = "excluded filename"
     elif name in secrets and name not in allowed:
         reason = "secret/runtime filename"
-    elif name not in allowed and p.lower().endswith(exts):
+    elif name not in allowed and path.lower().endswith(exts):
         reason = "excluded extension"
     if reason:
-        print(f"{p}\t{reason}")
-PY
+        print(f"{status}\t{path}\t{reason}")
+PY_DIRTY_AUDIT
 )"
-  if [[ -n "$FORBIDDEN_REPORT" ]]; then
-    printf '\n%s\n' "$FORBIDDEN_REPORT" >&2
-    die "forbidden dirty artifacts or secrets detected; restore, ignore, or remove them before shipping"
-  fi
+if [[ -n "$FORBIDDEN_REPORT" ]]; then
+  printf '\n%s\n' "$FORBIDDEN_REPORT" >&2
+  die "forbidden dirty artifacts or secrets detected; cleanup was intentionally limited to known generated artifacts"
 fi
 
 log "Git status before optional commit"
@@ -523,6 +669,114 @@ else
     PRE_COMMIT_HEAD="$(git rev-parse HEAD)"
     log "Stage changes"
     git add -A -- .
+
+    STAGED_AUDIT_REPORT="$(python3 - "$EXCLUSIONS_PATH" "$MAX_COMMIT_FILE_MB" "$MAX_COMMIT_TOTAL_MB" <<'PY_STAGED_AUDIT'
+import json
+import pathlib
+import re
+import subprocess
+import sys
+
+policy_path, max_file_mb, max_total_mb = sys.argv[1:]
+max_file = int(max_file_mb) * 1024 * 1024
+max_total = int(max_total_mb) * 1024 * 1024
+policy = {
+    "directories": [".git","node_modules","venv","__pycache__",".pytest_cache","coverage","dist","build","playwright-report","test-results",".ai-review-latest",".next",".cache",".turbo","site-packages"],
+    "fileNames": [".DS_Store",".coverage","llm-report.json"],
+    "extensions": [".zip",".tgz",".gz",".rar",".7z",".db",".sqlite",".sqlite3",".db-shm",".db-wal",".log",".pyc",".pyo",".so",".dylib",".dll",".exe",".png",".jpg",".jpeg",".gif",".webp",".ico",".pdf",".mp4",".mov",".avi",".webm",".woff",".woff2",".ttf",".otf"],
+    "secretFileNames": [".env",".env.local",".env.local.runtime",".env.production",".env.development"],
+    "allowSecretExamples": [".env.example"],
+}
+if policy_path:
+    with open(policy_path, "r", encoding="utf-8") as handle:
+        loaded = json.load(handle)
+    for key in policy:
+        if key in loaded and isinstance(loaded[key], list):
+            policy[key] = loaded[key]
+
+dirs = set(policy["directories"])
+files = set(policy["fileNames"])
+secrets = set(policy["secretFileNames"])
+allowed = set(policy["allowSecretExamples"])
+exts = tuple(sorted(policy["extensions"], key=len, reverse=True))
+
+def generated_path(path):
+    p = pathlib.PurePosixPath(path.replace("\\", "/"))
+    lowered = [part.lower() for part in p.parts]
+    for part in lowered:
+        if part.startswith("test-results") or part.startswith("playwright-report") or part.startswith("blob-report"):
+            return True
+        if re.fullmatch(r"stage\d+-evidence", part):
+            return True
+    return p.name == "llm-report.json" or tuple(lowered[:2]) == ("command_outputs", "_ship_ai_review")
+
+def staged_size(path):
+    result = subprocess.run(["git", "cat-file", "-s", f":{path}"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    if result.returncode != 0:
+        return 0
+    return int(result.stdout.strip() or "0")
+
+raw = subprocess.check_output(["git", "diff", "--cached", "--name-status", "-z", "--find-renames", "--find-copies"])
+fields = raw.split(b"\0")
+i = 0
+entries = []
+while i < len(fields):
+    status_raw = fields[i]
+    i += 1
+    if not status_raw:
+        continue
+    status = status_raw.decode("utf-8", "replace")
+    if status.startswith(("R", "C")):
+        if i + 1 >= len(fields):
+            break
+        old_path = fields[i].decode("utf-8", "surrogateescape")
+        new_path = fields[i + 1].decode("utf-8", "surrogateescape")
+        i += 2
+        entries.append((status, new_path))
+    else:
+        if i >= len(fields):
+            break
+        path = fields[i].decode("utf-8", "surrogateescape")
+        i += 1
+        entries.append((status, path))
+
+errors = []
+total = 0
+for status, path in entries:
+    if status.startswith("D"):
+        continue
+    p = pathlib.PurePosixPath(path.replace("\\", "/"))
+    parts = p.parts
+    name = p.name
+    reason = None
+    if generated_path(path):
+        reason = "generated artifact"
+    elif any(part in dirs for part in parts[:-1]):
+        reason = "excluded directory"
+    elif name in files:
+        reason = "excluded filename"
+    elif name in secrets and name not in allowed:
+        reason = "secret/runtime filename"
+    elif name not in allowed and path.lower().endswith(exts):
+        reason = "excluded extension"
+    size = staged_size(path)
+    total += size
+    if reason:
+        errors.append(f"{status}\t{path}\t{reason}\t{size} bytes")
+    elif max_file and size > max_file:
+        errors.append(f"{status}\t{path}\tfile exceeds {max_file_mb} MiB\t{size} bytes")
+if max_total and total > max_total:
+    errors.append(f"TOTAL\tstaged snapshot\texceeds {max_total_mb} MiB\t{total} bytes")
+for error in errors:
+    print(error)
+PY_STAGED_AUDIT
+)"
+    if [[ -n "$STAGED_AUDIT_REPORT" ]]; then
+      printf '\n%s\n' "$STAGED_AUDIT_REPORT" >&2
+      git reset --quiet
+      die "staged artifact audit failed; nothing was committed or pushed"
+    fi
+
     git diff --cached --name-status
     if git diff --cached --quiet; then
       warn "status was dirty but no staged changes remain; no commit created"
@@ -541,6 +795,89 @@ fi
 HEAD_COMMIT="$(git rev-parse --verify "${HEAD_REF}^{commit}" 2>/dev/null)" || die "invalid head ref: $HEAD_REF"
 CURRENT_HEAD="$(git rev-parse HEAD)"
 [[ "$HEAD_COMMIT" == "$CURRENT_HEAD" ]] || die "the generator packages the checked-out state; --head must resolve to current HEAD ($CURRENT_HEAD)"
+
+TRACKED_GENERATED_REPORT="$(python3 - <<'PY_TRACKED_AUDIT'
+import pathlib
+import re
+import subprocess
+
+def generated(path):
+    p = pathlib.PurePosixPath(path.replace("\\", "/"))
+    lowered = [part.lower() for part in p.parts]
+    for part in lowered:
+        if part.startswith("test-results") or part.startswith("playwright-report") or part.startswith("blob-report"):
+            return True
+        if re.fullmatch(r"stage\d+-evidence", part):
+            return True
+    return p.name == "llm-report.json" or tuple(lowered[:2]) == ("command_outputs", "_ship_ai_review")
+
+raw = subprocess.check_output(["git", "ls-files", "-z"])
+for value in raw.split(b"\0"):
+    if not value:
+        continue
+    path = value.decode("utf-8", "surrogateescape")
+    if generated(path):
+        print(path)
+PY_TRACKED_AUDIT
+)"
+if [[ -n "$TRACKED_GENERATED_REPORT" ]]; then
+  printf '%s\n' "$TRACKED_GENERATED_REPORT" >&2
+  die "generated artifacts remain tracked after repair; refusing commit packaging and push"
+fi
+
+# Historical blobs cannot be safely rewritten automatically once shared. Report them
+# so the current-tree cleanup is honest without force-pushing or destroying provenance.
+HISTORICAL_GENERATED_REPORT="$(python3 - <<'PY_HISTORY_ARTIFACTS'
+import pathlib
+import re
+import subprocess
+
+def generated(path):
+    p = pathlib.PurePosixPath(path.replace("\\", "/"))
+    lowered = [part.lower() for part in p.parts]
+    for part in lowered:
+        if part.startswith("test-results") or part.startswith("playwright-report") or part.startswith("blob-report"):
+            return True
+        if re.fullmatch(r"stage\d+-evidence", part):
+            return True
+    return p.name == "llm-report.json" or tuple(lowered[:2]) == ("command_outputs", "_ship_ai_review")
+
+raw = subprocess.run(
+    ["git", "rev-list", "--objects", "--all"],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.DEVNULL,
+    text=True,
+    check=False,
+).stdout.splitlines()
+found = {}
+for line in raw:
+    if " " not in line:
+        continue
+    oid, path = line.split(" ", 1)
+    if not generated(path):
+        continue
+    key = (oid, path)
+    if key in found:
+        continue
+    size_result = subprocess.run(
+        ["git", "cat-file", "-s", oid],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        check=False,
+    )
+    try:
+        size = int(size_result.stdout.strip())
+    except ValueError:
+        size = 0
+    found[key] = size
+for (oid, path), size in sorted(found.items(), key=lambda item: item[1], reverse=True)[:100]:
+    print(f"{size}\t{oid}\t{path}")
+PY_HISTORY_ARTIFACTS
+)"
+if [[ -n "$HISTORICAL_GENERATED_REPORT" ]]; then
+  warn "generated artifact blobs remain in Git history; current repair removes them from HEAD, but history rewrite is intentionally not automatic"
+fi
 
 # Resolve the strongest honest nonempty base when none was explicitly supplied.
 resolve_base() {
@@ -589,26 +926,17 @@ if git diff --quiet "$BASE_COMMIT" "$HEAD_COMMIT" -- && [[ "$ALLOW_EMPTY" != "1"
   die "resolved range is empty; provide the commit before the work as --base, or use HEAD^ for the current commit"
 fi
 
+COMMIT_COUNT="$(git rev-list --count "$BASE_COMMIT..$HEAD_COMMIT" 2>/dev/null || printf '0')"
 log "Resolved review range"
 printf 'base: %s\nhead: %s\n' "$BASE_COMMIT" "$HEAD_COMMIT"
-printf 'commits: %s\n' "$(git rev-list --count "$BASE_COMMIT..$HEAD_COMMIT" 2>/dev/null || printf 'unknown')"
+printf 'commits: %s\n' "$COMMIT_COUNT"
 
 if [[ "$DRY_RUN" == "1" ]]; then
   printf '\nDry run complete. No push, checks, or capsule generation performed.\n'
   exit 0
 fi
 
-# Push only when requested by policy. A clean no-commit packaging run does not push by default.
-if [[ "$NO_PUSH" == "0" && ( "$DID_COMMIT" == "1" || "$PUSH_CURRENT" == "1" ) ]]; then
-  log "Push"
-  if git rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then
-    git push
-  else
-    git push -u origin "$BRANCH"
-  fi
-else
-  info "Push skipped."
-fi
+# Push is deliberately delayed until after capsule verification.
 
 # Preserve any prior generated evidence folder and generate a fresh isolated evidence set.
 if [[ -d "$EVIDENCE_DIR" ]]; then
@@ -630,6 +958,18 @@ write_header() {
     printf '\n'
   } > "$file"
 }
+
+write_header "$EVIDENCE_DIR/artifact-firewall.txt" "Generated-artifact firewall"
+{
+  printf 'policy: %s\n' "$ARTIFACT_POLICY"
+  printf 'max_commit_file_mib: %s\n' "$MAX_COMMIT_FILE_MB"
+  printf 'max_commit_total_mib: %s\n' "$MAX_COMMIT_TOTAL_MB"
+  printf 'max_capsule_mib: %s\n' "$MAX_CAPSULE_MB"
+  printf 'push_order: after_capsule_verification\n'
+  printf '\n## repair report\n%s\n' "${ARTIFACT_FIREWALL_REPORT:-none}"
+  printf '\n## tracked generated artifacts after repair\n%s\n' "${TRACKED_GENERATED_REPORT:-none}"
+  printf '\n## historical generated artifacts\n%s\n' "${HISTORICAL_GENERATED_REPORT:-none}"
+} >> "$EVIDENCE_DIR/artifact-firewall.txt"
 
 write_header "$EVIDENCE_DIR/git-provenance.txt" "Git provenance"
 {
@@ -669,23 +1009,66 @@ write_header "$EVIDENCE_DIR/changed-files.txt" "Changed files"
   git diff --find-renames --find-copies --summary "$BASE_COMMIT" "$HEAD_COMMIT" --
 } >> "$EVIDENCE_DIR/changed-files.txt"
 
-# Always inject a complete, binary-safe patch generated by this wrapper. This
-# prevents repository-generator mode or filename differences from producing a
-# capsule with summaries but no reviewable implementation diff.
-write_header "$EVIDENCE_DIR/full-diff.patch" "Complete binary-safe review diff"
-{
-  printf 'command: git diff --binary --full-index --find-renames --find-copies %s %s --\n' "$BASE_COMMIT" "$HEAD_COMMIT"
-  printf 'diff_begin\n'
-  git diff --binary --full-index --find-renames --find-copies "$BASE_COMMIT" "$HEAD_COMMIT" --
-  printf '\ndiff_end\n'
-} >> "$EVIDENCE_DIR/full-diff.patch"
+# Generate the complete reviewable source diff while summarizing generated-artifact
+# deletions separately. Binary payloads are prohibited by the staged firewall, so
+# embedding binary reconstruction data would only bloat the capsule.
+write_header "$EVIDENCE_DIR/full-diff.patch" "Complete reviewable source diff"
+python3 - "$BASE_COMMIT" "$HEAD_COMMIT" "$EVIDENCE_DIR/full-diff.patch" <<'PY_REVIEW_DIFF'
+import pathlib
+import re
+import subprocess
+import sys
 
-# Preserve commit-by-commit patch context as well as the squashed range diff.
-write_header "$EVIDENCE_DIR/commit-patches.patch" "Commit-by-commit binary-safe patches"
-{
-  git log --reverse --date=iso-strict --format='commit %H%nparents %P%nauthor %an <%ae>%nauthor_date %aI%ncommitter %cn <%ce>%ncommitter_date %cI%nsubject %s%nbody%n%b%n---PATCH---' \
-    --binary --full-index --find-renames --find-copies -p "$BASE_COMMIT..$HEAD_COMMIT"
-} >> "$EVIDENCE_DIR/commit-patches.patch"
+base, head, output = sys.argv[1:]
+
+def generated(path):
+    p = pathlib.PurePosixPath(path.replace("\\", "/"))
+    lowered = [part.lower() for part in p.parts]
+    for part in lowered:
+        if part.startswith("test-results") or part.startswith("playwright-report") or part.startswith("blob-report"):
+            return True
+        if re.fullmatch(r"stage\d+-evidence", part):
+            return True
+    return p.name == "llm-report.json" or tuple(lowered[:2]) == ("command_outputs", "_ship_ai_review")
+
+raw = subprocess.check_output(["git", "diff", "--name-only", "-z", base, head, "--"])
+paths = [value.decode("utf-8", "surrogateescape") for value in raw.split(b"\0") if value]
+reviewable = [path for path in paths if not generated(path)]
+with open(output, "ab") as handle:
+    handle.write(f"command: git diff --full-index --find-renames --find-copies {base} {head} -- <reviewable paths>\n".encode())
+    handle.write(b"diff_begin\n")
+    if reviewable:
+        result = subprocess.run(
+            ["git", "diff", "--no-ext-diff", "--full-index", "--find-renames", "--find-copies", base, head, "--", *reviewable],
+            stdout=handle,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        if result.returncode != 0:
+            sys.stderr.buffer.write(result.stderr)
+            raise SystemExit(result.returncode)
+    handle.write(b"\ndiff_end\n")
+
+with open(output.replace("full-diff.patch", "generated-artifact-changes.txt"), "w", encoding="utf-8") as handle:
+    handle.write("Generated artifact paths intentionally excluded from full-diff.patch:\n")
+    for path in paths:
+        if generated(path):
+            handle.write(path + "\n")
+PY_REVIEW_DIFF
+
+# Preserve commit-by-commit patches only for true multi-commit ranges. For a single
+# commit they duplicate full-diff.patch byte-for-byte and unnecessarily inflate the zip.
+if (( COMMIT_COUNT > 1 )); then
+  write_header "$EVIDENCE_DIR/commit-patches.patch" "Commit-by-commit source patches"
+  {
+    git log --reverse --date=iso-strict --format='commit %H%nparents %P%nauthor %an <%ae>%nauthor_date %aI%ncommitter %cn <%ce>%ncommitter_date %cI%nsubject %s%nbody%n%b%n---PATCH---' \
+      --no-ext-diff --full-index --find-renames --find-copies -p "$BASE_COMMIT..$HEAD_COMMIT"
+  } >> "$EVIDENCE_DIR/commit-patches.patch"
+else
+  write_header "$EVIDENCE_DIR/commit-patches-note.txt" "Commit patch deduplication"
+  printf 'Single-commit range: full-diff.patch is the complete review patch; duplicate commit-patches.patch intentionally omitted.\n' \
+    >> "$EVIDENCE_DIR/commit-patches-note.txt"
+fi
 
 write_header "$EVIDENCE_DIR/diff-check.txt" "Git diff whitespace and conflict-marker check"
 # `git diff --check` is an evidence-producing diagnostic. A nonzero result must
@@ -1058,6 +1441,53 @@ if [[ ! -f "$OUTPUT_PATH" && -f "$DEFAULT_ZIP_PATH" ]]; then
 fi
 [[ -f "$OUTPUT_PATH" ]] || die "capsule zip not found at $OUTPUT_PATH or $DEFAULT_ZIP_PATH"
 
+log "Prune generated repository artifacts from capsule"
+CAPSULE_PRUNE_REPORT="$(python3 - "$OUTPUT_PATH" <<'PY_CAPSULE_PRUNE'
+import os
+import pathlib
+import re
+import sys
+import tempfile
+import zipfile
+
+source = pathlib.Path(sys.argv[1])
+
+def generated_entry(name):
+    normalized = name.replace("\\", "/")
+    lowered = normalized.lower()
+    if lowered.startswith("command_outputs/_ship_ai_review/"):
+        return False
+    p = pathlib.PurePosixPath(normalized)
+    parts = [part.lower() for part in p.parts]
+    for part in parts:
+        if part.startswith("test-results") or part.startswith("playwright-report") or part.startswith("blob-report"):
+            return True
+        if re.fullmatch(r"stage\d+-evidence", part):
+            return True
+    return p.name.lower() == "llm-report.json"
+
+fd, temporary_name = tempfile.mkstemp(prefix=source.name + ".pruned.", dir=str(source.parent))
+os.close(fd)
+temporary = pathlib.Path(temporary_name)
+removed = []
+try:
+    with zipfile.ZipFile(source, "r") as incoming, zipfile.ZipFile(temporary, "w") as outgoing:
+        for info in incoming.infolist():
+            if generated_entry(info.filename):
+                removed.append(info.filename)
+                continue
+            outgoing.writestr(info, incoming.read(info.filename))
+    temporary.replace(source)
+finally:
+    temporary.unlink(missing_ok=True)
+for name in removed:
+    print(name)
+PY_CAPSULE_PRUNE
+)"
+write_header "$EVIDENCE_DIR/capsule-prune.txt" "Capsule generated-artifact pruning"
+printf 'removed_count: %s\n\n%s\n' "$(printf '%s\n' "$CAPSULE_PRUNE_REPORT" | sed '/^$/d' | wc -l | tr -d ' ')" "${CAPSULE_PRUNE_REPORT:-none}" \
+  >> "$EVIDENCE_DIR/capsule-prune.txt"
+
 # Guarantee that the wrapper's decisive evidence is present even when the
 # repository generator's essential-file rules do not include it automatically.
 log "Inject wrapper evidence into capsule"
@@ -1068,10 +1498,11 @@ fi
 zip -qur "$OUTPUT_PATH" "${INJECT_PATHS[@]}"
 
 log "Capsule verification"
-VERIFY_JSON="$(python3 - "$OUTPUT_PATH" "$BASE_COMMIT" "$HEAD_COMMIT" "$ALLOW_EMPTY" <<'PY'
+VERIFY_JSON="$(python3 - "$OUTPUT_PATH" "$BASE_COMMIT" "$HEAD_COMMIT" "$ALLOW_EMPTY" "$MAX_CAPSULE_MB" <<'PY'
 import hashlib, json, os, pathlib, re, sys, zipfile
-zip_path, expected_base, expected_head, allow_empty = sys.argv[1:]
+zip_path, expected_base, expected_head, allow_empty, max_capsule_mb = sys.argv[1:]
 allow_empty = allow_empty == '1'
+max_capsule_bytes = int(max_capsule_mb) * 1024 * 1024
 result = {"zip": zip_path, "errors": [], "warnings": []}
 with zipfile.ZipFile(zip_path) as z:
     bad = z.testzip()
@@ -1087,6 +1518,20 @@ with zipfile.ZipFile(zip_path) as z:
     if unsafe:
         result["errors"].append(f"unsafe paths: {unsafe[:10]}")
     lower = {n.lower(): n for n in names}
+    generated_path_re = re.compile(r'(^|/)(test-results[^/]*|playwright-report[^/]*|blob-report[^/]*|stage[0-9]+-evidence)(/|$)', re.I)
+    forbidden_generated = [
+        n for n in names
+        if generated_path_re.search(n)
+        or n.lower().endswith('/llm-report.json')
+        or '/command_outputs/_ship_ai_review/command_outputs/_ship_ai_review/' in n.lower()
+    ]
+    # Wrapper evidence is intentionally allowed at its one canonical capsule path.
+    forbidden_generated = [
+        n for n in forbidden_generated
+        if 'command_outputs/_ship_ai_review/' not in n.lower()
+    ]
+    if forbidden_generated:
+        result["errors"].append(f"generated repository artifacts leaked into capsule: {forbidden_generated[:20]}")
     manifest_candidates = [n for n in names if 'manifest' in n.lower() and n.lower().endswith(('.md','.txt','.json'))]
     result["manifest_candidates"] = manifest_candidates[:20]
     combined = ''
@@ -1136,6 +1581,10 @@ with zipfile.ZipFile(zip_path) as z:
         result["warnings"].append("wrapper-generated evidence directory was not included; inspect generator essential-file rules")
 size = os.path.getsize(zip_path)
 result["size_bytes"] = size
+if max_capsule_bytes and size > max_capsule_bytes:
+    result["errors"].append(
+        f"capsule exceeds {max_capsule_mb} MiB limit: {size} bytes"
+    )
 h = hashlib.sha256()
 with open(zip_path, 'rb') as f:
     for chunk in iter(lambda: f.read(1024 * 1024), b''):
@@ -1149,6 +1598,23 @@ printf '%s\n' "$VERIFY_JSON"
 VERIFY_ERRORS="$(printf '%s' "$VERIFY_JSON" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)["errors"]))')"
 (( VERIFY_ERRORS == 0 )) || die "capsule verification failed with $VERIFY_ERRORS error(s)"
 
+if (( STRICT_CHECKS == 1 && CHECK_FAILURES > 0 )); then
+  printf 'FAIL: capsule was created locally, but %s captured check(s) failed; push was blocked.\n' "$CHECK_FAILURES" >&2
+  exit 3
+fi
+
+# Push only after every artifact and capsule verification gate passes.
+if [[ "$NO_PUSH" == "0" && ( "$DID_COMMIT" == "1" || "$PUSH_CURRENT" == "1" ) ]]; then
+  log "Push verified commit"
+  if git rev-parse --abbrev-ref --symbolic-full-name '@{u}' >/dev/null 2>&1; then
+    git push
+  else
+    git push -u origin "$BRANCH"
+  fi
+else
+  info "Push skipped."
+fi
+
 log "Done"
 printf 'Commit: %s\n' "$HEAD_COMMIT"
 printf 'Base: %s\n' "$BASE_COMMIT"
@@ -1156,8 +1622,3 @@ printf 'Branch: %s\n' "$BRANCH"
 printf 'Check failures captured: %s\n' "$CHECK_FAILURES"
 printf 'Upload this file: %s\n' "$OUTPUT_PATH"
 printf 'Normal next-iteration command: ./scripts/ship-ai-review.sh %q\n' "NEXT ITERATION COMMIT MESSAGE"
-
-if (( STRICT_CHECKS == 1 && CHECK_FAILURES > 0 )); then
-  printf 'FAIL: capsule was created, but %s captured check(s) failed. Review the package before submission.\n' "$CHECK_FAILURES" >&2
-  exit 3
-fi

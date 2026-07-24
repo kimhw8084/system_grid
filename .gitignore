@@ -48,3 +48,21 @@ playwright-report/
 
 # Generated coverage data
 **/.coverage
+
+# BEGIN SYSGRID SHIP-AI GENERATED ARTIFACT FIREWALL
+**/.DS_Store
+**/.coverage
+**/__pycache__/
+**/.pytest_cache/
+**/coverage/
+**/playwright-report*/
+**/blob-report*/
+**/test-results*/
+**/.ai-review-latest/
+**/.next/
+**/.cache/
+**/.turbo/
+**/stage*-evidence/
+**/llm-report.json
+COMMAND_OUTPUTS/_SHIP_AI_REVIEW/
+# END SYSGRID SHIP-AI GENERATED ARTIFACT FIREWALL
