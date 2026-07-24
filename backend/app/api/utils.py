@@ -31,25 +31,49 @@ def normalize_json_value(value):
         return value
     return str(value)
 
+def _normalize_user_id(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    if not normalized or len(normalized) > 200:
+        return None
+    return normalized
+
+
 def get_current_user_id(request: Request = None):
+    """Resolve identity using an environment-aware trust contract.
+
+    Production accepts only the header inserted by the trusted reverse proxy.
+    Browser-controlled X-User-Id remains available only in development/test mode.
     """
-    Unified utility to identify the current user.
-    Uses the configured backend environment variable as the source of truth first,
-    then falls back to request headers for same-origin/dev flows, then to legacy envs.
-    """
-    configured_env_user = os.getenv(settings.USER_ID_ENV_VAR)
+    if settings.identity_mode == "trusted_proxy":
+        if request is not None:
+            trusted_user = _normalize_user_id(request.headers.get(settings.TRUSTED_PROXY_USER_HEADER))
+            if trusted_user:
+                return trusted_user
+            from fastapi import HTTPException, status
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authenticated proxy identity header is missing.",
+            )
+        service_user = _normalize_user_id(os.getenv(settings.USER_ID_ENV_VAR))
+        if service_user:
+            return service_user
+        return _normalize_user_id(settings.DEFAULT_USER_ID)
+
+    configured_env_user = _normalize_user_id(os.getenv(settings.USER_ID_ENV_VAR))
     if configured_env_user:
         return configured_env_user
 
     if request:
-        header_user = request.headers.get("X-User-Id")
+        header_user = _normalize_user_id(request.headers.get("X-User-Id"))
         if header_user:
             return header_user
 
     return (
-        os.getenv("user_name")
-        or os.getenv("USER_ID")
-        or settings.DEFAULT_USER_ID
+        _normalize_user_id(os.getenv("user_name"))
+        or _normalize_user_id(os.getenv("USER_ID"))
+        or _normalize_user_id(settings.DEFAULT_USER_ID)
     )
 
 

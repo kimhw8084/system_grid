@@ -53,6 +53,12 @@ def sanitize_api_origin(url: str | None) -> tuple[str | None, bool]:
         return None, False
 
 
+def normalize_api_origin(url: str | None) -> str:
+    """Return a safe HTTP(S) origin or an empty string for legacy callers."""
+    origin, valid = sanitize_api_origin(url)
+    return origin if valid and origin else ""
+
+
 def serialize_user_preference_value(value):
     try:
         return json.dumps(value)

@@ -113,22 +113,24 @@ function getCurrentUserId(): string {
   )
 }
 
+function getIdentityMode(): string {
+  return String(import.meta.env.VITE_IDENTITY_MODE || 'development').trim().toLowerCase()
+}
+
 function shouldAttachUserIdHeader(url: string): boolean {
+  // In production the reverse proxy owns identity and must strip any client-supplied
+  // identity header before injecting TRUSTED_PROXY_USER_HEADER.
+  if (getIdentityMode() === 'trusted_proxy') return false
+
   const baseUrl = getApiBaseUrl()
-  // If it's a relative URL or starts with the baseUrl, attach it.
   if (!url.startsWith('http')) return true
   if (baseUrl && url.startsWith(baseUrl)) return true
-  
+
   try {
     const targetUrl = new URL(url, window.location.origin)
-    // Same-origin is always safe
     if (targetUrl.origin === window.location.origin) return true
-    
-    // Also allow for local development cross-origin (e.g., localhost:5173 -> localhost:8000)
     const isLocal = targetUrl.hostname === 'localhost' || targetUrl.hostname === '127.0.0.1'
-    if (isLocal) return true
-    
-    return false
+    return isLocal
   } catch {
     return true
   }

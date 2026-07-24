@@ -12,7 +12,6 @@ SAFE_READ_METHODS = {"GET", "HEAD", "OPTIONS"}
 # 1. Master Configuration Database (Always Local)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_DATABASE_URL = settings.CONFIG_DATABASE_URL
-print(f"DEBUG: Initializing config engine with URL: {CONFIG_DATABASE_URL}")
 
 def is_sqlite_url(db_url: str) -> bool:
     return db_url.startswith("sqlite")

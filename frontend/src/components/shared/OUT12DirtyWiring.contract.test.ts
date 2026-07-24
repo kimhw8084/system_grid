@@ -40,7 +40,7 @@ describe('OUT-12 iteration 02 consumer wiring', () => {
   })
 
   it('wires VendorsReal dirty state through WorkspaceModal without local Escape bypass', () => {
-    const source = readSource('src/components/VendorsReal.tsx')
+    const source = readSource('src/components/vendors/VendorGoldenOperationalWorkspace.tsx')
     const vendorDetailPanel = extractFunctionBlock(source, 'VendorDetailPanel')
 
     expect(vendorDetailPanel).toMatch(/<WorkspaceModal[\s\S]*isDirty=\{hasChanges\}/)

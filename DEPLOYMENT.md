@@ -126,3 +126,21 @@ Serve `frontend/dist/` through the intended company route or local static hostin
 - [OUT-13 deployment risk register](docs/OUT-13-deployment-risk-register.md)
 - [OUT-13 temporary conclusion handoff](docs/OUT-13-temporary-conclusion-handoff.md)
 - [OUT-13 final review manifest](docs/OUT-13-final-review-manifest.md)
+
+
+## Production Safety Gate
+
+A production process now refuses startup when the identity, CORS, host, database, tenant-storage, public-readonly, or auto-admin contract is unsafe. Copy and customize:
+
+- `deploy/backend.env.production.example`
+- `deploy/frontend.env.production.example`
+
+The reverse proxy must strip any incoming client copy of `TRUSTED_PROXY_USER_HEADER`, authenticate the request, and inject the verified identity header. The frontend must use `VITE_IDENTITY_MODE=trusted_proxy`, which prevents the browser from sending `X-User-Id`.
+
+Run the source-level gate from the repository root:
+
+```bash
+python scripts/production-preflight.py
+```
+
+The preflight intentionally reports missing lockfiles as deployment blockers. It does not replace the full Playwright suite, a company-domain browser run, or the backup/restore drill.

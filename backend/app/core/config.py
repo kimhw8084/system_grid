@@ -1,23 +1,26 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
+from urllib.parse import urlparse
 import os
+
 
 class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "SYSGRID Production API"
-    
-    # Environment
-    ENVIRONMENT: str = "production"  # development, production, test
-    PORT: int = 8000
-    
-    # CORS Origins (comma-separated string)
-    BACKEND_CORS_ORIGINS: str = "*"
 
-    @property
-    def cors_origins(self) -> List[str]:
-        if not self.BACKEND_CORS_ORIGINS or self.BACKEND_CORS_ORIGINS == "*":
-            return ["*"]
-        return [o.strip() for o in self.BACKEND_CORS_ORIGINS.split(",") if o.strip()]
+    # Runtime mode. Production must be selected explicitly in deployment config.
+    ENVIRONMENT: str = "development"  # development, production, test
+    PORT: int = 8000
+
+    # CORS and host controls
+    BACKEND_CORS_ORIGINS: str = "*"
+    ALLOWED_HOSTS: str = "localhost,127.0.0.1,testserver"
+
+    # Identity contract
+    # development: browser X-User-Id fallback is accepted for local/test use.
+    # trusted_proxy: only the configured proxy-authenticated header is accepted.
+    IDENTITY_MODE: str = "development"
+    TRUSTED_PROXY_USER_HEADER: str = "X-Authenticated-User"
 
     # Deployment/runtime configuration
     DATABASE_URL: str = ""
@@ -28,8 +31,10 @@ class Settings(BaseSettings):
     DEFAULT_TENANT_NAME: str = "Default Engine"
     PUBLIC_READONLY_TENANT_NAME: str = ""
     PUBLIC_READONLY_ENABLED: bool = True
+    ALLOW_PUBLIC_READONLY_IN_PRODUCTION: bool = False
     DEFAULT_USER_ID: str = "admin_root"
     AUTO_ADMIN_USER_IDS: str = "admin_root"
+    ALLOW_AUTO_ADMIN_IN_PRODUCTION: bool = False
     USER_ID_ENV_VAR: str = "USER_ID"
     DEFAULT_OPERATOR_DEPARTMENT: str = "Infrastructure"
     DEFAULT_SUPPORT_EMAIL: str = "admin@infra.local"
@@ -43,14 +48,99 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
-        extra="ignore"
+        extra="ignore",
     )
+
+    @property
+    def environment_name(self) -> str:
+        return (self.ENVIRONMENT or "development").strip().lower()
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment_name == "production"
+
+    @property
+    def identity_mode(self) -> str:
+        return (self.IDENTITY_MODE or "development").strip().lower()
+
+    @property
+    def is_testing(self) -> bool:
+        return self.environment_name == "test" or (
+            os.getenv("TESTING", "").strip().lower() in {"1", "true", "yes", "on"}
+        )
+
+    @property
+    def cors_origins(self) -> List[str]:
+        # Test runs must be deterministic and must not inherit a developer's
+        # local CORS allow-list from backend/.env. Production never enters this
+        # branch and explicitly rejects TESTING mode below.
+        if self.is_testing and not self.is_production:
+            return ["*"]
+        if not self.BACKEND_CORS_ORIGINS or self.BACKEND_CORS_ORIGINS == "*":
+            return ["*"]
+        return [origin.strip() for origin in self.BACKEND_CORS_ORIGINS.split(",") if origin.strip()]
+
+    @property
+    def allowed_hosts(self) -> List[str]:
+        configured = [host.strip() for host in self.ALLOWED_HOSTS.split(",") if host.strip()]
+        if self.is_production:
+            return configured
+
+        # Starlette/httpx test clients commonly use `test` or `testserver` as
+        # the Host header. Keep those development-only aliases accepted even
+        # when a local .env overrides ALLOWED_HOSTS.
+        development_hosts = ["localhost", "127.0.0.1", "test", "testserver"]
+        return list(dict.fromkeys([*configured, *development_hosts]))
+
+    def production_guard_errors(self) -> list[str]:
+        if not self.is_production:
+            return []
+
+        errors: list[str] = []
+        if self.is_testing:
+            errors.append("TESTING mode must not be enabled in production.")
+        if self.identity_mode != "trusted_proxy":
+            errors.append("IDENTITY_MODE must be 'trusted_proxy' in production.")
+        if not self.TRUSTED_PROXY_USER_HEADER.strip():
+            errors.append("TRUSTED_PROXY_USER_HEADER must be configured in production.")
+        if self.TRUSTED_PROXY_USER_HEADER.strip().lower() == "x-user-id":
+            errors.append("TRUSTED_PROXY_USER_HEADER must not use the browser-controlled X-User-Id header.")
+
+        origins = self.cors_origins
+        if not origins or "*" in origins:
+            errors.append("BACKEND_CORS_ORIGINS must contain explicit HTTPS origins; wildcard CORS is forbidden in production.")
+        else:
+            for origin in origins:
+                parsed = urlparse(origin)
+                if parsed.scheme != "https" or not parsed.hostname:
+                    errors.append(f"Production CORS origin must be an explicit HTTPS origin: {origin}")
+
+        hosts = self.allowed_hosts
+        if not hosts or "*" in hosts:
+            errors.append("ALLOWED_HOSTS must contain explicit deployment hostnames; wildcard hosts are forbidden in production.")
+
+        if self.PUBLIC_READONLY_ENABLED and not self.ALLOW_PUBLIC_READONLY_IN_PRODUCTION:
+            errors.append("PUBLIC_READONLY_ENABLED must be false in production unless explicitly acknowledged.")
+        if self.auto_admin_user_ids and not self.ALLOW_AUTO_ADMIN_IN_PRODUCTION:
+            errors.append("AUTO_ADMIN_USER_IDS must be empty in production unless explicitly acknowledged.")
+        if self.DEFAULT_USER_ID.strip().lower() == "admin_root":
+            errors.append("DEFAULT_USER_ID must not remain admin_root in production.")
+
+        for env_name in ("DATABASE_URL", "CONFIG_DATABASE_URL", "TENANT_STORAGE_ROOT"):
+            if not os.getenv(env_name):
+                errors.append(f"{env_name} must be explicitly configured in production.")
+        return errors
+
+    def assert_production_safe(self) -> None:
+        errors = self.production_guard_errors()
+        if errors:
+            formatted = "\n - ".join(errors)
+            raise RuntimeError(f"Unsafe SysGrid production configuration:\n - {formatted}")
 
     def model_post_init(self, __context) -> None:
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         frontend_dir = os.path.join(os.path.dirname(base_dir), "frontend")
-        
-        # Helper to resolve relative sqlite paths
+
         def resolve_db_url(url: str, default_filename: str) -> str:
             if not url:
                 return f"sqlite+aiosqlite:///{os.path.join(base_dir, default_filename)}"
@@ -61,7 +151,7 @@ class Settings(BaseSettings):
 
         object.__setattr__(self, "DATABASE_URL", resolve_db_url(self.DATABASE_URL, "system_grid.db"))
         object.__setattr__(self, "CONFIG_DATABASE_URL", resolve_db_url(self.CONFIG_DATABASE_URL, "config.db"))
-        
+
         if not self.TENANT_STORAGE_ROOT:
             object.__setattr__(self, "TENANT_STORAGE_ROOT", os.path.join(base_dir, "tenants"))
         if not self.BACKEND_ENV_FILE_PATH:
@@ -87,5 +177,6 @@ class Settings(BaseSettings):
 
     def is_auto_admin_user(self, user_id: str | None) -> bool:
         return bool(user_id and user_id in self.auto_admin_user_ids)
+
 
 settings = Settings()
