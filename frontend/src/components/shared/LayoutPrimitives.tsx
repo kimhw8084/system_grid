@@ -116,6 +116,7 @@ export const ToolbarButton = React.forwardRef<HTMLButtonElement, {
   variant?: 'primary' | 'secondary' | 'quiet' | 'danger'
   className?: string
   title?: string
+  ariaLabel?: string
 }>(({
   children,
   onClick,
@@ -123,7 +124,8 @@ export const ToolbarButton = React.forwardRef<HTMLButtonElement, {
   disabled = false,
   variant = 'secondary',
   className = '',
-  title
+  title,
+  ariaLabel
 }, ref) => {
   const variantClass =
     variant === 'primary'
@@ -143,6 +145,7 @@ export const ToolbarButton = React.forwardRef<HTMLButtonElement, {
       onClick={onClick}
       disabled={disabled}
       title={title}
+      aria-label={ariaLabel}
       className={join(
         `${TOOLBAR_CONTROL_HEIGHT} inline-flex items-center justify-center gap-2 rounded-lg px-3 py-0 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap shrink-0 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40`,
         variantClass,

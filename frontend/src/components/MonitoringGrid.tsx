@@ -2071,6 +2071,7 @@ export default function MonitoringGrid() {
             onClick={() => { setEditingItem(null); setIsFormOpen(true); }}
             variant="primary"
             className="px-6 py-2"
+            ariaLabel="Add Monitoring"
           >
             + Add Monitoring
           </ToolbarButton>
