@@ -47,8 +47,11 @@ test.describe('Service workflows', () => {
     await expect(activeDialog).toBeVisible()
     await clickResilientButton(page, 'Edit Service')
     
-    const editDialog = page.getByRole('dialog').filter({ hasText: 'Edit Service' })
-    await expect(editDialog.getByText('Configuration Metadata', { exact: true })).toBeVisible()
+    const editDialog = page.getByRole('dialog').filter({
+      has: page.getByRole('heading', { name: 'Edit Service', exact: true })
+    })
+    await expect(editDialog).toBeVisible()
+    await expect(editDialog.locator('#service-record-form').getByText('Configuration Metadata', { exact: true })).toBeVisible()
     await editDialog.getByTitle('Close').click()
     await expect(editDialog).not.toBeVisible()
     await page.keyboard.press('Escape')

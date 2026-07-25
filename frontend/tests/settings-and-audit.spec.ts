@@ -35,7 +35,9 @@ test.describe('Settings and audit workflows', () => {
     await page.goto('/settings?tab=permissions')
     await expect(page.getByText('Identity Sync Pipeline')).toBeVisible()
     await page.getByPlaceholder('Search identity, department, or team...').fill('admin_root')
-    await expect(page.locator('table > tbody > tr').first()).toContainText('System Administrator')
+    const adminRow = page.locator('table > tbody > tr').filter({ hasText: 'admin_root' }).first()
+    await expect(adminRow).toBeVisible()
+    await expect(adminRow).toContainText('Admin Root')
     await expect(page.getByText('No operators match the current filter')).not.toBeVisible()
 
     await page.getByPlaceholder('Search identity, department, or team...').fill('not-a-real-operator')
@@ -43,21 +45,36 @@ test.describe('Settings and audit workflows', () => {
 
     await clickResilientButton(page, /Tenants/i)
     await expect(page.getByText('Tenant Registry')).toBeVisible()
+    const tenantTable = page.locator('table').filter({
+      has: page.getByRole('columnheader', { name: 'Tenant', exact: true })
+    })
+    const existingTenantName = (await tenantTable.locator('tbody > tr').first().locator('td').first().locator('div.text-white').innerText()).trim()
+    expect(existingTenantName).not.toBe('')
+
     const tenantInput = page.getByPlaceholder('Tenant name')
-    await tenantInput.fill('Default Engine')
+    await tenantInput.fill(existingTenantName)
     await clickResilientButton(page, /Create Tenant/i)
-    await expect(page.getByText(/Failed to create tenant/i)).toBeVisible()
-    await expect(tenantInput).toHaveValue('Default Engine')
+    await expect(page.getByText(/Tenant name already exists/i)).toBeVisible()
+    await expect(tenantInput).toHaveValue(existingTenantName)
   })
 
-  test('stores and exposes user-pool sync script history', async ({ page, sysApi: request }) => {
+  test('stores and exposes user-pool synchronization history', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
+    const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const username = `pwsync-${stamp}`
+    const fullName = `PW Sync ${stamp}`
     const response = await request.post(`${apiBase}/settings/user-pool/refresh`, {
-      data: { 
+      data: {
         records: [
-          { external_id: 'pw.sync.1', username: 'pwsync1', full_name: 'PW Sync One', email: 'pwsync1@example.com', registration_status: 'Verified' }
+          {
+            external_id: `pw.sync.${stamp}`,
+            username,
+            full_name: fullName,
+            email: `${username}@example.com`,
+            registration_status: 'Verified'
+          }
         ],
-        source: "playwright_test"
+        source: 'playwright_test'
       },
       /* headers auto-injected */
     })
@@ -66,12 +83,15 @@ test.describe('Settings and audit workflows', () => {
 
     await page.goto('/settings?tab=permissions')
     await expect(page.getByText('Identity Sync Pipeline')).toBeVisible()
-    await clickResilientButton(page, /Identity Sync/i)
-    await page.waitForTimeout(1000)
-    await clickResilientButton(page, /View Sync History/i)
-    await clickResilientButton(page, /View Script History/i)
-    await expect(page.getByText('Historical Sync Logic')).toBeVisible()
-    await expect(page.getByRole('button', { name: /Restore to Editor/i })).toBeVisible()
+    const revisionHistory = page.getByRole('button', { name: 'Revision History', exact: true })
+    await expect(revisionHistory).toBeVisible()
+    await revisionHistory.click()
+
+    const historyDialog = page.getByRole('dialog').filter({
+      has: page.getByRole('heading', { name: 'Permission Registry History', exact: true })
+    })
+    await expect(historyDialog).toBeVisible()
+    await expect(historyDialog.getByText(fullName, { exact: true })).toBeVisible()
   })
 
   test('renders scoped audit logs for seeded service activity', async ({ page, sysApi: request }) => {

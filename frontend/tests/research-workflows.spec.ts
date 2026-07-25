@@ -75,7 +75,9 @@ test.describe('Research workflows', () => {
 
     await researchRow.inspect.click()
     await expect(page.getByRole('heading', { name: research2037.title, exact: true })).toBeVisible()
-    await clickResilientButton(page, 'INTELLIGENCE STREAM')
+    const intelligenceTab = page.getByRole('button', { name: 'Intelligence Stream', exact: true })
+    await expect(intelligenceTab).toBeVisible()
+    await intelligenceTab.click()
     await clickResilientButton(page, /Record Intelligence/i)
     await expect(page.getByRole('paragraph').filter({ hasText: 'Intelligence pulse text is required' })).toBeVisible()
 

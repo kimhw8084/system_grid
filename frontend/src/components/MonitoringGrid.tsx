@@ -26,6 +26,7 @@ import { ConfigRegistryModal } from "./ConfigRegistry"
 import { ConfirmationModal } from "./shared/ConfirmationModal"
 import { MONITORING_WORKSPACE_STANDARD } from './shared/OperationalWorkspace'
 import { WorkspaceModal } from './shared/WorkspaceModal'
+import { WorkspaceShareHeader } from './shared/WorkspaceShareHeader'
 import {
   WorkspaceCollapsibleHeader,
   WorkspaceEmptyState,
@@ -2849,7 +2850,12 @@ function MonitoringDetailModal({ item, onClose, onEdit, onOpenHistory, onOpenBkm
       size="workspace"
       isMaximized={isMaximized}
       onMaximizeToggle={() => setIsMaximized(!isMaximized)}
-      title={item.title}
+      title={
+        <div className="flex items-center gap-3">
+          <span>{item.title}</span>
+          <WorkspaceShareHeader id={String(item.id)} title={item.title} />
+        </div>
+      }
       subtitle={`Monitor ID: ${item.id} · ${item.device_name || 'No Target Asset'}`}
       icon={<Monitor size={20} />}
       forensicLineage={{ createdAt: item.created_at, updatedAt: item.updated_at }}

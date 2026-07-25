@@ -45,10 +45,10 @@ test.describe('System Sentinel (Zero-Tolerance Coverage)', () => {
     await monitoringView.waitForAppIdle();
 
     // Select first item with wait
-    const firstRow = page.locator('.ag-row').first();
+    const firstRow = page.locator('[data-workspace="monitoring"] .ag-center-cols-container .ag-row').first();
     await firstRow.scrollIntoViewIfNeeded();
     await firstRow.waitFor({ state: 'visible' });
-    await firstRow.click();
+    await firstRow.dblclick();
     
     // Verify Deep Linking
     await expect(page).toHaveURL(/id=/);
