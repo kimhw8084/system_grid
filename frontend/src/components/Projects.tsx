@@ -232,7 +232,7 @@ const ProjectRail = ({
          <button onClick={onToggleCollapse} className="p-2 text-slate-500 hover:text-white transition-all mb-4">
             <PanelLeft size={18} />
          </button>
-         <button onClick={onNew} className="p-2 bg-blue-600 text-white rounded-lg mb-4">
+         <button onClick={onNew} aria-label="New Vector" className="p-2 bg-blue-600 text-white rounded-lg mb-4">
             <Plus size={18} />
          </button>
          <div className="flex-1 flex flex-col gap-2 overflow-y-auto custom-scrollbar no-scrollbar">
@@ -257,6 +257,7 @@ const ProjectRail = ({
           <div className="flex items-center justify-between">
              <button 
                onClick={onNew}
+               aria-label="New Vector"
                className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-600/20 active:scale-95"
              >
                 <Plus size={14} /> New Vector
@@ -2912,6 +2913,7 @@ export default function Projects() {
   })
   
   const [selectedProjectId, setSelectedProjectId] = useState<number | 'HUDDLE' | null>(idParam ? parseInt(idParam) : 'HUDDLE')
+  const hasAutoSelectedInitialProject = useRef(false)
 
   // Sync URL id param with selectedProjectId
   useEffect(() => {
@@ -2977,8 +2979,10 @@ export default function Projects() {
   }, [idParam, projects])
 
   useEffect(() => {
-    if (projects?.length > 0 && selectedProjectId === 'HUDDLE' && !idParam) {
-      // Find latest created project
+    if (!projects?.length || hasAutoSelectedInitialProject.current) return
+    hasAutoSelectedInitialProject.current = true
+    if (selectedProjectId === 'HUDDLE' && !idParam) {
+      // Select the latest project once on first load, but preserve an operator's later Huddle selection.
       const latest = [...projects].sort((a, b) => (parseAppDate(b.created_at)?.getTime() || 0) - (parseAppDate(a.created_at)?.getTime() || 0))[0]
       if (latest) syncSelectedProject(latest.id)
     }
@@ -3064,6 +3068,7 @@ export default function Projects() {
   }
 
   const requestProjectChange = (id: number | 'HUDDLE') => {
+    if (id === 'HUDDLE') hasAutoSelectedInitialProject.current = true
     if (isDirty) setPendingNav({ type: 'PROJECT', id })
     else {
       syncSelectedProject(id)
@@ -3127,7 +3132,12 @@ export default function Projects() {
                { id: 'ACTIVITY', icon: History, label: 'Stream' },
                { id: 'ADOPTION', icon: TrendingUp, label: 'Adoption' }
              ].map(tab => (
-               <button key={tab.id} onClick={() => requestTabChange(tab.id as any)} className={`h-full px-6 flex items-center gap-2 border-b-2 transition-all ${activeTab === tab.id ? 'border-blue-600 text-blue-400 bg-blue-500/5' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
+               <button
+                 key={tab.id}
+                 onClick={() => requestTabChange(tab.id as any)}
+                 aria-label={tab.id === 'ACTIVITY' ? 'Activity' : undefined}
+                 className={`h-full px-6 flex items-center gap-2 border-b-2 transition-all ${activeTab === tab.id ? 'border-blue-600 text-blue-400 bg-blue-500/5' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
+               >
                   <tab.icon size={14} /><span className="text-[10px] font-bold uppercase tracking-widest">{tab.label}</span>
                </button>
              ))}

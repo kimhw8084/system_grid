@@ -1,4 +1,3 @@
-import { clickResilientButton } from './helpers/sysgrid';
 import { expect } from '@playwright/test';
 import { test } from './helpers/sysgrid-test';
 import { createProject, resetBrowserState } from './helpers/sysgrid'
@@ -24,15 +23,22 @@ test.describe('Projects workflows', () => {
     await expect(page.locator('h1').filter({ hasText: first.name })).toBeVisible()
 
     await page.locator('button:has(svg.lucide-settings)').first().click()
-    await expect(page.getByText('Project Configuration')).toBeVisible()
-    await page.getByTitle('Dismiss Workspace').click()
+    const configDialog = page.getByRole('dialog').filter({
+      has: page.getByRole('heading', { name: 'Project Configuration', exact: true })
+    })
+    await expect(configDialog).toBeVisible()
+    await configDialog.getByTitle('Close').click()
 
-    await page.getByPlaceholder('Search Projects...').fill(first.name)
+    await page.getByPlaceholder('Filter vectors...').fill(first.name)
     await expect(page.getByText(/Clear search and filters to reorder projects/i)).toBeVisible()
 
-    await page.getByPlaceholder('Search Projects...').fill('')
-    await page.getByTitle('Archive Project').click()
-    await clickResilientButton(page, 'Archive Project')
+    await page.getByPlaceholder('Filter vectors...').fill('')
+    await page.getByTitle('Decommission Project').click()
+    const decommissionDialog = page.getByRole('dialog').filter({
+      has: page.getByRole('heading', { name: 'Decommission Strategic Stream', exact: true })
+    })
+    await expect(decommissionDialog).toBeVisible()
+    await decommissionDialog.getByRole('button', { name: 'Decommission', exact: true }).click()
     await expect(page.getByText('Project Decommissioned')).toBeVisible()
     await expect(page.locator('h1').filter({ hasText: second.name })).toBeVisible()
     await expect(page).not.toHaveURL(new RegExp(`id=${first.id}`))

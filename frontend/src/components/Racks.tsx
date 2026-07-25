@@ -3648,6 +3648,7 @@ export default function Racks() {
             <ToolbarButton onClick={() => { setIsProvisioning(null); setMountSearch('') }}>Close</ToolbarButton>
             <ToolbarButton
               disabled={provisionMode === 'asset' && !isProvisioning?.device_id}
+              ariaLabel={provisionMode === 'reserve' ? 'Confirm Reservation' : 'Mount Asset'}
               onClick={() => {
                 if (provisionMode === 'asset') {
                   if (isPlanInitialized) {

@@ -25,7 +25,9 @@ test.describe('Projects Creation Workflow', () => {
     await page.goto('/projects')
     
     // 2. Start project creation
-    await clickResilientButton(page, 'New Vector')
+    const newVectorButton = page.getByRole('button', { name: 'New Vector', exact: true })
+    await expect(newVectorButton).toBeVisible({ timeout: 20000 })
+    await newVectorButton.click()
     await expect(page.getByText('Strategic Matrix Configuration')).toBeVisible()
     
     const projectName = `PW-PROJECT-${nonce}`
