@@ -12,7 +12,9 @@ test.describe('Racks workflows', () => {
     await page.goto('/racks')
     await expect(page.getByRole('heading', { name: 'Racks' })).toBeVisible()
 
-    await clickResilientButton(page, new RegExp(siteA.name))
+    const siteButton = page.getByRole('button', { name: `Open site ${siteA.name}`, exact: true })
+    await expect(siteButton).toBeVisible({ timeout: 20000 })
+    await siteButton.click()
     await expect(rackCard(rackA1.id)).toBeVisible()
 
     await clickResilientButton(page, 'Spatial')

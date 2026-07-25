@@ -52,21 +52,30 @@ test.describe('Projects Creation Workflow', () => {
     await endYear.selectOption({ label: '2027' })
     
     // 4. Test cascading multi-selects
-    // Select System by clicking its checkbox
-    await page.waitForTimeout(1000) // Wait for animation
-    const systemCheckbox = page.locator('label').filter({ hasText: systemName }).locator('input[type="checkbox"]')
-    await systemCheckbox.check({ force: true })
-    
-    // Verify Asset is visible (it belongs to this system)
-    const assetCheckbox = page.locator('label').filter({ hasText: assetName }).locator('input[type="checkbox"]')
-    await expect(assetCheckbox).toBeVisible()
-    await assetCheckbox.check({ force: true })
-    
-    // Verify Service is visible (it belongs to this asset)
-    const serviceCheckbox = page.locator('label').filter({ hasText: serviceName }).locator('input[type="checkbox"]')
-    await expect(serviceCheckbox).toBeVisible()
-    await serviceCheckbox.check({ force: true })
-    
+    // The cascading lists are independently scrollable. Trigger the native checkbox
+    // click directly so this test verifies React state propagation rather than pointer
+    // geometry inside nested scroll containers.
+    const selectCascadingOption = async (labelText: string) => {
+      const checkbox = page
+        .locator('label')
+        .filter({ hasText: labelText })
+        .locator('input[type="checkbox"]')
+        .first()
+      await expect(checkbox).toBeAttached({ timeout: 15000 })
+      await checkbox.evaluate((element: HTMLInputElement) => {
+        if (!element.checked) element.click()
+      })
+      await expect(checkbox).toBeChecked()
+    }
+
+    await selectCascadingOption(systemName)
+
+    // The asset becomes available only after its system is selected.
+    await selectCascadingOption(assetName)
+
+    // The service becomes available only after its asset is selected.
+    await selectCascadingOption(serviceName)
+
     // 5. Commit Project
     await clickResilientButton(page, 'Commit Strategic Vector')
     

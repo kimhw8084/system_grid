@@ -6,17 +6,23 @@ test.describe('Projects workflows', () => {
   test('opens project config, keeps selection stable on delete, and blocks filtered reorder affordance', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
     const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    // Give the two fixtures adjacent, unique order positions so the product's
+    // post-decommission "select the next vector" contract is deterministic
+    // even when the shared test database contains older projects.
+    const orderBase = 1_500_000_000 + Math.floor(Math.random() * 100_000_000)
     const first = await createProject(request, {
       name: `PW-PROJ-A-${stamp}`,
       type: 'Strategic',
       status: 'Planning',
-      priority: 'Medium'
+      priority: 'Medium',
+      order_index: orderBase
     })
     const second = await createProject(request, {
       name: `PW-PROJ-B-${stamp}`,
       type: 'Strategic',
       status: 'Planning',
-      priority: 'High'
+      priority: 'High',
+      order_index: orderBase + 1
     })
 
     await page.goto(`/projects?id=${first.id}`)

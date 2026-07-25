@@ -112,12 +112,14 @@ const getVirtualPlacementConflict = ({
   const conflict = (targetRack.device_locations || []).find((loc: any) => {
     if (excludeDeviceId && String(loc.device_id) === String(excludeDeviceId)) return false
     if (deviceId && String(loc.device_id) === String(deviceId)) return false
-    const locEnd = loc.start_unit + loc.size_u - 1
-    return !(newEnd < loc.start_unit || normalizedStart > locEnd)
+    const locStart = Number(loc.start_unit ?? loc.u_start) || 1
+    const locEnd = locStart + (Number(loc.size_u) || 1) - 1
+    return !(newEnd < locStart || normalizedStart > locEnd)
   })
 
   if (conflict) {
-    return `Collision with ${conflict.device?.name || 'existing device'} at U${conflict.start_unit}`
+    const conflictStart = Number(conflict.start_unit ?? conflict.u_start) || 1
+    return `Collision with ${conflict.device?.name || 'existing device'} at U${conflictStart}`
   }
 
   return null
@@ -2344,34 +2346,58 @@ export default function Racks() {
   const [virtualRacks, setVirtualRacks] = useState<any[]>([])
 
   const addDeviceToPlan = (rackId: number, deviceId: number, startU: number, sizeU: number, orientation: string) => {
+    const placementConflict = getVirtualPlacementConflict({
+      racks: virtualRacks,
+      rackId,
+      deviceId,
+      startUnit: startU,
+      sizeU
+    })
+    if (placementConflict) {
+      toast.error(placementConflict)
+      return
+    }
+
+    const device = devices?.find((candidate: any) => candidate.id === deviceId)
     setVirtualRacks(prev => prev.map(r => {
-      if (r.id === rackId) {
-        const device = devices.find((d: any) => d.id === deviceId)
-        return {
-          ...r,
-          device_locations: [
-            ...(r.device_locations || []),
-            { device_id: deviceId, u_start: startU, size_u: sizeU, orientation, device }
-          ]
-        }
+      const existingLocations = (r.device_locations || []).filter(
+        (location: any) => String(location.device_id) !== String(deviceId)
+      )
+      if (r.id !== rackId) return { ...r, device_locations: existingLocations }
+
+      return {
+        ...r,
+        device_locations: [
+          ...existingLocations,
+          { device_id: deviceId, start_unit: startU, size_u: sizeU, orientation, device }
+        ]
       }
-      return r
     }))
     setHasUnsavedChanges(true)
   }
 
   const addReservationToPlan = (rackId: number, startU: number, sizeU: number, name: string, date: string, poc: string) => {
+    const placementConflict = getVirtualPlacementConflict({
+      racks: virtualRacks,
+      rackId,
+      startUnit: startU,
+      sizeU
+    })
+    if (placementConflict) {
+      toast.error(placementConflict)
+      return
+    }
+
     setVirtualRacks(prev => prev.map(r => {
-      if (r.id === rackId) {
-        return {
-          ...r,
-          device_locations: [
-            ...(r.device_locations || []),
-            { is_reservation: true, u_start: startU, size_u: sizeU, temporary_name: name, est_racking_date: date, poc_name: poc }
-          ]
-        }
+      if (r.id !== rackId) return r
+
+      return {
+        ...r,
+        device_locations: [
+          ...(r.device_locations || []),
+          { is_reservation: true, start_unit: startU, size_u: sizeU, temporary_name: name, est_racking_date: date, poc_name: poc }
+        ]
       }
-      return r
     }))
     setHasUnsavedChanges(true)
   }
@@ -3106,6 +3132,7 @@ export default function Racks() {
                 <div key={s.id} className="relative group/site shrink-0">
                   <button
                     onClick={() => setActiveSite(s.id)}
+                    aria-label={`Open site ${s.name}`}
                     className={`pl-3 pr-9 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all whitespace-nowrap flex items-center gap-2 ${isActive ? 'bg-[#034EA2] border-blue-500 text-white' : 'border-white/[0.07] text-slate-500 hover:border-white/20 hover:text-slate-300'}`}
                     style={isActive && s.color ? { backgroundColor: s.color, borderColor: 'rgba(255,255,255,0.1)' } : {}}
                   >
