@@ -189,8 +189,9 @@ test.describe('CRUD API contracts', () => {
       source_port: 'eth0',
       device_b_id: target.id,
       target_port: 'eth1',
-      link_type: 'Fiber',
+      link_type: 'Data',
       purpose: 'CRUD contract connectivity',
+      cable_type: 'Fiber',
       speed_gbps: 10,
       unit: 'Gbps',
       status: 'Active'

@@ -370,6 +370,7 @@ export function useAssetGoldenWorkspace() {
   const [confirmState, setConfirmState] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
   const [rowActionMenu, setRowActionMenu] = useState<{ asset: any; x: number; y: number } | null>(null)
   const [isReverting, setIsReverting] = useState(false)
+  const [lastLifecycleOperation, setLastLifecycleOperation] = useState<AssetLifecycleOperation | null>(null)
 
   const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>('sysgrid_asset_favorites', [])
   const [watchIds, setWatchIds] = usePersistentJsonState<number[]>('sysgrid_asset_watches', [])
@@ -666,9 +667,10 @@ export function useAssetGoldenWorkspace() {
           inverseAction: result.action === 'delete' ? 'restore' : 'delete',
           targetLabels: Object.freeze(result.targetLabels || result.ids.map(String)),
         })
+        setLastLifecycleOperation(operation)
         showWorkspaceToast(
           `${result.action === 'delete' ? 'Archived' : 'Restored'} ${operation.targetLabels.length} asset${operation.targetLabels.length === 1 ? '' : 's'}`,
-          { type: 'success', onRevert: () => { void executeRevert(operation) } },
+          { type: 'success' },
         )
         return
       }
@@ -723,6 +725,7 @@ export function useAssetGoldenWorkspace() {
       })
       if (!response.ok) throw new Error(await response.text())
       await refreshAssetLifecycle()
+      setLastLifecycleOperation(null)
       showWorkspaceToast('Reverted asset operation', { type: 'success' })
     } catch (error: any) {
       showWorkspaceToast(error?.message || 'Revert failed', { type: 'error' })
@@ -858,6 +861,7 @@ export function useAssetGoldenWorkspace() {
     reportFocusSection,
     refreshAll,
     isReverting,
+    lastLifecycleOperation,
     executeRevert,
     relationships: Array.isArray(relationshipsQuery.data) ? relationshipsQuery.data : [],
     rowActionMenu,

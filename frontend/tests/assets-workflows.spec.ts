@@ -240,6 +240,10 @@ test.describe('Assets workflows', () => {
     await deleteResponsePromise
     expect(deleteRequest.postDataJSON()).toMatchObject({ ids: [secondary.id], action: 'delete' })
 
+    // Restore the broader system scope before selecting a different asset.
+    await fillGridSearch(page, 'Scan asset matrix...', systemName)
+    await expect(page.locator('[role="treegrid"]')).toContainText(primary.name, { timeout: 15_000 })
+
     // Change selection to another asset: Revert remains bound to the captured operation, not selection.
     const primaryLifecycleRow = await getWorkspaceLogicalRowByText(page, 'assets', primary.name)
     await (await primaryLifecycleRow.cell('name')).click()

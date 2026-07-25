@@ -10,6 +10,7 @@ import {
   Maximize2,
   Minimize2,
   Plus,
+  RotateCcw,
   Settings,
   Sliders,
   Upload,
@@ -329,12 +330,19 @@ export default function AssetGoldenOperationalWorkspace() {
     })
   }, [workspace.groupBy, workspace.visibleAssets])
 
-  // Synchronize selection back to AgGrid if it gets cleared on the react side
+  // Synchronize selection back to AgGrid after row-data refreshes.
   useEffect(() => {
-    if (workspace.selectedIds.length === 0 && gridRef.current?.api) {
-      gridRef.current.api.deselectAll()
+    const api = gridRef.current?.api
+    if (!api) return
+    if (workspace.selectedIds.length === 0) {
+      api.deselectAll()
+      return
     }
-  }, [workspace.selectedIds, workspace.selectedIds.length])
+    const selectedIds = new Set(workspace.selectedIds.map(Number))
+    api.forEachNode((node: any) => {
+      node.setSelected(selectedIds.has(Number(node.data?.id)))
+    })
+  }, [workspace.selectedIds, workspace.visibleAssets])
 
   // Refresh favorite and watch columns immediately in AgGrid when changed
   useEffect(() => {
@@ -470,6 +478,26 @@ export default function AssetGoldenOperationalWorkspace() {
         secondaryToolbar={secondaryToolbar}
         toolbarActions={(
           <>
+            {workspace.lastLifecycleOperation ? (
+              <ToolbarButton
+                onClick={() => {
+                  dismissWorkspaceMenus()
+                  const operation = workspace.lastLifecycleOperation
+                  workspace.openConfirm(
+                    'Revert asset operation',
+                    `Revert the completed ${operation.originalAction === 'delete' ? 'archive' : 'restore'} operation for ${operation.targetLabels.join(', ')}?`,
+                    () => { void workspace.executeRevert(operation) },
+                  )
+                }}
+                disabled={workspace.isReverting}
+                title="Revert last completed asset lifecycle operation"
+              >
+                <span className="flex items-center gap-2">
+                  <RotateCcw size={14} />
+                  {workspace.isReverting ? 'Reverting...' : 'Revert'}
+                </span>
+              </ToolbarButton>
+            ) : null}
             <ToolbarButton onClick={() => {
               dismissWorkspaceMenus()
               setCompareIds(workspace.selectedIds.slice(0, 5))

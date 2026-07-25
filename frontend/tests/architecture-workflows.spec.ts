@@ -207,8 +207,11 @@ test.describe('Architecture workflows', () => {
     expect(flowResponse.ok()).toBeTruthy()
 
     await page.goto('/architecture')
+    await expect(page.getByRole('heading', { name: 'Architecture Matrix' })).toBeVisible()
     await page.getByPlaceholder('Search architectures...').fill(flowName)
-    await clickResilientButton(page, /Initialize/i)
+    const flowRow = page.locator('.ag-center-cols-container .ag-row').filter({ hasText: flowName }).first()
+    await expect(flowRow).toBeVisible({ timeout: 20_000 })
+    await flowRow.getByRole('button', { name: 'Initialize', exact: true }).click()
     await expect(page.getByText('Payments Engineering')).toBeVisible()
 
     await clickResilientButton(page, 'Select edge SYNC_PATH')

@@ -25,13 +25,14 @@ test.describe('Assets Revert lifecycle', () => {
     await (await primaryRow.cell('name')).click()
     await expect(primaryRow.center!).toHaveClass(/ag-row-selected/)
 
-    await expect(page.getByTitle(/Revert.*asset/i)).toHaveCount(0)
-    const revert = page.getByRole('button', { name: 'Revert', exact: true })
+    const revert = getWorkspaceRoot(page, 'assets').getByRole('button', { name: 'Revert', exact: true })
     await expect(revert).toBeVisible()
     const restoreRequest = page.waitForRequest((entry) => entry.url().includes('/api/v1/devices/bulk-action'))
     const restoreResponse = page.waitForResponse((entry) => entry.url().includes('/api/v1/devices/bulk-action') && entry.status() === 200)
     await revert.click()
-    await page.getByRole('button', { name: 'Confirm Undo?', exact: true }).click()
+    const revertConfirm = page.getByRole('dialog').filter({ has: page.getByText('Revert asset operation', { exact: true }) })
+    await expect(revertConfirm).toContainText(secondary.name)
+    await revertConfirm.getByRole('button', { name: 'Confirm Action', exact: true }).click()
     expect((await restoreRequest).postDataJSON()).toMatchObject({ ids: [secondary.id], action: 'restore' })
     await restoreResponse
     await expect((await getWorkspaceLogicalRowByText(page, 'assets', secondary.name)).center!).toBeVisible()

@@ -200,7 +200,6 @@ export function AssetGoldenDialogs({
         }}
         title={confirmState?.title || 'Confirm'}
         message={confirmState?.message || ''}
-        confirmText="Confirm"
       />
     </>
   )
