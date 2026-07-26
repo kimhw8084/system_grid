@@ -447,6 +447,7 @@ export default function VendorsReal() {
   const autoSizeTimeoutRef = useRef<number | null>(null)
   const vendorPreferenceHydratedRef  = useRef(false)
   const vendorPreferenceMigratedRef  = useRef(false)
+  const vendorSearchInteractionRef   = useRef(false)
   const vendorPreferenceSyncRef      = useRef<string | null>(null)
   const vendorPreferenceSyncTimeout  = useRef<number | null>(null)
   const preserveExplicitColumnWidthsRef = useRef(false)
@@ -459,6 +460,11 @@ export default function VendorsReal() {
 
 
   useEffect(() => { preserveExplicitColumnWidthsRef.current = preserveExplicitColumnWidths }, [preserveExplicitColumnWidths])
+
+  const setSearchTermFromInteraction = useCallback((value: string) => {
+    vendorSearchInteractionRef.current = true
+    setSearchTerm(value)
+  }, [])
 
   const clearPendingAutoSize = useCallback(() => {
     if (autoSizeFrameRef.current !== null)   { window.cancelAnimationFrame(autoSizeFrameRef.current);   autoSizeFrameRef.current   = null }
@@ -491,7 +497,9 @@ export default function VendorsReal() {
       setQuickFilters(payload?.uiState.quickFilters ?? normalizeVendorQuickFilters(null))
       setGroupBy(payload?.uiState.groupBy ?? 'raw')
       setColumnLayoutState(payload?.uiState.columnLayoutState ?? [])
-      setSearchTerm(payload?.uiState.searchTerm ?? '')
+      if (!vendorSearchInteractionRef.current) {
+        setSearchTerm(payload?.uiState.searchTerm ?? '')
+      }
       return
     }
     if (hasUserSettings && !remoteWorkspaceState && !vendorPreferenceMigratedRef.current) {
@@ -620,7 +628,7 @@ export default function VendorsReal() {
     setFontSize(config.fontSize ?? 11); setRowDensity(config.rowDensity ?? 8)
     setHiddenColumns(config.hiddenColumns ?? []); setGroupBy(config.groupBy ?? 'raw')
     setShowFilterBar(config.showFilterBar ?? true); setColumnLayoutState(config.columnLayoutState ?? [])
-    setTransientManualColumnWidths(false); setSearchTerm(config.quickFilter ?? '')
+    setTransientManualColumnWidths(false); setSearchTermFromInteraction(config.quickFilter ?? '')
     setQuickFilters(config.quickFilters ?? { country: [] as string[], contractStatus: [] as string[] })
     setGridFilterModel(config.filterModel ?? {}); setGridSortModel((config.sortModel?.length > 0) ? config.sortModel : [{ colId: 'favorite', sort: 'desc' }])
     setActiveViewId(viewId)
@@ -652,7 +660,7 @@ export default function VendorsReal() {
     setActiveViewId(null); setTransientManualColumnWidths(false)
     if (typeof window !== 'undefined') window.localStorage.removeItem(VENDOR_ACTIVE_VIEW_KEY)
     setFontSize(11); setRowDensity(8); setHiddenColumns([]); setGroupBy('raw'); setShowFilterBar(true)
-    setColumnLayoutState([]); setSearchTerm(''); setQuickFilters({ country: [] as string[], contractStatus: [] as string[] })
+    setColumnLayoutState([]); setSearchTermFromInteraction(''); setQuickFilters({ country: [] as string[], contractStatus: [] as string[] })
     setGridSortModel([{ colId: 'favorite', sort: 'desc' }])
     if (gridRef.current?.api) { gridRef.current.api.setFilterModel({}); gridRef.current.api.applyColumnState({ defaultState: { sort: null, pinned: null, hide: false }, applyOrder: true }) }
     showWorkspaceToast('Restored system default view')
@@ -860,7 +868,7 @@ export default function VendorsReal() {
 
   const activeFilterChips = useMemo(() => {
     const chips: Array<{ id: string; label: string; onRemove: () => void }> = []
-    if (searchTerm.trim()) chips.push({ id: 'search', label: `Search: ${searchTerm.trim()}`, onRemove: () => setSearchTerm('') })
+    if (searchTerm.trim()) chips.push({ id: 'search', label: `Search: ${searchTerm.trim()}`, onRemove: () => setSearchTermFromInteraction('') })
     Object.entries(gridFilterModel || {}).forEach(([field, model]) => {
       if (!model) return
       const labelValue = Array.isArray((model as any).values) ? (model as any).values.join(', ') : (model as any).filter || 'Active'
@@ -876,7 +884,7 @@ export default function VendorsReal() {
       chips.push({ id: `quick-${field}`, label: `${field}: ${labelValue}`, onRemove: () => setQuickFilters((current) => ({ ...current, [field]: Array.isArray(value) ? [] : '' })) })
     })
     return chips
-  }, [gridFilterModel, quickFilters, searchTerm])
+  }, [gridFilterModel, quickFilters, searchTerm, setSearchTermFromInteraction])
 
   const selectedItems = useMemo(() => displayedItems.filter((item: any) => selectedIds.includes(item.id)), [displayedItems, selectedIds])
 
@@ -1109,14 +1117,14 @@ export default function VendorsReal() {
       toolbarSearch={(
         <ToolbarSearch
           value={searchTerm}
-          onChange={(event) => setSearchTerm(event.target.value)}
+          onChange={(event) => setSearchTermFromInteraction(event.target.value)}
           placeholder="Search vendors..."
         />
       )}
       toolbarControls={(
         <>
           {searchTerm ? (
-            <ToolbarButton onClick={() => setSearchTerm('')} variant="quiet" title="Clear vendor search">
+            <ToolbarButton onClick={() => setSearchTermFromInteraction('')} variant="quiet" title="Clear vendor search">
               <X size={14} />
               Clear
             </ToolbarButton>
@@ -1227,7 +1235,7 @@ export default function VendorsReal() {
           id: 'clear-all',
           label: 'Clear All',
           onRemove: () => {
-            setSearchTerm('')
+            setSearchTermFromInteraction('')
             setGridFilterModel({})
             setQuickFilters({ country: [] as string[], contractStatus: [] as string[] })
             gridRef.current?.api?.setFilterModel({})

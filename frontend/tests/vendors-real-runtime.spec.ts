@@ -131,6 +131,47 @@ function getGlassPanelByHeading(page: Page, heading: string) {
   })
 }
 
+async function holdVendorPreferenceHydration(page: Page, remoteSearchTerm: string, remoteViewName: string) {
+  let releaseHydration!: () => void
+  const hydrationGate = new Promise<void>((resolve) => {
+    releaseHydration = resolve
+  })
+
+  await page.route('**/api/v1/settings/user/settings', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue()
+      return
+    }
+
+    const response = await route.fetch()
+    const userSettings = await response.json()
+    const vendorWorkspaceState = userSettings?.vendor_workspace_state_v1 ?? {}
+    await hydrationGate
+    await route.fulfill({
+      response,
+      json: {
+        ...userSettings,
+        vendor_workspace_state_v1: {
+          ...vendorWorkspaceState,
+          savedViews: [
+            {
+              id: `remote-hydrated-${remoteViewName}`,
+              name: remoteViewName,
+              config: { groupBy: 'country', quickFilter: remoteSearchTerm },
+            },
+          ],
+          uiState: {
+            ...(vendorWorkspaceState.uiState ?? {}),
+            searchTerm: remoteSearchTerm,
+          },
+        },
+      },
+    })
+  })
+
+  return releaseHydration
+}
+
 async function openVendorBySearch(page: Page, routePath: string, vendorName: string) {
   await gotoView(page, routePath, 'Vendors')
   await fillGridSearch(page, 'Search vendors...', vendorName)
@@ -151,8 +192,25 @@ test.describe('VendorsReal canonical runtime', () => {
     await resetBrowserState(page)
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     const scenario = await createVendorCandidateScenario(request)
+    const remoteViewName = `REMOTE-HYDRATED-VIEW-${scenario.vendor.id}`
+    const releaseVendorPreferenceHydration = await holdVendorPreferenceHydration(
+      page,
+      `REMOTE-STALE-${scenario.vendor.id}`,
+      remoteViewName,
+    )
 
-    await openVendorBySearch(page, '/vendors', scenario.vendorName)
+    await gotoView(page, '/vendors', 'Vendors')
+    const search = await fillGridSearch(page, 'Search vendors...', scenario.vendorName)
+    const vendorPreferenceResponse = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/settings/user/settings') && response.request().method() === 'GET'
+    )
+    releaseVendorPreferenceHydration()
+    await vendorPreferenceResponse
+    await openToolbarButton(page, 'Views')
+    await expect(page.getByText(remoteViewName, { exact: true })).toBeVisible()
+    await openToolbarButton(page, 'Views')
+    await expect(search).toHaveValue(scenario.vendorName)
+    await expect(getPrimaryGrid(page)).toContainText(scenario.vendorName)
     await expect(page.getByRole('button', { name: 'Views' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Display' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Import' })).toBeVisible()
