@@ -26,7 +26,7 @@ from typing import Any, Callable, Iterable
 from uuid import uuid4
 
 TOOL_NAME = "sysgrid-production-data-guard"
-TOOL_VERSION = "1.1.0"
+TOOL_VERSION = "1.2.0"
 MANIFEST_VERSION = 1
 DEFAULT_BUSY_RETRIES = 5
 DEFAULT_BUSY_SLEEP_SECONDS = 0.25
@@ -64,6 +64,39 @@ def sha256_file(path: Path) -> str:
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
+    return digest.hexdigest()
+
+
+def sqlite_logical_fingerprint(path: Path) -> str:
+    """Hash transaction-consistent SQLite schema and data, including WAL state.
+
+    Hashing only the main ``.db`` file can miss committed WAL frames.  This
+    fingerprint opens SQLite read-only, begins a read transaction, and hashes
+    the deterministic SQL stream produced by ``iterdump()`` plus durable
+    application metadata.  It is intended for before/after invariance proof,
+    not as a replacement for the snapshot artifact checksum.
+    """
+    resolved = path.expanduser().resolve()
+    if not resolved.is_file():
+        raise DataGuardError(f"SQLite database is missing: {resolved.name}")
+
+    digest = hashlib.sha256()
+    try:
+        with closing(open_sqlite_readonly(resolved)) as connection:
+            connection.execute("BEGIN")
+            try:
+                for pragma in ("application_id", "user_version"):
+                    value = connection.execute(f"PRAGMA {pragma}").fetchone()[0]
+                    digest.update(f"PRAGMA {pragma}={int(value)}\n".encode("utf-8"))
+                for statement in connection.iterdump():
+                    digest.update(statement.encode("utf-8", errors="surrogatepass"))
+                    digest.update(b"\n")
+            finally:
+                connection.rollback()
+    except sqlite3.Error as exc:
+        raise DataGuardError(
+            f"SQLite logical fingerprint failed for {resolved.name}: {exc.__class__.__name__}"
+        ) from exc
     return digest.hexdigest()
 
 
@@ -750,11 +783,17 @@ def reconcile_test_residue(
         "created_at": utc_timestamp(),
         "status": "planned",
     })
-    before_hash = sha256_file(config_path)
+    before_main_file_hash = sha256_file(config_path)
+    before_logical_hash = sqlite_logical_fingerprint(config_path)
     _backup_one(config_path, config_backup_tmp)
     integrity_check(config_backup_tmp)
+    backup_logical_hash = sqlite_logical_fingerprint(config_backup_tmp)
+    if backup_logical_hash != before_logical_hash:
+        raise DataGuardError(
+            "Config backup logical fingerprint does not match the pre-reconciliation registry state."
+        )
     os.replace(config_backup_tmp, config_backup)
-    backup_hash = sha256_file(config_backup)
+    backup_main_file_hash = sha256_file(config_backup)
 
     try:
         connection = sqlite3.connect(config_path, timeout=5.0)
@@ -792,7 +831,12 @@ def reconcile_test_residue(
             connection.close()
 
         integrity_check(config_path)
-        after_hash = sha256_file(config_path)
+        after_main_file_hash = sha256_file(config_path)
+        after_logical_hash = sqlite_logical_fingerprint(config_path)
+        if plan["candidate_count"] and after_logical_hash == before_logical_hash:
+            raise DataGuardError(
+                "Registry reconciliation reported changes but the logical SQLite fingerprint did not change."
+            )
         after_plan = build_test_residue_reconciliation_plan(
             config_db_url=config_db_url,
             default_db_url=default_db_url,
@@ -809,9 +853,13 @@ def reconcile_test_residue(
             "completed_at": utc_timestamp(),
             "status": "passed",
             "config_backup_filename": config_backup.name,
-            "config_backup_sha256": backup_hash,
-            "config_sha256_before": before_hash,
-            "config_sha256_after": after_hash,
+            "config_backup_main_file_sha256": backup_main_file_hash,
+            "config_backup_logical_sha256": backup_logical_hash,
+            "config_main_file_sha256_before": before_main_file_hash,
+            "config_main_file_sha256_after": after_main_file_hash,
+            "config_logical_sha256_before": before_logical_hash,
+            "config_logical_sha256_after": after_logical_hash,
+            "config_logical_change_verified": after_logical_hash != before_logical_hash,
             "deactivated_tenant_count": plan["candidate_count"],
             "rollback": "Restore config-before.db only while the application is stopped, or reactivate a reviewed tenant after its database is recovered.",
         }

@@ -111,6 +111,31 @@ class ProductionDataGuardTests(unittest.TestCase):
         self.assertIn("writer-open", values)
         production_data_guard.load_and_validate_manifest(snapshot)
 
+    def test_logical_fingerprint_observes_committed_wal_frames(self) -> None:
+        database = self.root / "wal-fingerprint.db"
+        writer = sqlite3.connect(database)
+        try:
+            writer.execute("PRAGMA journal_mode=WAL")
+            writer.execute("PRAGMA wal_autocheckpoint=0")
+            writer.execute("CREATE TABLE sample (value TEXT NOT NULL)")
+            writer.execute("INSERT INTO sample(value) VALUES ('before')")
+            writer.commit()
+            writer.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+
+            main_file_before = production_data_guard.sha256_file(database)
+            logical_before = production_data_guard.sqlite_logical_fingerprint(database)
+
+            writer.execute("INSERT INTO sample(value) VALUES ('committed-in-wal')")
+            writer.commit()
+
+            self.assertEqual(production_data_guard.sha256_file(database), main_file_before)
+            self.assertNotEqual(
+                production_data_guard.sqlite_logical_fingerprint(database),
+                logical_before,
+            )
+        finally:
+            writer.close()
+
     def test_checksum_tampering_is_rejected(self) -> None:
         snapshot = self._snapshot()
         manifest = json.loads((snapshot / "manifest.json").read_text(encoding="utf-8"))
@@ -277,6 +302,15 @@ class ProductionDataGuardTests(unittest.TestCase):
         )
         self.assertTrue(result["applied"])
         self.assertEqual(result["deactivated_tenant_count"], 1)
+        self.assertTrue(result["config_logical_change_verified"])
+        self.assertEqual(
+            result["config_backup_logical_sha256"],
+            result["config_logical_sha256_before"],
+        )
+        self.assertNotEqual(
+            result["config_logical_sha256_before"],
+            result["config_logical_sha256_after"],
+        )
         evidence_dir = Path(result["evidence_directory"])
         self.assertTrue((evidence_dir / "config-before.db").is_file())
         self.assertTrue((evidence_dir / "plan.json").is_file())

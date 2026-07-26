@@ -276,3 +276,12 @@ true to false. It never deletes tenant rows, access rows, or database files. Any
 active missing row without verified test provenance blocks the entire operation.
 After reconciliation, rerun `audit`, then the controlled snapshot/restore/
 migration drill.
+
+### WAL-safe invariance evidence
+
+Do not use the SHA-256 of the SQLite main `.db` file alone to prove that a
+live database was unchanged. A committed transaction can remain in `-wal`
+while the main file bytes stay identical. Production drills must compare
+`sqlite_logical_fingerprint()` values captured through read-only SQLite
+transactions before and after the isolated operation. Main-file hashes remain
+useful artifact diagnostics, but they are not the acceptance signal.
