@@ -118,15 +118,22 @@ test.describe('Architecture workflows', () => {
     await expect(page.getByText('Vendors: 1')).toBeVisible()
     await page.getByLabel('Close report').click()
 
-    await page.selectOption('select', 'ATTENTION_ONLY')
+    const scenarioSelect = page.locator('select').filter({ has: page.locator('option[value="ATTENTION_ONLY"]') }).first()
+    await scenarioSelect.selectOption('ATTENTION_ONLY')
     await expect(page.getByText('ATTENTION ONLY')).toBeVisible()
 
     await page.getByTitle('Presentation Mode').click()
     await expect(page.getByText('Presentation Mode Active')).toBeVisible()
     await page.getByTitle('Presentation Mode').click()
 
-    await page.locator('[data-testid^="rf__node-device-"]').first().click({ force: true })
-    await page.getByRole('link', { name: 'Asset', exact: true }).click()
+    await scenarioSelect.selectOption('all')
+    await expect(scenarioSelect).toHaveValue('all')
+    const primaryNode = page.locator(`.react-flow__node[data-id="device-${primary.id}"]`)
+    await expect(primaryNode).toBeVisible({ timeout: 20000 })
+    await primaryNode.click({ force: true })
+    const assetLink = page.getByRole('link', { name: 'Asset', exact: true })
+    await expect(assetLink).toBeVisible()
+    await assetLink.click()
     await expect(page).toHaveURL(/\/asset/)
   })
 

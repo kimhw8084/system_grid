@@ -3,6 +3,7 @@ import { ChaosController } from './chaosController.ts';
 import { InteractionChaos } from './chaosInteractions.ts';
 import { NetworkChaos } from './chaosNetwork.ts';
 import { StateChaos } from './chaosState.ts';
+import { testApiHeaders } from './sysgrid.ts';
 
 // Extend the base test to include a globally pre-configured API client and ChaosController
 export const test = base.extend<{ 
@@ -41,8 +42,7 @@ export const test = base.extend<{
         return request.post(path, {
           ...options,
           headers: {
-            'X-User-Id': 'admin_root',
-            'X-Tenant-Id': '1',
+            ...testApiHeaders,
             ...options?.headers
           }
         });
@@ -51,8 +51,7 @@ export const test = base.extend<{
         return request.get(path, {
           ...options,
           headers: {
-            'X-User-Id': 'admin_root',
-            'X-Tenant-Id': '1',
+            ...testApiHeaders,
             ...options?.headers
           }
         });
@@ -61,8 +60,7 @@ export const test = base.extend<{
         return request.patch(path, {
           ...options,
           headers: {
-            'X-User-Id': 'admin_root',
-            'X-Tenant-Id': '1',
+            ...testApiHeaders,
             ...options?.headers
           }
         });
@@ -71,8 +69,7 @@ export const test = base.extend<{
         return request.delete(path, {
           ...options,
           headers: {
-            'X-User-Id': 'admin_root',
-            'X-Tenant-Id': '1',
+            ...testApiHeaders,
             ...options?.headers
           }
         });
@@ -81,8 +78,7 @@ export const test = base.extend<{
         return request.put(path, {
           ...options,
           headers: {
-            'X-User-Id': 'admin_root',
-            'X-Tenant-Id': '1',
+            ...testApiHeaders,
             ...options?.headers
           }
         });
