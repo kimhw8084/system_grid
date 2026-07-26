@@ -46,25 +46,68 @@ SysGrid now treats the following as explicit runtime checks:
 - stale frontend bundle risk if detectable
   Reported when the frontend bundle version differs from the backend’s frontend-version hint.
 
-## Deploy Commands
+## Corporate Cloud Primary Publish Path
 
-### Backend
+The primary deployment contract is the corporate cloud's two independently
+published projects. Preserve these project boundaries even when optional local or
+on-premises packaging is added later:
+
+1. **FastAPI project:** publish from `backend/`.
+2. **Node/React project:** publish from `frontend/`.
+
+Docker and Compose are optional compatibility tools only. They must never become
+a prerequisite for either corporate project, combine both projects into one
+mandatory image, or replace the native build/start contracts below.
+
+### FastAPI project
+
+Use the corporate FastAPI publisher from `backend/`. Keep `requirements.txt` for
+platform discovery and keep `requirements.lock` as the deterministic dependency
+contract. Where the publisher supports a custom install command, prefer the lock:
 
 ```bash
 cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+python -m pip install -r requirements.lock
+python -m uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}"
 ```
 
-### Frontend
+If the platform owns the Uvicorn command, configure the application target as
+`app.main:app`. Do not enable production startup migration implicitly. Health and
+readiness remain:
+
+- `GET /api/v1/health`
+- `GET /api/v1/readiness`
+
+### Node/React project
+
+Use the corporate Node/React publisher from `frontend/` and preserve the lockfile:
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run build
 ```
 
-Serve `frontend/dist/` through the intended company route or local static hosting layer.
+Publish `frontend/dist/` through the platform's React/static output contract. Set
+`VITE_API_BASE_URL` to the separately published FastAPI origin when the projects
+do not share an origin. Keep `VITE_IDENTITY_MODE=trusted_proxy`; browser code must
+not assert the trusted user header. A blank API base remains valid only when the
+corporate ingress intentionally supplies same-origin `/api` routing.
+
+### Source-level corporate publishability guard
+
+Run the read-only guard from the repository root before either project is
+published:
+
+```bash
+python scripts/corporate_publishability_guard.py
+```
+
+The guard verifies independent roots, native dependency/build manifests, the
+FastAPI entrypoint and safe endpoints, separate-service frontend routing, trusted
+proxy behavior, and the production environment examples. It does not require
+Docker, network access, credentials, or a live corporate deployment. Real cloud
+publish success must still be verified in the corporate environment.
 
 ## Required Safe Endpoints
 
