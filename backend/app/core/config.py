@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     DEFAULT_USER_ID: str = "admin_root"
     AUTO_ADMIN_USER_IDS: str = "admin_root"
     ALLOW_AUTO_ADMIN_IN_PRODUCTION: bool = False
+
+    # Startup schema mutation is convenient in development/test but dangerous in
+    # production. Production requires an explicit acknowledgement before either
+    # config create_all or Alembic upgrade runs during application startup.
+    AUTO_MIGRATE_ON_STARTUP: bool = True
+    ALLOW_AUTO_MIGRATE_IN_PRODUCTION: bool = False
+
     USER_ID_ENV_VAR: str = "USER_ID"
     DEFAULT_OPERATOR_DEPARTMENT: str = "Infrastructure"
     DEFAULT_SUPPORT_EMAIL: str = "admin@infra.local"
@@ -62,6 +69,18 @@ class Settings(BaseSettings):
     @property
     def identity_mode(self) -> str:
         return (self.IDENTITY_MODE or "development").strip().lower()
+
+    @property
+    def startup_schema_management_enabled(self) -> bool:
+        if not self.AUTO_MIGRATE_ON_STARTUP:
+            return False
+        if self.is_production:
+            return bool(self.ALLOW_AUTO_MIGRATE_IN_PRODUCTION)
+        return True
+
+    @property
+    def startup_schema_policy(self) -> str:
+        return "automatic" if self.startup_schema_management_enabled else "operator_managed"
 
     @property
     def is_testing(self) -> bool:

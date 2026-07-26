@@ -135,9 +135,15 @@ async def get_db(request: Request):
             try:
                 # Attempt to convert to int if it's an ID, otherwise treat as name
                 tenant_identifier = int(header_tenant_id)
-                tenant_stmt = select(Tenant).filter(Tenant.id == tenant_identifier)
+                tenant_stmt = select(Tenant).filter(
+                    Tenant.id == tenant_identifier,
+                    Tenant.is_active == True,
+                )
             except ValueError:
-                tenant_stmt = select(Tenant).filter(Tenant.name == header_tenant_id)
+                tenant_stmt = select(Tenant).filter(
+                    Tenant.name == header_tenant_id,
+                    Tenant.is_active == True,
+                )
             
             tenant_result = await config_db.execute(tenant_stmt)
             target_tenant = tenant_result.scalar_one_or_none()
@@ -172,6 +178,7 @@ async def get_db(request: Request):
                 .join(UserTenantAccess)
                 .filter(UserTenantAccess.user_id == user_id)
                 .filter(UserTenantAccess.is_selected == True)
+                .filter(Tenant.is_active == True)
             )
             selected_result = await config_db.execute(selected_stmt)
             selected_access = selected_result.first()
@@ -186,6 +193,7 @@ async def get_db(request: Request):
                     select(Tenant.db_url, UserTenantAccess.role, Tenant.id)
                     .join(UserTenantAccess)
                     .filter(UserTenantAccess.user_id == user_id)
+                    .filter(Tenant.is_active == True)
                     .order_by(Tenant.id.asc())
                 )
                 fallback_result = await config_db.execute(fallback_access_stmt)

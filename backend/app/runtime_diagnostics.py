@@ -60,6 +60,7 @@ def build_readiness_payload() -> dict[str, Any]:
         "api_version": settings.API_V1_STR.strip("/").split("/")[-1] or "v1",
         "server_timestamp": datetime.now(timezone.utc).isoformat(),
         "environment_mode": infer_sanitized_environment_mode(),
+        "startup_schema_policy": settings.startup_schema_policy,
         "frontend_build_version_hint": frontend_build_version_hint(),
         "import_export_contract": build_import_export_contract_summary(),
     }

@@ -177,3 +177,54 @@ async def test_create_tenant_provisions_far_and_rca_runtime_schema(client, monke
     assert "version" in rca_columns
     assert "far_history" in table_names
     assert "rca_history" in table_names
+
+@pytest.mark.anyio
+async def test_inactive_tenant_is_hidden_unselectable_and_unroutable(client, monkeypatch, tmp_path, setup_db):
+    storage_root = tmp_path / "inactive-storage"
+    storage_root.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setenv("DEFAULT_USER_ID", "haewon.kim")
+    monkeypatch.setenv("USER_ID_ENV_VAR", "AccessKey")
+    monkeypatch.setenv("AccessKey", "haewon.kim")
+
+    settings_res = await client.post("/api/v1/tenants/admin/settings", json={
+        "key": "tenant_storage_root",
+        "value": str(storage_root),
+        "description": "inactive tenant storage root",
+    })
+    assert settings_res.status_code == 200, settings_res.text
+
+    create_res = await client.post(
+        "/api/v1/tenants/admin/create",
+        json={"name": f"Inactive Tenant {tmp_path.name}"},
+    )
+    assert create_res.status_code == 200, create_res.text
+    tenant = create_res.json()
+
+    _, config_session_local = setup_db
+    from sqlalchemy import update
+    from app.models.config import Tenant
+
+    async with config_session_local() as config_session:
+        await config_session.execute(
+            update(Tenant)
+            .where(Tenant.id == tenant["id"])
+            .values(is_active=False)
+        )
+        await config_session.commit()
+
+    tenants_res = await client.get("/api/v1/tenants/me")
+    assert tenants_res.status_code == 200, tenants_res.text
+    assert tenants_res.json() == []
+
+    select_res = await client.post(
+        "/api/v1/tenants/select",
+        json={"tenant_id": tenant["id"]},
+    )
+    assert select_res.status_code == 403, select_res.text
+
+    route_res = await client.get(
+        "/api/v1/devices",
+        headers={"X-Tenant-Id": str(tenant["id"])},
+    )
+    assert route_res.status_code == 404, route_res.text

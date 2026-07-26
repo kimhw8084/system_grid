@@ -144,3 +144,135 @@ python scripts/production-preflight.py
 ```
 
 The preflight intentionally reports missing lockfiles as deployment blockers. It does not replace the full Playwright suite, a company-domain browser run, or the backup/restore drill.
+
+## Production Workhorse Data-Safety Gate
+
+Production startup no longer mutates database schemas by default. In production,
+`AUTO_MIGRATE_ON_STARTUP=true` is ignored unless the operator also explicitly sets:
+
+```bash
+ALLOW_AUTO_MIGRATE_IN_PRODUCTION=true
+```
+
+The preferred production flow is operator-managed: verify configuration, create a
+transaction-consistent snapshot, restore it in isolation, rehearse migrations on
+the restored copies, and only then start or upgrade the live service.
+
+### One-command durability verification
+
+Set explicit production database URLs and a persistent backup root, then run:
+
+```bash
+export CONFIG_DATABASE_URL='sqlite+aiosqlite:////srv/sysgrid/data/config.db'
+export DATABASE_URL='sqlite+aiosqlite:////srv/sysgrid/data/default.db'
+python scripts/production_data_guard.py verify \
+  --backup-root /srv/sysgrid/backups
+```
+
+The command runs the existing production configuration preflight, creates an
+online SQLite snapshot using the SQLite backup API, restores it to an isolated
+drill location, verifies hashes and SQLite integrity, and runs Alembic only
+against restored tenant/default database copies. It emits an operation ID and
+returns nonzero on any unsafe or unverifiable condition.
+
+### Snapshot only
+
+```bash
+python scripts/production_data_guard.py snapshot \
+  --output-root /srv/sysgrid/backups
+```
+
+Every completed snapshot contains a versioned `manifest.json` with logical roles,
+relative filenames, sizes, SHA-256 checksums, and integrity results. It excludes
+raw database URLs, credentials, and absolute live source paths. Interrupted
+snapshots are removed and never leave a valid-looking final manifest.
+
+### Isolated restore drill
+
+```bash
+python scripts/production_data_guard.py restore \
+  --snapshot /srv/sysgrid/backups/snapshot-... \
+  --target-root /srv/sysgrid/restore-drills/restore-001
+```
+
+Restore refuses nonempty targets, absolute/traversal manifest paths, checksum or
+size mismatches, and failed SQLite integrity checks. Stage 1 intentionally has no
+live overwrite mode.
+
+### Migration rehearsal
+
+```bash
+python scripts/production_data_guard.py rehearse \
+  --snapshot /srv/sysgrid/backups/snapshot-...
+```
+
+Alembic is run only against restored default/tenant database copies. The config
+database is restored and integrity-checked but remains managed by SQLAlchemy
+`create_all`, not Alembic; this limitation is reported explicitly.
+
+### Safe startup and rollback rule
+
+1. Stop writes or place the application in the approved maintenance state.
+2. Run the one-command durability verification and preserve its operation ID.
+3. Keep production startup schema management operator-controlled.
+4. Deploy the new application version.
+5. Confirm `/api/v1/health` and `/api/v1/readiness`.
+6. If rollback is required, stop the application and restore the approved
+   snapshot to a new isolated data root first. Stage 1 never overwrites live data.
+
+### Tenant registry integrity
+
+Audit registry state before a maintenance drill:
+
+```bash
+python scripts/production_data_guard.py audit
+```
+
+An active tenant or required config/default database whose file is missing is a
+hard blocker. Restore or correct that registration before production startup.
+An inactive tenant whose file is already missing is not backed up; the omission
+is recorded in the snapshot manifest under `omitted_inactive_databases` with
+only sanitized tenant metadata and the missing filename. Existing inactive
+database files are still included in snapshots.
+
+Inactive tenants are excluded from request routing, tenant selection, and the
+normal user tenant list. The administrative tenant registry remains the place
+to inspect inactive/offline records.
+
+### Verified test-registry residue reconciliation
+
+Backend and browser test runs must never write tenant registrations into the
+configured live `config.db`. The backend pytest harness now selects test mode
+before importing application settings, overrides both config and tenant database
+dependencies, rebinds stale direct `ConfigSessionLocal` imports to the per-test
+temporary registry, and fails the test session if the configured live config
+database hash changes.
+
+For an already contaminated registry, preview only the narrow, reversible
+reconciliation plan first. The classifier accepts only missing active rows with
+strong test provenance such as pytest temporary paths, backend tenant-workflow
+names, tenant-isolation names, or timestamped Blank-Slate/Switch/Empty-States
+names:
+
+```bash
+python scripts/production_data_guard.py reconcile-test-residue \
+  --expected-candidates 80
+```
+
+Apply requires a stopped application, an exact expected candidate count, an
+external evidence root, and two explicit acknowledgement tokens:
+
+```bash
+python scripts/production_data_guard.py reconcile-test-residue \
+  --expected-candidates 80 \
+  --evidence-root "$HOME/sysgrid-production-drills" \
+  --maintenance-token APP-STOPPED \
+  --apply-token DEACTIVATE-VERIFIED-TEST-RESIDUE
+```
+
+The operation creates an online backup of `config.db`, records before/after
+hashes and a sanitized candidate list, and only changes `tenants.is_active` from
+true to false. It never deletes tenant rows, access rows, or database files. Any
+active missing row without verified test provenance blocks the entire operation.
+After reconciliation, rerun `audit`, then the controlled snapshot/restore/
+migration drill.

@@ -67,9 +67,15 @@ async def ping_engine(engine) -> tuple[bool, str | None]:
 async def lifespan(app: FastAPI):
     settings.assert_production_safe()
 
-    from .database import init_config_db
-    await init_config_db()
-    await run_migrations()
+    if settings.startup_schema_management_enabled:
+        from .database import init_config_db
+        await init_config_db()
+        await run_migrations()
+    else:
+        logger.warning(
+            "Automatic startup schema mutation is disabled; expecting operator-managed production migrations",
+            extra={"startup_schema_policy": settings.startup_schema_policy},
+        )
     yield
 
 

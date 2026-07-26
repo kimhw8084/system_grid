@@ -623,6 +623,7 @@ async def get_my_tenants(db: AsyncSession = Depends(get_config_db), request: Req
         select(Tenant.id, Tenant.name, UserTenantAccess.role, UserTenantAccess.is_selected, Tenant.db_url)
         .join(UserTenantAccess)
         .filter(UserTenantAccess.user_id == user_id)
+        .filter(Tenant.is_active == True)
     )
     result = await db.execute(stmt)
     
@@ -646,7 +647,12 @@ async def select_tenant(selection: UserTenantSelection, db: AsyncSession = Depen
     # Verify access
     res = await db.execute(
         select(UserTenantAccess)
-        .filter(UserTenantAccess.user_id == user_id, UserTenantAccess.tenant_id == selection.tenant_id)
+        .join(Tenant, Tenant.id == UserTenantAccess.tenant_id)
+        .filter(
+            UserTenantAccess.user_id == user_id,
+            UserTenantAccess.tenant_id == selection.tenant_id,
+            Tenant.is_active == True,
+        )
     )
     access = res.scalar_one_or_none()
     if not access:
