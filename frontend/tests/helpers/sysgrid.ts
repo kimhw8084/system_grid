@@ -3,6 +3,10 @@ import { expect, type APIRequestContext, type Locator, type Page } from '@playwr
 const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
 const apiOrigin = apiBase.replace(/\/api\/v1$/, '')
 const testUserId = process.env.USER_ID || 'haewon.kim'
+export const testApiHeaders: Record<string, string> = {
+  'X-User-Id': testUserId,
+  'X-Tenant-Id': '1',
+}
 export type WorkspaceId = 'monitoring' | 'network' | 'assets' | 'vendors'
 export type LogicalGridRow = {
   rowKey: string
@@ -36,7 +40,7 @@ const browserStateKeys = [
 async function post(request: APIRequestContext, path: string, data: Record<string, any>) {
   const response = await request.post(`${apiBase}${path}`, { 
     data,
-    headers: { 'X-User-Id': testUserId, 'X-Tenant-Id': '1' }
+    headers: testApiHeaders
   })
   if (!response.ok()) {
      const text = await response.text()
@@ -53,7 +57,7 @@ async function post(request: APIRequestContext, path: string, data: Record<strin
 async function put(request: APIRequestContext, path: string, data: Record<string, any>) {
   const response = await request.put(`${apiBase}${path}`, { 
     data,
-    headers: { 'X-User-Id': testUserId, 'X-Tenant-Id': '1' }
+    headers: testApiHeaders
   })
   expect(response.ok()).toBeTruthy()
   return response.json()
@@ -61,7 +65,7 @@ async function put(request: APIRequestContext, path: string, data: Record<string
 
 async function get(request: APIRequestContext, path: string) {
   const response = await request.get(`${apiBase}${path}`, {
-    headers: { 'X-User-Id': testUserId, 'X-Tenant-Id': '1' }
+    headers: testApiHeaders
   })
   expect(response.ok()).toBeTruthy()
   return response.json()
@@ -83,8 +87,6 @@ export async function ensureSettingOption(
 
 export async function resetBrowserState(page: Page) {
   const testResetToken = `pw-reset-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-  const testUserId = process.env.USER_ID || 'haewon.kim'
-  
   const cleanState = {
     savedViews: [],
     activeViewId: null,
@@ -121,9 +123,7 @@ export async function resetBrowserState(page: Page) {
         investigation_ui_state: null,
         settings_ui_state: null,
       },
-      headers: {
-        'X-User-Id': testUserId
-      }
+      headers: testApiHeaders
     })
   } catch (e) {
     console.error('Failed to clear backend settings:', e)

@@ -13,7 +13,8 @@ import {
   openToolbarButton,
   resetBrowserState,
   seedOperationalScenario,
-  selectGridCheckboxRows
+  selectGridCheckboxRows,
+  testApiHeaders
 } from './helpers/sysgrid'
 
 const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
@@ -59,6 +60,7 @@ test.describe('Monitoring workflows', () => {
     const { stamp, monitoring, knowledge } = await seedOperationalScenario(request)
 
     const extraKnowledgeResponse = await request.post(`${apiBase}/knowledge`, {
+      headers: testApiHeaders,
       data: {
         category: 'BKM',
         title: `PW-RECOVERY-EXTRA-${stamp}`,
@@ -78,8 +80,8 @@ test.describe('Monitoring workflows', () => {
     await expect(recoveryDialog.getByText(knowledge.title, { exact: true })).toBeVisible()
 
     await clickResilientButton(page, 'Link Procedure')
-    await page.getByPlaceholder('Search Knowledge Base by title or category...').fill(extraKnowledge.title)
-    const extraKnowledgeButton = page.getByRole('button', { name: new RegExp(extraKnowledge.title, 'i') }).first()
+    await recoveryDialog.getByPlaceholder('Search Knowledge Base by title or category...').fill(extraKnowledge.title)
+    const extraKnowledgeButton = recoveryDialog.getByRole('button', { name: new RegExp(extraKnowledge.title, 'i') }).first()
     await expect(extraKnowledgeButton).toBeVisible()
     await extraKnowledgeButton.click()
     await expect(page.getByText(extraKnowledge.title)).toBeVisible()
@@ -185,7 +187,7 @@ test.describe('Monitoring workflows', () => {
     await clickResilientButton(page, 'Save Monitoring')
     await expect(page.getByText('Update Monitoring')).not.toBeVisible()
     await expect.poll(async () => {
-      const response = await request.get(`${apiBase}/monitoring?include_deleted=true`)
+      const response = await request.get(`${apiBase}/monitoring?include_deleted=true`, { headers: testApiHeaders })
       const items = await response.json()
       return Array.isArray(items) && items.some((item: any) => item.id === monitoring.id && item.title === updatedTitle && item.purpose === updatedPurpose)
     }).toBeTruthy()
@@ -227,6 +229,7 @@ test.describe('Monitoring workflows', () => {
     const initialTitleWidth = await getColumnWidth(page, 'title')
 
     const updateResponse = await request.put(`${apiBase}/monitoring/${monitoring.id}`, {
+      headers: testApiHeaders,
       data: {
         ...monitoring,
         title: editedLongTitle,
@@ -234,7 +237,7 @@ test.describe('Monitoring workflows', () => {
     })
     expect(updateResponse.ok()).toBeTruthy()
     await expect.poll(async () => {
-      const response = await request.get(`${apiBase}/monitoring?include_deleted=true`)
+      const response = await request.get(`${apiBase}/monitoring?include_deleted=true`, { headers: testApiHeaders })
       const items = await response.json()
       return Array.isArray(items) && items.some((item: any) => item.id === monitoring.id && item.title === editedLongTitle)
     }).toBeTruthy()
@@ -260,7 +263,7 @@ test.describe('Monitoring workflows', () => {
       severity: 'Warning',
     })
     await expect.poll(async () => {
-      const response = await request.get(`${apiBase}/monitoring?include_deleted=true`)
+      const response = await request.get(`${apiBase}/monitoring?include_deleted=true`, { headers: testApiHeaders })
       const items = await response.json()
       return Array.isArray(items) && items.some((item: any) => item.id === createdMonitoring.id && item.title === createdLongTitle)
     }).toBeTruthy()
@@ -341,6 +344,7 @@ test.describe('Monitoring workflows', () => {
     }, { nextViewName: viewName, nextWidth: manualViewWidth })
 
     const settingsResponse = await request.patch(`${apiBase}/settings/user/settings`, {
+      headers: testApiHeaders,
       data: { [monitoringWorkspacePreferenceKey]: workspacePreference }
     })
     expect(settingsResponse.ok()).toBeTruthy()

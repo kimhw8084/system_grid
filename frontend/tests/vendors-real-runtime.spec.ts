@@ -206,7 +206,7 @@ test.describe('VendorsReal canonical runtime', () => {
     expect(Math.abs((contextMenuBox?.x || 0) - cursorX)).toBeLessThan(420)
     expect(Math.abs((contextMenuBox?.y || 0) - cursorY)).toBeLessThan(260)
 
-    await clickResilientButton(page, 'Details')
+    await contextMenu.getByRole('button', { name: 'Details', exact: true }).click()
     const detailDialog = getDetailDialog(page, scenario.vendorName)
     await expect(detailDialog).toBeVisible()
     await expect(detailDialog.getByRole('button', { name: 'Overview', exact: true })).toBeVisible()

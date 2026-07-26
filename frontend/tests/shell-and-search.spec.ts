@@ -32,7 +32,11 @@ test.describe('App shell and global search', () => {
     await expect(serviceResult).toBeVisible()
     await serviceResult.click()
     await expect(page).toHaveURL(new RegExp(`/services\\?id=${service.id}`))
-    await expect(page.getByText(service.name)).toBeVisible()
+    const serviceDialog = page.getByRole('dialog').filter({
+      has: page.getByRole('heading', { level: 2, name: service.name, exact: true }),
+    }).last()
+    await expect(serviceDialog).toBeVisible()
+    await expect(serviceDialog.getByRole('heading', { level: 2, name: service.name, exact: true })).toBeVisible()
 
     await page.goto('/')
     await waitForAppIdle(page)
