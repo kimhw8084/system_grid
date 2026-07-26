@@ -1,0 +1,212 @@
+{
+  "schemaVersion": 1,
+  "master": {
+    "key": "monitoring",
+    "label": "Monitoring",
+    "route": "/monitoring",
+    "heading": "Monitoring",
+    "routeComponent": "MonitoringGrid",
+    "source": "frontend/src/components/MonitoringGrid.tsx",
+    "archetype": "table",
+    "searchPlaceholders": ["Scan matrix..."],
+    "preferredPanelActions": [
+      { "kind": "button", "name": "Views" },
+      { "kind": "button", "name": "Display" }
+    ],
+    "preferredModalActions": [
+      { "kind": "button", "name": "Import" }
+    ],
+    "domainMustPreserve": [
+      "monitor lifecycle and recovery linking",
+      "compare and bulk actions",
+      "saved views and display persistence",
+      "deep-link detail behavior"
+    ]
+  },
+  "targets": [
+    {
+      "key": "assets",
+      "label": "Assets",
+      "route": "/asset",
+      "heading": "Assets",
+      "routeComponent": "Assets",
+      "source": "frontend/src/components/Assets.tsx",
+      "archetype": "table",
+      "searchPlaceholders": ["Scan asset matrix..."],
+      "preferredPanelActions": [
+        { "kind": "button", "name": "Views" },
+        { "kind": "button", "name": "Display" }
+      ],
+      "preferredModalActions": [
+        { "kind": "button", "name": "Import" }
+      ],
+      "domainMustPreserve": [
+        "asset details and quick look",
+        "relationships and map/report surfaces",
+        "bulk lifecycle including revert",
+        "hardware, secrets, and deep links"
+      ]
+    },
+    {
+      "key": "services",
+      "label": "Services",
+      "route": "/services",
+      "heading": "Services",
+      "routeComponent": "ServicesReal",
+      "source": "frontend/src/components/ServicesReal.tsx",
+      "archetype": "table",
+      "searchPlaceholders": ["Scan service matrix...", "Scan matrix..."],
+      "preferredPanelActions": [
+        { "kind": "button", "name": "Views" },
+        { "kind": "button", "name": "Display" }
+      ],
+      "preferredModalActions": [
+        { "kind": "button", "name": "Import" }
+      ],
+      "domainMustPreserve": [
+        "service records and host relationships",
+        "service-specific create and edit forms",
+        "lifecycle and bulk operations",
+        "deep-link details"
+      ]
+    },
+    {
+      "key": "external",
+      "label": "External",
+      "route": "/external",
+      "heading": "External",
+      "routeComponent": "External",
+      "source": "frontend/src/components/External.tsx",
+      "archetype": "table",
+      "searchPlaceholders": ["Scan external matrix...", "Scan matrix..."],
+      "preferredPanelActions": [
+        { "kind": "button", "name": "Views" },
+        { "kind": "button", "name": "Display" }
+      ],
+      "preferredModalActions": [
+        { "kind": "button", "name": "Import" }
+      ],
+      "domainMustPreserve": [
+        "external metadata and ownership",
+        "credentials and dependency links",
+        "compare and bulk actions",
+        "link failure diagnostics and deep links"
+      ]
+    },
+    {
+      "key": "network",
+      "label": "Network",
+      "route": "/network",
+      "heading": "Network",
+      "routeComponent": "NetworkReal",
+      "source": "frontend/src/components/NetworkReal.tsx",
+      "archetype": "hybrid",
+      "searchPlaceholders": ["Scan matrix..."],
+      "preferredPanelActions": [
+        { "kind": "button", "name": "Views" },
+        { "kind": "button", "name": "Display" }
+      ],
+      "preferredModalActions": [
+        { "kind": "button", "name": "Import" }
+      ],
+      "domainMustPreserve": [
+        "topology and forensics",
+        "connection details and unit edits",
+        "relationships and deep links",
+        "network-specific bulk operations"
+      ]
+    },
+    {
+      "key": "far",
+      "label": "FAR",
+      "route": "/far",
+      "heading": "Failure Matrix",
+      "routeComponent": "FAR",
+      "source": "frontend/src/components/FAR.tsx",
+      "archetype": "custom",
+      "searchPlaceholders": [],
+      "preferredPanelActions": [
+        { "kind": "button", "name": "Causal Forensics" },
+        { "kind": "button", "name": "Strategic Roadmap" }
+      ],
+      "preferredModalActions": [
+        { "kind": "title", "name": "Edit Matrix Configuration" }
+      ],
+      "domainMustPreserve": [
+        "failure mode deep links",
+        "causal forensics",
+        "mitigation roadmap",
+        "custom wizard and matrix behavior"
+      ]
+    },
+    {
+      "key": "research",
+      "label": "Research",
+      "route": "/research",
+      "heading": "Research Matrix",
+      "routeComponent": "Research",
+      "source": "frontend/src/components/Research.tsx",
+      "archetype": "custom",
+      "searchPlaceholders": ["SCAN RESEARCH..."],
+      "preferredPanelActions": [
+        { "kind": "button", "name": "2037" },
+        { "kind": "title", "name": "Toggle Style Lab" }
+      ],
+      "preferredModalActions": [
+        { "kind": "button", "name": "Add Research" }
+      ],
+      "domainMustPreserve": [
+        "research and RCA record types",
+        "year filtering and intelligence stream",
+        "inspect and purge actions",
+        "custom workflow body and deep links"
+      ]
+    },
+    {
+      "key": "vendors",
+      "label": "Vendors",
+      "route": "/vendors",
+      "heading": "Vendors",
+      "routeComponent": "VendorsReal",
+      "source": "frontend/src/components/VendorsReal.tsx",
+      "archetype": "table",
+      "searchPlaceholders": ["Search vendors..."],
+      "preferredPanelActions": [
+        { "kind": "button", "name": "Views" },
+        { "kind": "button", "name": "Display" }
+      ],
+      "preferredModalActions": [
+        { "kind": "button", "name": "Import" }
+      ],
+      "domainMustPreserve": [
+        "vendor dossier and deep links",
+        "personnel accounts and managed PCs",
+        "rich contract registration and details",
+        "bulk lifecycle and row/context actions"
+      ]
+    }
+  ],
+  "acceptanceCategories": [
+    "route-and-source-wiring",
+    "shell-header-toolbar",
+    "search-filter-saved-display",
+    "grid-or-custom-body",
+    "selection-row-context-bulk",
+    "floating-panels",
+    "modal-form-dirty-state",
+    "lifecycle-and-blank-state",
+    "import-export-file-flow",
+    "domain-preservation",
+    "responsive-layout",
+    "guard-and-runtime-proof"
+  ],
+  "implementationOrder": [
+    "shared-monitoring-contract",
+    "external-services",
+    "assets-vendors",
+    "network",
+    "far-research",
+    "seven-view-parity-hardening",
+    "route-finalization-and-lock"
+  ]
+}
