@@ -64,14 +64,19 @@ test.describe('Architecture workflows', () => {
     await expect(externalBtn).toBeVisible({ timeout: 20000 })
     await externalBtn.click()
 
+    const commitResponsePromise = page.waitForResponse((response) => {
+      const url = new URL(response.url())
+      return response.request().method() === 'PUT'
+        && /^\/api\/v1\/data-flows\/\d+\/?$/.test(url.pathname)
+    })
     await clickResilientButton(page, /Commit Changes/i)
-    await expect(page.getByText('Manifest Persistent in Core Registry')).toBeVisible()
-
-    const flowsRes = await request.get(`${apiBase}/data-flows`)
-    expect(flowsRes.ok()).toBeTruthy()
-    const flows = await flowsRes.json()
-    const flow = flows.find((entry: any) => entry.name === architectureName)
-    expect(flow).toBeTruthy()
+    const commitResponse = await commitResponsePromise
+    const committedFlow = await commitResponse.json()
+    expect(commitResponse.ok(), JSON.stringify(committedFlow)).toBeTruthy()
+    expect(committedFlow.name).toBe(architectureName)
+    expect(committedFlow.nodes.some((node: any) => node.id === `device-${primary.id}`)).toBeTruthy()
+    expect(committedFlow.nodes.some((node: any) => node.id === `external-${externalEntity.id}`)).toBeTruthy()
+    const flow = committedFlow
 
     const updateRes = await request.put(`${apiBase}/data-flows/${flow.id}`, {
       data: {
@@ -92,7 +97,10 @@ test.describe('Architecture workflows', () => {
         change_summary: 'Linked operating context',
       },
     })
-    expect(updateRes.ok()).toBeTruthy()
+    const updatedFlow = await updateRes.json()
+    expect(updateRes.ok(), JSON.stringify(updatedFlow)).toBeTruthy()
+    expect(updatedFlow.nodes.some((node: any) => node.id === `device-${primary.id}`)).toBeTruthy()
+    expect(updatedFlow.nodes.some((node: any) => node.id === `external-${externalEntity.id}`)).toBeTruthy()
 
     await page.goto('/architecture')
     await expect(page.getByRole('heading', { name: 'Architecture Matrix' })).toBeVisible()
@@ -128,7 +136,7 @@ test.describe('Architecture workflows', () => {
 
     await scenarioSelect.selectOption('all')
     await expect(scenarioSelect).toHaveValue('all')
-    const primaryNode = page.locator(`.react-flow__node[data-id="device-${primary.id}"]`)
+    const primaryNode = page.locator('.react-flow__node').filter({ hasText: primary.name }).first()
     await expect(primaryNode).toBeVisible({ timeout: 20000 })
     await primaryNode.click({ force: true })
     const assetLink = page.getByRole('link', { name: 'Asset', exact: true })
