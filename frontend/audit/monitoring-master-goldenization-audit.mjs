@@ -115,7 +115,7 @@ function containsAny(values, expected) {
   return expected.some((item) => haystack.some((value) => value.includes(item.toLowerCase())))
 }
 
-function classify(target, source, runtime) {
+export function classify(target, source, runtime) {
   const seeded = runtime?.seeded || null
   const blank = runtime?.blank || null
   const panel = runtime?.panelProbe || null
@@ -134,6 +134,7 @@ function classify(target, source, runtime) {
     'search-filter-saved-display': status(
       source.signals.savedViews && source.signals.display &&
       (target.searchPlaceholders.length === 0 || containsAny(inputs, target.searchPlaceholders)) &&
+      (target.searchPlaceholders.length === 0 || seeded?.filteredToSeed === true) &&
       containsAny(buttons, ['Views', 'Display']),
       archetype === 'custom' ? 'N/A' : 'FAIL',
     ),
@@ -143,14 +144,14 @@ function classify(target, source, runtime) {
     'selection-row-context-bulk': gridApplicable
       ? status(source.signals.rowActions && source.signals.bulk && seeded?.rowCount > 0 && seeded?.selectionCheckboxCount > 0)
       : 'N/A',
-    'floating-panels': status(source.signals.flyout && panel?.opened === true, archetype === 'custom' ? 'PARTIAL' : 'FAIL'),
-    'modal-form-dirty-state': status(source.signals.modal && source.signals.dirty && modal?.opened === true),
-    'lifecycle-and-blank-state': status(source.signals.lifecycle && blank?.captured === true && blank?.headingVisible === true),
+    'floating-panels': status(source.signals.flyout && panel?.verified === true, archetype === 'custom' ? 'PARTIAL' : 'FAIL'),
+    'modal-form-dirty-state': status(source.signals.modal && source.signals.dirty && modal?.verified === true && modal?.closedBeforeResponsive === true),
+    'lifecycle-and-blank-state': status(source.signals.lifecycle && blank?.captured === true && blank?.headingVisible === true && blank?.tenant?.backendSelected === true && blank?.tenant?.activeLabelVerified === true),
     'import-export-file-flow': fileFlowApplicable
       ? status(source.signals.importExport && containsAny(buttons, ['Import', 'Export']))
       : 'N/A',
     'domain-preservation': runtime?.seeded?.domainSeedCreated ? 'PARTIAL' : 'FAIL',
-    'responsive-layout': runtime?.constrained?.captured ? 'PARTIAL' : 'FAIL',
+    'responsive-layout': runtime?.constrained?.captured && runtime?.constrained?.baseSurfaceClean === true && runtime?.constrained?.modalClosedBeforeCapture === true && runtime?.constrained?.tenant?.activeLabelVerified === true ? 'PARTIAL' : 'FAIL',
     'guard-and-runtime-proof': runtime?.routeLoaded && source.files.length > 0 ? 'PARTIAL' : 'FAIL',
   }
 }
@@ -269,6 +270,21 @@ export function buildReport({ repoRoot, config, runtimeDir }) {
     masterRouteWired: Object.values(views[0].sourceEvidence.route).every(Boolean),
     allTargetEntriesPresent: views.slice(1).every((view) => view.sourceEvidence.entryExists),
     allRuntimeRecordsPresent: runtimeDir ? views.every((view) => Boolean(view.runtimeEvidence)) : null,
+    allTenantEvidenceVerified: runtimeDir ? views.every((view) => (
+      view.runtimeEvidence?.seededTenant?.backendSelected === true &&
+      view.runtimeEvidence?.seededTenant?.activeLabelVerified === true &&
+      view.runtimeEvidence?.blankTenant?.backendSelected === true &&
+      view.runtimeEvidence?.blankTenant?.activeLabelVerified === true
+    )) : null,
+    allResponsiveBaseSurfacesClean: runtimeDir ? views.every((view) => (
+      view.runtimeEvidence?.constrained?.captured === true &&
+      view.runtimeEvidence?.constrained?.baseSurfaceClean === true &&
+      view.runtimeEvidence?.constrained?.modalClosedBeforeCapture === true
+    )) : null,
+    allProbeResultsExplicit: runtimeDir ? views.every((view) => (
+      typeof view.runtimeEvidence?.panelProbe?.verified === 'boolean' &&
+      typeof view.runtimeEvidence?.modalProbe?.verified === 'boolean'
+    )) : null,
   }
 
   return { schemaVersion: 2, generatedAt: new Date().toISOString(), config, views, crossTargetGaps, auditIntegrity }
@@ -287,6 +303,9 @@ export function main(argv = process.argv.slice(2)) {
   const integrity = report.auditIntegrity
   if (!integrity.masterEntryPresent || !integrity.masterRouteWired || !integrity.allTargetEntriesPresent) return 2
   if (args.runtimeDir && integrity.allRuntimeRecordsPresent !== true) return 3
+  if (args.runtimeDir && integrity.allTenantEvidenceVerified !== true) return 4
+  if (args.runtimeDir && integrity.allResponsiveBaseSurfacesClean !== true) return 5
+  if (args.runtimeDir && integrity.allProbeResultsExplicit !== true) return 6
   console.log(`PASS: audited ${report.views.length} views; ${report.crossTargetGaps.length} cross-target gap categories recorded.`)
   return 0
 }

@@ -1075,3 +1075,18 @@ class UserPreference(Base, BaseMixin):
     user_id = Column(String, index=True)
     key = Column(String, index=True)
     value = Column(Text)
+
+class WorkspaceSavedView(Base, BaseMixin):
+    """Durable views live in the tenant database, never in generic preferences."""
+    __tablename__ = "workspace_saved_views"
+    __table_args__ = (
+        UniqueConstraint("workspace_key", "owner_user_id", "name", name="uq_workspace_saved_view_owner_name"),
+    )
+    workspace_key = Column(String, index=True, nullable=False)
+    name = Column(String, nullable=False)
+    scope = Column(String, nullable=False, default="personal")
+    owner_user_id = Column(String, index=True, nullable=False)
+    team_id = Column(Integer, ForeignKey("teams.id", ondelete="SET NULL"), nullable=True, index=True)
+    definition_json = Column(JSON, nullable=False, default=dict)
+    schema_version = Column(Integer, nullable=False, default=1)
+    revision = Column(Integer, nullable=False, default=1)

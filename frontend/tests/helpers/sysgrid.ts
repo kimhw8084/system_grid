@@ -957,23 +957,261 @@ export async function waitForAppIdle(page: Page) {
   }
 }
 
-export async function clickResilientButton(page: Page, ...names: (string | RegExp)[]) {
-  for (const name of names) {
-    const candidates = page.getByRole('button', { name, exact: typeof name === 'string' })
-    const visibleEnabled: Locator[] = []
-    for (let index = 0; index < await candidates.count(); index += 1) {
-      const candidate = candidates.nth(index)
-      if (await candidate.isVisible() && await candidate.isEnabled()) visibleEnabled.push(candidate)
+type ResilientButtonSnapshot = {
+  index: number
+  connected: boolean
+  enabled: boolean
+  visible: boolean
+  interactable: boolean
+  dialogIndex: number
+  dialogInteractable: boolean
+  dialogZIndex: number
+  dialogDomOrder: number
+  interactionZIndex: number
+  effectiveOpacity: number
+  width: number
+  height: number
+}
+
+type ResilientButtonScan = {
+  name: string | RegExp
+  candidates: Locator
+  snapshots: ResilientButtonSnapshot[]
+}
+
+const RESILIENT_BUTTON_TOTAL_TIMEOUT_MS = 8_000
+const RESILIENT_BUTTON_ATTEMPT_TIMEOUT_MS = 1_200
+const RESILIENT_BUTTON_RESCAN_DELAY_MS = 75
+
+function resilientButtonErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function isRetryableResilientButtonError(error: unknown) {
+  const message = resilientButtonErrorMessage(error)
+  if (/Target page, context or browser has been closed|Execution context was destroyed|Browser has been closed/i.test(message)) {
+    return false
+  }
+  return /detached|not attached|timeout|not stable|not visible|not enabled|intercepts pointer events|outside of the viewport/i.test(message)
+}
+
+async function inspectResilientButtonCandidates(candidates: Locator): Promise<ResilientButtonSnapshot[]> {
+  return candidates.evaluateAll((elements) => {
+    const dialogs = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"]'))
+
+    const inspectElement = (element: HTMLElement) => {
+      let effectiveOpacity = 1
+      let hidden = false
+      let interactionZIndex = 0
+      let current: HTMLElement | null = element
+
+      while (current) {
+        const style = window.getComputedStyle(current)
+        if (style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse') hidden = true
+        const opacity = Number.parseFloat(style.opacity)
+        if (Number.isFinite(opacity)) effectiveOpacity *= opacity
+        const zIndex = Number.parseInt(style.zIndex, 10)
+        if (Number.isFinite(zIndex)) interactionZIndex = Math.max(interactionZIndex, zIndex)
+        current = current.parentElement
+      }
+
+      const rect = element.getBoundingClientRect()
+      return {
+        effectiveOpacity,
+        hidden,
+        interactionZIndex,
+        width: rect.width,
+        height: rect.height,
+      }
     }
-    if (visibleEnabled.length > 1) {
-      throw new Error(`Ambiguous button ${String(name)}: found ${visibleEnabled.length} visible, enabled matches`)
+
+    return elements.map((node, index) => {
+      const element = node as HTMLElement
+      const button = element as HTMLButtonElement
+      const state = inspectElement(element)
+      const dialog = element.closest<HTMLElement>('[role="dialog"]')
+      const dialogIndex = dialog ? dialogs.indexOf(dialog) : -1
+      let dialogZIndex = 0
+      let dialogDomOrder = -1
+      let dialogInteractable = true
+
+      if (dialog) {
+        const dialogState = inspectElement(dialog)
+        const parsedZIndex = Number.parseInt(window.getComputedStyle(dialog).zIndex, 10)
+        dialogZIndex = Number.isFinite(parsedZIndex) ? parsedZIndex : dialogState.interactionZIndex
+        dialogDomOrder = dialogIndex
+        dialogInteractable = (
+          dialog.isConnected &&
+          !dialogState.hidden &&
+          dialogState.effectiveOpacity > 0.05 &&
+          dialogState.width > 0 &&
+          dialogState.height > 0
+        )
+      }
+
+      const enabled = !button.disabled && element.getAttribute('aria-disabled') !== 'true'
+      const connected = element.isConnected
+      const visible = (
+        connected &&
+        !state.hidden &&
+        state.width > 0 &&
+        state.height > 0 &&
+        dialogInteractable
+      )
+      // Candidate discovery deliberately does not reproduce browser hit-testing.
+      // Playwright's bounded click is the source of truth for pointer interception,
+      // stability, viewport reachability, and descendant pointer-event overrides.
+      const interactable = visible && enabled
+
+      return {
+        index,
+        connected,
+        enabled,
+        visible,
+        interactable,
+        dialogIndex,
+        dialogInteractable,
+        dialogZIndex,
+        dialogDomOrder,
+        interactionZIndex: state.interactionZIndex,
+        effectiveOpacity: state.effectiveOpacity,
+        width: state.width,
+        height: state.height,
+      }
+    })
+  })
+}
+
+function chooseTopResilientDialog(scans: ResilientButtonScan[]) {
+  const dialogPresence = scans.flatMap((scan) => (
+    scan.snapshots.filter((snapshot) => (
+      snapshot.dialogIndex >= 0 && snapshot.dialogInteractable && snapshot.visible
+    ))
+  ))
+  if (dialogPresence.length === 0) return -1
+
+  return dialogPresence.reduce((current, candidate) => {
+    if (candidate.dialogZIndex !== current.dialogZIndex) {
+      return candidate.dialogZIndex > current.dialogZIndex ? candidate : current
     }
-    if (visibleEnabled.length === 1) {
-      await visibleEnabled[0].click()
-      return
+    return candidate.dialogDomOrder > current.dialogDomOrder ? candidate : current
+  }).dialogIndex
+}
+
+function chooseResilientButtonCandidate(
+  name: string | RegExp,
+  snapshots: ResilientButtonSnapshot[],
+  activeDialogIndex: number,
+) {
+  const scoped = activeDialogIndex >= 0
+    ? snapshots.filter((snapshot) => snapshot.dialogIndex === activeDialogIndex)
+    : snapshots.filter((snapshot) => snapshot.dialogIndex < 0)
+  const eligible = scoped.filter((snapshot) => snapshot.interactable)
+  const scope = activeDialogIndex >= 0 ? `dialog#${activeDialogIndex}` : 'page'
+
+  if (eligible.length === 0) {
+    return {
+      selected: null,
+      selectedScopeIndex: -1,
+      activeDialogIndex,
+      scope,
+      eligibleCount: 0,
+      scopedCount: scoped.length,
+      totalCount: snapshots.length,
     }
   }
-  throw new Error(`Could not find one visible, enabled button matching any of: ${names.join(', ')}`)
+
+  const topLayerZIndex = Math.max(...eligible.map((snapshot) => snapshot.interactionZIndex))
+  const active = eligible.filter((snapshot) => snapshot.interactionZIndex === topLayerZIndex)
+  if (active.length > 1) {
+    throw new Error(
+      `Ambiguous button ${String(name)} in ${scope} at interaction layer ${topLayerZIndex}: ` +
+      `found ${active.length} eligible matches`,
+    )
+  }
+
+  const selected = active[0]
+  return {
+    selected,
+    selectedScopeIndex: scoped.findIndex((snapshot) => snapshot.index === selected.index),
+    activeDialogIndex,
+    scope: `${scope}/z${topLayerZIndex}`,
+    eligibleCount: eligible.length,
+    scopedCount: scoped.length,
+    totalCount: snapshots.length,
+  }
+}
+
+export async function clickResilientButton(page: Page, ...names: (string | RegExp)[]) {
+  if (names.length === 0) throw new Error('clickResilientButton requires at least one accessible button name')
+
+  const startedAt = Date.now()
+  const deadline = startedAt + RESILIENT_BUTTON_TOTAL_TIMEOUT_MS
+  const diagnostics: string[] = []
+  let attempt = 0
+
+  while (Date.now() < deadline) {
+    attempt += 1
+    let attemptedClick = false
+    const scans: ResilientButtonScan[] = []
+
+    for (const name of names) {
+      const candidates = page.getByRole('button', { name, exact: typeof name === 'string' })
+      scans.push({ name, candidates, snapshots: await inspectResilientButtonCandidates(candidates) })
+    }
+
+    // Resolve modal scope before choosing a name. A disabled candidate in a newly
+    // mounted top dialog blocks fallback to an older dialog or underlying page.
+    const activeDialogIndex = chooseTopResilientDialog(scans)
+
+    for (const scan of scans) {
+      const choice = chooseResilientButtonCandidate(scan.name, scan.snapshots, activeDialogIndex)
+      diagnostics.push(
+        `attempt=${attempt} name=${String(scan.name)} total=${choice.totalCount} ` +
+        `scoped=${choice.scopedCount} eligible=${choice.eligibleCount} scope=${choice.scope}`,
+      )
+
+      if (!choice.selected) continue
+
+      attemptedClick = true
+      const remaining = deadline - Date.now()
+      if (remaining <= 0) break
+      const attemptTimeout = Math.max(100, Math.min(RESILIENT_BUTTON_ATTEMPT_TIMEOUT_MS, remaining))
+
+      try {
+        // Recreate the live locator on every attempt. Native Playwright actionability
+        // is intentionally authoritative for hit-testing and pointer interception.
+        const liveScope = choice.activeDialogIndex >= 0
+          ? page.getByRole('dialog').nth(choice.activeDialogIndex)
+          : page
+        await liveScope
+          .getByRole('button', { name: scan.name, exact: typeof scan.name === 'string' })
+          .nth(choice.selectedScopeIndex)
+          .click({ timeout: attemptTimeout })
+        return
+      } catch (error) {
+        const message = resilientButtonErrorMessage(error).replace(/\s+/g, ' ').slice(0, 320)
+        diagnostics.push(`attempt=${attempt} click-error=${message}`)
+        if (!isRetryableResilientButtonError(error)) {
+          throw new Error(
+            `Non-retryable click failure for ${String(scan.name)} after ${attempt} attempt(s): ${message}`,
+            { cause: error instanceof Error ? error : undefined },
+          )
+        }
+        break
+      }
+    }
+
+    if (Date.now() >= deadline) break
+    await page.waitForTimeout(attemptedClick ? RESILIENT_BUTTON_RESCAN_DELAY_MS : 100)
+  }
+
+  const elapsed = Date.now() - startedAt
+  const recentDiagnostics = diagnostics.slice(-20).join(' | ')
+  throw new Error(
+    `Could not click one unique eligible button matching any of: ${names.map(String).join(', ')} ` +
+    `within ${elapsed}ms. Diagnostics: ${recentDiagnostics || 'no candidates observed'}`,
+  )
 }
 
 export async function verifyGridRowRobust(page: Page, searchString: string | RegExp) {

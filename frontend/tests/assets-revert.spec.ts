@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from './helpers/sysgrid-test'
-import { getWorkspaceLogicalRowByText, getWorkspaceRoot, resetBrowserState, seedOperationalScenario } from './helpers/sysgrid'
+import { fillGridSearch, getWorkspaceLogicalRowByText, getWorkspaceRoot, resetBrowserState, seedOperationalScenario } from './helpers/sysgrid'
 
 test.describe('Assets Revert lifecycle', () => {
   test('reverts the immutable completed row operation after selection changes', async ({ page, sysApi: request }) => {
@@ -20,6 +20,11 @@ test.describe('Assets Revert lifecycle', () => {
     await page.getByRole('button', { name: 'Confirm Archive?', exact: true }).click()
     expect((await archiveRequest).postDataJSON()).toMatchObject({ ids: [secondary.id], action: 'delete' })
     await archiveResponse
+
+    // The archive response refreshes the grid asynchronously. Restore the broader
+    // search scope and reacquire the row only after the refreshed grid renders it.
+    await fillGridSearch(page, 'Scan asset matrix...', systemName, 'assets')
+    await expect(getWorkspaceRoot(page, 'assets').getByRole('treegrid')).toContainText(primary.name, { timeout: 15_000 })
 
     const primaryRow = await getWorkspaceLogicalRowByText(page, 'assets', primary.name)
     await (await primaryRow.cell('name')).click()

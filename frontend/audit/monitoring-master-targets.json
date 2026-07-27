@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "master": {
     "key": "monitoring",
     "label": "Monitoring",
@@ -8,13 +8,34 @@
     "routeComponent": "MonitoringGrid",
     "source": "frontend/src/components/MonitoringGrid.tsx",
     "archetype": "table",
-    "searchPlaceholders": ["Scan matrix..."],
+    "searchPlaceholders": [
+      "Scan matrix..."
+    ],
     "preferredPanelActions": [
-      { "kind": "button", "name": "Views" },
-      { "kind": "button", "name": "Display" }
+      {
+        "kind": "button",
+        "name": "Views",
+        "expected": {
+          "kind": "workspace-panel"
+        }
+      },
+      {
+        "kind": "button",
+        "name": "Display",
+        "expected": {
+          "kind": "workspace-panel"
+        }
+      }
     ],
     "preferredModalActions": [
-      { "kind": "button", "name": "Import" }
+      {
+        "kind": "button",
+        "name": "Import",
+        "expected": {
+          "kind": "text",
+          "name": "Monitoring Import"
+        }
+      }
     ],
     "domainMustPreserve": [
       "monitor lifecycle and recovery linking",
@@ -32,13 +53,34 @@
       "routeComponent": "Assets",
       "source": "frontend/src/components/Assets.tsx",
       "archetype": "table",
-      "searchPlaceholders": ["Scan asset matrix..."],
+      "searchPlaceholders": [
+        "Scan asset matrix..."
+      ],
       "preferredPanelActions": [
-        { "kind": "button", "name": "Views" },
-        { "kind": "button", "name": "Display" }
+        {
+          "kind": "button",
+          "name": "Views",
+          "expected": {
+            "kind": "workspace-panel"
+          }
+        },
+        {
+          "kind": "button",
+          "name": "Display",
+          "expected": {
+            "kind": "workspace-panel"
+          }
+        }
       ],
       "preferredModalActions": [
-        { "kind": "button", "name": "Import" }
+        {
+          "kind": "button",
+          "name": "Import",
+          "expected": {
+            "kind": "text",
+            "name": "Assets Import"
+          }
+        }
       ],
       "domainMustPreserve": [
         "asset details and quick look",
@@ -55,13 +97,34 @@
       "routeComponent": "ServicesReal",
       "source": "frontend/src/components/ServicesReal.tsx",
       "archetype": "table",
-      "searchPlaceholders": ["Scan service matrix...", "Scan matrix..."],
+      "searchPlaceholders": [
+        "Search services, hosts, or metadata..."
+      ],
       "preferredPanelActions": [
-        { "kind": "button", "name": "Views" },
-        { "kind": "button", "name": "Display" }
+        {
+          "kind": "button",
+          "name": "Views",
+          "expected": {
+            "kind": "workspace-panel"
+          }
+        },
+        {
+          "kind": "button",
+          "name": "Display",
+          "expected": {
+            "kind": "workspace-panel"
+          }
+        }
       ],
       "preferredModalActions": [
-        { "kind": "button", "name": "Import" }
+        {
+          "kind": "button",
+          "name": "Import",
+          "expected": {
+            "kind": "text",
+            "name": "Services Import"
+          }
+        }
       ],
       "domainMustPreserve": [
         "service records and host relationships",
@@ -78,13 +141,34 @@
       "routeComponent": "External",
       "source": "frontend/src/components/External.tsx",
       "archetype": "table",
-      "searchPlaceholders": ["Scan external matrix...", "Scan matrix..."],
+      "searchPlaceholders": [
+        "Scan registry..."
+      ],
       "preferredPanelActions": [
-        { "kind": "button", "name": "Views" },
-        { "kind": "button", "name": "Display" }
+        {
+          "kind": "button",
+          "name": "Views",
+          "expected": {
+            "kind": "workspace-panel"
+          }
+        },
+        {
+          "kind": "button",
+          "name": "Display",
+          "expected": {
+            "kind": "workspace-panel"
+          }
+        }
       ],
       "preferredModalActions": [
-        { "kind": "button", "name": "Import" }
+        {
+          "kind": "button",
+          "name": "Import",
+          "expected": {
+            "kind": "text",
+            "name": "External Registry Import"
+          }
+        }
       ],
       "domainMustPreserve": [
         "external metadata and ownership",
@@ -101,13 +185,34 @@
       "routeComponent": "NetworkReal",
       "source": "frontend/src/components/NetworkReal.tsx",
       "archetype": "hybrid",
-      "searchPlaceholders": ["Scan matrix..."],
+      "searchPlaceholders": [
+        "Scan matrix..."
+      ],
       "preferredPanelActions": [
-        { "kind": "button", "name": "Views" },
-        { "kind": "button", "name": "Display" }
+        {
+          "kind": "button",
+          "name": "Views",
+          "expected": {
+            "kind": "workspace-panel"
+          }
+        },
+        {
+          "kind": "button",
+          "name": "Display",
+          "expected": {
+            "kind": "workspace-panel"
+          }
+        }
       ],
       "preferredModalActions": [
-        { "kind": "button", "name": "Import" }
+        {
+          "kind": "button",
+          "name": "Import",
+          "expected": {
+            "kind": "text",
+            "name": "Network Import"
+          }
+        }
       ],
       "domainMustPreserve": [
         "topology and forensics",
@@ -126,11 +231,24 @@
       "archetype": "custom",
       "searchPlaceholders": [],
       "preferredPanelActions": [
-        { "kind": "button", "name": "Causal Forensics" },
-        { "kind": "button", "name": "Strategic Roadmap" }
+        {
+          "kind": "title",
+          "name": "Column Configuration",
+          "expected": {
+            "kind": "text",
+            "name": "Columns"
+          }
+        }
       ],
       "preferredModalActions": [
-        { "kind": "title", "name": "Edit Matrix Configuration" }
+        {
+          "kind": "title",
+          "name": "Edit Matrix",
+          "expected": {
+            "kind": "text",
+            "name": "Edit Failure Mode"
+          }
+        }
       ],
       "domainMustPreserve": [
         "failure mode deep links",
@@ -147,13 +265,28 @@
       "routeComponent": "Research",
       "source": "frontend/src/components/Research.tsx",
       "archetype": "custom",
-      "searchPlaceholders": ["SCAN RESEARCH..."],
+      "searchPlaceholders": [
+        "Scan research..."
+      ],
       "preferredPanelActions": [
-        { "kind": "button", "name": "2037" },
-        { "kind": "title", "name": "Toggle Style Lab" }
+        {
+          "kind": "title",
+          "name": "Column Picker",
+          "expected": {
+            "kind": "text",
+            "name": "Toggle Columns"
+          }
+        }
       ],
       "preferredModalActions": [
-        { "kind": "button", "name": "Add Research" }
+        {
+          "kind": "button",
+          "name": "Add Research",
+          "expected": {
+            "kind": "text",
+            "name": "Initialize Research Flow"
+          }
+        }
       ],
       "domainMustPreserve": [
         "research and RCA record types",
@@ -170,13 +303,34 @@
       "routeComponent": "VendorsReal",
       "source": "frontend/src/components/VendorsReal.tsx",
       "archetype": "table",
-      "searchPlaceholders": ["Search vendors..."],
+      "searchPlaceholders": [
+        "Search vendors..."
+      ],
       "preferredPanelActions": [
-        { "kind": "button", "name": "Views" },
-        { "kind": "button", "name": "Display" }
+        {
+          "kind": "button",
+          "name": "Views",
+          "expected": {
+            "kind": "workspace-panel"
+          }
+        },
+        {
+          "kind": "button",
+          "name": "Display",
+          "expected": {
+            "kind": "workspace-panel"
+          }
+        }
       ],
       "preferredModalActions": [
-        { "kind": "button", "name": "Import" }
+        {
+          "kind": "button",
+          "name": "Import",
+          "expected": {
+            "kind": "text",
+            "name": "Vendors Import"
+          }
+        }
       ],
       "domainMustPreserve": [
         "vendor dossier and deep links",

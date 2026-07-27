@@ -16,7 +16,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from .api import (
     audit, dashboard, data_flows, devices, far, import_engine, intelligence,
     investigations, knowledge, logical_services, maintenance, monitoring, networks,
-    projects, racks, rca, security, settings as settings_api, sites, tenants,
+    projects, racks, rca, security, settings as settings_api, sites, tenants, workspaces,
     troubleshoot, vendors,
 )
 from .api.error_utils import standardize_validation_errors
@@ -188,7 +188,7 @@ for router in (
     dashboard.router, racks.router, audit.router, sites.router, maintenance.router,
     logical_services.router, settings_api.router, monitoring.router, troubleshoot.router,
     data_flows.router, intelligence.router, rca.router, investigations.router, far.router,
-    projects.router, vendors.router, knowledge.router,
+    projects.router, vendors.router, knowledge.router, workspaces.router,
 ):
     app.include_router(router, prefix=settings.API_V1_STR)
 
