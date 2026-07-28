@@ -48,6 +48,38 @@ export function setApiOverride(url: string | null) {
   }
 }
 
+
+function decorateApiError(
+  error: any,
+  details: {
+    url?: string
+    method?: string
+    status?: number
+    statusText?: string
+    contentType?: string
+    redirected?: boolean
+    finalUrl?: string
+    requestId?: string
+    rawBody?: string
+  } = {},
+) {
+  error.status = Number(details.status ?? error.status ?? 0)
+  error.statusText = details.statusText ?? error.statusText ?? ''
+  error.url = details.url ?? error.url ?? ''
+  error.finalUrl = details.finalUrl ?? error.finalUrl ?? error.url
+  error.method = details.method ?? error.method ?? 'GET'
+  error.contentType = details.contentType ?? error.contentType ?? ''
+  error.redirected = Boolean(details.redirected ?? error.redirected)
+  error.requestId = details.requestId ?? error.requestId ?? ''
+  error.rawBody = String(details.rawBody ?? error.rawBody ?? '').slice(0, 2000)
+  error.browserOrigin = typeof window === 'undefined' ? '' : window.location.origin
+  error.configuredApiBase = getApiBaseUrl()
+  error.timestamp = new Date().toISOString()
+  error.browserOnline = typeof navigator === 'undefined' ? null : navigator.onLine
+  if (!error.data) error.data = { detail: error.message }
+  return error
+}
+
 async function parseJsonResponse(response: Response) {
   const rawBody = await response.clone().text()
   const contentType = (response.headers.get('content-type') || '').toLowerCase()
@@ -56,12 +88,19 @@ async function parseJsonResponse(response: Response) {
   const looksLikeAuthRedirect = redirected && /oauth|gitlab|signin|sign-in|login/i.test(`${finalUrl} ${rawBody}`)
 
   if (looksLikeAuthRedirect) {
-    const error = new Error('Backend JSON request was redirected to OAuth or a login page.') as any
-    error.status = response.status
-    error.statusText = response.statusText
-    error.url = finalUrl
-    error.data = { detail: error.message }
-    error.rawBody = rawBody.slice(0, 1000)
+    const error = decorateApiError(
+      new Error('Backend JSON request was redirected to OAuth or a login page.'),
+      {
+        status: response.status,
+        statusText: response.statusText,
+        url: finalUrl,
+        finalUrl,
+        contentType,
+        redirected,
+        requestId: response.headers.get('x-request-id') || '',
+        rawBody,
+      },
+    )
     throw error
   }
 
@@ -69,22 +108,36 @@ async function parseJsonResponse(response: Response) {
     try {
       return rawBody ? JSON.parse(rawBody) : null
     } catch {
-      const error = new Error('Backend returned invalid JSON where JSON was expected.') as any
-      error.status = response.status
-      error.statusText = response.statusText
-      error.url = finalUrl
-      error.data = { detail: error.message }
-      error.rawBody = rawBody.slice(0, 1000)
+      const error = decorateApiError(
+        new Error('Backend returned invalid JSON where JSON was expected.'),
+        {
+          status: response.status,
+          statusText: response.statusText,
+          url: finalUrl,
+          finalUrl,
+          contentType,
+          redirected,
+          requestId: response.headers.get('x-request-id') || '',
+          rawBody,
+        },
+      )
       throw error
     }
   }
 
-  const error = new Error(`Backend returned ${contentType || 'non-JSON content'} where JSON was expected.`) as any
-  error.status = response.status
-  error.statusText = response.statusText
-  error.url = finalUrl
-  error.data = { detail: error.message }
-  error.rawBody = rawBody.slice(0, 1000)
+  const error = decorateApiError(
+    new Error(`Backend returned ${contentType || 'non-JSON content'} where JSON was expected.`),
+    {
+      status: response.status,
+      statusText: response.statusText,
+      url: finalUrl,
+      finalUrl,
+      contentType,
+      redirected,
+      requestId: response.headers.get('x-request-id') || '',
+      rawBody,
+    },
+  )
   throw error
 }
 
@@ -156,18 +209,21 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const baseUrl = getApiBaseUrl();
   const invalidApiBaseMessage = validateConfiguredApiBaseUrl(baseUrl)
   if (invalidApiBaseMessage && !endpoint.startsWith('http')) {
-    const error = new Error(invalidApiBaseMessage) as any
-    error.status = 0
-    error.data = { detail: invalidApiBaseMessage }
-    error.url = endpoint
-    throw error
+    throw decorateApiError(new Error(invalidApiBaseMessage), {
+      status: 0,
+      url: endpoint,
+      method: String(options.method || 'GET').toUpperCase(),
+    })
   }
   if (baseUrl && isLikelyForwardedHost(window.location.hostname) && isLoopbackOrigin(baseUrl) && !endpoint.startsWith('http')) {
-    const error = new Error('Frontend origin mismatch: this UI is running on a hosted or company origin, but the configured API base still points to a loopback address.') as any
-    error.status = 0
-    error.data = { detail: error.message }
-    error.url = endpoint
-    throw error
+    throw decorateApiError(
+      new Error('Frontend origin mismatch: this UI is running on a hosted or company origin, but the configured API base still points to a loopback address.'),
+      {
+        status: 0,
+        url: endpoint,
+        method: String(options.method || 'GET').toUpperCase(),
+      },
+    )
   }
   
   // Better normalization: remove trailing slash before query params or at the end
@@ -202,12 +258,24 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   }
 
   const startTime = Date.now();
-  const response = await fetch(url, {
-    cache: 'no-store',
-    credentials: resolveCredentialsMode(url),
-    ...options,
-    headers,
-  });
+  let response: Response
+  try {
+    response = await fetch(url, {
+      cache: 'no-store',
+      credentials: resolveCredentialsMode(url),
+      ...options,
+      headers,
+    });
+  } catch (cause: any) {
+    notifyLatency(Date.now() - startTime)
+    const message = cause?.message || 'Failed to fetch'
+    throw decorateApiError(new Error(message), {
+      status: 0,
+      url,
+      finalUrl: url,
+      method,
+    })
+  }
   notifyLatency(Date.now() - startTime);
 
   if (!response.ok) {
@@ -221,12 +289,18 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     }
     
     const errorMessage = errorData.detail || errorData.message || `API error: ${response.status}`;
-    const error = new Error(errorMessage) as any;
-    error.status = response.status;
-    error.statusText = response.statusText;
-    error.data = errorData;
-    error.rawBody = rawBody.slice(0, 1000); // Capture excerpt
-    error.url = url; 
+    const error = decorateApiError(new Error(errorMessage), {
+      status: response.status,
+      statusText: response.statusText,
+      url,
+      finalUrl: response.url || url,
+      method,
+      contentType: response.headers.get('content-type') || '',
+      redirected: response.redirected,
+      requestId: response.headers.get('x-request-id') || '',
+      rawBody,
+    })
+    error.data = errorData
     throw error;
   }
 

@@ -13,9 +13,9 @@ test.describe('Vendor workflows', () => {
     await page.goto('/vendors')
     await expect(page.getByRole('heading', { name: 'Vendors' })).toBeVisible()
     await expect(page.getByPlaceholder('Search vendors...')).toBeVisible()
-    await page.getByRole('button', { name: 'Filters', exact: true }).click()
+    await clickResilientButton(page, /^Filters$/)
     await expect(page.getByRole('button', { name: 'Filters', exact: true })).toHaveClass(/bg/)
-    await page.getByRole('button', { name: 'Filters', exact: true }).click()
+    await clickResilientButton(page, /^Filters$/)
 
     await clickResilientButton(page, /\+ Add Vendor/i)
     const vendorModal = page.locator('.glass-panel').filter({ has: page.getByText('New Vendor') })

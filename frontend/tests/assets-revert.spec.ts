@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from './helpers/sysgrid-test'
-import { fillGridSearch, getWorkspaceLogicalRowByText, getWorkspaceRoot, resetBrowserState, seedOperationalScenario } from './helpers/sysgrid'
+import { clickResilientButton, fillGridSearch, getWorkspaceLogicalRowByText, getWorkspaceRoot, resetBrowserState, seedOperationalScenario } from './helpers/sysgrid'
 
 test.describe('Assets Revert lifecycle', () => {
   test('reverts the immutable completed row operation after selection changes', async ({ page, sysApi: request }) => {
@@ -14,10 +14,10 @@ test.describe('Assets Revert lifecycle', () => {
 
     const secondaryRow = await getWorkspaceLogicalRowByText(page, 'assets', secondary.name)
     await secondaryRow.action('More actions').click()
-    await page.getByRole('button', { name: 'Archive', exact: true }).click()
+    await clickResilientButton(page, /^Archive$/)
     const archiveRequest = page.waitForRequest((entry) => entry.url().includes('/api/v1/devices/bulk-action'))
     const archiveResponse = page.waitForResponse((entry) => entry.url().includes('/api/v1/devices/bulk-action') && entry.status() === 200)
-    await page.getByRole('button', { name: 'Confirm Archive?', exact: true }).click()
+    await clickResilientButton(page, /^Confirm Archive\?$/)
     expect((await archiveRequest).postDataJSON()).toMatchObject({ ids: [secondary.id], action: 'delete' })
     await archiveResponse
 

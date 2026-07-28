@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Terminal, AlertTriangle, Bug, Clock, Search, Trash2, ChevronRight, ChevronDown, Copy, ShieldAlert, TerminalSquare, Filter, Database, Cpu, CheckCircle2, History as HistoryIcon, Activity, Globe } from 'lucide-react'
+import { X, Terminal, AlertTriangle, Bug, Clock, Search, Trash2, ChevronRight, ChevronDown, Copy, ExternalLink, ShieldAlert, TerminalSquare, Filter, Database, Cpu, CheckCircle2, History as HistoryIcon, Activity, Globe } from 'lucide-react'
 import { useErrors, SysError } from '../../stores/errorStore'
 import { formatAppDate, formatAppTime } from '../../utils/dateUtils'
 import { toast } from 'react-hot-toast'
+import { redactText } from '../../api/bootstrapDiagnostics'
 
 export function ErrorConsole() {
   const { errors, isOpen, setOpen, clearErrors, acknowledgeError, acknowledgeAll } = useErrors()
@@ -28,6 +29,48 @@ export function ErrorConsole() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     toast.success('Traceback copied to matrix')
+  }
+
+  const buganizerUrl = (
+    localStorage.getItem('SYSGRID_BUGANIZER_URL') ||
+    localStorage.getItem('SYSGRID_CONFIG_VITE_BUGANIZER_URL') ||
+    String(import.meta.env.VITE_BUGANIZER_URL || '')
+  ).trim()
+
+  const buildSelectedErrorReport = (error: SysError) => redactText([
+    'SysGrid runtime error',
+    `Message: ${error.message}`,
+    `Timestamp: ${error.timestamp}`,
+    `Severity: ${error.severity}`,
+    `Type: ${error.type}`,
+    `View: ${error.view || '<unknown>'}`,
+    `Method: ${error.method || '<unknown>'}`,
+    `URL: ${error.finalUrl || error.url || '<unknown>'}`,
+    `HTTP status: ${error.status || '<none>'} ${error.statusText || ''}`.trim(),
+    `Content type: ${error.contentType || '<missing>'}`,
+    `Redirected: ${error.redirected ? 'yes' : 'no'}`,
+    `Request ID: ${error.requestId || '<missing>'}`,
+    `Browser origin: ${error.browserOrigin || window.location.origin}`,
+    `Configured API base: ${error.configuredApiBase || '<blank>'}`,
+    `Browser online: ${error.browserOnline == null ? '<unknown>' : (error.browserOnline ? 'yes' : 'no')}`,
+    '',
+    'Response excerpt:',
+    error.rawBody || JSON.stringify(error.data || {}, null, 2),
+    '',
+    'Stack:',
+    error.stack || '<none>',
+  ].join('\n'))
+
+  const copyBugReport = async (error: SysError) => {
+    await navigator.clipboard.writeText(buildSelectedErrorReport(error))
+    toast.success('Sanitized Buganizer report copied')
+  }
+
+  const openBuganizer = async (error: SysError) => {
+    await copyBugReport(error)
+    if (/^https?:\/\//i.test(buganizerUrl)) {
+      window.open(buganizerUrl, '_blank', 'noopener,noreferrer')
+    }
   }
 
   if (!isOpen) return null
@@ -184,10 +227,16 @@ export function ErrorConsole() {
                               {selectedError.acknowledged ? 'Verified' : 'Verify Exception'}
                            </button>
                            <button 
-                             onClick={() => copyToClipboard(selectedError.stack || '')}
-                             className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-all"
+                             onClick={() => copyBugReport(selectedError)}
+                             className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-slate-400 transition-all hover:bg-white/10 hover:text-white"
                            >
-                              <Copy size={18} />
+                              <Copy size={14} /> Copy Bug Report
+                           </button>
+                           <button
+                             onClick={() => openBuganizer(selectedError)}
+                             className="flex items-center gap-2 rounded-lg bg-rose-500/10 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-rose-300 transition-all hover:bg-rose-500/20"
+                           >
+                              <ExternalLink size={14} /> {buganizerUrl ? 'Open Buganizer' : 'Copy Only'}
                            </button>
                         </div>
                      </div>
@@ -218,7 +267,10 @@ export function ErrorConsole() {
                        <div className="bg-slate-950 border border-white/5 rounded-lg p-6 font-mono text-[11px] space-y-2">
                           <div className="flex gap-4"><span className="text-blue-400 w-16">ENDPOINT</span> <span className="text-slate-300">{selectedError.url}</span></div>
                           <div className="flex gap-4"><span className="text-blue-400 w-16">METHOD</span> <span className="text-emerald-400">{selectedError.method || 'GET'}</span></div>
-                          <div className="flex gap-4"><span className="text-blue-400 w-16">STATUS</span> <span className="text-amber-400">{selectedError.status || 'N/A'}</span></div>
+                          <div className="flex gap-4"><span className="text-blue-400 w-16">STATUS</span> <span className="text-amber-400">{selectedError.status || 'N/A'} {selectedError.statusText || ''}</span></div>
+                          <div className="flex gap-4"><span className="text-blue-400 w-16">TYPE</span> <span className="text-slate-300">{selectedError.contentType || 'N/A'}</span></div>
+                          <div className="flex gap-4"><span className="text-blue-400 w-16">FINAL</span> <span className="break-all text-slate-300">{selectedError.finalUrl || selectedError.url}</span></div>
+                          <div className="flex gap-4"><span className="text-blue-400 w-16">REQ ID</span> <span className="text-slate-300">{selectedError.requestId || 'N/A'}</span></div>
                        </div>
                     </div>
                   )}

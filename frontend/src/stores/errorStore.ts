@@ -8,6 +8,15 @@ export interface SysError {
   url?: string
   method?: string
   status?: number
+  statusText?: string
+  contentType?: string
+  finalUrl?: string
+  redirected?: boolean
+  requestId?: string
+  rawBody?: string
+  browserOrigin?: string
+  configuredApiBase?: string
+  browserOnline?: boolean | null
   data?: any
   type: 'frontend' | 'backend'
   severity: 'critical' | 'error' | 'warning'

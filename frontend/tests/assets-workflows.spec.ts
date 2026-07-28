@@ -269,11 +269,11 @@ test.describe('Assets workflows', () => {
 
     // Archive again so the existing purged-scope proof continues with the same row identity.
     await (await getWorkspaceLogicalRowByText(page, 'assets', secondary.name)).action('More actions').click()
-    await page.getByRole('button', { name: 'Archive', exact: true }).click()
+    await clickResilientButton(page, /^Archive$/)
     const secondDeleteResponsePromise = page.waitForResponse(response =>
       response.url().includes('/api/v1/devices/bulk-action') && response.status() === 200
     )
-    await page.getByRole('button', { name: 'Confirm Archive?', exact: true }).click()
+    await clickResilientButton(page, /^Confirm Archive\?$/)
     await secondDeleteResponsePromise
 
     // Settle React state before tab switch

@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from './helpers/sysgrid-test'
-import { openToolbarButton, resetBrowserState, testApiHeaders } from './helpers/sysgrid'
+import { clickResilientButton, openToolbarButton, resetBrowserState, testApiHeaders } from './helpers/sysgrid'
 
 const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
 
@@ -23,7 +23,7 @@ test.describe('Collaborative workspace views', () => {
       await expect(page.getByTestId('workspace-view-sync-status')).toHaveText('Synced')
 
       await page.getByPlaceholder('Save as new personal view...').fill(name)
-      await page.getByRole('button', { name: 'Save personal view', exact: true }).click()
+      await clickResilientButton(page, /^Save personal view$/)
       await expect(page.getByRole('button').filter({ hasText: name }).first()).toBeVisible()
 
       await expect.poll(async () => {
@@ -84,7 +84,7 @@ test.describe('Collaborative workspace views', () => {
         return Array.isArray(payload?.views) && payload.views.some((view: any) => view.name === renamed)
       }).toBeTruthy()
 
-      await page.getByRole('button', { name: 'Copy link', exact: true }).click()
+      await clickResilientButton(page, /^Copy link$/)
       await expect(page).toHaveURL(/(?:\?|&)view=\d+/)
       const viewId = new URL(page.url()).searchParams.get('view')
       expect(viewId).toBeTruthy()

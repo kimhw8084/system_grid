@@ -176,12 +176,11 @@ describe('apiClient', () => {
   })
 
   it('falls back to status text when error payload is not JSON', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: false,
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('not-json', {
       status: 500,
       statusText: 'Internal Server Error',
-      json: vi.fn().mockRejectedValue(new Error('bad json')),
-    }))
+      headers: { 'Content-Type': 'text/plain' },
+    })))
 
     await expect(apiFetch('/boom')).rejects.toMatchObject({
       message: 'API Error 500: Internal Server Error',
@@ -260,4 +259,62 @@ describe('apiClient', () => {
       status: 200,
     })
   })
+  it('captures invalid-host response diagnostics for bootstrap classification', async () => {
+    const response = new Response('Invalid host header', {
+      status: 400,
+      statusText: 'Bad Request',
+      headers: {
+        'Content-Type': 'text/plain',
+        'X-Request-ID': 'request-123',
+      },
+    })
+    Object.defineProperty(response, 'url', {
+      value: 'http://8000.vscode.company.example/api/v1/health',
+    })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response))
+
+    await expect(apiFetch('http://8000.vscode.company.example/api/v1/health')).rejects.toMatchObject({
+      status: 400,
+      statusText: 'Bad Request',
+      method: 'GET',
+      contentType: 'text/plain',
+      requestId: 'request-123',
+      rawBody: 'Invalid host header',
+      finalUrl: 'http://8000.vscode.company.example/api/v1/health',
+      browserOrigin: window.location.origin,
+      timestamp: expect.any(String),
+    })
+  })
+
+  it('captures network failure context when fetch does not return a response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+
+    await expect(apiFetch('https://api.company.example/api/v1/health')).rejects.toMatchObject({
+      message: 'Failed to fetch',
+      status: 0,
+      method: 'GET',
+      url: 'https://api.company.example/api/v1/health',
+      finalUrl: 'https://api.company.example/api/v1/health',
+      browserOnline: expect.any(Boolean),
+    })
+  })
+
+  it('captures redirect and content-type context for non-JSON responses', async () => {
+    const response = new Response('<html>Proxy landing page</html>', {
+      status: 200,
+      headers: { 'Content-Type': 'text/html' },
+    })
+    Object.defineProperty(response, 'redirected', { value: false })
+    Object.defineProperty(response, 'url', { value: 'https://proxy.example.com/' })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response))
+
+    await expect(apiClient.get('https://proxy.example.com/')).rejects.toMatchObject({
+      status: 200,
+      contentType: 'text/html',
+      redirected: false,
+      finalUrl: 'https://proxy.example.com/',
+      rawBody: '<html>Proxy landing page</html>',
+    })
+  })
+
 })

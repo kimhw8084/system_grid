@@ -3,7 +3,8 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
 import { apiFetch, setApiOverride, getApiBaseUrl } from './api/apiClient'
-import { AlertTriangle, Database, Globe, ShieldAlert, UserCircle2, Wrench } from 'lucide-react'
+import { buildBootstrapFailureDiagnosis, buildBootstrapReport } from './api/bootstrapDiagnostics'
+import { AlertTriangle, Bug, Copy, Database, ExternalLink, Globe, RefreshCcw, ShieldAlert, UserCircle2, Wrench } from 'lucide-react'
 import { WorkspaceSectionCard, WorkspaceSectionBadge, WorkspaceEmptyState } from './components/shared/OperationalWorkspacePrimitives'
 import { PageHeader, PageToolbar, ToolbarButton, ToolbarGroup } from './components/shared/LayoutPrimitives'
 
@@ -66,6 +67,8 @@ const Bootstrap = () => {
   const [failedUrl, setFailedUrl] = useState<string>("");
   const [appKey, setAppKey] = useState(0);
   const [backendDiagnostics, setBackendDiagnostics] = useState<any>(null);
+  const [errorDetails, setErrorDetails] = useState<any>(null);
+  const [copyFeedback, setCopyFeedback] = useState<string>('');
 
   useEffect(() => {
     let isMounted = true;
@@ -237,8 +240,9 @@ const Bootstrap = () => {
 
       } catch (err: any) {
         if (isMounted) {
+          setErrorDetails(err);
           setError(err.message || "Failed to connect to backend");
-          setFailedUrl(err.url || getApiBaseUrl() || "relative path");
+          setFailedUrl(err.finalUrl || err.url || getApiBaseUrl() || "relative path");
         }
       }
     };
@@ -318,66 +322,40 @@ const Bootstrap = () => {
   const configuredApiBase = getApiBaseUrl()
   const effectiveUserId = getBootstrapUserId()
 
-  const failureDiagnosis = (() => {
-    const normalizedFailedUrl = normalizeUiApiOrigin(failedUrl || configuredApiBase || '')
-    const normalizedConfiguredApiBase = normalizeUiApiOrigin(configuredApiBase || '')
-    const statusMatch = error?.match(/\b403\b|\b404\b|\b500\b/)
-    const is403 = error?.includes('403') || failedUrl.includes('403')
-    const usesLoopbackApi = isLoopbackOrigin(normalizedFailedUrl || normalizedConfiguredApiBase)
-    const forwardedUi = isLikelyForwardedHost(window.location.hostname)
-    const overrideUrl = localStorage.getItem('SYSGRID_OVERRIDE_API_URL') || ''
-    const includesApiV1 = /\/api\/v1\/?$/i.test(configuredApiBase || '') || /\/api\/v1\/?$/i.test(failedUrl || '')
+  const failureDiagnosis = buildBootstrapFailureDiagnosis({
+    error: errorDetails || {
+      message: error,
+      url: failedUrl,
+      finalUrl: failedUrl,
+    },
+    configuredApiBase,
+    uiOrigin: currentOrigin,
+    effectiveUserId,
+    storedOverride: localStorage.getItem('SYSGRID_OVERRIDE_API_URL') || '',
+    backendDiagnostics,
+  })
+  const bootstrapReport = buildBootstrapReport(failureDiagnosis)
 
-    const reasons: string[] = []
-    const actions: string[] = []
+  const copyBootstrapText = async (label: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopyFeedback(`${label} copied`)
+    } catch {
+      setCopyFeedback(`Could not copy ${label.toLowerCase()}`)
+    }
+    window.setTimeout(() => setCopyFeedback(''), 2500)
+  }
 
-    if (forwardedUi && usesLoopbackApi) {
-      reasons.push('The app is running on a forwarded or hosted UI origin, but the API target is still a loopback URL. The browser cannot use the backend machine-local 127.0.0.1 address in this mode.')
-      actions.push('Set `frontend/.env.local` so `VITE_API_BASE_URL` is the forwarded backend origin, not `http://127.0.0.1:8000`.')
-      actions.push('Set `backend/.env` so `BACKEND_CORS_ORIGINS` includes the exact forwarded frontend origin.')
-    }
-    if (includesApiV1) {
-      reasons.push('The configured API base appears to include `/api/v1`, but SysGrid expects the backend origin only.')
-      actions.push('Change the API base to the origin only, for example `https://backend.example.com`, without `/api/v1`.')
-    }
-    if (is403) {
-      const isViewOnly403 = /view-only access/i.test(error || '')
-      reasons.push(
-        isViewOnly403
-          ? 'The backend is reachable, but this user currently has view-only access and cannot perform the requested modifying action.'
-          : 'The backend is reachable, but it is rejecting the current user or tenant context with 403 Forbidden.'
-      )
-      actions.push(`Ensure the browser user is the seeded or provisioned user. Current effective user is \`${effectiveUserId}\`.`)
-      if (isViewOnly403) {
-        actions.push('Viewing the app is allowed, but edits are blocked for this user. Contact an administrator if this account should have editor or admin permissions.')
-      } else {
-        actions.push('If this is a disposable local environment, set `localStorage.SYSGRID_USER_ID = "haewon.kim"` and reload, or clear `SYSGRID_USER_ID` to use the bootstrap default.')
-        actions.push('Make sure the selected tenant in the active config DB grants access to that user.')
-        actions.push('If this user should only browse the app, confirm that public read-only mode is enabled and a public tenant is available on the backend.')
-      }
-    }
-    if (overrideUrl) {
-      reasons.push('A stored API override is present and may be routing requests to an old or incompatible backend.')
-      actions.push('Use `Clear Overrides & Retry` first if the configured backend changed.')
-    }
-    if (!reasons.length) {
-      reasons.push('The frontend could not complete bootstrap against the configured backend target.')
-      actions.push('Verify `/api/v1/health` on the configured backend origin and confirm `VITE_API_BASE_URL` and `BACKEND_CORS_ORIGINS` are aligned.')
-    }
+  const openHealthEndpoint = () => {
+    window.open(failureDiagnosis.healthUrl, '_blank', 'noopener,noreferrer')
+  }
 
-    return {
-      statusMatch,
-      reasons,
-      actions,
-      diagnostics: {
-        uiOrigin: currentOrigin,
-        configuredApiBase: normalizedConfiguredApiBase || '<blank>',
-        failedUrl: normalizedFailedUrl || '<blank>',
-        storedOverride: overrideUrl || '<none>',
-        effectiveUserId,
-      },
+  const openBuganizer = async () => {
+    await copyBootstrapText('Sanitized Buganizer report', bootstrapReport)
+    if (failureDiagnosis.buganizerUrl) {
+      window.open(failureDiagnosis.buganizerUrl, '_blank', 'noopener,noreferrer')
     }
-  })()
+  }
 
   if (error) {
     const backendWarnings = Array.isArray(backendDiagnostics?.data?.warnings) ? backendDiagnostics.data.warnings : []
@@ -388,11 +366,11 @@ const Bootstrap = () => {
           <WorkspaceSectionCard className="space-y-4 p-6">
             <PageHeader
               eyebrow="Bootstrap Failure"
-              title="Connection Failure"
-              subtitle="Startup could not establish a valid backend, user, and tenant contract."
+              title={failureDiagnosis.title}
+              subtitle={failureDiagnosis.summary}
               meta={
                 <div className="flex flex-wrap items-center gap-2">
-                  <WorkspaceSectionBadge tone="rose">Bootstrap Blocked</WorkspaceSectionBadge>
+                  <WorkspaceSectionBadge tone="rose">{failureDiagnosis.code.replace(/_/g, " ")}</WorkspaceSectionBadge>
                   {backendDiagnostics?.ok ? <WorkspaceSectionBadge tone="emerald">Backend Diagnostics Live</WorkspaceSectionBadge> : null}
                   {backendWarnings.length ? <WorkspaceSectionBadge tone="amber">{backendWarnings.length} Warning{backendWarnings.length > 1 ? 's' : ''}</WorkspaceSectionBadge> : null}
                 </div>
@@ -404,8 +382,13 @@ const Bootstrap = () => {
               }
             />
             <p className="max-w-4xl text-[11px] font-semibold leading-relaxed text-slate-400">
-              SysGrid could not complete startup against the backend. This surface follows the shared workspace contract: it shows inferred frontend causes first, then overlays backend startup-check diagnostics when the backend can still respond.
+              This window reports the classified root cause, the exact request/response context, and direct recovery actions. Diagnostics are sanitized before copying or opening Buganizer.
             </p>
+            {copyFeedback ? (
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-[10px] font-bold text-emerald-300">
+                {copyFeedback}
+              </div>
+            ) : null}
             <PageToolbar
               left={
                 <ToolbarGroup>
@@ -419,29 +402,31 @@ const Bootstrap = () => {
               }
               right={
                 <ToolbarGroup>
+                  <ToolbarButton variant="primary" onClick={() => window.location.reload()}>
+                    <RefreshCcw size={13} /> Retry
+                  </ToolbarButton>
+                  <ToolbarButton onClick={openHealthEndpoint}>
+                    <ExternalLink size={13} /> Open Health
+                  </ToolbarButton>
+                  {failureDiagnosis.fixCommand ? (
+                    <ToolbarButton onClick={() => copyBootstrapText('Fix command', failureDiagnosis.fixCommand)}>
+                      <Copy size={13} /> Copy Fix
+                    </ToolbarButton>
+                  ) : null}
+                  <ToolbarButton onClick={() => copyBootstrapText('Diagnostics', bootstrapReport)}>
+                    <Copy size={13} /> Copy Diagnostics
+                  </ToolbarButton>
+                  <ToolbarButton onClick={openBuganizer}>
+                    <Bug size={13} /> {failureDiagnosis.buganizerUrl ? 'Open Buganizer' : 'Copy Bug Report'}
+                  </ToolbarButton>
                   <ToolbarButton
-                    variant="primary"
+                    variant="quiet"
                     onClick={() => {
                       setApiOverride(null)
                       window.location.reload()
                     }}
                   >
-                    Clear Overrides & Retry
-                  </ToolbarButton>
-                  <ToolbarButton
-                    onClick={() => {
-                      const current = localStorage.getItem('SYSGRID_OVERRIDE_API_URL') || ''
-                      const newUrl = prompt('Enter Backend API URL manually (leave blank to clear):', current)
-                      if (newUrl !== null) {
-                        setApiOverride(newUrl)
-                        window.location.reload()
-                      }
-                    }}
-                  >
-                    Configure API URL
-                  </ToolbarButton>
-                  <ToolbarButton variant="quiet" onClick={() => setReady(true)}>
-                    Ignore Error & Launch
+                    Clear Overrides
                   </ToolbarButton>
                 </ToolbarGroup>
               }
@@ -468,15 +453,13 @@ const Bootstrap = () => {
                 <Database size={14} className="text-blue-400" />
                 <h2 className="text-[11px] font-black uppercase tracking-widest">Frontend Diagnostics</h2>
               </div>
-              <div className="grid gap-2 text-[10px] text-slate-400">
-                <p><span className="text-slate-500">UI Origin</span><br /><span className="text-slate-200">{failureDiagnosis.diagnostics.uiOrigin}</span></p>
-                <p><span className="text-slate-500">Configured API Base</span><br /><span className="text-slate-200">{failureDiagnosis.diagnostics.configuredApiBase}</span></p>
-                <p><span className="text-slate-500">Failed URL</span><br /><span className="text-slate-200">{failureDiagnosis.diagnostics.failedUrl}</span></p>
-                <p><span className="text-slate-500">Stored Override</span><br /><span className="text-slate-200">{failureDiagnosis.diagnostics.storedOverride}</span></p>
-                <p><span className="text-slate-500">Effective User</span><br /><span className="text-slate-200">{failureDiagnosis.diagnostics.effectiveUserId}</span></p>
-                {failureDiagnosis.statusMatch ? (
-                  <p><span className="text-slate-500">Observed HTTP Status</span><br /><span className="text-slate-200">{failureDiagnosis.statusMatch[0]}</span></p>
-                ) : null}
+              <div className="grid gap-2 text-[10px] text-slate-400 sm:grid-cols-2">
+                {Object.entries(failureDiagnosis.diagnostics).map(([label, value]) => (
+                  <p key={label} className={label === 'rawBody' ? 'sm:col-span-2' : ''}>
+                    <span className="text-slate-500">{label.replace(/([A-Z])/g, ' $1')}</span><br />
+                    <span className="break-all text-slate-200">{String(value)}</span>
+                  </p>
+                ))}
               </div>
             </WorkspaceSectionCard>
           </div>
@@ -502,9 +485,10 @@ const Bootstrap = () => {
                 <h2 className="text-[11px] font-black uppercase tracking-widest">Useful Checks</h2>
               </div>
               <div className="space-y-2 text-[10px] text-slate-400">
-                <p>1. Open <span className="text-slate-200">{'<backend-origin>/api/v1/health'}</span> directly in the browser.</p>
-                <p>2. If using a forwarded or company URL, do not use <span className="text-slate-200">http://127.0.0.1:8000</span> as the frontend API base.</p>
-                <p>3. For the disposable local seed flow, the expected bootstrap user is <span className="text-slate-200">haewon.kim</span>.</p>
+                <p>1. Open <span className="break-all text-slate-200">{failureDiagnosis.healthUrl}</span> directly in the browser.</p>
+                <p>2. Run <span className="text-slate-200">./scripts/start-local.sh ... --print-runtime-config</span> to inspect derived hosts and origins without resetting data.</p>
+                <p>3. Confirm the HTTP/HTTPS schemes match and the forwarded API port is visible to the same audience as the frontend.</p>
+                <p>4. Use Copy Diagnostics before opening Buganizer; credentials and token-like values are redacted.</p>
               </div>
             </WorkspaceSectionCard>
 
@@ -584,7 +568,7 @@ const Bootstrap = () => {
               <h2 className="text-[11px] font-black uppercase tracking-widest">Recovery Intent</h2>
             </div>
             <p className="text-[11px] leading-relaxed text-slate-300">
-              `Clear Overrides & Retry` is the standard first action because most startup failures come from stale browser overrides, a wrong forwarded backend origin, or a mismatched seeded user. `Ignore Error & Launch` is a last-resort operator bypass for debugging only.
+              Retry preserves the configured target. Clear Overrides removes only a stale browser API override. The application no longer offers an unsafe “ignore bootstrap” bypass; launch remains blocked until backend, host, origin, identity, and tenant contracts are valid.
             </p>
           </WorkspaceSectionCard>
         </div>
