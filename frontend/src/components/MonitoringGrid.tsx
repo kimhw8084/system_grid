@@ -118,6 +118,7 @@ import {
   showOperationalBulkRevertedToast,
 } from './shared/OperationalBulkContract'
 import { buildOperationalLifecycleToastMessage } from './shared/OperationalLifecycleToasts'
+import { useCollaborativeWorkspaceViews } from './shared/CollaborativeWorkspaceViews'
 
 const MONITORING_VIEW_STORAGE_KEY = 'sysgrid_monitoring_views_v1'
 const MONITORING_ACTIVE_VIEW_KEY = 'sysgrid_monitoring_active_view_v1'
@@ -126,6 +127,7 @@ const MONITORING_UI_STATE_KEY = 'sysgrid_monitoring_ui_state_v1'
 const MONITORING_WATCH_STORAGE_KEY = 'sysgrid_monitoring_watch_v1'
 const MONITORING_WORKSPACE_PREFERENCE_KEY = 'monitoring_workspace_state_v2'
 const MONITORING_WORKSPACE_PREFERENCE_VERSION = 2
+const MONITORING_COLLABORATIVE_VIEW_MIGRATION_KEY = 'sysgrid_monitoring_collaborative_views_v1_migrated'
 const MONITORING_DETAIL_CACHE_KEY = 'sysgrid_monitoring_detail_cache_v1'
 const BULK_MENU_MAX_HEIGHT = 560
 const MONITORING_BULK_FIELD_LABELS: Record<string, string> = {
@@ -557,7 +559,7 @@ export default function MonitoringGrid() {
   })
   const [gridSortModel, setGridSortModel] = useState<any[]>([{ colId: 'favorite', sort: 'desc' }])
   const [savedViews, setSavedViews] = usePersistentJsonState<any[]>(MONITORING_VIEW_STORAGE_KEY, () => {
-    return initialWorkspaceState?.savedViews ?? normalizeMonitoringSavedViews([])
+    return readMonitoringWorkspaceStateFromLocalStorage()?.savedViews ?? normalizeMonitoringSavedViews([])
   })
   const [activeViewId, setActiveViewId] = useWorkspaceSessionValue<string | null>(
     'sysgrid_monitoring_session_init',
@@ -717,7 +719,7 @@ export default function MonitoringGrid() {
 
   const buildMonitoringWorkspacePreferencePayload = useCallback(() => normalizeMonitoringWorkspaceState({
     version: MONITORING_WORKSPACE_PREFERENCE_VERSION,
-    savedViews,
+    savedViews: [],
     activeViewId,
     favoriteIds,
     watchIds,
@@ -744,7 +746,6 @@ export default function MonitoringGrid() {
     lastVisitedAt,
     quickFilters,
     rowDensity,
-    savedViews,
     searchTerm,
     showFilterBar,
     watchIds,
@@ -758,7 +759,6 @@ export default function MonitoringGrid() {
       const payload = normalizeMonitoringWorkspaceState(remoteWorkspaceState)
       const serialized = JSON.stringify(payload)
       monitoringPreferenceSyncRef.current = serialized
-      setSavedViews(payload?.savedViews ?? normalizeMonitoringSavedViews([]))
       setActiveViewId(payload?.activeViewId ?? null)
       setFavoriteIds(payload?.favoriteIds ?? [])
       setWatchIds(payload?.watchIds ?? [])
@@ -792,7 +792,6 @@ export default function MonitoringGrid() {
     setActiveViewId,
     setColumnLayoutState,
     setFavoriteIds,
-    setSavedViews,
     setWatchIds,
   ])
 
@@ -1056,7 +1055,44 @@ export default function MonitoringGrid() {
         .map((col: any) => ({ colId: col.colId, sort: col.sort })) || gridSortModel
     })
 
+  const setCollaborativeActiveViewId = useCallback((id: string | null) => {
+    setActiveViewId(id)
+    if (typeof window !== 'undefined') {
+      if (id) window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, id)
+      else window.localStorage.removeItem(MONITORING_ACTIVE_VIEW_KEY)
+    }
+  }, [])
+
+  const collaborativeViews = useCollaborativeWorkspaceViews({
+    workspaceKey: 'monitoring',
+    migrationKey: MONITORING_COLLABORATIVE_VIEW_MIGRATION_KEY,
+    systemViewIds: DEFAULT_MONITORING_VIEW_IDS,
+    currentViews: savedViews,
+    setCurrentViews: setSavedViews,
+    normalizeViews: normalizeMonitoringSavedViews,
+    sanitizeDefinition: sanitizeMonitoringViewConfig,
+    activeViewId,
+    onActiveViewIdChange: setCollaborativeActiveViewId,
+    currentDefinition: buildCurrentViewConfig(),
+  })
+
+  useEffect(() => {
+    if (!collaborativeViews.dirty) return
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [collaborativeViews.dirty])
+
+  const allowViewSwitch = (nextViewId: string | null) => {
+    if (!collaborativeViews.dirty || nextViewId === activeViewId) return true
+    return window.confirm('This workspace has unsaved view changes. Discard them and switch views?')
+  }
+
   const applySavedView = (viewId: string) => {
+    if (!allowViewSwitch(viewId)) return
     const nextView = savedViews.find((view) => view.id === viewId)
     if (!nextView) return
     const config = sanitizeMonitoringViewConfig(nextView.config)
@@ -1072,6 +1108,7 @@ export default function MonitoringGrid() {
     setGridFilterModel(config.filterModel ?? {})
     setGridSortModel((config.sortModel && config.sortModel.length > 0) ? config.sortModel : [{ colId: 'favorite', sort: 'desc' }])
     setActiveViewId(viewId)
+    collaborativeViews.setViewLink(viewId)
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, viewId)
     }
@@ -1087,59 +1124,52 @@ export default function MonitoringGrid() {
     })
   }
 
-  const saveCurrentToView = (viewId: string) => {
-    const previousViews = savedViews
-    const nextViews = savedViews.map((view) => (
-      view.id === viewId
-        ? { ...view, config: buildCurrentViewConfig() }
-        : view
-    ))
-    setSavedViews(nextViews)
-    setActiveViewId(viewId)
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
-      window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, viewId)
+  useEffect(() => {
+    const requested = collaborativeViews.requestedViewId
+    if (!requested || requested === activeViewId || !savedViews.some((view) => view.id === requested)) return
+    applySavedView(requested)
+  }, [activeViewId, collaborativeViews.requestedViewId, savedViews])
+
+  const saveCurrentToView = async (viewId: string) => {
+    const view = savedViews.find((entry) => entry.id === viewId)
+    if (!view) return
+    const result = await collaborativeViews.updateView(viewId, view.name, buildCurrentViewConfig())
+    if (result.conflict) {
+      showWorkspaceToast('This view changed on the server. Resolve the conflict in Saved views.', { type: 'error' })
+      return
     }
-    showWorkspaceRevertToast(`Saved current table to ${nextViews.find((view) => view.id === viewId)?.name}`, () => {
-      setSavedViews(previousViews)
-      setActiveViewId(viewId)
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(previousViews))
-        window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, viewId)
-      }
-    })
+    if (!result.view) {
+      showWorkspaceToast(result.error || 'Unable to update this view', { type: 'error' })
+      return
+    }
+    if (result.view) setActiveViewId(result.view.id)
+    showWorkspaceToast(result.persisted ? `Saved ${view.name}` : `Saved ${view.name} locally; server unavailable`, { type: result.persisted ? 'success' : 'error' })
   }
 
-  const createViewFromCurrent = () => {
+  const createViewFromCurrent = async () => {
     const trimmed = newViewName.trim()
     if (!trimmed) {
       showWorkspaceToast('Enter a name for the new view', { type: 'error' })
       return
     }
-    const nextIdBase = slugifyViewId(trimmed)
-    let nextId = nextIdBase
-    let suffix = 2
-    while (savedViews.some((view) => view.id === nextId)) {
-      nextId = `${nextIdBase}-${suffix++}`
+    const result = await collaborativeViews.createView(trimmed, buildCurrentViewConfig())
+    if (!result.view) {
+      showWorkspaceToast(result.error || 'Unable to save this view', { type: 'error' })
+      return
     }
-    const nextView = {
-      id: nextId,
-      name: trimmed,
-      config: buildCurrentViewConfig()
+    if (result.view) {
+      setActiveViewId(result.view.id)
+      collaborativeViews.setViewLink(result.view.id)
+      setNewViewName('')
+      if (typeof window !== 'undefined') window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, result.view.id)
     }
-    const nextViews = [...savedViews, nextView]
-    setSavedViews(nextViews)
-    setActiveViewId(nextId)
-    setNewViewName('')
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
-      window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, nextId)
-    }
-    showWorkspaceToast(`Saved new view ${trimmed}`)
+    showWorkspaceToast(result.persisted ? `Saved personal view ${trimmed}` : `Saved ${trimmed} locally; server unavailable`, { type: result.persisted ? 'success' : 'error' })
   }
 
   const applySystemDefault = () => {
+    if (!allowViewSwitch(null)) return
     setActiveViewId(null)
+    collaborativeViews.setViewLink(null)
     setTransientManualColumnWidths(false)
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(MONITORING_ACTIVE_VIEW_KEY)
@@ -1163,28 +1193,40 @@ export default function MonitoringGrid() {
     showWorkspaceToast('Restored system default view')
   }
 
-  const deleteView = (viewId: string) => {
-    const view = savedViews.find((v) => v.id === viewId)
+  const renameView = async (viewId: string, name: string): Promise<boolean> => {
+    const view = savedViews.find((entry: any) => entry.id === viewId)
+    if (!view) return false
+    const result = await collaborativeViews.updateView(viewId, name, view.config)
+    if (result.conflict) {
+      showWorkspaceToast('This view changed on the server. Resolve the conflict before renaming.', { type: 'error' })
+      return false
+    }
+    if (!result.view || !result.persisted) {
+      showWorkspaceToast(result.error || 'Unable to rename this view', { type: 'error' })
+      return false
+    }
+    showWorkspaceToast(`Renamed view to ${name}`)
+    return true
+  }
+
+  const deleteView = async (viewId: string) => {
+    const view = savedViews.find((entry) => entry.id === viewId)
     if (!view) return
-    const nextViews = savedViews.filter((v) => v.id !== viewId)
-    setSavedViews(nextViews)
+    const result = await collaborativeViews.deleteView(viewId)
+    if (result.conflict) {
+      showWorkspaceToast('This view changed on the server. Resolve the conflict before deleting.', { type: 'error' })
+      return
+    }
+    if (result.error && !result.persisted) {
+      showWorkspaceToast(result.error, { type: 'error' })
+      return
+    }
     if (activeViewId === viewId) {
       setActiveViewId(null)
-      if (typeof window !== 'undefined') {
-        window.localStorage.removeItem(MONITORING_ACTIVE_VIEW_KEY)
-      }
+      collaborativeViews.setViewLink(null)
+      if (typeof window !== 'undefined') window.localStorage.removeItem(MONITORING_ACTIVE_VIEW_KEY)
     }
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(nextViews))
-    }
-    showWorkspaceRevertToast(`Deleted view ${view.name}`, () => {
-      setSavedViews(savedViews)
-      setActiveViewId(activeViewId)
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(MONITORING_VIEW_STORAGE_KEY, JSON.stringify(savedViews))
-        if (activeViewId) window.localStorage.setItem(MONITORING_ACTIVE_VIEW_KEY, activeViewId)
-      }
-    })
+    showWorkspaceToast(result.persisted ? `Deleted ${view.name}` : `Removed local fallback ${view.name}`)
   }
 
   const dismissWorkspaceMenus = useCallback(() => {
@@ -2134,10 +2176,19 @@ export default function MonitoringGrid() {
             defaultViewIds={DEFAULT_MONITORING_VIEW_IDS}
             onApplyView={applySavedView}
             onOverwriteView={saveCurrentToView}
+            onRenameView={renameView}
             onDeleteView={deleteView}
             describeView={(view) => view.config?.groupBy && view.config.groupBy !== 'raw'
               ? `Grouped by ${groupOptions.find((option) => option.value === view.config.groupBy)?.label || view.config.groupBy}`
               : 'Raw monitoring table'}
+            syncStatus={collaborativeViews.status}
+            syncMessage={collaborativeViews.lastError || (collaborativeViews.status === 'offline' ? 'Personal views are available locally and will migrate when the API returns.' : undefined)}
+            onCopyViewLink={(viewId) => {
+              void collaborativeViews.copyViewLink(viewId).then(() => showWorkspaceToast('View link copied'))
+            }}
+            conflictMessage={collaborativeViews.conflict?.message}
+            onReloadConflict={collaborativeViews.reloadConflict}
+            onSaveConflictCopy={() => { void collaborativeViews.saveConflictCopy() }}
           />
 
           <OperationalAnchoredPanel

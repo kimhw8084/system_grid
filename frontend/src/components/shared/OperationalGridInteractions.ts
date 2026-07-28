@@ -365,10 +365,24 @@ export function useOperationalDismissController({
   showExportMenu?: boolean;
   hasRowActionMenu: boolean;
 }) {
+  const isInteractionLocked = () => {
+    const activePanels = [
+      panels.showBulkMenu ? panels.bulkMenuPanelRef.current : null,
+      panels.showDisplayMenu ? panels.displayMenuPanelRef.current : null,
+      panels.showViewsMenu ? panels.viewsMenuPanelRef.current : null,
+      panels.showSurfaceMenu ? panels.surfaceMenuPanelRef?.current : null,
+      panels.showExportMenu ? panels.exportMenuPanelRef?.current : null,
+    ]
+    return activePanels.some((panel) => panel?.dataset.workspaceInteractionLock === 'true')
+  }
+
   useWorkspaceDismissHandlers({
     active,
-    onDismiss,
+    onDismiss: () => {
+      if (!isInteractionLocked()) onDismiss()
+    },
     shouldDismiss: (target) => {
+      if (isInteractionLocked()) return false
       if (target.closest("[data-workspace-panel]")) return false;
       if (target.closest(".row-action-trigger")) return false;
       if (target.closest(".row-action-menu-container")) return false;

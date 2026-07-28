@@ -1,4 +1,4 @@
-import React, { CSSProperties, useCallback, useEffect, useRef, useState } from 'react'
+import React, { CSSProperties, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ChevronDown, Check, Info } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { OPERATIONAL_WORKSPACE_VISUALS } from './OperationalWorkspace'
@@ -17,6 +17,57 @@ const join = (...parts: Array<string | false | null | undefined>) => parts.filte
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
+}
+
+
+export type WorkspaceAnchoredPlacement = 'above' | 'below'
+
+export function computeWorkspaceAnchoredPanelStyle({
+  triggerRect,
+  viewportWidth,
+  viewportHeight,
+  offset,
+  minWidth,
+  placement,
+}: {
+  triggerRect: Pick<DOMRect, 'top' | 'right' | 'bottom' | 'left' | 'width'>
+  viewportWidth: number
+  viewportHeight: number
+  offset: number
+  minWidth: number
+  placement: WorkspaceAnchoredPlacement | null
+}): { placement: WorkspaceAnchoredPlacement; style: CSSProperties } {
+  const padding = 12
+  const maxWidth = Math.max(0, viewportWidth - padding * 2)
+  const desiredWidth = Math.max(triggerRect.width, minWidth)
+  const width = Math.min(desiredWidth, maxWidth)
+  const left = clamp(triggerRect.left, padding, viewportWidth - width - padding)
+  const availableBelow = Math.max(0, viewportHeight - triggerRect.bottom - offset - padding)
+  const availableAbove = Math.max(0, triggerRect.top - offset - padding)
+  const resolvedPlacement = placement ?? (availableBelow >= availableAbove ? 'below' : 'above')
+  const availableHeight = resolvedPlacement === 'below' ? availableBelow : availableAbove
+
+  return {
+    placement: resolvedPlacement,
+    style: {
+      position: 'fixed',
+      top: resolvedPlacement === 'below' ? triggerRect.bottom + offset : undefined,
+      bottom: resolvedPlacement === 'above' ? viewportHeight - triggerRect.top + offset : undefined,
+      left,
+      width,
+      maxHeight: Math.max(40, availableHeight),
+      overflowY: 'auto',
+      overscrollBehavior: 'contain',
+      scrollbarGutter: 'stable',
+      zIndex: WORKSPACE_LAYER_Z.floatingPanel,
+      visibility: 'visible',
+      pointerEvents: 'auto',
+    },
+  }
+}
+
+export function shouldIgnoreWorkspaceAnchoredScroll(target: EventTarget | null, panel: HTMLElement | null): boolean {
+  return target instanceof Node && Boolean(panel?.contains(target))
 }
 
 export function getWorkspaceModalFrameClass(size: WorkspaceModalSize) {
@@ -86,54 +137,91 @@ export function useWorkspaceAnchoredLayer(isOpen: boolean, options?: { offset?: 
   const minWidth = options?.minWidth ?? 0
   const triggerRef = useRef<HTMLElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
+  const placementRef = useRef<'above' | 'below' | null>(null)
+  const frameRef = useRef<number | null>(null)
   const [panelStyle, setPanelStyle] = useState<CSSProperties>({
     position: 'fixed',
     top: -9999,
     left: -9999,
     visibility: 'hidden',
-    pointerEvents: 'none'
+    pointerEvents: 'none',
   })
 
   const updatePosition = useCallback(() => {
     const trigger = triggerRef.current
-    if (!trigger) return
+    if (!trigger || typeof window === 'undefined') return
 
-    const rect = trigger.getBoundingClientRect()
-    const padding = 12
-    const maxWidth = Math.max(0, window.innerWidth - padding * 2)
-    const panelHeight = panelRef.current?.offsetHeight ?? 0
-    const desiredWidth = Math.max(rect.width, minWidth)
-    const width = Math.min(desiredWidth, maxWidth)
-    const left = clamp(rect.left, padding, window.innerWidth - width - padding)
-    const openUpward =
-      panelHeight > 0 &&
-      rect.bottom + offset + panelHeight > window.innerHeight - padding &&
-      rect.top - offset - panelHeight >= padding
-    const top = openUpward
-      ? rect.top - offset - panelHeight
-      : Math.min(rect.bottom + offset, window.innerHeight - padding)
+    const result = computeWorkspaceAnchoredPanelStyle({
+      triggerRect: trigger.getBoundingClientRect(),
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      offset,
+      minWidth,
+      placement: placementRef.current,
+    })
+    placementRef.current = result.placement
+    const nextStyle = result.style
 
-    setPanelStyle({
-      position: 'fixed',
-      top,
-      left,
-      width,
-      zIndex: WORKSPACE_LAYER_Z.floatingPanel,
-      visibility: 'visible',
-      pointerEvents: 'auto'
+    setPanelStyle((current) => {
+      const keys = Object.keys(nextStyle) as Array<keyof CSSProperties>
+      if (keys.every((key) => current[key] === nextStyle[key]) && Object.keys(current).length === keys.length) {
+        return current
+      }
+      return nextStyle
     })
   }, [minWidth, offset])
 
-  useEffect(() => {
-    if (!isOpen) return
-    updatePosition()
-    window.addEventListener('resize', updatePosition)
-    window.addEventListener('scroll', updatePosition, true)
-    return () => {
-      window.removeEventListener('resize', updatePosition)
-      window.removeEventListener('scroll', updatePosition, true)
+  const schedulePositionUpdate = useCallback(() => {
+    if (typeof window === 'undefined') return
+    if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current)
+    frameRef.current = window.requestAnimationFrame(() => {
+      frameRef.current = null
+      updatePosition()
+    })
+  }, [updatePosition])
+
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      placementRef.current = null
+      setPanelStyle({
+        position: 'fixed',
+        top: -9999,
+        left: -9999,
+        visibility: 'hidden',
+        pointerEvents: 'none',
+      })
+      return
     }
-  }, [isOpen, updatePosition])
+
+    const handleViewportChange = (event?: Event) => {
+      if (shouldIgnoreWorkspaceAnchoredScroll(event?.target ?? null, panelRef.current)) return
+      schedulePositionUpdate()
+    }
+
+    schedulePositionUpdate()
+    window.addEventListener('resize', handleViewportChange)
+    window.addEventListener('scroll', handleViewportChange, true)
+
+    let observer: ResizeObserver | null = null
+    let observerFrame: number | null = null
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => schedulePositionUpdate())
+      observerFrame = window.requestAnimationFrame(() => {
+        if (panelRef.current) observer?.observe(panelRef.current)
+      })
+    }
+
+    return () => {
+      window.removeEventListener('resize', handleViewportChange)
+      window.removeEventListener('scroll', handleViewportChange, true)
+      observer?.disconnect()
+      if (observerFrame !== null) window.cancelAnimationFrame(observerFrame)
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current)
+        frameRef.current = null
+      }
+    }
+  }, [isOpen, schedulePositionUpdate])
 
   return { triggerRef, panelRef, panelStyle }
 }

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, JSON, Text, Table, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, JSON, Text, Table, UniqueConstraint, CheckConstraint, Index
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 from ..database_base import Base
@@ -1077,15 +1077,23 @@ class UserPreference(Base, BaseMixin):
     value = Column(Text)
 
 class WorkspaceSavedView(Base, BaseMixin):
-    """Durable views live in the tenant database, never in generic preferences."""
+    """Tenant-scoped durable workspace views; transient UI state stays in user preferences."""
     __tablename__ = "workspace_saved_views"
     __table_args__ = (
         UniqueConstraint("workspace_key", "owner_user_id", "name", name="uq_workspace_saved_view_owner_name"),
+        CheckConstraint("scope IN ('personal', 'team')", name="workspace_saved_view_scope"),
+        CheckConstraint("revision >= 1", name="workspace_saved_view_revision_positive"),
+        CheckConstraint("schema_version >= 1", name="workspace_saved_view_schema_version_positive"),
+        CheckConstraint(
+            "(scope = 'personal' AND team_id IS NULL) OR (scope = 'team' AND team_id IS NOT NULL)",
+            name="workspace_saved_view_scope_owner_coherent",
+        ),
+        Index("ix_workspace_saved_views_owner_workspace", "owner_user_id", "workspace_key"),
     )
-    workspace_key = Column(String, index=True, nullable=False)
-    name = Column(String, nullable=False)
-    scope = Column(String, nullable=False, default="personal")
-    owner_user_id = Column(String, index=True, nullable=False)
+    workspace_key = Column(String(80), index=True, nullable=False)
+    name = Column(String(120), nullable=False)
+    scope = Column(String(16), nullable=False, default="personal")
+    owner_user_id = Column(String(200), index=True, nullable=False)
     team_id = Column(Integer, ForeignKey("teams.id", ondelete="SET NULL"), nullable=True, index=True)
     definition_json = Column(JSON, nullable=False, default=dict)
     schema_version = Column(Integer, nullable=False, default=1)

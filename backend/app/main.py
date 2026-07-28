@@ -4,9 +4,10 @@ import asyncio
 import logging
 import os
 import re
-import sys
 from uuid import uuid4
 
+from alembic import command
+from alembic.config import Config
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -33,24 +34,20 @@ logger = logging.getLogger("sysgrid.api")
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 
 
+def _upgrade_database_schema(backend_dir: str) -> None:
+    """Upgrade the configured tenant database with Alembic's supported Python API."""
+    config = Config(os.path.join(backend_dir, "alembic.ini"))
+    command.upgrade(config, "head")
+
+
 async def run_migrations() -> None:
     backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     logger.info("Checking database migrations")
-    process = await asyncio.create_subprocess_exec(
-        sys.executable,
-        "-m",
-        "alembic",
-        "upgrade",
-        "head",
-        cwd=backend_dir,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    stdout, stderr = await process.communicate()
-    if process.returncode != 0:
-        error_text = stderr.decode(errors="replace").strip()
-        raise RuntimeError(f"Database migration failed: {error_text}")
-    logger.info("Database schema is current", extra={"migration_output": stdout.decode(errors="replace").strip()})
+    try:
+        await asyncio.to_thread(_upgrade_database_schema, backend_dir)
+    except Exception as exc:
+        raise RuntimeError("Database migration failed") from exc
+    logger.info("Database schema is current")
 
 
 async def ping_engine(engine) -> tuple[bool, str | None]:

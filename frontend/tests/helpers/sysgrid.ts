@@ -85,6 +85,20 @@ export async function ensureSettingOption(
   return post(request, '/settings/options', { category, value, label })
 }
 
+export async function requireSettingOption(
+  request: APIRequestContext,
+  category: string,
+  value: string,
+  label = value,
+) {
+  const options = await get(request, `/settings/options?category=${encodeURIComponent(category)}`)
+  const existing = Array.isArray(options)
+    ? options.find((option: Record<string, any>) => option.value === value || option.label === label)
+    : null
+  expect(existing, `Expected code-managed setting option ${category}:${value}`).toBeTruthy()
+  return existing
+}
+
 export async function resetBrowserState(page: Page) {
   const testResetToken = `pw-reset-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   const cleanState = {
@@ -241,7 +255,7 @@ export async function createMonitoring(request: APIRequestContext, payload: Reco
   let nextPayload = { ...payload }
 
   if (typeof nextPayload.category === 'string' && nextPayload.category.trim()) {
-    await ensureSettingOption(request, 'MonitoringCategory', nextPayload.category.trim())
+    await requireSettingOption(request, 'MonitoringCategory', nextPayload.category.trim())
   }
   if (typeof nextPayload.platform === 'string' && nextPayload.platform.trim()) {
     await ensureSettingOption(request, 'MonitoringPlatform', nextPayload.platform.trim())

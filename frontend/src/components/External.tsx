@@ -87,6 +87,7 @@ import {
   useOperationalDismissController,
   useOperationalGroupedSelection,
 } from './shared/OperationalGridInteractions'
+import { useCollaborativeWorkspaceViews } from './shared/CollaborativeWorkspaceViews'
 
 // --- Sub-components ---
 
@@ -176,6 +177,8 @@ const reservedMetadataKeys = new Set([
 ])
 
 const EXTERNAL_VIEW_STORAGE_KEY = 'sysgrid_external_views_v1'
+const EXTERNAL_COLLABORATIVE_VIEW_MIGRATION_KEY = 'sysgrid_external_collaborative_views_v1_migrated'
+const EXTERNAL_DEFAULT_VIEW_IDS = new Set<string>()
 const EXTERNAL_ACTIVE_VIEW_KEY = 'sysgrid_external_active_view_v1'
 const EXTERNAL_UI_STATE_KEY = 'sysgrid_external_ui_state_v1'
 const EXTERNAL_FAVORITES_STORAGE_KEY = 'sysgrid_external_favorites_v1'
@@ -2016,6 +2019,34 @@ export default function External() {
     sortModel: gridSortModel,
   }), [fontSize, rowDensity, hiddenColumns, groupBy, activeTab, searchTerm, showFilterBar, quickFilters, columnLayoutState, gridFilterModel, gridSortModel])
 
+  const collaborativeViews = useCollaborativeWorkspaceViews({
+    workspaceKey: 'external',
+    migrationKey: EXTERNAL_COLLABORATIVE_VIEW_MIGRATION_KEY,
+    systemViewIds: EXTERNAL_DEFAULT_VIEW_IDS,
+    currentViews: normalizedSavedViews,
+    setCurrentViews: setSavedViews,
+    normalizeViews: normalizeExternalSavedViews,
+    sanitizeDefinition: sanitizeExternalViewConfig,
+    activeViewId,
+    onActiveViewIdChange: setActiveViewId,
+    currentDefinition: currentWorkspaceConfig,
+  })
+
+  useEffect(() => {
+    if (!collaborativeViews.dirty) return
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [collaborativeViews.dirty])
+
+  const allowViewSwitch = (nextViewId: string | null) => {
+    if (!collaborativeViews.dirty || nextViewId === activeViewId) return true
+    return window.confirm('This workspace has unsaved view changes. Discard them and switch views?')
+  }
+
   useEffect(() => {
     setPersistedUiState(currentWorkspaceConfig)
   }, [currentWorkspaceConfig, setPersistedUiState])
@@ -2051,61 +2082,98 @@ export default function External() {
   }
 
   const applySystemDefault = () => {
+    if (!allowViewSwitch(null)) return
     applyWorkspaceConfig(normalizeExternalWorkspaceState(null), null)
+    collaborativeViews.setViewLink(null)
     setGroupBy('raw')
     dismissOverlays()
   }
 
-  const createViewFromCurrent = () => {
+  const createViewFromCurrent = async () => {
     const trimmedName = newViewName.trim()
     if (!trimmedName) {
       showWorkspaceToast('Name the view before saving it', { type: 'error' })
       return
     }
-    const nextView = {
-      id: `external-${Date.now()}`,
-      name: trimmedName,
-      config: currentWorkspaceConfig,
+    const result = await collaborativeViews.createView(trimmedName, currentWorkspaceConfig)
+    if (!result.view) {
+      showWorkspaceToast(result.error || 'Unable to save this view', { type: 'error' })
+      return
     }
-    setSavedViews([...normalizedSavedViews, nextView])
-    setActiveViewId(nextView.id)
-    setNewViewName('')
-    dismissOverlays()
-    showWorkspaceToast('External workspace view saved')
+    if (result.view) {
+      setActiveViewId(result.view.id)
+      collaborativeViews.setViewLink(result.view.id)
+      setNewViewName('')
+    }
+    showWorkspaceToast(result.persisted ? 'External personal view saved' : 'External view saved locally; server unavailable', { type: result.persisted ? 'success' : 'error' })
   }
 
-  const saveCurrentToView = (viewId: string) => {
-    const previousViews = normalizedSavedViews
-    const nextViews = normalizedSavedViews.map((view: any) => (
-      view.id === viewId
-        ? { ...view, config: currentWorkspaceConfig }
-        : view
-    ))
-    setSavedViews(nextViews)
-    setActiveViewId(viewId)
-    showWorkspaceRevertToast('External workspace view updated', () => {
-      setSavedViews(previousViews)
-      setActiveViewId(viewId)
-    })
+  const saveCurrentToView = async (viewId: string) => {
+    const view = normalizedSavedViews.find((entry: any) => entry.id === viewId)
+    if (!view) return
+    const result = await collaborativeViews.updateView(viewId, view.name, currentWorkspaceConfig)
+    if (result.conflict) {
+      showWorkspaceToast('This view changed on the server. Resolve the conflict in Saved views.', { type: 'error' })
+      return
+    }
+    if (!result.view) {
+      showWorkspaceToast(result.error || 'Unable to update this view', { type: 'error' })
+      return
+    }
+    if (result.view) setActiveViewId(result.view.id)
+    showWorkspaceToast(result.persisted ? 'External personal view updated' : 'External view updated locally; server unavailable', { type: result.persisted ? 'success' : 'error' })
   }
 
-  const deleteView = (viewId: string) => {
-    const previousViews = normalizedSavedViews
-    setSavedViews(normalizedSavedViews.filter((view: any) => view.id !== viewId))
-    if (activeViewId === viewId) setActiveViewId(null)
+  const renameView = async (viewId: string, name: string): Promise<boolean> => {
+    const view = normalizedSavedViews.find((entry: any) => entry.id === viewId)
+    if (!view) return false
+    const result = await collaborativeViews.updateView(viewId, name, view.config)
+    if (result.conflict) {
+      showWorkspaceToast('This view changed on the server. Resolve the conflict before renaming.', { type: 'error' })
+      return false
+    }
+    if (!result.view || !result.persisted) {
+      showWorkspaceToast(result.error || 'Unable to rename this view', { type: 'error' })
+      return false
+    }
+    showWorkspaceToast(`Renamed view to ${name}`)
+    return true
+  }
+
+  const deleteView = async (viewId: string) => {
+    const view = normalizedSavedViews.find((entry: any) => entry.id === viewId)
+    if (!view) return
+    const result = await collaborativeViews.deleteView(viewId)
+    if (result.conflict) {
+      showWorkspaceToast('This view changed on the server. Resolve the conflict before deleting.', { type: 'error' })
+      return
+    }
+    if (result.error && !result.persisted) {
+      showWorkspaceToast(result.error, { type: 'error' })
+      return
+    }
+    if (activeViewId === viewId) {
+      setActiveViewId(null)
+      collaborativeViews.setViewLink(null)
+    }
     dismissOverlays()
-    showWorkspaceRevertToast('External workspace view removed', () => {
-      setSavedViews(previousViews)
-      setActiveViewId(activeViewId)
-    })
+    showWorkspaceToast(result.persisted ? 'External personal view removed' : 'External local fallback removed')
   }
 
   const applySavedView = (viewId: string) => {
+    if (!allowViewSwitch(viewId)) return
     const view = normalizedSavedViews.find((entry: any) => entry.id === viewId)
     if (!view) return
     applyWorkspaceConfig(view.config, view.id)
+    collaborativeViews.setViewLink(view.id)
     dismissOverlays()
   }
+
+  useEffect(() => {
+    const requested = collaborativeViews.requestedViewId
+    if (!requested || requested === activeViewId || !normalizedSavedViews.some((view: any) => view.id === requested)) return
+    applySavedView(requested)
+  }, [activeViewId, collaborativeViews.requestedViewId, normalizedSavedViews])
 
   useEffect(() => {
     if (!pendingGridRestore) return
@@ -3048,8 +3116,17 @@ export default function External() {
             defaultViewIds={new Set<string>()}
             onApplyView={applySavedView}
             onOverwriteView={saveCurrentToView}
+            onRenameView={renameView}
             onDeleteView={deleteView}
             describeView={describeExternalSavedView}
+            syncStatus={collaborativeViews.status}
+            syncMessage={collaborativeViews.lastError || (collaborativeViews.status === 'offline' ? 'Personal views are available locally and will migrate when the API returns.' : undefined)}
+            onCopyViewLink={(viewId) => {
+              void collaborativeViews.copyViewLink(viewId).then(() => showWorkspaceToast('View link copied'))
+            }}
+            conflictMessage={collaborativeViews.conflict?.message}
+            onReloadConflict={collaborativeViews.reloadConflict}
+            onSaveConflictCopy={() => { void collaborativeViews.saveConflictCopy() }}
           />
 
           <OperationalAnchoredPanel
