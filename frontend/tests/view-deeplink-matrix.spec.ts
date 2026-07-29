@@ -37,6 +37,10 @@ test.describe('View deep-link matrix', () => {
     await page.getByPlaceholder('Scan asset matrix...').fill(primary.name)
     await page.keyboard.press('Enter')
     await expect(page.getByRole('treegrid')).toContainText(primary.name)
+    await page.waitForTimeout(100)
+    await expectHealthyShell(page)
+    await expectNoAppFailures(failures, 'asset deep link')
+    failures.splice(0)
 
     await page.goto(`/services?id=${service.id}`)
     await expect(page.getByRole('heading', { level: 3, name: service.name })).toBeVisible()
@@ -45,7 +49,11 @@ test.describe('View deep-link matrix', () => {
     await expect(page.locator('h1').filter({ hasText: project.name })).toBeVisible()
 
     await page.goto(`/monitoring?id=${monitoring.id}`)
-    await expect(page.getByText(monitoring.title)).toBeVisible()
+    const monitoringDialog = page.getByRole('dialog').filter({
+      has: page.getByRole('heading', { level: 2, name: monitoring.title, exact: true }),
+    }).last()
+    await expect(monitoringDialog).toBeVisible()
+    await expect(monitoringDialog.getByRole('heading', { level: 2, name: monitoring.title, exact: true })).toBeVisible()
 
     await page.goto(`/far?id=${far.id}`)
     await expect(page.getByRole('heading', { name: far.title })).toBeVisible()

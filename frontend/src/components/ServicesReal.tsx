@@ -115,6 +115,7 @@ import {
 import {
   OperationalBulkPreviewModal,
   type OperationalBulkPreview,
+  type OperationalBulkResult,
 } from './shared/OperationalBulkPreviewModal'
 import { useCollaborativeWorkspaceViews } from './shared/CollaborativeWorkspaceViews'
 
@@ -563,7 +564,10 @@ export default function ServicesReal() {
     fieldLabel?: string
     nextValue?: string
     preview: OperationalBulkPreview
+    result?: OperationalBulkResult
+    onRevert?: () => Promise<void>
   } | null>(null)
+  const [isBulkReverting, setIsBulkReverting] = useState(false)
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'service_type' | 'environment' | null>(null)
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
   const [pendingIds, setPendingIds] = useState<number[]>([])
@@ -1620,7 +1624,6 @@ export default function ServicesReal() {
       setExpandedBulkSection(null)
       setBulkDraft({ status: '', service_type: '', environment: '' })
       setSelectedIds([])
-      setBulkOperationPreview(null)
       setIsBulkStatusOpen(false)
       setIsBulkSeverityOpen(false)
       setIsBulkNotifyOpen(false)
@@ -1647,20 +1650,35 @@ export default function ServicesReal() {
       else if (action === 'update') lastUndoRef.current = { mode: 'restore_snapshots', snapshots: previousSnapshots, payload }
       else lastUndoRef.current = null
 
+      const receiptRevert = lastUndoRef.current ? async () => {
+        try {
+          await runUndo()
+          showOperationalBulkRevertedToast()
+          setBulkOperationPreview(null)
+        } catch (error: any) {
+          showOperationalBulkRevertErrorToast(error.message || 'Bulk revert failed')
+          throw error
+        }
+      } : undefined
+
+      setBulkOperationPreview((current) => current ? {
+        ...current,
+        result: {
+          selected_count: totalSelected,
+          changed_count: changedCount,
+          unchanged_count: unchangedCount,
+          can_revert: Boolean(receiptRevert),
+        },
+        onRevert: receiptRevert,
+      } : null)
+
       showOperationalBulkResultToast({
         action: action === 'delete' ? 'archive' : action,
         totalSelected,
         changedCount,
         unchangedCount,
         fieldLabel,
-        onRevert: lastUndoRef.current ? async () => {
-          try {
-            await runUndo()
-            showOperationalBulkRevertedToast()
-          } catch (error: any) {
-            showOperationalBulkRevertErrorToast(error.message || 'Bulk revert failed')
-          }
-        } : undefined,
+        onRevert: receiptRevert,
       })
     },
     onError: (e: any) => showOperationalBulkErrorToast(e.message)
@@ -2401,8 +2419,18 @@ export default function ServicesReal() {
         fieldLabel={bulkOperationPreview?.fieldLabel}
         nextValue={bulkOperationPreview?.nextValue}
         preview={bulkOperationPreview?.preview || null}
+        result={bulkOperationPreview?.result || null}
         isExecuting={bulkMutation.isPending}
+        isReverting={isBulkReverting}
         onClose={() => setBulkOperationPreview(null)}
+        onRevert={bulkOperationPreview?.onRevert ? async () => {
+          setIsBulkReverting(true)
+          try {
+            await bulkOperationPreview.onRevert?.()
+          } finally {
+            setIsBulkReverting(false)
+          }
+        } : undefined}
         onConfirm={() => {
           if (!bulkOperationPreview) return
           bulkMutation.mutate({

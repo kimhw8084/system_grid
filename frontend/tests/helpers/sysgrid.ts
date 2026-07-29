@@ -3,9 +3,10 @@ import { expect, type APIRequestContext, type Locator, type Page } from '@playwr
 const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
 const apiOrigin = apiBase.replace(/\/api\/v1$/, '')
 const testUserId = process.env.USER_ID || 'haewon.kim'
+export const testTenantId = process.env.PW_TENANT_ID || '1'
 export const testApiHeaders: Record<string, string> = {
   'X-User-Id': testUserId,
-  'X-Tenant-Id': '1',
+  'X-Tenant-Id': testTenantId,
 }
 export type WorkspaceId = 'monitoring' | 'network' | 'assets' | 'vendors'
 export type LogicalGridRow = {
@@ -159,7 +160,7 @@ export async function resetBrowserState(page: Page) {
     // ignore
   }
 
-  await page.addInitScript(({ injectedApiOrigin, resetToken, userId, workspaceStateKeys }) => {
+  await page.addInitScript(({ injectedApiOrigin, resetToken, tenantId, userId, workspaceStateKeys }) => {
     const workspaceKeys = new Set(workspaceStateKeys.split('|'))
     const removeWorkspaceState = (storage: Storage) => {
       Array.from({ length: storage.length }, (_, index) => storage.key(index))
@@ -173,8 +174,9 @@ export async function resetBrowserState(page: Page) {
       window.sessionStorage.setItem('__sysgrid_pw_bootstrap__', resetToken)
     }
     window.localStorage.setItem('SYSGRID_OVERRIDE_API_URL', injectedApiOrigin)
+    window.localStorage.setItem('SYSGRID_TENANT_ID', tenantId)
     window.localStorage.setItem('SYSGRID_USER_ID', userId)
-  }, { injectedApiOrigin: apiOrigin, resetToken: testResetToken, userId: testUserId, workspaceStateKeys: browserStateKeys })
+  }, { injectedApiOrigin: apiOrigin, resetToken: testResetToken, tenantId: testTenantId, userId: testUserId, workspaceStateKeys: browserStateKeys })
 }
 
 export async function createAsset(request: APIRequestContext, payload: Record<string, any>) {
@@ -387,7 +389,7 @@ export async function seedOperationalScenario(request: APIRequestContext) {
     business_unit: 'Operations',
     primary_ip: `10.0.${ipSeed}.12`,
     management_ip: `10.0.${ipSeed}.13`,
-    environment: 'DR'
+    environment: 'Staging'
   })
 
   const tertiary = await createAsset(request, {
@@ -402,7 +404,7 @@ export async function seedOperationalScenario(request: APIRequestContext) {
     business_unit: 'Operations',
     primary_ip: `10.0.${ipSeed}.14`,
     management_ip: `10.0.${ipSeed}.15`,
-    environment: 'Prod'
+    environment: 'Development'
   })
 
   const service = await post(request, '/logical-services', {

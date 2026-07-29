@@ -415,9 +415,15 @@ export function useAssetGoldenWorkspace() {
     queryFn: async () => (await apiFetch('/api/v1/networks/connections')).json(),
   })
 
-  const includeDeletedAssets = Array.isArray(devicesQuery.data) ? devicesQuery.data : []
+  const includeDeletedAssets = useMemo(
+    () => Array.isArray(devicesQuery.data) ? devicesQuery.data : [],
+    [devicesQuery.data],
+  )
   const hasIncludeDeletedAssetData = Array.isArray(devicesQuery.data)
-  const liveAssets = Array.isArray(liveDevicesQuery.data) ? liveDevicesQuery.data : []
+  const liveAssets = useMemo(
+    () => Array.isArray(liveDevicesQuery.data) ? liveDevicesQuery.data : [],
+    [liveDevicesQuery.data],
+  )
   const hasLiveAssetData = Array.isArray(liveDevicesQuery.data)
   const isUsingLiveFallback = !hasIncludeDeletedAssetData && hasLiveAssetData
   const assetQueryFallbackError = !hasIncludeDeletedAssetData && !hasLiveAssetData
@@ -554,15 +560,17 @@ export function useAssetGoldenWorkspace() {
     })
   }, [activeLens, activeTab, activeViewId, filters, fontSize, groupBy, hiddenColumns, rowDensity, savedViews, searchTerm, viewMode])
 
+  const routeAssetId = searchParams.get('id')
+
   useEffect(() => {
-    const routeId = Number(searchParams.get('id') || '')
+    const routeId = Number(routeAssetId || '')
     if (!routeId || !allAssets.length) return
     const match = allAssets.find((asset) => asset.id === routeId)
-    if (match) {
-      setDetailAsset(match)
-      setReportAssetId(match.id)
-    }
-  }, [allAssets, searchParams])
+    if (!match) return
+
+    setDetailAsset((current: any) => Number(current?.id) === routeId ? current : match)
+    setReportAssetId((current) => current === routeId ? current : routeId)
+  }, [allAssets, routeAssetId])
 
   // Synchronize/close quickLookAsset and detailAsset after mutations/scope changes
   useEffect(() => {

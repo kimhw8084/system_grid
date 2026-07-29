@@ -83,6 +83,31 @@ async def test_service_payload_preserves_license_key_and_bulk_os_sync(seeded_adm
     assert device_after_update["os_name"] == "Ubuntu 24.04"
     assert device_after_update["os_version"] == "24.10"
 
+    type_change_res = await client.post("/api/v1/logical-services/bulk-action", json={
+        "ids": [service_id],
+        "action": "update",
+        "payload": {"service_type": "Application"}
+    }, headers=headers)
+    assert type_change_res.status_code == 200, type_change_res.text
+    assert type_change_res.json()["changed_count"] == 1
+
+    devices_after_type_change = await client.get("/api/v1/devices", headers=headers)
+    device_after_type_change = next(device for device in devices_after_type_change.json() if device["id"] == device_id)
+    assert device_after_type_change["os_name"] is None
+    assert device_after_type_change["os_version"] is None
+
+    type_restore_res = await client.post("/api/v1/logical-services/bulk-action", json={
+        "ids": [service_id],
+        "action": "update",
+        "payload": {"service_type": "OS"}
+    }, headers=headers)
+    assert type_restore_res.status_code == 200, type_restore_res.text
+
+    devices_after_type_restore = await client.get("/api/v1/devices", headers=headers)
+    device_after_type_restore = next(device for device in devices_after_type_restore.json() if device["id"] == device_id)
+    assert device_after_type_restore["os_name"] == "Ubuntu 24.04"
+    assert device_after_type_restore["os_version"] == "24.10"
+
     await client.post("/api/v1/logical-services/bulk-action", json={
         "ids": [service_id],
         "action": "delete"
@@ -108,3 +133,29 @@ async def test_service_bulk_action_rejects_unsupported_operations(seeded_admin_t
     }, headers=headers)
     assert response.status_code == 400
     assert "Unsupported bulk action" in response.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_service_bulk_action_rejects_decimal_ids(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    tenant_id = seeded_admin_tenant["tenant_id"]
+    headers = {"X-User-Id": "admin_root", "X-Tenant-Id": str(tenant_id)}
+    await _ensure_admin(seeded_admin_tenant)
+
+    response = await client.post("/api/v1/logical-services/bulk-action", json={
+        "ids": [1.5],
+        "action": "update",
+        "payload": {"status": "Existing"},
+        "dry_run": True,
+    }, headers=headers)
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Bulk ids must contain positive integers"
+
+    oversized_response = await client.post("/api/v1/logical-services/bulk-action", json={
+        "ids": ["9223372036854775808"],
+        "action": "update",
+        "payload": {"status": "Existing"},
+        "dry_run": True,
+    }, headers=headers)
+    assert oversized_response.status_code == 400
+    assert oversized_response.json()["detail"] == "Bulk ids must contain positive integers"

@@ -55,6 +55,31 @@ describe('OperationalBulkPreviewModal', () => {
     expect(onConfirm).toHaveBeenCalledTimes(1)
   })
 
+  it('shows an exact completion receipt and exposes in-place undo', () => {
+    const onRevert = vi.fn()
+    renderBulkPreviewModal(
+      <OperationalBulkPreviewModal
+        isOpen
+        workspaceLabel="Services"
+        actionLabel="Apply environment"
+        fieldLabel="Environment"
+        nextValue="Development"
+        preview={preview}
+        result={{ selected_count: 4, changed_count: 3, unchanged_count: 1, can_revert: true }}
+        onClose={() => undefined}
+        onConfirm={() => undefined}
+        onRevert={onRevert}
+      />,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Services bulk complete' })).toBeInTheDocument()
+    expect(screen.getByTestId('bulk-preview-changed')).toHaveTextContent('3')
+    expect(screen.getByTestId('bulk-preview-unchanged')).toHaveTextContent('1')
+    expect(screen.getByText('Bulk operation completed.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Undo bulk changes' }))
+    expect(onRevert).toHaveBeenCalledTimes(1)
+  })
+
   it('blocks confirmation when the backend reports dependencies', () => {
     renderBulkPreviewModal(
       <OperationalBulkPreviewModal

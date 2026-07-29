@@ -374,6 +374,11 @@ async def bulk_action(data: dict, request: Request, db: AsyncSession = Depends(g
         for service in affected_services
         if service.id in changed_ids and service.device_id
     }
+    os_device_ids_before = {
+        service.device_id
+        for service in affected_services
+        if service.id in changed_ids and service.service_type == "OS" and service.device_id
+    }
     if action == "delete":
         await db.execute(
             update(models.LogicalService)
@@ -399,8 +404,14 @@ async def bulk_action(data: dict, request: Request, db: AsyncSession = Depends(g
 
     refreshed_res = await db.execute(select(models.LogicalService).filter(models.LogicalService.id.in_(changed_ids)))
     refreshed_services = refreshed_res.scalars().all()
-    affected_device_ids.update({service.device_id for service in refreshed_services if service.device_id})
-    if any(service.service_type == "OS" for service in refreshed_services + affected_services):
+    os_device_ids_after = {
+        service.device_id
+        for service in refreshed_services
+        if service.service_type == "OS" and service.device_id
+    }
+    affected_device_ids.update(os_device_ids_before)
+    affected_device_ids.update(os_device_ids_after)
+    if os_device_ids_before or os_device_ids_after:
         for device_id in affected_device_ids:
             await sync_device_os_state(device_id, db)
 

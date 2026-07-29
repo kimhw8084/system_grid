@@ -387,6 +387,12 @@ if [[ -n "$RUNTIME_EFFECTIVE_USER_ID" ]]; then
 fi
 (cd "$ROOT_DIR" && ./backend/venv/bin/python seed.py "${seed_args[@]}")
 
+echo "Provisioning code-managed reference data..."
+(
+  cd "$BACKEND_DIR"
+  ./venv/bin/python -m app.reference_data
+)
+
 echo "Running preflight..."
 "$ROOT_DIR/scripts/preflight.py"
 

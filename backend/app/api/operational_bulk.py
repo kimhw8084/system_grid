@@ -5,6 +5,7 @@ from typing import Any, Iterable
 from fastapi import HTTPException
 
 MAX_OPERATIONAL_BULK_RECORDS = 250
+MAX_OPERATIONAL_BULK_ID = 9_223_372_036_854_775_807
 
 
 def normalize_operational_bulk_ids(raw_ids: Any) -> list[int]:
@@ -16,11 +17,19 @@ def normalize_operational_bulk_ids(raw_ids: Any) -> list[int]:
     for raw_id in raw_ids:
         if isinstance(raw_id, bool):
             raise HTTPException(status_code=400, detail="Bulk ids must contain positive integers")
-        try:
-            value = int(raw_id)
-        except (TypeError, ValueError):
+        if isinstance(raw_id, int):
+            value = raw_id
+        elif isinstance(raw_id, str):
+            normalized_text = raw_id.strip()
+            if not normalized_text or not normalized_text.isascii() or not normalized_text.isdigit():
+                raise HTTPException(status_code=400, detail="Bulk ids must contain positive integers")
+            try:
+                value = int(normalized_text)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Bulk ids must contain positive integers")
+        else:
             raise HTTPException(status_code=400, detail="Bulk ids must contain positive integers")
-        if value <= 0:
+        if value <= 0 or value > MAX_OPERATIONAL_BULK_ID:
             raise HTTPException(status_code=400, detail="Bulk ids must contain positive integers")
         if value not in seen:
             seen.add(value)

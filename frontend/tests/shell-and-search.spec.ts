@@ -47,7 +47,11 @@ test.describe('App shell and global search', () => {
     await expect(monitoringResult).toBeVisible()
     await monitoringResult.click()
     await expect(page).toHaveURL(new RegExp(`/monitoring\\?id=${monitoring.id}`))
-    await expect(page.getByText(monitoring.title)).toBeVisible()
+    const monitoringDialog = page.getByRole('dialog').filter({
+      has: page.getByRole('heading', { level: 2, name: monitoring.title, exact: true }),
+    }).last()
+    await expect(monitoringDialog).toBeVisible()
+    await expect(monitoringDialog.getByRole('heading', { level: 2, name: monitoring.title, exact: true })).toBeVisible()
 
     await page.goto('/')
     await waitForAppIdle(page)

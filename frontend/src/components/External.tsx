@@ -83,6 +83,7 @@ import {
 import {
   OperationalBulkPreviewModal,
   type OperationalBulkPreview,
+  type OperationalBulkResult,
 } from './shared/OperationalBulkPreviewModal'
 import {
   useOperationalRowInteractions,
@@ -1532,7 +1533,10 @@ export default function External() {
     fieldLabel?: string
     nextValue?: string
     preview: OperationalBulkPreview
+    result?: OperationalBulkResult
+    onRevert?: () => Promise<void>
   } | null>(null)
+  const [isBulkReverting, setIsBulkReverting] = useState(false)
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'environment' | 'criticality' | 'risk_rating' | null>(null)
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [rowActionMenu, setRowActionMenu] = useState<{ item: any; point: { x: number; y: number } } | null>(null)
@@ -2400,7 +2404,6 @@ export default function External() {
       const hasFailures = failed > 0
       if (!hasFailures) {
         setSelectedIds([])
-        setBulkOperationPreview(null)
         dismissOverlays()
         setBulkDraft({ status: '', environment: '', criticality: '', risk_rating: '' })
         setExpandedBulkSection(null)
@@ -2416,7 +2419,7 @@ export default function External() {
           await Promise.all((undo.snapshots || []).map(async (snapshot: any) => {
             if (!snapshot?.id) return
             const restoreFields: any = {}
-            Object.keys(payload).forEach((key) => {
+            Object.keys(undo.payload || {}).forEach((key) => {
               restoreFields[key] = snapshot[key]
             })
             const payloadToRestore = buildExternalSafeBulkPutPayload(snapshot, restoreFields)
@@ -2448,21 +2451,36 @@ export default function External() {
           externalUndoRef.current = null
         }
 
+        const receiptRevert = externalUndoRef.current ? async () => {
+          try {
+            await revertAction()
+            showOperationalBulkRevertedToast()
+            setBulkOperationPreview(null)
+          } catch (error: any) {
+            showOperationalBulkRevertErrorToast(error.message || 'Bulk revert failed')
+            throw error
+          }
+        } : undefined
+
+        setBulkOperationPreview((current) => current ? {
+          ...current,
+          result: {
+            selected_count: totalSelected,
+            changed_count: updated,
+            unchanged_count: skipped,
+            can_revert: Boolean(receiptRevert),
+          },
+          onRevert: receiptRevert,
+        } : null)
+
         showOperationalBulkResultToast({
           action: action === 'delete' ? 'archive' : action,
           totalSelected,
           changedCount: updated,
           unchangedCount: skipped,
           fieldLabel,
-          onRevert: externalUndoRef.current ? async () => {
-          try {
-            await revertAction()
-            showOperationalBulkRevertedToast()
-          } catch (error: any) {
-            showOperationalBulkRevertErrorToast(error.message || 'Bulk revert failed')
-          }
-        } : undefined,
-      })
+          onRevert: receiptRevert,
+        })
       }
     },
     onError: (e: any) => {
@@ -3610,8 +3628,18 @@ export default function External() {
         fieldLabel={bulkOperationPreview?.fieldLabel}
         nextValue={bulkOperationPreview?.nextValue}
         preview={bulkOperationPreview?.preview || null}
+        result={bulkOperationPreview?.result || null}
         isExecuting={bulkMutation.isPending}
+        isReverting={isBulkReverting}
         onClose={() => setBulkOperationPreview(null)}
+        onRevert={bulkOperationPreview?.onRevert ? async () => {
+          setIsBulkReverting(true)
+          try {
+            await bulkOperationPreview.onRevert?.()
+          } finally {
+            setIsBulkReverting(false)
+          }
+        } : undefined}
         onConfirm={() => {
           if (!bulkOperationPreview) return
           bulkMutation.mutate({
