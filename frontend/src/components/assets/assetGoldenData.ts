@@ -5,7 +5,14 @@ import { apiFetch } from '../../api/apiClient'
 import { downloadOperationalImportFile } from '../shared/OperationalImportExport'
 import { resolveOperationalDataState } from '../shared/OperationalDataState'
 import { showWorkspaceToast } from '../shared/WorkspaceToast'
-import { resolveBulkFieldLabel, showOperationalBulkErrorToast, showOperationalBulkResultToast } from '../shared/OperationalBulkContract'
+import {
+  resolveBulkFieldLabel,
+  showOperationalBulkErrorToast,
+  showOperationalBulkResultToast,
+  showOperationalBulkRevertedToast,
+  showOperationalBulkRevertErrorToast,
+} from '../shared/OperationalBulkContract'
+import type { OperationalBulkPreview } from '../shared/OperationalBulkPreviewModal'
 import { ASSET_GOLDEN_ALLOWED_COLUMN_FIELDS } from './assetGoldenColumns'
 import { usePersistentJsonState } from '../shared/OperationalWorkspaceHooks'
 
@@ -40,6 +47,18 @@ type AssetLifecycleOperation = Readonly<{
   inverseAction: 'restore' | 'delete'
   targetLabels: readonly string[]
 }>
+
+type AssetBulkOperationState = {
+  action: string
+  payload: Record<string, any>
+  ids: number[]
+  actionLabel: string
+  fieldLabel?: string
+  nextValue?: string
+  preview: OperationalBulkPreview
+  result?: { selected_count: number; changed_count: number; unchanged_count: number; can_revert: boolean }
+  onRevert?: () => Promise<void>
+}
 
 const DEFAULT_HIDDEN_COLUMNS = [
   'is_deleted',
@@ -371,6 +390,8 @@ export function useAssetGoldenWorkspace() {
   const [rowActionMenu, setRowActionMenu] = useState<{ asset: any; x: number; y: number } | null>(null)
   const [isReverting, setIsReverting] = useState(false)
   const [lastLifecycleOperation, setLastLifecycleOperation] = useState<AssetLifecycleOperation | null>(null)
+  const [bulkOperationPreview, setBulkOperationPreview] = useState<AssetBulkOperationState | null>(null)
+  const [isBulkReverting, setIsBulkReverting] = useState(false)
 
   const [favoriteIds, setFavoriteIds] = usePersistentJsonState<number[]>('sysgrid_asset_favorites', [])
   const [watchIds, setWatchIds] = usePersistentJsonState<number[]>('sysgrid_asset_watches', [])
@@ -627,84 +648,129 @@ export function useAssetGoldenWorkspace() {
     [queryClient],
   )
 
-  const bulkMutation = useMutation({
-    mutationFn: async ({ action, ids, payload, targetLabels }: { action: string; ids: number[]; payload?: Record<string, any>; targetLabels?: string[] }) => {
-      if (action === 'update') {
-        await Promise.all(ids.map(async (id) => {
-          const response = await apiFetch(`/api/v1/devices/${id}`, {
-            method: 'PUT',
-            body: JSON.stringify(payload || {}),
-          })
-          if (!response.ok) throw new Error(await response.text())
-        }))
-        return {
-          action,
-          ids,
-          payload,
-          targetLabels,
-          changed: ids.length,
-          totalSelected: ids.length,
-          unchanged: 0,
-        }
-      }
+  const bulkPreviewMutation = useMutation({
+    mutationFn: async ({ action, ids, payload = {} }: { action: string; ids: number[]; payload?: Record<string, any> }) => {
       const response = await apiFetch('/api/v1/devices/bulk-action', {
         method: 'POST',
-        body: JSON.stringify({ action, ids }),
+        body: JSON.stringify({ action, ids, payload, dry_run: true }),
       })
       if (!response.ok) throw new Error(await response.text())
-      const result = await response.json()
-      return {
-        ...result,
-        action,
-        ids,
-        payload,
-        targetLabels,
-        totalSelected: ids.length,
-        changed: Number(result?.changed ?? result?.count ?? ids.length),
-        unchanged: Number(result?.unchanged ?? 0),
-      }
+      const preview = await response.json() as OperationalBulkPreview
+      const fieldLabel = action === 'update' ? resolveBulkFieldLabel(payload, ASSET_BULK_FIELD_LABELS) : undefined
+      const actionLabel = action === 'delete'
+        ? 'Archive selection'
+        : action === 'restore'
+          ? 'Restore selection'
+          : action === 'purge'
+            ? 'Purge selection'
+            : `Apply ${fieldLabel || 'change'}`
+      const nextValue = action === 'update'
+        ? String(Object.values(payload).find((value) => value !== undefined) ?? '')
+        : undefined
+      return { action, ids, payload, actionLabel, fieldLabel, nextValue, preview }
     },
-    onSuccess: async (result: any) => {
+    onSuccess: (preview) => setBulkOperationPreview(preview),
+    onError: (error: any) => showOperationalBulkErrorToast(error?.message || 'Asset preview failed'),
+  })
+
+  const bulkMutation = useMutation({
+    mutationFn: async ({ action, ids, payload = {}, targetLabels }: { action: string; ids: number[]; payload?: Record<string, any>; targetLabels?: string[] }) => {
+      const previousSnapshots = allAssets.filter((asset) => ids.includes(asset.id)).map((asset) => ({ ...asset }))
+      const response = await apiFetch('/api/v1/devices/bulk-action', {
+        method: 'POST',
+        body: JSON.stringify({ action, ids, payload }),
+      })
+      if (!response.ok) throw new Error(await response.text())
+      return { result: await response.json(), action, ids, payload, targetLabels, previousSnapshots }
+    },
+    onSuccess: async ({ result, action, ids, payload, targetLabels, previousSnapshots }: any) => {
       await refreshAssetLifecycle()
       setRowActionMenu(null)
       setSelectedIds([])
-      if ((result?.action === 'delete' || result?.action === 'restore') && Number(result?.changed || 0) > 0) {
-        const operation: AssetLifecycleOperation = Object.freeze({
-          ids: Object.freeze([...result.ids]),
-          originalAction: result.action,
-          inverseAction: result.action === 'delete' ? 'restore' : 'delete',
-          targetLabels: Object.freeze(result.targetLabels || result.ids.map(String)),
-        })
-        setLastLifecycleOperation(operation)
-        showWorkspaceToast(
-          `${result.action === 'delete' ? 'Archived' : 'Restored'} ${operation.targetLabels.length} asset${operation.targetLabels.length === 1 ? '' : 's'}`,
-          { type: 'success' },
-        )
-        return
+
+      const totalSelected = ids.length
+      const changedCount = Number(result?.changed_count ?? result?.changed ?? 0)
+      const unchangedCount = Number(result?.unchanged_count ?? Math.max(0, totalSelected - changedCount))
+      const changedIds = Array.isArray(result?.changed_ids) ? result.changed_ids.map(Number) : ids
+      const fieldLabel = resolveBulkFieldLabel(payload || {}, ASSET_BULK_FIELD_LABELS)
+
+      if ((action === 'delete' || action === 'restore') && changedCount > 0) {
+        setLastLifecycleOperation(Object.freeze({
+          ids: Object.freeze([...changedIds]),
+          originalAction: action,
+          inverseAction: action === 'delete' ? 'restore' : 'delete',
+          targetLabels: Object.freeze(targetLabels || changedIds.map(String)),
+        }))
       }
-      if (result?.action === 'update') {
-        showOperationalBulkResultToast({
-          action: 'update',
-          totalSelected: Number(result?.totalSelected || 0),
-          changedCount: Number(result?.changed || 0),
-          unchangedCount: Number(result?.unchanged || 0),
-          fieldLabel: resolveBulkFieldLabel(result?.payload || {}, ASSET_BULK_FIELD_LABELS),
+
+      const updateKeys = Object.keys(payload || {})
+      const changedSnapshots = previousSnapshots.filter((snapshot: any) => changedIds.includes(Number(snapshot.id)))
+      const updateRestorePayload = action === 'update' && updateKeys.length === 1
+        ? (() => {
+            const key = updateKeys[0]
+            const previousValues = Array.from(new Set(changedSnapshots.map((snapshot: any) => snapshot[key])))
+            return previousValues.length === 1 && previousValues[0] !== null && previousValues[0] !== undefined
+              ? { [key]: previousValues[0] }
+              : null
+          })()
+        : null
+      const canRevertUpdate = action === 'update' && Boolean(updateRestorePayload)
+      const canRevertLifecycle = action === 'delete' || action === 'restore'
+      const revert = changedCount > 0 && action !== 'purge' && (canRevertUpdate || canRevertLifecycle) ? async () => {
+        const response = await apiFetch('/api/v1/devices/bulk-action', {
+          method: 'POST',
+          body: JSON.stringify(action === 'update'
+            ? { action: 'update', ids: changedIds, payload: updateRestorePayload }
+            : { action: action === 'delete' ? 'restore' : 'delete', ids: changedIds }),
         })
-        return
-      }
-      if (result?.action === 'delete' || result?.action === 'restore' || result?.action === 'purge') {
-        showOperationalBulkResultToast({
-          action: result.action === 'delete' ? 'archive' : result.action,
-          totalSelected: Number(result?.totalSelected || 0),
-          changedCount: Number(result?.changed || 0),
-          unchangedCount: Number(result?.unchanged || 0),
-        })
-        return
-      }
-      showWorkspaceToast(result?.summary || 'Asset action completed')
+        if (!response.ok) throw new Error(await response.text())
+        await refreshAssetLifecycle()
+        setLastLifecycleOperation(null)
+      } : undefined
+
+      const receiptRevert = revert ? async () => {
+        try {
+          await revert()
+          showOperationalBulkRevertedToast()
+          setBulkOperationPreview(null)
+        } catch (error: any) {
+          showOperationalBulkRevertErrorToast(error?.message || 'Asset bulk undo failed')
+          throw error
+        }
+      } : undefined
+
+      setBulkOperationPreview((current) => current ? {
+        ...current,
+        result: {
+          selected_count: totalSelected,
+          changed_count: changedCount,
+          unchanged_count: unchangedCount,
+          can_revert: Boolean(receiptRevert),
+        },
+        onRevert: receiptRevert,
+      } : null)
+
+      showOperationalBulkResultToast({
+        action: action === 'delete' ? 'archive' : action,
+        totalSelected,
+        changedCount,
+        unchangedCount,
+        fieldLabel: action === 'update' ? fieldLabel : undefined,
+        onRevert: receiptRevert,
+      })
     },
     onError: (error: any) => showOperationalBulkErrorToast(error?.message || 'Asset action failed'),
   })
+
+  const runBulkReceiptRevert = useCallback(async () => {
+    if (!bulkOperationPreview?.onRevert) return
+    setIsBulkReverting(true)
+    try {
+      await bulkOperationPreview.onRevert()
+    } finally {
+      setIsBulkReverting(false)
+    }
+  }, [bulkOperationPreview])
 
   const openConfirm = useCallback((title: string, message: string, onConfirm: () => void) => {
     setConfirmState({ title, message, onConfirm })
@@ -716,13 +782,8 @@ export function useAssetGoldenWorkspace() {
       showWorkspaceToast('Select at least one asset first', { type: 'error' })
       return
     }
-    bulkMutation.mutate({
-      action,
-      ids: targetIds,
-      payload,
-      targetLabels: allAssets.filter((asset) => targetIds.includes(asset.id)).map((asset) => asset.name || String(asset.id)),
-    })
-  }, [allAssets, bulkMutation, selectedIds])
+    bulkPreviewMutation.mutate({ action, ids: targetIds, payload: payload || {} })
+  }, [bulkPreviewMutation, selectedIds])
 
   const executeRevert = useCallback(async (operation: AssetLifecycleOperation) => {
     setIsReverting(true)
@@ -833,6 +894,8 @@ export function useAssetGoldenWorkspace() {
     activeViewId,
     allAssets,
     bulkMutation,
+    bulkPreviewMutation,
+    bulkOperationPreview,
     cableTypeOptions,
     confirmState,
     connections: Array.isArray(connectionsQuery.data) ? connectionsQuery.data : [],
@@ -864,11 +927,13 @@ export function useAssetGoldenWorkspace() {
     options: Array.isArray(optionsQuery.data) ? optionsQuery.data : [],
     overwriteSavedView,
     performBulkAction,
+    runBulkReceiptRevert,
     quickLookAsset,
     reportAssetId,
     reportFocusSection,
     refreshAll,
     isReverting,
+    isBulkReverting,
     lastLifecycleOperation,
     executeRevert,
     relationships: Array.isArray(relationshipsQuery.data) ? relationshipsQuery.data : [],
@@ -881,6 +946,7 @@ export function useAssetGoldenWorkspace() {
     serviceDetails,
     serviceEdit,
     setActiveLens,
+    setBulkOperationPreview,
     setActiveTab,
     setConfirmState,
     setDetailAsset,

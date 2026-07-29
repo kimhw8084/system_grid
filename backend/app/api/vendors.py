@@ -6,6 +6,12 @@ from typing import List, Optional
 from ..database import get_db
 from ..models import models
 from .utils import filter_valid_columns, parse_iso_date
+from .operational_bulk import (
+    build_operational_bulk_summary,
+    normalize_operational_bulk_ids,
+    normalize_operational_bulk_payload,
+    require_executable_operational_bulk,
+)
 
 router = APIRouter(prefix="/vendors", tags=["Vendor & Contract Management"])
 IMMUTABLE_VENDOR_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id"}
@@ -181,23 +187,139 @@ async def update_contract(contract_id: int, data: dict, db: AsyncSession = Depen
 
 @router.post("/bulk-action")
 async def bulk_action(data: dict, db: AsyncSession = Depends(get_db)):
-    ids = data.get("ids", [])
-    action = data.get("action")
-    target = data.get("target", "vendor") # vendor or contract
-    
-    if not ids: return {"status": "no_op"}
-    
-    model = models.Vendor if target == "vendor" else models.VendorContract
-    
-    if action == "delete":
-        if target == "contract":
-            await db.execute(delete(model).where(model.id.in_(ids)))
+    raw_ids = data.get("ids", [])
+    action = str(data.get("action") or "").strip().lower()
+    target = str(data.get("target") or "vendor").strip().lower()
+
+    if raw_ids == []:
+        return {
+            "status": "no_op",
+            "action": action,
+            "selected_count": 0,
+            "matched_count": 0,
+            "changed_count": 0,
+            "unchanged_count": 0,
+            "blocked_count": 0,
+            "missing_count": 0,
+            "changed_ids": [],
+            "unchanged_ids": [],
+            "missing_ids": [],
+            "blockers": [],
+            "can_execute": False,
+            "count": 0,
+            "changed": 0,
+        }
+
+    ids = normalize_operational_bulk_ids(raw_ids)
+    payload = normalize_operational_bulk_payload(data.get("payload"))
+    dry_run = bool(data.get("dry_run"))
+
+    # Preserve the established contract lifecycle behavior. Vendor workspace preview/receipts
+    # are intentionally scoped to vendor records, not nested contract records.
+    if target == "contract":
+        if action not in {"delete", "restore", "purge"}:
+            raise HTTPException(status_code=400, detail="Unsupported vendor contract bulk action")
+        if dry_run:
+            result = await db.execute(select(models.VendorContract).where(models.VendorContract.id.in_(ids)))
+            contracts = list(result.scalars().all())
+            matched_ids = [contract.id for contract in contracts]
+            changed_ids = matched_ids
+            summary = build_operational_bulk_summary(
+                action=action,
+                selected_ids=ids,
+                matched_ids=matched_ids,
+                changed_ids=changed_ids,
+                unchanged_ids=[],
+            )
+            return {**summary, "status": "success", "count": summary["changed_count"], "changed": summary["changed_count"]}
+        if action == "delete" or action == "purge":
+            await db.execute(delete(models.VendorContract).where(models.VendorContract.id.in_(ids)))
         else:
-            await db.execute(update(model).where(model.id.in_(ids)).values(is_deleted=True))
+            await db.execute(update(models.VendorContract).where(models.VendorContract.id.in_(ids)).values(is_deleted=False))
+        await db.commit()
+        return {"status": "success", "count": len(ids), "changed": len(ids)}
+
+    if target != "vendor":
+        raise HTTPException(status_code=400, detail="Unsupported vendor bulk target")
+    if action not in {"update", "delete", "restore", "purge"}:
+        raise HTTPException(status_code=400, detail="Unsupported vendor bulk action")
+
+    result = await db.execute(select(models.Vendor).where(models.Vendor.id.in_(ids)))
+    vendors = list(result.scalars().all())
+    by_id = {vendor.id: vendor for vendor in vendors}
+    matched_ids = [record_id for record_id in ids if record_id in by_id]
+    changed_ids: list[int] = []
+    unchanged_ids: list[int] = []
+    blockers: list[dict] = []
+    clean_update: dict = {}
+
+    if action == "update":
+        allowed_fields = {"country"}
+        unsupported = sorted(set(payload) - allowed_fields)
+        if unsupported:
+            raise HTTPException(status_code=400, detail=f"Unsupported vendor bulk fields: {', '.join(unsupported)}")
+        clean_update = {key: value for key, value in payload.items() if key in allowed_fields and value is not None}
+        if not clean_update or not str(clean_update.get("country") or "").strip():
+            raise HTTPException(status_code=400, detail="Vendor bulk update requires country")
+        clean_update["country"] = str(clean_update["country"]).strip()
+        for record_id in matched_ids:
+            vendor = by_id[record_id]
+            if vendor.is_deleted:
+                blockers.append({"id": record_id, "name": vendor.name, "reason": "Restore this vendor before updating it"})
+            elif vendor.country != clean_update["country"]:
+                changed_ids.append(record_id)
+            else:
+                unchanged_ids.append(record_id)
+    elif action == "delete":
+        for record_id in matched_ids:
+            vendor = by_id[record_id]
+            (unchanged_ids if vendor.is_deleted else changed_ids).append(record_id)
     elif action == "restore":
-        await db.execute(update(model).where(model.id.in_(ids)).values(is_deleted=False))
-    elif action == "purge":
-        await db.execute(delete(model).where(model.id.in_(ids)))
-        
+        for record_id in matched_ids:
+            vendor = by_id[record_id]
+            (changed_ids if vendor.is_deleted else unchanged_ids).append(record_id)
+    else:  # purge
+        changed_ids.extend(matched_ids)
+
+    summary = build_operational_bulk_summary(
+        action=action,
+        selected_ids=ids,
+        matched_ids=matched_ids,
+        changed_ids=changed_ids,
+        unchanged_ids=unchanged_ids,
+        blockers=blockers,
+    )
+    compatibility = {
+        **summary,
+        "status": "success",
+        "count": summary["changed_count"],
+        "changed": summary["changed_count"],
+    }
+    if dry_run or not changed_ids:
+        return compatibility
+
+    require_executable_operational_bulk(summary)
+
+    if action == "update":
+        await db.execute(
+            update(models.Vendor)
+            .where(models.Vendor.id.in_(changed_ids))
+            .values(**clean_update)
+        )
+    elif action == "delete":
+        await db.execute(
+            update(models.Vendor)
+            .where(models.Vendor.id.in_(changed_ids))
+            .values(is_deleted=True)
+        )
+    elif action == "restore":
+        await db.execute(
+            update(models.Vendor)
+            .where(models.Vendor.id.in_(changed_ids))
+            .values(is_deleted=False)
+        )
+    else:
+        await db.execute(delete(models.Vendor).where(models.Vendor.id.in_(changed_ids)))
+
     await db.commit()
-    return {"status": "success"}
+    return compatibility

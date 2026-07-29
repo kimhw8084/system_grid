@@ -6,6 +6,12 @@ from typing import Optional
 from ..database import get_db
 from ..models import models
 from .utils import filter_valid_columns, parse_iso_date
+from .operational_bulk import (
+    build_operational_bulk_summary,
+    normalize_operational_bulk_ids,
+    normalize_operational_bulk_payload,
+    require_executable_operational_bulk,
+)
 
 router = APIRouter(prefix="/devices", tags=["Devices"])
 
@@ -367,99 +373,164 @@ async def update_device(request: Request, device_id: int, data: dict, db: AsyncS
 @router.post("/bulk-action")
 async def bulk_action(request: Request, data: dict, db: AsyncSession = Depends(get_db)):
     tenant_id = request.state.tenant_id
-    ids = data.get("ids", [])
-    action = data.get("action")
-    payload = data.get("payload", {})
-    if not ids: return {"status": "no_op", "count": 0, "changed": 0}
-    
-    if action == "delete":
-        res = await db.execute(select(models.Device.id).where(models.Device.id.in_(ids)).filter(models.Device.tenant_id == tenant_id).filter(models.Device.is_deleted == False))
-        tenant_device_ids = res.scalars().all()
-        if tenant_device_ids:
-            await db.execute(update(models.Device).where(models.Device.id.in_(tenant_device_ids)).values(is_deleted=True))
-        await db.commit()
-        return {"status": "success", "count": len(tenant_device_ids), "changed": len(tenant_device_ids)}
-    elif action == "purge":
-        # Resolve tenant-scoped device IDs first to prevent any cross-tenant data deletion
-        res = await db.execute(select(models.Device.id).where(models.Device.id.in_(ids)).filter(models.Device.tenant_id == tenant_id))
-        tenant_device_ids = res.scalars().all()
-        if not tenant_device_ids:
-            return {"status": "success", "count": 0, "changed": 0}
+    raw_ids = data.get("ids", [])
+    if raw_ids == []:
+        return {
+            "status": "no_op",
+            "action": data.get("action"),
+            "selected_count": 0,
+            "matched_count": 0,
+            "changed_count": 0,
+            "unchanged_count": 0,
+            "blocked_count": 0,
+            "missing_count": 0,
+            "changed_ids": [],
+            "unchanged_ids": [],
+            "missing_ids": [],
+            "blockers": [],
+            "can_execute": False,
+            "count": 0,
+            "changed": 0,
+        }
 
-        # Delete referencing external links using tenant-scoped device IDs
+    ids = normalize_operational_bulk_ids(raw_ids)
+    action = str(data.get("action") or "").strip().lower()
+    payload = normalize_operational_bulk_payload(data.get("payload"))
+    dry_run = bool(data.get("dry_run"))
+    if action not in {"update", "delete", "restore", "purge"}:
+        raise HTTPException(status_code=400, detail="Unsupported asset bulk action")
+
+    result = await db.execute(
+        select(models.Device)
+        .where(models.Device.id.in_(ids))
+        .filter(models.Device.tenant_id == tenant_id)
+    )
+    devices = list(result.scalars().all())
+    by_id = {device.id: device for device in devices}
+    matched_ids = [record_id for record_id in ids if record_id in by_id]
+    changed_ids: list[int] = []
+    unchanged_ids: list[int] = []
+    blockers: list[dict] = []
+    clean_update: dict = {}
+
+    if action == "update":
+        protected_fields = {"id", "tenant_id", "created_at", "updated_at", "created_by_user_id", "is_deleted"}
+        clean_update = {
+            key: value
+            for key, value in filter_valid_columns(models.Device, payload).items()
+            if key not in protected_fields and value is not None
+        }
+        unsupported = sorted(set(payload) - set(clean_update) - protected_fields)
+        if unsupported:
+            raise HTTPException(status_code=400, detail=f"Unsupported asset bulk fields: {', '.join(unsupported)}")
+        if not clean_update:
+            raise HTTPException(status_code=400, detail="Asset bulk update requires at least one mutable field")
+        for record_id in matched_ids:
+            device = by_id[record_id]
+            if device.is_deleted:
+                blockers.append({"id": record_id, "name": device.name, "reason": "Restore this asset before updating it"})
+            elif any(getattr(device, key) != value for key, value in clean_update.items()):
+                changed_ids.append(record_id)
+            else:
+                unchanged_ids.append(record_id)
+    elif action == "delete":
+        for record_id in matched_ids:
+            device = by_id[record_id]
+            (unchanged_ids if device.is_deleted else changed_ids).append(record_id)
+    elif action == "restore":
+        for record_id in matched_ids:
+            device = by_id[record_id]
+            if not device.is_deleted:
+                unchanged_ids.append(record_id)
+                continue
+            duplicate = await db.execute(
+                select(models.Device.id).filter(
+                    models.Device.tenant_id == tenant_id,
+                    models.Device.name == device.name,
+                    models.Device.is_deleted == False,
+                    models.Device.id != device.id,
+                )
+            )
+            if duplicate.scalars().first():
+                blockers.append({"id": record_id, "name": device.name, "reason": "An active asset already uses this hostname"})
+            else:
+                changed_ids.append(record_id)
+    else:  # purge
+        changed_ids.extend(matched_ids)
+
+    summary = build_operational_bulk_summary(
+        action=action,
+        selected_ids=ids,
+        matched_ids=matched_ids,
+        changed_ids=changed_ids,
+        unchanged_ids=unchanged_ids,
+        blockers=blockers,
+    )
+    compatibility = {
+        **summary,
+        "status": "success",
+        "count": summary["changed_count"],
+        "changed": summary["changed_count"],
+    }
+    if action == "restore":
+        compatibility["restored"] = changed_ids
+        compatibility["conflicts"] = [blocker["id"] for blocker in blockers]
+    if dry_run or not changed_ids:
+        return compatibility
+
+    require_executable_operational_bulk(summary)
+
+    if action == "update":
+        for record_id in changed_ids:
+            device = by_id[record_id]
+            for key, value in clean_update.items():
+                setattr(device, key, value)
+            await sync_device_to_os(device, db)
+    elif action == "delete":
+        await db.execute(
+            update(models.Device)
+            .where(models.Device.id.in_(changed_ids))
+            .values(is_deleted=True)
+        )
+    elif action == "restore":
+        await db.execute(
+            update(models.Device)
+            .where(models.Device.id.in_(changed_ids))
+            .values(is_deleted=False)
+        )
+    else:
+        tenant_device_ids = changed_ids
         await db.execute(delete(models.ExternalLink).where(models.ExternalLink.device_id.in_(tenant_device_ids)))
-        # Delete referencing locations
         await db.execute(delete(models.DeviceLocation).where(models.DeviceLocation.device_id.in_(tenant_device_ids)))
-        # Delete referencing hardware
         await db.execute(delete(models.HardwareComponent).where(models.HardwareComponent.device_id.in_(tenant_device_ids)))
-        # Delete referencing secrets
         await db.execute(delete(models.SecretVault).where(models.SecretVault.device_id.in_(tenant_device_ids)))
-        # Delete referencing maintenance windows
         await db.execute(delete(models.MaintenanceWindow).where(models.MaintenanceWindow.device_id.in_(tenant_device_ids)))
-        
-        # Clean up monitoring items, their owners, and history
-        m_items_res = await db.execute(select(models.MonitoringItem.id).where(models.MonitoringItem.device_id.in_(tenant_device_ids)))
-        m_item_ids = m_items_res.scalars().all()
-        if m_item_ids:
-            await db.execute(delete(models.MonitoringHistory).where(models.MonitoringHistory.monitoring_item_id.in_(m_item_ids)))
-            await db.execute(delete(models.MonitoringOwner).where(models.MonitoringOwner.monitoring_item_id.in_(m_item_ids)))
-            await db.execute(delete(models.MonitoringItem).where(models.MonitoringItem.id.in_(m_item_ids)))
-
-        # Delete referencing relationships
+        monitoring_result = await db.execute(select(models.MonitoringItem.id).where(models.MonitoringItem.device_id.in_(tenant_device_ids)))
+        monitoring_ids = list(monitoring_result.scalars().all())
+        if monitoring_ids:
+            await db.execute(delete(models.MonitoringHistory).where(models.MonitoringHistory.monitoring_item_id.in_(monitoring_ids)))
+            await db.execute(delete(models.MonitoringOwner).where(models.MonitoringOwner.monitoring_item_id.in_(monitoring_ids)))
+            await db.execute(delete(models.MonitoringItem).where(models.MonitoringItem.id.in_(monitoring_ids)))
         await db.execute(delete(models.DeviceRelationship).where(
             or_(
                 models.DeviceRelationship.source_device_id.in_(tenant_device_ids),
-                models.DeviceRelationship.target_device_id.in_(tenant_device_ids)
+                models.DeviceRelationship.target_device_id.in_(tenant_device_ids),
             )
         ))
-        # Delete referencing port connections
         await db.execute(delete(models.PortConnection).where(
             or_(
                 models.PortConnection.source_device_id.in_(tenant_device_ids),
-                models.PortConnection.target_device_id.in_(tenant_device_ids)
+                models.PortConnection.target_device_id.in_(tenant_device_ids),
             )
         ))
-        # Clear logical services device_id reference
         await db.execute(update(models.LogicalService).where(models.LogicalService.device_id.in_(tenant_device_ids)).values(device_id=None))
-        # Clear firewall rule source/dest references
         await db.execute(update(models.FirewallRule).where(models.FirewallRule.source_device_id.in_(tenant_device_ids)).values(source_device_id=None))
         await db.execute(update(models.FirewallRule).where(models.FirewallRule.dest_device_id.in_(tenant_device_ids)).values(dest_device_id=None))
-        # Delete referencing far failure mode associations
         await db.execute(delete(models.far_mode_assets).where(models.far_mode_assets.c.device_id.in_(tenant_device_ids)))
-        # Now safely delete devices
         await db.execute(delete(models.Device).where(models.Device.id.in_(tenant_device_ids)))
-        await db.commit()
-        return {"status": "success", "count": len(tenant_device_ids), "changed": len(tenant_device_ids)}
-    elif action == "restore":
-        # Conflicts check before restore
-        res = await db.execute(select(models.Device).where(models.Device.id.in_(ids)).filter(models.Device.tenant_id == tenant_id))
-        to_restore = res.scalars().all()
-        
-        restored_ids, conflict_ids = [], []
-        for d in to_restore:
-            # Check if name conflict exists in active inventory
-            dup_res = await db.execute(select(models.Device).filter(models.Device.name == d.name, models.Device.is_deleted == False, models.Device.id != d.id, models.Device.tenant_id == tenant_id))
-            if dup_res.scalars().first():
-                conflict_ids.append(d.id)
-            else:
-                d.is_deleted = False
-                restored_ids.append(d.id)
-        
-        await db.commit()
-        return {"status": "success", "restored": restored_ids, "conflicts": conflict_ids, "count": len(restored_ids), "changed": len(restored_ids)}
-    elif action == "update":
-        clean_update = filter_valid_columns(models.Device, payload)
-        if clean_update:
-            res = await db.execute(select(models.Device.id).where(models.Device.id.in_(ids)).filter(models.Device.tenant_id == tenant_id))
-            tenant_device_ids = res.scalars().all()
-            if tenant_device_ids:
-                await db.execute(update(models.Device).where(models.Device.id.in_(tenant_device_ids)).values(**clean_update))
-                await db.commit()
-                return {"status": "success", "count": len(tenant_device_ids), "changed": len(tenant_device_ids)}
-        return {"status": "success", "count": 0, "changed": 0}
-    
+
     await db.commit()
-    return {"status": "success", "count": 0, "changed": 0}
+    return compatibility
 
 @router.get("/{device_id}/hardware")
 async def get_hardware(request: Request, device_id: int, db: AsyncSession = Depends(get_db)):

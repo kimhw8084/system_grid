@@ -37,6 +37,7 @@ import { useWorkspaceOverlayController } from '../shared/OperationalWorkspaceHoo
 import { WorkspaceFloatingPanel, useWorkspaceAnchoredLayer } from '../shared/OperationalWorkspacePrimitives'
 import { AssetBulkActionsPanel } from './AssetBulkActionsPanel'
 import { AssetCompareModal } from './AssetCompareModal'
+import { OperationalBulkPreviewModal } from '../shared/OperationalBulkPreviewModal'
 
 const GROUP_OPTIONS = [
   { value: 'raw', label: 'Raw Table' },
@@ -673,6 +674,29 @@ export default function AssetGoldenOperationalWorkspace() {
           gridContext={useMemo(() => ({ favoriteIds: workspace.favoriteIds, watchIds: workspace.watchIds }), [workspace.favoriteIds, workspace.watchIds])}
         />
       </AssetGoldenShellScaffold>
+
+      <OperationalBulkPreviewModal
+        isOpen={Boolean(workspace.bulkOperationPreview)}
+        workspaceLabel="Assets"
+        actionLabel={workspace.bulkOperationPreview?.actionLabel || 'Apply change'}
+        fieldLabel={workspace.bulkOperationPreview?.fieldLabel}
+        nextValue={workspace.bulkOperationPreview?.nextValue}
+        preview={workspace.bulkOperationPreview?.preview || null}
+        result={workspace.bulkOperationPreview?.result || null}
+        isExecuting={workspace.bulkMutation.isPending}
+        isReverting={workspace.isBulkReverting}
+        onClose={() => workspace.setBulkOperationPreview(null)}
+        onRevert={workspace.bulkOperationPreview?.onRevert ? workspace.runBulkReceiptRevert : undefined}
+        onConfirm={() => {
+          const operation = workspace.bulkOperationPreview
+          if (!operation) return
+          workspace.bulkMutation.mutate({
+            action: operation.action,
+            ids: operation.ids,
+            payload: operation.payload,
+          })
+        }}
+      />
 
       <AssetGoldenDialogs
         detailAsset={workspace.detailAsset}

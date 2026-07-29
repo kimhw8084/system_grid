@@ -32,13 +32,11 @@ export function AssetBulkActionsPanel({
   const [selectedStatus, setSelectedStatus] = React.useState('')
   const [selectedEnv, setSelectedEnv] = React.useState('')
   const [expandedSection, setExpandedSection] = React.useState<'status' | 'environment' | 'delete' | 'restore' | 'purge' | null>(null)
-  const [bulkConfirmAction, setBulkConfirmAction] = React.useState<'delete' | 'restore' | 'purge' | null>(null)
 
   React.useEffect(() => {
     setSelectedStatus('')
     setSelectedEnv('')
     setExpandedSection(null)
-    setBulkConfirmAction(null)
   }, [isOpen, selectedCount, activeTab])
 
   const selectionPreview = selectedLabels.slice(0, 3).join(', ')
@@ -79,7 +77,7 @@ export function AssetBulkActionsPanel({
                   onChange={setSelectedStatus}
                   options={STATUS_OPTIONS.map((status) => ({ value: status, label: status }))}
                   placeholder="Choose status"
-                  actionLabel="Apply Status"
+                  actionLabel="Preview Status Change"
                   onApply={() => {
                     onApply('update', { status: selectedStatus })
                     onClose()
@@ -98,7 +96,7 @@ export function AssetBulkActionsPanel({
                   onChange={setSelectedEnv}
                   options={ENV_OPTIONS.map((env) => ({ value: env, label: env }))}
                   placeholder="Choose environment"
-                  actionLabel="Apply Environment"
+                  actionLabel="Preview Environment Change"
                   onApply={() => {
                     onApply('update', { environment: selectedEnv })
                     onClose()
@@ -111,31 +109,19 @@ export function AssetBulkActionsPanel({
                 active={expandedSection === 'delete'}
                 onClick={() => {
                   setExpandedSection(expandedSection === 'delete' ? null : 'delete')
-                  setBulkConfirmAction(null)
-                }}
+                              }}
               />
               {expandedSection === 'delete' ? (
                 <div className="rounded-lg border border-slate-800 bg-[#0b1220] p-3 space-y-3">
                   <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Move the current selection to the Purged registry scope.
+                    Preview the exact impact before moving the selection to the Purged registry scope.
                   </p>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (bulkConfirmAction !== 'delete') {
-                        setBulkConfirmAction('delete')
-                        return
-                      }
-                      onApply('delete')
-                      onClose()
-                    }}
-                    className={`w-full rounded-lg border px-4 py-2.5 text-center text-[10px] font-black uppercase tracking-wider transition-all ${
-                      bulkConfirmAction === 'delete'
-                        ? 'border-rose-500 bg-rose-600 animate-pulse text-white'
-                        : 'border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'
-                    }`}
+                    onClick={() => { onApply('delete'); onClose() }}
+                    className="w-full rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-2.5 text-center text-[10px] font-black uppercase tracking-wider text-rose-400 transition-all hover:bg-rose-500/20"
                   >
-                    {bulkConfirmAction === 'delete' ? OPERATIONAL_ACTION_LABELS.archiveSelectionConfirm : 'Archive selected assets'}
+                    Preview Archive
                   </button>
                 </div>
               ) : null}
@@ -147,31 +133,19 @@ export function AssetBulkActionsPanel({
                 active={expandedSection === 'restore'}
                 onClick={() => {
                   setExpandedSection(expandedSection === 'restore' ? null : 'restore')
-                  setBulkConfirmAction(null)
-                }}
+                              }}
               />
               {expandedSection === 'restore' ? (
                 <div className="rounded-lg border border-slate-800 bg-[#0b1220] p-3 space-y-3">
                   <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Return the current selection to the Existing registry scope.
+                    Preview the exact records that can return to the Existing registry scope.
                   </p>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (bulkConfirmAction !== 'restore') {
-                        setBulkConfirmAction('restore')
-                        return
-                      }
-                      onApply('restore')
-                      onClose()
-                    }}
-                    className={`w-full rounded-lg border px-4 py-2.5 text-center text-[10px] font-black uppercase tracking-wider transition-all ${
-                      bulkConfirmAction === 'restore'
-                        ? 'border-emerald-500 bg-emerald-600 animate-pulse text-white'
-                        : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                    }`}
+                    onClick={() => { onApply('restore'); onClose() }}
+                    className="w-full rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-2.5 text-center text-[10px] font-black uppercase tracking-wider text-emerald-400 transition-all hover:bg-emerald-500/20"
                   >
-                    {bulkConfirmAction === 'restore' ? 'Confirm Restore?' : 'Restore selected assets'}
+                    Preview Restore
                   </button>
                 </div>
               ) : null}
@@ -181,31 +155,19 @@ export function AssetBulkActionsPanel({
                 active={expandedSection === 'purge'}
                 onClick={() => {
                   setExpandedSection(expandedSection === 'purge' ? null : 'purge')
-                  setBulkConfirmAction(null)
-                }}
+                              }}
               />
               {expandedSection === 'purge' ? (
                 <div className="rounded-lg border border-slate-800 bg-[#0b1220] p-3 space-y-3">
                   <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Permanently remove the current selection from the registry. THIS CANNOT BE UNDONE.
+                    Preview permanent removal and its exact record impact. This action cannot be undone.
                   </p>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (bulkConfirmAction !== 'purge') {
-                        setBulkConfirmAction('purge')
-                        return
-                      }
-                      onApply('purge')
-                      onClose()
-                    }}
-                    className={`w-full rounded-lg border px-4 py-2.5 text-center text-[10px] font-black uppercase tracking-wider transition-all ${
-                      bulkConfirmAction === 'purge'
-                        ? 'border-rose-500 bg-rose-600 animate-pulse text-white'
-                        : 'border-rose-500/20 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'
-                    }`}
+                    onClick={() => { onApply('purge'); onClose() }}
+                    className="w-full rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-2.5 text-center text-[10px] font-black uppercase tracking-wider text-rose-400 transition-all hover:bg-rose-500/20"
                   >
-                    {bulkConfirmAction === 'purge' ? OPERATIONAL_ACTION_LABELS.purgeSelectionConfirm : 'Purge selected assets'}
+                    Preview Permanent Purge
                   </button>
                 </div>
               ) : null}

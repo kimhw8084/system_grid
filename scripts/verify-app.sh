@@ -162,7 +162,7 @@ start_frontend() {
 
 assert_clean_fixture_contract() {
   local headers=(-H "X-User-Id: $TEST_USER_ID" -H "X-Tenant-Id: $TEST_TENANT_ID")
-  local tenants devices services external monitoring reference_options
+  local tenants devices services external monitoring vendors reference_options
 
   tenants="$(curl -fsS "${headers[@]}" "$BACKEND_ORIGIN/api/v1/tenants/me")"
   [[ "$tenants" == *'"id":1'* && "$tenants" == *'"name":"Playwright Gate"'* && "$tenants" == *'"is_selected":true'* ]] || {
@@ -174,6 +174,7 @@ assert_clean_fixture_contract() {
   services="$(curl -fsS "${headers[@]}" "$BACKEND_ORIGIN/api/v1/logical-services?include_deleted=true")"
   external="$(curl -fsS "${headers[@]}" "$BACKEND_ORIGIN/api/v1/intelligence/entities?include_deleted=true")"
   monitoring="$(curl -fsS "${headers[@]}" "$BACKEND_ORIGIN/api/v1/monitoring?include_deleted=true")"
+  vendors="$(curl -fsS "${headers[@]}" "$BACKEND_ORIGIN/api/v1/vendors?include_deleted=true")"
   reference_options="$(curl -fsS "${headers[@]}" "$BACKEND_ORIGIN/api/v1/settings/options")"
 
   printf '%s' "$reference_options" | "$BACKEND_DIR/venv/bin/python" -c '
@@ -198,6 +199,7 @@ if missing:
   [[ "$services" == "[]" ]] || { echo "Expected zero seeded services, observed: $services" >&2; exit 1; }
   [[ "$external" == "[]" ]] || { echo "Expected zero seeded external entities, observed: $external" >&2; exit 1; }
   [[ "$monitoring" == "[]" ]] || { echo "Expected zero seeded monitoring records, observed: $monitoring" >&2; exit 1; }
+  [[ "$vendors" == "[]" ]] || { echo "Expected zero seeded vendors, observed: $vendors" >&2; exit 1; }
 
   echo "Disposable Playwright fixture contract passed: one tenant, code-managed reference data, zero domain rows."
 }
@@ -262,6 +264,7 @@ env \
   npx playwright test \
   tests/sentinel_comprehensive.spec.ts \
   tests/external-services-bulk-preview.spec.ts \
+  tests/assets-vendors-bulk-preview.spec.ts \
   tests/shell-and-search.spec.ts \
   tests/view-deeplink-matrix.spec.ts \
   tests/view-empty-states.spec.ts \
