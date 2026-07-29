@@ -1,0 +1,151 @@
+import React from 'react'
+import { AlertTriangle, CheckCircle2, Eye, ShieldCheck } from 'lucide-react'
+import { ToolbarButton } from './LayoutPrimitives'
+import { WorkspaceModal } from './WorkspaceModal'
+
+export type OperationalBulkBlocker = {
+  id: number
+  name?: string | null
+  reason: string
+}
+
+export type OperationalBulkPreview = {
+  action: string
+  selected_count: number
+  matched_count: number
+  changed_count: number
+  unchanged_count: number
+  blocked_count: number
+  missing_count: number
+  changed_ids: number[]
+  unchanged_ids: number[]
+  missing_ids: number[]
+  blockers: OperationalBulkBlocker[]
+  can_execute: boolean
+}
+
+type OperationalBulkPreviewModalProps = {
+  isOpen: boolean
+  workspaceLabel: string
+  actionLabel: string
+  fieldLabel?: string
+  nextValue?: React.ReactNode
+  preview: OperationalBulkPreview | null
+  isExecuting?: boolean
+  onClose: () => void
+  onConfirm: () => void
+}
+
+const SummaryCard = ({ label, value, tone }: { label: string; value: number; tone: 'neutral' | 'success' | 'warning' | 'danger' }) => {
+  const toneClass = tone === 'success'
+    ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200'
+    : tone === 'warning'
+      ? 'border-amber-500/20 bg-amber-500/10 text-amber-200'
+      : tone === 'danger'
+        ? 'border-rose-500/20 bg-rose-500/10 text-rose-200'
+        : 'border-white/10 bg-white/[0.04] text-slate-200'
+  return (
+    <div className={`rounded-xl border px-4 py-3 ${toneClass}`}>
+      <p className="text-[10px] font-bold uppercase tracking-[0.16em] opacity-70">{label}</p>
+      <p className="pt-1 text-2xl font-semibold" data-testid={`bulk-preview-${label.toLowerCase().replace(/\s+/g, '-')}`}>{value}</p>
+    </div>
+  )
+}
+
+export function OperationalBulkPreviewModal({
+  isOpen,
+  workspaceLabel,
+  actionLabel,
+  fieldLabel,
+  nextValue,
+  preview,
+  isExecuting = false,
+  onClose,
+  onConfirm,
+}: OperationalBulkPreviewModalProps) {
+  const hasBlockingIssues = Boolean(preview && (preview.blocked_count > 0 || preview.missing_count > 0))
+  const canConfirm = Boolean(preview?.can_execute) && !isExecuting
+
+  return (
+    <WorkspaceModal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="standard"
+      icon={<Eye size={17} className="text-blue-300" />}
+      title={`${workspaceLabel} bulk preview`}
+      subtitle="Review the backend-authoritative impact before anything changes."
+      hideFooterClose
+      footerLeft={(
+        <div className="flex items-center gap-2 text-[11px] text-slate-400">
+          <ShieldCheck size={14} className="text-emerald-300" />
+          No records change until you confirm.
+        </div>
+      )}
+      footerRight={(
+        <>
+          <ToolbarButton onClick={onClose} disabled={isExecuting}>Cancel</ToolbarButton>
+          <ToolbarButton
+            variant={hasBlockingIssues ? 'danger' : 'primary'}
+            onClick={onConfirm}
+            disabled={!canConfirm}
+            ariaLabel={`Confirm ${actionLabel}`}
+          >
+            {isExecuting ? 'Applying…' : `Confirm ${actionLabel}`}
+          </ToolbarButton>
+        </>
+      )}
+    >
+      <div className="space-y-5 pt-2" data-testid="operational-bulk-preview">
+        <div className="rounded-xl border border-white/10 bg-slate-950/70 px-5 py-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Requested action</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-100">
+            <span className="font-semibold">{actionLabel}</span>
+            {fieldLabel ? <span className="text-slate-500">· {fieldLabel}</span> : null}
+            {nextValue !== undefined && nextValue !== null && nextValue !== '' ? (
+              <span className="rounded-md border border-blue-500/20 bg-blue-500/10 px-2 py-1 text-xs font-semibold text-blue-200">
+                {nextValue}
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <SummaryCard label="Selected" value={preview?.selected_count || 0} tone="neutral" />
+          <SummaryCard label="Will change" value={preview?.changed_count || 0} tone="success" />
+          <SummaryCard label="No change" value={preview?.unchanged_count || 0} tone="warning" />
+          <SummaryCard label="Blocked" value={(preview?.blocked_count || 0) + (preview?.missing_count || 0)} tone="danger" />
+        </div>
+
+        {preview && preview.changed_count === 0 && !hasBlockingIssues ? (
+          <div className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            <CheckCircle2 size={17} className="mt-0.5 shrink-0" />
+            Every matched record already has the requested state. Nothing will be written.
+          </div>
+        ) : null}
+
+        {preview?.missing_ids?.length ? (
+          <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-rose-100">
+              <AlertTriangle size={16} /> Selection changed
+            </div>
+            <p className="pt-2 text-xs text-rose-200/80">
+              These records no longer exist or are unavailable: {preview.missing_ids.join(', ')}. Refresh the workspace and preview again.
+            </p>
+          </div>
+        ) : null}
+
+        {preview?.blockers?.length ? (
+          <div className="space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Blocked records</p>
+            {preview.blockers.map((blocker) => (
+              <div key={`${blocker.id}-${blocker.reason}`} className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3">
+                <p className="text-sm font-semibold text-rose-100">{blocker.name || `Record ${blocker.id}`}</p>
+                <p className="pt-1 text-xs text-rose-200/80">{blocker.reason}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </WorkspaceModal>
+  )
+}

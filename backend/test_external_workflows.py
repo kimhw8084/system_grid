@@ -67,6 +67,29 @@ async def test_external_entity_creation_and_secret_management(seeded_admin_tenan
     assert entity["name"] == "EXT-QA-01"
     assert entity["secrets"] == []
 
+    preview_res = await client.post("/api/v1/intelligence/entities/bulk-action", json={
+        "ids": [entity["id"]],
+        "action": "update",
+        "payload": {"risk_rating": "High"},
+        "dry_run": True,
+    }, headers=headers)
+    assert preview_res.status_code == 200, preview_res.text
+    preview = preview_res.json()
+    assert preview["status"] == "preview"
+    assert preview["changed_count"] == 1
+    assert preview["can_execute"] is True
+
+    before_execute = await client.get("/api/v1/intelligence/entities?include_deleted=true", headers=headers)
+    assert next(item for item in before_execute.json() if item["id"] == entity["id"])["risk_rating"] == "Medium"
+
+    execute_res = await client.post("/api/v1/intelligence/entities/bulk-action", json={
+        "ids": [entity["id"]],
+        "action": "update",
+        "payload": {"risk_rating": "High"},
+    }, headers=headers)
+    assert execute_res.status_code == 200, execute_res.text
+    assert execute_res.json()["changed_count"] == 1
+
     secret_res = await client.post(f"/api/v1/intelligence/entities/{entity['id']}/secrets", json={
         "secret_label": "Readonly feed",
         "secret_type": "VaultReference",
@@ -104,7 +127,7 @@ async def test_external_entity_creation_and_secret_management(seeded_admin_tenan
         "integration_mode": "Database",
         "primary_endpoint_url": "https://partner.example.com",
         "auth_method": "Token",
-        "risk_rating": "Medium",
+        "risk_rating": "High",
         "metadata_json": {"hypervisor": "", "vcpu": "", "vram": "", "os": ""},
     }, headers=headers)
     assert update_res.status_code == 200, update_res.text
@@ -115,6 +138,19 @@ async def test_external_entity_creation_and_secret_management(seeded_admin_tenan
     assert loaded["metadata_json"]["hypervisor"] == ""
     assert len(loaded["secrets"]) == 1
     assert loaded["secrets"][0]["username"] == "svc_partner"
+
+    archive_res = await client.delete(f"/api/v1/intelligence/entities/{entity['id']}", headers=headers)
+    assert archive_res.status_code == 200, archive_res.text
+    purge_preview_res = await client.post("/api/v1/intelligence/entities/bulk-action", json={
+        "ids": [entity["id"]],
+        "action": "purge",
+        "dry_run": True,
+    }, headers=headers)
+    assert purge_preview_res.status_code == 200, purge_preview_res.text
+    purge_preview = purge_preview_res.json()
+    assert purge_preview["blocked_count"] == 1
+    assert purge_preview["can_execute"] is False
+    assert "credentials" in purge_preview["blockers"][0]["reason"].lower()
 
 
 @pytest.mark.anyio

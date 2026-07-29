@@ -51,11 +51,31 @@ async def test_service_payload_preserves_license_key_and_bulk_os_sync(seeded_adm
     listed_service = next(s for s in list_res.json() if s["id"] == service_id)
     assert listed_service["license_key"] == "LIC-1234-ABCD"
 
-    await client.post("/api/v1/logical-services/bulk-action", json={
+    preview_res = await client.post("/api/v1/logical-services/bulk-action", json={
+        "ids": [service_id],
+        "action": "update",
+        "payload": {"version": "24.10"},
+        "dry_run": True,
+    }, headers=headers)
+    assert preview_res.status_code == 200, preview_res.text
+    preview = preview_res.json()
+    assert preview["status"] == "preview"
+    assert preview["changed_count"] == 1
+    assert preview["unchanged_count"] == 0
+    assert preview["can_execute"] is True
+
+    devices_after_preview = await client.get("/api/v1/devices", headers=headers)
+    assert devices_after_preview.status_code == 200
+    device_after_preview = next(device for device in devices_after_preview.json() if device["id"] == device_id)
+    assert device_after_preview["os_version"] == "24.04"
+
+    update_res = await client.post("/api/v1/logical-services/bulk-action", json={
         "ids": [service_id],
         "action": "update",
         "payload": {"version": "24.10"}
     }, headers=headers)
+    assert update_res.status_code == 200, update_res.text
+    assert update_res.json()["changed_count"] == 1
 
     devices_after_update = await client.get("/api/v1/devices", headers=headers)
     assert devices_after_update.status_code == 200

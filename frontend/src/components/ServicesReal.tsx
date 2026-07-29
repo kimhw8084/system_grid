@@ -112,6 +112,10 @@ import {
   showOperationalBulkResultToast,
   showOperationalBulkRevertedToast,
 } from './shared/OperationalBulkContract'
+import {
+  OperationalBulkPreviewModal,
+  type OperationalBulkPreview,
+} from './shared/OperationalBulkPreviewModal'
 import { useCollaborativeWorkspaceViews } from './shared/CollaborativeWorkspaceViews'
 
 const SERVICE_VIEW_STORAGE_KEY = 'sysgrid_services_views_v1'
@@ -551,6 +555,15 @@ export default function ServicesReal() {
   const [searchTerm, setSearchTerm] = useState(persistedUiState?.searchTerm ?? '')
   const [groupBy, setGroupBy] = useState<string>(persistedUiState?.groupBy ?? 'raw')
   const [bulkDraft, setBulkDraft] = useState({ status: '', service_type: '', environment: '' })
+  const [bulkOperationPreview, setBulkOperationPreview] = useState<{
+    action: string
+    payload: Record<string, any>
+    ids: number[]
+    actionLabel: string
+    fieldLabel?: string
+    nextValue?: string
+    preview: OperationalBulkPreview
+  } | null>(null)
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'service_type' | 'environment' | null>(null)
   const [lastVisitedAt] = useState<number>(() => persistedUiState?.lastVisitedAt ?? 0)
   const [pendingIds, setPendingIds] = useState<number[]>([])
@@ -1530,6 +1543,37 @@ export default function ServicesReal() {
     queryClient.invalidateQueries({ queryKey: ['logical-services'] })
   }
 
+  const bulkPreviewMutation = useMutation({
+    mutationFn: async ({ action, payload = {}, ids: overrideIds }: any) => {
+      const idsToUse = overrideIds ?? selectedIds
+      const res = await apiFetch('/api/v1/logical-services/bulk-action', {
+        method: 'POST',
+        body: JSON.stringify({ ids: idsToUse, action, payload, dry_run: true }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      const preview = await res.json() as OperationalBulkPreview
+      const fieldLabel = action === 'update' ? resolveBulkFieldLabel(payload, SERVICES_BULK_FIELD_LABELS) : undefined
+      const actionLabel = action === 'delete'
+        ? 'Archive selection'
+        : action === 'restore'
+          ? 'Restore selection'
+          : `Apply ${fieldLabel || 'change'}`
+      const nextValue = action === 'update'
+        ? String(Object.values(payload).find((value) => value !== undefined) ?? '')
+        : undefined
+      return { action, payload, ids: idsToUse, actionLabel, fieldLabel, nextValue, preview }
+    },
+    onSuccess: (nextPreview) => {
+      setBulkOperationPreview(nextPreview)
+      closeOverlay('bulk')
+    },
+    onError: (error: any) => showOperationalBulkErrorToast(error.message),
+  })
+
+  const requestBulkPreview = (variables: { action: string; payload?: Record<string, any>; ids?: number[] }) => {
+    bulkPreviewMutation.mutate(variables)
+  }
+
   const bulkMutation = useMutation({
     onMutate: ({ action, ids: overrideIds }: any) => {
       const idsToUse = overrideIds ?? selectedIds
@@ -1575,11 +1619,13 @@ export default function ServicesReal() {
       closeOverlay('bulk')
       setExpandedBulkSection(null)
       setBulkDraft({ status: '', service_type: '', environment: '' })
+      setSelectedIds([])
+      setBulkOperationPreview(null)
       setIsBulkStatusOpen(false)
       setIsBulkSeverityOpen(false)
       setIsBulkNotifyOpen(false)
       const totalSelected = idsToUse.length
-      const parsedChangedCount = Number(result?.changed)
+      const parsedChangedCount = Number(result?.changed_count ?? result?.changed)
       const changedCount = Number.isFinite(parsedChangedCount)
         ? parsedChangedCount
         : action === 'update'
@@ -1589,7 +1635,10 @@ export default function ServicesReal() {
             : action === 'restore'
               ? previousSnapshots.filter((snapshot: any) => !!snapshot?.is_deleted).length
               : totalSelected
-      const unchangedCount = Math.max(0, totalSelected - changedCount)
+      const parsedUnchangedCount = Number(result?.unchanged_count)
+      const unchangedCount = Number.isFinite(parsedUnchangedCount)
+        ? parsedUnchangedCount
+        : Math.max(0, totalSelected - changedCount)
       const fieldLabel = resolveBulkFieldLabel(payload, SERVICES_BULK_FIELD_LABELS)
 
       if (changedCount <= 0) lastUndoRef.current = null
@@ -2066,12 +2115,12 @@ export default function ServicesReal() {
               {activeTab === 'deleted' ? (
                 <div className="space-y-2">
                   <button
-                    onClick={() => bulkMutation.mutate({ action: 'restore' })}
-                    disabled={bulkMutation.isPending}
+                    onClick={() => requestBulkPreview({ action: 'restore' })}
+                    disabled={bulkMutation.isPending || bulkPreviewMutation.isPending}
                     className="w-full rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-left transition-all hover:bg-emerald-500/15 disabled:opacity-50"
                   >
                     <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">
-                      {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : 'Restore Selection'}
+                      {(bulkMutation.isPending || bulkPreviewMutation.isPending) ? <Activity size={10} className="inline animate-spin" /> : 'Restore Selection'}
                     </p>
                   </button>
                   <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
@@ -2112,7 +2161,7 @@ export default function ServicesReal() {
                       options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
                       placeholder="Choose status"
                       actionLabel="Apply Status"
-                      onApply={() => bulkMutation.mutate({ action: 'update', payload: { status: bulkDraft.status } })}
+                      onApply={() => requestBulkPreview({ action: 'update', payload: { status: bulkDraft.status } })}
                       disabled={!bulkDraft.status || bulkMutation.isPending}
                     />
                   )}
@@ -2129,7 +2178,7 @@ export default function ServicesReal() {
                       options={serviceTypeOptions}
                       placeholder="Choose type"
                       actionLabel="Apply Type"
-                      onApply={() => bulkMutation.mutate({ action: 'update', payload: { service_type: bulkDraft.service_type } })}
+                      onApply={() => requestBulkPreview({ action: 'update', payload: { service_type: bulkDraft.service_type } })}
                       disabled={!bulkDraft.service_type || bulkMutation.isPending}
                     />
                   )}
@@ -2146,7 +2195,7 @@ export default function ServicesReal() {
                       options={environmentOptions}
                       placeholder="Choose environment"
                       actionLabel="Apply Environment"
-                      onApply={() => bulkMutation.mutate({ action: 'update', payload: { environment: bulkDraft.environment } })}
+                      onApply={() => requestBulkPreview({ action: 'update', payload: { environment: bulkDraft.environment } })}
                       disabled={!bulkDraft.environment || bulkMutation.isPending}
                     />
                   )}
@@ -2162,10 +2211,10 @@ export default function ServicesReal() {
                         setBulkDeleteConfirm(true)
                         return
                       }
-                      bulkMutation.mutate({ action: 'delete' })
+                      requestBulkPreview({ action: 'delete' })
                     }}
                     onMouseLeave={() => setBulkDeleteConfirm(false)}
-                    disabled={bulkMutation.isPending}
+                    disabled={bulkMutation.isPending || bulkPreviewMutation.isPending}
                     className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
                       bulkDeleteConfirm
                         ? 'border-rose-500 bg-rose-600 animate-pulse'
@@ -2173,7 +2222,7 @@ export default function ServicesReal() {
                     } disabled:opacity-50`}
                   >
                     <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
-                      {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
+                      {(bulkMutation.isPending || bulkPreviewMutation.isPending) ? <Activity size={10} className="inline animate-spin" /> : (
                         bulkDeleteConfirm
                           ? OPERATIONAL_ACTION_LABELS.archiveSelectionConfirm
                           : OPERATIONAL_ACTION_LABELS.archiveSelection
@@ -2345,12 +2394,31 @@ export default function ServicesReal() {
         />
       )}
 
+      <OperationalBulkPreviewModal
+        isOpen={Boolean(bulkOperationPreview)}
+        workspaceLabel="Services"
+        actionLabel={bulkOperationPreview?.actionLabel || 'Apply change'}
+        fieldLabel={bulkOperationPreview?.fieldLabel}
+        nextValue={bulkOperationPreview?.nextValue}
+        preview={bulkOperationPreview?.preview || null}
+        isExecuting={bulkMutation.isPending}
+        onClose={() => setBulkOperationPreview(null)}
+        onConfirm={() => {
+          if (!bulkOperationPreview) return
+          bulkMutation.mutate({
+            action: bulkOperationPreview.action,
+            payload: bulkOperationPreview.payload,
+            ids: bulkOperationPreview.ids,
+          })
+        }}
+      />
+
       <BulkActionModals
         isStatusOpen={isBulkStatusOpen}
         isSeverityOpen={isBulkSeverityOpen}
         isNotifyOpen={isBulkNotifyOpen}
         onClose={() => { setIsBulkStatusOpen(false); setIsBulkSeverityOpen(false); setIsBulkNotifyOpen(false); }}
-        onApply={(action, val) => bulkMutation.mutate({ action: 'update', payload: { [action]: val } })}
+        onApply={(action, val) => requestBulkPreview({ action: 'update', payload: { [action]: val } })}
       />
 
       <ConfirmationModal 

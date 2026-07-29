@@ -20,6 +20,18 @@ cleanup() {
 
 trap cleanup EXIT
 
+reset_generated_evidence() {
+  rm -rf \
+    "$BACKEND_DIR/test-results" \
+    "$FRONTEND_DIR/test-results" \
+    "$FRONTEND_DIR/playwright-report" \
+    "$FRONTEND_DIR/blob-report"
+  rm -f "$FRONTEND_DIR/llm-report.json"
+  mkdir -p "$BACKEND_DIR/test-results" "$FRONTEND_DIR/test-results"
+}
+
+reset_generated_evidence
+
 wait_for_url() {
   local url="$1"
   local label="$2"

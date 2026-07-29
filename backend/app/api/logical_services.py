@@ -6,9 +6,16 @@ from typing import List, Optional
 from ..database import get_db
 from ..models import models
 from .utils import build_audit_log, filter_valid_columns, normalize_json_list, normalize_json_object, parse_iso_date
+from .operational_bulk import (
+    build_operational_bulk_summary,
+    normalize_operational_bulk_ids,
+    normalize_operational_bulk_payload,
+    require_executable_operational_bulk,
+)
 
 router = APIRouter(prefix="/logical-services", tags=["Logical Services"])
 IMMUTABLE_SERVICE_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id"}
+SERVICE_BULK_UPDATE_FIELDS = {"status", "service_type", "environment", "version", "device_id"}
 
 
 def canonicalize_service_status(value: str | None) -> str | None:
@@ -313,40 +320,89 @@ async def delete_service(service_id: int, request: Request, db: AsyncSession = D
 
 @router.post("/bulk-action")
 async def bulk_action(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
-    ids = data.get("ids", [])
-    action = data.get("action")
-    payload = data.get("payload", {})
-    if not ids: return {"status": "no_op"}
+    ids = normalize_operational_bulk_ids(data.get("ids"))
+    action = str(data.get("action") or "").strip().lower()
+    payload = normalize_operational_bulk_payload(data.get("payload"))
+    dry_run = data.get("dry_run", False)
+    if not isinstance(dry_run, bool):
+        raise HTTPException(status_code=400, detail="dry_run must be a boolean")
+    if action not in {"delete", "restore", "update"}:
+        raise HTTPException(status_code=400, detail=f"Unsupported bulk action: {action}")
 
     services_res = await db.execute(select(models.LogicalService).filter(models.LogicalService.id.in_(ids)))
     affected_services = services_res.scalars().all()
-    affected_device_ids = {service.device_id for service in affected_services if service.device_id}
-    
-    if action == "delete":
-        await db.execute(update(models.LogicalService).where(models.LogicalService.id.in_(ids)).values(is_deleted=True))
-    elif action == "restore":
-        await db.execute(update(models.LogicalService).where(models.LogicalService.id.in_(ids)).values(is_deleted=False))
-    elif action == "update":
-        # Filter valid columns for LogicalService
-        valid_keys = {c.name for c in models.LogicalService.__table__.columns}
-        clean_update = {k: v for k, v in payload.items() if k in valid_keys}
-        if clean_update:
-            await db.execute(update(models.LogicalService).where(models.LogicalService.id.in_(ids)).values(**clean_update))
-            if "device_id" in clean_update:
-                previous_device_ids = {service.device_id for service in affected_services if service.device_id}
-                if clean_update["device_id"]:
-                    affected_device_ids.add(clean_update["device_id"])
-                affected_device_ids.update(previous_device_ids)
-    else:
-        raise HTTPException(status_code=400, detail=f"Unsupported bulk action: {action}")
+    services_by_id = {service.id: service for service in affected_services}
 
-    if action in {"delete", "restore", "update"}:
-        refreshed_res = await db.execute(select(models.LogicalService).filter(models.LogicalService.id.in_(ids)))
-        refreshed_services = refreshed_res.scalars().all()
-        affected_device_ids.update({service.device_id for service in refreshed_services if service.device_id})
-        if any(service.service_type == "OS" for service in refreshed_services + affected_services):
-            for device_id in affected_device_ids:
-                await sync_device_os_state(device_id, db)
+    clean_update: dict = {}
+    if action == "update":
+        clean_update = {key: value for key, value in payload.items() if key in SERVICE_BULK_UPDATE_FIELDS}
+        if "status" in clean_update:
+            clean_update["status"] = canonicalize_service_status(clean_update.get("status")) or "Existing"
+        if not clean_update:
+            raise HTTPException(status_code=400, detail="Bulk update requires a supported field")
+
+    changed_ids: list[int] = []
+    unchanged_ids: list[int] = []
+    for service_id in ids:
+        service = services_by_id.get(service_id)
+        if service is None:
+            continue
+        if action == "delete":
+            changed = not bool(service.is_deleted)
+        elif action == "restore":
+            changed = bool(service.is_deleted)
+        else:
+            changed = any(getattr(service, key) != value for key, value in clean_update.items())
+        (changed_ids if changed else unchanged_ids).append(service_id)
+
+    summary = build_operational_bulk_summary(
+        action=action,
+        selected_ids=ids,
+        matched_ids=services_by_id.keys(),
+        changed_ids=changed_ids,
+        unchanged_ids=unchanged_ids,
+    )
+    if dry_run:
+        return {"status": "preview", **summary}
+
+    require_executable_operational_bulk(summary)
+    if not changed_ids:
+        return {"status": "no_op", **summary}
+
+    affected_device_ids = {
+        service.device_id
+        for service in affected_services
+        if service.id in changed_ids and service.device_id
+    }
+    if action == "delete":
+        await db.execute(
+            update(models.LogicalService)
+            .where(models.LogicalService.id.in_(changed_ids))
+            .values(is_deleted=True)
+        )
+    elif action == "restore":
+        await db.execute(
+            update(models.LogicalService)
+            .where(models.LogicalService.id.in_(changed_ids))
+            .values(is_deleted=False)
+        )
+    else:
+        previous_device_ids = set(affected_device_ids)
+        await db.execute(
+            update(models.LogicalService)
+            .where(models.LogicalService.id.in_(changed_ids))
+            .values(**clean_update)
+        )
+        if "device_id" in clean_update and clean_update["device_id"]:
+            affected_device_ids.add(clean_update["device_id"])
+        affected_device_ids.update(previous_device_ids)
+
+    refreshed_res = await db.execute(select(models.LogicalService).filter(models.LogicalService.id.in_(changed_ids)))
+    refreshed_services = refreshed_res.scalars().all()
+    affected_device_ids.update({service.device_id for service in refreshed_services if service.device_id})
+    if any(service.service_type == "OS" for service in refreshed_services + affected_services):
+        for device_id in affected_device_ids:
+            await sync_device_os_state(device_id, db)
 
     db.add(build_audit_log(
         request=request,
@@ -354,11 +410,16 @@ async def bulk_action(data: dict, request: Request, db: AsyncSession = Depends(g
         target_table="logical_services",
         target_id="bulk",
         description=f"Applied bulk logical service action: {action}",
-        changes={"ids": ids, "payload": payload if action == "update" else {}},
+        changes={
+            "ids": changed_ids,
+            "payload": clean_update if action == "update" else {},
+            "selected_count": summary["selected_count"],
+            "changed_count": summary["changed_count"],
+            "unchanged_count": summary["unchanged_count"],
+        },
     ))
-    
     await db.commit()
-    return {"status": "success"}
+    return {"status": "success", **summary}
 
 @router.post("/{service_id}/mount/{device_id}")
 async def mount_service(service_id: int, device_id: int, request: Request, db: AsyncSession = Depends(get_db)):

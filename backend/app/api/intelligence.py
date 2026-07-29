@@ -9,9 +9,17 @@ from ..database import get_db
 from ..models import models
 from ..schemas import schemas
 from .utils import build_audit_log, filter_valid_columns
+from .operational_bulk import (
+    build_operational_bulk_summary,
+    normalize_operational_bulk_ids,
+    normalize_operational_bulk_payload,
+    require_executable_operational_bulk,
+)
 
 router = APIRouter(prefix="/intelligence", tags=["External Intelligence"])
 IMMUTABLE_EXTERNAL_ENTITY_FIELDS = {"id", "created_at", "updated_at", "created_by_user_id"}
+EXTERNAL_BULK_UPDATE_FIELDS = {"status", "environment", "criticality", "risk_rating"}
+EXTERNAL_BULK_RATING_VALUES = {"Critical", "High", "Medium", "Low"}
 
 async def log_audit(db: AsyncSession, request: Request, action: str, table: str, target_id: int, description: str, changes: Optional[Dict] = None):
     log = build_audit_log(
@@ -208,6 +216,57 @@ async def _validate_restoreable_external_entity(db: AsyncSession, entity: models
             raise HTTPException(409, detail="Archived individually owned external entity cannot be restored because the accountable operator is missing")
 
 
+def _external_restore_identity_payload(entity: models.ExternalEntity) -> schemas.ExternalEntityCreate:
+    return schemas.ExternalEntityCreate.model_validate({
+        "name": entity.name,
+        "external_key": entity.external_key,
+        "aliases_json": entity.aliases_json or [],
+        "type": entity.type,
+        "subtype": entity.subtype,
+        "owner_organization": entity.owner_organization,
+        "owner_team": entity.owner_team,
+        "ownership_mode": entity.ownership_mode,
+        "internal_team_id": entity.internal_team_id,
+        "internal_operator_id": entity.internal_operator_id,
+        "status": entity.status,
+        "environment": entity.environment,
+        "description": entity.description,
+        "notes": entity.notes,
+        "contacts_json": _normalize_contacts(entity),
+        "business_purpose": entity.business_purpose,
+        "criticality": entity.criticality,
+        "dependency_tier": entity.dependency_tier,
+        "data_classification": entity.data_classification,
+        "integration_mode": entity.integration_mode,
+        "primary_endpoint_url": entity.primary_endpoint_url,
+        "secondary_endpoint_url": entity.secondary_endpoint_url,
+        "auth_method": entity.auth_method,
+        "protocol_family": entity.protocol_family,
+        "port_override": entity.port_override,
+        "supports_inbound": bool(entity.supports_inbound),
+        "supports_outbound": bool(entity.supports_outbound),
+        "source_system": entity.source_system,
+        "source_record_id": entity.source_record_id,
+        "risk_rating": entity.risk_rating,
+        "contains_customer_data": bool(entity.contains_customer_data),
+        "contains_credentials": bool(entity.contains_credentials),
+        "stores_pii": bool(entity.stores_pii),
+        "internet_exposed": bool(entity.internet_exposed),
+        "third_party_assessment_status": entity.third_party_assessment_status,
+        "metadata_json": entity.metadata_json or {},
+    })
+
+
+async def _validate_external_restore_contract(db: AsyncSession, entity: models.ExternalEntity) -> None:
+    await _validate_unique_external_key(db, entity.external_key, entity.id)
+    await _validate_restoreable_external_entity(db, entity)
+    await _validate_unique_external_identity(
+        db,
+        _external_restore_identity_payload(entity),
+        entity_id=entity.id,
+    )
+
+
 def _normalize_external_link_identity(data: schemas.ExternalLinkBase) -> dict[str, Any]:
     return {
         "external_entity_id": data.external_entity_id,
@@ -307,53 +366,140 @@ async def update_entity(entity_id: int, data: schemas.ExternalEntityUpdate, requ
     )
     return await _enrich_entity_response(db, refreshed.scalar_one())
 
+@router.post("/entities/bulk-action")
+async def bulk_entity_action(data: dict, request: Request, db: AsyncSession = Depends(get_db)):
+    ids = normalize_operational_bulk_ids(data.get("ids"))
+    action = str(data.get("action") or "").strip().lower()
+    payload = normalize_operational_bulk_payload(data.get("payload"))
+    dry_run = data.get("dry_run", False)
+    if not isinstance(dry_run, bool):
+        raise HTTPException(status_code=400, detail="dry_run must be a boolean")
+    if action not in {"update", "delete", "restore", "purge"}:
+        raise HTTPException(status_code=400, detail=f"Unsupported bulk action: {action}")
+
+    clean_update: dict[str, Any] = {}
+    if action == "update":
+        clean_update = {key: value for key, value in payload.items() if key in EXTERNAL_BULK_UPDATE_FIELDS}
+        if not clean_update:
+            raise HTTPException(status_code=400, detail="Bulk update requires a supported field")
+        for field in ("status", "environment"):
+            if field in clean_update:
+                clean_update[field] = str(clean_update[field] or "").strip()
+                if not clean_update[field]:
+                    raise HTTPException(status_code=400, detail=f"{field.replace('_', ' ').title()} cannot be blank")
+        for field in ("criticality", "risk_rating"):
+            if field in clean_update and clean_update[field] not in EXTERNAL_BULK_RATING_VALUES:
+                raise HTTPException(status_code=400, detail=f"Unsupported {field.replace('_', ' ')} value")
+
+    result = await db.execute(select(models.ExternalEntity).filter(models.ExternalEntity.id.in_(ids)))
+    entities = result.scalars().all()
+    entities_by_id = {entity.id: entity for entity in entities}
+
+    linked_ids: set[int] = set()
+    secret_ids: set[int] = set()
+    if action == "purge" and entities:
+        link_rows = await db.execute(
+            select(models.ExternalLink.external_entity_id)
+            .where(models.ExternalLink.external_entity_id.in_(list(entities_by_id)))
+        )
+        linked_ids = set(link_rows.scalars().all())
+        secret_rows = await db.execute(
+            select(models.ExternalEntitySecret.external_entity_id)
+            .where(models.ExternalEntitySecret.external_entity_id.in_(list(entities_by_id)))
+        )
+        secret_ids = set(secret_rows.scalars().all())
+
+    changed_ids: list[int] = []
+    unchanged_ids: list[int] = []
+    blockers: list[dict[str, Any]] = []
+    for entity_id in ids:
+        entity = entities_by_id.get(entity_id)
+        if entity is None:
+            continue
+        blocked = False
+        if action == "update":
+            changed = any(getattr(entity, key) != value for key, value in clean_update.items())
+        elif action == "delete":
+            changed = not bool(entity.is_deleted)
+        elif action == "restore":
+            changed = bool(entity.is_deleted)
+            if changed:
+                try:
+                    await _validate_external_restore_contract(db, entity)
+                except HTTPException as exc:
+                    blockers.append({"id": entity.id, "name": entity.name, "reason": str(exc.detail)})
+                    blocked = True
+        else:
+            changed = bool(entity.is_deleted)
+            reasons: list[str] = []
+            if not entity.is_deleted:
+                reasons.append("Archive this record before permanent purge")
+            if entity.id in linked_ids:
+                reasons.append("Active connectivity links must be removed")
+            if entity.id in secret_ids:
+                reasons.append("Registered credentials must be removed")
+            if reasons:
+                blockers.append({"id": entity.id, "name": entity.name, "reason": "; ".join(reasons)})
+                blocked = True
+        if blocked:
+            continue
+        (changed_ids if changed else unchanged_ids).append(entity_id)
+
+    summary = build_operational_bulk_summary(
+        action=action,
+        selected_ids=ids,
+        matched_ids=entities_by_id.keys(),
+        changed_ids=changed_ids,
+        unchanged_ids=unchanged_ids,
+        blockers=blockers,
+    )
+    if dry_run:
+        return {"status": "preview", **summary}
+
+    require_executable_operational_bulk(summary)
+    if not changed_ids:
+        return {"status": "no_op", **summary}
+
+    if action == "update":
+        for entity_id in changed_ids:
+            entity = entities_by_id[entity_id]
+            for key, value in clean_update.items():
+                setattr(entity, key, value)
+    elif action == "delete":
+        for entity_id in changed_ids:
+            entities_by_id[entity_id].is_deleted = True
+    elif action == "restore":
+        for entity_id in changed_ids:
+            entities_by_id[entity_id].is_deleted = False
+    else:
+        for entity_id in changed_ids:
+            await db.delete(entities_by_id[entity_id])
+
+    db.add(build_audit_log(
+        request=request,
+        action=f"BULK_{action.upper()}",
+        target_table="external_entities",
+        target_id="bulk",
+        description=f"Applied bulk external entity action: {action}",
+        changes={
+            "ids": changed_ids,
+            "payload": clean_update if action == "update" else {},
+            "selected_count": summary["selected_count"],
+            "changed_count": summary["changed_count"],
+            "unchanged_count": summary["unchanged_count"],
+        },
+    ))
+    await db.commit()
+    return {"status": "success", **summary}
+
+
 @router.post("/entities/{entity_id}/restore")
 async def restore_entity(entity_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(models.ExternalEntity).filter(models.ExternalEntity.id == entity_id))
     obj = result.scalar_one_or_none()
     if not obj: raise HTTPException(404, "Entity not found")
-    await _validate_unique_external_key(db, obj.external_key, entity_id)
-    await _validate_restoreable_external_entity(db, obj)
-    identity_payload = schemas.ExternalEntityCreate.model_validate({
-        "name": obj.name,
-        "external_key": obj.external_key,
-        "aliases_json": obj.aliases_json or [],
-        "type": obj.type,
-        "subtype": obj.subtype,
-        "owner_organization": obj.owner_organization,
-        "owner_team": obj.owner_team,
-        "ownership_mode": obj.ownership_mode,
-        "internal_team_id": obj.internal_team_id,
-        "internal_operator_id": obj.internal_operator_id,
-        "status": obj.status,
-        "environment": obj.environment,
-        "description": obj.description,
-        "notes": obj.notes,
-        "contacts_json": _normalize_contacts(obj),
-        "business_purpose": obj.business_purpose,
-        "criticality": obj.criticality,
-        "dependency_tier": obj.dependency_tier,
-        "data_classification": obj.data_classification,
-        "integration_mode": obj.integration_mode,
-        "primary_endpoint_url": obj.primary_endpoint_url,
-        "secondary_endpoint_url": obj.secondary_endpoint_url,
-        "auth_method": obj.auth_method,
-        "protocol_family": obj.protocol_family,
-        "port_override": obj.port_override,
-        "supports_inbound": bool(obj.supports_inbound),
-        "supports_outbound": bool(obj.supports_outbound),
-        "source_system": obj.source_system,
-        "source_record_id": obj.source_record_id,
-        "risk_rating": obj.risk_rating,
-        "contains_customer_data": bool(obj.contains_customer_data),
-        "contains_credentials": bool(obj.contains_credentials),
-        "stores_pii": bool(obj.stores_pii),
-        "internet_exposed": bool(obj.internet_exposed),
-        "third_party_assessment_status": obj.third_party_assessment_status,
-        "metadata_json": obj.metadata_json or {},
-    })
-    await _validate_unique_external_identity(db, identity_payload, entity_id=entity_id)
-    
+    await _validate_external_restore_contract(db, obj)
+
     obj.is_deleted = False
     await db.commit()
     await log_audit(db, request, "RESTORE", "external_entities", entity_id, f"Restored external entity: {obj.name}")

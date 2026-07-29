@@ -33,8 +33,13 @@ test.describe('Blank Slate Crash Audit', () => {
         await page.goto('/');
         await waitForAppIdle(page);
 
-        // Discover views
-        const navLinks = await page.locator('a[href^="/"]').evaluateAll((links) => {
+        // Discover views only after the routed navigation shell is actually ready.
+        // The generic idle helper intentionally ignores bootstrap copy, so an explicit
+        // navigation readiness contract prevents racing the Initializing SysGrid screen.
+        const navigationLinks = page.locator('nav a[href^="/"]');
+        await expect(navigationLinks.first()).toBeVisible({ timeout: 15_000 });
+
+        const navLinks = await navigationLinks.evaluateAll((links) => {
             return Array.from(new Set(links.map(l => l.getAttribute('href')).filter(h => h && h.length > 1 && !h.startsWith('http'))));
         });
         

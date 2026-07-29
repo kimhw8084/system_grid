@@ -74,13 +74,16 @@ import {
   renderOperationalActionButtons,
 } from './shared/OperationalGridStandard'
 import {
-  countSemanticBulkChanges,
   resolveBulkFieldLabel,
   showOperationalBulkErrorToast,
   showOperationalBulkRevertErrorToast,
   showOperationalBulkResultToast,
   showOperationalBulkRevertedToast,
 } from './shared/OperationalBulkContract'
+import {
+  OperationalBulkPreviewModal,
+  type OperationalBulkPreview,
+} from './shared/OperationalBulkPreviewModal'
 import {
   useOperationalRowInteractions,
   useOperationalContextMenu,
@@ -1521,6 +1524,15 @@ export default function External() {
   const [isBulkCriticalityOpen, setIsBulkCriticalityOpen] = useState(false)
   const [isBulkRiskOpen, setIsBulkRiskOpen] = useState(false)
   const [bulkDraft, setBulkDraft] = useState({ status: '', environment: '', criticality: '', risk_rating: '' })
+  const [bulkOperationPreview, setBulkOperationPreview] = useState<{
+    action: string
+    payload: Record<string, any>
+    ids: number[]
+    actionLabel: string
+    fieldLabel?: string
+    nextValue?: string
+    preview: OperationalBulkPreview
+  } | null>(null)
   const [expandedBulkSection, setExpandedBulkSection] = useState<'status' | 'environment' | 'criticality' | 'risk_rating' | null>(null)
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
   const [rowActionMenu, setRowActionMenu] = useState<{ item: any; point: { x: number; y: number } } | null>(null)
@@ -2321,79 +2333,63 @@ export default function External() {
     return nextPayload
   }
 
+  const bulkPreviewMutation = useMutation({
+    mutationFn: async ({ action, payload = {}, ids: overrideIds }: any) => {
+      const idsToUse = overrideIds ?? selectedIds
+      const res = await apiFetch('/api/v1/intelligence/entities/bulk-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: idsToUse, action, payload, dry_run: true }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      const preview = await res.json() as OperationalBulkPreview
+      const fieldLabel = action === 'update' ? resolveBulkFieldLabel(payload, EXTERNAL_BULK_FIELD_LABELS) : undefined
+      const actionLabel = action === 'delete'
+        ? 'Archive selection'
+        : action === 'restore'
+          ? 'Restore selection'
+          : action === 'purge'
+            ? 'Purge selection'
+            : `Apply ${fieldLabel || 'change'}`
+      const nextValue = action === 'update'
+        ? String(Object.values(payload).find((value) => value !== undefined) ?? '')
+        : undefined
+      return { action, payload, ids: idsToUse, actionLabel, fieldLabel, nextValue, preview }
+    },
+    onSuccess: (nextPreview) => {
+      setBulkOperationPreview(nextPreview)
+      dismissOverlays()
+    },
+    onError: (error: any) => showOperationalBulkErrorToast(error.message),
+  })
+
+  const requestBulkPreview = (variables: { action: string; payload?: Record<string, any>; ids?: number[] }) => {
+    bulkPreviewMutation.mutate(variables)
+  }
+
   const bulkMutation = useMutation({
     mutationFn: async ({ action, payload = {}, ids: overrideIds }: any) => {
       const idsToUse = overrideIds ?? selectedIds
-
-      const results = await Promise.all(
-        idsToUse.map(async (id: number) => {
-          const original = allEntities?.find((e: any) => e.id === id)
-          if (!original) {
-            return { id, status: 'failed', error: 'Entity not found in local cache' }
-          }
-
-          try {
-            if (action === 'update') {
-              const alreadyMatches = countSemanticBulkChanges([original], payload) <= 0
-              if (alreadyMatches) {
-                return { id, status: 'skipped', previous: original }
-              }
-
-              const updatePayload = buildExternalSafeBulkPutPayload(original, payload)
-
-              const res = await apiFetch(`/api/v1/intelligence/entities/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updatePayload),
-              })
-              if (!res.ok) {
-                throw new Error(await res.text())
-              }
-              return { id, status: 'updated', previous: original }
-            } else if (action === 'delete') {
-              const res = await apiFetch(`/api/v1/intelligence/entities/${id}`, { method: 'DELETE' })
-              if (!res.ok) throw new Error(await res.text())
-              return { id, status: 'updated', previous: original }
-            } else if (action === 'purge') {
-              const res = await apiFetch(`/api/v1/intelligence/entities/${id}?purge=true`, { method: 'DELETE' })
-              if (!res.ok) throw new Error(await res.text())
-              return { id, status: 'updated' }
-            } else if (action === 'restore') {
-              const res = await apiFetch(`/api/v1/intelligence/entities/${id}/restore`, { method: 'POST' })
-              if (!res.ok) throw new Error(await res.text())
-              return { id, status: 'updated', previous: original }
-            }
-            return { id, status: 'skipped' }
-          } catch (e: any) {
-            const friendlyErr = getFriendlyRestoreError(e.message || String(e))
-            return { id, status: 'failed', error: friendlyErr, name: original.name }
-          }
-        })
-      )
-
-      let updated = 0
-      let skipped = 0
-      let failed = 0
-      const previousSnapshots: any[] = []
-      const errors: string[] = []
-
-      for (const res of results) {
-        if (res.status === 'updated') {
-          updated++
-          if (res.previous) previousSnapshots.push(res.previous)
-        } else if (res.status === 'skipped') {
-          skipped++
-        } else if (res.status === 'failed') {
-          failed++
-          if (res.name) {
-            errors.push(`ID ${res.id} (${res.name}): ${res.error}`)
-          } else {
-            errors.push(`ID ${res.id}: ${res.error}`)
-          }
-        }
+      const previousSnapshots = (allEntities || [])
+        .filter((entity: any) => idsToUse.includes(entity.id))
+        .map((entity: any) => ({ ...entity }))
+      const res = await apiFetch('/api/v1/intelligence/entities/bulk-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: idsToUse, action, payload }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      const result = await res.json()
+      return {
+        action,
+        idsToUse,
+        payload,
+        previousSnapshots,
+        updated: Number(result?.changed_count || 0),
+        skipped: Number(result?.unchanged_count || 0),
+        failed: 0,
+        errors: [],
       }
-
-      return { action, idsToUse, payload, previousSnapshots, updated, skipped, failed, errors }
     },
     onSuccess: ({ action, idsToUse, payload, previousSnapshots, updated, skipped, failed, errors }) => {
       queryClient.invalidateQueries({ queryKey: ['external-entities'] })
@@ -2404,6 +2400,7 @@ export default function External() {
       const hasFailures = failed > 0
       if (!hasFailures) {
         setSelectedIds([])
+        setBulkOperationPreview(null)
         dismissOverlays()
         setBulkDraft({ status: '', environment: '', criticality: '', risk_rating: '' })
         setExpandedBulkSection(null)
@@ -3145,12 +3142,12 @@ export default function External() {
 
                   {activeTab === 'deleted' ? (
                     <button
-                      onClick={() => bulkMutation.mutate({ action: 'restore' })}
-                      disabled={bulkMutation.isPending}
+                      onClick={() => requestBulkPreview({ action: 'restore' })}
+                      disabled={bulkMutation.isPending || bulkPreviewMutation.isPending}
                       className="w-full rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-left transition-all hover:bg-emerald-500/15 disabled:opacity-50"
                     >
                       <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">
-                        {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : 'Restore Selection'}
+                        {(bulkMutation.isPending || bulkPreviewMutation.isPending) ? <Activity size={10} className="inline animate-spin" /> : 'Restore Selection'}
                       </p>
                     </button>
                   ) : (
@@ -3176,7 +3173,7 @@ export default function External() {
                           ]}
                           placeholder="Choose status"
                           actionLabel="Apply Status"
-                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { status: bulkDraft.status } })}
+                          onApply={() => requestBulkPreview({ action: 'update', payload: { status: bulkDraft.status } })}
                           disabled={!bulkDraft.status || bulkMutation.isPending}
                         />
                       )}
@@ -3201,7 +3198,7 @@ export default function External() {
                           ]}
                           placeholder="Choose environment"
                           actionLabel="Apply Environment"
-                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { environment: bulkDraft.environment } })}
+                          onApply={() => requestBulkPreview({ action: 'update', payload: { environment: bulkDraft.environment } })}
                           disabled={!bulkDraft.environment || bulkMutation.isPending}
                         />
                       )}
@@ -3223,7 +3220,7 @@ export default function External() {
                           ]}
                           placeholder="Choose criticality"
                           actionLabel="Apply Criticality"
-                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { criticality: bulkDraft.criticality } })}
+                          onApply={() => requestBulkPreview({ action: 'update', payload: { criticality: bulkDraft.criticality } })}
                           disabled={!bulkDraft.criticality || bulkMutation.isPending}
                         />
                       )}
@@ -3245,7 +3242,7 @@ export default function External() {
                           ]}
                           placeholder="Choose risk rating"
                           actionLabel="Apply Risk Rating"
-                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { risk_rating: bulkDraft.risk_rating } })}
+                          onApply={() => requestBulkPreview({ action: 'update', payload: { risk_rating: bulkDraft.risk_rating } })}
                           disabled={!bulkDraft.risk_rating || bulkMutation.isPending}
                         />
                       )}
@@ -3263,12 +3260,8 @@ export default function External() {
                     </div>
                   ) : null}
                   <OperationalDisabledActionTooltip
-                    disabled={activeTab === 'deleted' && !canPurgeSelectedDeletedEntities}
-                    reason={activeTab === 'deleted' && selectedIds.length === 1
-                      ? getExternalEntityPurgeReason(findExternalEntityById(selectedIds[0]))
-                      : activeTab === 'deleted' && !canPurgeSelectedDeletedEntities
-                        ? buildExternalMultiSelectPurgeReason(selectedIds.map((id) => findExternalEntityById(id)), links)
-                        : undefined}
+                    disabled={false}
+                    reason={undefined}
                     className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
                   >
                     <button
@@ -3277,10 +3270,10 @@ export default function External() {
                           setBulkDeleteConfirm(true)
                           return
                         }
-                        bulkMutation.mutate({ action: activeTab === 'deleted' ? 'purge' : 'delete' })
+                        requestBulkPreview({ action: activeTab === 'deleted' ? 'purge' : 'delete' })
                       }}
                       onMouseLeave={() => setBulkDeleteConfirm(false)}
-                      disabled={bulkMutation.isPending || (activeTab === 'deleted' && !canPurgeSelectedDeletedEntities)}
+                      disabled={bulkMutation.isPending || bulkPreviewMutation.isPending}
                       className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${
                         bulkDeleteConfirm 
                           ? 'border-rose-500 bg-rose-600 animate-pulse' 
@@ -3288,7 +3281,7 @@ export default function External() {
                       } disabled:opacity-50`}
                     >
                       <p className={`text-[10px] font-semibold ${bulkDeleteConfirm ? 'text-white' : 'text-rose-300'}`}>
-                        {bulkMutation.isPending ? <Activity size={10} className="inline animate-spin" /> : (
+                        {(bulkMutation.isPending || bulkPreviewMutation.isPending) ? <Activity size={10} className="inline animate-spin" /> : (
                           activeTab === 'deleted' && !canPurgeSelectedDeletedEntities
                             ? OPERATIONAL_ACTION_LABELS.purge
                             : bulkDeleteConfirm
@@ -3609,6 +3602,25 @@ export default function External() {
           onClose={() => setCompareOpen(false)}
         />
       )}
+
+      <OperationalBulkPreviewModal
+        isOpen={Boolean(bulkOperationPreview)}
+        workspaceLabel="External"
+        actionLabel={bulkOperationPreview?.actionLabel || 'Apply change'}
+        fieldLabel={bulkOperationPreview?.fieldLabel}
+        nextValue={bulkOperationPreview?.nextValue}
+        preview={bulkOperationPreview?.preview || null}
+        isExecuting={bulkMutation.isPending}
+        onClose={() => setBulkOperationPreview(null)}
+        onConfirm={() => {
+          if (!bulkOperationPreview) return
+          bulkMutation.mutate({
+            action: bulkOperationPreview.action,
+            payload: bulkOperationPreview.payload,
+            ids: bulkOperationPreview.ids,
+          })
+        }}
+      />
 
       <WorkspaceModal
         isOpen={!!activeDetails}
