@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { WorkspaceEmptyState } from "./shared/OperationalWorkspacePrimitives";
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { AgGridReact } from 'ag-grid-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
   Plus, Search, Trash2, Edit2, Info, 
@@ -17,8 +16,6 @@ import { apiFetch } from '../api/apiClient'
 import { toast } from 'react-hot-toast'
 import { formatAppDate } from '../utils/dateUtils'
 import { BulkImportModal } from './shared/BulkImportModal'
-import { ConfirmationModal } from './shared/ConfirmationModal'
-import { OPERATIONAL_GRID_AUTO_SIZE_STRATEGY } from './shared/OperationalGridSizing'
 import { StyledSelect } from './shared/StyledSelect'
 import { StatusPill } from './shared/StatusPill'
 import { ConfigRegistryModal } from './ConfigRegistry'
@@ -27,6 +24,9 @@ import { ProjectForm } from './Projects'
 import { RootCauseFormModal, MitigationFormModal, PreventionFormModal, ResolutionManagerModal } from './shared/FARModals'
 import { EnhancedRcaDetails } from './Research'
 import { OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'
+import { OperationalDataGrid } from './shared/OperationalDataGrid'
+import { OperationalBulkPreviewModal } from './shared/OperationalBulkPreviewModal'
+import { useOperationalBulkWorkflow } from './shared/useOperationalBulkWorkflow'
 import { ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
 
 import 'ag-grid-community/styles/ag-grid.css'
@@ -198,14 +198,6 @@ export default function FAR() {
   
   const [bkmGuidanceModal, setBkmGuidanceModal] = useState<{show: boolean, cause: any}>({ show: false, cause: null })
 
-  const [confirmModal, setConfirmModal] = useState<{show: boolean, title: string, message: string, onConfirm: () => void}>({
-    show: false, title: '', message: '', onConfirm: () => {}
-  })
-
-  const openConfirm = (title: string, message: string, onConfirm: () => void) => {
-    setConfirmModal({ show: true, title, message, onConfirm })
-  }
-
   // Queries
   const { data: modes, isLoading: modesLoading, isError: modesError } = useQuery({ 
     queryKey: ['far', 'modes'], 
@@ -255,20 +247,63 @@ export default function FAR() {
 
   const selectedMode = useMemo(() => modes?.find((m: any) => m.id === selectedModeId), [modes, selectedModeId])
 
-  // Bulk Deletion
-  const bulkMutation = useMutation({
-    mutationFn: async ({ action, ids }: { action: string, ids: number[] }) => {
-      if (action === 'delete') {
-        const res = await apiFetch('/api/v1/far/modes/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) })
-        return res.json()
+  const farGridRuntime = useMemo(() => ({}), [])
+
+  const {
+    bulkMutation,
+    bulkOperationPreview,
+    requestBulkPreview,
+    setBulkOperationPreview,
+  } = useOperationalBulkWorkflow<any>({
+    selectedIds,
+    fieldLabels: {},
+    selectionErrorMessage: 'Select at least one active failure vector.',
+    previewErrorMessage: 'Unable to prepare the FAR retirement preview.',
+    executionErrorMessage: 'Unable to retire the selected failure vectors.',
+    revertErrorMessage: 'FAR retirement cannot be undone.',
+    getSnapshots: (ids) => (modes || []).filter((mode: any) => ids.includes(Number(mode.id))),
+    previewRequest: async ({ action, ids }) => {
+      if (action !== 'delete') throw new Error('Unsupported FAR bulk action.')
+      const current = new Map((modes || []).map((mode: any) => [Number(mode.id), mode]))
+      const changedIds = ids.filter((id) => current.has(id))
+      const missingIds = ids.filter((id) => !current.has(id))
+      return {
+        action,
+        selected_count: ids.length,
+        matched_count: changedIds.length,
+        changed_count: changedIds.length,
+        unchanged_count: 0,
+        blocked_count: 0,
+        missing_count: missingIds.length,
+        changed_ids: changedIds,
+        unchanged_ids: [],
+        missing_ids: missingIds,
+        blockers: [],
+        can_execute: changedIds.length > 0 && missingIds.length === 0,
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['far', 'modes'] })
-      toast.success('Failure Matrix Updated')
-      setConfirmModal({ ...confirmModal, show: false })
+    executeRequest: async ({ action, ids }) => {
+      if (action !== 'delete') throw new Error('Unsupported FAR bulk action.')
+      const res = await apiFetch('/api/v1/far/modes/bulk-delete', {
+        method: 'POST',
+        body: JSON.stringify({ ids }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      const result = await res.json()
+      const changedCount = Number(result?.count || 0)
+      return {
+        ...result,
+        changed_count: changedCount,
+        unchanged_count: Math.max(0, ids.length - changedCount),
+        changed_ids: changedCount === ids.length ? ids : [],
+      }
     },
-    onError: (e: any) => toast.error(e.message)
+    refresh: () => queryClient.invalidateQueries({ queryKey: ['far', 'modes'] }),
+    buildRevertRequest: () => null,
+    onExecutionSuccess: () => {
+      setSelectedIds([])
+      gridRef.current?.api?.deselectAll?.()
+    },
   })
 
   // AgGrid Defs (High Density)
@@ -544,14 +579,12 @@ export default function FAR() {
                <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
                    <button onClick={() => p.data?.id && setSelectedModeId(p.data.id)} title="Matrix Detail" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
                    <button onClick={() => { setSelectedModeId(p.data.id); setShowWizard(true); }} title="Edit Matrix" className="p-1.5 text-amber-400 hover:text-amber-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
-                   <button onClick={() => p.data?.id && openConfirm('Purge Vector', 'PERMANENTLY PURGE THIS RISK?', () => bulkMutation.mutate({ action: 'delete', ids: [p.data.id] }))} title="Purge" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+                   <button onClick={() => p.data?.id && requestBulkPreview({ action: 'delete', ids: [p.data.id] })} title="Retire failure vector" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
                </div>
         </div>
       )
     }
-  ], [fontSize, hiddenColumns, bulkMutation]) as any
-
-  const autoSizeStrategy = OPERATIONAL_GRID_AUTO_SIZE_STRATEGY
+  ], [fontSize, hiddenColumns, requestBulkPreview]) as any
 
   // Advanced Metrics Calculation
   const metrics = useMemo(() => {
@@ -617,6 +650,12 @@ export default function FAR() {
       toolbarActions={(
         <ToolbarGroup>
           <ToolbarButton onClick={() => setShowImportModal(true)} title="Import Bulk Risk Data"><Upload size={14} /> Import</ToolbarButton>
+          <ToolbarButton
+            variant="danger"
+            disabled={selectedIds.length === 0}
+            onClick={() => requestBulkPreview({ action: 'delete' })}
+            title="Preview retirement of selected failure vectors"
+          ><Trash2 size={14} /> Retire Selected{selectedIds.length ? ` (${selectedIds.length})` : ''}</ToolbarButton>
           <ToolbarButton variant="danger" onClick={() => { setSelectedModeId(null); setShowWizard(true); }}><ShieldAlert size={14} /> Add Failure Mode</ToolbarButton>
         </ToolbarGroup>
       )}
@@ -682,27 +721,34 @@ export default function FAR() {
               </div>
            </div>
 
-           <div className="flex-1 glass-panel overflow-hidden ag-theme-alpine-dark relative">
-              {(modesLoading || modesError || (!modesLoading && filteredModes.length === 0)) && (
-                <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#020617]/85 backdrop-blur-sm">
-                  <WorkspaceEmptyState
-                    title={modesLoading ? 'Loading failure analysis registry' : modesError ? 'Failure analysis registry unavailable' : 'No failure modes in scope'}
-                    description={modesLoading ? 'Retrieving reliability vectors and workflow context.' : modesError ? 'The FAR registry could not be loaded. Retry from the workspace navigation.' : 'Create a failure mode or adjust the current system and search filters.'}
-                  />
-                </div>
-              )}
-              <AgGridReact
-                ref={gridRef}
-                rowData={filteredModes || []}
-                columnDefs={columnDefs}
-                headerHeight={fontSize + rowDensity + 10}
-                rowHeight={fontSize + rowDensity + 10}
-                quickFilterText={searchTerm}
-                animateRows={true}
-                enableCellTextSelection={true}
-                rowSelection="multiple"
-                onSelectionChanged={(e: any) => setSelectedIds(e?.api?.getSelectedNodes().map((n: any) => n.data?.id).filter(Boolean) || [])}              />
-              <AnimatePresence>
+           <OperationalDataGrid
+             gridRef={gridRef}
+             rows={filteredModes || []}
+             columnDefs={columnDefs as any}
+             runtime={farGridRuntime}
+             quickFilterText={searchTerm}
+             fontSize={fontSize}
+             rowDensity={rowDensity}
+             noRowsLabel="No failure modes in scope"
+             loading={modesLoading}
+             loadingIcon={<RefreshCcw size={28} className="animate-spin text-rose-400" />}
+             loadingLabel={<p className="text-[10px] font-semibold text-rose-300">Loading failure analysis registry...</p>}
+             dataState={modesError ? {
+               kind: 'query-error',
+               noRowsLabel: 'No failure modes in scope',
+               title: 'Failure analysis registry unavailable',
+               description: 'The FAR registry could not be loaded. Retry from the workspace navigation.',
+             } : (!modesLoading && filteredModes.length === 0 ? {
+               kind: 'filtered-empty',
+               noRowsLabel: 'No failure modes in scope',
+               title: 'No failure modes in scope',
+               description: 'Create a failure mode or adjust the current system and search filters.',
+             } : { kind: 'ready', noRowsLabel: 'No failure modes in scope' })}
+             onSelectionChanged={(event) => setSelectedIds(event?.api?.getSelectedNodes().map((node: any) => Number(node.data?.id)).filter(Boolean) || [])}
+             suppressRowClickSelection={false}
+             className="monitoring-grid-shell monitoring-grid rounded-t-none border-x border-b border-white/5"
+           />
+           <AnimatePresence>
                 {showColumnPicker && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl">
                     <div className="p-6 border-b border-white/5 flex items-center justify-between"><h3 className="text-xs font-bold uppercase tracking-widest text-rose-400 flex items-center space-x-2"><Sliders size={14} /> <span>Columns</span></h3><button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button></div>
@@ -719,7 +765,6 @@ export default function FAR() {
                 )}
               </AnimatePresence>
            </div>
-      </div>
 
       <AnimatePresence>
           {selectedModeId && selectedMode && (
@@ -867,23 +912,6 @@ export default function FAR() {
          tableName="far_records" 
          displayName="Failure Modes & Risk Matrix" 
       />
-      <style>{`
-
-        .ag-theme-alpine-dark {
-          --ag-background-color: #1a1b26;
-          --ag-header-background-color: #24283b;
-          --ag-border-color: rgba(255,255,255,0.05);
-          --ag-foreground-color: #f1f5f9;
-          --ag-header-foreground-color: #f43f5e;
-          --ag-font-family: 'Inter', sans-serif;
-          --ag-font-size: ${fontSize}px;
-        }
-        .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; font-size: ${fontSize}px !important; justify-content: center !important; }
-        .ag-cell { display: flex; align-items: center; justify-content: center !important; font-weight: 700 !important; font-size: ${fontSize}px !important; }
-        .ag-row-hover { background-color: rgba(244, 63, 94, 0.05) !important; }
-        .ag-row-selected { background-color: rgba(244, 63, 94, 0.2) !important; }
-      `}</style>
 
       <AnimatePresence>
         {showWizard && (
@@ -904,8 +932,22 @@ export default function FAR() {
         )}
       </AnimatePresence>
 
-      <ConfirmationModal isOpen={confirmModal.show} onClose={() => setConfirmModal({ ...confirmModal, show: false })} onConfirm={() => { confirmModal.onConfirm?.(); setConfirmModal((prev: any) => ({ ...prev, show: false })); }} title={confirmModal.title} message={confirmModal.message} />
-      
+      <OperationalBulkPreviewModal
+        isOpen={Boolean(bulkOperationPreview)}
+        workspaceLabel="FAR"
+        actionLabel="Retire failure vectors"
+        preview={bulkOperationPreview?.preview || null}
+        previewBasis="workspace-snapshot"
+        result={bulkOperationPreview?.result || null}
+        isExecuting={bulkMutation.isPending}
+        onClose={() => setBulkOperationPreview(null)}
+        onConfirm={() => bulkOperationPreview && bulkMutation.mutate({
+          action: bulkOperationPreview.action,
+          ids: bulkOperationPreview.ids,
+          payload: bulkOperationPreview.payload,
+        })}
+      />
+
       <AnimatePresence>
         {bkmGuidanceModal.show && bkmGuidanceModal.cause && (
           <BkmGuidanceModal 
@@ -1811,7 +1853,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
                      </div>
                   </div>
                   <div className="flex gap-3">
-                     <button onClick={() => navigate('/research')} className="p-2.5 bg-white/5 rounded-lg text-slate-500 hover:text-blue-400 transition-all opacity-0 group-hover:opacity-100"><Eye size={18}/></button>
+                     <button onClick={() => navigate(`/research?type=research&id=${r.id}`)} className="p-2.5 bg-white/5 rounded-lg text-slate-500 hover:text-blue-400 transition-all opacity-0 group-hover:opacity-100"><Eye size={18}/></button>
                      <button onClick={() => unlinkMutation.mutate(r.id)} className="p-2.5 bg-white/5 rounded-lg text-slate-500 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={18}/></button>
                   </div>
                </div>

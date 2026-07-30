@@ -15,7 +15,7 @@ async function getTypedRecordRow(page: Page, title: string, type: 'Research' | '
   return {
     center: centerRow,
     inspect: actionRow.getByTitle('Inspect Record'),
-    purge: actionRow.getByTitle('Purge Record'),
+    archive: actionRow.getByTitle(`Archive ${type}`),
   }
 }
 
@@ -74,6 +74,9 @@ test.describe('Research workflows', () => {
     await expect(researchRow.center).toContainText('Research')
 
     await researchRow.inspect.click()
+    await expect(page).toHaveURL(new RegExp(`/research\\?type=research&id=${research2037.id}$`))
+    await expect(page.getByRole('heading', { name: research2037.title, exact: true })).toBeVisible()
+    await page.reload()
     await expect(page.getByRole('heading', { name: research2037.title, exact: true })).toBeVisible()
     const intelligenceTab = page.getByRole('button', { name: 'Intelligence Stream', exact: true })
     await expect(intelligenceTab).toBeVisible()
@@ -91,6 +94,8 @@ test.describe('Research workflows', () => {
     const rcaRow = await getTypedRecordRow(page, rcaTitle, 'RCA')
     await expect(rcaRow.center).toContainText('RCA')
     await rcaRow.inspect.click()
+    const rcaPayload = await rcaResponse.json()
+    await expect(page).toHaveURL(new RegExp(`/research\\?type=rca&id=${rcaPayload.id}$`))
     await expect(page.getByRole('heading', { name: rcaTitle, exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Enter Edit Mode' })).toBeVisible()
     await expect(page.getByText('RCA', { exact: true }).first()).toBeVisible()
@@ -98,11 +103,11 @@ test.describe('Research workflows', () => {
 
     await page.goto('/research')
     await page.getByPlaceholder('SCAN RESEARCH...').fill(rcaTitle)
-    const purgeRow = await getTypedRecordRow(page, rcaTitle, 'RCA')
-    await purgeRow.purge.click()
-    await expect(page.getByRole('heading', { name: 'Purge RCA' })).toBeVisible()
-    const purgeDialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Purge RCA' }) })
-    await purgeDialog.getByRole('button', { name: 'Close', exact: true }).click()
-    await expect(purgeRow.center).toBeVisible()
+    const archiveRow = await getTypedRecordRow(page, rcaTitle, 'RCA')
+    await archiveRow.archive.click()
+    await expect(page.getByRole('heading', { name: 'Archive RCA' })).toBeVisible()
+    const archiveDialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Archive RCA' }) })
+    await archiveDialog.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(archiveRow.center).toBeVisible()
   })
 })

@@ -211,20 +211,42 @@ describe('shared bulk workflow architecture', () => {
     'utf8',
   )
 
-  it('keeps Assets, Vendors, and Network on the authoritative nonvisual workflow hook', () => {
+  it('keeps Assets, Vendors, Network, and FAR on the authoritative nonvisual workflow hook', () => {
     const assetSource = readSource('assets/assetGoldenData.ts')
     const vendorSource = readSource('vendors/VendorGoldenOperationalWorkspace.tsx')
     const networkSource = readSource('NetworkReal.tsx')
+    const farSource = readSource('FAR.tsx')
     const hookSource = readSource('shared/useOperationalBulkWorkflow.ts')
 
     expect(assetSource).toContain("useOperationalBulkWorkflow<any>({")
     expect(vendorSource).toContain("useOperationalBulkWorkflow<any>({")
     expect(networkSource).toContain("useOperationalBulkWorkflow<any>({")
+    expect(farSource).toContain("useOperationalBulkWorkflow<any>({")
     expect(assetSource).not.toContain('const bulkPreviewMutation = useMutation({')
     expect(vendorSource).not.toContain('const bulkPreviewMutation = useMutation({')
     expect(networkSource).not.toContain('const bulkMutation = useMutation({')
+    expect(farSource).not.toContain('const bulkMutation = useMutation({')
     expect(hookSource).toContain('const bulkPreviewMutation = useMutation({')
     expect(hookSource).toContain('const bulkMutation = useMutation({')
+  })
+
+  it('keeps FAR and Research tables on the Monitoring-derived golden grid contract', () => {
+    const farSource = readSource('FAR.tsx')
+    const researchSource = readSource('Research.tsx')
+
+    expect(farSource).toContain('<OperationalDataGrid')
+    expect(researchSource).toContain('<OperationalDataGrid')
+    expect(farSource).toContain('monitoring-grid-shell monitoring-grid')
+    expect(researchSource).toContain('monitoring-grid-shell monitoring-grid')
+    expect(farSource).not.toContain('<AgGridReact')
+    expect(researchSource).not.toContain('<AgGridReact')
+    expect(farSource).toContain('Retire failure vector')
+    expect(farSource).not.toContain('Purge Vector')
+    expect(researchSource).toContain("'Archive RCA'")
+    expect(researchSource).toContain("'Archive Research'")
+    expect(researchSource).not.toContain('Purge Record')
+    expect(researchSource).toContain("next.set('type'")
+    expect(researchSource).toContain("next.set('id'")
   })
 
   it('keeps the shared controller nonvisual and Monitoring-independent', () => {

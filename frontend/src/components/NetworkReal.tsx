@@ -2702,6 +2702,7 @@ export default function NetworkReal() {
         fieldLabel={bulkOperationPreview?.fieldLabel}
         nextValue={bulkOperationPreview?.nextValue}
         preview={bulkOperationPreview?.preview || null}
+        previewBasis="workspace-snapshot"
         result={bulkOperationPreview?.result || null}
         isExecuting={bulkMutation.isPending}
         isReverting={isBulkReverting}

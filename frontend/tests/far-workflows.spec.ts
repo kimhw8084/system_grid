@@ -42,6 +42,27 @@ test.describe('FAR workflows', () => {
     await expect(page.getByText('Edit Failure Mode')).toBeVisible()
   })
 
+  test('uses the golden grid and previews failure-vector retirement without changing data', async ({ page, sysApi: request }) => {
+    await resetBrowserState(page)
+    const { far } = await seedOperationalScenario(request)
+
+    await page.goto('/far')
+    const workspace = page.locator('[data-workspace="far"]')
+    await expect(workspace.locator('.operational-grid-shell')).toBeVisible()
+    await page.getByPlaceholder(/scan risk vectors/i).fill(far.title)
+    const centerRow = workspace.locator('.ag-center-cols-container .ag-row').filter({ hasText: far.title })
+    await expect(centerRow).toBeVisible()
+    const rowIndex = await centerRow.getAttribute('row-index')
+    if (rowIndex === null) throw new Error('FAR row is missing row-index')
+    const actionRow = workspace.locator(`.ag-pinned-right-cols-container .ag-row[row-index="${rowIndex}"]`)
+    await actionRow.getByTitle('Retire failure vector').click()
+
+    await expect(page.getByRole('heading', { name: 'FAR bulk preview' })).toBeVisible()
+    await expect(page.getByText('Retire failure vectors', { exact: true })).toBeVisible()
+    await clickResilientButton(page, 'Cancel')
+    await expect(centerRow).toBeVisible()
+  })
+
   test('removes causes and mitigations from the active FAR detail view', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
     const { far } = await seedOperationalScenario(request)
@@ -111,6 +132,6 @@ test.describe('FAR workflows', () => {
     const relinkedCard = page.getByRole('heading', { name: investigation.title }).locator('xpath=ancestor::div[contains(@class,"group")][1]')
     await relinkedCard.hover()
     await relinkedCard.getByRole('button').first().click()
-    await expect(page).toHaveURL(/\/research$/)
+    await expect(page).toHaveURL(new RegExp(`/research\\?type=research&id=${investigation.id}$`))
   })
 })

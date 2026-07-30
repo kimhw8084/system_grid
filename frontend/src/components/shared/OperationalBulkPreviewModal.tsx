@@ -44,6 +44,7 @@ type OperationalBulkPreviewModalProps = {
   onClose: () => void
   onConfirm: () => void
   onRevert?: () => void
+  previewBasis?: 'backend' | 'workspace-snapshot'
 }
 
 const SummaryCard = ({ label, value, tone }: { label: string; value: number; tone: 'neutral' | 'success' | 'warning' | 'danger' }) => {
@@ -75,6 +76,7 @@ export function OperationalBulkPreviewModal({
   onClose,
   onConfirm,
   onRevert,
+  previewBasis = 'backend',
 }: OperationalBulkPreviewModalProps) {
   const isComplete = Boolean(result)
   const hasBlockingIssues = Boolean(preview && (preview.blocked_count > 0 || preview.missing_count > 0))
@@ -91,7 +93,9 @@ export function OperationalBulkPreviewModal({
       title={`${workspaceLabel} bulk ${isComplete ? 'complete' : 'preview'}`}
       subtitle={isComplete
         ? 'The backend confirmed the exact operation result.'
-        : 'Review the backend-authoritative impact before anything changes.'}
+        : previewBasis === 'workspace-snapshot'
+          ? 'Review the current workspace snapshot before anything changes.'
+          : 'Review the backend-authoritative impact before anything changes.'}
       hideFooterClose
       footerLeft={isComplete ? (
         <div className="flex items-center gap-2 text-[11px] text-emerald-300">
@@ -101,7 +105,9 @@ export function OperationalBulkPreviewModal({
       ) : (
         <div className="flex items-center gap-2 text-[11px] text-slate-400">
           <ShieldCheck size={14} className="text-emerald-300" />
-          No records change until you confirm.
+          {previewBasis === 'workspace-snapshot'
+            ? 'Preview uses currently loaded workspace data; the backend remains authoritative when you confirm.'
+            : 'No records change until you confirm.'}
         </div>
       )}
       footerRight={isComplete ? (

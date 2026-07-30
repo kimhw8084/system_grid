@@ -55,6 +55,24 @@ describe('OperationalBulkPreviewModal', () => {
     expect(onConfirm).toHaveBeenCalledTimes(1)
   })
 
+  it('labels workspace-snapshot previews without claiming a backend dry run', () => {
+    renderBulkPreviewModal(
+      <OperationalBulkPreviewModal
+        isOpen
+        workspaceLabel="Network"
+        actionLabel="Archive selection"
+        preview={preview}
+        previewBasis="workspace-snapshot"
+        onClose={() => undefined}
+        onConfirm={() => undefined}
+      />,
+    )
+
+    expect(screen.getByText('Review the current workspace snapshot before anything changes.')).toBeInTheDocument()
+    expect(screen.getByText('Preview uses currently loaded workspace data; the backend remains authoritative when you confirm.')).toBeInTheDocument()
+    expect(screen.queryByText('Review the backend-authoritative impact before anything changes.')).not.toBeInTheDocument()
+  })
+
   it('shows an exact completion receipt and exposes in-place undo', () => {
     const onRevert = vi.fn()
     renderBulkPreviewModal(

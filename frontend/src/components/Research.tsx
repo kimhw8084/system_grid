@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
-import { WorkspaceEmptyState } from "./shared/OperationalWorkspacePrimitives";
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { 
   Plus, Search, Trash2, Edit2, Info, 
@@ -13,7 +13,6 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence, Reorder } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
-import { AgGridReact } from 'ag-grid-react'
 import { toast } from 'react-hot-toast'
 import { formatAppDate } from '../utils/dateUtils'
 import { ConfirmationModal } from './shared/ConfirmationModal'
@@ -24,6 +23,7 @@ import { GaugeSelector } from './FAR'
 import { RootCauseFormModal, MitigationFormModal, PreventionFormModal } from './shared/FARModals'
 import { InvestigationTab } from './shared/InvestigationTab'
 import { OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'
+import { OperationalDataGrid } from './shared/OperationalDataGrid'
 import { ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
 
 // --- Components ---
@@ -177,7 +177,11 @@ const getResearchRecordDate = (item: any) =>
 
 export default function Research() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const gridRef = React.useRef<any>(null)
+  const typeParam = searchParams.get('type')
+  const idParam = searchParams.get('id')
   const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
   const [showStyleLab, setShowStyleLab] = useState(true)
@@ -198,7 +202,7 @@ export default function Research() {
     _setActiveDetails(val)
   }
   const [confirmModal, setConfirmModal] = useState<any>({ isOpen: false, title: '', message: '', onConfirm: () => {} })
-  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [selectedRecordKeys, setSelectedRecordKeys] = useState<string[]>([])
   const [selectedYear, setSelectedYear] = useState<string>('ALL')
 
   const { data: investigations, isLoading, isError: investigationsError } = useQuery({ 
@@ -277,7 +281,7 @@ export default function Research() {
     },
     onSuccess: (_, variables) => { 
       queryClient.invalidateQueries({ queryKey: [variables.type === 'RCA' ? 'rca-records' : 'investigations'] })
-      toast.success('Record Purged')
+      toast.success(variables.type === 'RCA' ? 'RCA archived' : 'Research archived')
     }
   })
 
@@ -326,6 +330,48 @@ export default function Research() {
   const combinedUnavailable = combinedData.length === 0 && investigationsError && rcaError
   const combinedEmpty = !combinedLoading && !combinedUnavailable && filteredData.length === 0
   const partialSourceError = combinedData.length > 0 && (investigationsError || rcaError)
+  const researchGridRuntime = useMemo(() => ({}), [])
+
+  const getResearchRecordKey = (item: any) => `${item?.type === 'RCA' ? 'rca' : 'research'}:${Number(item?.id)}`
+
+  const openResearchDetails = (item: any) => {
+    setActiveDetails(item)
+    const next = new URLSearchParams(searchParams)
+    next.set('type', item?.type === 'RCA' ? 'rca' : 'research')
+    next.set('id', String(item?.id))
+    navigate({ search: `?${next.toString()}` }, { replace: true })
+  }
+
+  const closeResearchDetails = () => {
+    setActiveDetails(null)
+    const next = new URLSearchParams(searchParams)
+    next.delete('type')
+    next.delete('id')
+    navigate({ search: next.toString() ? `?${next.toString()}` : '' }, { replace: true })
+  }
+
+  useEffect(() => {
+    if (!typeParam || !idParam || combinedLoading) return
+    const normalizedType = typeParam.toLowerCase() === 'rca'
+      ? 'RCA'
+      : typeParam.toLowerCase() === 'research'
+        ? 'Research'
+        : null
+    const targetId = Number(idParam)
+    const target = normalizedType && Number.isFinite(targetId)
+      ? combinedData.find((item: any) => item.type === normalizedType && Number(item.id) === targetId)
+      : null
+    if (target) {
+      _setActiveModal(null)
+      _setActiveDetails(target)
+      return
+    }
+    _setActiveDetails(null)
+    const next = new URLSearchParams(searchParams)
+    next.delete('type')
+    next.delete('id')
+    navigate({ search: next.toString() ? `?${next.toString()}` : '' }, { replace: true })
+  }, [combinedData, combinedLoading, idParam, navigate, searchParams, typeParam])
 
   const columnDefs = useMemo(() => [
     { 
@@ -552,19 +598,19 @@ export default function Research() {
       cellRenderer: (p: any) => (
         <div className="flex items-center justify-center space-x-1 h-full">
            <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
-               <button onClick={() => setActiveDetails(p.data)} title="Inspect Record" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
+               <button onClick={() => openResearchDetails(p.data)} title="Inspect Record" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
                <button onClick={() => setConfirmModal({ 
                  isOpen: true, 
-                 title: `Purge ${p.data.type}`, 
-                 message: 'Permanently remove this record?', 
+                 title: p.data.type === 'RCA' ? 'Archive RCA' : 'Archive Research',
+                 message: `Archive this ${p.data.type === 'RCA' ? 'RCA' : 'Research'} record? It will be removed from the active matrix without permanent deletion.`,
                  onConfirm: () => deleteMutation.mutate(p.data) 
-               })} title="Purge Record" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
+               })} title={p.data.type === 'RCA' ? 'Archive RCA' : 'Archive Research'} className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
            </div>
         </div>
       ),
       lockVisible: true
     }
-  ], [setActiveDetails, setActiveModal, setConfirmModal, deleteMutation, fontSize, hiddenColumns]) as any
+  ], [deleteMutation, fontSize, hiddenColumns, openResearchDetails]) as any
 
   return (
     <OperationalWorkspaceShell
@@ -598,7 +644,7 @@ export default function Research() {
       toolbarActions={(
         <ToolbarGroup>
           <ToolbarIconButton onClick={handleExportCSV} title="Export CSV"><FileText size={16} /></ToolbarIconButton>
-          <ToolbarIconButton onClick={handleCopyToClipboard} disabled={selectedIds.length === 0} title="Copy to Clipboard"><Clipboard size={16} /></ToolbarIconButton>
+          <ToolbarIconButton onClick={handleCopyToClipboard} disabled={selectedRecordKeys.length === 0} title="Copy to Clipboard"><Clipboard size={16} /></ToolbarIconButton>
           <ToolbarButton variant="primary" onClick={() => setActiveModal({ title: '', status: 'Open', priority: 'Low', type: null, problem_statement: '', systems: [], target_systems: [] })}>
             <PlusCircle size={14}/> Add Research
           </ToolbarButton>
@@ -657,27 +703,34 @@ export default function Research() {
         </div>
       </div>
 
-      <div className="flex-1 glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative border-white/5">
-        {(combinedLoading || combinedUnavailable || combinedEmpty) && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#020617]/85 backdrop-blur-sm">
-             <WorkspaceEmptyState
-               title={combinedLoading ? 'Syncing intelligence matrix' : combinedUnavailable ? 'Research intelligence unavailable' : 'No Research or RCA records in scope'}
-               description={combinedLoading ? 'Loading Research investigations and RCA records.' : combinedUnavailable ? 'Neither Research nor RCA records could be loaded.' : 'Adjust the record year or create a Research or RCA record.'}
-             />
-          </div>
-        )}
-        <AgGridReact
-          ref={gridRef}
-          rowData={filteredData}
+      <div className="flex-1 min-h-0 relative">
+        <OperationalDataGrid
+          gridRef={gridRef}
+          rows={filteredData}
           columnDefs={columnDefs as any}
-          headerHeight={fontSize + rowDensity + 10}
-          rowHeight={fontSize + rowDensity + 10}
+          runtime={researchGridRuntime}
           quickFilterText={searchTerm}
-          animateRows={false}
-          enableCellTextSelection={true}
-          rowSelection="multiple"
-          onSelectionChanged={e => setSelectedIds(e?.api?.getSelectedNodes().map((n: any) => n.data?.id).filter(Boolean) || [])}
-          suppressColumnVirtualisation={true}
+          fontSize={fontSize}
+          rowDensity={rowDensity}
+          getRowId={(params) => getResearchRecordKey(params.data)}
+          onSelectionChanged={(event) => setSelectedRecordKeys(event?.api?.getSelectedNodes().map((node: any) => getResearchRecordKey(node.data)).filter(Boolean) || [])}
+          noRowsLabel="No Research or RCA records in scope"
+          loading={combinedLoading}
+          loadingIcon={<RefreshCcw size={28} className="animate-spin text-blue-400" />}
+          loadingLabel={<p className="text-[10px] font-semibold text-blue-300">Syncing intelligence matrix...</p>}
+          dataState={combinedUnavailable ? {
+            kind: 'query-error',
+            noRowsLabel: 'No Research or RCA records in scope',
+            title: 'Research intelligence unavailable',
+            description: 'Neither Research nor RCA records could be loaded.',
+          } : (combinedEmpty ? {
+            kind: 'filtered-empty',
+            noRowsLabel: 'No Research or RCA records in scope',
+            title: 'No Research or RCA records in scope',
+            description: 'Adjust the record year or create a Research or RCA record.',
+          } : { kind: 'ready', noRowsLabel: 'No Research or RCA records in scope' })}
+          suppressRowClickSelection={false}
+          className="monitoring-grid-shell monitoring-grid"
         />
         <AnimatePresence>
           {showColumnPicker && (
@@ -720,7 +773,7 @@ export default function Research() {
               devices={devices}
               options={options}
               failureModes={failureModes}
-              onClose={() => setActiveDetails(null)} 
+              onClose={closeResearchDetails}
               onSave={(d: any) => mutation.mutateAsync(d)}
               fontSize={fontSize}
               rowDensity={rowDensity}
@@ -728,7 +781,7 @@ export default function Research() {
           ) : (
             <ResearchDetails 
               item={activeDetails} 
-              onClose={() => setActiveDetails(null)} 
+              onClose={closeResearchDetails}
               onSave={(d: any) => mutation.mutateAsync(d)}
               setConfirmModal={setConfirmModal}
               fontSize={fontSize}
@@ -755,23 +808,6 @@ export default function Research() {
         ]}
       />
 
-      <style>{`
-        .ag-theme-alpine-dark {
-          --ag-background-color: #1a1b26;
-          --ag-header-background-color: #24283b;
-          --ag-border-color: rgba(255, 255, 255, 0.05);
-          --ag-foreground-color: #f1f5f9;
-          --ag-header-foreground-color: #3b82f6;
-          --ag-font-family: 'Inter', sans-serif;
-          --ag-font-size: ${fontSize}px;
-        }
-        .ag-root-wrapper { border: none !important; }
-        .ag-header-cell-label { font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; font-size: ${fontSize}px !important; justify-content: center !important; }
-        .ag-cell { display: flex; align-items: center; justify-content: center !important; font-weight: 700 !important; font-size: ${fontSize}px !important; }
-        .ag-row { border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
-        .ag-row-hover { background-color: rgba(255,255,255,0.05) !important; }
-        .ag-row-selected { background-color: rgba(59, 130, 246, 0.2) !important; }
-      `}</style>
     </OperationalWorkspaceShell>
   )
 }
