@@ -105,6 +105,8 @@ import {
 } from './shared/OperationalGridSizing'
 import { OPERATIONAL_ACTION_LABELS } from './shared/OperationalActionLabels'
 import DiagnosticStatusPill, { DataDiagnosticModal, buildOperationalDiagnosticDetail } from './shared/OperationalDataStatus'
+import { OperationalBulkPreviewModal } from './shared/OperationalBulkPreviewModal'
+import { useOperationalBulkWorkflow } from './shared/useOperationalBulkWorkflow'
 
 const NETWORK_VIEW_STORAGE_KEY = 'sysgrid_network_views_v1'
 const NETWORK_ACTIVE_VIEW_KEY = 'sysgrid_network_active_view_v1'
@@ -722,7 +724,6 @@ export default function NetworkReal() {
   const { triggerRef: displayMenuButtonRef, panelRef: displayMenuPanelRef, panelStyle: displayMenuStyle } = useWorkspaceAnchoredLayer(showDisplayMenu, { minWidth: 320 })
   const { triggerRef: viewsMenuButtonRef, panelRef: viewsMenuPanelRef, panelStyle: viewsMenuStyle } = useWorkspaceAnchoredLayer(showViewsMenu, { minWidth: 420 })
   const { triggerRef: bulkMenuButtonRef, panelRef: bulkMenuPanelRef, panelStyle: bulkMenuStyle } = useWorkspaceAnchoredLayer(showBulkMenu, { minWidth: 340 })
-  const lastUndoRef = useRef<any>(null)
   const [newViewName, setNewViewName] = useState('')
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
   const autoSizeFrameRef = useRef<number | null>(null)
@@ -1642,36 +1643,91 @@ export default function NetworkReal() {
     queryFn: async () => (await apiFetch('/api/v1/devices/')).json()
   })
 
-  const runUndo = async () => {
-    const undo = lastUndoRef.current
-    if (!undo) return
-    if (undo.mode === 'bulk') {
-      const res = await apiFetch('/api/v1/networks/connections/bulk-status', {
-        method: 'POST',
-        body: JSON.stringify({
-          ids: undo.ids,
-          status: undo.action === 'restore' ? 'Active' : 'Deleted',
-        })
-      })
-      if (!res.ok) throw new Error(await res.text())
-    }
-    lastUndoRef.current = null
-    queryClient.invalidateQueries({ queryKey: ['network-connections'] })
-  }
+  const refreshNetworkConnections = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: ['network-connections'] }),
+    [queryClient],
+  )
 
-  const bulkMutation = useMutation({
-    onMutate: ({ action, ids: overrideIds }: any) => {
-      const idsToUse = overrideIds ?? selectedIds
-      setPendingIds(prev => [...new Set([...prev, ...idsToUse])])
+  const {
+    bulkMutation,
+    bulkPreviewMutation,
+    bulkOperationPreview,
+    isBulkReverting,
+    requestBulkPreview,
+    runBulkReceiptRevert,
+    setBulkOperationPreview,
+  } = useOperationalBulkWorkflow<any>({
+    selectedIds,
+    fieldLabels: {
+      status: 'Status',
+      link_type: 'Link type',
+      direction: 'Direction',
+      farm: 'Farm',
+      speed_gbps: 'Speed',
+      unit: 'Unit',
+      purpose: 'Purpose',
+      cable_type: 'Cable type',
+      request_link: 'Request link',
     },
-    onSettled: (data: any, error: any, variables: any) => {
-      const idsToUse = variables.ids ?? selectedIds
-      setPendingIds(prev => prev.filter(id => !idsToUse.includes(id)))
+    selectionErrorMessage: 'Select at least one network connection first',
+    previewErrorMessage: 'Network preview failed',
+    executionErrorMessage: 'Network operation failed',
+    revertErrorMessage: 'Network bulk undo failed',
+    getSnapshots: (ids) => (allItems || [])
+      .filter((item: any) => ids.includes(Number(item.id)))
+      .map((item: any) => ({ ...item })),
+    previewRequest: async ({ action, ids, payload }) => {
+      const byId = new Map((allItems || []).map((item: any) => [Number(item.id), item]))
+      const matched = ids.map((id) => byId.get(id)).filter(Boolean) as any[]
+      const missingIds = ids.filter((id) => !byId.has(id))
+      const blockers: Array<{ id: number; name?: string; reason: string }> = []
+      const changedIds = matched.filter((item: any) => {
+        if (action === 'update') {
+          return Object.entries(payload).some(([key, value]) => item?.[key] !== value)
+        }
+        if (action === 'delete') return item.status !== 'Deleted'
+        if (action === 'restore') {
+          if (item.status === 'Deleted') return true
+          blockers.push({ id: Number(item.id), name: item.title, reason: 'Only deleted connections can be restored.' })
+          return false
+        }
+        if (action === 'purge') {
+          if (item.status === 'Deleted') return true
+          blockers.push({ id: Number(item.id), name: item.title, reason: 'Only deleted connections can be permanently purged.' })
+          return false
+        }
+        return false
+      }).map((item: any) => Number(item.id))
+      const changedSet = new Set(changedIds)
+      const unchangedIds = matched.map((item: any) => Number(item.id)).filter((id: number) => !changedSet.has(id) && !blockers.some((blocker) => blocker.id === id))
+      return {
+        action,
+        selected_count: ids.length,
+        matched_count: matched.length,
+        changed_count: changedIds.length,
+        unchanged_count: unchangedIds.length,
+        blocked_count: blockers.length,
+        missing_count: missingIds.length,
+        changed_ids: changedIds,
+        unchanged_ids: unchangedIds,
+        missing_ids: missingIds,
+        blockers,
+        can_execute: changedIds.length > 0 && blockers.length === 0 && missingIds.length === 0,
+      }
     },
-    mutationFn: async ({ action, payload = {}, ids: overrideIds }: any) => {
-      const idsToUse = overrideIds ?? selectedIds
-      const previousSnapshots = (allItems || []).filter((item: any) => idsToUse.includes(item.id)).map((item: any) => ({ ...item }))
-      let res
+    executeRequest: async ({ action, ids, payload }) => {
+      const byId = new Map((allItems || []).map((item: any) => [Number(item.id), item]))
+      const effectiveIds = ids.filter((id) => {
+        const item: any = byId.get(id)
+        if (!item) return false
+        if (action === 'update') return Object.entries(payload).some(([key, value]) => item?.[key] !== value)
+        if (action === 'delete') return item.status !== 'Deleted'
+        if (action === 'restore' || action === 'purge') return item.status === 'Deleted'
+        return false
+      })
+      if (!effectiveIds.length) return { changed: 0, changed_count: 0, unchanged_count: ids.length, changed_ids: [] }
+
+      let response: Response
       if (action === 'update') {
         const directPayload = {
           ...(payload.status ? { status: payload.status } : {}),
@@ -1686,77 +1742,75 @@ export default function NetworkReal() {
         }
         const onlyStatus = Object.keys(directPayload).length === 1 && Object.prototype.hasOwnProperty.call(directPayload, 'status')
         if (onlyStatus) {
-          res = await apiFetch('/api/v1/networks/connections/bulk-status', {
+          response = await apiFetch('/api/v1/networks/connections/bulk-status', {
             method: 'POST',
-            body: JSON.stringify({ ids: idsToUse, status: (directPayload as any).status || 'Active' })
+            body: JSON.stringify({ ids: effectiveIds, status: (directPayload as any).status || 'Active' }),
           })
         } else {
-          for (const id of idsToUse) {
-            const putRes = await apiFetch(`/api/v1/networks/connections/${id}`, {
+          for (const id of effectiveIds) {
+            const putResponse = await apiFetch(`/api/v1/networks/connections/${id}`, {
               method: 'PUT',
-              body: JSON.stringify(directPayload)
+              body: JSON.stringify(directPayload),
             })
-            if (!putRes.ok) throw new Error(await putRes.text())
+            if (!putResponse.ok) throw new Error(await putResponse.text())
           }
-          res = new Response(JSON.stringify({ changed: idsToUse.length, summary: `Updated ${idsToUse.length} connections` }), { status: 200 })
+          return {
+            changed: effectiveIds.length,
+            changed_count: effectiveIds.length,
+            unchanged_count: ids.length - effectiveIds.length,
+            changed_ids: effectiveIds,
+            summary: `Updated ${effectiveIds.length} connections`,
+          }
         }
       } else if (action === 'restore') {
-        res = await apiFetch('/api/v1/networks/connections/bulk-restore', {
+        response = await apiFetch('/api/v1/networks/connections/bulk-restore', {
           method: 'POST',
-          body: JSON.stringify({ ids: idsToUse })
+          body: JSON.stringify({ ids: effectiveIds }),
         })
       } else if (action === 'purge') {
-        res = await apiFetch('/api/v1/networks/connections/bulk-purge', {
+        response = await apiFetch('/api/v1/networks/connections/bulk-purge', {
           method: 'POST',
-          body: JSON.stringify({ ids: idsToUse })
+          body: JSON.stringify({ ids: effectiveIds }),
         })
       } else {
-        res = await apiFetch('/api/v1/networks/connections/bulk-delete', {
+        response = await apiFetch('/api/v1/networks/connections/bulk-delete', {
           method: 'POST',
-          body: JSON.stringify({ ids: idsToUse })
+          body: JSON.stringify({ ids: effectiveIds }),
         })
       }
-      if (!res.ok) throw new Error(await res.text())
-      const result = await res.json()
-      return { result, action, payload, idsToUse, previousSnapshots }
+      if (!response.ok) throw new Error(await response.text())
+      const result = await response.json()
+      const responseIds = Array.isArray(result?.deleted_ids) ? result.deleted_ids.map(Number) : effectiveIds
+      return {
+        ...result,
+        changed_count: Number(result?.changed ?? responseIds.length),
+        unchanged_count: ids.length - responseIds.length,
+        changed_ids: responseIds,
+      }
     },
-    onSuccess: ({ result, action, payload, idsToUse, previousSnapshots }: any) => {
-      queryClient.invalidateQueries({ queryKey: ['network-connections'] })
-      closeOverlay('bulk')
+    refresh: refreshNetworkConnections,
+    buildRevertRequest: ({ action, payload, changedIds, changedSnapshots }) => {
+      if (action === 'delete' || action === 'restore') {
+        return { action: action === 'delete' ? 'restore' : 'delete', ids: changedIds }
+      }
+      const keys = Object.keys(payload)
+      if (action !== 'update' || keys.length !== 1) return null
+      const key = keys[0]
+      const previousValues = Array.from(new Set(changedSnapshots.map((snapshot: any) => snapshot[key])))
+      if (previousValues.length !== 1 || previousValues[0] === null || previousValues[0] === undefined) return null
+      return { action: 'update', ids: changedIds, payload: { [key]: previousValues[0] } }
+    },
+    onPreviewAccepted: () => closeOverlay('bulk'),
+    onExecutionStart: (ids) => setPendingIds((current) => [...new Set([...current, ...ids])]),
+    onExecutionSettled: (ids) => setPendingIds((current) => current.filter((id) => !ids.includes(id))),
+    onExecutionSuccess: () => {
       setExpandedBulkSection(null)
-        setBulkDraft({ status: '', link_type: '', direction: '' })
+      setBulkDraft({ status: '', link_type: '', direction: '' })
       setIsBulkStatusOpen(false)
       setIsBulkSeverityOpen(false)
       setIsBulkNotifyOpen(false)
-      
-      const changedCount = Number(result?.changed ?? idsToUse.length)
-      if (changedCount <= 0) {
-        lastUndoRef.current = null
-        return
-      }
-
-      if (action === 'delete') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'restore' }
-      else if (action === 'restore') lastUndoRef.current = { mode: 'bulk', ids: idsToUse, action: 'delete' }
-      else lastUndoRef.current = null
-
-      if (lastUndoRef.current) {
-        showWorkspaceToast(result?.summary || 'Updated network links', {
-          onRevert: async () => {
-            try {
-              await runUndo()
-              showWorkspaceToast('Reverted network operation', { type: 'success' })
-            } catch (error: any) {
-              showWorkspaceToast(error.message || 'Undo failed', { type: 'error' })
-            }
-          }
-        })
-      } else if (action === 'purge') {
-        showWorkspaceToast(result?.summary || 'Permanently purged connection(s). This action is irreversible.', { type: 'success' })
-      } else {
-        showWorkspaceToast(result?.summary || 'Updated network links', { type: 'success' })
-      }
+      clearSelection()
     },
-    onError: (e: any) => showWorkspaceToast(`Operation failed: ${e.message}`, { type: 'error' })
   })
 
   const columnDefs = useMemo(() => {
@@ -2336,7 +2390,7 @@ export default function NetworkReal() {
 
                   {activeTab === 'deleted' ? (
                       <button
-                      onClick={() => bulkMutation.mutate({ action: 'restore' })}
+                      onClick={() => requestBulkPreview({ action: 'restore' })}
                       disabled={bulkMutation.isPending}
                       className="w-full rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-left transition-all hover:bg-emerald-500/15 disabled:opacity-50"
                     >
@@ -2366,7 +2420,7 @@ export default function NetworkReal() {
                           options={STATUSES.filter((status) => status.value !== 'Deleted').map((status) => ({ value: status.value, label: status.label }))}
                           placeholder="Choose status"
                           actionLabel="Apply Status"
-                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { status: bulkDraft.status } })}
+                          onApply={() => requestBulkPreview({ action: 'update', payload: { status: bulkDraft.status } })}
                           disabled={!bulkDraft.status || bulkMutation.isPending}
                         />
                       )}
@@ -2383,7 +2437,7 @@ export default function NetworkReal() {
                           options={NETWORK_LINK_TYPES.map((value) => ({ value, label: value }))}
                           placeholder="Choose type"
                           actionLabel="Apply Type"
-                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { link_type: bulkDraft.link_type } })}
+                          onApply={() => requestBulkPreview({ action: 'update', payload: { link_type: bulkDraft.link_type } })}
                           disabled={!bulkDraft.link_type || bulkMutation.isPending}
                         />
                       )}
@@ -2400,7 +2454,7 @@ export default function NetworkReal() {
                           options={NETWORK_DIRECTIONS.map((value) => ({ value, label: value }))}
                           placeholder="Choose direction"
                           actionLabel="Apply Direction"
-                          onApply={() => bulkMutation.mutate({ action: 'update', payload: { direction: bulkDraft.direction } })}
+                          onApply={() => requestBulkPreview({ action: 'update', payload: { direction: bulkDraft.direction } })}
                           disabled={!bulkDraft.direction || bulkMutation.isPending}
                         />
                       )}
@@ -2415,7 +2469,7 @@ export default function NetworkReal() {
                           "Confirm Permanent Purge?",
                           "WARNING: This action is completely irreversible. This will permanently destroy the selected connection(s) from the physical database. This action CANNOT be undone. Are you sure you want to proceed?",
                           () => {
-                            bulkMutation.mutate({ action: 'purge' })
+                            requestBulkPreview({ action: 'purge' })
                           },
                           'danger'
                         )
@@ -2424,7 +2478,7 @@ export default function NetworkReal() {
                           setBulkDeleteConfirm(true)
                           return
                         }
-                        bulkMutation.mutate({ action: 'delete' })
+                        requestBulkPreview({ action: 'delete' })
                       }
                     }}
                     onMouseLeave={() => {
@@ -2485,7 +2539,7 @@ export default function NetworkReal() {
                     icon: Undo2, 
                     tone: 'success' as OperationalRowActionTone, 
                     variant: 'inline' as OperationalRowActionVariant, 
-                    onClick: () => { bulkMutation.mutate({ action: 'restore', ids: [item.id] }); setRowActionMenu(null); } 
+                    onClick: () => { requestBulkPreview({ action: 'restore', ids: [item.id] }); setRowActionMenu(null); } 
                   }
                 ] : []),
                 {
@@ -2504,13 +2558,13 @@ export default function NetworkReal() {
                         "Confirm Permanent Purge?",
                         "WARNING: This action is completely irreversible. This will permanently destroy this connection from the physical database. This action CANNOT be undone. Are you sure you want to proceed?",
                         () => {
-                          bulkMutation.mutate({ action: 'purge', ids: [item.id] })
+                          requestBulkPreview({ action: 'purge', ids: [item.id] })
                         },
                         'danger'
                       )
                     } else {
                       if (rowDeleteConfirmId !== item.id) { setRowDeleteConfirmId(item.id); return }
-                      bulkMutation.mutate({ action: 'delete', ids: [item.id] });
+                      requestBulkPreview({ action: 'delete', ids: [item.id] });
                       setRowActionMenu(null); setRowDeleteConfirmId(null);
                     }
                   }
@@ -2635,10 +2689,32 @@ export default function NetworkReal() {
         isSeverityOpen={isBulkSeverityOpen}
         isNotifyOpen={isBulkNotifyOpen}
         onClose={() => { setIsBulkStatusOpen(false); setIsBulkSeverityOpen(false); setIsBulkNotifyOpen(false); }}
-        onApply={(action, val) => bulkMutation.mutate({ action: 'update', payload: { [action]: val } })}
+        onApply={(action, val) => requestBulkPreview({ action: 'update', payload: { [action]: val } })}
         count={selectedIds.length}
         severities={severities}
         notificationMethods={notificationMethods}
+      />
+
+      <OperationalBulkPreviewModal
+        isOpen={Boolean(bulkOperationPreview)}
+        workspaceLabel="Network"
+        actionLabel={bulkOperationPreview?.actionLabel || 'Apply change'}
+        fieldLabel={bulkOperationPreview?.fieldLabel}
+        nextValue={bulkOperationPreview?.nextValue}
+        preview={bulkOperationPreview?.preview || null}
+        result={bulkOperationPreview?.result || null}
+        isExecuting={bulkMutation.isPending}
+        isReverting={isBulkReverting}
+        onClose={() => setBulkOperationPreview(null)}
+        onRevert={bulkOperationPreview?.onRevert ? runBulkReceiptRevert : undefined}
+        onConfirm={() => {
+          if (!bulkOperationPreview) return
+          bulkMutation.mutate({
+            action: bulkOperationPreview.action,
+            ids: bulkOperationPreview.ids,
+            payload: bulkOperationPreview.payload,
+          })
+        }}
       />
 
       <ConfirmationModal 
@@ -2680,7 +2756,7 @@ export default function NetworkReal() {
                   "Confirm Permanent Purge?",
                   "WARNING: This action is completely irreversible. This will permanently destroy this connection from the physical database. This action CANNOT be undone. Are you sure you want to proceed?",
                   () => {
-                    bulkMutation.mutate({ action: 'purge', ids: [connection.id] })
+                    requestBulkPreview({ action: 'purge', ids: [connection.id] })
                     closeNetworkDetail()
                   },
                   'danger'
@@ -2690,7 +2766,7 @@ export default function NetworkReal() {
                   setDetailDeleteConfirm(true)
                   return
                 }
-                bulkMutation.mutate({ action: 'delete', ids: [connection.id] })
+                requestBulkPreview({ action: 'delete', ids: [connection.id] })
                 closeNetworkDetail()
               }
             }}

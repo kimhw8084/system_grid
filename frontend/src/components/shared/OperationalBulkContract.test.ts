@@ -211,15 +211,18 @@ describe('shared bulk workflow architecture', () => {
     'utf8',
   )
 
-  it('keeps Assets and Vendors on the authoritative nonvisual workflow hook', () => {
+  it('keeps Assets, Vendors, and Network on the authoritative nonvisual workflow hook', () => {
     const assetSource = readSource('assets/assetGoldenData.ts')
     const vendorSource = readSource('vendors/VendorGoldenOperationalWorkspace.tsx')
+    const networkSource = readSource('NetworkReal.tsx')
     const hookSource = readSource('shared/useOperationalBulkWorkflow.ts')
 
     expect(assetSource).toContain("useOperationalBulkWorkflow<any>({")
     expect(vendorSource).toContain("useOperationalBulkWorkflow<any>({")
+    expect(networkSource).toContain("useOperationalBulkWorkflow<any>({")
     expect(assetSource).not.toContain('const bulkPreviewMutation = useMutation({')
     expect(vendorSource).not.toContain('const bulkPreviewMutation = useMutation({')
+    expect(networkSource).not.toContain('const bulkMutation = useMutation({')
     expect(hookSource).toContain('const bulkPreviewMutation = useMutation({')
     expect(hookSource).toContain('const bulkMutation = useMutation({')
   })
