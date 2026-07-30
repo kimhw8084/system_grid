@@ -65,3 +65,102 @@ test.describe('App shell and global search', () => {
     await expect(page.locator('h1').filter({ hasText: knowledge.title })).toBeVisible()
   })
 })
+
+const goldenRoutes = [
+  { path: '/monitoring', archetype: 'table' },
+  { path: '/asset', archetype: 'table' },
+  { path: '/services', archetype: 'table' },
+  { path: '/external', archetype: 'table' },
+  { path: '/network', archetype: 'hybrid' },
+  { path: '/far', archetype: 'analytical' },
+  { path: '/research', archetype: 'analytical' },
+  { path: '/vendors', archetype: 'table' },
+] as const
+
+type GeometryBox = { x: number; y: number; width: number; height: number; right: number; bottom: number }
+
+async function readGoldenGeometry(page: any) {
+  const shell = page.locator('[data-golden-workspace-shell="true"]:visible').first()
+  const header = shell.locator('[data-golden-page-header="true"]').first()
+  const commandBar = shell.locator('[data-golden-command-bar="true"]').first()
+  const toolbar = commandBar.locator('[data-golden-page-toolbar="true"]').first()
+  const grid = shell.locator('[data-golden-grid-surface="true"]').first()
+
+  await expect(shell).toBeVisible()
+  await expect(header).toBeVisible()
+  await expect(commandBar).toBeVisible()
+  await expect(toolbar).toBeVisible()
+  await expect(grid).toBeVisible()
+
+  const boxes = await Promise.all([shell, header, commandBar, toolbar, grid].map(async (locator) => {
+    const box = await locator.boundingBox()
+    if (!box) throw new Error('Golden geometry target did not produce a bounding box')
+    return { ...box, right: box.x + box.width, bottom: box.y + box.height } satisfies GeometryBox
+  }))
+
+  return {
+    shell,
+    boxes: {
+      shell: boxes[0],
+      header: boxes[1],
+      commandBar: boxes[2],
+      toolbar: boxes[3],
+      grid: boxes[4],
+    },
+  }
+}
+
+function expectAligned(actual: number, expected: number, tolerance = 2) {
+  expect(Math.abs(actual - expected)).toBeLessThanOrEqual(tolerance)
+}
+
+test.describe('Golden Eight rendered geometry', () => {
+  test('keeps desktop shell, command bar, and grid alignment invariant on every golden route', async ({ page }) => {
+    await resetBrowserState(page)
+    await page.setViewportSize({ width: 1440, height: 1000 })
+
+    for (const route of goldenRoutes) {
+      await page.goto(route.path)
+      await waitForAppIdle(page)
+      const { shell, boxes } = await readGoldenGeometry(page)
+
+      await expect(shell).toHaveAttribute('data-golden-geometry-version', '1')
+      await expect(shell).toHaveAttribute('data-golden-archetype', route.archetype)
+      expect(boxes.header.y).toBeLessThan(boxes.commandBar.y)
+      expect(boxes.commandBar.bottom).toBeLessThanOrEqual(boxes.grid.y + 1)
+      expect(boxes.grid.height).toBeGreaterThanOrEqual(350)
+      expectAligned(boxes.header.x, boxes.shell.x)
+      expectAligned(boxes.header.right, boxes.shell.right)
+      expectAligned(boxes.commandBar.x, boxes.shell.x)
+      expectAligned(boxes.commandBar.right, boxes.shell.right)
+      expectAligned(boxes.grid.x, boxes.shell.x)
+      expectAligned(boxes.grid.right, boxes.shell.right)
+    }
+  })
+
+  test('keeps narrow-screen stacking and overflow containment invariant on every golden route', async ({ page }) => {
+    await resetBrowserState(page)
+    await page.setViewportSize({ width: 390, height: 844 })
+
+    for (const route of goldenRoutes) {
+      await page.goto(route.path)
+      await waitForAppIdle(page)
+      const { shell, boxes } = await readGoldenGeometry(page)
+
+      await expect(shell).toHaveAttribute('data-golden-geometry-version', '1')
+      await expect(shell).toHaveAttribute('data-golden-archetype', route.archetype)
+      expect(boxes.header.y).toBeLessThan(boxes.commandBar.y)
+      expect(boxes.commandBar.bottom).toBeLessThanOrEqual(boxes.grid.y + 1)
+      expect(boxes.grid.height).toBeGreaterThanOrEqual(350)
+      expectAligned(boxes.header.x, boxes.shell.x)
+      expectAligned(boxes.commandBar.x, boxes.shell.x)
+      expectAligned(boxes.grid.x, boxes.shell.x)
+      expectAligned(boxes.header.width, boxes.shell.width)
+      expectAligned(boxes.commandBar.width, boxes.shell.width)
+      expectAligned(boxes.grid.width, boxes.shell.width)
+
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+      expect(overflow).toBeLessThanOrEqual(2)
+    }
+  })
+})
