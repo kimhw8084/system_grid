@@ -10,6 +10,14 @@ const join = (...parts: Array<string | false | null | undefined>) => parts.filte
 type WorkspaceFilterChip = { id: string; label: string; onRemove: () => void }
 export type GoldenWorkspaceArchetype = 'table' | 'hybrid' | 'analytical'
 
+export const GOLDEN_WORKSPACE_GEOMETRY_VERSION = '1'
+export const GOLDEN_WORKSPACE_FRAME_CLASS = 'h-full min-h-0 flex flex-col space-y-4'
+export const GOLDEN_GRID_BASE_CLASS = 'operational-grid-shell operational-grid flex flex-1 w-full min-h-0 flex-col glass-panel overflow-hidden ag-theme-alpine-dark relative'
+export const GOLDEN_GRID_VARIANT_CLASS = {
+  golden: 'rounded-lg',
+  'attached-panel': 'rounded-t-none border-x border-b border-white/5',
+} as const
+
 export const getOperationalGridSurfaceStyle = (
   fontSize: number,
   height?: string
@@ -37,11 +45,12 @@ export function OperationalWorkspaceFrame({
 }) {
   return (
     <div
-      className={join('h-full min-h-0 flex flex-col space-y-4', className)}
+      className={join(GOLDEN_WORKSPACE_FRAME_CLASS, className)}
       data-workspace={workspace}
       data-golden-workspace-shell="true"
       data-golden-workspace={workspace}
       data-golden-archetype={archetype}
+      data-golden-geometry-version={GOLDEN_WORKSPACE_GEOMETRY_VERSION}
     >
       <PageHeader {...header} />
       <WorkspaceCommandBar {...commandBar} />
@@ -116,10 +125,10 @@ export function OperationalGridSurface({
 }) {
   return (
     <div className={join(
-      'operational-grid-shell operational-grid flex flex-1 w-full min-h-0 flex-col glass-panel overflow-hidden ag-theme-alpine-dark relative',
-      variant === 'attached-panel' ? 'rounded-t-none border-x border-b border-white/5' : 'rounded-lg',
+      GOLDEN_GRID_BASE_CLASS,
+      GOLDEN_GRID_VARIANT_CLASS[variant],
       className
-    )} style={style} data-golden-grid-surface="true" data-golden-grid-variant={variant}>
+    )} style={style} data-golden-grid-surface="true" data-golden-grid-variant={variant} data-golden-geometry-version={GOLDEN_WORKSPACE_GEOMETRY_VERSION}>
       {loading ? (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
           {loadingIcon}

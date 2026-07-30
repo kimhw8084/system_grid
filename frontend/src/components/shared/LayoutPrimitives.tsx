@@ -2,6 +2,11 @@ import React, { ReactNode } from 'react'
 import { Search } from 'lucide-react'
 
 const join = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ')
+
+export const GOLDEN_PAGE_HEADER_CLASS = 'flex flex-wrap items-start justify-between gap-6'
+export const GOLDEN_PAGE_TOOLBAR_CLASS = 'flex items-center gap-3 overflow-x-auto rounded-lg border border-white/5 bg-black/20 px-4 py-3 backdrop-blur-xl lg:flex-wrap lg:justify-between lg:overflow-visible'
+export const GOLDEN_TOOLBAR_LEFT_CLASS = 'flex min-w-max flex-nowrap items-center gap-3 lg:min-w-0 lg:flex-1 lg:flex-wrap'
+export const GOLDEN_TOOLBAR_RIGHT_CLASS = 'flex min-w-max flex-nowrap items-center justify-end gap-3 lg:flex-wrap'
 const TOOLBAR_CONTROL_HEIGHT = 'h-9'
 
 export const ShellHeader = ({
@@ -34,7 +39,7 @@ export const PageHeader = ({
   actions?: ReactNode
   className?: string
 }) => (
-  <section className={join('flex flex-wrap items-start justify-between gap-6', className)}>
+  <section className={join(GOLDEN_PAGE_HEADER_CLASS, className)} data-golden-page-header="true">
     <div className="min-w-[200px] flex-1 space-y-1">
       {eyebrow && <div className="text-[8px] font-black uppercase tracking-[0.24em] text-blue-400">{eyebrow}</div>}
       <div className="space-y-0.5">
@@ -62,12 +67,13 @@ export const PageToolbar = ({
 }) => (
   <section
     className={join(
-      'flex items-center gap-3 overflow-x-auto rounded-lg border border-white/5 bg-black/20 px-4 py-3 backdrop-blur-xl lg:flex-wrap lg:justify-between lg:overflow-visible',
+      GOLDEN_PAGE_TOOLBAR_CLASS,
       className
     )}
+    data-golden-page-toolbar="true"
   >
-    {left ? <div className="flex min-w-max flex-nowrap items-center gap-3 lg:min-w-0 lg:flex-1 lg:flex-wrap">{left}</div> : <div />}
-    {right && <div className="flex min-w-max flex-nowrap items-center justify-end gap-3 lg:flex-wrap">{right}</div>}
+    {left ? <div className={GOLDEN_TOOLBAR_LEFT_CLASS} data-golden-toolbar-left="true">{left}</div> : <div />}
+    {right && <div className={GOLDEN_TOOLBAR_RIGHT_CLASS} data-golden-toolbar-right="true">{right}</div>}
   </section>
 )
 
