@@ -43,21 +43,18 @@ describe('AssetBulkActionsPanel', () => {
     expect(screen.getByText(OPERATIONAL_ACTION_LABELS.archiveSelection)).toBeInTheDocument()
   })
 
-  it('clicking Archive Selection expands inline confirm area and destructive confirm button is inside it', () => {
+  it('clicking Archive Selection expands the preview-first action and submits preview once', () => {
     render(<AssetBulkActionsPanel {...defaultProps} />)
 
-    // Before clicking, the inline confirm area and archive action button inside it should not exist
-    expect(screen.queryByText('Move the current selection to the Purged registry scope.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Preview the exact impact before moving the selection to the Purged registry scope.')).not.toBeInTheDocument()
 
-    // Click "Archive Selection" card
     fireEvent.click(screen.getByText(OPERATIONAL_ACTION_LABELS.archiveSelection))
 
-    // Now expanded section should be visible
-    expect(screen.getByText('Move the current selection to the Purged registry scope.')).toBeInTheDocument()
+    expect(screen.getByText('Preview the exact impact before moving the selection to the Purged registry scope.')).toBeInTheDocument()
 
-    // Find the inline button which defaults to "Archive selected assets"
-    const confirmButton = screen.getByRole('button', { name: 'Archive selected assets' })
-    expect(confirmButton).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Preview Archive' }))
+    expect(defaultProps.onApply).toHaveBeenCalledWith('delete')
+    expect(defaultProps.onClose).toHaveBeenCalled()
   })
 
   it('deleted state renders Restore and Purge cards', () => {
@@ -67,7 +64,7 @@ describe('AssetBulkActionsPanel', () => {
     expect(screen.getByText(OPERATIONAL_ACTION_LABELS.purgeSelection)).toBeInTheDocument()
   })
 
-  it('Restore and Purge each expand inline and call onApply only on second confirmation click', () => {
+  it('Restore expands a preview-first action and submits preview once', () => {
     const onApplyMock = vi.fn()
     const onCloseMock = vi.fn()
     render(
@@ -79,25 +76,15 @@ describe('AssetBulkActionsPanel', () => {
       />
     )
 
-    // Expand Restore card
     fireEvent.click(screen.getByText(OPERATIONAL_ACTION_LABELS.restore))
-    expect(screen.getByText('Return the current selection to the Existing registry scope.')).toBeInTheDocument()
+    expect(screen.getByText('Preview the exact records that can return to the Existing registry scope.')).toBeInTheDocument()
 
-    const restoreBtn = screen.getByRole('button', { name: 'Restore selected assets' })
-    expect(restoreBtn).toBeInTheDocument()
-
-    // First click: sets confirmation state
-    fireEvent.click(restoreBtn)
-    expect(onApplyMock).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'Confirm Restore?' })).toBeInTheDocument()
-
-    // Second click: fires apply restore and closes panel
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm Restore?' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Preview Restore' }))
     expect(onApplyMock).toHaveBeenCalledWith('restore')
     expect(onCloseMock).toHaveBeenCalled()
   })
 
-  it('Purge section expands inline and calls onApply on second confirmation click', () => {
+  it('Purge expands an irreversible preview-first action and submits preview once', () => {
     const onApplyMock = vi.fn()
     const onCloseMock = vi.fn()
     render(
@@ -109,43 +96,24 @@ describe('AssetBulkActionsPanel', () => {
       />
     )
 
-    // Expand Purge card
     fireEvent.click(screen.getByText(OPERATIONAL_ACTION_LABELS.purgeSelection))
-    expect(screen.getByText('Permanently remove the current selection from the registry. THIS CANNOT BE UNDONE.'))
+    expect(screen.getByText('Preview permanent removal and its exact record impact. This action cannot be undone.'))
       .toBeInTheDocument()
 
-    const purgeBtn = screen.getByRole('button', { name: 'Purge selected assets' })
-    expect(purgeBtn).toBeInTheDocument()
-
-    // First click: sets confirmation state
-    fireEvent.click(purgeBtn)
-    expect(onApplyMock).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: OPERATIONAL_ACTION_LABELS.purgeSelectionConfirm })).toBeInTheDocument()
-
-    // Second click: fires apply purge and closes panel
-    fireEvent.click(screen.getByRole('button', { name: OPERATIONAL_ACTION_LABELS.purgeSelectionConfirm }))
+    fireEvent.click(screen.getByRole('button', { name: 'Preview Permanent Purge' }))
     expect(onApplyMock).toHaveBeenCalledWith('purge')
     expect(onCloseMock).toHaveBeenCalled()
   })
 
-  it('expanding one destructive section resets stale confirmation state', () => {
+  it('expanding one destructive section replaces the prior preview action', () => {
     render(<AssetBulkActionsPanel {...defaultProps} activeTab="deleted" />)
 
-    // Expand Restore card
     fireEvent.click(screen.getByText(OPERATIONAL_ACTION_LABELS.restore))
-    const restoreBtn = screen.getByRole('button', { name: 'Restore selected assets' })
-    
-    // First click restore to enter confirmation state ('Confirm Restore?')
-    fireEvent.click(restoreBtn)
-    expect(screen.getByRole('button', { name: 'Confirm Restore?' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Preview Restore' })).toBeInTheDocument()
 
-    // Now click the Purge card to switch expanded section
     fireEvent.click(screen.getByText(OPERATIONAL_ACTION_LABELS.purgeSelection))
 
-    // Confirm Restore should no longer be in the document
-    expect(screen.queryByRole('button', { name: 'Confirm Restore?' })).not.toBeInTheDocument()
-    
-    // The purge action button should be in default "Purge selected assets" state, not confirmation state
-    expect(screen.getByRole('button', { name: 'Purge selected assets' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Preview Restore' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Preview Permanent Purge' })).toBeInTheDocument()
   })
 })

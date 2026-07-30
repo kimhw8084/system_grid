@@ -1,3 +1,5 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -200,5 +202,34 @@ describe('shared lifecycle contract wiring', () => {
     expect(formatLifecycleDependencyTooltipReason(result)).toBe(
       'Linked to 2 external links: Billing API, vault/payments-token.',
     )
+  })
+})
+
+describe('shared bulk workflow architecture', () => {
+  const readSource = (relativePath: string) => fs.readFileSync(
+    path.join(process.cwd(), 'src/components', relativePath),
+    'utf8',
+  )
+
+  it('keeps Assets and Vendors on the authoritative nonvisual workflow hook', () => {
+    const assetSource = readSource('assets/assetGoldenData.ts')
+    const vendorSource = readSource('vendors/VendorGoldenOperationalWorkspace.tsx')
+    const hookSource = readSource('shared/useOperationalBulkWorkflow.ts')
+
+    expect(assetSource).toContain("useOperationalBulkWorkflow<any>({")
+    expect(vendorSource).toContain("useOperationalBulkWorkflow<any>({")
+    expect(assetSource).not.toContain('const bulkPreviewMutation = useMutation({')
+    expect(vendorSource).not.toContain('const bulkPreviewMutation = useMutation({')
+    expect(hookSource).toContain('const bulkPreviewMutation = useMutation({')
+    expect(hookSource).toContain('const bulkMutation = useMutation({')
+  })
+
+  it('keeps the shared controller nonvisual and Monitoring-independent', () => {
+    const hookSource = readSource('shared/useOperationalBulkWorkflow.ts')
+
+    expect(hookSource).not.toContain('className=')
+    expect(hookSource).not.toContain('MonitoringGrid')
+    expect(hookSource).not.toContain('OperationalDataGrid')
+    expect(hookSource).not.toContain('WorkspaceCommandBar')
   })
 })

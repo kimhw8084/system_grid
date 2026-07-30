@@ -82,14 +82,8 @@ import {
   sanitizeOperationalSortModel,
 } from '../shared/OperationalGridSizing'
 import { WorkspaceShareHeader } from '../shared/WorkspaceShareHeader'
-import {
-  resolveBulkFieldLabel,
-  showOperationalBulkErrorToast,
-  showOperationalBulkResultToast,
-  showOperationalBulkRevertedToast,
-  showOperationalBulkRevertErrorToast,
-} from '../shared/OperationalBulkContract'
-import { OperationalBulkPreviewModal, type OperationalBulkPreview } from '../shared/OperationalBulkPreviewModal'
+import { OperationalBulkPreviewModal } from '../shared/OperationalBulkPreviewModal'
+import { useOperationalBulkWorkflow } from '../shared/useOperationalBulkWorkflow'
 import { renderOperationalActionButtons } from '../shared/OperationalGridStandard'
 import { buildVendorGoldenColumns } from './vendorGoldenColumns'
 import {
@@ -121,18 +115,6 @@ const VENDOR_PERSISTED_COLUMN_IDS = new Set([
   'personnel_count', 'created_at', 'updated_at', 'row_actions',
 ])
 const VENDOR_VALID_GROUP_BY = new Set(['raw', 'country'])
-
-type VendorBulkOperationState = {
-  action: string
-  payload: Record<string, any>
-  ids: number[]
-  actionLabel: string
-  fieldLabel?: string
-  nextValue?: string
-  preview: OperationalBulkPreview
-  result?: { selected_count: number; changed_count: number; unchanged_count: number; can_revert: boolean }
-  onRevert?: () => Promise<void>
-}
 
 const VENDOR_BULK_FIELD_LABELS: Record<string, string> = { country: 'Country' }
 
@@ -434,8 +416,6 @@ export default function VendorsReal() {
   const [showBulkMenu,       setShowBulkMenu]       = useState(false)
   const [bulkCountry,        setBulkCountry]        = useState('')
   const [isBulkCountryOpen,  setIsBulkCountryOpen]  = useState(false)
-  const [bulkOperationPreview, setBulkOperationPreview] = useState<VendorBulkOperationState | null>(null)
-  const [isBulkReverting, setIsBulkReverting] = useState(false)
   const [rowDeleteConfirmId, setRowDeleteConfirmId] = useState<number | null>(null)
   const [rowActionMenu,      setRowActionMenu]      = useState<{ item: any; point: { x: number; y: number } } | null>(null)
   const [pendingIds,         setPendingIds]         = useState<number[]>([])
@@ -701,7 +681,7 @@ export default function VendorsReal() {
       showWorkspaceToast(`Deleted view ${view.name}`)
     })
   }
-  const dismissWorkspaceMenus = useCallback(() => { setShowBulkMenu(false); setBulkDeleteConfirm(false); setShowDisplayMenu(false); setShowViewsMenu(false); setRowActionMenu(null); setRowDeleteConfirmId(null) }, [])
+  const dismissWorkspaceMenus = useCallback(() => { setShowBulkMenu(false); setShowDisplayMenu(false); setShowViewsMenu(false); setRowActionMenu(null); setRowDeleteConfirmId(null) }, [])
   useWorkspaceDismissHandlers({
     active: showBulkMenu || showDisplayMenu || showViewsMenu || !!rowActionMenu,
     onDismiss: dismissWorkspaceMenus,
@@ -957,139 +937,71 @@ export default function VendorsReal() {
     setDetailItem(target)
   }, [allVendors, processedVendors, idParam, navigate, searchParams])
 
-  const bulkPreviewMutation = useMutation({
-    mutationFn: async ({ action, ids: overrideIds, payload = {} }: { action: string; ids?: number[]; payload?: Record<string, any> }) => {
-      const idsToUse = Array.from(new Set(overrideIds ?? selectedIds))
-      if (!idsToUse.length) throw new Error('Select at least one vendor')
+  const {
+    bulkMutation,
+    bulkPreviewMutation,
+    bulkOperationPreview,
+    isBulkReverting,
+    requestBulkPreview,
+    runBulkReceiptRevert,
+    setBulkOperationPreview,
+  } = useOperationalBulkWorkflow<any>({
+    selectedIds,
+    fieldLabels: VENDOR_BULK_FIELD_LABELS,
+    selectionErrorMessage: 'Select at least one vendor',
+    previewErrorMessage: 'Vendor preview failed',
+    executionErrorMessage: 'Vendor operation failed',
+    revertErrorMessage: 'Vendor bulk undo failed',
+    getSnapshots: (ids) => processedVendors
+      .filter((vendor) => ids.includes(vendor.id))
+      .map((vendor) => ({ ...vendor })),
+    previewRequest: async ({ action, ids, payload }) => {
       const response = await apiFetch(VENDOR_LIFECYCLE_ENDPOINT, {
         method: 'POST',
-        body: JSON.stringify({ ids: idsToUse, action, target: 'vendor', payload, dry_run: true }),
+        body: JSON.stringify({ ids, action, target: 'vendor', payload, dry_run: true }),
       })
       if (!response.ok) throw new Error(await response.text())
-      const preview = await response.json() as OperationalBulkPreview
-      const fieldLabel = action === 'update' ? resolveBulkFieldLabel(payload, VENDOR_BULK_FIELD_LABELS) : undefined
-      const actionLabel = action === 'delete'
-        ? 'Archive selection'
-        : action === 'restore'
-          ? 'Restore selection'
-          : action === 'purge'
-            ? 'Purge selection'
-            : `Apply ${fieldLabel || 'change'}`
-      const nextValue = action === 'update'
-        ? String(Object.values(payload).find((value) => value !== undefined) ?? '')
-        : undefined
-      return { action, ids: idsToUse, payload, actionLabel, fieldLabel, nextValue, preview }
+      return response.json()
     },
-    onSuccess: (preview) => {
-      setBulkOperationPreview(preview)
+    executeRequest: async ({ action, ids, payload }) => {
+      const response = await apiFetch(VENDOR_LIFECYCLE_ENDPOINT, {
+        method: 'POST',
+        body: JSON.stringify({ ids, action, target: 'vendor', ...(Object.keys(payload).length ? { payload } : {}) }),
+      })
+      if (!response.ok) throw new Error(await response.text())
+      return response.json()
+    },
+    refresh: () => queryClient.invalidateQueries({ queryKey: VENDOR_QUERY_KEY }),
+    buildRevertRequest: ({ action, changedIds, changedSnapshots }) => {
+      if (action === 'delete' || action === 'restore') {
+        return { action: action === 'delete' ? 'restore' : 'delete', ids: changedIds }
+      }
+      if (action !== 'update') return null
+      const priorCountries = Array.from(new Set(
+        changedSnapshots.map((snapshot: any) => String(snapshot.country ?? '')),
+      ))
+      return priorCountries.length === 1 && Boolean(priorCountries[0])
+        ? { action: 'update', ids: changedIds, payload: { country: priorCountries[0] } }
+        : null
+    },
+    onPreviewAccepted: () => {
       setShowBulkMenu(false)
       setBulkCountry('')
       setIsBulkCountryOpen(false)
     },
-    onError: (error: any) => showOperationalBulkErrorToast(error?.message || 'Vendor preview failed'),
-  })
-
-  const requestBulkPreview = useCallback((variables: { action: string; ids?: number[]; payload?: Record<string, any> }) => {
-    bulkPreviewMutation.mutate(variables)
-  }, [bulkPreviewMutation])
-
-  // --- BULK / ROW LIFECYCLE MUTATION ---
-  const bulkMutation = useMutation({
-    onMutate: ({ ids: overrideIds }: { action: string; ids?: number[]; payload?: Record<string, any> }) => {
-      const ids = Array.from(new Set(overrideIds ?? selectedIds))
+    onExecutionStart: (ids) => {
       setPendingIds((current) => Array.from(new Set([...current, ...ids])))
-      return { ids }
     },
-    onSettled: (_data: unknown, _error: unknown, variables: { action: string; ids?: number[] }, context?: { ids: number[] }) => {
-      const ids = context?.ids ?? variables.ids ?? selectedIds
+    onExecutionSettled: (ids) => {
       setPendingIds((current) => current.filter((id) => !ids.includes(id)))
     },
-    mutationFn: async ({ action, ids: overrideIds, payload = {} }: { action: string; ids?: number[]; payload?: Record<string, any> }) => {
-      const idsToUse = Array.from(new Set(overrideIds ?? selectedIds))
-      if (!idsToUse.length) throw new Error('Select at least one vendor')
-      const previousSnapshots = processedVendors
-        .filter((vendor) => idsToUse.includes(vendor.id))
-        .map((vendor) => ({ ...vendor }))
-      const response = await apiFetch(VENDOR_LIFECYCLE_ENDPOINT, {
-        method: 'POST',
-        body: JSON.stringify({ ids: idsToUse, action, target: 'vendor', payload }),
-      })
-      if (!response.ok) throw new Error(await response.text())
-      return { result: await response.json(), action, idsToUse, payload, previousSnapshots }
-    },
-    onSuccess: async ({ result, action, idsToUse, payload, previousSnapshots }: any) => {
-      await queryClient.invalidateQueries({ queryKey: VENDOR_QUERY_KEY })
+    onExecutionSuccess: () => {
       setShowBulkMenu(false)
       clearVendorSelection()
       setBulkCountry('')
       setIsBulkCountryOpen(false)
-
-      const totalSelected = idsToUse.length
-      const changedCount = Number(result?.changed_count ?? result?.changed ?? 0)
-      const unchangedCount = Number(result?.unchanged_count ?? Math.max(0, totalSelected - changedCount))
-      const changedIds = Array.isArray(result?.changed_ids) ? result.changed_ids.map(Number) : idsToUse
-      const fieldLabel = resolveBulkFieldLabel(payload || {}, VENDOR_BULK_FIELD_LABELS)
-
-      const changedSnapshots = previousSnapshots.filter((snapshot: any) => changedIds.includes(Number(snapshot.id)))
-      const priorCountries = action === 'update'
-        ? Array.from(new Set(changedSnapshots.map((snapshot: any) => String(snapshot.country ?? ''))))
-        : []
-      const canRevertUpdate = action === 'update' && priorCountries.length === 1 && Boolean(priorCountries[0])
-      const canRevertLifecycle = action === 'delete' || action === 'restore'
-      const revert = changedCount > 0 && action !== 'purge' && (canRevertUpdate || canRevertLifecycle) ? async () => {
-        const response = await apiFetch(VENDOR_LIFECYCLE_ENDPOINT, {
-          method: 'POST',
-          body: JSON.stringify(action === 'update'
-            ? { ids: changedIds, action: 'update', target: 'vendor', payload: { country: priorCountries[0] } }
-            : { ids: changedIds, action: action === 'delete' ? 'restore' : 'delete', target: 'vendor' }),
-        })
-        if (!response.ok) throw new Error(await response.text())
-        await queryClient.invalidateQueries({ queryKey: VENDOR_QUERY_KEY })
-      } : undefined
-
-      const receiptRevert = revert ? async () => {
-        try {
-          await revert()
-          showOperationalBulkRevertedToast()
-          setBulkOperationPreview(null)
-        } catch (error: any) {
-          showOperationalBulkRevertErrorToast(error?.message || 'Vendor bulk undo failed')
-          throw error
-        }
-      } : undefined
-
-      setBulkOperationPreview((current) => current ? {
-        ...current,
-        result: {
-          selected_count: totalSelected,
-          changed_count: changedCount,
-          unchanged_count: unchangedCount,
-          can_revert: Boolean(receiptRevert),
-        },
-        onRevert: receiptRevert,
-      } : null)
-
-      showOperationalBulkResultToast({
-        action: action === 'delete' ? 'archive' : action,
-        totalSelected,
-        changedCount,
-        unchangedCount,
-        fieldLabel: action === 'update' ? fieldLabel : undefined,
-        onRevert: receiptRevert,
-      })
     },
-    onError: (error: any) => showOperationalBulkErrorToast(error?.message || 'Vendor operation failed'),
   })
-
-  const runBulkReceiptRevert = useCallback(async () => {
-    if (!bulkOperationPreview?.onRevert) return
-    setIsBulkReverting(true)
-    try {
-      await bulkOperationPreview.onRevert()
-    } finally {
-      setIsBulkReverting(false)
-    }
-  }, [bulkOperationPreview])
 
   // --- ROW PRIMARY ACTIONS ---
   const renderPrimaryRowActions = useCallback((item: VendorTableRow) => {
