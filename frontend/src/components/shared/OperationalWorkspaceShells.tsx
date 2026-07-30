@@ -8,6 +8,7 @@ import { WorkspaceFloatingPanel } from './OperationalWorkspacePrimitives'
 
 const join = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ')
 type WorkspaceFilterChip = { id: string; label: string; onRemove: () => void }
+export type GoldenWorkspaceArchetype = 'table' | 'hybrid' | 'analytical'
 
 export const getOperationalGridSurfaceStyle = (
   fontSize: number,
@@ -25,17 +26,22 @@ export function OperationalWorkspaceFrame({
   children,
   className = '',
   workspace,
+  archetype = 'table',
 }: {
   header: React.ComponentProps<typeof PageHeader>
   commandBar: React.ComponentProps<typeof WorkspaceCommandBar>
   children: React.ReactNode
   className?: string
   workspace?: string
+  archetype?: GoldenWorkspaceArchetype
 }) {
   return (
     <div
       className={join('h-full min-h-0 flex flex-col space-y-4', className)}
       data-workspace={workspace}
+      data-golden-workspace-shell="true"
+      data-golden-workspace={workspace}
+      data-golden-archetype={archetype}
     >
       <PageHeader {...header} />
       <WorkspaceCommandBar {...commandBar} />
@@ -56,6 +62,7 @@ export function OperationalWorkspaceShell({
   children,
   className = '',
   workspace,
+  archetype = 'table',
 }: {
   header: React.ComponentProps<typeof PageHeader>
   commandBar?: React.ComponentProps<typeof WorkspaceCommandBar>
@@ -68,6 +75,7 @@ export function OperationalWorkspaceShell({
   children: React.ReactNode
   className?: string
   workspace?: string
+  archetype?: GoldenWorkspaceArchetype
 }) {
   const resolvedCommandBar = commandBar ?? {
     left: (
@@ -82,7 +90,7 @@ export function OperationalWorkspaceShell({
   }
 
   return (
-    <OperationalWorkspaceFrame header={header} commandBar={resolvedCommandBar} className={className} workspace={workspace}>
+    <OperationalWorkspaceFrame header={header} commandBar={resolvedCommandBar} className={className} workspace={workspace} archetype={archetype}>
       {typeof document !== 'undefined' && floatingPanels ? createPortal(floatingPanels, document.body) : null}
       {children}
     </OperationalWorkspaceFrame>
@@ -96,6 +104,7 @@ export function OperationalGridSurface({
   loading,
   loadingIcon,
   loadingLabel,
+  variant = 'golden',
 }: {
   children: React.ReactNode
   className?: string
@@ -103,12 +112,14 @@ export function OperationalGridSurface({
   loading?: boolean
   loadingIcon?: React.ReactNode
   loadingLabel?: React.ReactNode
+  variant?: 'golden' | 'attached-panel'
 }) {
   return (
     <div className={join(
-      'operational-grid-shell operational-grid flex flex-1 w-full min-h-0 flex-col glass-panel rounded-lg overflow-hidden ag-theme-alpine-dark relative',
+      'operational-grid-shell operational-grid flex flex-1 w-full min-h-0 flex-col glass-panel overflow-hidden ag-theme-alpine-dark relative',
+      variant === 'attached-panel' ? 'rounded-t-none border-x border-b border-white/5' : 'rounded-lg',
       className
-    )} style={style}>
+    )} style={style} data-golden-grid-surface="true" data-golden-grid-variant={variant}>
       {loading ? (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
           {loadingIcon}

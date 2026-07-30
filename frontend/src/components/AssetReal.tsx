@@ -2315,6 +2315,7 @@ export default function AssetReal() {
 
   return (
    <OperationalWorkspaceFrame
+      archetype="table"
       workspace="assets"
       header={{
         eyebrow: "Infrastructure",
@@ -2770,7 +2771,6 @@ export default function AssetReal() {
 
       {groupBy === 'raw' ? (
 	        <OperationalGridSurface
-            className="monitoring-grid-shell monitoring-grid"
             style={{
               '--ag-font-size': `${fontSize}px`,
               '--ag-font-family': "'Inter', sans-serif",
@@ -2862,7 +2862,6 @@ export default function AssetReal() {
                 </button>
                 {!isCollapsed && (
                   <OperationalGridSurface
-                    className="monitoring-grid-shell monitoring-grid w-full"
                     style={{
                       '--ag-font-size': `${fontSize}px`,
                       '--ag-font-family': "'Inter', sans-serif",

@@ -1086,6 +1086,7 @@ export default function VendorsReal() {
   // ===========================================================================
   return (
     <OperationalWorkspaceShell
+      archetype="table"
       workspace="vendors"
       header={{
         eyebrow: 'Resources',

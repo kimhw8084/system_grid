@@ -2130,6 +2130,7 @@ export default function NetworkReal() {
 
   return (
    <OperationalWorkspaceShell
+      archetype="hybrid"
       workspace="network"
       className="overflow-hidden"
       header={{
@@ -2607,7 +2608,6 @@ export default function NetworkReal() {
           loadingLabel={<p className="text-[10px] font-semibold text-blue-400">Scanning network matrix...</p>}
           onFirstDataRendered={handleGridDataUpdated}
           onRowDataUpdated={handleGridDataUpdated}
-          className="monitoring-grid-shell monitoring-grid"
           suppressRowClickSelection={false}
         />
       ) : (
@@ -2674,7 +2674,6 @@ export default function NetworkReal() {
                     height={`${Math.min(600, section.items.length * (fontSize + rowDensity + 5) + 40)}px`}
                     onFirstDataRendered={handleGridDataUpdated}
                     onRowDataUpdated={handleGridDataUpdated}
-                    className="monitoring-grid-shell monitoring-grid w-full"
                     suppressRowClickSelection={false}
                   />
                 )}

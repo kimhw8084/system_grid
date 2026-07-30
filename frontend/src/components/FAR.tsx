@@ -623,6 +623,7 @@ export default function FAR() {
 
   return (
     <OperationalWorkspaceShell
+      archetype="analytical"
       workspace="far"
       className="overflow-hidden"
       header={{
@@ -746,7 +747,7 @@ export default function FAR() {
              } : { kind: 'ready', noRowsLabel: 'No failure modes in scope' })}
              onSelectionChanged={(event) => setSelectedIds(event?.api?.getSelectedNodes().map((node: any) => Number(node.data?.id)).filter(Boolean) || [])}
              suppressRowClickSelection={false}
-             className="monitoring-grid-shell monitoring-grid rounded-t-none border-x border-b border-white/5"
+             surfaceVariant="attached-panel"
            />
            <AnimatePresence>
                 {showColumnPicker && (

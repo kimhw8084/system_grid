@@ -1934,6 +1934,7 @@ export default function MonitoringGrid() {
   const gridContext = useMemo(() => ({ favoriteIds, watchIds }), [favoriteIds, watchIds])
   return (
    <OperationalWorkspaceShell
+      archetype="table"
       workspace="monitoring"
       header={{
         eyebrow: "Observability",

@@ -236,8 +236,8 @@ describe('shared bulk workflow architecture', () => {
 
     expect(farSource).toContain('<OperationalDataGrid')
     expect(researchSource).toContain('<OperationalDataGrid')
-    expect(farSource).toContain('monitoring-grid-shell monitoring-grid')
-    expect(researchSource).toContain('monitoring-grid-shell monitoring-grid')
+    expect(farSource).toContain('surfaceVariant="attached-panel"')
+    expect(researchSource).not.toContain('monitoring-grid-shell monitoring-grid')
     expect(farSource).not.toContain('<AgGridReact')
     expect(researchSource).not.toContain('<AgGridReact')
     expect(farSource).toContain('Retire failure vector')

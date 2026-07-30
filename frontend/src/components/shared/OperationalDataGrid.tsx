@@ -52,6 +52,7 @@ interface OperationalDataGridProps {
   loadingLabel?: React.ReactNode
   dataState?: OperationalDataState
   className?: string
+  surfaceVariant?: 'golden' | 'attached-panel'
   height?: string
   suppressRowClickSelection?: boolean
 }
@@ -79,6 +80,7 @@ export function OperationalDataGrid({
   loadingLabel,
   dataState,
   className = '',
+  surfaceVariant = 'golden',
   height,
   suppressRowClickSelection = true,
 }: OperationalDataGridProps) {
@@ -111,6 +113,7 @@ export function OperationalDataGrid({
         className={className}
         style={getOperationalGridSurfaceStyle(fontSize, height)}
         loading={false}
+        variant={surfaceVariant}
       >
         {notice}
         <div className="flex flex-1 items-center justify-center p-4">
@@ -129,6 +132,7 @@ export function OperationalDataGrid({
         className={className}
         style={getOperationalGridSurfaceStyle(fontSize, height)}
         loading={false}
+        variant={surfaceVariant}
       >
         {notice}
         <div className="flex flex-1 items-center justify-center p-4">
@@ -148,6 +152,7 @@ export function OperationalDataGrid({
       loading={loading}
       loadingIcon={loadingIcon}
       loadingLabel={loadingLabel}
+      variant={surfaceVariant}
     >
       {notice}
       <div className="min-h-0 flex-1">

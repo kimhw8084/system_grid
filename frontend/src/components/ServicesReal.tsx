@@ -1864,6 +1864,7 @@ export default function ServicesReal() {
 
   return (
    <OperationalWorkspaceShell
+      archetype="table"
       className="overflow-hidden"
       header={{
         eyebrow: "Services",

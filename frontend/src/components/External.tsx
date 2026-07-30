@@ -2834,6 +2834,7 @@ export default function External() {
 
   return (
     <OperationalWorkspaceShell
+      archetype="table"
       header={{
         eyebrow: 'External Intelligence',
         title: (

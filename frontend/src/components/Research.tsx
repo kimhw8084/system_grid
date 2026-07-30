@@ -614,6 +614,7 @@ export default function Research() {
 
   return (
     <OperationalWorkspaceShell
+      archetype="analytical"
       workspace="research"
       className="overflow-hidden"
       header={{
@@ -730,7 +731,6 @@ export default function Research() {
             description: 'Adjust the record year or create a Research or RCA record.',
           } : { kind: 'ready', noRowsLabel: 'No Research or RCA records in scope' })}
           suppressRowClickSelection={false}
-          className="monitoring-grid-shell monitoring-grid"
         />
         <AnimatePresence>
           {showColumnPicker && (
