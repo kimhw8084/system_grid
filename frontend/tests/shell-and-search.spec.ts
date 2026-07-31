@@ -115,7 +115,7 @@ function expectAligned(actual: number, expected: number, tolerance = 2) {
 }
 
 test.describe('Golden Eight rendered geometry', () => {
-  test('keeps desktop shell, command bar, and grid alignment invariant on every golden route', async ({ page }) => {
+  test('keeps desktop shell, command bar, and grid alignment invariant on every golden route', async ({ page }, testInfo) => {
     await resetBrowserState(page)
     await page.setViewportSize({ width: 1440, height: 1000 })
 
@@ -135,10 +135,16 @@ test.describe('Golden Eight rendered geometry', () => {
       expectAligned(boxes.commandBar.right, boxes.shell.right)
       expectAligned(boxes.grid.x, boxes.shell.x)
       expectAligned(boxes.grid.right, boxes.shell.right)
+
+      const slug = route.path.slice(1)
+      await page.screenshot({
+        path: testInfo.outputPath(`${slug}-desktop.png`),
+        fullPage: true,
+      })
     }
   })
 
-  test('keeps narrow-screen stacking and overflow containment invariant on every golden route', async ({ page }) => {
+  test('keeps narrow-screen stacking and overflow containment invariant on every golden route', async ({ page }, testInfo) => {
     await resetBrowserState(page)
     await page.setViewportSize({ width: 390, height: 844 })
 
@@ -161,6 +167,12 @@ test.describe('Golden Eight rendered geometry', () => {
 
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
       expect(overflow).toBeLessThanOrEqual(2)
+
+      const slug = route.path.slice(1)
+      await page.screenshot({
+        path: testInfo.outputPath(`${slug}-narrow.png`),
+        fullPage: true,
+      })
     }
   })
 })
