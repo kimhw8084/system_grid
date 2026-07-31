@@ -34,7 +34,7 @@ describe('Golden workspace shell contract', () => {
 
   it('permits attached-panel geometry only through the shared named variant', () => {
     const far = read('FAR.tsx')
-    expect(far).toContain('surfaceVariant="attached-panel"')
+    expect(far).not.toContain('surfaceVariant="attached-panel"')
     expect(far).not.toContain('rounded-t-none border-x border-b border-white/5')
   })
 })

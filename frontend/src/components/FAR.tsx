@@ -112,6 +112,14 @@ const maturityLevels = [
   { lv: 0, label: 'Exposed', desc: 'No Monitoring / No Action', color: 'bg-rose-600', tooltip: 'SYSTEM EXPOSED: Critical blind spot. No telemetry, no workaround, and no permanent resolution identified. High risk.' }
 ]
 
+async function fetchFarList(path: string) {
+  const response = await apiFetch(path)
+  if (!response.ok) throw new Error(await response.text())
+  const payload = await response.json()
+  if (!Array.isArray(payload)) throw new Error(`Expected a list response from ${path}`)
+  return payload
+}
+
 const METRIC_DEFINITIONS: any = {
   SRI: {
     title: "System Reliability Index (SRI)",
@@ -190,7 +198,9 @@ export default function FAR() {
   // Column Picker & Style Lab State (Mirrored from Assets)
   const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
-  const [showStyleLab, setShowStyleLab] = useState(true)
+  const [showStyleLab, setShowStyleLab] = useState(false)
+  const [showSystemFilters, setShowSystemFilters] = useState(false)
+  const [showInsights, setShowInsights] = useState(false)
   const [showColumnPicker, setShowColumnPicker] = useState(false)
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
   const [showConfig, setShowConfig] = useState(false)
@@ -201,7 +211,7 @@ export default function FAR() {
   // Queries
   const { data: modes, isLoading: modesLoading, isError: modesError } = useQuery({ 
     queryKey: ['far', 'modes'], 
-    queryFn: async () => (await apiFetch('/api/v1/far/modes')).json() 
+    queryFn: () => fetchFarList('/api/v1/far/modes')
   })
 
   useEffect(() => {
@@ -246,6 +256,26 @@ export default function FAR() {
   }, [modes, searchTerm, selectedSystems])
 
   const selectedMode = useMemo(() => modes?.find((m: any) => m.id === selectedModeId), [modes, selectedModeId])
+
+  const handleExportCSV = () => {
+    gridRef.current?.api?.exportDataAsCsv?.({
+      fileName: `SysGrid_FAR_${new Date().toISOString().split('T')[0]}.csv`,
+      allColumns: false,
+      onlySelected: false,
+    })
+  }
+
+  const handleCopyToClipboard = () => {
+    const csvData = gridRef.current?.api?.getDataAsCsv?.({
+      allColumns: false,
+      onlySelected: true,
+      suppressQuotes: true,
+    })
+    if (!csvData) return
+    navigator.clipboard.writeText(csvData)
+      .then(() => toast.success('Selected failure vectors copied to clipboard'))
+      .catch(() => toast.error('Failed to copy selected failure vectors'))
+  }
 
   const farGridRuntime = useMemo(() => ({}), [])
 
@@ -635,21 +665,30 @@ export default function FAR() {
           </div>
         ),
         subtitle: 'Reliability Knowledge Engine // FMEA Studio',
-        meta: <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">{filteredModes.length} failure vectors in scope</span>,
       }}
       toolbarSearch={(
         <ToolbarSearch value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Scan risk vectors..." />
       )}
       toolbarControls={(
         <ToolbarGroup>
-          <ToolbarIconButton onClick={() => setShowStyleLab(!showStyleLab)} active={showStyleLab} title="Style Laboratory"><Activity size={16} /></ToolbarIconButton>
-          <ToolbarIconButton onClick={() => setShowColumnPicker(!showColumnPicker)} active={showColumnPicker} title="Column Configuration"><Sliders size={16} /></ToolbarIconButton>
+          <ToolbarButton active={showStyleLab} onClick={() => setShowStyleLab((current) => !current)} title="Display density controls">
+            <Sliders size={14} /> Display
+          </ToolbarButton>
+          <ToolbarButton active={showSystemFilters} onClick={() => setShowSystemFilters((current) => !current)} title="System filters">
+            {showSystemFilters ? <EyeOff size={14} /> : <Eye size={14} />} Filters
+          </ToolbarButton>
+          <ToolbarButton active={showInsights} onClick={() => setShowInsights((current) => !current)} title="Reliability insights">
+            <Activity size={14} /> Insights
+          </ToolbarButton>
+          <ToolbarIconButton onClick={() => setShowColumnPicker(!showColumnPicker)} active={showColumnPicker} title="Column Configuration"><LayoutGrid size={16} /></ToolbarIconButton>
           <ToolbarIconButton onClick={() => setShowRpnHelp(true)} title="RPN Definition Matrix"><HelpCircle size={16} /></ToolbarIconButton>
           <ToolbarIconButton onClick={() => setShowConfig(true)} title="Matrix Registry Enums"><Settings size={16} /></ToolbarIconButton>
         </ToolbarGroup>
       )}
       toolbarActions={(
         <ToolbarGroup>
+          <ToolbarIconButton onClick={handleExportCSV} title="Export CSV"><FileText size={16} /></ToolbarIconButton>
+          <ToolbarIconButton onClick={handleCopyToClipboard} disabled={selectedIds.length === 0} title="Copy to Clipboard"><Clipboard size={16} /></ToolbarIconButton>
           <ToolbarButton onClick={() => setShowImportModal(true)} title="Import Bulk Risk Data"><Upload size={14} /> Import</ToolbarButton>
           <ToolbarButton
             variant="danger"
@@ -660,24 +699,23 @@ export default function FAR() {
           <ToolbarButton variant="danger" onClick={() => { setSelectedModeId(null); setShowWizard(true); }}><ShieldAlert size={14} /> Add Failure Mode</ToolbarButton>
         </ToolbarGroup>
       )}
-      secondaryToolbar={(
+      secondaryToolbar={showSystemFilters ? (
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
           <button onClick={() => setSelectedSystems([])} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all ${selectedSystems.length === 0 ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>ALL</button>
           {availableSystems.map(sys => (
             <button key={sys} onClick={() => setSelectedSystems(prev => prev.includes(sys) ? prev.filter(s => s !== sys) : [...prev, sys])} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all whitespace-nowrap ${selectedSystems.includes(sys) ? 'bg-white/10 border-white/20 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>{sys}</button>
           ))}
         </div>
-      )}
+      ) : null}
     >
-
       <AnimatePresence>
         {showStyleLab && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="shrink-0 overflow-hidden">
             <div className="bg-rose-600/10 border border-rose-500/20 rounded-lg p-4 flex items-center justify-between backdrop-blur-md">
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3">
                      <Activity size={16} className="text-rose-400" />
-                     <span className="text-[10px] font-bold uppercase tracking-widest text-rose-400">View Density Laboratory</span>
+                     <span className="text-[10px] font-bold uppercase tracking-widest text-rose-400">Display Density</span>
                   </div>
                   <div className="flex items-center space-x-6">
                      <div className="flex items-center space-x-4"><span className="text-[9px] font-bold text-slate-500 uppercase">Font Size</span><div className="flex items-center space-x-2"><input type="range" min="8" max="14" step="1" value={fontSize} onChange={e => setFontSize(Number(e.target.value))} className="w-32 accent-rose-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"/><span className="text-[10px] text-white w-4 font-bold">{fontSize}px</span></div></div>
@@ -690,82 +728,89 @@ export default function FAR() {
         )}
       </AnimatePresence>
 
-      <div className="flex justify-center gap-4">
-         <StatCard id="SRI" label="Reliability Index" value={metrics.sri} suffix="/100" color={metrics.sri > 70 ? "emerald" : "rose"} onHelp={() => setActiveMetricHelp("SRI")} />
-         <StatCard id="RiskDensity" label="Risk Density" value={metrics.riskDensity} suffix="RPN/ASSET" color="amber" onHelp={() => setActiveMetricHelp("RiskDensity")} />
-         <StatCard id="MitigationRatio" label="Mitigation Ratio" value={metrics.mitRatio} suffix="%" color="sky" onHelp={() => setActiveMetricHelp("MitigationRatio")} />
-         <StatCard id="AvgSeverity" label="Avg Severity" value={metrics.avgRPN} suffix="AVG RPN" color="rose" onHelp={() => setActiveMetricHelp("AvgSeverity")} />
-      </div>
-      <div className="flex-1 min-h-0 flex flex-col glass-panel rounded-lg border-white/5 bg-[#0a0c14]/40 overflow-hidden">
-           <div className="px-4 py-2 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                 <ShieldAlert size={14} className="text-rose-500" />
-                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-white ">Failure Inventory Maturity Profile</h3>
+      <AnimatePresence>
+        {showInsights && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="shrink-0 overflow-hidden">
+            <div className="glass-panel rounded-lg border border-white/5 bg-[#0a0c14]/40 p-4 space-y-4">
+              <div className="flex flex-wrap justify-center gap-4">
+                <StatCard id="SRI" label="Reliability Index" value={metrics.sri} suffix="/100" color={metrics.sri > 70 ? "emerald" : "rose"} onHelp={() => setActiveMetricHelp("SRI")} />
+                <StatCard id="RiskDensity" label="Risk Density" value={metrics.riskDensity} suffix="RPN/ASSET" color="amber" onHelp={() => setActiveMetricHelp("RiskDensity")} />
+                <StatCard id="MitigationRatio" label="Mitigation Ratio" value={metrics.mitRatio} suffix="%" color="sky" onHelp={() => setActiveMetricHelp("MitigationRatio")} />
+                <StatCard id="AvgSeverity" label="Avg Severity" value={metrics.avgRPN} suffix="AVG RPN" color="rose" onHelp={() => setActiveMetricHelp("AvgSeverity")} />
               </div>
-              <div className="flex items-center gap-3">
-                 <div className="flex items-end gap-1 h-8">
+              <div className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-4 py-2">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert size={14} className="text-rose-500" />
+                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-white">Failure Inventory Maturity Profile</h3>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-end gap-1 h-8">
                     {maturityLevels.slice().reverse().map((ml: any) => {
                       const count = (metrics as any).maturityDist[ml.lv] || 0
                       const pct = filteredModes?.length ? (count / filteredModes.length) * 100 : 0
                       return (
                         <div key={ml.lv} className="w-4 h-full relative group cursor-help">
-                            <div className={`w-full h-full rounded-lg transition-all ${ml.color} ${count === 0 ? 'opacity-5' : 'opacity-40 group-hover:opacity-100'}`} style={{ height: `${Math.max(10, pct)}%` }} />
-                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100] whitespace-nowrap bg-black border border-white/10 px-2 py-1 rounded-lg text-[8px] font-bold uppercase tracking-widest">
-                               {ml.label}: {count}
-                            </div>
+                          <div className={`w-full rounded-lg transition-all ${ml.color} ${count === 0 ? 'opacity-5' : 'opacity-40 group-hover:opacity-100'}`} style={{ height: `${Math.max(10, pct)}%` }} />
+                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100] whitespace-nowrap bg-black border border-white/10 px-2 py-1 rounded-lg text-[8px] font-bold uppercase tracking-widest">
+                            {ml.label}: {count}
+                          </div>
                         </div>
                       )
                     })}
-                 </div>
-                 <div className="w-px h-4 bg-white/10 mx-2" />
-                 <button onClick={() => setShowMaturityHelp(true)} className="p-1 text-slate-500 hover:text-white transition-colors" title="Maturity Level Definitions"><HelpCircle size={14} /></button>
+                  </div>
+                  <div className="w-px h-4 bg-white/10 mx-2" />
+                  <button onClick={() => setShowMaturityHelp(true)} className="p-1 text-slate-500 hover:text-white transition-colors" title="Maturity Level Definitions"><HelpCircle size={14} /></button>
+                </div>
               </div>
-           </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-           <OperationalDataGrid
-             gridRef={gridRef}
-             rows={filteredModes || []}
-             columnDefs={columnDefs as any}
-             runtime={farGridRuntime}
-             quickFilterText={searchTerm}
-             fontSize={fontSize}
-             rowDensity={rowDensity}
-             noRowsLabel="No failure modes in scope"
-             loading={modesLoading}
-             loadingIcon={<RefreshCcw size={28} className="animate-spin text-rose-400" />}
-             loadingLabel={<p className="text-[10px] font-semibold text-rose-300">Loading failure analysis registry...</p>}
-             dataState={modesError ? {
-               kind: 'query-error',
-               noRowsLabel: 'No failure modes in scope',
-               title: 'Failure analysis registry unavailable',
-               description: 'The FAR registry could not be loaded. Retry from the workspace navigation.',
-             } : (!modesLoading && filteredModes.length === 0 ? {
-               kind: 'filtered-empty',
-               noRowsLabel: 'No failure modes in scope',
-               title: 'No failure modes in scope',
-               description: 'Create a failure mode or adjust the current system and search filters.',
-             } : { kind: 'ready', noRowsLabel: 'No failure modes in scope' })}
-             onSelectionChanged={(event) => setSelectedIds(event?.api?.getSelectedNodes().map((node: any) => Number(node.data?.id)).filter(Boolean) || [])}
-             suppressRowClickSelection={false}
-             surfaceVariant="attached-panel"
-           />
-           <AnimatePresence>
-                {showColumnPicker && (
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl">
-                    <div className="p-6 border-b border-white/5 flex items-center justify-between"><h3 className="text-xs font-bold uppercase tracking-widest text-rose-400 flex items-center space-x-2"><Sliders size={14} /> <span>Columns</span></h3><button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button></div>
-                    <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
-                      {columnDefs.filter((c: any) => c.field && !c.lockVisible).map((col: any) => (
-                        <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
-                          <input type="checkbox" checked={!hiddenColumns.includes(col.field)} onChange={() => setHiddenColumns(prev => prev.includes(col.field) ? prev.filter(f => f !== col.field) : [...prev, col.field])} className="sr-only" />
-                          <div className={`w-4 h-4 rounded-lg border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-rose-600 border-rose-500 shadow-lg shadow-rose-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>{!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}</div>
-                          <span className={`text-[10px] font-bold uppercase tracking-widest ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-           </div>
+      <div className="flex-1 min-h-0 relative">
+        <OperationalDataGrid
+          gridRef={gridRef}
+          rows={filteredModes || []}
+          columnDefs={columnDefs as any}
+          runtime={farGridRuntime}
+          quickFilterText={searchTerm}
+          fontSize={fontSize}
+          rowDensity={rowDensity}
+          noRowsLabel="No failure modes in scope"
+          loading={modesLoading}
+          loadingIcon={<RefreshCcw size={28} className="animate-spin text-rose-400" />}
+          loadingLabel={<p className="text-[10px] font-semibold text-rose-300">Loading failure analysis registry...</p>}
+          dataState={modesError ? {
+            kind: 'query-error',
+            noRowsLabel: 'No failure modes in scope',
+            title: 'Failure analysis registry unavailable',
+            description: 'The FAR registry could not be loaded. Retry from the workspace navigation.',
+          } : (!modesLoading && filteredModes.length === 0 ? {
+            kind: 'filtered-empty',
+            noRowsLabel: 'No failure modes in scope',
+            title: 'No failure modes in scope',
+            description: 'Create a failure mode or adjust the current system and search filters.',
+          } : { kind: 'ready', noRowsLabel: 'No failure modes in scope' })}
+          onSelectionChanged={(event) => setSelectedIds(event?.api?.getSelectedNodes().map((node: any) => Number(node.data?.id)).filter(Boolean) || [])}
+          suppressRowClickSelection={false}
+        />
+        <AnimatePresence>
+          {showColumnPicker && (
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="absolute top-0 right-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-l border-white/10 z-[60] flex flex-col shadow-2xl">
+              <div className="p-6 border-b border-white/5 flex items-center justify-between"><h3 className="text-xs font-bold uppercase tracking-widest text-rose-400 flex items-center space-x-2"><Sliders size={14} /> <span>Columns</span></h3><button onClick={() => setShowColumnPicker(false)} className="text-slate-500 hover:text-white"><X size={18}/></button></div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1">
+                {columnDefs.filter((c: any) => c.field && !c.lockVisible).map((col: any) => (
+                  <label key={col.field} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all">
+                    <input type="checkbox" checked={!hiddenColumns.includes(col.field)} onChange={() => setHiddenColumns(prev => prev.includes(col.field) ? prev.filter(f => f !== col.field) : [...prev, col.field])} className="sr-only" />
+                    <div className={`w-4 h-4 rounded-lg border transition-all ${!hiddenColumns.includes(col.field) ? 'bg-rose-600 border-rose-500 shadow-lg shadow-rose-500/20' : 'border-white/10 bg-black/40 group-hover:border-white/20'}`}>{!hiddenColumns.includes(col.field) && <Check size={12} className="text-white mx-auto" />}</div>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest ${!hiddenColumns.includes(col.field) ? 'text-slate-200' : 'text-slate-500'}`}>{col.headerName || col.field}</span>
+                  </label>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       <AnimatePresence>
           {selectedModeId && selectedMode && (

@@ -236,7 +236,7 @@ describe('shared bulk workflow architecture', () => {
 
     expect(farSource).toContain('<OperationalDataGrid')
     expect(researchSource).toContain('<OperationalDataGrid')
-    expect(farSource).toContain('surfaceVariant="attached-panel"')
+    expect(farSource).not.toContain('surfaceVariant="attached-panel"')
     expect(researchSource).not.toContain('monitoring-grid-shell monitoring-grid')
     expect(farSource).not.toContain('<AgGridReact')
     expect(researchSource).not.toContain('<AgGridReact')

@@ -8,7 +8,7 @@ import {
   MoreVertical, RefreshCcw, TrendingUp, AlertTriangle,
   Lightbulb, ShieldCheck, Calendar, Activity, Database, Server,
   FileText, Clipboard, Terminal, ArrowRight, Shield, Download, Share2,
-  Clock, CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye, Camera, Link as LinkIcon, Link2, Layers, Settings, Check, Target, ChevronDown, PlusCircle as PlusIcon,
+  Clock, CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye, EyeOff, Camera, Link as LinkIcon, Link2, Layers, Settings, Check, Target, ChevronDown, PlusCircle as PlusIcon,
   Workflow, ExternalLink
 } from 'lucide-react'
 import { motion, AnimatePresence, Reorder } from 'framer-motion'
@@ -25,6 +25,14 @@ import { InvestigationTab } from './shared/InvestigationTab'
 import { OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'
 import { OperationalDataGrid } from './shared/OperationalDataGrid'
 import { ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
+
+async function fetchResearchList(path: string) {
+  const response = await apiFetch(path)
+  if (!response.ok) throw new Error(await response.text())
+  const payload = await response.json()
+  if (!Array.isArray(payload)) throw new Error(`Expected a list response from ${path}`)
+  return payload
+}
 
 // --- Components ---
 
@@ -184,7 +192,9 @@ export default function Research() {
   const idParam = searchParams.get('id')
   const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(10)
-  const [showStyleLab, setShowStyleLab] = useState(true)
+  const [showStyleLab, setShowStyleLab] = useState(false)
+  const [showYearFilters, setShowYearFilters] = useState(false)
+  const [showInsights, setShowInsights] = useState(false)
   const [showColumnPicker, setShowColumnPicker] = useState(false)
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
   const [showConfig, setShowConfig] = useState(false)
@@ -207,12 +217,12 @@ export default function Research() {
 
   const { data: investigations, isLoading, isError: investigationsError } = useQuery({ 
     queryKey: ['investigations'], 
-    queryFn: async () => (await apiFetch('/api/v1/investigations/')).json() 
+    queryFn: () => fetchResearchList('/api/v1/investigations')
   })
 
   const { data: rcaRecords, isLoading: rcaLoading, isError: rcaError } = useQuery({ 
     queryKey: ['rca-records'], 
-    queryFn: async () => (await apiFetch('/api/v1/rca/')).json() 
+    queryFn: () => fetchResearchList('/api/v1/rca')
   })
   
   const { data: devices } = useQuery({ 
@@ -327,9 +337,9 @@ export default function Research() {
   }, [filteredData])
 
   const combinedLoading = combinedData.length === 0 && (isLoading || rcaLoading)
-  const combinedUnavailable = combinedData.length === 0 && investigationsError && rcaError
+  const combinedUnavailable = combinedData.length === 0 && (investigationsError || rcaError)
   const combinedEmpty = !combinedLoading && !combinedUnavailable && filteredData.length === 0
-  const partialSourceError = combinedData.length > 0 && (investigationsError || rcaError)
+  const partialSourceError = !combinedUnavailable && (investigationsError || rcaError)
   const researchGridRuntime = useMemo(() => ({}), [])
 
   const getResearchRecordKey = (item: any) => `${item?.type === 'RCA' ? 'rca' : 'research'}:${Number(item?.id)}`
@@ -626,19 +636,22 @@ export default function Research() {
           </div>
         ),
         subtitle: 'Unified System Intelligence & RCA Engine',
-        meta: (
-          <span className={`text-[9px] font-bold uppercase tracking-widest ${partialSourceError ? 'text-amber-400' : 'text-slate-500'}`}>
-            {combinedData.length} mixed records{partialSourceError ? ' · partial source unavailable' : ''}
-          </span>
-        ),
       }}
       toolbarSearch={(
         <ToolbarSearch value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Scan research..." />
       )}
       toolbarControls={(
         <ToolbarGroup>
-          <ToolbarIconButton onClick={() => setShowStyleLab(!showStyleLab)} active={showStyleLab} title="Toggle Style Lab"><Activity size={16} /></ToolbarIconButton>
-          <ToolbarIconButton onClick={() => setShowColumnPicker(!showColumnPicker)} active={showColumnPicker} title="Column Picker"><Sliders size={16} /></ToolbarIconButton>
+          <ToolbarButton active={showStyleLab} onClick={() => setShowStyleLab((current) => !current)} title="Display density controls">
+            <Sliders size={14} /> Display
+          </ToolbarButton>
+          <ToolbarButton active={showYearFilters} onClick={() => setShowYearFilters((current) => !current)} title="Record-year filters">
+            {showYearFilters ? <EyeOff size={14} /> : <Eye size={14} />} Filters
+          </ToolbarButton>
+          <ToolbarButton active={showInsights} onClick={() => setShowInsights((current) => !current)} title="Research insights">
+            <Activity size={14} /> Insights
+          </ToolbarButton>
+          <ToolbarIconButton onClick={() => setShowColumnPicker(!showColumnPicker)} active={showColumnPicker} title="Column Picker"><LayoutGrid size={16} /></ToolbarIconButton>
           <ToolbarIconButton onClick={() => setShowConfig(true)} title="Research Config"><Settings size={16} /></ToolbarIconButton>
         </ToolbarGroup>
       )}
@@ -651,9 +664,9 @@ export default function Research() {
           </ToolbarButton>
         </ToolbarGroup>
       )}
-      secondaryToolbar={(
-        <div className="flex items-center gap-2">
-          <span className="mr-2 text-[9px] font-bold uppercase tracking-widest text-slate-500">Record year</span>
+      secondaryToolbar={showYearFilters ? (
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+          <span className="mr-2 shrink-0 text-[9px] font-bold uppercase tracking-widest text-slate-500">Record year</span>
           {availableYears.map(year => (
             <button
               key={year}
@@ -664,17 +677,16 @@ export default function Research() {
             </button>
           ))}
         </div>
-      )}
+      ) : null}
     >
-
       <AnimatePresence>
         {showStyleLab && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="shrink-0 overflow-hidden">
             <div className="bg-blue-600/10 border border-blue-500/20 rounded-lg p-4 flex items-center justify-between backdrop-blur-md">
                <div className="flex items-center space-x-12">
                   <div className="flex items-center space-x-3 text-blue-400">
                      <Activity size={16} />
-                     <span className="text-[10px] font-bold uppercase tracking-widest">Density Laboratory</span>
+                     <span className="text-[10px] font-bold uppercase tracking-widest">Display Density</span>
                   </div>
                   <div className="flex items-center space-x-6">
                      <div className="flex items-center space-x-4">
@@ -695,14 +707,18 @@ export default function Research() {
         )}
       </AnimatePresence>
 
-      <div className="flex flex-col items-center gap-4">
-        <div className="flex justify-center gap-3">
-          <CompactSummary label="Total Intelligence" value={stats.total} icon={Activity} color="text-blue-400" />
-          <CompactSummary label="Under Analysis" value={stats.analyzing} icon={Terminal} color="text-indigo-400" />
-          <CompactSummary label="Root Cause Records" value={stats.rca} icon={ShieldAlert} color="text-purple-400" />
-          <CompactSummary label="Highest Priority" value={stats.highest} icon={AlertTriangle} color="text-rose-500" />
-        </div>
-      </div>
+      <AnimatePresence>
+        {showInsights && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="shrink-0 overflow-hidden">
+            <div className="flex flex-wrap justify-center gap-3 rounded-lg border border-white/5 bg-black/20 p-4">
+              <CompactSummary label="Total Intelligence" value={stats.total} icon={Activity} color="text-blue-400" />
+              <CompactSummary label="Under Analysis" value={stats.analyzing} icon={Terminal} color="text-indigo-400" />
+              <CompactSummary label="Root Cause Records" value={stats.rca} icon={ShieldAlert} color="text-purple-400" />
+              <CompactSummary label="Highest Priority" value={stats.highest} icon={AlertTriangle} color="text-rose-500" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 min-h-0 relative">
         <OperationalDataGrid
@@ -723,13 +739,21 @@ export default function Research() {
             kind: 'query-error',
             noRowsLabel: 'No Research or RCA records in scope',
             title: 'Research intelligence unavailable',
-            description: 'Neither Research nor RCA records could be loaded.',
+            description: 'One or more Research sources could not be loaded. Retry from the workspace navigation.',
           } : (combinedEmpty ? {
             kind: 'filtered-empty',
             noRowsLabel: 'No Research or RCA records in scope',
             title: 'No Research or RCA records in scope',
             description: 'Adjust the record year or create a Research or RCA record.',
-          } : { kind: 'ready', noRowsLabel: 'No Research or RCA records in scope' })}
+          } : {
+            kind: 'ready',
+            noRowsLabel: 'No Research or RCA records in scope',
+            notice: partialSourceError ? {
+              tone: 'warning',
+              title: 'Partial research source unavailable',
+              description: 'Available Research records are shown; one source could not be loaded.',
+            } : undefined,
+          })}
           suppressRowClickSelection={false}
         />
         <AnimatePresence>
