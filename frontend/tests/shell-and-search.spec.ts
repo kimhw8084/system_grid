@@ -138,9 +138,24 @@ test.describe('Golden Eight rendered geometry', () => {
 
       const slug = route.path.slice(1)
       await page.screenshot({
-        path: testInfo.outputPath(`${slug}-desktop.png`),
+        path: testInfo.outputPath(`${slug}-default-desktop.png`),
         fullPage: true,
       })
+
+      for (const control of ['Display', 'Filters', 'Insights'] as const) {
+        await page.goto(route.path)
+        await waitForAppIdle(page)
+        const button = page.getByRole('button', { name: new RegExp(`^${control}$`, 'i') }).first()
+        if (await button.count()) {
+          await expect(button).toBeVisible()
+          await button.click()
+          await waitForAppIdle(page)
+          await page.screenshot({
+            path: testInfo.outputPath(`${slug}-${control.toLowerCase()}-toggled-desktop.png`),
+            fullPage: true,
+          })
+        }
+      }
     }
   })
 
@@ -168,11 +183,6 @@ test.describe('Golden Eight rendered geometry', () => {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
       expect(overflow).toBeLessThanOrEqual(2)
 
-      const slug = route.path.slice(1)
-      await page.screenshot({
-        path: testInfo.outputPath(`${slug}-narrow.png`),
-        fullPage: true,
-      })
     }
   })
 })
