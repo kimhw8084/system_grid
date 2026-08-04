@@ -29,9 +29,10 @@ jobs:
   publish:
     if: github.actor == 'kimhw8084' && github.ref == 'refs/heads/main'
     runs-on: [self-hosted, macOS, ARM64, sysgrid-relay]
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       SYSGRID_CONTROL_ROOT: /Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control
+      SYSGRID_RELAY_SPOOL_ROOT: /Users/haewonkim/Library/Application Support/SysGridRelay/spool
 
     steps:
       - name: Checkout immutable relay implementation
@@ -56,13 +57,13 @@ jobs:
         shell: bash
         run: python3 scripts/sysgrid-relay/prepare_outbox_relay.py --self-test
 
-      - name: Verify canonical History object and build relay package
+      - name: Verify local spool object and build relay package
         id: prepare
         shell: bash
         run: |
           set -euo pipefail
           python3 scripts/sysgrid-relay/prepare_outbox_relay.py \
-            --control-root "$SYSGRID_CONTROL_ROOT" \
+            --spool-root "$SYSGRID_RELAY_SPOOL_ROOT" \
             --history-basename "${{ inputs.history_basename }}" \
             --payload-sha256 "${{ inputs.payload_sha256 }}" \
             --payload-size "${{ inputs.payload_size }}" \
@@ -117,7 +118,7 @@ jobs:
           from pathlib import Path
 
           pointer = {
-              "schema_version": "1.0.0",
+              "schema_version": "1.1.0",
               "state": "READY",
               "disclosure": "PUBLIC_BY_EXPLICIT_PRINCIPAL_DECISION",
               "repository": os.environ["GITHUB_REPOSITORY"],
@@ -134,6 +135,7 @@ jobs:
               "payload_size": int(os.environ["PAYLOAD_SIZE"]),
               "created_at": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
               "expires_at": os.environ["EXPIRES_AT"],
+              "source_mode": "LOCAL_VERIFIED_SPOOL",
           }
           root = Path("relay")
           (root / "latest.json").write_text(json.dumps(pointer, indent=2, sort_keys=True) + "\n")

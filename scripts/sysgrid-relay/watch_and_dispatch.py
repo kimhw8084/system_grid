@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
 import os
 import re
@@ -11,6 +12,7 @@ import time
 from pathlib import Path
 
 SHA_LINE_RE = re.compile(r"^([0-9a-f]{64})  ([^/]+\.zip)$")
+CHUNK = 4 * 1024 * 1024
 
 
 def now() -> str:
@@ -27,6 +29,14 @@ def run(command: list[str], *, check: bool = True, env: dict[str, str] | None = 
     return result
 
 
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(CHUNK), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def load_json(path: Path, default):
     if not path.exists():
         return default
@@ -40,11 +50,45 @@ def atomic_json(path: Path, value) -> None:
     os.replace(temp, path)
 
 
+def stage_spool(source: Path, spool_root: Path, payload_sha: str, payload_size: int) -> Path:
+    spool_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(spool_root, 0o700)
+    target = spool_root / f"{payload_sha}.zip"
+    if target.exists():
+        if target.is_symlink() or target.stat().st_size != payload_size or sha256_file(target) != payload_sha:
+            raise RuntimeError(f"conflicting spool object: {target}")
+        return target
+
+    temp = target.with_name(target.name + f".tmp-{os.getpid()}")
+    h = hashlib.sha256()
+    observed_size = 0
+    try:
+        with source.open("rb") as src, temp.open("wb") as dst:
+            while True:
+                chunk = src.read(CHUNK)
+                if not chunk:
+                    break
+                dst.write(chunk)
+                h.update(chunk)
+                observed_size += len(chunk)
+            dst.flush()
+            os.fsync(dst.fileno())
+        os.chmod(temp, 0o600)
+        if observed_size != payload_size:
+            raise RuntimeError(f"spool size mismatch: expected {payload_size}, observed {observed_size}")
+        if h.hexdigest() != payload_sha:
+            raise RuntimeError("spool SHA-256 mismatch")
+        os.replace(temp, target)
+        return target
+    finally:
+        temp.unlink(missing_ok=True)
+
+
 def find_run_id(gh: str, repo: str, title: str, env: dict[str, str]) -> int | None:
     result = run([
         gh, "run", "list", "--repo", repo,
         "--workflow", "sysgrid-public-outbox-relay.yml",
-        "--event", "workflow_dispatch", "--limit", "20",
+        "--event", "workflow_dispatch", "--limit", "30",
         "--json", "databaseId,displayTitle,createdAt,status,conclusion",
     ], env=env)
     rows = json.loads(result.stdout or "[]")
@@ -77,6 +121,7 @@ def main() -> None:
     root = Path(config["control_root"]).expanduser().resolve()
     history = root / "Outbox" / "History"
     state_path = Path(config["state_path"]).expanduser().resolve()
+    spool_root = Path(config.get("spool_root", state_path.parent / "spool")).expanduser().resolve()
     gh = config["gh_path"]
     repo = config["repository"]
     workflow = config["workflow"]
@@ -89,7 +134,8 @@ def main() -> None:
     gh_env = dict(os.environ)
     gh_env["GH_TOKEN"] = token
     gh_env["GITHUB_TOKEN"] = token
-    state = load_json(state_path, {"schema_version": "1.0.0", "entries": {}})
+    state = load_json(state_path, {"schema_version": "1.1.0", "entries": {}})
+    state["schema_version"] = "1.1.0"
     entries = state.setdefault("entries", {})
 
     if not history.is_dir():
@@ -106,21 +152,26 @@ def main() -> None:
         zip_path = history / basename
         if not zip_path.is_file() or zip_path.is_symlink():
             continue
+        payload_size = zip_path.stat().st_size
         key = payload_sha
         entry = entries.setdefault(key, {
             "history_basename": basename,
             "payload_sha256": payload_sha,
-            "payload_size": zip_path.stat().st_size,
+            "payload_size": payload_size,
             "attempts": 0,
             "state": "DISCOVERED",
             "discovered_at": now(),
         })
+        entry["history_basename"] = basename
+        entry["payload_size"] = payload_size
 
         if entry.get("state") == "PUBLISHED":
             continue
 
         if ledger_payload_sha(gh, repo, gh_env) == payload_sha:
             entry.update({"state": "PUBLISHED", "published_at": now()})
+            spool = spool_root / f"{payload_sha}.zip"
+            spool.unlink(missing_ok=True)
             atomic_json(state_path, state)
             continue
 
@@ -137,6 +188,7 @@ def main() -> None:
                 if details.get("conclusion") == "success":
                     if ledger_payload_sha(gh, repo, gh_env) == payload_sha:
                         entry.update({"state": "PUBLISHED", "published_at": now()})
+                        (spool_root / f"{payload_sha}.zip").unlink(missing_ok=True)
                     else:
                         entry.update({"state": "LEDGER_PENDING", "last_checked_at": now()})
                     atomic_json(state_path, state)
@@ -146,13 +198,16 @@ def main() -> None:
                     "last_failure_at": now(),
                     "last_conclusion": details.get("conclusion"),
                 })
+                entry.pop("workflow_run_id", None)
 
         if int(entry.get("attempts", 0)) >= max_attempts:
             entry["state"] = "EXHAUSTED"
             atomic_json(state_path, state)
             continue
 
-        payload_size = zip_path.stat().st_size
+        spool_path = stage_spool(zip_path, spool_root, payload_sha, payload_size)
+        entry["spool_path"] = str(spool_path)
+        entry["spool_verified_at"] = now()
         title = f"SysGrid relay {basename}"
         run([
             gh, "workflow", "run", workflow,
@@ -169,8 +224,8 @@ def main() -> None:
         })
         atomic_json(state_path, state)
 
-        for _ in range(12):
-            time.sleep(5)
+        for _ in range(20):
+            time.sleep(3)
             found = find_run_id(gh, repo, title, gh_env)
             if found:
                 entry["workflow_run_id"] = found
