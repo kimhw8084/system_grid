@@ -1,0 +1,152 @@
+name: SysGrid Public Outbox Relay
+run-name: SysGrid relay ${{ inputs.history_basename }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      history_basename:
+        description: Immutable Outbox/History ZIP basename
+        required: true
+        type: string
+      payload_sha256:
+        description: Exact canonical ZIP SHA-256
+        required: true
+        type: string
+      payload_size:
+        description: Exact canonical ZIP byte size
+        required: true
+        type: string
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: sysgrid-public-outbox-relay
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.actor == 'kimhw8084' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, macOS, ARM64, sysgrid-relay]
+    timeout-minutes: 20
+    env:
+      SYSGRID_CONTROL_ROOT: /Users/haewonkim/Library/Mobile Documents/com~apple~CloudDocs/SysGrid-Control
+
+    steps:
+      - name: Checkout immutable relay implementation
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Verify public disclosure and input contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${GITHUB_ACTOR}" == "kimhw8084" ]]
+          [[ "${GITHUB_REF}" == "refs/heads/main" ]]
+          [[ "${{ inputs.history_basename }}" != */* ]]
+          [[ "${{ inputs.history_basename }}" != *\\* ]]
+          [[ "${{ inputs.payload_sha256 }}" =~ ^[0-9a-f]{64}$ ]]
+          [[ "${{ inputs.payload_size }}" =~ ^[1-9][0-9]*$ ]]
+          echo "PUBLIC DISCLOSURE: this workflow publishes the complete SysGrid Outbox package by explicit principal decision."
+
+      - name: Self-test relay verifier
+        shell: bash
+        run: python3 scripts/sysgrid-relay/prepare_outbox_relay.py --self-test
+
+      - name: Verify canonical History object and build relay package
+        id: prepare
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/sysgrid-relay/prepare_outbox_relay.py \
+            --control-root "$SYSGRID_CONTROL_ROOT" \
+            --history-basename "${{ inputs.history_basename }}" \
+            --payload-sha256 "${{ inputs.payload_sha256 }}" \
+            --payload-size "${{ inputs.payload_size }}" \
+            --output-dir "$RUNNER_TEMP/sysgrid-relay-package" \
+            --repository "$GITHUB_REPOSITORY" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --retention-days 90
+
+      - name: Upload immutable public Outbox artifact
+        id: upload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ${{ steps.prepare.outputs.artifact_name }}
+          path: |
+            ${{ steps.prepare.outputs.payload_path }}
+            ${{ steps.prepare.outputs.envelope_path }}
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+          retention-days: 90
+
+      - name: Checkout append-only relay ledger
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: relay-ledger
+          path: relay-ledger-worktree
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Publish machine-readable relay pointer
+        shell: bash
+        env:
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+          ARTIFACT_NAME: ${{ steps.prepare.outputs.artifact_name }}
+          ENGINE_RUN_ID: ${{ steps.prepare.outputs.engine_run_id }}
+          ISSUE: ${{ steps.prepare.outputs.issue }}
+          CAPSULE_SHA256: ${{ steps.prepare.outputs.capsule_sha256 }}
+          PAYLOAD_SHA256: ${{ steps.prepare.outputs.payload_sha256 }}
+          PAYLOAD_SIZE: ${{ steps.prepare.outputs.payload_size }}
+          EXPIRES_AT: ${{ steps.prepare.outputs.expires_at }}
+        run: |
+          set -euo pipefail
+          cd relay-ledger-worktree
+          mkdir -p relay
+          python3 - <<'PY'
+          import datetime as dt
+          import json
+          import os
+          from pathlib import Path
+
+          pointer = {
+              "schema_version": "1.0.0",
+              "state": "READY",
+              "disclosure": "PUBLIC_BY_EXPLICIT_PRINCIPAL_DECISION",
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "workflow_run_url": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+              "artifact_id": int(os.environ["ARTIFACT_ID"]),
+              "artifact_url": os.environ["ARTIFACT_URL"],
+              "artifact_digest": os.environ["ARTIFACT_DIGEST"],
+              "artifact_name": os.environ["ARTIFACT_NAME"],
+              "engine_run_id": os.environ["ENGINE_RUN_ID"],
+              "issue": os.environ["ISSUE"],
+              "capsule_sha256": os.environ["CAPSULE_SHA256"],
+              "payload_sha256": os.environ["PAYLOAD_SHA256"],
+              "payload_size": int(os.environ["PAYLOAD_SIZE"]),
+              "created_at": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+              "expires_at": os.environ["EXPIRES_AT"],
+          }
+          root = Path("relay")
+          (root / "latest.json").write_text(json.dumps(pointer, indent=2, sort_keys=True) + "\n")
+          with (root / "history.ndjson").open("a", encoding="utf-8") as handle:
+              handle.write(json.dumps(pointer, sort_keys=True) + "\n")
+          PY
+          git config user.name "sysgrid-relay[bot]"
+          git config user.email "sysgrid-relay[bot]@users.noreply.github.com"
+          git add relay/latest.json relay/history.ndjson
+          git commit -m "relay: publish ${ENGINE_RUN_ID} ${PAYLOAD_SHA256:0:12}"
+          git push origin HEAD:relay-ledger
+
+      - name: Scrub temporary relay bytes
+        if: always()
+        shell: bash
+        run: rm -rf "$RUNNER_TEMP/sysgrid-relay-package"
