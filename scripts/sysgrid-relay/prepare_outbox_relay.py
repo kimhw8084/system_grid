@@ -9,7 +9,6 @@ import os
 import re
 import shutil
 import stat
-import sys
 import tempfile
 import zipfile
 from pathlib import Path, PurePosixPath
@@ -19,22 +18,27 @@ HISTORY_NAME_RE = re.compile(
 )
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 ISSUE_RE = re.compile(r"^[A-Z][A-Z0-9]+-[1-9][0-9]*$")
+CHUNK = 4 * 1024 * 1024
 
 
-def sha256_bytes(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
+def fail(message: str) -> None:
+    raise SystemExit(f"SYSGRID_RELAY_REJECTED: {message}")
 
 
 def sha256_file(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+        for chunk in iter(lambda: handle.read(CHUNK), b""):
             h.update(chunk)
     return h.hexdigest()
 
 
-def fail(message: str) -> None:
-    raise SystemExit(f"SYSGRID_RELAY_REJECTED: {message}")
+def sha256_member(archive: zipfile.ZipFile, name: str) -> str:
+    h = hashlib.sha256()
+    with archive.open(name, "r") as handle:
+        for chunk in iter(lambda: handle.read(CHUNK), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def require_safe_member(name: str) -> PurePosixPath:
@@ -70,10 +74,8 @@ def parse_manifest(data: bytes, label: str) -> dict[str, str]:
 
 
 def verify_zip(path: Path, expected_sha: str, expected_size: int, history_name: str) -> dict[str, object]:
-    if path.is_symlink():
-        fail("history artifact is a symlink")
-    if not path.is_file():
-        fail(f"history artifact not found: {path}")
+    if path.is_symlink() or not path.is_file():
+        fail(f"spool artifact missing or unsafe: {path}")
     actual_size = path.stat().st_size
     if actual_size != expected_size:
         fail(f"payload size mismatch: expected {expected_size}, observed {actual_size}")
@@ -92,9 +94,15 @@ def verify_zip(path: Path, expected_sha: str, expected_size: int, history_name: 
         names = [info.filename for info in infos]
         if len(names) != len(set(names)):
             fail("ZIP contains duplicate member names")
-        if "MANIFEST.sha256" not in names or "RESULT.json" not in names:
-            fail("ZIP lacks MANIFEST.sha256 or RESULT.json")
-
+        required = {
+            "MANIFEST.sha256",
+            "RESULT.json",
+            "HANDOFF/MANIFEST.sha256",
+            "SOURCE_AUTHORITY/SOURCE_MANIFEST.sha256",
+        }
+        missing = sorted(required - set(names))
+        if missing:
+            fail(f"ZIP lacks required members: {missing}")
         for info in infos:
             require_safe_member(info.filename)
             mode = (info.external_attr >> 16) & 0xFFFF
@@ -109,26 +117,27 @@ def verify_zip(path: Path, expected_sha: str, expected_size: int, history_name: 
             missing = sorted(expected_members - set(root_manifest))[:10]
             extra = sorted(set(root_manifest) - expected_members)[:10]
             fail(f"root manifest coverage mismatch; missing={missing}, extra={extra}")
+
+        # Each member is streamed exactly once from the local spool. Nested manifests
+        # are reconciled against the already verified root manifest, avoiding a second
+        # random-access pass over hundreds of source files.
         for member, digest in root_manifest.items():
-            observed = sha256_bytes(archive.read(member))
+            observed = sha256_member(archive, member)
             if observed != digest:
                 fail(f"root manifest digest mismatch: {member}")
 
-        nested_specs = [
+        nested_counts: dict[str, int] = {}
+        for manifest_name, prefix in (
             ("HANDOFF/MANIFEST.sha256", "HANDOFF/"),
             ("SOURCE_AUTHORITY/SOURCE_MANIFEST.sha256", "SOURCE_AUTHORITY/files/"),
-        ]
-        nested_counts: dict[str, int] = {}
-        for manifest_name, prefix in nested_specs:
-            if manifest_name not in names:
-                fail(f"required nested manifest missing: {manifest_name}")
+        ):
             nested = parse_manifest(archive.read(manifest_name), manifest_name)
             for rel, digest in nested.items():
                 member = prefix + rel
-                if member not in names:
-                    fail(f"nested manifest member missing: {member}")
-                if sha256_bytes(archive.read(member)) != digest:
-                    fail(f"nested manifest digest mismatch: {member}")
+                if member not in root_manifest:
+                    fail(f"nested manifest member missing from root manifest: {member}")
+                if root_manifest[member] != digest:
+                    fail(f"nested manifest digest disagrees with root manifest: {member}")
             nested_counts[manifest_name] = len(nested)
 
         try:
@@ -163,6 +172,7 @@ def verify_zip(path: Path, expected_sha: str, expected_size: int, history_name: 
             "payload_size": actual_size,
             "root_manifest_entries": len(root_manifest),
             "nested_manifest_entries": nested_counts,
+            "source_mode": "LOCAL_VERIFIED_SPOOL",
         }
 
 
@@ -182,11 +192,10 @@ def create_package(args: argparse.Namespace) -> None:
     if Path(args.history_basename).name != args.history_basename:
         fail("history_basename must not contain a path")
 
-    root = Path(args.control_root).expanduser().resolve(strict=True)
-    history = (root / "Outbox" / "History").resolve(strict=True)
-    source = (history / args.history_basename).resolve(strict=True)
-    if source.parent != history:
-        fail("resolved source escaped fixed Outbox/History root")
+    spool_root = Path(args.spool_root).expanduser().resolve(strict=True)
+    source = (spool_root / f"{args.payload_sha256}.zip").resolve(strict=True)
+    if source.parent != spool_root:
+        fail("resolved source escaped fixed spool root")
 
     metadata = verify_zip(source, args.payload_sha256, args.payload_size, args.history_basename)
     output = Path(args.output_dir).resolve()
@@ -201,7 +210,7 @@ def create_package(args: argparse.Namespace) -> None:
     created = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
     expires = created + dt.timedelta(days=args.retention_days)
     envelope = {
-        "schema_version": "1.0.0",
+        "schema_version": "1.1.0",
         "state": "VERIFIED_FOR_PUBLIC_RELAY",
         "disclosure": "PUBLIC_BY_EXPLICIT_PRINCIPAL_DECISION",
         "repository": args.repository,
@@ -214,9 +223,7 @@ def create_package(args: argparse.Namespace) -> None:
     envelope_path = output / "SYSGRID_RELAY_ENVELOPE.json"
     envelope_path.write_text(json.dumps(envelope, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-    artifact_name = (
-        f"sysgrid-outbox-{metadata['engine_run_id']}-{args.payload_sha256[:12]}-{args.workflow_run_id}"
-    )
+    artifact_name = f"sysgrid-outbox-{metadata['engine_run_id']}-{args.payload_sha256[:12]}-{args.workflow_run_id}"
     if args.github_output:
         write_github_output(Path(args.github_output), {
             "artifact_name": artifact_name,
@@ -235,8 +242,8 @@ def create_package(args: argparse.Namespace) -> None:
 def self_test() -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         root = Path(temp_dir)
-        history = root / "Outbox" / "History"
-        history.mkdir(parents=True)
+        spool = root / "spool"
+        spool.mkdir()
         result = {
             "issue": "OUT-31",
             "capsule_file": "QUALIFICATION.sgcap",
@@ -254,34 +261,35 @@ def self_test() -> None:
             "SOURCE_AUTHORITY/files/README.md": source_file,
         }
         members["HANDOFF/MANIFEST.sha256"] = (
-            f"{sha256_bytes(handoff_file)}  CURRENT_GATE.json\n"
+            f"{hashlib.sha256(handoff_file).hexdigest()}  CURRENT_GATE.json\n"
         ).encode()
         members["SOURCE_AUTHORITY/SOURCE_MANIFEST.sha256"] = (
-            f"{sha256_bytes(source_file)}  README.md\n"
+            f"{hashlib.sha256(source_file).hexdigest()}  README.md\n"
         ).encode()
         root_manifest = "".join(
-            f"{sha256_bytes(data)}  {name}\n" for name, data in sorted(members.items())
+            f"{hashlib.sha256(data).hexdigest()}  {name}\n" for name, data in sorted(members.items())
         ).encode()
         members["MANIFEST.sha256"] = root_manifest
-        dummy = history / ("RUN-1__qualification__" + "a" * 12 + "__PLACEHOLDER.zip")
+        dummy = root / "dummy.zip"
         with zipfile.ZipFile(dummy, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             for name, data in sorted(members.items()):
                 info = zipfile.ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0))
                 info.external_attr = 0o100600 << 16
                 archive.writestr(info, data)
         payload_sha = sha256_file(dummy)
-        final = history / f"RUN-1__qualification__{'a'*12}__{payload_sha[:12]}.zip"
-        dummy.rename(final)
-        metadata = verify_zip(final, payload_sha, final.stat().st_size, final.name)
+        target = spool / f"{payload_sha}.zip"
+        dummy.rename(target)
+        history_name = f"RUN-1__qualification__{'a'*12}__{payload_sha[:12]}.zip"
+        metadata = verify_zip(target, payload_sha, target.stat().st_size, history_name)
         assert metadata["issue"] == "OUT-31"
-        assert metadata["root_manifest_entries"] == len(members) - 1
-    print("SYSGRID_PUBLIC_RELAY_SELF_TEST_PASS")
+        assert metadata["source_mode"] == "LOCAL_VERIFIED_SPOOL"
+    print("SYSGRID_PUBLIC_RELAY_SPOOL_SELF_TEST_PASS")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--self-test", action="store_true")
-    parser.add_argument("--control-root")
+    parser.add_argument("--spool-root")
     parser.add_argument("--history-basename")
     parser.add_argument("--payload-sha256")
     parser.add_argument("--payload-size", type=int)
@@ -294,7 +302,7 @@ def main() -> None:
     if args.self_test:
         self_test()
         return
-    required = ["control_root", "history_basename", "payload_sha256", "payload_size", "output_dir"]
+    required = ["spool_root", "history_basename", "payload_sha256", "payload_size", "output_dir"]
     missing = [name for name in required if getattr(args, name) in {None, ""}]
     if missing:
         fail(f"missing required arguments: {missing}")
