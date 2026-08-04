@@ -1,0 +1,6 @@
+{
+  "schema_version": "1.0.0",
+  "state": "INITIALIZED",
+  "disclosure": "PUBLIC_BY_EXPLICIT_PRINCIPAL_DECISION",
+  "message": "No Outbox artifact has been relayed yet."
+}
