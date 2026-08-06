@@ -49,40 +49,6 @@ class WorkspaceDefinitionList(BaseModel):
     definitions: list[WorkspaceDefinition]
 
 
-class FARColumnDefinition(BaseModel):
-    key: str
-    label: str
-    width: int = Field(ge=80, le=640)
-    minimum_width: int = Field(ge=60, le=480)
-    kind: Literal["identity", "risk", "status", "owner", "text", "list", "age", "number", "date"]
-    required: bool = False
-
-
-class FARPresetDefinition(BaseModel):
-    key: Literal["all", "high-risk", "overdue", "unassigned", "recent"]
-    label: str
-    description: str
-
-
-class FARModeDefinition(BaseModel):
-    key: Literal["failure_modes", "causes", "mitigations", "prevention"]
-    label: str
-    description: str
-    column_keys: list[str]
-
-
-class FARWorkspaceExperience(BaseModel):
-    schema_version: int = Field(ge=1)
-    workspace_key: Literal["far"] = "far"
-    data_endpoint: str
-    detail_query_key: str
-    columns: list[FARColumnDefinition]
-    presets: list[FARPresetDefinition]
-    modes: list[FARModeDefinition]
-    risk_thresholds: dict[str, int]
-    detail_sections: list[str]
-
-
 class SavedViewBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -163,53 +129,6 @@ VENDOR_COLUMNS = [
     "contract_count", "earliest_expiry_date", "personnel_count", "created_at",
     "updated_at", "row_actions",
 ]
-FAR_COLUMNS = [
-    "title", "rpn", "status", "owner", "systemName", "failureType",
-    "effect", "affectedAssets", "causes", "mitigations", "preventionActions",
-    "linkedRcas", "ageDays", "incidentCount", "updatedAt",
-]
-FAR_COLUMN_DEFINITIONS = [
-    FARColumnDefinition(key="title", label="Failure mode", width=310, minimum_width=240, kind="identity", required=True),
-    FARColumnDefinition(key="rpn", label="Risk", width=130, minimum_width=110, kind="risk", required=True),
-    FARColumnDefinition(key="status", label="Status", width=140, minimum_width=120, kind="status", required=True),
-    FARColumnDefinition(key="owner", label="Owner", width=160, minimum_width=130, kind="owner", required=True),
-    FARColumnDefinition(key="systemName", label="System", width=190, minimum_width=150, kind="text", required=True),
-    FARColumnDefinition(key="failureType", label="Type", width=150, minimum_width=120, kind="text", required=True),
-    FARColumnDefinition(key="effect", label="Operational effect", width=260, minimum_width=180, kind="text"),
-    FARColumnDefinition(key="affectedAssets", label="Affected scope", width=210, minimum_width=160, kind="list"),
-    FARColumnDefinition(key="causes", label="Causes", width=260, minimum_width=180, kind="list"),
-    FARColumnDefinition(key="mitigations", label="Mitigations", width=260, minimum_width=180, kind="list"),
-    FARColumnDefinition(key="preventionActions", label="Prevention", width=260, minimum_width=180, kind="list"),
-    FARColumnDefinition(key="linkedRcas", label="Linked RCAs", width=210, minimum_width=160, kind="list"),
-    FARColumnDefinition(key="ageDays", label="Age", width=110, minimum_width=90, kind="age"),
-    FARColumnDefinition(key="incidentCount", label="Incidents", width=110, minimum_width=90, kind="number"),
-    FARColumnDefinition(key="updatedAt", label="Updated", width=145, minimum_width=120, kind="date"),
-]
-FAR_PRESET_DEFINITIONS = [
-    FARPresetDefinition(key="all", label="All failure modes", description="Complete tenant-scoped risk register"),
-    FARPresetDefinition(key="high-risk", label="High risk", description="RPN 200 or greater"),
-    FARPresetDefinition(key="overdue", label="Overdue", description="Open for 30 days or more"),
-    FARPresetDefinition(key="unassigned", label="Unassigned", description="No accountable owner"),
-    FARPresetDefinition(key="recent", label="Recently updated", description="Changed in the last 14 days"),
-]
-FAR_MODE_DEFINITIONS = [
-    FARModeDefinition(
-        key="failure_modes", label="Failure modes", description="Operational risk register",
-        column_keys=["title", "rpn", "status", "owner", "systemName", "failureType", "affectedAssets", "ageDays", "incidentCount", "updatedAt"],
-    ),
-    FARModeDefinition(
-        key="causes", label="Causes", description="Root-cause signals",
-        column_keys=["title", "causes", "rpn", "owner", "systemName", "linkedRcas"],
-    ),
-    FARModeDefinition(
-        key="mitigations", label="Mitigations", description="Current controls",
-        column_keys=["title", "mitigations", "status", "owner", "rpn", "affectedAssets"],
-    ),
-    FARModeDefinition(
-        key="prevention", label="Prevention", description="Preventive actions",
-        column_keys=["title", "preventionActions", "owner", "status", "rpn", "updatedAt"],
-    ),
-]
 
 TABLE_STATE_KEYS = [
     "fontSize", "rowDensity", "hiddenColumns", "groupBy", "showFilterBar",
@@ -226,11 +145,6 @@ EXTERNAL_STATE_KEYS = [
     "showFilterBar", "quickFilters", "columnLayoutState", "filterModel", "sortModel",
 ]
 CUSTOM_STATE_KEYS = ["searchTerm", "quickFilter", "filters", "activeTab", "mode", "viewMode", "lens"]
-FAR_STATE_KEYS = [
-    "searchTerm", "quickFilter", "filters", "activeTab", "mode", "viewMode",
-    "activeLens", "fontSize", "rowDensity", "hiddenColumns", "groupBy",
-    "showFilterBar", "columnLayoutState", "filterModel", "sortModel",
-]
 
 
 def _definition(
@@ -277,7 +191,7 @@ WORKSPACE_DEFINITIONS: dict[str, WorkspaceDefinition] = {
         lifecycle_actions=["archive", "restore", "purge", "revert"],
     ),
     "assets": _definition(
-        "assets", "/asset", "table",
+        "assets", "/assets", "table",
         ["saved_views", "search", "filters", "column_state", "grouping", "selection", "bulk_actions", "import", "export", "details", "deep_links", "lifecycle", "history", "compare", "relationships", "custom_modes"],
         columns=ASSET_COLUMNS,
         allowed_keys=MONITORING_STATE_KEYS,
@@ -317,11 +231,7 @@ WORKSPACE_DEFINITIONS: dict[str, WorkspaceDefinition] = {
     ),
     "far": _definition(
         "far", "/far", "investigation",
-        ["saved_views", "search", "filters", "column_state", "display_controls", "selection", "details", "deep_links", "lifecycle", "history", "compare", "relationships", "investigation", "custom_body"],
-        columns=FAR_COLUMNS,
-        allowed_keys=FAR_STATE_KEYS,
-        quick_filter_keys=["status", "riskBand", "owner", "systemName", "failureType"],
-        group_by=["raw", "status", "riskBand", "owner", "systemName", "failureType"],
+        ["saved_views", "search", "filters", "details", "deep_links", "lifecycle", "history", "compare", "relationships", "investigation", "custom_body"],
         active_tabs=["active", "deleted"],
         modes=["failure_modes", "causes", "mitigations", "prevention"],
         lifecycle_actions=["archive", "restore"],
@@ -437,7 +347,7 @@ def sanitize_definition(workspace_key: str, raw: Any) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Saved view definition must be an object.")
     if len(json.dumps(raw, default=str, separators=(",", ":")).encode("utf-8")) > MAX_VIEW_DEFINITION_BYTES:
-        raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail="Saved view definition is too large.")
+        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Saved view definition is too large.")
 
     schema = definition.state_schema
     allowed_keys = set(schema.allowed_keys)
@@ -545,23 +455,6 @@ def conflict_detail(view: models.WorkspaceSavedView) -> dict[str, Any]:
 @router.get("/definitions", response_model=WorkspaceDefinitionList)
 async def list_definitions() -> WorkspaceDefinitionList:
     return WorkspaceDefinitionList(definitions=list(WORKSPACE_DEFINITIONS.values()))
-
-
-@router.get("/far/experience", response_model=FARWorkspaceExperience)
-async def get_far_experience() -> FARWorkspaceExperience:
-    return FARWorkspaceExperience(
-        schema_version=WORKSPACE_DEFINITIONS["far"].schema_version,
-        data_endpoint="/far/modes",
-        detail_query_key="far",
-        columns=FAR_COLUMN_DEFINITIONS,
-        presets=FAR_PRESET_DEFINITIONS,
-        modes=FAR_MODE_DEFINITIONS,
-        risk_thresholds={"critical": 300, "high": 200, "moderate": 100},
-        detail_sections=[
-            "summary", "risk", "affected_scope", "causes", "mitigations",
-            "prevention", "relationships",
-        ],
-    )
 
 
 @router.get("/{workspace_key}/views", response_model=SavedViewListResponse)

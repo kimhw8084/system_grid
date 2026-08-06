@@ -1,12 +1,8 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { buildOperationalDiagnosticDetail } from './OperationalDataStatus'
 
 describe('buildOperationalDiagnosticDetail', () => {
-  beforeEach(() => {
-    localStorage.clear()
-    sessionStorage.clear()
-  })
   it('preserves available apiFetch error fields', () => {
     expect(buildOperationalDiagnosticDetail({
       endpoint: '/api/v1/intelligence/links',
@@ -17,7 +13,6 @@ describe('buildOperationalDiagnosticDetail', () => {
         message: 'Backend unavailable',
         rawBody: '{"detail":"Backend unavailable"}',
         data: { detail: 'Backend unavailable' },
-        tenantId: '1',
       },
     })).toEqual({
       endpoint: '/api/v1/intelligence/links',
@@ -33,8 +28,13 @@ describe('buildOperationalDiagnosticDetail', () => {
   })
 
   it('uses honest fallbacks when the error object lacks details', () => {
-    localStorage.setItem('SYSGRID_USER_ID', 'operator-7')
-    sessionStorage.setItem('SYSGRID_EFFECTIVE_TENANT_ID', '24')
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => {
+        if (key === 'SYSGRID_USER_ID') return 'operator-7'
+        if (key === 'SYSGRID_TENANT_ID') return '24'
+        return null
+      },
+    } as Storage)
 
     expect(buildOperationalDiagnosticDetail({
       endpoint: '/api/v1/intelligence/entities?include_deleted=true',

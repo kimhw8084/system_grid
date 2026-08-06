@@ -2,7 +2,7 @@ import React from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { PageToolbar } from './LayoutPrimitives'
 
-export const GOLDEN_COMMAND_BAR_STACK_CLASS = 'box-border min-w-0 w-full max-w-full self-stretch space-y-4 [&>*]:!ml-0 [&>*]:!mr-0 [&>*]:!w-full [&>*]:!max-w-full'
+export const GOLDEN_COMMAND_BAR_STACK_CLASS = 'space-y-4'
 export const GOLDEN_COMMAND_BAR_SECONDARY_CLASS = 'px-4 py-3'
 export const GOLDEN_FILTER_CHIP_ROW_CLASS = 'flex flex-wrap items-center gap-2'
 
@@ -18,7 +18,7 @@ export function WorkspaceCommandBar({
   filterChips?: Array<{ id: string; label: string; onRemove: () => void }>
 }) {
   return (
-    <div className={GOLDEN_COMMAND_BAR_STACK_CLASS} data-golden-command-bar="true" data-workspace-command-bar="true">
+    <div className={GOLDEN_COMMAND_BAR_STACK_CLASS} data-golden-command-bar="true">
       <PageToolbar left={left} right={right} />
       {secondary ? <PageToolbar left={secondary} className={GOLDEN_COMMAND_BAR_SECONDARY_CLASS} /> : null}
       <AnimatePresence>

@@ -38,7 +38,6 @@ export default function AssetGoldenShellScaffold({
 }: AssetGoldenShellScaffoldProps) {
   return (
     <OperationalWorkspaceShell
-      archetype="table"
       workspace="assets"
       className="relative overflow-hidden"
       header={{

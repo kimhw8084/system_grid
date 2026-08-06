@@ -304,14 +304,14 @@ export const OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX: Record<string, Operational
   },
   far: {
     entityLabel: 'Failure mode',
-    supports: ['savedViews', 'displayControls', 'history', 'compare', 'linkedRecords', 'archiveRestore', 'stickyIdentityHeader', 'frontendValidation', 'searchableSelectors', 'deepLinkedDetails'],
+    supports: ['savedViews', 'displayControls', 'grouping', 'contextMenu', 'bulkActions', 'hoverPreviews', 'history', 'compare', 'linkedRecords', 'archiveRestore', 'stickyIdentityHeader', 'frontendValidation', 'searchableSelectors'],
     hasAdvancedEditor: true,
     hasLinkedKnowledge: true,
     hasVersioning: true,
   },
   research: {
     entityLabel: 'Research vector',
-    supports: ['savedViews', 'history', 'linkedRecords', 'archiveRestore', 'stickyIdentityHeader', 'frontendValidation', 'searchableSelectors'],
+    supports: ['savedViews', 'displayControls', 'grouping', 'contextMenu', 'bulkActions', 'hoverPreviews', 'history', 'compare', 'linkedRecords', 'archiveRestore', 'stickyIdentityHeader', 'frontendValidation', 'searchableSelectors'],
     hasAdvancedEditor: true,
     hasLinkedKnowledge: true,
     hasVersioning: true,

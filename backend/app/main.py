@@ -111,7 +111,7 @@ app.add_middleware(
     allow_credentials=allow_creds,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=EXPOSED_DOWNLOAD_HEADERS + ["X-Request-ID", "X-SysGrid-Tenant-Id"],
+    expose_headers=EXPOSED_DOWNLOAD_HEADERS + ["X-Request-ID"],
 )
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts)
 
@@ -124,9 +124,6 @@ async def request_context_and_export_headers(request: Request, call_next):
 
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
-    tenant_id = getattr(request.state, "tenant_id", None)
-    if tenant_id is not None:
-        response.headers["X-SysGrid-Tenant-Id"] = str(tenant_id)
     if response.status_code == 200:
         response_header_names = {key.lower() for key in response.headers.keys()}
         if {
@@ -134,7 +131,7 @@ async def request_context_and_export_headers(request: Request, call_next):
             "x-sysgrid-import-profile",
             "x-sysgrid-schema-version",
         }.issubset(response_header_names):
-            response.headers["Access-Control-Expose-Headers"] = f"{ROUND_TRIP_EXPOSE_HEADERS}, X-SysGrid-Tenant-Id"
+            response.headers["Access-Control-Expose-Headers"] = ROUND_TRIP_EXPOSE_HEADERS
     return response
 
 

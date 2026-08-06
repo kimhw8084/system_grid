@@ -1,7 +1,7 @@
 import { clickResilientButton } from './helpers/sysgrid';
 import { expect } from '@playwright/test';
 import { test } from './helpers/sysgrid-test';
-import { resetBrowserState, seedOperationalScenario, testApiBase } from './helpers/sysgrid'
+import { resetBrowserState, seedOperationalScenario } from './helpers/sysgrid'
 
 test.describe('Projects Creation Workflow', () => {
   test('should create a new project with cascading multi-selects and month/year dates', async ({ page, sysApi: request }) => {
@@ -13,7 +13,7 @@ test.describe('Projects Creation Workflow', () => {
     const serviceName = seed.service.name
     
     // Seed the system option so it shows up in ProjectForm
-    await request.post(`${testApiBase}/settings/options`, {
+    await request.post('http://127.0.0.1:8000/api/v1/settings/options', {
       data: {
         category: 'LogicalSystem',
         label: systemName,

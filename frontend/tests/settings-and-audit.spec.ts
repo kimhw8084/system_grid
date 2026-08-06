@@ -1,8 +1,9 @@
-import { clickResilientButton, resetBrowserState, seedOperationalScenario, testApiBase } from './helpers/sysgrid'
-import { expect } from '@playwright/test'
-import { test } from './helpers/sysgrid-test'
+import { clickResilientButton } from './helpers/sysgrid';
+import { expect } from '@playwright/test';
+import { test } from './helpers/sysgrid-test';
+import { resetBrowserState, seedOperationalScenario } from './helpers/sysgrid'
 
-const apiBase = testApiBase
+const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
 
 test.describe('Settings and audit workflows', () => {
   test('persists theme and loads major settings sections', async ({ page }) => {

@@ -55,10 +55,10 @@ export function computeWorkspaceAnchoredPanelStyle({
       bottom: resolvedPlacement === 'above' ? viewportHeight - triggerRect.top + offset : undefined,
       left,
       width,
-      boxSizing: 'border-box',
       maxHeight: Math.max(40, availableHeight),
       overflowY: 'auto',
       overscrollBehavior: 'contain',
+      scrollbarGutter: 'stable',
       zIndex: WORKSPACE_LAYER_Z.floatingPanel,
       visibility: 'visible',
       pointerEvents: 'auto',
@@ -193,23 +193,19 @@ export function useWorkspaceAnchoredLayer(isOpen: boolean, options?: { offset?: 
       return
     }
 
-    const trigger = triggerRef.current
-
     const handleViewportChange = (event?: Event) => {
       if (shouldIgnoreWorkspaceAnchoredScroll(event?.target ?? null, panelRef.current)) return
       schedulePositionUpdate()
     }
 
-    updatePosition()
     schedulePositionUpdate()
     window.addEventListener('resize', handleViewportChange)
     window.addEventListener('scroll', handleViewportChange, true)
 
     let observer: ResizeObserver | null = null
     let observerFrame: number | null = null
-    if (typeof ResizeObserver !== 'undefined' && trigger) {
+    if (typeof ResizeObserver !== 'undefined') {
       observer = new ResizeObserver(() => schedulePositionUpdate())
-      observer.observe(trigger)
       observerFrame = window.requestAnimationFrame(() => {
         if (panelRef.current) observer?.observe(panelRef.current)
       })
@@ -225,7 +221,7 @@ export function useWorkspaceAnchoredLayer(isOpen: boolean, options?: { offset?: 
         frameRef.current = null
       }
     }
-  }, [isOpen, schedulePositionUpdate, updatePosition])
+  }, [isOpen, schedulePositionUpdate])
 
   return { triggerRef, panelRef, panelStyle }
 }

@@ -3,7 +3,7 @@ import { ChaosController } from './chaosController.ts';
 import { InteractionChaos } from './chaosInteractions.ts';
 import { NetworkChaos } from './chaosNetwork.ts';
 import { StateChaos } from './chaosState.ts';
-import { resolveTestApiUrl, selectAndVerifyTestTenant, testApiHeaders, testTenantId, testUserId } from './sysgrid.ts';
+import { testApiHeaders } from './sysgrid.ts';
 
 // Extend the base test to include a globally pre-configured API client and ChaosController
 export const test = base.extend<{ 
@@ -11,8 +11,7 @@ export const test = base.extend<{
   interactionChaos: InteractionChaos, 
   networkChaos: NetworkChaos,
   stateChaos: StateChaos,
-  sysApi: any,
-  canonicalTenantGuard: void
+  sysApi: any
 }>({
   chaos: async ({}, use) => {
     const controller = new ChaosController();
@@ -35,28 +34,12 @@ export const test = base.extend<{
     chaos.register(stateTool);
     await use(stateTool);
   },
-  canonicalTenantGuard: [async ({ playwright }, use) => {
-    const request = await playwright.request.newContext({
-      extraHTTPHeaders: { 'X-User-Id': testUserId, 'X-Tenant-Id': testTenantId },
-    });
-    try {
-      await selectAndVerifyTestTenant(request, testTenantId, testUserId);
-      await use();
-    } finally {
-      try {
-        await selectAndVerifyTestTenant(request, testTenantId, testUserId);
-      } finally {
-        await request.dispose();
-      }
-    }
-  }, { auto: true }],
-  sysApi: async ({ playwright }, use) => {
-    const request = await playwright.request.newContext({ extraHTTPHeaders: testApiHeaders });
+  sysApi: async ({ request, baseURL }, use) => {
     // We wrap the raw Playwright request with our deterministic headers
     // ensuring no test ever forgets the tenant or user context.
     const customRequest = {
       post: async (path: string, options?: any) => {
-        return request.post(resolveTestApiUrl(path), {
+        return request.post(path, {
           ...options,
           headers: {
             ...testApiHeaders,
@@ -65,7 +48,7 @@ export const test = base.extend<{
         });
       },
       get: async (path: string, options?: any) => {
-        return request.get(resolveTestApiUrl(path), {
+        return request.get(path, {
           ...options,
           headers: {
             ...testApiHeaders,
@@ -74,7 +57,7 @@ export const test = base.extend<{
         });
       },
       patch: async (path: string, options?: any) => {
-        return request.patch(resolveTestApiUrl(path), {
+        return request.patch(path, {
           ...options,
           headers: {
             ...testApiHeaders,
@@ -83,7 +66,7 @@ export const test = base.extend<{
         });
       },
       delete: async (path: string, options?: any) => {
-        return request.delete(resolveTestApiUrl(path), {
+        return request.delete(path, {
           ...options,
           headers: {
             ...testApiHeaders,
@@ -92,7 +75,7 @@ export const test = base.extend<{
         });
       },
       put: async (path: string, options?: any) => {
-        return request.put(resolveTestApiUrl(path), {
+        return request.put(path, {
           ...options,
           headers: {
             ...testApiHeaders,
@@ -102,6 +85,5 @@ export const test = base.extend<{
       }
     };
     await use(customRequest as any);
-    await request.dispose();
   }
 });

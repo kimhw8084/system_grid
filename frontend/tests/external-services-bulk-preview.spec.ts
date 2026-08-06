@@ -1,8 +1,8 @@
 import { expect } from '@playwright/test'
 import { test } from './helpers/sysgrid-test'
-import { clickResilientButton, createExternalEntity, createService, resetBrowserState, testApiBase } from './helpers/sysgrid'
+import { clickResilientButton, createExternalEntity, createService, resetBrowserState } from './helpers/sysgrid'
 
-const apiBase = testApiBase
+const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
 const multiSelectModifier = process.platform === 'darwin' ? 'Meta' : 'Control'
 const targetEnvironment = 'Development'
 

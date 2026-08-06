@@ -71,19 +71,19 @@ class Device(Base, BaseMixin):
     type = Column(String) # Physical, Virtual, Storage, Switch
     size_u = Column(Integer, default=1) # Default U-height for the device
     tenant_id = Column(Integer, index=True, nullable=True) # Added for multi-tenancy. Foreign key removed due to cross-database reference.
-
+    
     manufacturer = Column(String)
     model = Column(String)
     serial_number = Column(String, index=True) # Removed unique
     asset_tag = Column(String, index=True)
     part_number = Column(String)
-
+    
     os_name = Column(String)
     os_version = Column(String)
     management_ip = Column(String)
     primary_ip = Column(String)
     management_url = Column(String)
-
+    
     owner = Column(String)
     business_unit = Column(String)
     vendor = Column(String)
@@ -94,23 +94,23 @@ class Device(Base, BaseMixin):
     warranty_end = Column(DateTime, nullable=True)
     eol_date = Column(DateTime, nullable=True)
     role = Column(String) # Role description of the asset
-
+    
     power_supply_count = Column(Integer, default=2)
     power_max_w = Column(Float, default=0.0)
     power_typical_w = Column(Float, default=0.0)
     btu_hr = Column(Float, default=0.0)
     depth = Column(String, default="Full") # Full, Half
-
+    
     tool_group = Column(String)
     fab_area = Column(String)
     recipe_critical = Column(Boolean, default=False)
-
+    
     metadata_json = Column(JSON, default=dict)
     is_reservation = Column(Boolean, default=False)
     reservation_info = Column(JSON, default=dict) # {est_arrival: "YYYY-MM", requester: "Name"}
     is_deleted = Column(Boolean, default=False)
     logic_json = Column(JSON, default=list) # [{id, name, upstream_ids: [], controller: "", steps: [], state: "", downstream_ids: []}]
-
+    
     locations = relationship("DeviceLocation", back_populates="device", cascade="all, delete-orphan")
     components = relationship("HardwareComponent", back_populates="device", cascade="all, delete-orphan")
     software = relationship("DeviceSoftware", back_populates="device", cascade="all, delete-orphan")
@@ -132,12 +132,12 @@ class LogicalService(Base, BaseMixin):
     purpose = Column(Text) # Purpose description
     documentation_link = Column(String) # Link to source, installation, app, etc.
     installation_date = Column(DateTime) # Date of installation or planned installation
-
+    
     # Exaustive Predefined Schemas stored in JSON for maximum flexibility + strict UI enforcement
     # For Database: { engine, instance_name, port, sid, collation, always_on, data_path, backup_policy }
     # For Web: { server_type, url, bindings, app_pool, ssl_expiry, root_path }
     config_json = Column(JSON, default=dict)
-
+    
     # License & Procurement
     purchase_type = Column(String) # One-time, Subscription
     license_key = Column(String)
@@ -147,12 +147,12 @@ class LogicalService(Base, BaseMixin):
     currency = Column(String) # USD, KRW
     manufacturer = Column(String) # Developing company (e.g. Microsoft)
     supplier = Column(String) # Licensing company (e.g. AWS, Reseller)
-
+    
     # Smart Expandability: Unlimited custom key-values
     custom_attributes = Column(JSON, default=dict)
     logic_json = Column(JSON, default=list)
     is_deleted = Column(Boolean, default=False)
-
+    
     device = relationship("Device", back_populates="logical_services")
     secrets = relationship("ServiceSecret", back_populates="service", cascade="all, delete-orphan")
 
@@ -297,7 +297,7 @@ class MonitoringItem(Base, BaseMixin):
     logic_json = Column(JSON, default=list) # Structured logic entries
     monitored_services = Column(JSON, default=list) # List of LogicalService IDs
     owner_team = Column(String) # Managed via Team registry names
-
+    
     # Reliability & Frequency Controls
     check_interval = Column(Integer, default=60) # Seconds
     alert_duration = Column(Integer, default=0) # Seconds before alerting
@@ -330,7 +330,7 @@ class MonitoringOwner(Base, BaseMixin):
     name = Column(String)
     external_id = Column(String) # Owner external ID snapshot
     role = Column(String) # From MonitoringOwnerRole enum
-
+    
     monitoring_item = relationship("MonitoringItem", back_populates="owners")
     operator = relationship("Operator")
 
@@ -338,25 +338,25 @@ class FirewallRule(Base, BaseMixin):
     __tablename__ = "firewall_rules"
     name = Column(String, index=True)
     risk = Column(Text) # Business impact if rule is missing
-
+    
     # Source Configuration
     source_type = Column(String) # Device, Subnet, Custom IP, Any
     source_device_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
     source_subnet_id = Column(Integer, ForeignKey("subnets.id", ondelete="SET NULL"), nullable=True)
     source_custom_ip = Column(String) # For external or one-off IPs
-
+    
     # Destination Configuration
     dest_type = Column(String) # Device, Subnet, Custom IP, Any
     dest_device_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
     dest_subnet_id = Column(Integer, ForeignKey("subnets.id", ondelete="SET NULL"), nullable=True)
     dest_custom_ip = Column(String)
-
+    
     # Protocol & Ports
     protocol = Column(String, default="TCP") # TCP, UDP, ICMP, Any
     port_range = Column(String) # e.g. "443", "1433,1434", "1024-2048"
     direction = Column(String, default="Inbound") # Inbound, Outbound
     action = Column(String, default="Allow") # Allow, Deny
-
+    
     status = Column(String, default="Active") # Active, Requested, Decommissioned
     is_deleted = Column(Boolean, default=False)
 
@@ -458,7 +458,7 @@ class ExternalEntity(Base, BaseMixin):
     poc_json = Column(JSON, default=list) # Multi-add POCs: [{first_name, last_name, id, email, phone}]
     metadata_json = Column(JSON, default=dict) # Driven by ExternalType registry keys
     is_deleted = Column(Boolean, default=False)
-
+    
     secrets = relationship("ExternalEntitySecret", back_populates="external_entity", cascade="all, delete-orphan")
     internal_team = relationship("Team", foreign_keys=[internal_team_id])
     internal_operator = relationship("Operator", foreign_keys=[internal_operator_id])
@@ -507,7 +507,7 @@ class ExternalLink(Base, BaseMixin):
     link_status = Column(String)
     credential_reference = Column(String)
     credentials = Column(JSON) # Store as { "username": "...", "password": "...", "note": "..." }
-
+    
     external_entity = relationship("ExternalEntity")
     device = relationship("Device")
     service = relationship("LogicalService")
@@ -530,10 +530,10 @@ class Vendor(Base, BaseMixin):
     name = Column(String, index=True)
     country = Column(String)
     primary_personnel_id = Column(Integer, ForeignKey("vendor_personnel.id", ondelete="SET NULL"), nullable=True)
-
+    
     is_deleted = Column(Boolean, default=False)
     metadata_json = Column(JSON, default=dict)
-
+    
     personnel = relationship("VendorPersonnel", back_populates="vendor_ref", cascade="all, delete-orphan", foreign_keys="[VendorPersonnel.vendor_id]")
     contracts = relationship("VendorContract", back_populates="vendor_ref", cascade="all, delete-orphan")
     primary_personnel = relationship("VendorPersonnel", foreign_keys=[primary_personnel_id], post_update=True)
@@ -548,14 +548,14 @@ class VendorPersonnel(Base, BaseMixin):
     company_email = Column(String)
     internal_email = Column(String)
     phone = Column(String)
-
+    
     # Nested lists of dicts
     accounts = Column(JSON, default=list) # [{type, username, purpose_description}]
     pcs = Column(JSON, default=list) # [{name, type, purpose_description}]
-
+    
     metadata_json = Column(JSON, default=dict)
     is_deleted = Column(Boolean, default=False)
-
+    
     vendor_ref = relationship("Vendor", back_populates="personnel", foreign_keys=[vendor_id])
 
 class VendorContract(Base, BaseMixin):
@@ -566,7 +566,7 @@ class VendorContract(Base, BaseMixin):
     status = Column(String) # Drafted, In Review, Completed, Cancelled, Expired
     effective_date = Column(DateTime)
     expiry_date = Column(DateTime)
-
+    
     # Details
     covered_systems = Column(JSON, default=list) # List of system names
     covered_assets = Column(JSON, default=list) # List of device IDs
@@ -574,10 +574,10 @@ class VendorContract(Base, BaseMixin):
     schedule = Column(JSON, default=dict) # {work_schedule, oncall_method, holiday_policy}
     document_link = Column(String)
     previous_contract_changes = Column(Text) # What changed from the previous contract
-
+    
     metadata_json = Column(JSON, default=dict)
     is_deleted = Column(Boolean, default=False)
-
+    
     vendor_ref = relationship("Vendor", back_populates="contracts")
 
 # --- NEW KNOWLEDGE BASE MODULE ---
@@ -587,22 +587,22 @@ class KnowledgeEntry(Base, BaseMixin):
     category = Column(String, index=True) # Q&A, Manual, BKM
     title = Column(String, index=True)
     content = Column(Text) # Markdown or Rich Text (Mainly for simple entries)
-
+    
     # Structured Data (BKM or System Manual)
     # BKM Schema: { purpose, prerequisites: [], workflow_diagram, steps: [], tips: [], troubleshooting: [], next_steps: [] }
     # Manual Schema: { business_value: {}, overview: {}, performance: {}, operation: {} }
-    content_json = Column(JSON, default=dict)
-
+    content_json = Column(JSON, default=dict) 
+    
     # Q&A specific fields
     question_context = Column(Text) # Original problem description
     is_answered = Column(Boolean, default=False)
     verified_by = Column(String)
-
+    
     # Relations & Metadata
     tags = Column(JSON, default=list) # ["Network", "Database", "Vendor:Dell"]
     impacted_systems = Column(JSON, default=list) # List of system names
     linked_device_ids = Column(JSON, default=list) # Multi-select assets
-
+    
     status = Column(String, default="Published") # Draft, Published, Archived
     is_deleted = Column(Boolean, default=False)
     metadata_json = Column(JSON, default=dict)
@@ -613,23 +613,23 @@ class KnowledgeQA(Base, BaseMixin):
     __tablename__ = "knowledge_qa"
     knowledge_id = Column(Integer, ForeignKey("knowledge_entries.id", ondelete="CASCADE"))
     parent_qa_id = Column(Integer, ForeignKey("knowledge_qa.id", ondelete="CASCADE"), nullable=True)
-
+    
     content = Column(Text)
     author = Column(String)
     author_team = Column(String)
     target_audience = Column(String) # Internal, HQ, Dept, Vendor, etc.
-
+    
     # If it's an answer to a question
     is_answer = Column(Boolean, default=False)
     is_verified = Column(Boolean, default=False)
-
+    
     # Metadata for the "timeline" feel
     entry_type = Column(String, default="Question") # Question, Answer, Follow-up, Observation
-
+    
     timestamp = Column(DateTime, server_default=func.now())
     is_deleted = Column(Boolean, default=False)
     metadata_json = Column(JSON, default=dict) # For images, links, etc.
-
+    
     knowledge = relationship("KnowledgeEntry", back_populates="qa_threads")
     replies = relationship("KnowledgeQA", backref=backref("parent", remote_side="KnowledgeQA.id"), cascade="all, delete-orphan")
 
@@ -669,179 +669,89 @@ rca_failure_mode_links = Table(
 
 class FarFailureMode(Base, BaseMixin):
     __tablename__ = "far_failure_modes"
-    __table_args__ = (
-        CheckConstraint("severity BETWEEN 1 AND 10", name="far_mode_severity_1_10"),
-        CheckConstraint("occurrence BETWEEN 1 AND 10", name="far_mode_occurrence_1_10"),
-        CheckConstraint("detection BETWEEN 1 AND 10", name="far_mode_detection_1_10"),
-        CheckConstraint("rpn BETWEEN 1 AND 1000", name="far_mode_rpn_1_1000"),
-        CheckConstraint("version >= 1", name="far_mode_version_positive"),
-        Index("ix_far_failure_modes_active_system", "is_retired", "system_name"),
-    )
-
-    system_name = Column(String, index=True, nullable=False)
-    failure_type = Column(String, default="Design", nullable=False)
-    title = Column(String, index=True, nullable=False)
+    system_name = Column(String, index=True)
+    failure_type = Column(String, default="Design")
+    title = Column(String, index=True)
     effect = Column(Text)
+    
+    # FMEA Indices
+    severity = Column(Integer, default=1)
+    occurrence = Column(Integer, default=1)
+    detection = Column(Integer, default=1)
+    rpn = Column(Integer, default=1)
+    
+    # Status: Analyzing, Cause Identified, Resolution Identified, Mitigated, Eliminated
+    status = Column(String, default="Analyzing")
+    has_incident_history = Column(Boolean, default=False)
+    
+    version = Column(Integer, default=1)
+    is_deleted = Column(Boolean, default=False)
+    metadata_json = Column(JSON, default=dict)
 
-    # Backend-authoritative FMEA indices.
-    severity = Column(Integer, default=1, nullable=False)
-    occurrence = Column(Integer, default=1, nullable=False)
-    detection = Column(Integer, default=1, nullable=False)
-    rpn = Column(Integer, default=1, nullable=False)
-
-    # Analyzing, Cause Identified, Resolution Identified, Mitigated, Eliminated.
-    status = Column(String, default="Analyzing", nullable=False)
-    owner_user_id = Column(String(200), nullable=True, index=True)
-    owner_team = Column(String(200), nullable=True, index=True)
-    due_at = Column(DateTime(timezone=True), nullable=True)
-    has_incident_history = Column(Boolean, default=False, nullable=False)
-
-    version = Column(Integer, default=1, nullable=False)
-    # is_deleted remains as a read-compatibility field during the migration window.
-    is_deleted = Column(Boolean, default=False, nullable=False)
-    is_retired = Column(Boolean, default=False, nullable=False, index=True)
-    retired_at = Column(DateTime(timezone=True), nullable=True)
-    retired_by_user_id = Column(String(200), nullable=True)
-    retired_reason = Column(Text, nullable=True)
-    metadata_json = Column(JSON, default=dict, nullable=False)
-
+    # Relationships
     affected_assets = relationship("Device", secondary=far_mode_assets)
     causes = relationship("FarFailureCause", secondary=far_mode_causes, back_populates="failure_modes")
     mitigations = relationship("FarMitigation", secondary=far_mode_mitigations)
-    prevention_actions = relationship("FarPrevention", back_populates="failure_mode")
+    prevention_actions = relationship("FarPrevention", back_populates="failure_mode", cascade="all, delete-orphan")
     linked_rcas = relationship("RcaRecord", secondary=rca_failure_mode_links, back_populates="linked_failure_modes")
 
-
 class FarHistory(Base, BaseMixin):
-    """Legacy failure-mode history retained for backward compatibility."""
     __tablename__ = "far_history"
     far_mode_id = Column(Integer, ForeignKey("far_failure_modes.id", ondelete="CASCADE"))
     version = Column(Integer)
-    snapshot = Column(JSON)
+    snapshot = Column(JSON) # Snapshot of fields
     change_summary = Column(Text, nullable=True)
 
     __table_args__ = (
         UniqueConstraint("far_mode_id", "version", name="uq_far_history_mode_version"),
     )
 
-
-class FarEntityHistory(Base, BaseMixin):
-    """Versioned forensic state for every FAR entity without implicit undelete."""
-    __tablename__ = "far_entity_history"
-    __table_args__ = (
-        UniqueConstraint("entity_type", "entity_id", "version", name="uq_far_entity_history_version"),
-        CheckConstraint("version >= 1", name="far_entity_history_version_positive"),
-        Index("ix_far_entity_history_lookup", "entity_type", "entity_id", "version"),
-    )
-
-    entity_type = Column(String(40), nullable=False)
-    entity_id = Column(Integer, nullable=False)
-    version = Column(Integer, nullable=False)
-    schema_version = Column(Integer, default=1, nullable=False)
-    snapshot = Column(JSON, nullable=False)
-    relationship_snapshot = Column(JSON, default=dict, nullable=False)
-    actor_user_id = Column(String(200), nullable=False)
-    snapshot_hash = Column(String(64), nullable=False)
-    change_summary = Column(Text, nullable=False)
-
-
 class FarFailureCause(Base, BaseMixin):
     __tablename__ = "far_failure_causes"
-    __table_args__ = (
-        CheckConstraint("occurrence_level BETWEEN 1 AND 10", name="far_cause_occurrence_1_10"),
-        CheckConstraint("version >= 1", name="far_failure_causes_version_positive"),
-    )
-    cause_text = Column(Text, nullable=False)
-    occurrence_level = Column(Integer, default=1, nullable=False)
+    cause_text = Column(Text)
+    occurrence_level = Column(Integer, default=1)
     responsible_team = Column(String)
-    version = Column(Integer, default=1, nullable=False)
-    is_retired = Column(Boolean, default=False, nullable=False, index=True)
-    retired_at = Column(DateTime(timezone=True), nullable=True)
-    retired_by_user_id = Column(String(200), nullable=True)
-    retired_reason = Column(Text, nullable=True)
-
+    
     failure_modes = relationship("FarFailureMode", secondary=far_mode_causes, back_populates="causes")
     resolutions = relationship("FarResolution", secondary=far_cause_resolutions)
-    mitigations = relationship("FarMitigation", backref="cause")
-    prevention_actions = relationship("FarPrevention", backref="cause")
-
+    mitigations = relationship("FarMitigation", backref="cause", cascade="all, delete-orphan")
+    prevention_actions = relationship("FarPrevention", backref="cause", cascade="all, delete-orphan")
 
 class FarResolution(Base, BaseMixin):
     __tablename__ = "far_resolutions"
-    __table_args__ = (CheckConstraint("version >= 1", name="far_resolutions_version_positive"),)
+    # Links to a KnowledgeEntry (BKM)
     knowledge_id = Column(Integer, ForeignKey("knowledge_entries.id", ondelete="SET NULL"), nullable=True)
     preventive_follow_up = Column(Text)
     responsible_team = Column(String)
     guidance_notes = Column(Text)
-    version = Column(Integer, default=1, nullable=False)
-    is_retired = Column(Boolean, default=False, nullable=False, index=True)
-    retired_at = Column(DateTime(timezone=True), nullable=True)
-    retired_by_user_id = Column(String(200), nullable=True)
-    retired_reason = Column(Text, nullable=True)
 
     knowledge_bkm = relationship("KnowledgeEntry")
 
-
 class FarMitigation(Base, BaseMixin):
     __tablename__ = "far_mitigations"
-    __table_args__ = (CheckConstraint("version >= 1", name="far_mitigations_version_positive"),)
-    mitigation_type = Column(String, nullable=False)
+    # Types: Monitoring, Workaround, Process Change
+    mitigation_type = Column(String) 
     mitigation_steps = Column(Text)
     responsible_team = Column(String)
-    status = Column(String, default="Not Started", nullable=False)
-    cause_id = Column(Integer, ForeignKey("far_failure_causes.id", ondelete="RESTRICT"), nullable=True)
+    status = Column(String, default="Not Started")
+    
+    # Link to a specific Cause
+    cause_id = Column(Integer, ForeignKey("far_failure_causes.id", ondelete="CASCADE"), nullable=True)
+    
+    # Link to a specific Monitoring Item if type is 'Monitoring'
     monitoring_item_id = Column(Integer, ForeignKey("monitoring_items.id", ondelete="SET NULL"), nullable=True)
-    version = Column(Integer, default=1, nullable=False)
-    is_retired = Column(Boolean, default=False, nullable=False, index=True)
-    retired_at = Column(DateTime(timezone=True), nullable=True)
-    retired_by_user_id = Column(String(200), nullable=True)
-    retired_reason = Column(Text, nullable=True)
     monitoring_item = relationship("MonitoringItem")
-
 
 class FarPrevention(Base, BaseMixin):
     __tablename__ = "far_prevention"
-    __table_args__ = (CheckConstraint("version >= 1", name="far_prevention_version_positive"),)
-    failure_mode_id = Column(Integer, ForeignKey("far_failure_modes.id", ondelete="RESTRICT"), nullable=False)
-    cause_id = Column(Integer, ForeignKey("far_failure_causes.id", ondelete="RESTRICT"), nullable=True)
-    project_id = Column(Integer, ForeignKey("projects.id", ondelete="RESTRICT"), nullable=True)
-    prevention_action = Column(Text, nullable=False)
-    status = Column(String, default="Open", nullable=False)
-    target_date = Column(DateTime(timezone=True), nullable=True)
+    failure_mode_id = Column(Integer, ForeignKey("far_failure_modes.id", ondelete="CASCADE"))
+    cause_id = Column(Integer, ForeignKey("far_failure_causes.id", ondelete="CASCADE"), nullable=True)
+    prevention_action = Column(Text)
+    status = Column(String, default="Open") # Open, In Progress, Verified, Completed
+    target_date = Column(DateTime, nullable=True)
     responsible_team = Column(String)
-    version = Column(Integer, default=1, nullable=False)
-    is_retired = Column(Boolean, default=False, nullable=False, index=True)
-    retired_at = Column(DateTime(timezone=True), nullable=True)
-    retired_by_user_id = Column(String(200), nullable=True)
-    retired_reason = Column(Text, nullable=True)
-
+    
     failure_mode = relationship("FarFailureMode", back_populates="prevention_actions")
-    project = relationship("Project")
-
-
-class FarOperationReceipt(Base, BaseMixin):
-    """Tenant-local, actor-bound preview/idempotency receipt."""
-    __tablename__ = "far_operation_receipts"
-    __table_args__ = (
-        UniqueConstraint("actor_user_id", "idempotency_key", name="uq_far_operation_actor_idempotency"),
-        Index("ix_far_operation_receipt_token", "token_hash"),
-        CheckConstraint("state IN ('previewed', 'executed', 'expired', 'failed')", name="far_operation_receipt_state"),
-    )
-
-    actor_user_id = Column(String(200), nullable=False, index=True)
-    tenant_identity = Column(String(80), nullable=False, index=True)
-    operation_type = Column(String(80), nullable=False, index=True)
-    idempotency_key = Column(String(200), nullable=False)
-    token_hash = Column(String(64), nullable=False, unique=True)
-    payload_hash = Column(String(64), nullable=False)
-    preview_hash = Column(String(64), nullable=False)
-    target_versions = Column(JSON, nullable=False, default=dict)
-    expires_at = Column(DateTime(timezone=True), nullable=False)
-    state = Column(String(20), nullable=False, default="previewed")
-    result_json = Column(JSON, nullable=False, default=dict)
-    audit_correlation_id = Column(String(80), nullable=False, index=True)
-    executed_at = Column(DateTime(timezone=True), nullable=True)
-
 
 # --- NEW INVESTIGATION MODULE (Renamed/Expanded Troubleshooting) ---
 
@@ -852,15 +762,15 @@ class Investigation(Base, BaseMixin):
     category = Column(String, default="General") # General, Troubleshooting, Security, Maintenance
     research_domain = Column(String) # Added research_domain
     failure_domain = Column(String) # Added failure_domain
-
+    
     status = Column(String, default="Analyzing") # Analyzing, Escalated, Monitoring, Resolved, Closed
     priority = Column(String, default="Medium") # Urgent, High, Medium, Low
-
+    
     # Context
     systems = Column(JSON, default=list)
     impacted_device_ids = Column(JSON, default=list)
     assigned_team = Column(String)
-
+    
     # Forensics & Troubleshooting Details
     impact = Column(Text)
     trigger_event = Column(Text)
@@ -870,13 +780,13 @@ class Investigation(Base, BaseMixin):
     prevention_method = Column(Text)
     monitoring_items = Column(JSON, default=list) # Items to monitor after resolution
     lessons_learned = Column(Text)
-
+    
     # Optional timing
     initiation_at = Column(DateTime, nullable=True)
-
+    
     is_deleted = Column(Boolean, default=False)
     metadata_json = Column(JSON, default=dict)
-
+    
     progress_logs = relationship("InvestigationProgress", back_populates="investigation", cascade="all, delete-orphan")
 
 class InvestigationProgress(Base, BaseMixin):
@@ -885,12 +795,12 @@ class InvestigationProgress(Base, BaseMixin):
     entry_text = Column(Text)
     entry_type = Column(String, default="Update") # Update, Diagnosis, Action, Observation, Milestone
     poc = Column(String) # Point of Contact/Person who did it
-
+    
     added_by = Column(String)
     timestamp = Column(DateTime, server_default=func.now())
-
+    
     metadata_json = Column(JSON, default=dict) # To store links to files/images
-
+    
     investigation = relationship("Investigation", back_populates="progress_logs")
 
 class Project(Base, BaseMixin):
@@ -898,26 +808,26 @@ class Project(Base, BaseMixin):
     name = Column(String, index=True)
     description = Column(Text)
     type = Column(String) # Strategic, Tactical, Operational, Research
-    status = Column(String, default="Planning")
+    status = Column(String, default="Planning") 
     priority = Column(String, default="Medium")
     start_date = Column(DateTime)
     end_date = Column(DateTime)
     owner = Column(String)
     owners = Column(JSON, default=list) # Multi-owner support
-
+    
     jira_links = Column(JSON, default=list)
     target_systems = Column(JSON, default=list)
     target_assets = Column(JSON, default=list)
     target_services = Column(JSON, default=list)
     beneficiaries = Column(JSON, default=list)
-
+    
     problem_statement = Column(Text)
     objective = Column(Text)
     key_functions = Column(JSON, default=list) # List of strings
     expected_outcomes = Column(JSON, default=list) # List of strings
-
+    
     parent_project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
-
+    
     # ROI Metrics
     roi_types = Column(JSON, default=list) # List of active ROI streams
     roi_defense_line = Column(Integer, default=0) # 0, 1, 2
@@ -931,12 +841,12 @@ class Project(Base, BaseMixin):
     wafers_gained = Column(Float, default=0.0)
     wafers_gained_math = Column(Text)
     wafers_gained_desc = Column(Text)
-
+    
     # Timing
     completed_at = Column(DateTime(timezone=True), nullable=True)
-
+    
     appendix_json = Column(JSON, default=dict) # {glossary: [], images: []}
-
+    
     team_members = Column(JSON, default=list)
     budget = Column(Float, default=0.0)
     currency = Column(String, default="USD")
@@ -953,7 +863,7 @@ class ProjectTask(Base, BaseMixin):
     __tablename__ = "project_tasks"
     project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"))
     parent_task_id = Column(Integer, ForeignKey("project_tasks.id", ondelete="CASCADE"), nullable=True)
-
+    
     name = Column(String, index=True)
     description = Column(Text)
     start_date = Column(DateTime)
@@ -964,11 +874,11 @@ class ProjectTask(Base, BaseMixin):
     status = Column(String, default="To Do")
     owner = Column(String)
     assigned_objects = Column(JSON, default=list) # Linked assets/services
-
+    
     dependencies_json = Column(JSON, default=list) # List of task IDs this task depends on
     estimate_hours = Column(Float, default=0.0)
     metadata_json = Column(JSON, default=dict)
-
+    
     project = relationship("Project", back_populates="tasks")
     subtasks = relationship("ProjectTask", backref=backref("parent_task", remote_side="ProjectTask.id"), cascade="all, delete-orphan")
     comments = relationship("ProjectComment", back_populates="task", cascade="all, delete-orphan")
@@ -978,11 +888,11 @@ class ProjectComment(Base, BaseMixin):
     __tablename__ = "project_comments"
     project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"))
     task_id = Column(Integer, ForeignKey("project_tasks.id", ondelete="CASCADE"), nullable=True)
-
+    
     author = Column(String)
     content = Column(Text)
     timestamp = Column(DateTime, server_default=func.now())
-
+    
     project = relationship("Project", back_populates="comments")
     task = relationship("ProjectTask", back_populates="comments")
 
@@ -990,13 +900,13 @@ class ProjectQA(Base, BaseMixin):
     __tablename__ = "project_qa"
     project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"))
     task_id = Column(Integer, ForeignKey("project_tasks.id", ondelete="CASCADE"), nullable=True)
-
+    
     question = Column(Text)
     answer = Column(Text, nullable=True)
     asked_by = Column(String)
     answered_by = Column(String, nullable=True)
     status = Column(String, default="Pending") # Pending, Answered
-
+    
     project = relationship("Project", back_populates="qa_items")
     task = relationship("ProjectTask", back_populates="qa_items")
 
@@ -1011,7 +921,7 @@ class RcaRecord(Base, BaseMixin):
     priority = Column(Integer, default=1) # 1-10 priority gauge
     severity_logic = Column(JSON, default=dict) # { flow_halted: bool, scrap_risk: bool, etc }
     initial_symptoms = Column(Text)
-
+    
     # Timing & Ownership
     occurrence_at = Column(DateTime)
     detection_at = Column(DateTime) # Added detection_at
@@ -1019,38 +929,38 @@ class RcaRecord(Base, BaseMixin):
     owner = Column(String)
     owners = Column(JSON, default=list) # Added multi-owner support
     jira_link = Column(String)
-
+    
     # Enum Classifications
     incident_type = Column(String) # Added incident_type
     detection_type = Column(String) # Added detection_type
     impact_type = Column(String) # Added impact_type
-
+    
     # Cascading selection context
     target_system = Column(String) # Legacy field (string)
     target_systems = Column(JSON, default=list) # New multi-select field
     impacted_asset_ids = Column(JSON, default=list) # List of device IDs within that system
     impacted_service_ids = Column(JSON, default=list) # List of service IDs within those assets
-
+    
     # FAB Impact
     fab_impact_json = Column(JSON, default=lambda: {"categories": [], "explanation": "", "severity": 1})
-
+    
     # Investigation Flow
     identification_steps_json = Column(JSON, default=list) # [{step, text, images: []}]
     rca_steps_json = Column(JSON, default=list) # [{step, text, images: []}]
     potential_causes_json = Column(JSON, default=list) # [{cause, indicator, bkm_id, status}]
-
+    
     narrative_summary = Column(Text) # Step-by-step narrative
     evidence_json = Column(JSON, default=list) # [{ type: 'image|log|text', content: '...', timestamp: '...' }]
     mitigation_logs_json = Column(JSON, default=list) # [{type, description, status, timestamp, images: []}]
-
+    
     # Resolution Logic
     cause_of_failure = Column(Text)
     signature_indicator = Column(Text) # The specific log/metric that confirms the failure
-
+    
     # External Hooks
     knowledge_id = Column(Integer, ForeignKey("knowledge_entries.id", ondelete="SET NULL"), nullable=True)
     monitoring_item_id = Column(Integer, ForeignKey("monitoring_items.id", ondelete="SET NULL"), nullable=True)
-
+    
     status = Column(String, default="Open") # Open, Investigation, Resolved, Closed
     version = Column(Integer, default=1)
     is_deleted = Column(Boolean, default=False)
@@ -1073,7 +983,7 @@ class RcaTimelineEvent(Base, BaseMixin):
     owner_team = Column(String) # Added owner_team
     involved_pocs = Column(JSON, default=list) # List of names/IDs
     images = Column(JSON, default=list) # Added images support
-
+    
     rca = relationship("RcaRecord", back_populates="timeline")
 
 class RcaMitigation(Base, BaseMixin):
@@ -1082,7 +992,7 @@ class RcaMitigation(Base, BaseMixin):
     type = Column(String) # Preventive, Workaround, Mitigation
     action_description = Column(Text)
     status = Column(String, default="Planned") # Planned, In Progress, Verified, Completed
-
+    
     rca = relationship("RcaRecord", back_populates="mitigations")
 
 class RcaHistory(Base, BaseMixin):
@@ -1153,7 +1063,7 @@ class Operator(Base, BaseMixin):
     custom_permissions = Column(JSON, default=dict) # Override role permissions
     registration_status = Column(String, default="Pending")
     is_admin = Column(Boolean, default=False)
-
+    
     role = relationship("Role", back_populates="operators")
     team_rel = relationship("Team", back_populates="operators")
 

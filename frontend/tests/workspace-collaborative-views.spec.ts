@@ -1,8 +1,8 @@
 import { expect } from '@playwright/test'
 import { test } from './helpers/sysgrid-test'
-import { clickResilientButton, openToolbarButton, resetBrowserState, testApiBase, testApiHeaders } from './helpers/sysgrid'
+import { clickResilientButton, openToolbarButton, resetBrowserState, testApiHeaders } from './helpers/sysgrid'
 
-const apiBase = testApiBase
+const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
 
 const workspaces = [
   { key: 'monitoring', route: '/monitoring', heading: 'Monitoring' },

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { TENANT_CONTEXT_CHANGED_EVENT, TENANT_CONTEXT_SESSION_KEY, apiClient, apiFetch, getApiBaseUrl, getConfig, setApiOverride, subscribeToLatency } from './apiClient'
+import { apiClient, apiFetch, getApiBaseUrl, getConfig, setApiOverride, subscribeToLatency } from './apiClient'
 
 function makeJsonErrorResponse(status: number, statusText: string, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -12,7 +12,6 @@ function makeJsonErrorResponse(status: number, statusText: string, body: unknown
 describe('apiClient', () => {
   beforeEach(() => {
     localStorage.clear()
-    sessionStorage.clear()
     vi.restoreAllMocks()
   })
 
@@ -36,7 +35,6 @@ describe('apiClient', () => {
   it('attaches identity headers and normalizes endpoint slashes for same-origin API calls', async () => {
     localStorage.setItem('SYSGRID_OVERRIDE_API_URL', 'http://127.0.0.1:8000/api/v1')
     localStorage.setItem('SYSGRID_USER_ID', 'pw-user')
-    localStorage.setItem('SYSGRID_TENANT_CONTEXT_MODE', 'explicit')
     localStorage.setItem('SYSGRID_TENANT_ID', '42')
 
     const fetchMock = vi.fn().mockResolvedValue(
@@ -55,66 +53,10 @@ describe('apiClient', () => {
     expect(options.headers).toMatchObject({
       'Content-Type': 'application/json',
       'X-User-Id': 'pw-user',
+      'X-Tenant-Id': '42',
     })
     expect(options.credentials).toBe('include')
     expect(options.body).toBe(JSON.stringify({ enabled: true }))
-  })
-
-  it('never derives tenant routing from browser storage', async () => {
-    localStorage.setItem('SYSGRID_TENANT_CONTEXT_MODE', 'explicit')
-    localStorage.setItem('SYSGRID_TENANT_ID', '42')
-
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
-    vi.stubGlobal('fetch', fetchMock)
-
-    await apiFetch('/health')
-
-    const [, options] = fetchMock.mock.calls[0]
-    expect(options.headers['X-Tenant-Id']).toBeUndefined()
-  })
-
-
-  it('preserves an explicitly supplied tenant header for trusted callers', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', 'X-SysGrid-Tenant-Id': '42' },
-      }),
-    )
-    vi.stubGlobal('fetch', fetchMock)
-
-    await apiFetch('/health', { headers: { 'X-Tenant-Id': '42' } })
-
-    const [, options] = fetchMock.mock.calls[0]
-    expect(options.headers['X-Tenant-Id']).toBe('42')
-    expect(sessionStorage.getItem(TENANT_CONTEXT_SESSION_KEY)).toBe('42')
-  })
-
-  it('fails closed and emits a tenant-context event when a response changes tenant mid-view', async () => {
-    sessionStorage.setItem(TENANT_CONTEXT_SESSION_KEY, '1')
-    const eventListener = vi.fn()
-    window.addEventListener(TENANT_CONTEXT_CHANGED_EVENT, eventListener)
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true }), {
-        status: 200,
-        statusText: 'OK',
-        headers: { 'Content-Type': 'application/json', 'X-SysGrid-Tenant-Id': '2' },
-      }),
-    ))
-
-    await expect(apiFetch('/devices')).rejects.toMatchObject({
-      status: 409,
-      tenantId: '2',
-      message: expect.stringContaining('Tenant context changed'),
-    })
-    expect(eventListener).toHaveBeenCalledTimes(1)
-    expect(sessionStorage.getItem(TENANT_CONTEXT_SESSION_KEY)).toBe('2')
-    window.removeEventListener(TENANT_CONTEXT_CHANGED_EVENT, eventListener)
   })
 
   it('trims trailing slashes on relative endpoints without query strings', async () => {

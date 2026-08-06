@@ -28,7 +28,7 @@ test('FAR mitigation deletion resilience: Network Stall + Rapid Click', async ({
     mode_ids: [far.id],
   });
 
-  await page.goto(`/far?far=${far.id}`);
+  await page.goto(`/far?id=${far.id}`);
   const roadmapTab = page.getByRole('button', { name: /Strategic Roadmap/i });
   await expect(roadmapTab).toBeVisible();
   await roadmapTab.click();
@@ -41,12 +41,7 @@ test('FAR mitigation deletion resilience: Network Stall + Rapid Click', async ({
   await interactionChaos.enable();
   
   // 1. Stall the delete request for 1 second
-  await networkChaos.stallRequest(`/api/v1/far/mitigation/`, 1000);
-
-  page.on('dialog', async (dialog) => {
-    if (dialog.type() === 'prompt') await dialog.accept('Chaos retirement retains evidence')
-    else await dialog.accept()
-  })
+  await networkChaos.stallRequest('/api/v1/far/mitigations', 1000);
   
   // 2. Click once
   await deleteBtn.click();

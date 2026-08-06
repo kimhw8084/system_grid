@@ -93,13 +93,11 @@ export const ToolbarSearch = ({
   value,
   onChange,
   placeholder,
-  ariaLabel,
   className = ''
 }: {
   value: string
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void
   placeholder: string
-  ariaLabel?: string
   className?: string
 }) => (
   <div className={join('relative min-w-[240px] flex-1 max-w-md', className)}>
@@ -111,7 +109,6 @@ export const ToolbarSearch = ({
       value={value}
       onChange={onChange}
       placeholder={placeholder}
-      aria-label={ariaLabel || placeholder}
       className={`${TOOLBAR_CONTROL_HEIGHT} w-full rounded-lg border border-white/5 bg-white/5 pl-10 pr-4 py-0 text-[10px] font-black tracking-[0.04em] text-white outline-none transition-all placeholder:text-slate-600 focus:border-blue-500/40 focus:bg-white/[0.08]`}
     />
   </div>

@@ -1,8 +1,9 @@
-import { clickResilientButton, createAsset, createService, resetBrowserState, testApiBase } from './helpers/sysgrid'
-import { expect } from '@playwright/test'
-import { test } from './helpers/sysgrid-test'
+import { clickResilientButton } from './helpers/sysgrid';
+import { expect } from '@playwright/test';
+import { test } from './helpers/sysgrid-test';
+import { createAsset, createService, resetBrowserState } from './helpers/sysgrid'
 
-const apiBase = testApiBase
+const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
 
 test.describe('Service workflows', () => {
   test('tolerates malformed metadata and clears deep-link state on close', async ({ page, sysApi: request }) => {

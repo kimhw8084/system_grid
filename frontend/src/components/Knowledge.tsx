@@ -1873,7 +1873,7 @@ function KnowledgeDetails({ entry, onClose, onEdit, onDelete, onQuickUpdate, con
     { label: 'Architecture', items: (metadata.links.data_flow_ids || []).map((id: number) => ({ id, title: context.dataFlows?.find((item: any) => item.id === id)?.name, path: '/architecture' })) },
     { label: 'Services', items: (metadata.links.service_ids || []).map((id: number) => ({ id, title: context.services?.find((item: any) => item.id === id)?.name, path: `/services?id=${id}` })) },
     { label: 'Monitoring', items: (metadata.links.monitoring_ids || []).map((id: number) => ({ id, title: context.monitoringItems?.find((item: any) => item.id === id)?.title, path: `/monitoring?id=${id}` })) },
-    { label: 'FAR', items: (metadata.links.far_ids || []).map((id: number) => ({ id, title: context.farModes?.find((item: any) => item.id === id)?.title, path: `/far?far=${id}` })) },
+    { label: 'FAR', items: (metadata.links.far_ids || []).map((id: number) => ({ id, title: context.farModes?.find((item: any) => item.id === id)?.title, path: `/far?id=${id}` })) },
     { label: 'Research', items: (metadata.links.research_ids || []).map((id: number) => ({ id, title: context.investigations?.find((item: any) => item.id === id)?.title, path: `/research?id=${id}` })) },
     { label: 'Vendors', items: (metadata.links.vendor_ids || []).map((id: number) => ({ id, title: context.vendors?.find((item: any) => item.id === id)?.name, path: `/vendors?id=${id}` })) },
     { label: 'Projects', items: (metadata.links.project_ids || []).map((id: number) => ({ id, title: context.projects?.find((item: any) => item.id === id)?.name, path: `/projects?id=${id}` })) }

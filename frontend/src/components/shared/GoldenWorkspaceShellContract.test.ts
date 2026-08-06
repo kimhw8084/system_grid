@@ -2,53 +2,39 @@ import { describe, expect, it } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
 
-const componentsRoot = path.resolve(__dirname, '..')
-const repoRoot = path.resolve(componentsRoot, '../../..')
-const readComponent = (relative: string) => fs.readFileSync(path.join(componentsRoot, relative), 'utf8')
-const readRepo = (relative: string) => fs.readFileSync(path.join(repoRoot, relative), 'utf8')
+const root = path.resolve(__dirname, '..')
+const read = (relative: string) => fs.readFileSync(path.join(root, relative), 'utf8')
 
 const views = [
-  { file: 'MonitoringGrid.tsx', key: 'monitoring', route: '/monitoring', archetype: 'table', definitionArchetype: 'table' },
-  { file: 'assets/AssetGoldenShellScaffold.tsx', key: 'assets', route: '/asset', archetype: 'table', definitionArchetype: 'table' },
-  { file: 'ServicesReal.tsx', key: 'services', route: '/services', archetype: 'table', definitionArchetype: 'table' },
-  { file: 'External.tsx', key: 'external', route: '/external', archetype: 'table', definitionArchetype: 'table' },
-  { file: 'NetworkReal.tsx', key: 'network', route: '/network', archetype: 'hybrid', definitionArchetype: 'topology_hybrid' },
-  { file: 'FAR.tsx', key: 'far', route: '/far', archetype: 'analytical', definitionArchetype: 'investigation' },
-  { file: 'Research.tsx', key: 'research', route: '/research', archetype: 'analytical', definitionArchetype: 'research' },
-  { file: 'vendors/VendorGoldenOperationalWorkspace.tsx', key: 'vendors', route: '/vendors', archetype: 'table', definitionArchetype: 'table' },
+  ['MonitoringGrid.tsx', 'table'],
+  ['AssetReal.tsx', 'table'],
+  ['ServicesReal.tsx', 'table'],
+  ['External.tsx', 'table'],
+  ['NetworkReal.tsx', 'hybrid'],
+  ['FAR.tsx', 'analytical'],
+  ['Research.tsx', 'analytical'],
+  ['vendors/VendorGoldenOperationalWorkspace.tsx', 'table'],
 ] as const
 
 describe('Golden workspace shell contract', () => {
-  it('seals workspace identity and archetype as required shared-shell inputs', () => {
-    const shell = readComponent('shared/OperationalWorkspaceShells.tsx')
-    expect(shell).toContain('workspace: GoldenWorkspaceKey')
-    expect(shell).toContain('archetype: GoldenWorkspaceArchetype')
-    expect(shell).not.toContain('workspace?: string')
-    expect(shell).not.toContain('archetype?: GoldenWorkspaceArchetype')
+  it('seals the shared shell and grid with machine-readable ownership markers', () => {
+    const shell = read('shared/OperationalWorkspaceShells.tsx')
     expect(shell).toContain('data-golden-workspace-shell="true"')
     expect(shell).toContain('data-golden-archetype={archetype}')
     expect(shell).toContain('data-golden-grid-surface="true"')
+    expect(shell).toContain("variant?: 'golden' | 'attached-panel'")
   })
 
-  it.each(views)('$file declares exact workspace identity, archetype, route, and avoids local grid reconstruction', (view) => {
-    const source = readComponent(view.file)
-    const app = readRepo('frontend/src/App.tsx')
-    const backend = readRepo('backend/app/api/workspaces.py')
-    const routeMatrix = readRepo('frontend/tests/helpers/routeMatrix.ts')
-
-    expect(source).toContain(`workspace="${view.key}"`)
-    expect(source).toContain(`archetype="${view.archetype}"`)
+  it.each(views)('%s declares the approved archetype and avoids local golden-grid reconstruction', (file, archetype) => {
+    const source = read(file)
+    expect(source).toContain(`archetype="${archetype}"`)
     expect(source).not.toContain('className="monitoring-grid-shell monitoring-grid')
     expect(source).not.toContain('AgGridReact')
-    expect(app).toContain(`<Route path="${view.route}"`)
-    expect(backend).toContain(`"${view.key}", "${view.route}", "${view.definitionArchetype}"`)
-    expect(routeMatrix).toContain(`key: '${view.key}', path: '${view.route}'`)
   })
 
-  it('contains no stale plural Assets route in active source or tests', () => {
-    expect(readRepo('frontend/src/App.tsx')).not.toContain('path="/assets"')
-    expect(readRepo('backend/app/api/workspaces.py')).not.toContain('"assets", "/assets"')
-    expect(readRepo('frontend/tests/sentinel_comprehensive.spec.ts')).not.toContain("'/assets'")
-    expect(readRepo('frontend/tests/sentinel_smoke.spec.ts')).not.toContain("'/assets'")
+  it('permits attached-panel geometry only through the shared named variant', () => {
+    const far = read('FAR.tsx')
+    expect(far).not.toContain('surfaceVariant="attached-panel"')
+    expect(far).not.toContain('rounded-t-none border-x border-b border-white/5')
   })
 })

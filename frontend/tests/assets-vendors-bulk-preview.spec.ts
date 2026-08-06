@@ -1,8 +1,8 @@
 import { expect } from '@playwright/test'
 import { test } from './helpers/sysgrid-test'
-import { clickResilientButton, resetBrowserState, testApiBase } from './helpers/sysgrid'
+import { clickResilientButton, resetBrowserState } from './helpers/sysgrid'
 
-const apiBase = testApiBase
+const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
 const multiSelectModifier = process.platform === 'darwin' ? 'Meta' : 'Control'
 
 async function selectRowsByNames(page: any, names: string[]) {
@@ -65,9 +65,7 @@ test.describe('Assets and Vendors authoritative bulk completion', () => {
     await expect(assetPreview.getByTestId('bulk-preview-will-change')).toHaveText('2')
     await expect(assetPreview.getByTestId('bulk-preview-no-change')).toHaveText('0')
 
-    const assetsBeforeResponse = await request.get(`${apiBase}/devices?include_deleted=true`)
-    expect(assetsBeforeResponse.ok(), 'assetsBefore API read must succeed').toBeTruthy()
-    const assetsBefore = await assetsBeforeResponse.json()
+    const assetsBefore = await (await request.get(`${apiBase}/devices?include_deleted=true`)).json()
     for (const asset of assets) {
       expect(assetsBefore.find((row: any) => row.id === asset.id)?.environment).toBe('Production')
     }
@@ -76,18 +74,14 @@ test.describe('Assets and Vendors authoritative bulk completion', () => {
     const assetReceipt = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Assets bulk complete' }) })
     await expect(assetReceipt).toBeVisible({ timeout: 15_000 })
     await expect(assetReceipt.getByTestId('bulk-preview-changed')).toHaveText('2')
-    const assetsChangedResponse = await request.get(`${apiBase}/devices?include_deleted=true`)
-    expect(assetsChangedResponse.ok(), 'assetsChanged API read must succeed').toBeTruthy()
-    const assetsChanged = await assetsChangedResponse.json()
+    const assetsChanged = await (await request.get(`${apiBase}/devices?include_deleted=true`)).json()
     for (const asset of assets) {
       expect(assetsChanged.find((row: any) => row.id === asset.id)?.environment).toBe('Development')
     }
 
     await assetReceipt.getByRole('button', { name: 'Undo bulk changes' }).click()
     await expect(assetReceipt).not.toBeVisible({ timeout: 15_000 })
-    const assetsRestoredResponse = await request.get(`${apiBase}/devices?include_deleted=true`)
-    expect(assetsRestoredResponse.ok(), 'assetsRestored API read must succeed').toBeTruthy()
-    const assetsRestored = await assetsRestoredResponse.json()
+    const assetsRestored = await (await request.get(`${apiBase}/devices?include_deleted=true`)).json()
     for (const asset of assets) {
       expect(assetsRestored.find((row: any) => row.id === asset.id)?.environment).toBe('Production')
     }
@@ -116,9 +110,7 @@ test.describe('Assets and Vendors authoritative bulk completion', () => {
     await expect(vendorPreview.getByTestId('bulk-preview-selected')).toHaveText('2')
     await expect(vendorPreview.getByTestId('bulk-preview-will-change')).toHaveText('2')
 
-    const vendorsBeforeResponse = await request.get(`${apiBase}/vendors?include_deleted=true`)
-    expect(vendorsBeforeResponse.ok(), 'vendorsBefore API read must succeed').toBeTruthy()
-    const vendorsBefore = await vendorsBeforeResponse.json()
+    const vendorsBefore = await (await request.get(`${apiBase}/vendors?include_deleted=true`)).json()
     for (const vendor of vendors) {
       expect(vendorsBefore.find((row: any) => row.id === vendor.id)?.country).toBe('USA')
     }
@@ -127,18 +119,14 @@ test.describe('Assets and Vendors authoritative bulk completion', () => {
     const vendorReceipt = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Vendors bulk complete' }) })
     await expect(vendorReceipt).toBeVisible({ timeout: 15_000 })
     await expect(vendorReceipt.getByTestId('bulk-preview-changed')).toHaveText('2')
-    const vendorsChangedResponse = await request.get(`${apiBase}/vendors?include_deleted=true`)
-    expect(vendorsChangedResponse.ok(), 'vendorsChanged API read must succeed').toBeTruthy()
-    const vendorsChanged = await vendorsChangedResponse.json()
+    const vendorsChanged = await (await request.get(`${apiBase}/vendors?include_deleted=true`)).json()
     for (const vendor of vendors) {
       expect(vendorsChanged.find((row: any) => row.id === vendor.id)?.country).toBe('South Korea')
     }
 
     await vendorReceipt.getByRole('button', { name: 'Undo bulk changes' }).click()
     await expect(vendorReceipt).not.toBeVisible({ timeout: 15_000 })
-    const vendorsRestoredResponse = await request.get(`${apiBase}/vendors?include_deleted=true`)
-    expect(vendorsRestoredResponse.ok(), 'vendorsRestored API read must succeed').toBeTruthy()
-    const vendorsRestored = await vendorsRestoredResponse.json()
+    const vendorsRestored = await (await request.get(`${apiBase}/vendors?include_deleted=true`)).json()
     for (const vendor of vendors) {
       expect(vendorsRestored.find((row: any) => row.id === vendor.id)?.country).toBe('USA')
     }

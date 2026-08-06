@@ -1,8 +1,9 @@
-import { clickResilientButton, createExternalEntity, createService, resetBrowserState, seedOperationalScenario, testApiBase } from './helpers/sysgrid'
-import { expect } from '@playwright/test'
-import { test } from './helpers/sysgrid-test'
+import { clickResilientButton } from './helpers/sysgrid';
+import { expect } from '@playwright/test';
+import { test } from './helpers/sysgrid-test';
+import { createExternalEntity, createService, resetBrowserState, seedOperationalScenario } from './helpers/sysgrid'
 
-const apiBase = testApiBase
+const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
 
 test.describe('Architecture workflows', () => {
   test('creates an architecture, adds internal and external inventory, and persists the manifest', async ({ page, sysApi: request }) => {

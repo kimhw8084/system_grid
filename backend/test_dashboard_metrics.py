@@ -169,11 +169,10 @@ async def test_dashboard_metrics_rolls_up_seeded_operational_data(seeded_admin_t
             "occurrence": 4,
             "detection": 3,
             "affected_assets": [device["id"]],
-            "idempotency_key": "dashboard-metrics-far-create",
         },
         headers=headers,
     )
-    assert far_res.status_code == 201, far_res.text
+    assert far_res.status_code == 200, far_res.text
 
     flow_res = await client.post(
         "/api/v1/data-flows",
@@ -337,11 +336,10 @@ async def test_dashboard_search_returns_cross_domain_matches(seeded_admin_tenant
             "occurrence": 4,
             "detection": 3,
             "affected_assets": [device["id"]],
-            "idempotency_key": "dashboard-search-far-create",
         },
         headers=headers,
     )
-    assert far_res.status_code == 201, far_res.text
+    assert far_res.status_code == 200, far_res.text
 
     project_res = await client.post(
         "/api/v1/projects",

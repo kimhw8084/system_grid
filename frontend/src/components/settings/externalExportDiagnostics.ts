@@ -183,7 +183,7 @@ function buildRequestPlan(
   const customIdentityHeadersSent = shouldAttachIdentityHeaders(url, runtime.frontendOrigin, runtime.apiBase)
   if (customIdentityHeadersSent) {
     headers.set('X-User-Id', runtime.userId || localStorage.getItem('SYSGRID_USER_ID') || 'admin_root')
-    if (runtime.tenantId) headers.set('X-Tenant-Id', runtime.tenantId)
+    headers.set('X-Tenant-Id', runtime.tenantId || localStorage.getItem('SYSGRID_TENANT_ID') || '1')
   }
   const contentTypeHeaderSent = headers.get('Content-Type') || headers.get('content-type')
   const crossOrigin = isCrossOriginTarget(url, runtime.frontendOrigin)
@@ -194,7 +194,7 @@ function buildRequestPlan(
   const likelyPreflight = crossOrigin && !likelySimpleRequest
   const explanationParts = [
     crossOrigin ? 'cross-origin request' : 'same-origin request',
-    customIdentityHeadersSent ? (runtime.tenantId ? 'sends explicit X-User-Id/X-Tenant-Id' : 'sends X-User-Id and follows the server-selected tenant') : 'does not send custom identity headers',
+    customIdentityHeadersSent ? 'sends X-User-Id/X-Tenant-Id' : 'does not send custom identity headers',
     contentTypeHeaderSent ? `sends Content-Type ${contentTypeHeaderSent}` : 'does not send Content-Type',
     likelyPreflight ? 'likely triggers OPTIONS preflight' : 'likely stays a simple request',
   ]
@@ -249,7 +249,7 @@ async function requestRuntimeResource(
   const headers = new Headers(options.headers || {})
   if (requestPlan.customIdentityHeadersSent) {
     headers.set('X-User-Id', runtime.userId || localStorage.getItem('SYSGRID_USER_ID') || 'admin_root')
-    if (runtime.tenantId) headers.set('X-Tenant-Id', runtime.tenantId)
+    headers.set('X-Tenant-Id', runtime.tenantId || localStorage.getItem('SYSGRID_TENANT_ID') || '1')
   }
 
   try {

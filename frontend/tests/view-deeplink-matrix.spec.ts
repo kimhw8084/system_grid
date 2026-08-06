@@ -11,7 +11,7 @@ import { expectHealthyShell, expectNoAppFailures, installStrictAppMonitoring } f
 test.describe('View deep-link matrix', () => {
   test('opens critical deep links without crashing and resolves the targeted record', async ({ page, sysApi: request }) => {
     await resetBrowserState(page)
-    const appMonitoring = installStrictAppMonitoring(page)
+    const failures = installStrictAppMonitoring(page)
     const { primary, secondary, service, knowledge, monitoring, far } = await seedOperationalScenario(request)
     const project = await createProject(request, {
       name: `PW-PROJ-DEEPLINK-${Date.now()}`,
@@ -37,9 +37,10 @@ test.describe('View deep-link matrix', () => {
     await page.getByPlaceholder('Scan asset matrix...').fill(primary.name)
     await page.keyboard.press('Enter')
     await expect(page.getByRole('treegrid')).toContainText(primary.name)
+    await page.waitForTimeout(100)
     await expectHealthyShell(page)
-    await expectNoAppFailures(appMonitoring, 'asset deep link')
-    appMonitoring.failures.splice(0)
+    await expectNoAppFailures(failures, 'asset deep link')
+    failures.splice(0)
 
     await page.goto(`/services?id=${service.id}`)
     await expect(page.getByRole('heading', { level: 3, name: service.name })).toBeVisible()
@@ -71,6 +72,6 @@ test.describe('View deep-link matrix', () => {
     await expect(page.getByText('Identity Sync Pipeline')).toBeVisible()
 
     await expectHealthyShell(page)
-    await expectNoAppFailures(appMonitoring, 'deep-link matrix')
+    await expectNoAppFailures(failures, 'deep-link matrix')
   })
 })
