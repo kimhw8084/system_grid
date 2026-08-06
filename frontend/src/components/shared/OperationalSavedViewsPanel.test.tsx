@@ -250,6 +250,60 @@ describe('Operational anchored-panel interaction continuity', () => {
     expect(moved.style.maxHeight).toBe(40)
   })
 
+  it('keeps the rendered border box inside protected narrow viewport margins', () => {
+    const narrow = computeWorkspaceAnchoredPanelStyle({
+      triggerRect: { top: 120, right: 378, bottom: 160, left: 300, width: 78 },
+      viewportWidth: 390,
+      viewportHeight: 844,
+      offset: 8,
+      minWidth: 420,
+      placement: null,
+    })
+
+    expect(narrow.style).toMatchObject({
+      left: 12,
+      width: 366,
+      boxSizing: 'border-box',
+      overflowY: 'auto',
+    })
+    expect(narrow.style.scrollbarGutter).toBeUndefined()
+    expect(Number(narrow.style.left) + Number(narrow.style.width)).toBeLessThanOrEqual(378)
+  })
+
+  it('keeps fixed anchor geometry separate from the constrained inner scroll surface', () => {
+    render(
+      <OperationalAnchoredPanel
+        isOpen
+        panelKey="split-scroll-contract"
+        style={{
+          position: 'fixed',
+          left: 12,
+          width: 366,
+          boxSizing: 'border-box',
+          maxHeight: 584,
+          overflowY: 'auto',
+          overscrollBehavior: 'contain',
+        }}
+      >
+        <WorkspaceFloatingPanel>Panel content</WorkspaceFloatingPanel>
+      </OperationalAnchoredPanel>,
+    )
+
+    const anchor = document.querySelector<HTMLElement>('[data-workspace-panel-key="split-scroll-contract"]')
+    const scrollSurface = screen.getByText('Panel content').closest('[data-workspace-panel-scroll-surface="true"]') as HTMLElement | null
+    expect(anchor).not.toBeNull()
+    expect(anchor?.style.width).toBe('366px')
+    expect(anchor?.style.overflowY).toBe('')
+    expect(anchor?.style.maxHeight).toBe('')
+    expect(scrollSurface).not.toBeNull()
+    expect(scrollSurface?.style.width).toBe('100%')
+    expect(scrollSurface?.style.maxWidth).toBe('100%')
+    expect(scrollSurface?.style.boxSizing).toBe('border-box')
+    expect(scrollSurface?.style.maxHeight).toBe('584px')
+    expect(scrollSurface?.style.overflowY).toBe('auto')
+    expect(scrollSurface?.style.overscrollBehavior).toBe('contain')
+  })
+
   it('classifies only panel-descendant scroll as internal', () => {
     const panel = document.createElement('div')
     const child = document.createElement('div')
@@ -308,10 +362,14 @@ describe('Operational anchored-panel interaction continuity', () => {
       await waitFor(() => expect(panel).toHaveStyle({ visibility: 'visible' }))
       const callsAfterInitialPosition = rectSpy.mock.calls.length
 
-      panel.dispatchEvent(new Event('scroll', { bubbles: false }))
+      await act(async () => {
+        panel.dispatchEvent(new Event('scroll', { bubbles: false }))
+      })
       expect(rectSpy.mock.calls.length).toBe(callsAfterInitialPosition)
 
-      window.dispatchEvent(new Event('scroll'))
+      await act(async () => {
+        window.dispatchEvent(new Event('scroll'))
+      })
       expect(rectSpy.mock.calls.length).toBeGreaterThan(callsAfterInitialPosition)
     } finally {
       rectSpy.mockRestore()

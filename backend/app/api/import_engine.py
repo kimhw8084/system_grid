@@ -30,6 +30,7 @@ router = APIRouter(prefix="/import", tags=["Intelligence Engine"])
 MONITORING_IMPORT_SCHEMA_VERSION = "2026-06-monitoring-v1"
 EXTERNAL_IMPORT_SCHEMA_VERSION = "2026-06-external-v1"
 NETWORK_IMPORT_SCHEMA_VERSION = "2026-06-network-v1"
+FAR_IMPORT_SCHEMA_VERSION = "sysgrid.far.v1"
 ROUND_TRIP_EXPOSE_HEADER_NAMES = (
     "Content-Disposition",
     "X-SysGrid-Import-Profile",
@@ -66,6 +67,101 @@ class ImportProfile:
     preview_rows: Callable[[AsyncSession, list[dict[str, Any]]], Any]
     schema_context: Optional[Callable[[AsyncSession], Awaitable[dict[str, Any]]]] = None
     serialize_example_row: Optional[Callable[[AsyncSession, Any], Awaitable[dict[str, Any]]]] = None
+
+
+
+
+FAR_IMPORT_FIELDS = [
+    ImportField("system_name", "System", required=True, template_hint="Core Platform", validation_rules=["Required; non-empty."]),
+    ImportField("failure_type", "Failure Type", required=True, template_hint="Software", validation_rules=["Required; non-empty."]),
+    ImportField("title", "Failure Mode", required=True, template_hint="Worker queue saturation", validation_rules=["Required; non-empty."]),
+    ImportField("effect", "Effect", required=False, template_hint="Requests exceed SLO."),
+    ImportField("severity", "Severity", required=True, input_kind="number", input_control="number", template_hint="8", validation_rules=["Integer 1-10."]),
+    ImportField("occurrence", "Occurrence", required=True, input_kind="number", input_control="number", template_hint="5", validation_rules=["Integer 1-10."]),
+    ImportField("detection", "Detection", required=True, input_kind="number", input_control="number", template_hint="4", validation_rules=["Integer 1-10."]),
+    ImportField("status", "Lifecycle Status", required=True, template_hint="Analyzing", validation_rules=["Analyzing, Cause Identified, Resolution Identified, Mitigated, or Eliminated."]),
+    ImportField("owner_user_id", "Owner User", required=False, template_hint="operator@example.com"),
+    ImportField("owner_team", "Owner Team", required=False, template_hint="Platform Reliability"),
+    ImportField("due_at", "Due At", required=False, input_kind="datetime", template_hint="2026-09-01T18:00:00Z"),
+    ImportField("affected_asset_ids", "Affected Asset IDs", required=False, input_control="textarea", template_hint="12,18", accepts_multiple=True),
+    ImportField("cause_ids", "Cause IDs", required=False, input_control="textarea", template_hint="3,7", accepts_multiple=True),
+    ImportField("linked_rca_ids", "Linked RCA IDs", required=False, input_control="textarea", template_hint="5", accepts_multiple=True),
+    ImportField("metadata_json", "Metadata JSON", required=False, input_kind="json", input_control="textarea", template_hint='{"source":"legacy-adapter"}'),
+]
+
+
+def _far_ids(value: Any) -> list[int]:
+    return [int(item) for item in split_multi_value(value)]
+
+
+async def preview_far_legacy_rows(db: AsyncSession, rows: list[dict[str, Any]]) -> dict[str, Any]:
+    results = []
+    for index, raw in enumerate(rows):
+        errors: list[str] = []
+        normalized: dict[str, Any] = {}
+        try:
+            payload = {
+                "system_name": normalize_scalar(raw.get("system_name")),
+                "failure_type": normalize_scalar(raw.get("failure_type")) or "Design",
+                "title": normalize_scalar(raw.get("title")),
+                "effect": normalize_scalar(raw.get("effect")),
+                "severity": int(normalize_scalar(raw.get("severity")) or 1),
+                "occurrence": int(normalize_scalar(raw.get("occurrence")) or 1),
+                "detection": int(normalize_scalar(raw.get("detection")) or 1),
+                "status": normalize_scalar(raw.get("status")) or "Analyzing",
+                "owner_user_id": normalize_scalar(raw.get("owner_user_id")),
+                "owner_team": normalize_scalar(raw.get("owner_team")),
+                "due_at": normalize_scalar(raw.get("due_at")),
+                "affected_asset_ids": _far_ids(raw.get("affected_asset_ids") or raw.get("affected_assets")),
+                "cause_ids": _far_ids(raw.get("cause_ids")),
+                "linked_rca_ids": _far_ids(raw.get("linked_rca_ids")),
+                "metadata_json": json.loads(raw.get("metadata_json")) if isinstance(raw.get("metadata_json"), str) and raw.get("metadata_json").strip() else (raw.get("metadata_json") or {}),
+                "idempotency_key": f"legacy-preview-{index + 1:06d}",
+            }
+            candidate = schemas.FarFailureModeCreate.model_validate(payload)
+            normalized = candidate.model_dump(mode="json", exclude={"idempotency_key"})
+        except Exception as exc:
+            errors.append(str(exc))
+        results.append({"row": index + 1, "source": raw, "normalized": normalized, "status": "VALID" if not errors else "INVALID", "errors": errors})
+    invalid = [item for item in results if item["status"] == "INVALID"]
+    return {
+        "schema_id": FAR_IMPORT_SCHEMA_VERSION,
+        "execution_endpoint": "/api/v1/far/exchange/import/preview",
+        "total_rows": len(results),
+        "valid_rows": len(results) - len(invalid),
+        "invalid_rows": len(invalid),
+        "total_errors": sum(len(item["errors"]) for item in invalid),
+        "results": results,
+    }
+
+
+async def execute_far_legacy_rows(db: AsyncSession, rows: list[dict[str, Any]], user_id: Optional[str]) -> dict[str, Any]:
+    return {
+        "status": "failed",
+        "count": 0,
+        "errors": ["FAR imports require server-authoritative preview/execute at /api/v1/far/exchange/import/preview and /execute."],
+        "schema_id": FAR_IMPORT_SCHEMA_VERSION,
+    }
+
+
+async def serialize_far_example_row(db: AsyncSession, mode: models.FarFailureMode) -> dict[str, Any]:
+    return {
+        "system_name": mode.system_name,
+        "failure_type": mode.failure_type,
+        "title": mode.title,
+        "effect": mode.effect or "",
+        "severity": mode.severity,
+        "occurrence": mode.occurrence,
+        "detection": mode.detection,
+        "status": mode.status,
+        "owner_user_id": getattr(mode, "owner_user_id", None) or "",
+        "owner_team": getattr(mode, "owner_team", None) or "",
+        "due_at": getattr(mode, "due_at", None).isoformat() if getattr(mode, "due_at", None) else "",
+        "affected_asset_ids": ",".join(str(item.id) for item in mode.affected_assets),
+        "cause_ids": ",".join(str(item.id) for item in mode.causes),
+        "linked_rca_ids": ",".join(str(item.id) for item in mode.linked_rcas),
+        "metadata_json": json.dumps(getattr(mode, "metadata_json", {}) or {}),
+    }
 
 
 GENERIC_EXCLUDE_COLUMNS = {
@@ -1437,7 +1533,6 @@ GENERIC_MODEL_MAPPING = {
     "devices": models.Device,
     "racks": models.Rack,
     "logical_services": models.LogicalService,
-    "far_records": models.FarFailureMode,
 }
 
 
@@ -1471,7 +1566,16 @@ def build_import_profiles() -> dict[str, ImportProfile]:
             preview_rows=preview_network_rows,
             execute_rows=execute_network_rows,
             schema_context=build_network_schema_context,
-        )
+        ),
+        "far_records": ImportProfile(
+            key="far_records",
+            display_name="Failure Analysis & Resolution",
+            model=models.FarFailureMode,
+            fields=FAR_IMPORT_FIELDS,
+            preview_rows=preview_far_legacy_rows,
+            execute_rows=execute_far_legacy_rows,
+            serialize_example_row=serialize_far_example_row,
+        ),
     }
 
     for key, model in GENERIC_MODEL_MAPPING.items():
@@ -1520,6 +1624,9 @@ def build_round_trip_download_headers(profile: ImportProfile, filename: str) -> 
     elif profile.key == "external_entities":
         headers["X-SysGrid-Schema-Version"] = EXTERNAL_IMPORT_SCHEMA_VERSION
         headers["X-SysGrid-Import-Profile"] = profile.key
+    elif profile.key == "far_records":
+        headers["X-SysGrid-Schema-Version"] = FAR_IMPORT_SCHEMA_VERSION
+        headers["X-SysGrid-Import-Profile"] = profile.key
     return headers
 
 
@@ -1560,6 +1667,9 @@ def build_snapshot_manifest(profile: ImportProfile, export_token: Optional[str] 
         manifest["download_url"] = f"/api/v1/import/snapshot/{profile.key}?export_token={token}"
     elif profile.key == "port_connections":
         manifest["schema_version"] = NETWORK_IMPORT_SCHEMA_VERSION
+    elif profile.key == "far_records":
+        manifest["schema_version"] = FAR_IMPORT_SCHEMA_VERSION
+        manifest["execution_endpoint"] = "/api/v1/far/exchange/import/preview"
     else:
         manifest["schema_version"] = None
     return manifest
@@ -1576,6 +1686,8 @@ async def get_import_schema(table_name: str, db: AsyncSession = Depends(get_db))
         headers["schema_version"] = EXTERNAL_IMPORT_SCHEMA_VERSION
     elif profile.key == "port_connections":
         headers["schema_version"] = NETWORK_IMPORT_SCHEMA_VERSION
+    elif profile.key == "far_records":
+        headers["schema_version"] = FAR_IMPORT_SCHEMA_VERSION
     return {
         "table_name": profile.key,
         "display_name": profile.display_name,
@@ -1648,6 +1760,12 @@ async def download_snapshot(table_name: str, export_token: Optional[str] = None,
             query = query.options(
                 joinedload(models.MonitoringItem.owners).joinedload(models.MonitoringOwner.operator)
             )
+        elif profile.key == "far_records":
+            query = query.options(
+                joinedload(models.FarFailureMode.affected_assets),
+                joinedload(models.FarFailureMode.causes),
+                joinedload(models.FarFailureMode.linked_rcas),
+            ).where(models.FarFailureMode.is_retired == False)
         if hasattr(model, "is_deleted"):
             query = query.where(model.is_deleted == False)
         result = await db.execute(query)

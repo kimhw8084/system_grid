@@ -14,10 +14,11 @@ import {
   resetBrowserState,
   seedOperationalScenario,
   selectGridCheckboxRows,
-  testApiHeaders
+  testApiHeaders,
+  testApiBase
 } from './helpers/sysgrid'
 
-const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
+const apiBase = testApiBase
 const monitoringWorkspacePreferenceKey = 'monitoring_workspace_state_v2'
 
 async function getColumnWidth(page: any, colId: string) {

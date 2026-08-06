@@ -26,4 +26,31 @@ test.describe('Operational Workspace Capabilities', () => {
       expect(Array.isArray(adapter.supports), `Supports is not an array for ${key}`).toBe(true)
     }
   })
+  test('keeps FAR and Research capability declarations truthful', () => {
+    expect(OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX.far.supports).toEqual([
+      'savedViews',
+      'displayControls',
+      'history',
+      'compare',
+      'linkedRecords',
+      'archiveRestore',
+      'stickyIdentityHeader',
+      'frontendValidation',
+      'searchableSelectors',
+      'deepLinkedDetails',
+    ])
+    expect(OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX.research.supports).toEqual([
+      'savedViews',
+      'history',
+      'linkedRecords',
+      'archiveRestore',
+      'stickyIdentityHeader',
+      'frontendValidation',
+      'searchableSelectors',
+    ])
+    expect(OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX.research.supports).not.toContain('bulkActions')
+    expect(OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX.far.supports).toContain('displayControls')
+    expect(OPERATIONAL_WORKSPACE_CAPABILITY_MATRIX.far.supports).toContain('deepLinkedDetails')
+  })
+
 })

@@ -11,6 +11,7 @@
     "check:form-contracts": "node scripts/check-form-contracts.cjs",
     "check:row-action-contracts": "node scripts/check-row-action-contracts.cjs",
     "check:shell-contracts": "node scripts/check-shell-contracts.cjs",
+    "check:canonical-verification": "node scripts/check-canonical-verification-contract.cjs",
     "check:operational-contracts": "npm run check:operational-registry-drift && npm run check:form-contracts && npm run check:row-action-contracts && npm run check:shell-contracts",
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",

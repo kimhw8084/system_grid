@@ -1,10 +1,30 @@
 import { expect, type Page } from '@playwright/test'
 
+const KNOWN_BENIGN_BROWSER_DIAGNOSTICS = new Set([
+  'ResizeObserver loop completed with undelivered notifications.',
+])
+
+export type StrictAppMonitoring = { failures: string[]; diagnostics: string[] }
+
+function isKnownBenignBrowserDiagnostic(message: string) {
+  return KNOWN_BENIGN_BROWSER_DIAGNOSTICS.has(message.trim())
+}
+
 export function installStrictAppMonitoring(page: Page) {
-  const failures: string[] = []
+  const monitoring: StrictAppMonitoring = { failures: [], diagnostics: [] }
+
+  const recordKnownDiagnostic = (source: 'console.error' | 'pageerror', message: string) => {
+    const diagnostic = `${source}: ${message.trim()}`
+    monitoring.diagnostics.push(diagnostic)
+    console.info(`[known-browser-diagnostic] ${diagnostic}`)
+  }
 
   page.on('console', (msg) => {
     if (msg.type() === 'error') {
+      if (isKnownBenignBrowserDiagnostic(msg.text())) {
+        recordKnownDiagnostic('console.error', msg.text())
+        return
+      }
       void Promise.all(
         msg.args().map(async (arg) => {
           try {
@@ -15,13 +35,17 @@ export function installStrictAppMonitoring(page: Page) {
         }),
       ).then((serializedArgs) => {
         const details = serializedArgs.filter(Boolean).join(' | ')
-        failures.push(`console.error: ${msg.text()}${details ? ` :: args=${details}` : ''}`)
+        monitoring.failures.push(`console.error: ${msg.text()}${details ? ` :: args=${details}` : ''}`)
       })
     }
   })
 
   page.on('pageerror', (err) => {
-    failures.push(`pageerror: ${err.message}`)
+    if (isKnownBenignBrowserDiagnostic(err.message)) {
+      recordKnownDiagnostic('pageerror', err.message)
+      return
+    }
+    monitoring.failures.push(`pageerror: ${err.message}`)
   })
 
   page.on('response', async (response) => {
@@ -32,16 +56,16 @@ export function installStrictAppMonitoring(page: Page) {
     } catch {
       details = ''
     }
-    failures.push(`api.${response.status()}: ${response.url()}${details ? ` :: ${details}` : ''}`)
+    monitoring.failures.push(`api.${response.status()}: ${response.url()}${details ? ` :: ${details}` : ''}`)
   })
 
-  return failures
+  return monitoring
 }
 
-export async function expectNoAppFailures(failures: string[], context: string) {
+export async function expectNoAppFailures(monitoring: StrictAppMonitoring, context: string) {
   expect(
-    failures,
-    `${context} emitted app failures:\n${failures.join('\n')}`,
+    monitoring.failures,
+    `${context} emitted app failures:\n${monitoring.failures.join('\n')}`,
   ).toEqual([])
 }
 

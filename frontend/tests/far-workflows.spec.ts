@@ -24,9 +24,9 @@ test.describe('FAR workflows', () => {
       detection: 2,
     })
 
-    await page.goto(`/far?id=${far.id}`)
+    await page.goto(`/far?far=${far.id}`)
     await expect(page.locator('[data-workspace="far"]')).toBeVisible()
-    await expect(page).toHaveURL(new RegExp(`/far\\?id=${far.id}$`))
+    await expect(page).toHaveURL(new RegExp(`/far\\?far=${far.id}$`))
     await expect(page.getByRole('button', { name: /Causal Forensics/i })).toBeVisible()
     await expect(page.getByRole('heading', { name: far.title })).toBeVisible()
 
@@ -35,7 +35,7 @@ test.describe('FAR workflows', () => {
     await expect(titleInput).toHaveValue(far.title)
 
     await page.evaluate((modeId) => {
-      window.history.pushState({}, '', `/far?id=${modeId}`)
+      window.history.pushState({}, '', `/far?far=${modeId}`)
       window.dispatchEvent(new PopStateEvent('popstate'))
     }, secondMode.id)
     await expect(titleInput).toHaveValue(secondMode.title)
@@ -53,7 +53,7 @@ test.describe('FAR workflows', () => {
     await expect(workspace.getByRole('button', { name: /Display/i })).toBeVisible()
     await expect(workspace.getByRole('button', { name: /Filters/i })).toBeVisible()
     await expect(workspace.getByRole('button', { name: /Insights/i })).toBeVisible()
-    await expect(workspace.getByTitle('Export CSV')).toBeVisible()
+    await expect(workspace.getByTitle('Export filtered FAR CSV')).toBeVisible()
     await expect(workspace.getByTitle('Copy to Clipboard')).toBeVisible()
     await expect(workspace.getByText(/failure vectors in scope/i)).toHaveCount(0)
     await expect(workspace.getByText('Failure Inventory Maturity Profile')).not.toBeVisible()
@@ -61,14 +61,26 @@ test.describe('FAR workflows', () => {
     await expect(workspace.getByText('Failure Inventory Maturity Profile')).toBeVisible()
     await workspace.getByRole('button', { name: /Insights/i }).click()
     await expect(workspace.getByText('Failure Inventory Maturity Profile')).not.toBeVisible()
-    await page.getByPlaceholder(/scan risk vectors/i).fill(far.title)
+    const farSearch = page.getByRole('textbox', { name: 'Search FAR failure modes' })
+    await expect(farSearch).toHaveAttribute('placeholder', 'Scan failure modes, causes, controls, owners...')
+    await farSearch.fill(far.title)
     const centerRow = workspace.locator('.ag-center-cols-container .ag-row').filter({ hasText: far.title })
     await expect(centerRow).toBeVisible()
     const rowIndex = await centerRow.getAttribute('row-index')
     if (rowIndex === null) throw new Error('FAR row is missing row-index')
     const actionRow = workspace.locator(`.ag-pinned-right-cols-container .ag-row[row-index="${rowIndex}"]`)
-    await actionRow.getByTitle('Retire failure vector').click()
+    await expect(actionRow).toBeVisible()
+    const retirementAction = actionRow.getByTitle('Select for evidence-preserving retirement')
+    await expect(retirementAction).toBeVisible()
+    await expect(retirementAction).toBeEnabled()
+    await retirementAction.click()
 
+    await expect(page.getByRole('heading', { name: 'FAR bulk preview' })).toBeVisible()
+    await expect(page.getByText('Retire failure vectors', { exact: true })).toBeVisible()
+    const retirementReason = page.getByRole('textbox', { name: 'Retirement reason' })
+    await expect(retirementReason).toHaveCount(1)
+    await retirementReason.fill('Superseded failure vector retained for audit evidence')
+    await clickResilientButton(page, 'Prepare retirement preview')
     await expect(page.getByRole('heading', { name: 'FAR bulk preview' })).toBeVisible()
     await expect(page.getByText('Retire failure vectors', { exact: true })).toBeVisible()
     await clickResilientButton(page, 'Cancel')
@@ -93,19 +105,25 @@ test.describe('FAR workflows', () => {
       mode_ids: [far.id],
     })
 
-    await page.goto(`/far?id=${far.id}`)
+    await page.goto(`/far?far=${far.id}`)
     const roadmapTab = page.getByRole('button', { name: /Strategic Roadmap/i })
     await expect(roadmapTab).toBeVisible()
     await roadmapTab.click()
     const mitigationRow = page.locator('tr', { hasText: 'Watch the service and alert on regression' })
+    let lifecycleReason = 'Playwright evidence-preserving lifecycle change'
+    page.on('dialog', async (dialog) => {
+      if (dialog.type() === 'prompt') await dialog.accept(lifecycleReason)
+      else await dialog.accept()
+    })
     await mitigationRow.hover()
-    await mitigationRow.getByRole('button').click()
+    await mitigationRow.getByTitle('Retire mitigation (evidence is retained)').click()
     await expect(page.getByText('No mitigation shields active for this cause')).toBeVisible()
 
     await clickResilientButton(page, /Causal Forensics/i)
     const causeRow = page.locator('tr', { hasText: 'Transient dependency fault' })
     await causeRow.hover()
-    await causeRow.getByTitle('Purge Attribution').click()
+    lifecycleReason = 'Playwright cause attribution superseded'
+    await causeRow.getByTitle('Unlink attribution (evidence is retained)').click()
     await expect(page.getByText('No attribution traces linked to this vector')).toBeVisible()
   })
 
@@ -124,7 +142,7 @@ test.describe('FAR workflows', () => {
       metadata_json: { linked_research_ids: [investigation.id] },
     })
 
-    await page.goto(`/far?id=${far.id}`)
+    await page.goto(`/far?far=${far.id}`)
     const researchTab = page.getByRole('button', { name: /Research History/i })
     await expect(researchTab).toBeVisible()
     await researchTab.click()

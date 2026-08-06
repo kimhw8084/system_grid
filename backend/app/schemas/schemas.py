@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field, AliasChoices, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, AliasChoices, StrictInt, field_validator, model_validator
 from typing import List, Optional, Any, Dict, Literal
 from datetime import datetime
 from urllib.parse import urlparse
@@ -754,10 +754,29 @@ class NetworkConnectionBulkStatus(NetworkConnectionBulkIds):
 
 # --- FAR (FAILURE ANALYSIS & RESOLUTION) SCHEMAS ---
 
+FARStatus = Literal["Analyzing", "Cause Identified", "Resolution Identified", "Mitigated", "Eliminated"]
+FARRiskBand = Literal["Low", "Moderate", "High", "Critical"]
+FAROperationState = Literal["previewed", "executed", "expired", "failed"]
+
+
+class FARStrictModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
 class KnowledgeEntryTinyResponse(BaseSchema):
     category: Optional[str] = None
     title: Optional[str] = None
     status: Optional[str] = None
+
+
+class FarResolutionCreate(FARStrictModel):
+    knowledge_id: Optional[StrictInt] = Field(default=None, ge=1)
+    preventive_follow_up: Optional[str] = Field(default=None, max_length=10000)
+    responsible_team: Optional[str] = Field(default=None, max_length=200)
+    guidance_notes: Optional[str] = Field(default=None, max_length=10000)
+    cause_ids: List[StrictInt] = Field(default_factory=list, max_length=200)
+    idempotency_key: str = Field(min_length=8, max_length=200)
+
 
 class FarResolutionResponse(BaseSchema):
     knowledge_id: Optional[int] = None
@@ -765,7 +784,21 @@ class FarResolutionResponse(BaseSchema):
     responsible_team: Optional[str] = None
     guidance_notes: Optional[str] = None
     knowledge_bkm: Optional[KnowledgeEntryTinyResponse] = None
-    created_at: Optional[datetime] = None
+    version: int = 1
+    is_retired: bool = False
+    retired_at: Optional[datetime] = None
+
+
+class FarMitigationCreate(FARStrictModel):
+    mitigation_type: str = Field(min_length=1, max_length=120)
+    mitigation_steps: Optional[str] = Field(default=None, max_length=10000)
+    responsible_team: Optional[str] = Field(default=None, max_length=200)
+    status: str = Field(default="Not Started", min_length=1, max_length=80)
+    cause_id: Optional[StrictInt] = Field(default=None, ge=1)
+    monitoring_item_id: Optional[StrictInt] = Field(default=None, ge=1)
+    mode_ids: List[StrictInt] = Field(default_factory=list, max_length=200)
+    idempotency_key: str = Field(min_length=8, max_length=200)
+
 
 class FarMitigationResponse(BaseSchema):
     mitigation_type: str
@@ -774,28 +807,110 @@ class FarMitigationResponse(BaseSchema):
     status: Optional[str] = "Not Started"
     cause_id: Optional[int] = None
     monitoring_item_id: Optional[int] = None
+    version: int = 1
+    is_retired: bool = False
+    retired_at: Optional[datetime] = None
+
+
+class FarPreventionCreate(FARStrictModel):
+    failure_mode_id: StrictInt = Field(ge=1)
+    cause_id: Optional[StrictInt] = Field(default=None, ge=1)
+    prevention_action: str = Field(min_length=1, max_length=10000)
+    status: str = Field(default="Open", min_length=1, max_length=80)
+    target_date: Optional[datetime] = None
+    responsible_team: Optional[str] = Field(default=None, max_length=200)
+    idempotency_key: str = Field(min_length=8, max_length=200)
+
 
 class FarPreventionResponse(BaseSchema):
     failure_mode_id: int
     cause_id: Optional[int] = None
+    project_id: Optional[int] = None
     prevention_action: str
     status: str = "Open"
     target_date: Optional[datetime] = None
     responsible_team: Optional[str] = None
+    version: int = 1
+    is_retired: bool = False
+    retired_at: Optional[datetime] = None
+
+
+class FarCauseCreate(FARStrictModel):
+    cause_text: str = Field(min_length=1, max_length=10000)
+    occurrence_level: StrictInt = Field(default=1, ge=1, le=10)
+    responsible_team: Optional[str] = Field(default=None, max_length=200)
+    mode_ids: List[StrictInt] = Field(default_factory=list, max_length=200)
+    idempotency_key: str = Field(min_length=8, max_length=200)
+
+
+class FarCauseUpdate(FARStrictModel):
+    expected_version: StrictInt = Field(ge=1)
+    cause_text: Optional[str] = Field(default=None, min_length=1, max_length=10000)
+    occurrence_level: Optional[StrictInt] = Field(default=None, ge=1, le=10)
+    responsible_team: Optional[str] = Field(default=None, max_length=200)
+    mode_ids: Optional[List[StrictInt]] = Field(default=None, max_length=200)
+    change_summary: str = Field(default="FAR cause updated", min_length=1, max_length=1000)
+    idempotency_key: str = Field(min_length=8, max_length=200)
+
 
 class FarFailureCauseResponse(BaseSchema):
     cause_text: str
     occurrence_level: int = 1
     responsible_team: Optional[str] = None
-    resolutions: List[FarResolutionResponse] = []
-    mitigations: List[FarMitigationResponse] = []
-    prevention_actions: List[FarPreventionResponse] = []
+    version: int = 1
+    is_retired: bool = False
+    retired_at: Optional[datetime] = None
+    resolutions: List[FarResolutionResponse] = Field(default_factory=list)
+    mitigations: List[FarMitigationResponse] = Field(default_factory=list)
+    prevention_actions: List[FarPreventionResponse] = Field(default_factory=list)
+
 
 class RcaRecordTinyResponse(BaseSchema):
     title: str
     severity: Optional[str] = None
     status: str = "Open"
     incident_type: Optional[str] = None
+
+
+class FarFailureModeCreate(FARStrictModel):
+    system_name: str = Field(min_length=1, max_length=200)
+    failure_type: str = Field(default="Design", min_length=1, max_length=120)
+    title: str = Field(min_length=1, max_length=500)
+    effect: Optional[str] = Field(default=None, max_length=20000)
+    severity: StrictInt = Field(default=1, ge=1, le=10)
+    occurrence: StrictInt = Field(default=1, ge=1, le=10)
+    detection: StrictInt = Field(default=1, ge=1, le=10)
+    status: FARStatus = "Analyzing"
+    owner_user_id: Optional[str] = Field(default=None, max_length=200)
+    owner_team: Optional[str] = Field(default=None, max_length=200)
+    due_at: Optional[datetime] = None
+    affected_asset_ids: List[StrictInt] = Field(default_factory=list, max_length=500, validation_alias=AliasChoices("affected_asset_ids", "affected_assets"))
+    cause_ids: List[StrictInt] = Field(default_factory=list, max_length=500)
+    linked_rca_ids: List[StrictInt] = Field(default_factory=list, max_length=500)
+    metadata_json: Dict[str, Any] = Field(default_factory=dict)
+    idempotency_key: str = Field(min_length=8, max_length=200)
+
+
+class FarFailureModeUpdate(FARStrictModel):
+    expected_version: StrictInt = Field(ge=1)
+    system_name: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    failure_type: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    title: Optional[str] = Field(default=None, min_length=1, max_length=500)
+    effect: Optional[str] = Field(default=None, max_length=20000)
+    severity: Optional[StrictInt] = Field(default=None, ge=1, le=10)
+    occurrence: Optional[StrictInt] = Field(default=None, ge=1, le=10)
+    detection: Optional[StrictInt] = Field(default=None, ge=1, le=10)
+    status: Optional[FARStatus] = None
+    owner_user_id: Optional[str] = Field(default=None, max_length=200)
+    owner_team: Optional[str] = Field(default=None, max_length=200)
+    due_at: Optional[datetime] = None
+    affected_asset_ids: Optional[List[StrictInt]] = Field(default=None, max_length=500, validation_alias=AliasChoices("affected_asset_ids", "affected_assets"))
+    cause_ids: Optional[List[StrictInt]] = Field(default=None, max_length=500)
+    linked_rca_ids: Optional[List[StrictInt]] = Field(default=None, max_length=500)
+    metadata_json: Optional[Dict[str, Any]] = None
+    change_summary: str = Field(default="FAR record updated", min_length=1, max_length=1000, validation_alias=AliasChoices("change_summary", "_change_summary"))
+    idempotency_key: str = Field(min_length=8, max_length=200)
+
 
 class FarFailureModeResponse(BaseSchema):
     system_name: str
@@ -806,15 +921,122 @@ class FarFailureModeResponse(BaseSchema):
     occurrence: int = 1
     detection: int = 1
     rpn: int = 1
-    status: str = "Analyzing"
+    risk_band: FARRiskBand = "Low"
+    maturity_level: int = 0
+    status: FARStatus = "Analyzing"
+    owner_user_id: Optional[str] = None
+    owner_team: Optional[str] = None
+    due_at: Optional[datetime] = None
     has_incident_history: bool = False
-    metadata_json: Optional[dict] = {}
+    version: int = 1
+    is_retired: bool = False
+    retired_at: Optional[datetime] = None
+    retired_reason: Optional[str] = None
+    metadata_json: Dict[str, Any] = Field(default_factory=dict)
+    affected_assets: List[DeviceTinyResponse] = Field(default_factory=list)
+    causes: List[FarFailureCauseResponse] = Field(default_factory=list)
+    mitigations: List[FarMitigationResponse] = Field(default_factory=list)
+    prevention_actions: List[FarPreventionResponse] = Field(default_factory=list)
+    linked_rcas: List[RcaRecordTinyResponse] = Field(default_factory=list)
     
-    affected_assets: List[DeviceTinyResponse] = []
-    causes: List[FarFailureCauseResponse] = []
-    mitigations: List[FarMitigationResponse] = []
-    prevention_actions: List[FarPreventionResponse] = []
-    linked_rcas: List[RcaRecordTinyResponse] = []
+
+class FarRetirementPreviewRequest(FARStrictModel):
+    ids: List[StrictInt] = Field(min_length=1, max_length=500)
+    expected_versions: Dict[int, StrictInt]
+    reason: str = Field(min_length=3, max_length=1000)
+    idempotency_key: str = Field(min_length=8, max_length=200)
+
+    @model_validator(mode="after")
+    def exact_versions(self):
+        normalized_ids = set(self.ids)
+        if len(normalized_ids) != len(self.ids):
+            raise ValueError("ids must be unique")
+        if set(self.expected_versions) != normalized_ids:
+            raise ValueError("expected_versions must exactly match ids")
+        return self
+
+
+class FarOperationPreviewResponse(FARStrictModel):
+    operation: str
+    selected_count: int
+    matched_count: int
+    changed_count: int
+    unchanged_count: int
+    blocked_count: int
+    missing_count: int
+    changed_ids: List[int]
+    unchanged_ids: List[int]
+    missing_ids: List[int]
+    blockers: List[Dict[str, Any]]
+    can_execute: bool
+    preview_token: str
+    preview_hash: str
+    expires_at: datetime
+    target_versions: Dict[int, int]
+
+
+class FarOperationExecuteRequest(FARStrictModel):
+    preview_token: str = Field(min_length=20, max_length=500)
+    preview_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
+    idempotency_key: str = Field(min_length=8, max_length=200)
+    confirm: Literal[True]
+
+
+class FarRestoreRequest(FARStrictModel):
+    expected_version: StrictInt = Field(ge=1)
+    reason: str = Field(min_length=3, max_length=1000)
+    idempotency_key: str = Field(min_length=8, max_length=200)
+
+
+class FarHistoryRestoreRequest(FARStrictModel):
+    expected_version: StrictInt = Field(ge=1)
+    history_version: StrictInt = Field(ge=1)
+    reason: str = Field(min_length=3, max_length=1000)
+    idempotency_key: str = Field(min_length=8, max_length=200)
+
+
+class FarMutationResult(FARStrictModel):
+    status: Literal["success", "unchanged"]
+    operation: str
+    changed_count: int
+    unchanged_count: int
+    changed_ids: List[int] = Field(default_factory=list)
+    versions: Dict[int, int] = Field(default_factory=dict)
+    audit_correlation_id: str
+    idempotent_replay: bool = False
+
+
+class FarEntityHistoryResponse(BaseSchema):
+    entity_type: str
+    entity_id: int
+    version: int
+    schema_version: int
+    snapshot: Dict[str, Any]
+    relationship_snapshot: Dict[str, Any]
+    actor_user_id: str
+    snapshot_hash: str
+    change_summary: str
+
+
+class FarNestedRetireRequest(FARStrictModel):
+    expected_version: StrictInt = Field(ge=1)
+    reason: str = Field(min_length=3, max_length=1000)
+    mode_id: Optional[StrictInt] = Field(default=None, ge=1)
+    idempotency_key: str = Field(min_length=8, max_length=200)
+
+
+class FarExchangePreviewRequest(FARStrictModel):
+    schema_id: str = Field(default="sysgrid.far.v1")
+    records: List[Dict[str, Any]] = Field(max_length=5000)
+    idempotency_key: str = Field(min_length=8, max_length=200)
+
+
+class FarExchangeExecuteRequest(FARStrictModel):
+    preview_token: str = Field(min_length=20, max_length=500)
+    preview_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
+    idempotency_key: str = Field(min_length=8, max_length=200)
+    confirm: Literal[True]
+
 
 class RcaTimelineEventResponse(BaseSchema):
     rca_id: int
@@ -956,6 +1178,16 @@ class ProjectBase(BaseModel):
 
 class ProjectCreate(ProjectBase):
     tasks: Optional[List[ProjectTaskUpdate]] = []
+
+class FarPreventionProjectCreate(FARStrictModel):
+    project: ProjectCreate
+    failure_mode_id: StrictInt = Field(ge=1)
+    cause_id: Optional[StrictInt] = Field(default=None, ge=1)
+    prevention_action: str = Field(min_length=1, max_length=20000)
+    responsible_team: Optional[str] = Field(default=None, max_length=200)
+    target_date: Optional[datetime] = None
+    idempotency_key: str = Field(min_length=8, max_length=200)
+
 
 class ProjectUpdate(ProjectBase):
     tasks: Optional[List[ProjectTaskUpdate]] = []

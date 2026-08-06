@@ -1,5 +1,6 @@
 import React from 'react'
 import { AlertCircle, X, Copy } from 'lucide-react'
+import { getObservedTenantId } from '../../api/apiClient'
 import { WorkspaceModal } from './WorkspaceModal'
 
 export type DataStatus = 'healthy' | 'loading' | 'error' | 'filtered' | 'empty'
@@ -57,7 +58,7 @@ export function buildOperationalDiagnosticDetail({
     tenantId?: string
 }): OperationalDiagnosticDetail {
     const safeUserId = userId || (typeof localStorage !== 'undefined' ? localStorage.getItem('SYSGRID_USER_ID') || 'admin_root' : 'admin_root')
-    const safeTenantId = tenantId || (typeof localStorage !== 'undefined' ? localStorage.getItem('SYSGRID_TENANT_ID') || '1' : '1')
+    const safeTenantId = tenantId || error?.tenantId || getObservedTenantId() || 'Server-selected (unavailable)'
 
     return {
         endpoint,
@@ -113,7 +114,7 @@ export function DataDiagnosticModal({ isOpen, onClose, errorDetail }: { isOpen: 
                 <p><strong>Status Text:</strong> {errorDetail?.statusText || UNAVAILABLE_DETAIL}</p>
                 <p><strong>URL:</strong> {errorDetail?.url || UNAVAILABLE_DETAIL}</p>
                 <p><strong>User ID:</strong> {errorDetail?.userId || 'admin_root'}</p>
-                <p><strong>Tenant ID:</strong> {errorDetail?.tenantId || '1'}</p>
+                <p><strong>Tenant ID:</strong> {errorDetail?.tenantId || 'Server-selected (unavailable)'}</p>
                 <p><strong>Message:</strong> {errorDetail?.message || 'The request failed.'}</p>
                 <div className="bg-slate-900 p-2 rounded overflow-x-auto">
                     <pre>{typeof errorDetail?.rawBody === 'string' ? errorDetail.rawBody : JSON.stringify(errorDetail?.data || errorDetail, null, 2)}</pre>

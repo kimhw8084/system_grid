@@ -1,61 +1,61 @@
-import { expect } from '@playwright/test';
-import { test } from './helpers/sysgrid-test';
-import { resetBrowserState, waitForAppIdle } from './helpers/sysgrid';
+import { expect } from '@playwright/test'
+import { test } from './helpers/sysgrid-test'
+import { resetBrowserState, testUserId, waitForAppIdle } from './helpers/sysgrid'
 
 test.describe('Blank Slate Crash Audit', () => {
-    test('Navigates all views in a pristine, unseeded tenant to guarantee zero fatal React crashes', async ({ page, sysApi }) => {
-        test.setTimeout(60_000); 
+  test('navigates all views in a verified pristine tenant without fatal React failures', async ({ page, sysApi }) => {
+    test.setTimeout(90_000)
+    const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const createTenant = await sysApi.post('/tenants/admin/create', {
+      data: { name: `Playwright Blank Slate ${stamp}` },
+    })
+    expect(createTenant.ok()).toBeTruthy()
+    const tenant = await createTenant.json()
+    expect(Number.isInteger(tenant.id)).toBeTruthy()
 
-        // 1. Force a completely empty tenant context for this test
-        const emptyTenantId = 'blank-slate-tenant-' + Date.now();
-        
-        // Wrap request to use the empty tenant
-        const emptyApi = {
-            post: (path: string, opts?: any) => sysApi.post(path, { ...opts, headers: { ...opts?.headers, 'X-Tenant-Id': emptyTenantId } }),
-            get: (path: string, opts?: any) => sysApi.get(path, { ...opts, headers: { ...opts?.headers, 'X-Tenant-Id': emptyTenantId } })
-        };
+    const emptyTenantId = String(tenant.id)
+    const emptyHeaders = { 'X-User-Id': testUserId, 'X-Tenant-Id': emptyTenantId }
 
-        // Create the tenant
-        await emptyApi.post('/settings/tenants', {
-            data: { id: emptyTenantId, name: 'Blank Slate Test Tenant', status: 'Active' }
-        });
+    const emptyEndpoints = [
+      '/devices?include_deleted=true',
+      '/logical-services?include_deleted=true',
+      '/intelligence/entities?include_deleted=true',
+      '/networks/connections?include_deleted=true',
+      '/far/modes',
+      '/investigations',
+      '/monitoring?include_deleted=true',
+      '/vendors?include_deleted=true',
+    ]
+    for (const endpoint of emptyEndpoints) {
+      const response = await sysApi.get(endpoint, { headers: emptyHeaders })
+      expect(response.ok(), `${endpoint} should be readable in the blank tenant`).toBeTruthy()
+      expect(await response.json(), `${endpoint} should start empty`).toEqual([])
+    }
 
-        // Set the browser to use this tenant
-        await page.addInitScript((tenantId) => {
-            window.localStorage.setItem('SYSGRID_TENANT_ID', tenantId);
-        }, emptyTenantId);
+    await resetBrowserState(page, { tenantId: emptyTenantId, userId: testUserId })
 
-        await resetBrowserState(page);
-        
-        const errors: string[] = [];
-        page.on('pageerror', err => errors.push(err.message));
+    const errors: string[] = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    await page.goto('/')
+    await waitForAppIdle(page)
+    await expect(page.getByTestId('active-tenant-name')).toHaveText(tenant.name)
 
-        await page.goto('/');
-        await waitForAppIdle(page);
+    const navigationLinks = page.locator('nav a[href^="/"]')
+    await expect(navigationLinks.first()).toBeVisible({ timeout: 15_000 })
+    const navLinks = await navigationLinks.evaluateAll((links) => (
+      Array.from(new Set(links.map((link) => link.getAttribute('href')).filter(
+        (href): href is string => Boolean(href) && href.length > 1 && !href.startsWith('http'),
+      )))
+    ))
+    expect(navLinks.length).toBeGreaterThan(0)
 
-        // Discover views only after the routed navigation shell is actually ready.
-        // The generic idle helper intentionally ignores bootstrap copy, so an explicit
-        // navigation readiness contract prevents racing the Initializing SysGrid screen.
-        const navigationLinks = page.locator('nav a[href^="/"]');
-        await expect(navigationLinks.first()).toBeVisible({ timeout: 15_000 });
-
-        const navLinks = await navigationLinks.evaluateAll((links) => {
-            return Array.from(new Set(links.map(l => l.getAttribute('href')).filter(h => h && h.length > 1 && !h.startsWith('http'))));
-        });
-        
-        console.log(`[Blank-Slate] Discovered ${navLinks.length} views to audit.`);
-        expect(navLinks.length).toBeGreaterThan(0);
-
-        for (const route of navLinks) {
-            await page.goto(route);
-            await waitForAppIdle(page);
-
-            // Assert React did not crash (main root still exists and has content)
-            const mainBody = page.locator('main, #root, #app-root').first();
-            await expect(mainBody).toBeVisible();
-            
-            // Fail fast if a React error was thrown
-            expect(errors).toEqual([]);
-        }
-    });
-});
+    for (const route of navLinks) {
+      await page.goto(route)
+      await waitForAppIdle(page)
+      await expect.poll(() => new URL(page.url()).pathname).toBe(route)
+      await expect(page.locator('main, #root, #app-root').first()).toBeVisible()
+      await expect(page.getByTestId('active-tenant-name')).toHaveText(tenant.name)
+      expect(errors).toEqual([])
+    }
+  })
+})

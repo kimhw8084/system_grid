@@ -1,9 +1,8 @@
-import { clickResilientButton } from './helpers/sysgrid';
-import { expect } from '@playwright/test';
-import { test } from './helpers/sysgrid-test';
-import { resetBrowserState, seedOperationalScenario, createInvestigation } from './helpers/sysgrid'
+import { clickResilientButton, createInvestigation, resetBrowserState, seedOperationalScenario, testApiBase } from './helpers/sysgrid'
+import { expect } from '@playwright/test'
+import { test } from './helpers/sysgrid-test'
 
-const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
+const apiBase = testApiBase
 
 test.describe('Knowledge workflows', () => {
   test('supports command-center summaries, architecture linkage, export, and operational actions', async ({ page, sysApi: request }) => {

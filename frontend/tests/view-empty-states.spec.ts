@@ -6,7 +6,7 @@ import { expectHealthyShell, expectNoAppFailures, installStrictAppMonitoring } f
 test.describe('View empty states', () => {
   test('renders explicit empty-state guidance for deterministic no-result filters', async ({ page }) => {
     await resetBrowserState(page)
-    const failures = installStrictAppMonitoring(page)
+    const appMonitoring = installStrictAppMonitoring(page)
     const impossibleTerm = `PW-NO-MATCH-${Date.now()}`
 
     const expectations = [
@@ -18,11 +18,11 @@ test.describe('View empty states', () => {
       await page.goto(entry.path)
       await waitForAppIdle(page)
       await page.getByPlaceholder(entry.placeholder).fill(impossibleTerm)
-      await page.keyboard.press('Enter').catch(() => {})
+      await page.keyboard.press('Enter')
       await expect(page.getByText(entry.text)).toBeVisible()
       await expectHealthyShell(page)
     }
 
-    await expectNoAppFailures(failures, 'empty-state matrix')
+    await expectNoAppFailures(appMonitoring, 'empty-state matrix')
   })
 })

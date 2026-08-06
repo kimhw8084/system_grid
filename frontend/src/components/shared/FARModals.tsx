@@ -9,6 +9,31 @@ import { StyledSelect } from './StyledSelect'
 import { MonitoringForm } from '../monitoring/MonitoringForm'
 import { ProjectForm } from '../Projects'
 import { WorkspaceModal } from './WorkspaceModal'
+import {
+  confirmAndExecuteFARNestedLifecycle,
+  FARNestedLifecycleCancelled,
+} from '../far/FARLifecycle'
+
+function newFARIdempotencyKey(scope: string): string {
+  const random = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+  return `far-${scope}-${random}`
+}
+
+function assertFAROnline() {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    throw new Error('FAR is in read-only offline mode. Mutations are not queued.')
+  }
+}
+
+async function requireJson(response: Response): Promise<any> {
+  if (!response.ok) {
+    const detail = await response.text()
+    throw new Error(detail || `FAR request failed (${response.status})`)
+  }
+  return response.json()
+}
 
 export function RootCauseFormModal({ isOpen, onClose, onSave, modeId, initialData = null }: any) {
   const [formData, setFormData] = useState({ cause_text: '', occurrence_level: 5, responsible_team: '' })
@@ -21,13 +46,28 @@ export function RootCauseFormModal({ isOpen, onClose, onSave, modeId, initialDat
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
+      assertFAROnline()
       const url = initialData?.id ? `/api/v1/far/causes/${initialData.id}` : '/api/v1/far/causes'
       const method = initialData?.id ? 'PUT' : 'POST'
-      const res = await apiFetch(url, {
-        method,
-        body: JSON.stringify({ ...data, mode_ids: [modeId] })
-      })
-      return res.json()
+      const payload = initialData?.id
+        ? {
+            expected_version: initialData.version,
+            cause_text: data.cause_text,
+            occurrence_level: data.occurrence_level,
+            responsible_team: data.responsible_team || null,
+            mode_ids: [modeId],
+            change_summary: 'Root cause attribution updated from FAR dossier',
+            idempotency_key: newFARIdempotencyKey('cause-update'),
+          }
+        : {
+            cause_text: data.cause_text,
+            occurrence_level: data.occurrence_level,
+            responsible_team: data.responsible_team || null,
+            mode_ids: [modeId],
+            idempotency_key: newFARIdempotencyKey('cause-create'),
+          }
+      const res = await apiFetch(url, { method, body: JSON.stringify(payload) })
+      return requireJson(res)
     },
     onSuccess: (data) => {
       toast.success(initialData?.id ? 'Root Cause Updated' : 'Root Cause Logged');
@@ -104,7 +144,7 @@ export function RootCauseFormModal({ isOpen, onClose, onSave, modeId, initialDat
 
 
 export function MitigationFormModal({ isOpen, onClose, onSave, modeId, causeId, type, bkms, monitoring }: any) {
-  const [formData, setFormData] = useState({ mitigation_type: type || 'Workaround', mitigation_steps: '', status: 'Planned', bkm_mode: 'link', bkm_id: '', bkm_content: '', monitoring_item_id: '' })
+  const [formData, setFormData] = useState({ mitigation_type: type || 'Workaround', mitigation_steps: '', responsible_team: '', status: 'Not Started', bkm_mode: 'link', bkm_id: '', bkm_content: '', monitoring_item_id: '' })
   const queryClient = useQueryClient()
 
   useEffect(() => {
@@ -113,25 +153,28 @@ export function MitigationFormModal({ isOpen, onClose, onSave, modeId, causeId, 
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
-       const payload: any = {
+       assertFAROnline()
+       const evidenceNotes: string[] = []
+       if (data.mitigation_type === 'Workaround' && data.bkm_mode === 'link' && data.bkm_id) {
+         const bkm = (bkms || []).find((candidate: any) => String(candidate.id) === String(data.bkm_id))
+         evidenceNotes.push(`BKM reference: ${bkm?.title || `Knowledge #${data.bkm_id}`}`)
+       } else if (data.mitigation_type === 'Workaround' && data.bkm_mode === 'input' && data.bkm_content) {
+         evidenceNotes.push(`External BKM reference: ${data.bkm_content}`)
+       }
+       const payload = {
           mitigation_type: data.mitigation_type,
-          mitigation_steps: data.mitigation_steps,
+          mitigation_steps: [data.mitigation_steps, ...evidenceNotes].filter(Boolean).join('\n\n'),
+          responsible_team: data.responsible_team || null,
           status: data.status,
           mode_ids: [modeId],
-          cause_id: causeId
-       }
-       if (data.mitigation_type === 'Monitoring' && data.monitoring_item_id) {
-          payload.monitoring_item_id = parseInt(data.monitoring_item_id)
-       }
-       if (data.mitigation_type === 'Workaround') {
-          if (data.bkm_mode === 'link' && data.bkm_id) {
-             payload.knowledge_bkm_id = parseInt(data.bkm_id)
-          } else if (data.bkm_mode === 'input' && data.bkm_content) {
-             payload.metadata_json = { external_bkm_link: data.bkm_content }
-          }
+          cause_id: causeId || null,
+          monitoring_item_id: data.mitigation_type === 'Monitoring' && data.monitoring_item_id
+            ? Number(data.monitoring_item_id)
+            : null,
+          idempotency_key: newFARIdempotencyKey('mitigation-create'),
        }
        const res = await apiFetch('/api/v1/far/mitigations', { method: 'POST', body: JSON.stringify(payload) })
-       return res.json()
+       return requireJson(res)
     },
     onSuccess: (data) => {
        toast.success(`${type} Synchronized`);
@@ -186,8 +229,8 @@ export function MitigationFormModal({ isOpen, onClose, onSave, modeId, causeId, 
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Owner Team</label>
             <input 
-              value={(formData as any).team || ''} 
-              onChange={e => setFormData({...formData, team: e.target.value} as any)} 
+              value={formData.responsible_team}
+              onChange={e => setFormData({...formData, responsible_team: e.target.value})}
               placeholder="e.g. SRE" 
               className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-[12px] font-bold text-white outline-none focus:border-white/20" 
             />
@@ -270,17 +313,28 @@ export function PreventionFormModal({ isOpen, onClose, onSave, modeId, causeId }
 
   const projectMutation = useMutation({
     mutationFn: async (data: any) => {
-       const res = await apiFetch('/api/v1/projects/', {
+       assertFAROnline()
+       const preventionAction = String(data.description || data.objective || data.name || '').trim()
+       const res = await apiFetch('/api/v1/far/prevention/projects', {
          method: 'POST',
          body: JSON.stringify({
-           ...data,
-           metadata_json: {
-             linked_failure_mode_id: modeId,
-             linked_cause_id: causeId
-           }
+           project: {
+             ...data,
+             metadata_json: {
+               ...(data.metadata_json || {}),
+               linked_failure_mode_id: modeId,
+               linked_cause_id: causeId,
+             },
+           },
+           failure_mode_id: modeId,
+           cause_id: causeId || null,
+           prevention_action: preventionAction || `Prevention project for FAR mode ${modeId}`,
+           responsible_team: data.owner || null,
+           target_date: data.end_date || null,
+           idempotency_key: newFARIdempotencyKey('prevention-project-create'),
          })
        })
-       return res.json()
+       return requireJson(res)
     },
     onSuccess: (data) => {
        toast.success('Prevention Project Initiated');
@@ -321,7 +375,7 @@ export function PreventionFormModal({ isOpen, onClose, onSave, modeId, causeId }
   )
 }
 
-export function ResolutionManagerModal({ isOpen, onClose, cause, onSave }: any) {
+export function ResolutionManagerModal({ isOpen, onClose, cause, modeId, onSave }: any) {
   const [search, setSearch] = useState('')
   const [selectedBkm, setSelectedBkm] = useState<any>(null)
   const [guidanceNotes, setGuidanceNotes] = useState('')
@@ -338,12 +392,16 @@ export function ResolutionManagerModal({ isOpen, onClose, cause, onSave }: any) 
 
   const addMutation = useMutation({
     mutationFn: async (data: any) => {
+      assertFAROnline()
       const res = await apiFetch('/api/v1/far/resolutions', {
         method: 'POST',
-        body: JSON.stringify({ ...data, cause_ids: [cause.id] })
+        body: JSON.stringify({
+          ...data,
+          cause_ids: [cause.id],
+          idempotency_key: newFARIdempotencyKey('resolution-create'),
+        })
       })
-      if (!res.ok) throw new Error(await res.text())
-      return res.json()
+      return requireJson(res)
     },
     onSuccess: () => {
       toast.success('BKM Artifact Linked');
@@ -356,15 +414,23 @@ export function ResolutionManagerModal({ isOpen, onClose, cause, onSave }: any) 
   })
 
   const deleteResolutionMutation = useMutation({
-    mutationFn: async (resId: number) => {
-      const res = await apiFetch(`/api/v1/far/resolutions/${resId}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error(await res.text())
-      return res.json()
-    },
+    mutationFn: async (resolution: any) =>
+      confirmAndExecuteFARNestedLifecycle({
+        entityType: 'resolution',
+        entityId: Number(resolution.id),
+        expectedVersion: Number(resolution.version),
+        reason: 'Resolution unlinked from this FAR failure mode',
+        modeId: Number(modeId),
+        label: 'Unlink this resolution from the current failure mode?',
+      }),
     onSuccess: () => {
-      toast.success('BKM Linkage Purged')
+      toast.success('BKM linkage preserved and unlinked')
       queryClient.invalidateQueries({ queryKey: ['far', 'modes'] })
       if (onSave) onSave()
+    },
+    onError: (error: any) => {
+      if (error instanceof FARNestedLifecycleCancelled) return
+      toast.error(error.message || 'Failed to unlink resolution')
     }
   })
 
@@ -407,7 +473,7 @@ export function ResolutionManagerModal({ isOpen, onClose, cause, onSave }: any) 
                       <div className="flex items-center gap-2">
                          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tight">{formatAppDate(res.created_at)}</span>
                          <button 
-                            onClick={() => deleteResolutionMutation.mutate(res.id)} 
+                            onClick={() => deleteResolutionMutation.mutate(res)}
                             disabled={deleteResolutionMutation.isPending}
                             className="p-1.5 text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
                          >

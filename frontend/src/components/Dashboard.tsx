@@ -233,7 +233,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
     e.preventDefault();
     if (!globalSearch) return;
     const term = globalSearch.toUpperCase();
-    if (term.startsWith('FAR')) navigate(`/far?id=${term.replace('FAR-', '')}`);
+    if (term.startsWith('FAR')) navigate(`/far?far=${term.replace('FAR-', '')}`);
     else if (term.startsWith('PROJ')) navigate(`/projects?search=${term}`);
     else navigate(`/asset?search=${term}`);
   };
@@ -539,7 +539,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                       {feed.items?.map((item: any, idx: number) => (
                         <Link 
                           key={item.id || idx} 
-                          to={`${feed.path}?id=${item.id}`}
+                          to={feed.path === '/far' ? `/far?far=${item.id}` : `${feed.path}?id=${item.id}`}
                           className="flex items-center justify-between p-4 rounded-lg bg-white/[0.02] border border-white/5 hover:border-blue-500/20 hover:bg-white/[0.05] transition-all group/item shadow-sm"
                         >
                           <div className="flex flex-col min-w-0">

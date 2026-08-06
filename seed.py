@@ -1022,6 +1022,9 @@ async def seed_domain_data(tenant_db_url: str):
         print(" -> FAR, RCA, and investigations")
         far_modes = []
         for idx in range(10):
+            severity = random.randint(5, 10)
+            occurrence = random.randint(2, 8)
+            detection = random.randint(1, 6)
             mode = models.FarFailureMode(
                 system_name=random.choice(systems),
                 failure_type=random.choice(["Design", "Operational", "Dependency", "Capacity"]),
@@ -1031,10 +1034,10 @@ async def seed_domain_data(tenant_db_url: str):
                     "Operator login failures across the tool chain.",
                     "Cross-site reporting degradation with stale dashboards.",
                 ]),
-                severity=random.randint(5, 10),
-                occurrence=random.randint(2, 8),
-                detection=random.randint(1, 6),
-                rpn=random.randint(60, 320),
+                severity=severity,
+                occurrence=occurrence,
+                detection=detection,
+                rpn=severity * occurrence * detection,
                 status=random.choice(["Analyzing", "Cause Identified", "Mitigated"]),
                 has_incident_history=True,
                 metadata_json={"ownerTeam": random.choice([t.name for t in teams])},
@@ -1567,6 +1570,9 @@ async def main():
     parser.add_argument("--tenant-name", default="Local Demo")
     parser.add_argument("--tenant-db", default="tenants/local-demo/local_demo.db")
     parser.add_argument("--admin-user", default="haewon.kim")
+    parser.add_argument("--admin-full-name", default=None, help="Display name for the primary disposable admin")
+    parser.add_argument("--admin-email", default=None, help="Email for the primary disposable admin")
+    parser.add_argument("--admin-department", default="Infrastructure", help="Department for disposable admins")
     parser.add_argument("--extra-admin-user", action="append", default=[], help="Additional user ids to grant admin access and select for this tenant")
     parser.add_argument("--seed-data", action="store_true", help="Seed full domain data")
     parser.add_argument("--no-seed-data", action="store_true", help="Skip domain/demo data and create only the bootstrap shell")
@@ -1589,7 +1595,9 @@ async def main():
     await ensure_tenant_admin_async(
         tenant_db_url=tenant_db_url,
         admin_user=args.admin_user,
-        full_name=None, email=None, department="Infrastructure"
+        full_name=args.admin_full_name,
+        email=args.admin_email,
+        department=args.admin_department,
     )
     ensure_additional_admin_access(
         tenant_name=args.tenant_name,
@@ -1599,7 +1607,7 @@ async def main():
     await ensure_additional_admins_async(
         tenant_db_url=tenant_db_url,
         admin_users=args.extra_admin_user,
-        department="Infrastructure",
+        department=args.admin_department,
     )
 
     should_seed_data = args.seed_data and not args.no_seed_data

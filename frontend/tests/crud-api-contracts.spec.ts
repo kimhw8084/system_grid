@@ -1,7 +1,7 @@
-import { clickResilientButton } from './helpers/sysgrid';
-import { expect } from '@playwright/test';
-import { test } from './helpers/sysgrid-test';
+import { expect } from '@playwright/test'
+import { test } from './helpers/sysgrid-test'
 import {
+  clickResilientButton,
   createAsset,
   createConnection,
   createExternalEntity,
@@ -9,10 +9,11 @@ import {
   createProject,
   createService,
   createFarMode,
-  createInvestigation
+  createInvestigation,
+  testApiBase,
 } from './helpers/sysgrid'
 
-const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
+const apiBase = testApiBase
 
 test.describe('CRUD API contracts', () => {
   test('keeps assets, services, and monitoring CRUD free of write-time ORM errors', async ({ sysApi: request }) => {

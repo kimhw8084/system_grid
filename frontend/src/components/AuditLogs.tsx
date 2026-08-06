@@ -85,7 +85,7 @@ export default function AuditLogs() {
 
     if (table.includes('device')) return navigate(`/asset?id=${targetId}`)
     if (table.includes('project')) return navigate(`/projects?id=${targetId}`)
-    if (table.includes('far')) return navigate(`/far?id=${targetId}`)
+    if (table.includes('far')) return navigate(`/far?far=${targetId}`)
     if (table.includes('knowledge')) return navigate(`/knowledge?id=${targetId}`)
     if (table.includes('logical_service') || table.includes('service')) return navigate(`/services?id=${targetId}`)
     if (table.includes('monitor')) return navigate(`/monitoring?id=${targetId}`)

@@ -10,13 +10,12 @@ import {
   resetBrowserState,
   seedOperationalScenario,
   selectGridCheckboxRows,
+  testApiBase,
+  testApiHeaders,
 } from './helpers/sysgrid'
 
-const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
-const defaultHeaders = {
-  'X-User-Id': process.env.USER_ID || 'haewon.kim',
-  'X-Tenant-Id': '1',
-}
+const apiBase = testApiBase
+const defaultHeaders = testApiHeaders
 
 async function createVendorCandidateScenario(request: APIRequestContext) {
   const seeded = await seedOperationalScenario(request)

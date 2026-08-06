@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND_DIR="$ROOT_DIR/backend"
@@ -20,19 +20,26 @@ ADMIN_DEPARTMENT="${ADMIN_DEPARTMENT:-Infrastructure}"
 USER_ID_ENV_VAR_VALUE="${USER_ID_ENV_VAR_VALUE:-USER_ID}"
 RUNTIME_EFFECTIVE_USER_ID="${RUNTIME_EFFECTIVE_USER_ID:-}"
 SEED_DOMAIN_DATA="${SEED_DOMAIN_DATA:-true}"
+DATA_MODE="${DATA_MODE:-reset}"
 RUN_TYPECHECK="${RUN_TYPECHECK:-true}"
 STRICT_STARTUP_CHECKS="${STRICT_STARTUP_CHECKS:-false}"
 PRINT_RUNTIME_CONFIG="${PRINT_RUNTIME_CONFIG:-false}"
 BUGANIZER_URL="${BUGANIZER_URL:-}"
 EXISTING_ALLOWED_HOSTS="${ALLOWED_HOSTS:-}"
 EXISTING_CORS_ORIGINS="${BACKEND_CORS_ORIGINS:-}"
+RUNTIME_LOG_DIR="${RUNTIME_LOG_DIR:-}"
+RUNTIME_REPORT_FILE="${RUNTIME_REPORT_FILE:-}"
+PROFILE_NAME="${PROFILE_NAME:-default}"
+PUBLIC_FRONTEND_PROBE="${PUBLIC_FRONTEND_PROBE:-true}"
+REQUIRE_PUBLIC_FRONTEND="${REQUIRE_PUBLIC_FRONTEND:-false}"
 
 usage() {
-  cat <<'EOF'
+  cat <<'USAGE'
 Usage: ./scripts/start-local.sh [options]
 
-Starts a disposable local SysGrid environment and supports localhost, VS Code
-forwarded ports, company proxy origins, and explicit remote development origins.
+Starts a development/UAT SysGrid environment and supports localhost, VS Code
+forwarded ports, company proxy origins, explicit remote development origins,
+and either a fresh disposable seed or a preserved Local Demo database.
 
 Options:
   --backend-host <host>              Local bind host for the backend
@@ -49,8 +56,15 @@ Options:
   --user-id-env-var <envVarName>
   --runtime-effective-user-id <userId>
   --buganizer-url <url>              Optional company Buganizer/new-issue URL
-  --seed-data
-  --no-seed-data
+  --seed-data                        Reset and seed representative domain data
+  --no-seed-data                     Reset and seed only foundation data
+  --reset-data                       Recreate Local Demo databases (default)
+  --preserve-data                    Reuse existing Local Demo databases
+  --runtime-log-dir <directory>      Persist backend/frontend/typecheck logs
+  --runtime-report-file <path>       Write a machine-readable runtime JSON report
+  --profile-name <name>              UAT/workstation profile name for evidence
+  --skip-public-frontend-probe       Do not probe browser-visible frontend URL
+  --require-public-frontend          Fail if browser-visible frontend probe fails
   --skip-typecheck
   --strict-checks
   --print-runtime-config             Resolve and print host/CORS config, then exit
@@ -63,8 +77,15 @@ Examples:
     --api-base-url http://8000.vscode.company.example/ \
     --frontend-origin http://5173.vscode.company.example/ \
     --user-id-env-var AccessKey \
-    --skip-typecheck
-EOF
+    --runtime-effective-user-id haewon.kim \
+    --seed-data \
+    --strict-checks
+
+  ./scripts/start-local.sh \
+    --api-base-url http://8000.vscode.company.example/ \
+    --frontend-origin http://5173.vscode.company.example/ \
+    --preserve-data
+USAGE
 }
 
 while [[ $# -gt 0 ]]; do
@@ -83,8 +104,15 @@ while [[ $# -gt 0 ]]; do
     --user-id-env-var) USER_ID_ENV_VAR_VALUE="$2"; shift 2 ;;
     --runtime-effective-user-id) RUNTIME_EFFECTIVE_USER_ID="$2"; shift 2 ;;
     --buganizer-url) BUGANIZER_URL="$2"; shift 2 ;;
-    --seed-data) SEED_DOMAIN_DATA="true"; shift ;;
-    --no-seed-data) SEED_DOMAIN_DATA="false"; shift ;;
+    --seed-data) SEED_DOMAIN_DATA="true"; DATA_MODE="reset"; shift ;;
+    --no-seed-data) SEED_DOMAIN_DATA="false"; DATA_MODE="reset"; shift ;;
+    --reset-data) DATA_MODE="reset"; shift ;;
+    --preserve-data) DATA_MODE="preserve"; shift ;;
+    --runtime-log-dir) RUNTIME_LOG_DIR="$2"; shift 2 ;;
+    --runtime-report-file) RUNTIME_REPORT_FILE="$2"; shift 2 ;;
+    --profile-name) PROFILE_NAME="$2"; shift 2 ;;
+    --skip-public-frontend-probe) PUBLIC_FRONTEND_PROBE="false"; shift ;;
+    --require-public-frontend) PUBLIC_FRONTEND_PROBE="true"; REQUIRE_PUBLIC_FRONTEND="true"; shift ;;
     --skip-typecheck) RUN_TYPECHECK="false"; shift ;;
     --strict-checks) STRICT_STARTUP_CHECKS="true"; shift ;;
     --print-runtime-config) PRINT_RUNTIME_CONFIG="true"; shift ;;
@@ -95,6 +123,18 @@ while [[ $# -gt 0 ]]; do
       exit 1
       ;;
   esac
+done
+
+case "$DATA_MODE" in
+  reset|preserve) ;;
+  *) echo "Invalid DATA_MODE: $DATA_MODE (expected reset or preserve)" >&2; exit 1 ;;
+esac
+
+for port_value in "$BACKEND_PORT" "$FRONTEND_PORT"; do
+  [[ "$port_value" =~ ^[0-9]+$ ]] && (( port_value >= 1 && port_value <= 65535 )) || {
+    echo "Invalid port: $port_value" >&2
+    exit 1
+  }
 done
 
 command -v "$PYTHON_BIN" >/dev/null 2>&1 || {
@@ -132,11 +172,22 @@ if [[ -n "$RUNTIME_EFFECTIVE_USER_ID" && ",$AUTO_ADMIN_USER_IDS_VALUE," != *",$R
   AUTO_ADMIN_USER_IDS_VALUE="${AUTO_ADMIN_USER_IDS_VALUE},$RUNTIME_EFFECTIVE_USER_ID"
 fi
 
-print_runtime_summary() {
-  cat <<EOF
+if [[ -n "$RUNTIME_LOG_DIR" ]]; then
+  mkdir -p "$RUNTIME_LOG_DIR"
+  RUNTIME_LOG_DIR="$(cd "$RUNTIME_LOG_DIR" && pwd)"
+fi
+if [[ -n "$RUNTIME_REPORT_FILE" ]]; then
+  mkdir -p "$(dirname "$RUNTIME_REPORT_FILE")"
+fi
 
-RESOLVED SYSGRID DEVELOPMENT RUNTIME
-------------------------------------
+print_runtime_summary() {
+  cat <<EOF_SUMMARY
+
+RESOLVED SYSGRID DEVELOPMENT/UAT RUNTIME
+----------------------------------------
+Profile:                  $PROFILE_NAME
+Data mode:                $DATA_MODE
+Seed representative data: $SEED_DOMAIN_DATA
 Local backend bind:       http://$BACKEND_HOST:$BACKEND_PORT
 Browser API origin:       $API_BASE_URL
 Trusted API hostname:     $API_PUBLIC_HOSTNAME
@@ -147,9 +198,20 @@ Allowed CORS origins:     $BACKEND_CORS_ORIGINS
 Health check:             $PUBLIC_HEALTH_URL
 User identity variable:   $USER_ID_ENV_VAR_VALUE
 Effective user:           $SOURCE_OF_TRUTH_USER_ID
+Default admin:            $DEFAULT_USER_ID_VALUE
+Auto admin users:         $AUTO_ADMIN_USER_IDS_VALUE
+Admin email:              $ADMIN_EMAIL
+Admin department:         $ADMIN_DEPARTMENT
 Buganizer URL:            ${BUGANIZER_URL:-<not configured>}
-EOF
+Runtime logs:             ${RUNTIME_LOG_DIR:-<terminal only>}
+Runtime report:           ${RUNTIME_REPORT_FILE:-<not requested>}
+EOF_SUMMARY
 }
+
+if [[ "$PRINT_RUNTIME_CONFIG" == "true" && -f "$ROOT_DIR/scripts/workstation-up.sh" && "${SYSGRID_SKIP_WORKSTATION_SELF_TEST:-0}" != "1" ]]; then
+  /bin/bash -n "$ROOT_DIR/scripts/workstation-up.sh"
+  SYSGRID_SKIP_WORKSTATION_SELF_TEST=1 /bin/bash "$ROOT_DIR/scripts/workstation-up.sh" --self-test
+fi
 
 print_runtime_summary
 if [[ "$PRINT_RUNTIME_CONFIG" == "true" ]]; then
@@ -235,7 +297,7 @@ print_probe_failure() {
   local title="$1"
   local status_code="$2"
   local body="$3"
-  cat >&2 <<EOF
+  cat >&2 <<EOF_FAILURE
 
 BACKEND PREFLIGHT FAILED: $title
 ----------------------------------------
@@ -251,7 +313,7 @@ $ALLOWED_HOSTS
 
 Resolved BACKEND_CORS_ORIGINS:
 $BACKEND_CORS_ORIGINS
-EOF
+EOF_FAILURE
 }
 
 wait_for_backend_contract() {
@@ -304,11 +366,122 @@ wait_for_backend_contract() {
   exit 1
 }
 
-echo "Preparing disposable local SysGrid environment..."
+wait_for_frontend() {
+  local status_code="000"
+  for _ in $(seq 1 60); do
+    status_code="$(curl -sS -o /dev/null -w '%{http_code}' "$LOCAL_FRONTEND_URL" 2>/dev/null || true)"
+    if [[ "$status_code" == "200" ]]; then
+      echo "Frontend local readiness: PASS ($LOCAL_FRONTEND_URL)"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "Frontend did not become ready at $LOCAL_FRONTEND_URL (last status $status_code)." >&2
+  exit 1
+}
+
+probe_public_frontend() {
+  [[ "$PUBLIC_FRONTEND_PROBE" == "true" ]] || return 0
+  local header_file body_file status_code content_type location
+  header_file="$(mktemp -t sysgrid-public-frontend-headers)"
+  body_file="$(mktemp -t sysgrid-public-frontend-body)"
+  status_code="$(curl -sS --max-time 12 -D "$header_file" -o "$body_file" -w '%{http_code}' "$FRONTEND_ORIGIN" 2>/dev/null || true)"
+  content_type="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/ {sub(/\r$/,"",$0); sub(/^[^:]+:[[:space:]]*/,"",$0); print; exit}' "$header_file")"
+  location="$(awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/\r$/,"",$0); sub(/^[^:]+:[[:space:]]*/,"",$0); print; exit}' "$header_file")"
+  rm -f "$header_file" "$body_file"
+
+  if [[ "$status_code" == "200" && "$content_type" == *"text/html"* ]]; then
+    echo "Browser-visible frontend probe: PASS ($FRONTEND_ORIGIN)"
+    return 0
+  fi
+
+  if [[ "$status_code" =~ ^30[12378]$ ]]; then
+    echo "Browser-visible frontend probe requires proxy/authentication completion (HTTP $status_code${location:+ -> $location})."
+  else
+    echo "WARNING: browser-visible frontend probe did not return application HTML (HTTP ${status_code:-000}, content-type ${content_type:-<missing>})." >&2
+  fi
+
+  if [[ "$REQUIRE_PUBLIC_FRONTEND" == "true" ]]; then
+    echo "Strict public frontend proof was requested; refusing to continue." >&2
+    exit 1
+  fi
+}
+
+write_runtime_report() {
+  [[ -n "$RUNTIME_REPORT_FILE" ]] || return 0
+  local git_head git_origin_main
+  git_head="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || true)"
+  git_origin_main="$(git -C "$ROOT_DIR" rev-parse origin/main 2>/dev/null || true)"
+  SYSGRID_REPORT_PROFILE="$PROFILE_NAME" \
+  SYSGRID_REPORT_DATA_MODE="$DATA_MODE" \
+  SYSGRID_REPORT_SEED_DOMAIN_DATA="$SEED_DOMAIN_DATA" \
+  SYSGRID_REPORT_ROOT_DIR="$ROOT_DIR" \
+  SYSGRID_REPORT_GIT_HEAD="$git_head" \
+  SYSGRID_REPORT_GIT_ORIGIN_MAIN="$git_origin_main" \
+  SYSGRID_REPORT_FRONTEND_ORIGIN="$FRONTEND_ORIGIN" \
+  SYSGRID_REPORT_API_BASE_URL="$API_BASE_URL" \
+  SYSGRID_REPORT_PUBLIC_HEALTH_URL="$PUBLIC_HEALTH_URL" \
+  SYSGRID_REPORT_LOCAL_FRONTEND_URL="$LOCAL_FRONTEND_URL" \
+  SYSGRID_REPORT_LOCAL_HEALTH_URL="$LOCAL_HEALTH_URL" \
+  SYSGRID_REPORT_API_PUBLIC_HOSTNAME="$API_PUBLIC_HOSTNAME" \
+  SYSGRID_REPORT_ALLOWED_HOSTS="$ALLOWED_HOSTS" \
+  SYSGRID_REPORT_CORS_ORIGINS="$BACKEND_CORS_ORIGINS" \
+  SYSGRID_REPORT_IDENTITY_VARIABLE="$USER_ID_ENV_VAR_VALUE" \
+  SYSGRID_REPORT_EFFECTIVE_USER="$SOURCE_OF_TRUTH_USER_ID" \
+  SYSGRID_REPORT_DEFAULT_ADMIN="$DEFAULT_USER_ID_VALUE" \
+  SYSGRID_REPORT_BUGANIZER_URL="$BUGANIZER_URL" \
+  SYSGRID_REPORT_BACKEND_PID="$BACKEND_PID" \
+  SYSGRID_REPORT_FRONTEND_PID="$FRONTEND_PID" \
+  SYSGRID_REPORT_LOG_DIR="$RUNTIME_LOG_DIR" \
+  SYSGRID_REPORT_TENANT_DB="$LOCAL_TENANT_DB" \
+  SYSGRID_REPORT_CONFIG_DB="$LOCAL_CONFIG_DB" \
+  "$PYTHON_BIN" - "$RUNTIME_REPORT_FILE" <<'PY_REPORT'
+import datetime as dt
+import json
+import os
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+payload = {
+    "schema_version": "1.0.0",
+    "classification": "SYSGRID_UAT_RUNTIME_REPORT",
+    "created_at": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+    "profile": os.environ["SYSGRID_REPORT_PROFILE"],
+    "data_mode": os.environ["SYSGRID_REPORT_DATA_MODE"],
+    "seed_domain_data": os.environ["SYSGRID_REPORT_SEED_DOMAIN_DATA"] == "true",
+    "repository": os.environ["SYSGRID_REPORT_ROOT_DIR"],
+    "git_head": os.environ["SYSGRID_REPORT_GIT_HEAD"],
+    "git_origin_main": os.environ["SYSGRID_REPORT_GIT_ORIGIN_MAIN"],
+    "frontend_origin": os.environ["SYSGRID_REPORT_FRONTEND_ORIGIN"],
+    "api_base_url": os.environ["SYSGRID_REPORT_API_BASE_URL"],
+    "public_health_url": os.environ["SYSGRID_REPORT_PUBLIC_HEALTH_URL"],
+    "local_frontend_url": os.environ["SYSGRID_REPORT_LOCAL_FRONTEND_URL"],
+    "local_health_url": os.environ["SYSGRID_REPORT_LOCAL_HEALTH_URL"],
+    "trusted_api_hostname": os.environ["SYSGRID_REPORT_API_PUBLIC_HOSTNAME"],
+    "allowed_hosts": os.environ["SYSGRID_REPORT_ALLOWED_HOSTS"],
+    "cors_origins": os.environ["SYSGRID_REPORT_CORS_ORIGINS"],
+    "identity_variable": os.environ["SYSGRID_REPORT_IDENTITY_VARIABLE"],
+    "effective_user": os.environ["SYSGRID_REPORT_EFFECTIVE_USER"],
+    "default_admin": os.environ["SYSGRID_REPORT_DEFAULT_ADMIN"],
+    "buganizer_url": os.environ["SYSGRID_REPORT_BUGANIZER_URL"],
+    "backend_pid": int(os.environ["SYSGRID_REPORT_BACKEND_PID"]),
+    "frontend_pid": int(os.environ["SYSGRID_REPORT_FRONTEND_PID"]),
+    "runtime_log_dir": os.environ["SYSGRID_REPORT_LOG_DIR"],
+    "tenant_db": os.environ["SYSGRID_REPORT_TENANT_DB"],
+    "config_db": os.environ["SYSGRID_REPORT_CONFIG_DB"],
+}
+path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+PY_REPORT
+  echo "Runtime evidence report: $RUNTIME_REPORT_FILE"
+}
+
+echo "Preparing SysGrid development/UAT environment..."
 
 if [[ "$RUN_TYPECHECK" == "true" ]]; then
   echo "Running frontend typecheck..."
-  TYPECHECK_LOG="$(mktemp -t sysgrid-typecheck)"
+  TYPECHECK_LOG="${RUNTIME_LOG_DIR:+$RUNTIME_LOG_DIR/typecheck.log}"
+  [[ -n "$TYPECHECK_LOG" ]] || TYPECHECK_LOG="$(mktemp -t sysgrid-typecheck)"
   if (
     cd "$FRONTEND_DIR"
     npx tsc --noEmit
@@ -317,12 +490,12 @@ if [[ "$RUN_TYPECHECK" == "true" ]]; then
   else
     echo "Frontend typecheck reported errors."
     echo "Log: $TYPECHECK_LOG"
-    sed -n '1,40p' "$TYPECHECK_LOG"
+    sed -n '1,60p' "$TYPECHECK_LOG"
     if [[ "$STRICT_STARTUP_CHECKS" == "true" ]]; then
       echo "Strict startup checks enabled. Refusing to start until typecheck passes."
       exit 1
     fi
-    echo "Continuing startup because this script is for local bootstrapping. Use ./scripts/verify-app.sh for strict validation."
+    echo "Continuing startup because strict checks were not requested. Use ./scripts/verify-app.sh for full qualification."
   fi
 else
   echo "Skipping frontend typecheck."
@@ -338,11 +511,17 @@ kill_listener_on_port "$BACKEND_PORT"
 kill_listener_on_port "$FRONTEND_PORT"
 
 mkdir -p "$BACKEND_DIR/tenants"
-rm -f "$LOCAL_CONFIG_DB" "$LOCAL_TENANT_DB"
-rm -rf "$LOCAL_TENANT_ROOT"
-mkdir -p "$LOCAL_TENANT_ROOT"
+if [[ "$DATA_MODE" == "reset" ]]; then
+  rm -f "$LOCAL_CONFIG_DB" "$LOCAL_TENANT_DB"
+  rm -rf "$LOCAL_TENANT_ROOT"
+  mkdir -p "$LOCAL_TENANT_ROOT"
+else
+  require_file "$LOCAL_CONFIG_DB" "Use --reset-data or a fresh UAT data mode to create the Local Demo configuration database."
+  require_file "$LOCAL_TENANT_DB" "Use --reset-data or a fresh UAT data mode to create the Local Demo tenant database."
+  echo "Preserving existing Local Demo databases."
+fi
 
-cat > "$LOCAL_BACKEND_ENV_FILE" <<EOF
+cat > "$LOCAL_BACKEND_ENV_FILE" <<EOF_BACKEND
 ALLOWED_HOSTS=$ALLOWED_HOSTS
 BACKEND_CORS_ORIGINS=$BACKEND_CORS_ORIGINS
 CONFIG_DATABASE_URL=$CONFIG_DATABASE_URL
@@ -360,32 +539,43 @@ SOURCE_OF_TRUTH_USER_ID=$SOURCE_OF_TRUTH_USER_ID
 ${USER_ID_ENV_VAR_VALUE}=$SOURCE_OF_TRUTH_USER_ID
 DEFAULT_EMAIL_DOMAIN=$DEFAULT_EMAIL_DOMAIN
 PORT=$BACKEND_PORT
-EOF
+EOF_BACKEND
 
-cat > "$FRONTEND_DIR/.env.local" <<EOF
+cat > "$FRONTEND_DIR/.env.local" <<EOF_FRONTEND
 VITE_API_BASE_URL=$API_BASE_URL
 VITE_FRONTEND_ORIGIN=$FRONTEND_ORIGIN
 VITE_PORT=$FRONTEND_PORT
 VITE_BACKEND_PORT=$BACKEND_PORT
 VITE_BACKEND_HOST=$BACKEND_HOST
 VITE_BUGANIZER_URL=$BUGANIZER_URL
-EOF
+EOF_FRONTEND
 
-echo "Seeding disposable local tenant..."
-seed_args=(
-  --tenant-name "Local Demo"
-  --tenant-db "$LOCAL_TENANT_DB_REL"
-  --admin-user "$DEFAULT_USER_ID_VALUE"
-)
-if [[ "$SEED_DOMAIN_DATA" == "true" ]]; then
-  seed_args+=(--seed-data)
+if [[ "$DATA_MODE" == "reset" ]]; then
+  echo "Seeding disposable Local Demo tenant..."
+  seed_args=(
+    --tenant-name "Local Demo"
+    --tenant-db "$LOCAL_TENANT_DB_REL"
+    --admin-user "$DEFAULT_USER_ID_VALUE"
+    --admin-full-name "$ADMIN_FULL_NAME"
+    --admin-email "$ADMIN_EMAIL"
+    --admin-department "$ADMIN_DEPARTMENT"
+  )
+  if [[ "$SEED_DOMAIN_DATA" == "true" ]]; then
+    seed_args+=(--seed-data)
+  else
+    seed_args+=(--no-seed-data)
+  fi
+  IFS=',' read -r -a configured_admin_ids <<< "$AUTO_ADMIN_USER_IDS_VALUE"
+  for configured_admin_id in "${configured_admin_ids[@]}"; do
+    configured_admin_id="${configured_admin_id#"${configured_admin_id%%[![:space:]]*}"}"
+    configured_admin_id="${configured_admin_id%"${configured_admin_id##*[![:space:]]}"}"
+    [[ -n "$configured_admin_id" && "$configured_admin_id" != "$DEFAULT_USER_ID_VALUE" ]] || continue
+    seed_args+=(--extra-admin-user "$configured_admin_id")
+  done
+  (cd "$ROOT_DIR" && ./backend/venv/bin/python seed.py "${seed_args[@]}")
 else
-  seed_args+=(--no-seed-data)
+  echo "Skipping seed because existing UAT data is being resumed."
 fi
-if [[ -n "$RUNTIME_EFFECTIVE_USER_ID" ]]; then
-  seed_args+=(--extra-admin-user "$RUNTIME_EFFECTIVE_USER_ID")
-fi
-(cd "$ROOT_DIR" && ./backend/venv/bin/python seed.py "${seed_args[@]}")
 
 echo "Provisioning code-managed reference data..."
 (
@@ -396,27 +586,52 @@ echo "Provisioning code-managed reference data..."
 echo "Running preflight..."
 "$ROOT_DIR/scripts/preflight.py"
 
+BACKEND_LOG="${RUNTIME_LOG_DIR:+$RUNTIME_LOG_DIR/backend.log}"
+FRONTEND_LOG="${RUNTIME_LOG_DIR:+$RUNTIME_LOG_DIR/frontend.log}"
+
 echo "Starting backend on http://$BACKEND_HOST:$BACKEND_PORT"
-(
-  cd "$BACKEND_DIR"
-  PYTHONPATH=. "$BACKEND_DIR/venv/bin/python" -m uvicorn app.main:app --host "$BACKEND_HOST" --port "$BACKEND_PORT"
-) &
+if [[ -n "$BACKEND_LOG" ]]; then
+  : > "$BACKEND_LOG"
+  (
+    cd "$BACKEND_DIR"
+    PYTHONPATH=. "$BACKEND_DIR/venv/bin/python" -m uvicorn app.main:app --host "$BACKEND_HOST" --port "$BACKEND_PORT"
+  ) > >(tee -a "$BACKEND_LOG") 2>&1 &
+else
+  (
+    cd "$BACKEND_DIR"
+    PYTHONPATH=. "$BACKEND_DIR/venv/bin/python" -m uvicorn app.main:app --host "$BACKEND_HOST" --port "$BACKEND_PORT"
+  ) &
+fi
 BACKEND_PID=$!
 
 echo "Waiting for backend host/CORS/health contract..."
 wait_for_backend_contract
 
 echo "Starting frontend on http://$FRONTEND_HOST:$FRONTEND_PORT"
-(
-  cd "$FRONTEND_DIR"
-  npm run dev -- --host "$FRONTEND_HOST" --port "$FRONTEND_PORT"
-) &
+if [[ -n "$FRONTEND_LOG" ]]; then
+  : > "$FRONTEND_LOG"
+  (
+    cd "$FRONTEND_DIR"
+    npm run dev -- --host "$FRONTEND_HOST" --port "$FRONTEND_PORT"
+  ) > >(tee -a "$FRONTEND_LOG") 2>&1 &
+else
+  (
+    cd "$FRONTEND_DIR"
+    npm run dev -- --host "$FRONTEND_HOST" --port "$FRONTEND_PORT"
+  ) &
+fi
 FRONTEND_PID=$!
 
-cat <<EOF
+wait_for_frontend
+probe_public_frontend
+write_runtime_report
 
-SYSGRID DEVELOPMENT RUNTIME READY
----------------------------------
+cat <<EOF_READY
+
+SYSGRID DEVELOPMENT/UAT RUNTIME READY
+-------------------------------------
+Profile:            $PROFILE_NAME
+Data mode:          $DATA_MODE
 Frontend (browser): $FRONTEND_ORIGIN
 Frontend (local):   $LOCAL_FRONTEND_URL
 Backend health:     $PUBLIC_HEALTH_URL
@@ -428,15 +643,18 @@ Seed domain data:   $SEED_DOMAIN_DATA
 Backend runtime:    $LOCAL_BACKEND_ENV_FILE
 Tenant DB:          $LOCAL_TENANT_DB
 Config DB:          $LOCAL_CONFIG_DB
+Runtime logs:       ${RUNTIME_LOG_DIR:-<terminal only>}
+Runtime report:     ${RUNTIME_REPORT_FILE:-<not requested>}
 
-This workflow resets and reseeds only the disposable Local Demo databases.
-It does not touch production tenant or configuration databases.
+This is a production-like development/UAT runtime using Local Demo SQLite data.
+It does not use or modify production tenant/configuration databases.
 
 Troubleshooting:
   1. Open $PUBLIC_HEALTH_URL.
-  2. Run this command with --print-runtime-config to inspect resolved hosts/origins.
-  3. Clear stale browser API overrides from the bootstrap failure window.
-  4. Use the bootstrap window's Copy Diagnostics / Open Buganizer actions.
-EOF
+  2. Open $FRONTEND_ORIGIN.
+  3. Run workstation diagnostics from another Terminal when available.
+  4. Clear stale browser API overrides from the bootstrap failure window.
+  5. Use Copy Diagnostics / Open Buganizer for product feedback.
+EOF_READY
 
 wait

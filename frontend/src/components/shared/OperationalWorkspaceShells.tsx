@@ -8,15 +8,18 @@ import { WorkspaceFloatingPanel } from './OperationalWorkspacePrimitives'
 
 const join = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(' ')
 type WorkspaceFilterChip = { id: string; label: string; onRemove: () => void }
+export type GoldenWorkspaceKey = 'monitoring' | 'assets' | 'services' | 'external' | 'network' | 'far' | 'research' | 'vendors'
 export type GoldenWorkspaceArchetype = 'table' | 'hybrid' | 'analytical'
 
-export const GOLDEN_WORKSPACE_GEOMETRY_VERSION = '1'
-export const GOLDEN_WORKSPACE_FRAME_CLASS = 'h-full min-h-0 flex flex-col space-y-4'
-export const GOLDEN_GRID_BASE_CLASS = 'operational-grid-shell operational-grid flex flex-1 w-full min-h-0 flex-col glass-panel overflow-hidden ag-theme-alpine-dark relative'
+export const GOLDEN_WORKSPACE_GEOMETRY_VERSION = '3'
+export const GOLDEN_WORKSPACE_FRAME_CLASS = 'h-full min-h-0 min-w-0 w-full max-w-full box-border flex flex-col items-stretch space-y-4 overflow-hidden [&>*]:!ml-0 [&>*]:!mr-0 [&>*]:!min-w-0 [&>*]:!max-w-full [&>*]:!w-full [&>*]:self-stretch'
+export const GOLDEN_GRID_BASE_CLASS = 'operational-grid-shell operational-grid relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-hidden glass-panel ag-theme-alpine-dark [&_.ag-root-wrapper]:!min-w-0 [&_.ag-root-wrapper]:!w-full [&_.ag-root-wrapper]:!max-w-full [&_.ag-root]:!min-w-0 [&_.ag-root]:!w-full [&_.ag-root]:!max-w-full [&_.ag-body]:!min-w-0 [&_.ag-body]:!max-w-full [&_.ag-body-viewport]:!min-w-0 [&_.ag-body-viewport]:!max-w-full [&_.ag-center-cols-viewport]:!min-w-0 [&_.ag-center-cols-viewport]:!max-w-full [&_.ag-center-cols-container]:!min-w-full [&_.ag-center-cols-container]:!max-w-[400%] [&_.ag-center-cols-container_.ag-row]:!max-w-full'
 export const GOLDEN_GRID_VARIANT_CLASS = {
   golden: 'rounded-lg',
   'attached-panel': 'rounded-t-none border-x border-b border-white/5',
 } as const
+
+export const GOLDEN_GRID_CONTENT_CLASS = 'relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 overflow-hidden [contain:inline-size] [&>*]:!min-h-0 [&>*]:!min-w-0 [&>*]:!w-full [&>*]:!max-w-full [&>*]:flex-1'
 
 export const getOperationalGridSurfaceStyle = (
   fontSize: number,
@@ -34,14 +37,14 @@ export function OperationalWorkspaceFrame({
   children,
   className = '',
   workspace,
-  archetype = 'table',
+  archetype,
 }: {
   header: React.ComponentProps<typeof PageHeader>
   commandBar: React.ComponentProps<typeof WorkspaceCommandBar>
   children: React.ReactNode
   className?: string
-  workspace?: string
-  archetype?: GoldenWorkspaceArchetype
+  workspace: GoldenWorkspaceKey
+  archetype: GoldenWorkspaceArchetype
 }) {
   return (
     <div
@@ -71,7 +74,7 @@ export function OperationalWorkspaceShell({
   children,
   className = '',
   workspace,
-  archetype = 'table',
+  archetype,
 }: {
   header: React.ComponentProps<typeof PageHeader>
   commandBar?: React.ComponentProps<typeof WorkspaceCommandBar>
@@ -83,8 +86,8 @@ export function OperationalWorkspaceShell({
   floatingPanels?: React.ReactNode
   children: React.ReactNode
   className?: string
-  workspace?: string
-  archetype?: GoldenWorkspaceArchetype
+  workspace: GoldenWorkspaceKey
+  archetype: GoldenWorkspaceArchetype
 }) {
   const resolvedCommandBar = commandBar ?? {
     left: (
@@ -98,9 +101,14 @@ export function OperationalWorkspaceShell({
     filterChips,
   }
 
+  const floatingPortal = typeof document !== 'undefined' && floatingPanels
+    ? createPortal(floatingPanels, document.body)
+    : null
+
+
   return (
     <OperationalWorkspaceFrame header={header} commandBar={resolvedCommandBar} className={className} workspace={workspace} archetype={archetype}>
-      {typeof document !== 'undefined' && floatingPanels ? createPortal(floatingPanels, document.body) : null}
+      {floatingPortal}
       {children}
     </OperationalWorkspaceFrame>
   )
@@ -128,14 +136,16 @@ export function OperationalGridSurface({
       GOLDEN_GRID_BASE_CLASS,
       GOLDEN_GRID_VARIANT_CLASS[variant],
       className
-    )} style={style} data-golden-grid-surface="true" data-golden-grid-variant={variant} data-golden-geometry-version={GOLDEN_WORKSPACE_GEOMETRY_VERSION}>
+    )} style={style} data-golden-grid-surface="true" data-testid="golden-grid-surface" data-golden-grid-variant={variant} data-golden-grid-loading={loading ? 'true' : 'false'} data-golden-geometry-version={GOLDEN_WORKSPACE_GEOMETRY_VERSION}>
       {loading ? (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#020617]/80 backdrop-blur-sm space-y-4">
           {loadingIcon}
           {loadingLabel}
         </div>
       ) : null}
-      {children}
+      <div className={GOLDEN_GRID_CONTENT_CLASS} data-golden-grid-content="true">
+        {children}
+      </div>
     </div>
   )
 }
@@ -161,17 +171,31 @@ export function OperationalAnchoredPanel({
 }) {
   if (!isOpen) return null
 
+  const { maxHeight, overflowY, overflowX, overscrollBehavior, scrollbarGutter, ...anchorStyle } = style
+  const scrollSurfaceStyle: React.CSSProperties = {
+    width: '100%',
+    maxWidth: '100%',
+    boxSizing: 'border-box',
+    maxHeight,
+    overflowY,
+    overflowX,
+    overscrollBehavior,
+    scrollbarGutter,
+  }
+
   return (
     <div
       ref={panelRef}
-      style={style}
+      style={anchorStyle}
       className={className}
       data-workspace-panel="true"
       data-workspace-panel-key={panelKey}
       data-workspace-panel-offset={yOffset}
       data-workspace-interaction-lock={interactionLocked ? 'true' : undefined}
     >
-      {children}
+      <div data-workspace-panel-scroll-surface="true" style={scrollSurfaceStyle}>
+        {children}
+      </div>
     </div>
   )
 }
@@ -370,7 +394,7 @@ export function OperationalDisplayPanel({
 export function OperationalSavedViewsPanel<TView extends {
   id: string
   name: string
-  config?: { groupBy?: string }
+  config?: unknown
   scope?: 'personal' | 'team'
   source?: 'system' | 'remote' | 'local'
 }>({

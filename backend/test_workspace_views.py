@@ -51,6 +51,26 @@ async def test_workspace_definition_registry_is_complete_and_typed(seeded_admin_
     definitions = response.json()["definitions"]
     by_key = {entry["key"]: entry for entry in definitions}
     assert set(by_key) == {"monitoring", "assets", "services", "external", "network", "far", "research", "vendors"}
+    assert {key: entry["route"] for key, entry in by_key.items()} == {
+        "monitoring": "/monitoring",
+        "assets": "/asset",
+        "services": "/services",
+        "external": "/external",
+        "network": "/network",
+        "far": "/far",
+        "research": "/research",
+        "vendors": "/vendors",
+    }
+    assert {key: entry["archetype"] for key, entry in by_key.items()} == {
+        "monitoring": "table",
+        "assets": "table",
+        "services": "table",
+        "external": "table",
+        "network": "topology_hybrid",
+        "far": "investigation",
+        "research": "research",
+        "vendors": "table",
+    }
     assert by_key["network"]["archetype"] == "topology_hybrid"
     assert by_key["far"]["archetype"] == "investigation"
     assert by_key["research"]["archetype"] == "research"
@@ -61,6 +81,15 @@ async def test_workspace_definition_registry_is_complete_and_typed(seeded_admin_
     assert by_key["assets"]["state_schema"]["quick_filter_keys"] == ["status", "system", "type", "owner"]
     assert "primary_personnel_email" in by_key["vendors"]["state_schema"]["column_ids"]
     assert by_key["vendors"]["state_schema"]["group_by"] == ["raw", "country"]
+    assert by_key["far"]["state_schema"]["column_ids"] == [
+        "title", "rpn", "status", "owner", "systemName", "failureType",
+        "effect", "affectedAssets", "causes", "mitigations", "preventionActions",
+        "linkedRcas", "ageDays", "incidentCount", "updatedAt",
+    ]
+    assert by_key["far"]["state_schema"]["quick_filter_keys"] == [
+        "status", "riskBand", "owner", "systemName", "failureType",
+    ]
+    assert "display_controls" in by_key["far"]["capabilities"]
 
 
 @pytest.mark.anyio
@@ -268,3 +297,78 @@ async def test_atomic_revision_allows_only_one_writer(seeded_admin_tenant):
 
     first, second = await asyncio.gather(writer("Concurrent A"), writer("Concurrent B"))
     assert sorted([first.status_code, second.status_code]) == [200, 409], (first.text, second.text)
+
+
+@pytest.mark.anyio
+async def test_far_workspace_experience_and_saved_view_contract(seeded_admin_tenant):
+    client = seeded_admin_tenant["client"]
+    tenant_id = seeded_admin_tenant["tenant_id"]
+    request_headers = headers("admin_root", tenant_id)
+
+    experience_response = await client.get("/api/v1/workspaces/far/experience", headers=request_headers)
+    assert experience_response.status_code == 200, experience_response.text
+    experience = experience_response.json()
+    assert experience["workspace_key"] == "far"
+    assert experience["data_endpoint"] == "/far/modes"
+    assert experience["detail_query_key"] == "far"
+    assert [column["key"] for column in experience["columns"]] == [
+        "title", "rpn", "status", "owner", "systemName", "failureType",
+        "effect", "affectedAssets", "causes", "mitigations", "preventionActions",
+        "linkedRcas", "ageDays", "incidentCount", "updatedAt",
+    ]
+    assert [column["label"] for column in experience["columns"][:4]] == [
+        "Failure mode", "Risk", "Status", "Owner",
+    ]
+    assert {preset["key"] for preset in experience["presets"]} == {
+        "all", "high-risk", "overdue", "unassigned", "recent",
+    }
+    assert experience["risk_thresholds"] == {"critical": 300, "high": 200, "moderate": 100}
+    assert next(mode for mode in experience["modes"] if mode["key"] == "causes")["column_keys"] == [
+        "title", "causes", "rpn", "owner", "systemName", "linkedRcas",
+    ]
+
+    create_response = await client.post(
+        "/api/v1/workspaces/far/views",
+        json={
+            "name": "High risk reliability",
+            "scope": "personal",
+            "schema_version": 1,
+            "definition": {
+                "searchTerm": "  pressure loss  ",
+                "activeLens": "high-risk",
+                "viewMode": "causes",
+                "fontSize": 99,
+                "rowDensity": -10,
+                "hiddenColumns": ["updatedAt", "anonymous", "updatedAt"],
+                "groupBy": "owner",
+                "filters": {
+                    "status": ["Open", "Open"],
+                    "riskBand": ["Critical", "High"],
+                    "owner": ["Reliability"],
+                    "unknown": ["drop"],
+                },
+                "sortModel": [
+                    {"colId": "rpn", "sort": "desc"},
+                    {"colId": "3", "sort": "asc"},
+                ],
+                "unknownTopLevel": True,
+            },
+        },
+        headers=request_headers,
+    )
+    assert create_response.status_code == 201, create_response.text
+    definition = create_response.json()["definition"]
+    assert definition["searchTerm"] == "pressure loss"
+    assert definition["activeLens"] == "high-risk"
+    assert definition["viewMode"] == "causes"
+    assert definition["fontSize"] == 18
+    assert definition["rowDensity"] == 0
+    assert definition["hiddenColumns"] == ["updatedAt"]
+    assert definition["groupBy"] == "owner"
+    assert definition["filters"] == {
+        "status": ["Open"],
+        "riskBand": ["Critical", "High"],
+        "owner": ["Reliability"],
+    }
+    assert definition["sortModel"] == [{"colId": "rpn", "sort": "desc"}]
+    assert "unknownTopLevel" not in definition

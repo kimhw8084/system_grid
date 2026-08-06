@@ -61,6 +61,7 @@ function decorateApiError(
     finalUrl?: string
     requestId?: string
     rawBody?: string
+    tenantId?: string
   } = {},
 ) {
   error.status = Number(details.status ?? error.status ?? 0)
@@ -72,12 +73,56 @@ function decorateApiError(
   error.redirected = Boolean(details.redirected ?? error.redirected)
   error.requestId = details.requestId ?? error.requestId ?? ''
   error.rawBody = String(details.rawBody ?? error.rawBody ?? '').slice(0, 2000)
+  error.tenantId = details.tenantId ?? error.tenantId ?? ''
   error.browserOrigin = typeof window === 'undefined' ? '' : window.location.origin
   error.configuredApiBase = getApiBaseUrl()
   error.timestamp = new Date().toISOString()
   error.browserOnline = typeof navigator === 'undefined' ? null : navigator.onLine
   if (!error.data) error.data = { detail: error.message }
   return error
+}
+
+export const TENANT_CONTEXT_SESSION_KEY = 'SYSGRID_EFFECTIVE_TENANT_ID'
+export const TENANT_CONTEXT_CHANGED_EVENT = 'sysgrid:tenant-context-changed'
+
+export function getObservedTenantId(): string {
+  if (typeof sessionStorage === 'undefined') return ''
+  return sessionStorage.getItem(TENANT_CONTEXT_SESSION_KEY) || ''
+}
+
+export function clearLegacyTenantBrowserState() {
+  if (typeof localStorage === 'undefined') return
+  localStorage.removeItem('SYSGRID_TENANT_ID')
+  localStorage.removeItem('SYSGRID_TENANT_CONTEXT_MODE')
+}
+
+function responseTenantId(response: Response): string {
+  return (response?.headers?.get?.('x-sysgrid-tenant-id') || '').trim()
+}
+
+function recordResponseTenantContext(response: Response, method: string, requestUrl: string) {
+  const tenantId = responseTenantId(response)
+  if (!tenantId || typeof sessionStorage === 'undefined') return tenantId
+  const previousTenantId = getObservedTenantId()
+  if (previousTenantId && previousTenantId !== tenantId) {
+    sessionStorage.setItem(TENANT_CONTEXT_SESSION_KEY, tenantId)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(TENANT_CONTEXT_CHANGED_EVENT, {
+        detail: { previousTenantId, tenantId },
+      }))
+    }
+    throw decorateApiError(new Error('Tenant context changed while this view was open. Reloading is required before data can be shown.'), {
+      status: 409,
+      statusText: 'Tenant Context Changed',
+      url: response.url || requestUrl,
+      finalUrl: response.url || requestUrl,
+      method,
+      requestId: response?.headers?.get?.('x-request-id') || '',
+      tenantId,
+    })
+  }
+  sessionStorage.setItem(TENANT_CONTEXT_SESSION_KEY, tenantId)
+  return tenantId
 }
 
 async function parseJsonResponse(response: Response) {
@@ -99,6 +144,7 @@ async function parseJsonResponse(response: Response) {
         redirected,
         requestId: response.headers.get('x-request-id') || '',
         rawBody,
+        tenantId: responseTenantId(response),
       },
     )
     throw error
@@ -119,6 +165,7 @@ async function parseJsonResponse(response: Response) {
           redirected,
           requestId: response.headers.get('x-request-id') || '',
           rawBody,
+          tenantId: responseTenantId(response),
         },
       )
       throw error
@@ -136,6 +183,7 @@ async function parseJsonResponse(response: Response) {
       redirected,
       requestId: response.headers.get('x-request-id') || '',
       rawBody,
+      tenantId: responseTenantId(response),
     },
   )
   throw error
@@ -198,13 +246,6 @@ function resolveCredentialsMode(url: string): RequestCredentials {
   }
 }
 
-function getCurrentTenantId(): string {
-  return (
-    localStorage.getItem('SYSGRID_TENANT_ID') ||
-    '1'
-  )
-}
-
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const baseUrl = getApiBaseUrl();
   const invalidApiBaseMessage = validateConfiguredApiBaseUrl(baseUrl)
@@ -244,10 +285,11 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const headers: Record<string, string> = { ...options.headers } as any;
   const method = String(options.method || 'GET').toUpperCase()
   
-  // Only attach explicit browser user identity on same-origin requests.
+  // Browser product traffic follows the server-selected tenant. Callers may pass
+  // X-Tenant-Id explicitly for trusted non-browser/test requests; apiClient never
+  // derives tenant routing from mutable browser storage.
   if (shouldAttachUserIdHeader(url)) {
     headers['X-User-Id'] = getCurrentUserId();
-    headers['X-Tenant-Id'] = getCurrentTenantId();
   }
 
   const hasBody = options.body != null
@@ -277,6 +319,7 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     })
   }
   notifyLatency(Date.now() - startTime);
+  const effectiveTenantId = recordResponseTenantContext(response, method, url)
 
   if (!response.ok) {
     let errorData: any = {};
@@ -299,6 +342,7 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
       redirected: response.redirected,
       requestId: response.headers.get('x-request-id') || '',
       rawBody,
+      tenantId: effectiveTenantId,
     })
     error.data = errorData
     throw error;

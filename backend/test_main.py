@@ -47,6 +47,7 @@ async def test_provision_asset_full_flow(seeded_admin_tenant):
     response = await client.post("/api/v1/devices", json=payload, headers=headers)
     assert response.status_code == 200, response.text
     assert response.json()["system"] == "GRID-ASYNC"
+    assert response.headers["X-SysGrid-Tenant-Id"] == str(tenant_id)
 
 @pytest.mark.anyio
 async def test_create_site_and_audit(seeded_admin_tenant):

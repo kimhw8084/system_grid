@@ -3,6 +3,8 @@ import { clickResilientButton } from './helpers/sysgrid';
 import { expect } from '@playwright/test';
 import { test } from './helpers/sysgrid-test';
 import { resetBrowserState, seedOperationalScenario, waitForAppIdle } from './helpers/sysgrid'
+import { goldenWorkspaceRouteMatrix } from './helpers/routeMatrix'
+
 
 test.describe('App shell and global search', () => {
   test('loads the dashboard and feature audit HUD', async ({ page }) => {
@@ -67,16 +69,20 @@ test.describe('App shell and global search', () => {
   })
 })
 
-const goldenRoutes = [
-  { path: '/monitoring', archetype: 'table' },
-  { path: '/asset', archetype: 'table' },
-  { path: '/services', archetype: 'table' },
-  { path: '/external', archetype: 'table' },
-  { path: '/network', archetype: 'hybrid' },
-  { path: '/far', archetype: 'analytical' },
-  { path: '/research', archetype: 'analytical' },
-  { path: '/vendors', archetype: 'table' },
-] as const
+const goldenRoutes = goldenWorkspaceRouteMatrix
+
+const campaignTargetViews = (() => {
+  if (process.env.SYSGRID_EXECUTION_PROFILE !== 'development_campaign') return null
+  try {
+    const parsed = JSON.parse(process.env.SYSGRID_TARGETED_VIEWS_JSON || '[]')
+    return new Set(Array.isArray(parsed) ? parsed.map(String) : [])
+  } catch {
+    return new Set<string>()
+  }
+})()
+const activeGoldenRoutes = campaignTargetViews && campaignTargetViews.size
+  ? goldenRoutes.filter((route) => campaignTargetViews.has(route.key))
+  : goldenRoutes
 
 type GeometryBox = { x: number; y: number; width: number; height: number; right: number; bottom: number }
 
@@ -125,6 +131,8 @@ async function readGoldenGeometry(page: any) {
   await expect(commandBar).toBeVisible()
   await expect(toolbar).toBeVisible()
   await expect(grid).toBeVisible()
+  await expect(grid).toHaveAttribute('data-golden-grid-loading', 'false')
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
 
   const boxes = await Promise.all([shell, header, commandBar, toolbar, grid].map(async (locator) => {
     const box = await locator.boundingBox()
@@ -165,35 +173,56 @@ test.describe('Golden Eight rendered geometry', () => {
       bodyError?: string
     }> = []
 
-    for (const route of goldenRoutes) {
+    for (const route of activeGoldenRoutes) {
       const routeEntries: typeof inventory = []
-      const listener = async (response: any) => {
-        const request = response.request()
-        const url = new URL(response.url())
-        if (!url.pathname.startsWith('/api/')) return
-        const contentType = response.headers()['content-type'] || ''
-        const entry: (typeof inventory)[number] = {
-          route: route.path,
-          method: request.method(),
-          url: `${url.pathname}${url.search}`,
-          status: response.status(),
-          contentType,
-        }
-        if (contentType.includes('application/json')) {
-          try {
-            entry.shape = summarizePayloadShape(await response.json())
-          } catch (error) {
-            entry.bodyError = error instanceof Error ? error.message : String(error)
+      const pendingResponses = new Set<Promise<void>>()
+      const responseErrors: string[] = []
+      const listener = (response: any) => {
+        const pending = (async () => {
+          const request = response.request()
+          const url = new URL(response.url())
+          if (!url.pathname.startsWith('/api/')) return
+          const contentType = response.headers()['content-type'] || ''
+          const entry: (typeof inventory)[number] = {
+            route: route.path,
+            method: request.method(),
+            url: `${url.pathname}${url.search}`,
+            status: response.status(),
+            contentType,
           }
-        }
-        routeEntries.push(entry)
+          if (contentType.includes('application/json')) {
+            try {
+              entry.shape = summarizePayloadShape(await response.json())
+            } catch (error) {
+              entry.bodyError = error instanceof Error ? error.message : String(error)
+              responseErrors.push(`${request.method()} ${url.pathname}: ${entry.bodyError}`)
+            }
+          }
+          routeEntries.push(entry)
+        })()
+        pendingResponses.add(pending)
+        void pending.finally(() => pendingResponses.delete(pending))
       }
 
       page.on('response', listener)
-      await page.goto(route.path)
-      await waitForAppIdle(page)
-      await page.waitForTimeout(250)
-      page.off('response', listener)
+      try {
+        await page.goto(route.path)
+        await waitForAppIdle(page)
+        await expect.poll(() => routeEntries.length, { timeout: 10_000 }).toBeGreaterThan(0)
+        let previousCount = -1
+        let stableObservations = 0
+        await expect.poll(() => {
+          const currentCount = routeEntries.length
+          stableObservations = pendingResponses.size === 0 && currentCount === previousCount
+            ? stableObservations + 1
+            : 0
+          previousCount = currentCount
+          return stableObservations
+        }, { timeout: 10_000, intervals: [50, 100, 150, 250] }).toBeGreaterThanOrEqual(2)
+      } finally {
+        page.off('response', listener)
+      }
+      expect(responseErrors, `${route.path} returned unreadable JSON`).toEqual([])
 
       const deduplicated = new Map<string, (typeof inventory)[number]>()
       for (const entry of routeEntries) {
@@ -206,7 +235,7 @@ test.describe('Golden Eight rendered geometry', () => {
     const outputPath = testInfo.outputPath('golden-eight-api-shape-inventory.json')
     await writeFile(outputPath, `${JSON.stringify({ viewport: { width: 1440, height: 1000 }, routes: goldenRoutes, inventory }, null, 2)}\n`, 'utf8')
 
-    for (const route of goldenRoutes) {
+    for (const route of activeGoldenRoutes) {
       expect(inventory.some((entry) => entry.route === route.path)).toBeTruthy()
     }
   })
@@ -214,12 +243,12 @@ test.describe('Golden Eight rendered geometry', () => {
     await resetBrowserState(page)
     await page.setViewportSize({ width: 1440, height: 1000 })
 
-    for (const route of goldenRoutes) {
+    for (const route of activeGoldenRoutes) {
       await page.goto(route.path)
       await waitForAppIdle(page)
       const { shell, boxes } = await readGoldenGeometry(page)
 
-      await expect(shell).toHaveAttribute('data-golden-geometry-version', '1')
+      await expect(shell).toHaveAttribute('data-golden-geometry-version', '3')
       await expect(shell).toHaveAttribute('data-golden-archetype', route.archetype)
       expect(boxes.header.y).toBeLessThan(boxes.commandBar.y)
       expect(boxes.commandBar.bottom).toBeLessThanOrEqual(boxes.grid.y + 1)
@@ -258,12 +287,12 @@ test.describe('Golden Eight rendered geometry', () => {
     await resetBrowserState(page)
     await page.setViewportSize({ width: 390, height: 844 })
 
-    for (const route of goldenRoutes) {
+    for (const route of activeGoldenRoutes) {
       await page.goto(route.path)
       await waitForAppIdle(page)
       const { shell, boxes } = await readGoldenGeometry(page)
 
-      await expect(shell).toHaveAttribute('data-golden-geometry-version', '1')
+      await expect(shell).toHaveAttribute('data-golden-geometry-version', '3')
       await expect(shell).toHaveAttribute('data-golden-archetype', route.archetype)
       expect(boxes.header.y).toBeLessThan(boxes.commandBar.y)
       expect(boxes.commandBar.bottom).toBeLessThanOrEqual(boxes.grid.y + 1)
@@ -278,6 +307,11 @@ test.describe('Golden Eight rendered geometry', () => {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
       expect(overflow).toBeLessThanOrEqual(2)
 
+      const slug = route.path.slice(1)
+      await page.screenshot({
+        path: testInfo.outputPath(`${slug}-default-narrow.png`),
+        fullPage: true,
+      })
     }
   })
 })

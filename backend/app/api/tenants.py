@@ -423,6 +423,11 @@ async def ensure_tenant_runtime_schema(db_url: str) -> None:
                     await conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_ddl} DEFAULT 1"))
 
         await conn.execute(text("UPDATE far_failure_modes SET version = 1 WHERE version IS NULL"))
+        await conn.execute(text(
+            "UPDATE far_failure_modes "
+            "SET rpn = severity * occurrence * detection "
+            "WHERE rpn IS NULL OR rpn != severity * occurrence * detection"
+        ))
         await conn.execute(text("UPDATE rca_records SET version = 1 WHERE version IS NULL"))
 
 @router.post("/admin/create", response_model=TenantResponse)
@@ -658,7 +663,11 @@ async def select_tenant(selection: UserTenantSelection, db: AsyncSession = Depen
     if not access:
         raise HTTPException(status_code=403, detail="Access denied to this tenant")
 
-    # Update selection
+    tenant_url_result = await db.execute(select(Tenant.db_url).where(Tenant.id == selection.tenant_id))
+    tenant_url = tenant_url_result.scalar_one()
+    await ensure_tenant_runtime_schema(tenant_url)
+
+    # Update selection only after the tenant's runtime invariants are repaired.
     await set_user_selected_tenant(db, user_id, selection.tenant_id)
     await db.commit()
     

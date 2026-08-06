@@ -381,10 +381,11 @@ async def test_devices_bulk_purge_with_far_mode_assets(seeded_admin_tenant):
             "occurrence": 3,
             "detection": 2,
             "affected_assets": [device["id"]],
+            "idempotency_key": "devices-bulk-purge-far-create",
         },
         headers=headers,
     )
-    assert mode_res.status_code == 200, mode_res.text
+    assert mode_res.status_code == 201, mode_res.text
     mode = mode_res.json()
     assert device["id"] in [asset["id"] for asset in mode["affected_assets"]]
 

@@ -2,7 +2,7 @@ import { expect } from '@playwright/test'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { test } from './helpers/sysgrid-test.ts'
-import { clickResilientButton, fillGridSearch, resetBrowserState, seedOperationalScenario, waitForAppIdle } from './helpers/sysgrid.ts'
+import { clickResilientButton, fillGridSearch, resetBrowserState, seedOperationalScenario, waitForAppIdle, testFrontendOrigin } from './helpers/sysgrid.ts'
 
 type RouteKey = 'asset' | 'monitoring' | 'asset-real'
 type Verdict = 'pass' | 'fail' | 'not-applicable'
@@ -811,7 +811,7 @@ test.describe('Assets Stage 34 evidence capture', () => {
           category,
           routeKey,
           routeLabel: requestedPath,
-          requestedUrl: `http://127.0.0.1:5173${requestedPath}`,
+          requestedUrl: `${testFrontendOrigin}${requestedPath}`,
           finalUrl: page.url(),
           routeVerdict: domState.validity.valid ? 'pass' : 'fail',
           routeVerdictReason: domState.validity.rejectionReason,

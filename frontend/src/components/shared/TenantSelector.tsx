@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Database, ChevronDown, Check, Plus, Server } from "lucide-react"
-import { apiFetch } from "../../api/apiClient"
+import { TENANT_CONTEXT_CHANGED_EVENT, TENANT_CONTEXT_SESSION_KEY, apiFetch, clearLegacyTenantBrowserState } from "../../api/apiClient"
 import toast from "react-hot-toast"
 import {
   getWorkspaceFloatingPanelClass,
@@ -39,10 +39,13 @@ export function TenantSelector() {
       if (!res.ok) throw new Error("Failed to switch database")
       return res.json()
     },
-    onSuccess: () => {
+    onSuccess: (result: any) => {
+      clearLegacyTenantBrowserState()
+      sessionStorage.setItem(TENANT_CONTEXT_SESSION_KEY, String(result.tenant_id))
+      localStorage.setItem('SYSGRID_TENANT_SELECTION_REVISION', `${result.tenant_id}:${Date.now()}`)
       toast.success("Database switched successfully")
       queryClient.invalidateQueries()
-      // Reload the page to ensure all components refresh with new data context
+      // Reload the page so every request resolves through the server-selected tenant.
       window.location.reload()
     },
     onError: (err: any) => {
@@ -51,6 +54,29 @@ export function TenantSelector() {
   })
 
   const activeTenant = tenants?.find((t: any) => t.is_selected)
+
+  useEffect(() => {
+    clearLegacyTenantBrowserState()
+    if (activeTenant?.id != null) {
+      sessionStorage.setItem(TENANT_CONTEXT_SESSION_KEY, String(activeTenant.id))
+    }
+  }, [activeTenant?.id])
+
+  useEffect(() => {
+    const reloadForTenantChange = () => window.location.reload()
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== 'SYSGRID_TENANT_SELECTION_REVISION' || !event.newValue) return
+      const [tenantId] = event.newValue.split(':')
+      if (tenantId) sessionStorage.setItem(TENANT_CONTEXT_SESSION_KEY, tenantId)
+      reloadForTenantChange()
+    }
+    window.addEventListener('storage', handleStorage)
+    window.addEventListener(TENANT_CONTEXT_CHANGED_EVENT, reloadForTenantChange)
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+      window.removeEventListener(TENANT_CONTEXT_CHANGED_EVENT, reloadForTenantChange)
+    }
+  }, [])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -82,7 +108,7 @@ export function TenantSelector() {
         </div>
         <div className="flex flex-col items-start min-w-[120px]">
            <span className="text-[8px] font-black uppercase text-blue-400 tracking-widest leading-none">Active Database</span>
-           <span className="text-[10px] font-black text-white truncate max-w-[150px]">
+           <span data-testid="active-tenant-name" className="text-[10px] font-black text-white truncate max-w-[150px]">
              {isLoading ? 'Loading...' : (activeTenant ? getTenantLabel(activeTenant) : 'Default Engine')}
            </span>
         </div>

@@ -493,7 +493,7 @@ export const AssetDetailsView = ({ device, options, onViewServiceDetails, onEdit
                         </button>
                         <button
                           disabled={!farModes?.[0]?.id}
-                          onClick={() => farModes?.[0]?.id && navigate(`/far?id=${farModes[0].id}`)}
+                          onClick={() => farModes?.[0]?.id && navigate(`/far?far=${farModes[0].id}`)}
                           className="flex flex-col items-center justify-center p-3 rounded-lg border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 transition-all group disabled:opacity-30"
                         >
                           <AlertTriangle size={16} className="text-rose-500 mb-2" />

@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { showWorkspaceRevertToast, showWorkspaceToast } from './shared/WorkspaceToast'
-import { apiFetch } from '../api/apiClient'
+import { apiFetch, getObservedTenantId } from '../api/apiClient'
 import { buildMonitoringFormErrors, getMonitoringTabErrorCounts } from '../utils/monitoringValidation'
 import { monitoringSupportsRestorePurged } from '../utils/monitoringPurgeRevertCapability'
 import { formatAppDate, formatAppTime, formatAppDay, parseAppDate } from '../utils/dateUtils'
@@ -596,7 +596,7 @@ export default function MonitoringGrid() {
                 endpoint: '/api/v1/monitoring?include_deleted=true',
                 rawBodyExcerpt: err.rawBody,
                 userId: localStorage.getItem('SYSGRID_USER_ID') || 'admin_root',
-                tenantId: localStorage.getItem('SYSGRID_TENANT_ID') || '1'
+                tenantId: err.tenantId || getObservedTenantId() || 'Server-selected (unavailable)'
             }
         };
     }

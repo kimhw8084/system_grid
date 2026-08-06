@@ -1,9 +1,8 @@
-import { clickResilientButton } from './helpers/sysgrid';
-import { expect, type Page } from '@playwright/test';
-import { test } from './helpers/sysgrid-test';
-import { createInvestigation, resetBrowserState } from './helpers/sysgrid'
+import { clickResilientButton, createInvestigation, resetBrowserState, testApiBase } from './helpers/sysgrid'
+import { expect, type Page } from '@playwright/test'
+import { test } from './helpers/sysgrid-test'
 
-const apiBase = process.env.PW_API_BASE || 'http://127.0.0.1:8000/api/v1'
+const apiBase = testApiBase
 
 async function getTypedRecordRow(page: Page, title: string, type: 'Research' | 'RCA') {
   const workspace = page.locator('[data-workspace="research"]')

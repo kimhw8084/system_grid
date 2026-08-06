@@ -490,16 +490,17 @@ async def test_external_snapshot_export_exposes_round_trip_headers_for_browser_j
     )
     assert content_disposition == f'attachment; filename={manifest["filename"]}'
     exposed_header_values = snapshot_res.headers.get_list("access-control-expose-headers")
-    assert exposed_header_values == ["Content-Disposition, X-SysGrid-Import-Profile, X-SysGrid-Schema-Version"]
+    assert exposed_header_values == ["Content-Disposition, X-SysGrid-Import-Profile, X-SysGrid-Schema-Version, X-SysGrid-Tenant-Id"]
     exposed_headers = exposed_header_values[0]
     assert exposed_headers.strip()
     assert exposed_headers not in {"*", "**"}
-    assert exposed_headers == "Content-Disposition, X-SysGrid-Import-Profile, X-SysGrid-Schema-Version"
+    assert exposed_headers == "Content-Disposition, X-SysGrid-Import-Profile, X-SysGrid-Schema-Version, X-SysGrid-Tenant-Id"
     exposed_headers_normalized = {header.strip().lower() for header in exposed_headers.split(",") if header.strip()}
     assert exposed_headers_normalized == {
         "content-disposition",
         "x-sysgrid-import-profile",
         "x-sysgrid-schema-version",
+        "x-sysgrid-tenant-id",
     }
 
 
