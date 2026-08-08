@@ -37,12 +37,12 @@ import {
   useOperationalDismissController,
 } from './shared/OperationalGridInteractions'
 import {
+  useOperationalColumnSyncHandlers,
+  useOperationalGridLayout,
   usePersistentJsonState,
   useWorkspaceOverlayController,
 } from './shared/OperationalWorkspaceHooks'
 import {
-  applyOperationalColumnState,
-  getOperationalColumnLayoutSnapshot,
   sanitizeOperationalFilterModel,
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
@@ -150,7 +150,24 @@ export function useFARGoldenWorkspaceControls({
   const [newViewName, setNewViewName] = useState('')
   const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
   const [gridSortModel, setGridSortModel] = useState<Array<{ colId: string; sort: 'asc' | 'desc' }>>([])
-  const [columnLayoutState, setColumnLayoutState] = useState<any[]>([])
+  const {
+    columnLayoutState,
+    setColumnLayoutState,
+    setTransientManualColumnWidths,
+    preserveExplicitColumnWidths,
+    syncColumnLayoutState,
+    applyColumnLayoutState,
+    handleColumnResized,
+  } = useOperationalGridLayout([], Boolean(activeViewId))
+  const {
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
+  } = useOperationalColumnSyncHandlers(
+    syncColumnLayoutState,
+    false
+  )
   const [showActivity, setShowActivity] = useState(false)
   const [compareOpen, setCompareOpen] = useState(false)
   const [rowActionMenu, setRowActionMenu] = useState<{ item: any; point: { x: number; y: number } } | null>(null)
@@ -218,17 +235,18 @@ export function useFARGoldenWorkspaceControls({
     setGridFilterModel(config.filterModel)
     setGridSortModel(config.sortModel)
     setColumnLayoutState(config.columnLayoutState)
+    setTransientManualColumnWidths(false)
 
     const api = gridRef.current?.api
     if (!api) return
-    applyOperationalColumnState(api, config.columnLayoutState, true)
+    applyColumnLayoutState(api, config.columnLayoutState, true)
     api.setFilterModel?.(config.filterModel)
     api.applyColumnState?.({
       state: config.sortModel,
       defaultState: { sort: null },
       applyOrder: false,
     })
-  }, [gridRef, setFontSize, setHiddenColumns, setRowDensity, setSearchTerm, setSelectedSystems])
+  }, [applyColumnLayoutState, gridRef, setColumnLayoutState, setFontSize, setHiddenColumns, setRowDensity, setSearchTerm, setSelectedSystems, setTransientManualColumnWidths])
 
   const applyView = useCallback((id: string) => {
     const view = normalizedViews.find((entry) => entry.id === id)
@@ -300,30 +318,26 @@ export function useFARGoldenWorkspaceControls({
 
   const handleGridReady = useCallback((params: any) => {
     const config = currentDefinition
-    if (config.columnLayoutState.length) applyOperationalColumnState(params.api, config.columnLayoutState, true)
+    if (config.columnLayoutState.length) applyColumnLayoutState(params.api, config.columnLayoutState, preserveExplicitColumnWidths)
     params.api.setFilterModel?.(config.filterModel)
     params.api.applyColumnState?.({
       state: config.sortModel,
       defaultState: { sort: null },
       applyOrder: false,
     })
-  }, [currentDefinition])
-
-  const syncColumnLayout = useCallback((api: any) => {
-    setColumnLayoutState(getOperationalColumnLayoutSnapshot(api, true))
-  }, [])
+  }, [applyColumnLayoutState, currentDefinition, preserveExplicitColumnWidths])
 
   const gridRuntime = useMemo(() => ({
-    preserveExplicitColumnWidths: columnLayoutState.length > 0,
+    preserveExplicitColumnWidths,
     handleGridReady,
-    handleColumnResized: (event: any) => event?.finished && syncColumnLayout(event.api),
-    handleColumnMoved: (event: any) => event?.finished !== false && syncColumnLayout(event.api),
-    handleDragStopped: (event: any) => syncColumnLayout(event.api),
-    handleColumnPinned: (event: any) => syncColumnLayout(event.api),
-    handleColumnVisible: (event: any) => syncColumnLayout(event.api),
+    handleColumnResized,
+    handleColumnMoved,
+    handleDragStopped,
+    handleColumnPinned,
+    handleColumnVisible,
     handleFilterChanged: (event: any) => setGridFilterModel(sanitizeOperationalFilterModel(event.api?.getFilterModel?.() || {}, FAR_PERSISTED_COLUMN_IDS)),
     handleSortChanged: (event: any) => setGridSortModel(sanitizeOperationalSortModel(readSortModel(event.api), FAR_PERSISTED_COLUMN_IDS) as FarWorkspaceViewConfig['sortModel']),
-  }), [columnLayoutState.length, handleGridReady, syncColumnLayout])
+  }), [handleColumnMoved, handleColumnPinned, handleColumnResized, handleColumnVisible, handleDragStopped, handleGridReady, preserveExplicitColumnWidths])
 
   const toggleColumn = useCallback((field: string) => {
     const currentlyHidden = hiddenColumns.includes(field)
