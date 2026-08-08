@@ -28,6 +28,7 @@ import { OperationalDataGrid } from './shared/OperationalDataGrid'
 import { OperationalBulkPreviewModal } from './shared/OperationalBulkPreviewModal'
 import { useOperationalBulkWorkflow } from './shared/useOperationalBulkWorkflow'
 import { ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
+import { useFARGoldenWorkspaceControls } from './FARGoldenWorkspaceControls'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -651,11 +652,42 @@ export default function FAR() {
     return { sri, mitRatio, riskDensity, avgRPN: Math.round(avgRPN), maturityDist }
   }, [filteredModes])
 
+  const goldenWorkspace = useFARGoldenWorkspaceControls({
+    gridRef,
+    modes,
+    selectedIds,
+    fontSize,
+    setFontSize,
+    rowDensity,
+    setRowDensity,
+    hiddenColumns,
+    setHiddenColumns,
+    searchTerm,
+    setSearchTerm,
+    selectedSystems,
+    setSelectedSystems,
+    showSystemFilters,
+    setShowSystemFilters,
+    showInsights,
+    setShowInsights,
+    columnDefs,
+    onExport: handleExportCSV,
+    onCopySelected: handleCopyToClipboard,
+    onImport: () => setShowImportModal(true),
+    onRetireSelected: (ids) => requestBulkPreview(ids?.length ? { action: 'delete', ids } : { action: 'delete' }),
+    onAdd: () => { setSelectedModeId(null); setShowWizard(true) },
+    onSettings: () => setShowConfig(true),
+    onRpnHelp: () => setShowRpnHelp(true),
+    onOpenDetail: (id) => setSelectedModeId(id),
+    onEdit: (id) => { setSelectedModeId(id); setShowWizard(true) },
+  })
+
   return (
     <OperationalWorkspaceShell
       archetype="analytical"
       workspace="far"
       className="overflow-hidden"
+      floatingPanels={goldenWorkspace.floatingPanels}
       header={{
         eyebrow: 'Analysis',
         title: (
@@ -670,34 +702,10 @@ export default function FAR() {
         <ToolbarSearch value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Scan risk vectors..." />
       )}
       toolbarControls={(
-        <ToolbarGroup>
-          <ToolbarButton active={showStyleLab} onClick={() => setShowStyleLab((current) => !current)} title="Display density controls">
-            <Sliders size={14} /> Display
-          </ToolbarButton>
-          <ToolbarButton active={showSystemFilters} onClick={() => setShowSystemFilters((current) => !current)} title="System filters">
-            {showSystemFilters ? <EyeOff size={14} /> : <Eye size={14} />} Filters
-          </ToolbarButton>
-          <ToolbarButton active={showInsights} onClick={() => setShowInsights((current) => !current)} title="Reliability insights">
-            <Activity size={14} /> Insights
-          </ToolbarButton>
-          <ToolbarIconButton onClick={() => setShowColumnPicker(!showColumnPicker)} active={showColumnPicker} title="Column Configuration"><LayoutGrid size={16} /></ToolbarIconButton>
-          <ToolbarIconButton onClick={() => setShowRpnHelp(true)} title="RPN Definition Matrix"><HelpCircle size={16} /></ToolbarIconButton>
-          <ToolbarIconButton onClick={() => setShowConfig(true)} title="Matrix Registry Enums"><Settings size={16} /></ToolbarIconButton>
-        </ToolbarGroup>
+        goldenWorkspace.toolbarControls
       )}
       toolbarActions={(
-        <ToolbarGroup>
-          <ToolbarIconButton onClick={handleExportCSV} title="Export CSV"><FileText size={16} /></ToolbarIconButton>
-          <ToolbarIconButton onClick={handleCopyToClipboard} disabled={selectedIds.length === 0} title="Copy to Clipboard"><Clipboard size={16} /></ToolbarIconButton>
-          <ToolbarButton onClick={() => setShowImportModal(true)} title="Import Bulk Risk Data"><Upload size={14} /> Import</ToolbarButton>
-          <ToolbarButton
-            variant="danger"
-            disabled={selectedIds.length === 0}
-            onClick={() => requestBulkPreview({ action: 'delete' })}
-            title="Preview retirement of selected failure vectors"
-          ><Trash2 size={14} /> Retire Selected{selectedIds.length ? ` (${selectedIds.length})` : ''}</ToolbarButton>
-          <ToolbarButton variant="danger" onClick={() => { setSelectedModeId(null); setShowWizard(true); }}><ShieldAlert size={14} /> Add Failure Mode</ToolbarButton>
-        </ToolbarGroup>
+        goldenWorkspace.toolbarActions
       )}
       secondaryToolbar={showSystemFilters ? (
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
@@ -767,12 +775,16 @@ export default function FAR() {
         )}
       </AnimatePresence>
 
+      {goldenWorkspace.activityPanel}
+      {goldenWorkspace.compareModal}
+
       <div className="flex-1 min-h-0 relative">
         <OperationalDataGrid
           gridRef={gridRef}
           rows={filteredModes || []}
           columnDefs={columnDefs as any}
-          runtime={farGridRuntime}
+          runtime={goldenWorkspace.gridRuntime}
+          contextMenu={goldenWorkspace.contextMenu}
           quickFilterText={searchTerm}
           fontSize={fontSize}
           rowDensity={rowDensity}

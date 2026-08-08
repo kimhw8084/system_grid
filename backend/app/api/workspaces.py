@@ -129,6 +129,10 @@ VENDOR_COLUMNS = [
     "contract_count", "earliest_expiry_date", "personnel_count", "created_at",
     "updated_at", "row_actions",
 ]
+FAR_COLUMNS = [
+    "id", "system_name", "failure_type", "title", "severity", "occurrence", "detection",
+    "rpn", "status", "linked_rcas", "created_by_user_id",
+]
 
 TABLE_STATE_KEYS = [
     "fontSize", "rowDensity", "hiddenColumns", "groupBy", "showFilterBar",
@@ -231,7 +235,11 @@ WORKSPACE_DEFINITIONS: dict[str, WorkspaceDefinition] = {
     ),
     "far": _definition(
         "far", "/far", "investigation",
-        ["saved_views", "search", "filters", "details", "deep_links", "lifecycle", "history", "compare", "relationships", "investigation", "custom_body"],
+        ["saved_views", "search", "filters", "column_state", "selection", "bulk_actions", "import", "export", "details", "deep_links", "lifecycle", "history", "compare", "relationships", "investigation", "custom_body"],
+        columns=FAR_COLUMNS,
+        allowed_keys=MONITORING_STATE_KEYS,
+        quick_filter_keys=["system_name"],
+        group_by=["raw"],
         active_tabs=["active", "deleted"],
         modes=["failure_modes", "causes", "mitigations", "prevention"],
         lifecycle_actions=["archive", "restore"],
