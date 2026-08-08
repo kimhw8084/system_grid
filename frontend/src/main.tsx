@@ -12,6 +12,10 @@ console.log("MAIN.TSX: Initializing React Root");
 
 // Global error capture for early bootstrap issues
 window.addEventListener('error', (event) => {
+  if (event.message === 'ResizeObserver loop completed with undelivered notifications.' && event.error == null) {
+    console.warn("GLOBAL_RESIZE_OBSERVER_DELIVERY:", event.message);
+    return;
+  }
   console.error("GLOBAL_ERROR_BEFORE_MOUNT:", event.message, event.error);
 });
 
