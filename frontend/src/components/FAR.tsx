@@ -778,7 +778,7 @@ export default function FAR() {
       {goldenWorkspace.activityPanel}
       {goldenWorkspace.compareModal}
 
-      <div className="flex-1 min-h-0 relative">
+      <div className="relative flex min-h-0 flex-1 flex-col">
         <OperationalDataGrid
           gridRef={gridRef}
           rows={filteredModes || []}
