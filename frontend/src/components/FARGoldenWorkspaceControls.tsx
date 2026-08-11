@@ -80,6 +80,9 @@ const compareValue = (value: unknown) => {
   return String(value)
 }
 
+const FAR_RECOVERY_COLUMN_IDS = ['system_name', 'title', 'rpn', 'status'] as const
+const FAR_MIN_DESKTOP_CENTER_VIEWPORT_WIDTH = 240
+
 type FarSavedViewPanelModel = {
   id: string
   name: string
@@ -225,6 +228,44 @@ export function useFARGoldenWorkspaceControls({
     currentDefinition,
   })
 
+  const scheduleGridOperabilityCheck = useCallback((api: any) => {
+    if (!api || typeof window === 'undefined') return
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const centerColumns = api.getDisplayedCenterColumns?.() || []
+        const centerViewport = document.querySelector(
+          '[data-golden-workspace-shell="true"][data-workspace="far"] .ag-center-cols-viewport'
+        ) as HTMLElement | null
+        const centerViewportWidth = centerViewport?.getBoundingClientRect().width ?? 0
+        const noCenterColumns = centerColumns.length === 0
+        const collapsedDesktopViewport = window.innerWidth >= 900 && centerViewportWidth < FAR_MIN_DESKTOP_CENTER_VIEWPORT_WIDTH
+
+        if (!noCenterColumns && !collapsedDesktopViewport) return
+
+        api.applyColumnState?.({
+          state: Array.from(FAR_PERSISTED_COLUMN_IDS).map((colId) => ({
+            colId,
+            pinned: null,
+            ...(FAR_RECOVERY_COLUMN_IDS.includes(colId as (typeof FAR_RECOVERY_COLUMN_IDS)[number]) ? { hide: false } : {}),
+          })),
+          applyOrder: false,
+        })
+        api.setColumnsVisible?.([...FAR_RECOVERY_COLUMN_IDS], true)
+        setHiddenColumns((current) => current.filter((colId) => !FAR_RECOVERY_COLUMN_IDS.includes(colId as (typeof FAR_RECOVERY_COLUMN_IDS)[number])))
+        setColumnLayoutState((current) => current.map((column: any) => FAR_PERSISTED_COLUMN_IDS.has(column?.colId)
+          ? {
+              ...column,
+              pinned: null,
+              ...(FAR_RECOVERY_COLUMN_IDS.includes(column.colId as (typeof FAR_RECOVERY_COLUMN_IDS)[number]) ? { hide: false } : {}),
+            }
+          : column))
+        setTransientManualColumnWidths(false)
+        window.requestAnimationFrame(() => api.sizeColumnsToFit?.())
+      })
+    })
+  }, [setColumnLayoutState, setHiddenColumns, setTransientManualColumnWidths])
+
   const applyViewConfig = useCallback((raw: unknown) => {
     const config = sanitizeFarWorkspaceViewConfig(raw)
     setFontSize(config.fontSize)
@@ -246,7 +287,8 @@ export function useFARGoldenWorkspaceControls({
       defaultState: { sort: null },
       applyOrder: false,
     })
-  }, [applyColumnLayoutState, gridRef, setColumnLayoutState, setFontSize, setHiddenColumns, setRowDensity, setSearchTerm, setSelectedSystems, setTransientManualColumnWidths])
+    scheduleGridOperabilityCheck(api)
+  }, [applyColumnLayoutState, gridRef, scheduleGridOperabilityCheck, setColumnLayoutState, setFontSize, setHiddenColumns, setRowDensity, setSearchTerm, setSelectedSystems, setTransientManualColumnWidths])
 
   const applyView = useCallback((id: string) => {
     const view = normalizedViews.find((entry) => entry.id === id)
@@ -325,7 +367,8 @@ export function useFARGoldenWorkspaceControls({
       defaultState: { sort: null },
       applyOrder: false,
     })
-  }, [applyColumnLayoutState, currentDefinition, preserveExplicitColumnWidths])
+    scheduleGridOperabilityCheck(params.api)
+  }, [applyColumnLayoutState, currentDefinition, preserveExplicitColumnWidths, scheduleGridOperabilityCheck])
 
   const gridRuntime = useMemo(() => ({
     preserveExplicitColumnWidths,
