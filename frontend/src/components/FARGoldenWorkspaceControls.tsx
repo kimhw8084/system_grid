@@ -228,7 +228,7 @@ export function useFARGoldenWorkspaceControls({
     currentDefinition,
   })
 
-  const scheduleGridOperabilityCheck = useCallback((api: any) => {
+  const scheduleGridOperabilityCheck = useCallback((api: any, requestedLayout: any[] = []) => {
     if (!api || typeof window === 'undefined') return
 
     window.requestAnimationFrame(() => {
@@ -240,8 +240,15 @@ export function useFARGoldenWorkspaceControls({
         const centerViewportWidth = centerViewport?.getBoundingClientRect().width ?? 0
         const noCenterColumns = centerColumns.length === 0
         const collapsedDesktopViewport = window.innerWidth >= 900 && centerViewportWidth < FAR_MIN_DESKTOP_CENTER_VIEWPORT_WIDTH
+        const requestedPinnedWidth = requestedLayout.reduce((total, column: any) => {
+          if (column?.pinned !== 'left' && column?.pinned !== 'right') return total
+          const width = Number(column?.width)
+          return total + (Number.isFinite(width) && width > 0 ? width : 0)
+        }, 0)
+        const persistedPinnedLayoutOverwhelmsViewport = window.innerWidth >= 900
+          && requestedPinnedWidth > Math.max(0, window.innerWidth - FAR_MIN_DESKTOP_CENTER_VIEWPORT_WIDTH)
 
-        if (!noCenterColumns && !collapsedDesktopViewport) return
+        if (!persistedPinnedLayoutOverwhelmsViewport && !noCenterColumns && !collapsedDesktopViewport) return
 
         api.applyColumnState?.({
           state: Array.from(FAR_PERSISTED_COLUMN_IDS).map((colId) => ({
@@ -253,13 +260,17 @@ export function useFARGoldenWorkspaceControls({
         })
         api.setColumnsVisible?.([...FAR_RECOVERY_COLUMN_IDS], true)
         setHiddenColumns((current) => current.filter((colId) => !FAR_RECOVERY_COLUMN_IDS.includes(colId as (typeof FAR_RECOVERY_COLUMN_IDS)[number])))
-        setColumnLayoutState((current) => current.map((column: any) => FAR_PERSISTED_COLUMN_IDS.has(column?.colId)
-          ? {
-              ...column,
-              pinned: null,
-              ...(FAR_RECOVERY_COLUMN_IDS.includes(column.colId as (typeof FAR_RECOVERY_COLUMN_IDS)[number]) ? { hide: false } : {}),
-            }
-          : column))
+        setColumnLayoutState((current) => current.map((column: any) => {
+          if (!FAR_PERSISTED_COLUMN_IDS.has(column?.colId)) return column
+          const recoveredColumn: any = {
+            ...column,
+            pinned: null,
+            ...(FAR_RECOVERY_COLUMN_IDS.includes(column.colId as (typeof FAR_RECOVERY_COLUMN_IDS)[number]) ? { hide: false } : {}),
+          }
+          delete recoveredColumn.width
+          delete recoveredColumn.flex
+          return recoveredColumn
+        }))
         setTransientManualColumnWidths(false)
         window.requestAnimationFrame(() => api.sizeColumnsToFit?.())
       })
@@ -287,7 +298,7 @@ export function useFARGoldenWorkspaceControls({
       defaultState: { sort: null },
       applyOrder: false,
     })
-    scheduleGridOperabilityCheck(api)
+    scheduleGridOperabilityCheck(api, config.columnLayoutState)
   }, [applyColumnLayoutState, gridRef, scheduleGridOperabilityCheck, setColumnLayoutState, setFontSize, setHiddenColumns, setRowDensity, setSearchTerm, setSelectedSystems, setTransientManualColumnWidths])
 
   const applyView = useCallback((id: string) => {
@@ -367,7 +378,7 @@ export function useFARGoldenWorkspaceControls({
       defaultState: { sort: null },
       applyOrder: false,
     })
-    scheduleGridOperabilityCheck(params.api)
+    scheduleGridOperabilityCheck(params.api, config.columnLayoutState)
   }, [applyColumnLayoutState, currentDefinition, preserveExplicitColumnWidths, scheduleGridOperabilityCheck])
 
   const gridRuntime = useMemo(() => ({
