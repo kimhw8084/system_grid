@@ -46,6 +46,35 @@ const normalizeStrings = (value: unknown) => {
   return Array.from(new Set(value.filter((entry): entry is string => typeof entry === 'string').map((entry) => entry.trim()).filter(Boolean)))
 }
 
+const FAR_RECOVERY_COLUMN_IDS = new Set(['system_name', 'title', 'rpn', 'status'])
+
+const sanitizeFarColumnLayout = (value: unknown) => {
+  const layout = sanitizeOperationalColumnLayout(
+    Array.isArray(value) ? value : [],
+    FAR_PERSISTED_COLUMN_IDS,
+    true,
+  )
+  const recoveryCoreFullyPinned = Array.from(FAR_RECOVERY_COLUMN_IDS).every((colId) => {
+    const column = layout.find((entry: any) => entry?.colId === colId)
+    return column?.pinned === 'left' || column?.pinned === 'right'
+  })
+  if (!recoveryCoreFullyPinned) return { layout, recovered: false }
+
+  return {
+    recovered: true,
+    layout: layout.map((column: any) => {
+      const recoveredColumn: any = {
+        ...column,
+        pinned: null,
+        ...(FAR_RECOVERY_COLUMN_IDS.has(column?.colId) ? { hide: false } : {}),
+      }
+      delete recoveredColumn.width
+      delete recoveredColumn.flex
+      return recoveredColumn
+    }),
+  }
+}
+
 export function sanitizeFarWorkspaceViewConfig(value: unknown): FarWorkspaceViewConfig {
   const source = value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, any>
@@ -54,21 +83,21 @@ export function sanitizeFarWorkspaceViewConfig(value: unknown): FarWorkspaceView
     ? source.quickFilters as Record<string, any>
     : {}
 
+  const columnLayout = sanitizeFarColumnLayout(source.columnLayoutState)
+
   return {
     fontSize: clampNumber(source.fontSize, 8, 14, 11),
     rowDensity: clampNumber(source.rowDensity, 0, 20, 10),
-    hiddenColumns: normalizeStrings(source.hiddenColumns).filter((field) => FAR_PERSISTED_COLUMN_IDS.has(field)),
+    hiddenColumns: normalizeStrings(source.hiddenColumns)
+      .filter((field) => FAR_PERSISTED_COLUMN_IDS.has(field))
+      .filter((field) => !columnLayout.recovered || !FAR_RECOVERY_COLUMN_IDS.has(field)),
     quickFilter: typeof source.quickFilter === 'string' ? source.quickFilter.trim().slice(0, 500) : '',
     quickFilters: {
       system_name: normalizeStrings(quickFilters.system_name).slice(0, 200),
     },
     filterModel: sanitizeOperationalFilterModel(source.filterModel, FAR_PERSISTED_COLUMN_IDS),
     sortModel: sanitizeOperationalSortModel(source.sortModel, FAR_PERSISTED_COLUMN_IDS) as FarWorkspaceViewConfig['sortModel'],
-    columnLayoutState: sanitizeOperationalColumnLayout(
-      Array.isArray(source.columnLayoutState) ? source.columnLayoutState : [],
-      FAR_PERSISTED_COLUMN_IDS,
-      true,
-    ),
+    columnLayoutState: columnLayout.layout,
   }
 }
 
