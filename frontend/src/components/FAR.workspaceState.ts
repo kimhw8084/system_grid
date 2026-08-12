@@ -65,7 +65,7 @@ const sanitizeFarColumnLayout = (value: unknown) => {
     layout: layout.map((column: any) => {
       const recoveredColumn: any = {
         ...column,
-        pinned: null,
+        pinned: column?.colId === 'id' ? 'left' : null,
         ...(FAR_RECOVERY_COLUMN_IDS.has(column?.colId) ? { hide: false } : {}),
       }
       delete recoveredColumn.width
@@ -87,7 +87,7 @@ export function sanitizeFarWorkspaceViewConfig(value: unknown): FarWorkspaceView
 
   return {
     fontSize: clampNumber(source.fontSize, 8, 14, 11),
-    rowDensity: clampNumber(source.rowDensity, 0, 20, 10),
+    rowDensity: clampNumber(source.rowDensity, 0, 20, 8),
     hiddenColumns: normalizeStrings(source.hiddenColumns)
       .filter((field) => FAR_PERSISTED_COLUMN_IDS.has(field))
       .filter((field) => !columnLayout.recovered || !FAR_RECOVERY_COLUMN_IDS.has(field)),

@@ -198,7 +198,7 @@ export default function FAR() {
 
   // Column Picker & Style Lab State (Mirrored from Assets)
   const [fontSize, setFontSize] = useState(11)
-  const [rowDensity, setRowDensity] = useState(10)
+  const [rowDensity, setRowDensity] = useState(8)
   const [showStyleLab, setShowStyleLab] = useState(false)
   const [showSystemFilters, setShowSystemFilters] = useState(false)
   const [showInsights, setShowInsights] = useState(false)
@@ -686,7 +686,6 @@ export default function FAR() {
     <OperationalWorkspaceShell
       archetype="analytical"
       workspace="far"
-      className="overflow-hidden"
       floatingPanels={goldenWorkspace.floatingPanels}
       header={{
         eyebrow: 'Analysis',

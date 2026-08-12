@@ -82,6 +82,16 @@ const compareValue = (value: unknown) => {
 
 const FAR_RECOVERY_COLUMN_IDS = ['system_name', 'title', 'rpn', 'status'] as const
 const FAR_MIN_DESKTOP_CENTER_VIEWPORT_WIDTH = 240
+const FAR_DEFAULT_LEFT_PINNED_COLUMN_IDS = new Set(['id'])
+
+const hasExplicitColumnSizing = (layout: any[] = []) => layout.some((column: any) => {
+  const width = Number(column?.width)
+  const flex = Number(column?.flex)
+  return (
+    (Number.isFinite(width) && width > 0) ||
+    (Number.isFinite(flex) && flex > 0)
+  )
+})
 
 type FarSavedViewPanelModel = {
   id: string
@@ -161,7 +171,7 @@ export function useFARGoldenWorkspaceControls({
     syncColumnLayoutState,
     applyColumnLayoutState,
     handleColumnResized,
-  } = useOperationalGridLayout([], Boolean(activeViewId))
+  } = useOperationalGridLayout([], false)
   const {
     handleColumnMoved,
     handleDragStopped,
@@ -247,13 +257,22 @@ export function useFARGoldenWorkspaceControls({
         }, 0)
         const persistedPinnedLayoutOverwhelmsViewport = window.innerWidth >= 900
           && requestedPinnedWidth > Math.max(0, window.innerWidth - FAR_MIN_DESKTOP_CENTER_VIEWPORT_WIDTH)
+        const shouldFitRecoveredLayout = requestedLayout.length > 0 && !hasExplicitColumnSizing(requestedLayout)
 
-        if (!persistedPinnedLayoutOverwhelmsViewport && !noCenterColumns && !collapsedDesktopViewport) return
+        if (!persistedPinnedLayoutOverwhelmsViewport && !noCenterColumns && !collapsedDesktopViewport) {
+          if (shouldFitRecoveredLayout) {
+            window.requestAnimationFrame(() => {
+              api.sizeColumnsToFit?.()
+              api.ensureColumnVisible?.('title', 'middle')
+            })
+          }
+          return
+        }
 
         api.applyColumnState?.({
           state: Array.from(FAR_PERSISTED_COLUMN_IDS).map((colId) => ({
             colId,
-            pinned: null,
+            pinned: FAR_DEFAULT_LEFT_PINNED_COLUMN_IDS.has(colId) ? 'left' : null,
             ...(FAR_RECOVERY_COLUMN_IDS.includes(colId as (typeof FAR_RECOVERY_COLUMN_IDS)[number]) ? { hide: false } : {}),
           })),
           applyOrder: false,
@@ -264,7 +283,7 @@ export function useFARGoldenWorkspaceControls({
           if (!FAR_PERSISTED_COLUMN_IDS.has(column?.colId)) return column
           const recoveredColumn: any = {
             ...column,
-            pinned: null,
+            pinned: FAR_DEFAULT_LEFT_PINNED_COLUMN_IDS.has(column.colId) ? 'left' : null,
             ...(FAR_RECOVERY_COLUMN_IDS.includes(column.colId as (typeof FAR_RECOVERY_COLUMN_IDS)[number]) ? { hide: false } : {}),
           }
           delete recoveredColumn.width
@@ -272,13 +291,17 @@ export function useFARGoldenWorkspaceControls({
           return recoveredColumn
         }))
         setTransientManualColumnWidths(false)
-        window.requestAnimationFrame(() => api.sizeColumnsToFit?.())
+        window.requestAnimationFrame(() => {
+          api.sizeColumnsToFit?.()
+          api.ensureColumnVisible?.('title', 'middle')
+        })
       })
     })
   }, [setColumnLayoutState, setHiddenColumns, setTransientManualColumnWidths])
 
   const applyViewConfig = useCallback((raw: unknown) => {
     const config = sanitizeFarWorkspaceViewConfig(raw)
+    const preserveRequestedWidths = hasExplicitColumnSizing(config.columnLayoutState)
     setFontSize(config.fontSize)
     setRowDensity(config.rowDensity)
     setHiddenColumns(config.hiddenColumns)
@@ -287,11 +310,11 @@ export function useFARGoldenWorkspaceControls({
     setGridFilterModel(config.filterModel)
     setGridSortModel(config.sortModel)
     setColumnLayoutState(config.columnLayoutState)
-    setTransientManualColumnWidths(false)
+    setTransientManualColumnWidths(preserveRequestedWidths)
 
     const api = gridRef.current?.api
     if (!api) return
-    applyColumnLayoutState(api, config.columnLayoutState, true)
+    applyColumnLayoutState(api, config.columnLayoutState, preserveRequestedWidths)
     api.setFilterModel?.(config.filterModel)
     api.applyColumnState?.({
       state: config.sortModel,
@@ -371,7 +394,9 @@ export function useFARGoldenWorkspaceControls({
 
   const handleGridReady = useCallback((params: any) => {
     const config = currentDefinition
-    if (config.columnLayoutState.length) applyColumnLayoutState(params.api, config.columnLayoutState, preserveExplicitColumnWidths)
+    const preserveRequestedWidths = hasExplicitColumnSizing(config.columnLayoutState)
+    setTransientManualColumnWidths(preserveRequestedWidths)
+    if (config.columnLayoutState.length) applyColumnLayoutState(params.api, config.columnLayoutState, preserveRequestedWidths)
     params.api.setFilterModel?.(config.filterModel)
     params.api.applyColumnState?.({
       state: config.sortModel,
@@ -379,7 +404,7 @@ export function useFARGoldenWorkspaceControls({
       applyOrder: false,
     })
     scheduleGridOperabilityCheck(params.api, config.columnLayoutState)
-  }, [applyColumnLayoutState, currentDefinition, preserveExplicitColumnWidths, scheduleGridOperabilityCheck])
+  }, [applyColumnLayoutState, currentDefinition, scheduleGridOperabilityCheck, setTransientManualColumnWidths])
 
   const gridRuntime = useMemo(() => ({
     preserveExplicitColumnWidths,
@@ -502,8 +527,10 @@ export function useFARGoldenWorkspaceControls({
         </div>
         <ToolbarIconButton onClick={onExport} title="Export CSV"><FileText size={16} /></ToolbarIconButton>
         <ToolbarIconButton onClick={onCopySelected} disabled={selectedIds.length === 0} title="Copy to Clipboard"><Clipboard size={16} /></ToolbarIconButton>
+        <ToolbarIconButton onClick={onSettings} title="Matrix Registry Enums"><Settings size={16} /></ToolbarIconButton>
       </ToolbarGroup>
       <ToolbarGroup>
+        <ToolbarButton onClick={onImport} title="Import Bulk Risk Data"><Upload size={14} /> Import</ToolbarButton>
         <ToolbarButton active={showSystemFilters} onClick={() => setShowSystemFilters((current) => !current)} title="System filters">
           {showSystemFilters ? <EyeOff size={14} /> : <Eye size={14} />} Filters
         </ToolbarButton>
@@ -534,9 +561,7 @@ export function useFARGoldenWorkspaceControls({
           <Zap size={14} /> Bulk Actions{selectedIds.length ? ` (${selectedIds.length})` : ''}
         </ToolbarButton>
       </div>
-      <ToolbarButton onClick={onImport} title="Import Bulk Risk Data"><Upload size={14} /> Import</ToolbarButton>
-      <ToolbarIconButton onClick={onSettings} title="Matrix Registry Enums"><Settings size={16} /></ToolbarIconButton>
-      <ToolbarButton variant="danger" onClick={onAdd}><ShieldAlert size={14} /> Add Failure Mode</ToolbarButton>
+      <ToolbarButton variant="primary" onClick={onAdd} ariaLabel="Add Failure Mode"><ShieldAlert size={14} /> Add Failure Mode</ToolbarButton>
     </ToolbarGroup>
   )
 
