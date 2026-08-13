@@ -81,7 +81,7 @@ const compareValue = (value: unknown) => {
 }
 
 const FAR_RECOVERY_COLUMN_IDS = ['system_name', 'title', 'rpn', 'status'] as const
-const FAR_MIN_DESKTOP_CENTER_VIEWPORT_WIDTH = 240
+const FAR_MIN_DESKTOP_CENTER_VIEWPORT_WIDTH = 600
 const FAR_DEFAULT_LEFT_PINNED_COLUMN_IDS = new Set(['id'])
 
 const hasExplicitColumnSizing = (layout: any[] = []) => layout.some((column: any) => {

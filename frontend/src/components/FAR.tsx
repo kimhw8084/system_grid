@@ -29,6 +29,12 @@ import { OperationalBulkPreviewModal } from './shared/OperationalBulkPreviewModa
 import { useOperationalBulkWorkflow } from './shared/useOperationalBulkWorkflow'
 import { ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
 import { useFARGoldenWorkspaceControls } from './FARGoldenWorkspaceControls'
+import { OPERATIONAL_GRID_WIDTHS } from './shared/OperationalGridContract'
+import {
+  createOperationalActionColumnDefinition,
+  createOperationalUtilityColumns,
+  renderOperationalActionButtons,
+} from './shared/OperationalGridStandard'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -339,29 +345,15 @@ export default function FAR() {
 
   // AgGrid Defs (High Density)
   const columnDefs = useMemo(() => [
-    { 
-      headerName: "", 
-      width: 50,
-      checkboxSelection: true, 
-      headerCheckboxSelection: true, 
-      pinned: 'left', 
-      cellClass: 'flex items-center justify-center border-r border-white/5 pl-2', 
-      headerClass: 'flex items-center justify-center border-r border-white/5 pl-2',
-      suppressSizeToFit: true,
-      resizable: false,
-      sortable: false,
-      filter: false,
-      lockVisible: true
-    },
-    { 
-      field: "id", 
-      headerName: "ID", 
-      width: 70,
-      pinned: 'left',
-      cellClass: 'text-center font-bold text-slate-500',
-      headerClass: 'text-center',
-      filter: 'agNumberColumnFilter',
-    },
+    ...createOperationalUtilityColumns({
+      includeRecentChange: false,
+      includeFavorite: false,
+      includeWatch: false,
+      isRecentChange: () => false,
+      onToggleFavorite: () => undefined,
+      onToggleWatch: () => undefined,
+      itemLabel: 'failure mode',
+    }),
     { 
       field: "system_name", 
       headerName: "System", 
@@ -598,23 +590,24 @@ export default function FAR() {
       cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'SYSTEM'}</span>,
       hide: hiddenColumns.includes("created_by_user_id")
     },
-    {
-      headerName: "Action",
-      width: 100,
-      minWidth: 100,
-      pinned: 'right',
-      cellClass: 'text-center',
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => (
-        <div className="flex items-center justify-center space-x-1 h-full">
-               <div className="flex rounded-lg p-0.5 border border-white/5 bg-transparent">
-                   <button onClick={() => p.data?.id && setSelectedModeId(p.data.id)} title="Matrix Detail" className="p-1.5 text-blue-400 hover:text-blue-200 transition-all border-r border-white/5"><Eye size={14}/></button>
-                   <button onClick={() => { setSelectedModeId(p.data.id); setShowWizard(true); }} title="Edit Matrix" className="p-1.5 text-amber-400 hover:text-amber-200 transition-all border-r border-white/5"><Edit2 size={14}/></button>
-                   <button onClick={() => p.data?.id && requestBulkPreview({ action: 'delete', ids: [p.data.id] })} title="Retire failure vector" className="p-1.5 text-rose-400 hover:text-rose-200 transition-all"><Trash2 size={14}/></button>
-               </div>
-        </div>
-      )
-    }
+    createOperationalActionColumnDefinition({
+      width: OPERATIONAL_GRID_WIDTHS.standardAction,
+      renderActions: (row: any) => renderOperationalActionButtons([
+        <button key="detail" onClick={() => row?.id && setSelectedModeId(row.id)} title="Matrix Detail" className="text-blue-400 hover:text-blue-200 transition-all"><Eye size={14}/></button>,
+        <button
+          key="edit"
+          onClick={() => { if (!row?.id) return; setSelectedModeId(row.id); setShowWizard(true) }}
+          title="Edit Matrix"
+          className="text-amber-400 hover:text-amber-200 transition-all"
+        ><Edit2 size={14}/></button>,
+        <button
+          key="retire"
+          onClick={() => row?.id && requestBulkPreview({ action: 'delete', ids: [row.id] })}
+          title="Retire failure vector"
+          className="text-rose-400 hover:text-rose-200 transition-all"
+        ><Trash2 size={14}/></button>,
+      ]),
+    })
   ], [fontSize, hiddenColumns, requestBulkPreview]) as any
 
   // Advanced Metrics Calculation
