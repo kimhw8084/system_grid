@@ -42,6 +42,11 @@ import {
   createOperationalUtilityColumns,
   renderOperationalActionButtons,
 } from './shared/OperationalGridStandard'
+import {
+  createOperationalGoldenTextColumn,
+  createOperationalMetricBadgeColumn,
+  getOperationalContentAwareWidth,
+} from './shared/OperationalGoldenColumns'
 
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-alpine.css'
@@ -266,6 +271,36 @@ export default function FAR() {
     (modes || []).map((mode: any) => String(mode.status || '')).filter(Boolean)
   )).sort(), [modes])
 
+  const farDefaultWidthsRef = React.useRef<{
+    system_name: number
+    failure_type: number
+    title: number
+    created_by_user_id: number
+  } | null>(null)
+  if (!farDefaultWidthsRef.current && modes !== undefined) {
+    const loadedModes = modes || []
+    farDefaultWidthsRef.current = {
+      system_name: getOperationalContentAwareWidth({
+        headerName: 'System', values: loadedModes.map((mode: any) => mode.system_name), minWidth: 120, fallbackWidth: 132, maxDefaultWidth: 220,
+      }),
+      failure_type: getOperationalContentAwareWidth({
+        headerName: 'Type', values: loadedModes.map((mode: any) => mode.failure_type), minWidth: 96, fallbackWidth: 108, maxDefaultWidth: 160,
+      }),
+      title: getOperationalContentAwareWidth({
+        headerName: 'Failure Mode', values: loadedModes.map((mode: any) => mode.title), minWidth: 200, fallbackWidth: 260, maxDefaultWidth: 360,
+      }),
+      created_by_user_id: getOperationalContentAwareWidth({
+        headerName: 'Created By', values: loadedModes.map((mode: any) => mode.created_by_user_id || 'SYSTEM'), minWidth: 128, fallbackWidth: 136, maxDefaultWidth: 220,
+      }),
+    }
+  }
+  const farDefaultWidths = farDefaultWidthsRef.current || {
+    system_name: 132,
+    failure_type: 108,
+    title: 260,
+    created_by_user_id: 136,
+  }
+
   const filteredModes = useMemo(
     () => filterFarModes(modes, searchTerm, quickFilters),
     [modes, quickFilters, searchTerm]
@@ -386,134 +421,65 @@ export default function FAR() {
       onToggleWatch: () => undefined,
       itemLabel: 'failure mode',
     }),
-    { 
-      field: "system_name", 
-      headerName: "System", 
-      width: 132,
+    createOperationalGoldenTextColumn({
+      field: 'system_name',
+      headerName: 'System',
+      width: farDefaultWidths.system_name,
       minWidth: 120,
-      suppressAutoSize: true,
-      tooltipField: "system_name",
-      cellClass: 'text-center font-bold text-rose-400 uppercase',
-      headerClass: 'text-center',
       filter: 'agTextColumnFilter',
-      hide: hiddenColumns.includes("system_name")
-    },
-    { 
-      field: "failure_type", 
-      headerName: "Type", 
-      width: 108,
+      tooltipField: 'system_name',
+      valueClassName: 'operational-grid-text font-bold text-rose-400 uppercase',
+      hide: hiddenColumns.includes('system_name'),
+    }),
+    createOperationalGoldenTextColumn({
+      field: 'failure_type',
+      headerName: 'Type',
+      width: farDefaultWidths.failure_type,
       minWidth: 96,
-      suppressAutoSize: true,
-      tooltipField: "failure_type",
-      cellClass: 'text-center font-bold text-slate-400 uppercase',
-      headerClass: 'text-center',
       filter: 'agTextColumnFilter',
-      hide: hiddenColumns.includes("failure_type")
-    },
-    { 
-      field: "title", 
-      headerName: "Failure Mode", 
-      width: 260,
+      tooltipField: 'failure_type',
+      valueClassName: 'operational-grid-text font-bold text-slate-400 uppercase',
+      hide: hiddenColumns.includes('failure_type'),
+    }),
+    createOperationalGoldenTextColumn({
+      field: 'title',
+      headerName: 'Failure Mode',
+      width: farDefaultWidths.title,
       minWidth: 200,
-      suppressAutoSize: true,
-      tooltipField: "title",
-      cellClass: 'text-left font-bold uppercase text-white pl-4',
-      headerClass: 'text-left pl-4',
       filter: 'agTextColumnFilter',
-      hide: hiddenColumns.includes("title")
-    },
-    { 
-      field: "severity", 
-      headerName: "S", 
-      width: 72,
-      minWidth: 68,
-      suppressAutoSize: true,
-      headerClass: 'text-center',
-      filter: 'agNumberColumnFilter',
-      cellRenderer: (p: any) => {
-        const val = p.value || 0;
-        const color = val >= 8 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' : 
-                      val >= 5 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 
-                      'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-        return (
-          <div className="flex items-center justify-center h-full w-full">
-            <div onClick={() => setShowRpnHelp(true)} className={`flex items-center justify-center w-14 h-5 rounded-lg border shadow-sm cursor-pointer hover:scale-105 transition-all ${color}`}>
-              <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{val}</span>
-            </div>
-          </div>
-        )
-      },
-      hide: hiddenColumns.includes("severity")
-    },
-    { 
-      field: "occurrence", 
-      headerName: "O", 
-      width: 72,
-      minWidth: 68,
-      suppressAutoSize: true,
-      headerClass: 'text-center',
-      filter: 'agNumberColumnFilter',
-      cellRenderer: (p: any) => {
-        const val = p.value || 0;
-        const color = val >= 7 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' : 
-                      val >= 4 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 
-                      'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-        return (
-          <div className="flex items-center justify-center h-full w-full">
-            <div onClick={() => setShowRpnHelp(true)} className={`flex items-center justify-center w-14 h-5 rounded-lg border shadow-sm cursor-pointer hover:scale-105 transition-all ${color}`}>
-              <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{val}</span>
-            </div>
-          </div>
-        )
-      },
-      hide: hiddenColumns.includes("occurrence")
-    },
-    { 
-      field: "detection", 
-      headerName: "D", 
-      width: 72,
-      minWidth: 68,
-      suppressAutoSize: true,
-      headerClass: 'text-center',
-      filter: 'agNumberColumnFilter',
-      cellRenderer: (p: any) => {
-        const val = p.value || 0;
-        const color = val >= 7 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' : 
-                      val >= 4 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 
-                      'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-        return (
-          <div className="flex items-center justify-center h-full w-full">
-            <div onClick={() => setShowRpnHelp(true)} className={`flex items-center justify-center w-14 h-5 rounded-lg border shadow-sm cursor-pointer hover:scale-105 transition-all ${color}`}>
-              <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{val}</span>
-            </div>
-          </div>
-        )
-      },
-      hide: hiddenColumns.includes("detection")
-    },
-    { 
-      field: "rpn", 
-      headerName: "RPN", 
-      width: 84,
-      minWidth: 80,
-      suppressAutoSize: true,
-      headerClass: 'text-center',
-      filter: 'agNumberColumnFilter',
-      cellRenderer: (p: any) => {
-        const val = p.value || 0;
-        const color = val >= 150 ? 'bg-rose-500/20 text-rose-500 border-rose-500/30' : 
-                      val >= 80 ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 
-                      'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-        return (
-          <div className="flex items-center justify-center h-full w-full">
-            <div onClick={() => setShowRpnHelp(true)} className={`flex items-center justify-center w-14 h-5 rounded-lg border shadow-sm cursor-pointer hover:scale-105 transition-all ${color}`}>
-              <span style={{ fontSize: `${fontSize}px` }} className="font-bold leading-none">{val}</span>
-            </div>
-          </div>
-        )
-      },
-      hide: hiddenColumns.includes("rpn")
-    },
+      tooltipField: 'title',
+      valueClassName: 'operational-grid-text font-bold uppercase text-white',
+      alignment: 'left',
+      hide: hiddenColumns.includes('title'),
+    }),
+    createOperationalMetricBadgeColumn({
+      field: 'severity', headerName: 'S', width: 72, minWidth: 68, fontSize,
+      resolveTone: (value) => value >= 8 ? 'critical' : value >= 5 ? 'warning' : 'healthy',
+      onActivate: () => setShowRpnHelp(true),
+      title: 'RPN Definition Matrix',
+      hide: hiddenColumns.includes('severity'),
+    }),
+    createOperationalMetricBadgeColumn({
+      field: 'occurrence', headerName: 'O', width: 72, minWidth: 68, fontSize,
+      resolveTone: (value) => value >= 7 ? 'critical' : value >= 4 ? 'warning' : 'healthy',
+      onActivate: () => setShowRpnHelp(true),
+      title: 'RPN Definition Matrix',
+      hide: hiddenColumns.includes('occurrence'),
+    }),
+    createOperationalMetricBadgeColumn({
+      field: 'detection', headerName: 'D', width: 72, minWidth: 68, fontSize,
+      resolveTone: (value) => value >= 7 ? 'critical' : value >= 4 ? 'warning' : 'healthy',
+      onActivate: () => setShowRpnHelp(true),
+      title: 'RPN Definition Matrix',
+      hide: hiddenColumns.includes('detection'),
+    }),
+    createOperationalMetricBadgeColumn({
+      field: 'rpn', headerName: 'RPN', width: 84, minWidth: 80, fontSize,
+      resolveTone: (value) => value >= 150 ? 'critical' : value >= 80 ? 'warning' : 'healthy',
+      onActivate: () => setShowRpnHelp(true),
+      title: 'RPN Definition Matrix',
+      hide: hiddenColumns.includes('rpn'),
+    }),
     { 
       field: "status", 
       headerName: "Maturity", 
@@ -640,26 +606,17 @@ export default function FAR() {
       },
       hide: hiddenColumns.includes("linked_rcas")
     },
-    { 
-      field: "created_by_user_id", 
-      headerName: "Created By", 
-      width: 136,
+    createOperationalGoldenTextColumn({
+      field: 'created_by_user_id',
+      headerName: 'Created By',
+      width: farDefaultWidths.created_by_user_id,
       minWidth: 128,
-      suppressAutoSize: true,
-      filter: true, 
-      cellClass: 'text-center font-bold text-blue-400 uppercase', 
-      headerClass: 'text-center',
-      cellRenderer: (p: any) => (
-        <span
-          title={String(p.value || 'SYSTEM')}
-          style={{ fontSize: `${fontSize}px` }}
-          className="operational-grid-text"
-        >
-          {p.value || 'SYSTEM'}
-        </span>
-      ),
-      hide: hiddenColumns.includes("created_by_user_id")
-    },
+      filter: true,
+      emptyValue: 'SYSTEM',
+      tooltipValueGetter: (value) => String(value || 'SYSTEM'),
+      valueClassName: 'operational-grid-text font-bold text-blue-400 uppercase',
+      hide: hiddenColumns.includes('created_by_user_id'),
+    }),
     createOperationalActionColumnDefinition({
       width: OPERATIONAL_GRID_WIDTHS.standardAction,
       renderActions: (row: any) => renderOperationalActionButtons([
@@ -678,7 +635,7 @@ export default function FAR() {
         ><Trash2 size={14}/></button>,
       ]),
     })
-  ], [fontSize, hiddenColumns, requestBulkPreview]) as any
+  ], [farDefaultWidths, fontSize, hiddenColumns, requestBulkPreview]) as any
 
   // Advanced Metrics Calculation
   const metrics = useMemo(() => {
@@ -857,7 +814,7 @@ export default function FAR() {
           contextMenu={goldenWorkspace.contextMenu}
           fontSize={fontSize}
           rowDensity={rowDensity}
-          loading={modesLoading}
+          loading={modesLoading || !goldenWorkspace.workingStateReady}
           loadingIcon={<RefreshCcw size={28} className="animate-spin text-rose-400" />}
           loadingLabel={<p className="text-[10px] font-semibold text-rose-300">Loading failure analysis registry...</p>}
           dataState={modesError ? {

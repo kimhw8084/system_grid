@@ -4,7 +4,8 @@ import path from 'node:path'
 import { OPERATIONAL_GRID_WIDTHS } from './OperationalGridContract'
 import { FAR_PRESERVES_EXPLICIT_COLUMN_WIDTHS, getStableFarManualResizeLayout } from '../FAR.gridStability'
 import { filterFarModes, groupFarModes, normalizeFarQuickFilters } from '../FAR.workspaceModel'
-import { sanitizeFarWorkspaceViewConfig } from '../FAR.workspaceState'
+import { FAR_WORKING_STATE_KEY, sanitizeFarWorkspaceViewConfig } from '../FAR.workspaceState'
+import { getOperationalContentAwareWidth } from './OperationalGoldenColumns'
 
 const componentsRoot = path.resolve(process.cwd(), 'src/components')
 const read = (fileName: string) => fs.readFileSync(path.join(componentsRoot, fileName), 'utf8')
@@ -36,27 +37,48 @@ describe('FAR Monitoring-golden structural contract', () => {
     expect(OPERATIONAL_GRID_WIDTHS.standardAction).toBe(208)
   })
 
-  it('keeps FAR header-safe defaults while leaving analytical columns operator-resizable', () => {
+  it('uses stable content-aware defaults and shared golden renderers without limiting operator resize', () => {
     const far = read('FAR.tsx')
+    const helper = read('shared/OperationalGoldenColumns.tsx')
     const state = read('FAR.workspaceState.ts')
-    const block = (field: string) => far.split(`field: "${field}"`)[1]?.split('    },')[0] || ''
 
-    for (const field of ['system_name', 'failure_type', 'title', 'severity', 'occurrence', 'detection', 'rpn', 'status', 'linked_rcas', 'created_by_user_id']) {
-      expect(block(field)).toContain('suppressAutoSize: true')
-      expect(block(field)).not.toContain('maxWidth:')
+    expect(getOperationalContentAwareWidth({
+      headerName: 'Failure Mode',
+      values: ['Short', 'A meaningfully longer failure mode label'],
+      minWidth: 200,
+      fallbackWidth: 260,
+      maxDefaultWidth: 360,
+    })).toBeGreaterThanOrEqual(260)
+    expect(getOperationalContentAwareWidth({
+      headerName: 'Failure Mode',
+      values: ['x'.repeat(200)],
+      minWidth: 200,
+      fallbackWidth: 260,
+      maxDefaultWidth: 360,
+    })).toBe(360)
+
+    for (const field of ['system_name', 'failure_type', 'title', 'created_by_user_id']) {
+      expect(far).toContain(`field: '${field}'`)
     }
-    expect(block('system_name')).toContain('minWidth: 120')
-    expect(block('failure_type')).toContain('minWidth: 96')
-    expect(block('title')).toContain('width: 260')
-    expect(block('title')).toContain('minWidth: 200')
-    expect(block('title')).toContain('tooltipField: "title"')
-    expect(block('status')).toContain('minWidth: 152')
-    expect(block('status')).toContain('operational-grid-badge')
-    expect(block('status')).toContain('operational-grid-badge-text')
+    expect(far).toContain('width: farDefaultWidths.system_name')
+    expect(far).toContain('width: farDefaultWidths.failure_type')
+    expect(far).toContain('width: farDefaultWidths.title')
+    expect(far).toContain('width: farDefaultWidths.created_by_user_id')
+    expect(far).toContain("headerName: 'Failure Mode', values: loadedModes.map((mode: any) => mode.title), minWidth: 200, fallbackWidth: 260, maxDefaultWidth: 360")
+
+    expect((far.match(/createOperationalMetricBadgeColumn\(\{/g) || []).length).toBe(4)
+    expect(far).toContain("resolveTone: (value) => value >= 8 ? 'critical' : value >= 5 ? 'warning' : 'healthy'")
+    expect(far).toContain("resolveTone: (value) => value >= 150 ? 'critical' : value >= 80 ? 'warning' : 'healthy'")
+    expect(helper).toContain('operationalSkipAutoSize: true')
+    expect(helper).toContain('resizable: true')
+    expect(helper).not.toContain('maxWidth: maxDefaultWidth')
+
+    expect(far).toContain('field: "status"')
+    expect(far).toContain('operational-grid-badge')
+    expect(far).toContain('operational-grid-badge-text')
     expect(far).toContain('colId: "vectors"')
-    expect(far).toContain('headerName: "Vectors",\n      width: 160,\n      minWidth: 140,\n      suppressAutoSize: true,')
+    expect(far).toContain('headerName: "Incidents"')
     expect(state).toContain("'vectors'")
-    expect(block('created_by_user_id')).toContain('className="operational-grid-text"')
   })
 
   it('recovers before FAR loses the golden analytical center viewport', () => {
@@ -93,6 +115,28 @@ describe('FAR Monitoring-golden structural contract', () => {
     expect(controls).not.toContain('handleColumnResized,\n  } = useOperationalGridLayout')
   })
 
+
+  it('persists the sanitized unsaved FAR working definition including manual widths', () => {
+    const controls = read('FARGoldenWorkspaceControls.tsx')
+    const far = read('FAR.tsx')
+    const config = sanitizeFarWorkspaceViewConfig({
+      groupBy: 'system_name',
+      quickFilter: 'database',
+      columnLayoutState: [
+        { colId: 'title', width: 333, hide: false, pinned: null, sort: null, sortIndex: null, flex: null },
+      ],
+    })
+
+    expect(FAR_WORKING_STATE_KEY).toBe('sysgrid_far_working_state_v1')
+    expect(config.columnLayoutState.find((column: any) => column.colId === 'title')?.width).toBe(333)
+    expect(controls).toContain('usePersistentJsonState<FarWorkspaceViewConfig>(FAR_WORKING_STATE_KEY, DEFAULT_FAR_VIEW_CONFIG)')
+    expect(controls).toContain('applyViewConfig(workingDefinition)')
+    expect(controls).toContain('setWorkingDefinition(currentDefinition)')
+    expect(controls).toContain("if (collaborativeViews.status === 'loading') return")
+    expect(controls).toContain('collaborativeViews.setViewLink(null)')
+    expect(controls).toContain('workingStateReady')
+    expect(far).toContain('loading={modesLoading || !goldenWorkspace.workingStateReady}')
+  })
 
   it('persists FAR grouping, filter-bar state, and multidimensional quick filters safely', () => {
     const config = sanitizeFarWorkspaceViewConfig({

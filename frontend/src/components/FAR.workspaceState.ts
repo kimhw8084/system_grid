@@ -13,6 +13,7 @@ import {
 
 export const FAR_VIEW_STORAGE_KEY = 'sysgrid_far_views_v2'
 export const FAR_ACTIVE_VIEW_KEY = 'sysgrid_far_active_view_v2'
+export const FAR_WORKING_STATE_KEY = 'sysgrid_far_working_state_v1'
 export const FAR_COLLABORATIVE_VIEW_MIGRATION_KEY = 'sysgrid_far_collaborative_views_v1_migrated'
 
 export const FAR_PERSISTED_COLUMN_IDS = new Set([

@@ -65,6 +65,7 @@ import {
   FAR_PERSISTED_COLUMN_IDS,
   FAR_SYSTEM_VIEW_IDS,
   FAR_VIEW_STORAGE_KEY,
+  FAR_WORKING_STATE_KEY,
   type FarSavedView,
   type FarWorkspaceViewConfig,
   normalizeFarSavedViews,
@@ -172,6 +173,8 @@ export function useFARGoldenWorkspaceControls({
 }) {
   const [savedViews, setSavedViews] = usePersistentJsonState<FarSavedView[]>(FAR_VIEW_STORAGE_KEY, [])
   const [activeViewId, setActiveViewId] = usePersistentJsonState<string | null>(FAR_ACTIVE_VIEW_KEY, null)
+  const [workingDefinition, setWorkingDefinition] = usePersistentJsonState<FarWorkspaceViewConfig>(FAR_WORKING_STATE_KEY, DEFAULT_FAR_VIEW_CONFIG)
+  const [workingStateReady, setWorkingStateReady] = useState(false)
   const [newViewName, setNewViewName] = useState('')
   const [gridFilterModel, setGridFilterModel] = useState<Record<string, any>>({})
   const [gridSortModel, setGridSortModel] = useState<Array<{ colId: string; sort: 'asc' | 'desc' }>>([])
@@ -330,6 +333,32 @@ export function useFARGoldenWorkspaceControls({
     })
     scheduleGridOperabilityCheck(api, config.columnLayoutState)
   }, [applyColumnLayoutState, gridRef, scheduleGridOperabilityCheck, setColumnLayoutState, setFontSize, setGroupBy, setHiddenColumns, setQuickFilters, setRowDensity, setSearchTerm, setShowFilterBar, setTransientManualColumnWidths])
+
+  useEffect(() => {
+    if (workingStateReady) return
+    const requestedId = collaborativeViews.requestedViewId
+    if (requestedId) {
+      const requestedView = normalizedViews.find((entry) => entry.id === requestedId)
+      if (!requestedView) {
+        if (collaborativeViews.status === 'loading') return
+        applyViewConfig(workingDefinition)
+        setActiveViewId(null)
+        collaborativeViews.setViewLink(null)
+      } else {
+        lastRequestedViewRef.current = requestedId
+        applyViewConfig(requestedView.config)
+        setActiveViewId(requestedView.id)
+      }
+    } else {
+      applyViewConfig(workingDefinition)
+    }
+    setWorkingStateReady(true)
+  }, [applyViewConfig, collaborativeViews.requestedViewId, collaborativeViews.status, normalizedViews, setActiveViewId, workingDefinition, workingStateReady])
+
+  useEffect(() => {
+    if (!workingStateReady) return
+    setWorkingDefinition(currentDefinition)
+  }, [currentDefinition, setWorkingDefinition, workingStateReady])
 
   const applyView = useCallback((id: string) => {
     const view = normalizedViews.find((entry) => entry.id === id)
@@ -827,6 +856,7 @@ export function useFARGoldenWorkspaceControls({
     toolbarActions,
     filterChips,
     floatingPanels,
+    workingStateReady,
     activityPanel,
     compareModal,
     gridRuntime,
