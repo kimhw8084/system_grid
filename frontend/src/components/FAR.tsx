@@ -715,6 +715,7 @@ export default function FAR() {
     gridRef,
     modes: lifecycleModes,
     selectedIds: lifecycleScope === 'active' ? selectedIds : [],
+    readOnly: lifecycleScope === 'archived',
     fontSize,
     setFontSize,
     rowDensity,

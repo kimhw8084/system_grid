@@ -114,6 +114,7 @@ export function useFARGoldenWorkspaceControls({
   gridRef,
   modes,
   selectedIds,
+  readOnly,
   fontSize,
   setFontSize,
   rowDensity,
@@ -144,6 +145,7 @@ export function useFARGoldenWorkspaceControls({
   gridRef: React.RefObject<any>
   modes: any[] | undefined
   selectedIds: number[]
+  readOnly: boolean
   fontSize: number
   setFontSize: React.Dispatch<React.SetStateAction<number>>
   rowDensity: number
@@ -637,10 +639,10 @@ export function useFARGoldenWorkspaceControls({
         </div>
         <ToolbarIconButton onClick={onExport} title="Export CSV"><FileText size={16} /></ToolbarIconButton>
         <ToolbarIconButton onClick={onCopySelected} disabled={selectedIds.length === 0} title="Copy to Clipboard"><Clipboard size={16} /></ToolbarIconButton>
-        <ToolbarIconButton onClick={onSettings} title="Matrix Registry Enums"><Settings size={16} /></ToolbarIconButton>
+        <ToolbarIconButton onClick={onSettings} disabled={readOnly} title="Matrix Registry Enums"><Settings size={16} /></ToolbarIconButton>
       </ToolbarGroup>
       <ToolbarGroup>
-        <ToolbarButton onClick={onImport} title="Import Bulk Risk Data"><Upload size={14} /> Import</ToolbarButton>
+        <ToolbarButton onClick={onImport} disabled={readOnly} title="Import Bulk Risk Data"><Upload size={14} /> Import</ToolbarButton>
         <ToolbarButton active={showFilterBar} onClick={() => setShowFilterBar((current) => !current)} title="Workspace filters">
           {showFilterBar ? <EyeOff size={14} /> : <Eye size={14} />} Filters
         </ToolbarButton>
@@ -671,7 +673,7 @@ export function useFARGoldenWorkspaceControls({
           <Zap size={14} /> Bulk Actions{selectedIds.length ? ` (${selectedIds.length})` : ''}
         </ToolbarButton>
       </div>
-      <ToolbarButton variant="primary" onClick={onAdd} ariaLabel="Add Failure Mode"><ShieldAlert size={14} /> Add Failure Mode</ToolbarButton>
+      <ToolbarButton variant="primary" onClick={onAdd} disabled={readOnly} ariaLabel="Add Failure Mode"><ShieldAlert size={14} /> Add Failure Mode</ToolbarButton>
     </ToolbarGroup>
   )
 
