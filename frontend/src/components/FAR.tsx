@@ -1354,10 +1354,10 @@ function FailureDetailView({ mode, onClose, onUpdate, onRestore, setBkmGuidanceM
 
          <div className="flex-1 overflow-hidden flex flex-col p-6">
             <AnimatePresence mode="wait">
-               {activeTab === 'causal' && <CausalTab mode={mode} onUpdate={onUpdate} setBkmGuidanceModal={setBkmGuidanceModal} setResolutionManagerModal={setResolutionManagerModal} />}
-               {activeTab === 'roadmap' && <RoadmapTab mode={mode} onUpdate={onUpdate} />}
+               {activeTab === 'causal' && <CausalTab mode={mode} readOnly={Boolean(mode.is_deleted)} onUpdate={onUpdate} setBkmGuidanceModal={setBkmGuidanceModal} setResolutionManagerModal={setResolutionManagerModal} />}
+               {activeTab === 'roadmap' && <RoadmapTab mode={mode} readOnly={Boolean(mode.is_deleted)} onUpdate={onUpdate} />}
                {activeTab === 'versions' && <FARVersionHistory mode={mode} onUpdate={onUpdate} />}
-               {activeTab === 'history' && <HistoryTab mode={mode} onUpdate={onUpdate} />}
+               {activeTab === 'history' && <HistoryTab mode={mode} readOnly={Boolean(mode.is_deleted)} onUpdate={onUpdate} />}
             </AnimatePresence>
          </div>
 
@@ -1573,7 +1573,7 @@ function FARWizard({ initialData, onComplete }: any) {
   )
 }
 
-function CausalTab({ mode, onUpdate, setBkmGuidanceModal, setResolutionManagerModal }: any) {
+function CausalTab({ mode, readOnly, onUpdate, setBkmGuidanceModal, setResolutionManagerModal }: any) {
   const [activeModal, setActiveModal] = useState<any>(null)
   const queryClient = useQueryClient()
   const deleteCauseMutation = useMutation({
@@ -1602,7 +1602,7 @@ function CausalTab({ mode, onUpdate, setBkmGuidanceModal, setResolutionManagerMo
                 </div>
              )}
           </div>
-          <button onClick={() => setActiveModal({ isOpen: true, modeId: mode.id })} className="px-6 py-2 bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-lg text-[10px] font-bold uppercase  hover:bg-amber-600 hover:text-white transition-all">+ Add Root Cause</button>
+          <button onClick={() => setActiveModal({ isOpen: true, modeId: mode.id })} disabled={readOnly} className="px-6 py-2 bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-lg text-[10px] font-bold uppercase  hover:bg-amber-600 hover:text-white transition-all disabled:cursor-not-allowed disabled:opacity-30">+ Add Root Cause</button>
        </div>
        
        <div className="flex-1 bg-black/40 border border-white/5 rounded-lg overflow-hidden flex flex-col shadow-2xl">
@@ -1657,21 +1657,23 @@ function CausalTab({ mode, onUpdate, setBkmGuidanceModal, setResolutionManagerMo
                         <div className="flex items-center justify-end gap-2">
                            <button 
                              onClick={() => setResolutionManagerModal({ show: true, cause: c })}
-                             className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all"
+                             disabled={readOnly}
+                             className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all disabled:cursor-not-allowed disabled:opacity-30"
                              title="Manage BKM Guidance"
                            >
                               <Book size={14}/>
                            </button>
                            <button 
                              onClick={() => setActiveModal({ isOpen: true, modeId: mode.id, initialData: c })}
-                             className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"
+                             disabled={readOnly}
+                             className="p-1.5 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all disabled:cursor-not-allowed disabled:opacity-30"
                              title="Edit Attribution"
                            >
                               <Edit2 size={14}/>
                            </button>
                            <button
                              onClick={() => deleteCauseMutation.mutate(c.id)}
-                             disabled={deleteCauseMutation.isPending && deleteCauseMutation.variables === c.id}
+                             disabled={readOnly || (deleteCauseMutation.isPending && deleteCauseMutation.variables === c.id)}
                              className="p-1.5 text-slate-600 hover:text-rose-500 transition-all rounded-lg"
                              title="Purge Attribution"
                            >
@@ -1689,7 +1691,7 @@ function CausalTab({ mode, onUpdate, setBkmGuidanceModal, setResolutionManagerMo
        </div>
 
        <RootCauseFormModal 
-          isOpen={activeModal?.isOpen}
+          isOpen={!readOnly && activeModal?.isOpen}
           onClose={() => setActiveModal(null)}
           modeId={activeModal?.modeId}
           initialData={activeModal?.initialData}
@@ -1786,7 +1788,7 @@ function CausalTab({ mode, onUpdate, setBkmGuidanceModal, setResolutionManagerMo
        </div>
        )
        }
-function RoadmapTab({ mode, onUpdate }: any) {
+function RoadmapTab({ mode, readOnly, onUpdate }: any) {
   const [activeMitigationModal, setActiveMitigationModal] = useState<any>(null)
   const [activePreventionModal, setActivePreventionModal] = useState<any>(null)
   const [selectedCauseId, setSelectedCauseId] = useState<number | null>(null)
@@ -1847,9 +1849,9 @@ function RoadmapTab({ mode, onUpdate }: any) {
        <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-sky-400 ">Strategic Mitigation Roadmap</h3>
           <div className="flex flex-nowrap gap-2">
-             <button onClick={() => setActiveMitigationModal({ isOpen: true, type: 'WORKAROUND' })} disabled={!selectedCauseId} className="px-6 py-2 whitespace-nowrap bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-lg text-[10px] font-bold uppercase  hover:bg-amber-600 hover:text-white transition-all disabled:opacity-20">+ Add Workaround</button>
-             <button onClick={() => setActiveMitigationModal({ isOpen: true, type: 'MONITORING' })} disabled={!selectedCauseId} className="px-6 py-2 whitespace-nowrap bg-sky-600/20 border border-sky-500/30 text-sky-400 rounded-lg text-[10px] font-bold uppercase  hover:bg-sky-600 hover:text-white transition-all disabled:opacity-20">+ Add Monitoring</button>
-             <button onClick={() => setActivePreventionModal({ isOpen: true })} disabled={!selectedCauseId} className="px-6 py-2 whitespace-nowrap bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-[10px] font-bold uppercase  hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-20">+ Add Prevention</button>
+             <button onClick={() => setActiveMitigationModal({ isOpen: true, type: 'WORKAROUND' })} disabled={readOnly || !selectedCauseId} className="px-6 py-2 whitespace-nowrap bg-amber-600/20 border border-amber-500/30 text-amber-500 rounded-lg text-[10px] font-bold uppercase  hover:bg-amber-600 hover:text-white transition-all disabled:opacity-20">+ Add Workaround</button>
+             <button onClick={() => setActiveMitigationModal({ isOpen: true, type: 'MONITORING' })} disabled={readOnly || !selectedCauseId} className="px-6 py-2 whitespace-nowrap bg-sky-600/20 border border-sky-500/30 text-sky-400 rounded-lg text-[10px] font-bold uppercase  hover:bg-sky-600 hover:text-white transition-all disabled:opacity-20">+ Add Monitoring</button>
+             <button onClick={() => setActivePreventionModal({ isOpen: true })} disabled={readOnly || !selectedCauseId} className="px-6 py-2 whitespace-nowrap bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 rounded-lg text-[10px] font-bold uppercase  hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-20">+ Add Prevention</button>
           </div>
        </div>
 
@@ -1905,7 +1907,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
                                setDeletingMitigationId(m.id)
                                deleteMitigationMutation.mutate(m.id)
                              }}
-                             disabled={deletingMitigationId !== null}
+                             disabled={readOnly || deletingMitigationId !== null}
                              className="p-2 text-slate-600 hover:text-rose-500 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                              title="Delete Mitigation"
                            >
@@ -1923,7 +1925,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
        </div>
 
        <MitigationFormModal 
-          isOpen={activeMitigationModal?.isOpen}
+          isOpen={!readOnly && activeMitigationModal?.isOpen}
           onClose={() => setActiveMitigationModal(null)}
           modeId={mode.id}
           causeId={selectedCauseId}
@@ -1934,7 +1936,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
        />
 
        <PreventionFormModal 
-          isOpen={activePreventionModal?.isOpen}
+          isOpen={!readOnly && activePreventionModal?.isOpen}
           onClose={() => setActivePreventionModal(null)}
           modeId={mode.id}
           causeId={selectedCauseId}
@@ -1944,7 +1946,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
   )
 }
 
-  function HistoryTab({ mode, onUpdate }: any) {
+  function HistoryTab({ mode, readOnly, onUpdate }: any) {
     const [isLinking, setIsLinking] = useState(false)
     const [search, setSearch] = useState('')
     const queryClient = useQueryClient()
@@ -2019,7 +2021,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="flex-1 flex flex-col space-y-6">
          <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500 ">Analytical Research History</h3>
-            <button onClick={() => setIsLinking(true)} className="px-6 py-2 bg-slate-800/50 border border-white/10 text-slate-400 rounded-lg text-[10px] font-bold uppercase  hover:bg-slate-700 hover:text-white transition-all">+ Link Research Artifact</button>
+            <button onClick={() => setIsLinking(true)} disabled={readOnly} className="px-6 py-2 bg-slate-800/50 border border-white/10 text-slate-400 rounded-lg text-[10px] font-bold uppercase  hover:bg-slate-700 hover:text-white transition-all disabled:cursor-not-allowed disabled:opacity-30">+ Link Research Artifact</button>
          </div>
 
          <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
@@ -2037,7 +2039,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
                   </div>
                   <div className="flex gap-3">
                      <button onClick={() => navigate(`/research?type=research&id=${r.id}`)} className="p-2.5 bg-white/5 rounded-lg text-slate-500 hover:text-blue-400 transition-all opacity-0 group-hover:opacity-100"><Eye size={18}/></button>
-                     <button onClick={() => unlinkMutation.mutate(r.id)} className="p-2.5 bg-white/5 rounded-lg text-slate-500 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={18}/></button>
+                     <button onClick={() => unlinkMutation.mutate(r.id)} disabled={readOnly} className="p-2.5 bg-white/5 rounded-lg text-slate-500 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-20"><Trash2 size={18}/></button>
                   </div>
                </div>
             ))}
@@ -2050,7 +2052,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
             )}
          </div>
          <AnimatePresence>
-            {isLinking && (
+            {!readOnly && isLinking && (
                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-md p-6">
                   <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="glass-panel w-full max-w-lg p-10 rounded-lg border border-white/10 space-y-6">
                      <div className="flex items-center justify-between border-b border-white/5 pb-4">
