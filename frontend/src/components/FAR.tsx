@@ -357,9 +357,10 @@ export default function FAR() {
     { 
       field: "system_name", 
       headerName: "System", 
-      width: 120,
-      minWidth: 110,
-      maxWidth: 180,
+      width: 132,
+      minWidth: 120,
+      suppressAutoSize: true,
+      tooltipField: "system_name",
       cellClass: 'text-center font-bold text-rose-400 uppercase',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
@@ -368,9 +369,10 @@ export default function FAR() {
     { 
       field: "failure_type", 
       headerName: "Type", 
-      width: 100,
-      minWidth: 90,
-      maxWidth: 130,
+      width: 108,
+      minWidth: 96,
+      suppressAutoSize: true,
+      tooltipField: "failure_type",
       cellClass: 'text-center font-bold text-slate-400 uppercase',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
@@ -379,9 +381,10 @@ export default function FAR() {
     { 
       field: "title", 
       headerName: "Failure Mode", 
-      width: 240,
-      minWidth: 170,
-      maxWidth: 340,
+      width: 260,
+      minWidth: 200,
+      suppressAutoSize: true,
+      tooltipField: "title",
       cellClass: 'text-left font-bold uppercase text-white pl-4',
       headerClass: 'text-left pl-4',
       filter: 'agTextColumnFilter',
@@ -390,9 +393,9 @@ export default function FAR() {
     { 
       field: "severity", 
       headerName: "S", 
-      width: 70,
-      minWidth: 70,
-      maxWidth: 90,
+      width: 72,
+      minWidth: 68,
+      suppressAutoSize: true,
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
       cellRenderer: (p: any) => {
@@ -413,9 +416,9 @@ export default function FAR() {
     { 
       field: "occurrence", 
       headerName: "O", 
-      width: 70,
-      minWidth: 70,
-      maxWidth: 90,
+      width: 72,
+      minWidth: 68,
+      suppressAutoSize: true,
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
       cellRenderer: (p: any) => {
@@ -436,9 +439,9 @@ export default function FAR() {
     { 
       field: "detection", 
       headerName: "D", 
-      width: 70,
-      minWidth: 70,
-      maxWidth: 90,
+      width: 72,
+      minWidth: 68,
+      suppressAutoSize: true,
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
       cellRenderer: (p: any) => {
@@ -459,9 +462,9 @@ export default function FAR() {
     { 
       field: "rpn", 
       headerName: "RPN", 
-      width: 80,
+      width: 84,
       minWidth: 80,
-      maxWidth: 100,
+      suppressAutoSize: true,
       headerClass: 'text-center',
       filter: 'agNumberColumnFilter',
       cellRenderer: (p: any) => {
@@ -482,9 +485,9 @@ export default function FAR() {
     { 
       field: "status", 
       headerName: "Maturity", 
-      width: 140,
-      minWidth: 130,
-      maxWidth: 170,
+      width: 164,
+      minWidth: 152,
+      suppressAutoSize: true,
       cellClass: 'text-center',
       headerClass: 'text-center',
       filter: 'agTextColumnFilter',
@@ -513,8 +516,12 @@ export default function FAR() {
 
         return (
           <div className="flex items-center justify-center h-full w-full">
-            <div onClick={() => setShowMaturityHelp(true)} className={`flex items-center justify-center w-28 h-5 rounded-lg border shadow-sm cursor-pointer hover:scale-105 transition-all ${colorClass}`}>
-              <span style={{ fontSize: `${fontSize}px` }} className="font-bold uppercase tracking-tighter leading-none">
+            <div
+              onClick={() => setShowMaturityHelp(true)}
+              title={`Lv${ml.lv} ${ml.label}`}
+              className={`operational-grid-badge cursor-pointer transition-transform hover:scale-[1.02] ${colorClass}`}
+            >
+              <span style={{ fontSize: `${fontSize}px` }} className="operational-grid-badge-text font-bold uppercase tracking-tight">
                 Lv{ml.lv} {ml.label}
               </span>
             </div>
@@ -524,10 +531,11 @@ export default function FAR() {
       hide: hiddenColumns.includes("status")
     },
     {
+      colId: "vectors",
       headerName: "Vectors",
       width: 160,
-      minWidth: 150,
-      maxWidth: 180,
+      minWidth: 140,
+      suppressAutoSize: true,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -562,8 +570,8 @@ export default function FAR() {
       field: "linked_rcas",
       headerName: "Incidents",
       width: 120,
-      minWidth: 110,
-      maxWidth: 140,
+      minWidth: 112,
+      suppressAutoSize: true,
       cellClass: 'text-center',
       headerClass: 'text-center',
       cellRenderer: (p: any) => {
@@ -603,13 +611,21 @@ export default function FAR() {
     { 
       field: "created_by_user_id", 
       headerName: "Created By", 
-      width: 120, 
-      minWidth: 110,
-      maxWidth: 160,
+      width: 136,
+      minWidth: 128,
+      suppressAutoSize: true,
       filter: true, 
       cellClass: 'text-center font-bold text-blue-400 uppercase', 
       headerClass: 'text-center',
-      cellRenderer: (p: any) => <span style={{ fontSize: `${fontSize}px` }}>{p.value || 'SYSTEM'}</span>,
+      cellRenderer: (p: any) => (
+        <span
+          title={String(p.value || 'SYSTEM')}
+          style={{ fontSize: `${fontSize}px` }}
+          className="operational-grid-text"
+        >
+          {p.value || 'SYSTEM'}
+        </span>
+      ),
       hide: hiddenColumns.includes("created_by_user_id")
     },
     createOperationalActionColumnDefinition({

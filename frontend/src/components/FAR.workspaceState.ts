@@ -19,6 +19,7 @@ export const FAR_PERSISTED_COLUMN_IDS = new Set([
   'detection',
   'rpn',
   'status',
+  'vectors',
   'linked_rcas',
   'created_by_user_id',
 ])
