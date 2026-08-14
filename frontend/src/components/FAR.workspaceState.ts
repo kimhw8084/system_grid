@@ -4,6 +4,12 @@ import {
   sanitizeOperationalFilterModel,
   sanitizeOperationalSortModel,
 } from './shared/OperationalGridSizing'
+import {
+  FAR_VALID_GROUP_BY,
+  normalizeFarQuickFilters,
+  type FarGroupBy,
+  type FarQuickFilters,
+} from './FAR.workspaceModel'
 
 export const FAR_VIEW_STORAGE_KEY = 'sysgrid_far_views_v2'
 export const FAR_ACTIVE_VIEW_KEY = 'sysgrid_far_active_view_v2'
@@ -28,8 +34,10 @@ export type FarWorkspaceViewConfig = {
   fontSize: number
   rowDensity: number
   hiddenColumns: string[]
+  groupBy: FarGroupBy
+  showFilterBar: boolean
   quickFilter: string
-  quickFilters: { system_name: string[] }
+  quickFilters: FarQuickFilters
   filterModel: Record<string, any>
   sortModel: Array<{ colId: string; sort: 'asc' | 'desc' }>
   columnLayoutState: any[]
@@ -80,11 +88,10 @@ export function sanitizeFarWorkspaceViewConfig(value: unknown): FarWorkspaceView
   const source = value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, any>
     : {}
-  const quickFilters = source.quickFilters && typeof source.quickFilters === 'object' && !Array.isArray(source.quickFilters)
-    ? source.quickFilters as Record<string, any>
-    : {}
-
   const columnLayout = sanitizeFarColumnLayout(source.columnLayoutState)
+  const groupBy = typeof source.groupBy === 'string' && FAR_VALID_GROUP_BY.has(source.groupBy as FarGroupBy)
+    ? source.groupBy as FarGroupBy
+    : 'raw'
 
   return {
     fontSize: clampNumber(source.fontSize, 8, 14, 11),
@@ -92,10 +99,10 @@ export function sanitizeFarWorkspaceViewConfig(value: unknown): FarWorkspaceView
     hiddenColumns: normalizeStrings(source.hiddenColumns)
       .filter((field) => FAR_PERSISTED_COLUMN_IDS.has(field))
       .filter((field) => !columnLayout.recovered || !FAR_RECOVERY_COLUMN_IDS.has(field)),
+    groupBy,
+    showFilterBar: source.showFilterBar !== false,
     quickFilter: typeof source.quickFilter === 'string' ? source.quickFilter.trim().slice(0, 500) : '',
-    quickFilters: {
-      system_name: normalizeStrings(quickFilters.system_name).slice(0, 200),
-    },
+    quickFilters: normalizeFarQuickFilters(source.quickFilters),
     filterModel: sanitizeOperationalFilterModel(source.filterModel, FAR_PERSISTED_COLUMN_IDS),
     sortModel: sanitizeOperationalSortModel(source.sortModel, FAR_PERSISTED_COLUMN_IDS) as FarWorkspaceViewConfig['sortModel'],
     columnLayoutState: columnLayout.layout,

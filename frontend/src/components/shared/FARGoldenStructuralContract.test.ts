@@ -3,6 +3,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { OPERATIONAL_GRID_WIDTHS } from './OperationalGridContract'
 import { FAR_PRESERVES_EXPLICIT_COLUMN_WIDTHS, getStableFarManualResizeLayout } from '../FAR.gridStability'
+import { filterFarModes, groupFarModes, normalizeFarQuickFilters } from '../FAR.workspaceModel'
+import { sanitizeFarWorkspaceViewConfig } from '../FAR.workspaceState'
 
 const componentsRoot = path.resolve(process.cwd(), 'src/components')
 const read = (fileName: string) => fs.readFileSync(path.join(componentsRoot, fileName), 'utf8')
@@ -89,6 +91,98 @@ describe('FAR Monitoring-golden structural contract', () => {
     expect(controls).toContain('handleColumnResized: handleStableColumnResized')
     expect(controls).not.toContain('api.sizeColumnsToFit?.()')
     expect(controls).not.toContain('handleColumnResized,\n  } = useOperationalGridLayout')
+  })
+
+
+  it('persists FAR grouping, filter-bar state, and multidimensional quick filters safely', () => {
+    const config = sanitizeFarWorkspaceViewConfig({
+      groupBy: 'risk_band',
+      showFilterBar: false,
+      quickFilter: 'database',
+      quickFilters: {
+        system_name: ['Payments'],
+        failure_type: ['Software'],
+        status: ['Existing'],
+        risk_band: ['critical'],
+      },
+    })
+
+    expect(config.groupBy).toBe('risk_band')
+    expect(config.showFilterBar).toBe(false)
+    expect(config.quickFilter).toBe('database')
+    expect(config.quickFilters).toEqual({
+      system_name: ['Payments'],
+      failure_type: ['Software'],
+      status: ['Existing'],
+      risk_band: ['critical'],
+    })
+    expect(sanitizeFarWorkspaceViewConfig({ groupBy: 'invalid' }).groupBy).toBe('raw')
+    expect(normalizeFarQuickFilters({ system_name: ['A', 'A', ''], risk_band: ['critical'] })).toEqual({
+      system_name: ['A'],
+      failure_type: [],
+      status: [],
+      risk_band: ['critical'],
+    })
+  })
+
+  it('filters full FAR semantics and groups domain rows deterministically', () => {
+    const modes = [
+      {
+        id: 1,
+        system_name: 'Payments',
+        failure_type: 'Software',
+        title: 'Checkout timeout',
+        effect: 'Customer checkout fails',
+        status: 'Existing',
+        rpn: 180,
+        causes: [{ description: 'database lock escalation' }],
+        mitigations: [],
+        prevention_actions: [],
+        linked_rcas: [],
+      },
+      {
+        id: 2,
+        system_name: 'Search',
+        failure_type: 'Network',
+        title: 'Edge packet loss',
+        effect: 'Search latency',
+        status: 'Planned',
+        rpn: 90,
+        causes: [],
+        mitigations: [],
+        prevention_actions: [],
+        linked_rcas: [],
+      },
+    ]
+
+    const critical = filterFarModes(modes, 'database lock', {
+      system_name: ['Payments'],
+      failure_type: ['Software'],
+      status: ['Existing'],
+      risk_band: ['critical'],
+    })
+    expect(critical.map((mode) => mode.id)).toEqual([1])
+    expect(groupFarModes(modes, 'risk_band').map((group) => group.label)).toEqual([
+      'Critical · RPN ≥ 150',
+      'Elevated · RPN 80–149',
+    ])
+  })
+
+  it('wires FAR to the shared grouped-grid and selection-scope contract', () => {
+    const far = read('FAR.tsx')
+    const controls = read('FARGoldenWorkspaceControls.tsx')
+    const interaction = read('FARGoldenWorkspaceInteraction.tsx')
+
+    expect(interaction).toContain('OperationalGroupedGridView')
+    expect(interaction).toContain('OperationalGroupedGridSection')
+    expect(interaction).toContain('useOperationalGroupedSelection')
+    expect(interaction).toContain('selectionScopeKey={selectionScopeKey}')
+    expect(far).toContain('filterChips={goldenWorkspace.filterChips}')
+    expect(far).toContain('<FARFilterBar')
+    expect(far).toContain('<FAROperationalGridView')
+    expect(controls).toContain('groupOptions={FAR_GROUP_OPTIONS}')
+    expect(controls).toContain('showFilterBar')
+    expect(controls).toContain('quickFilters')
   })
 
   it('keeps FAR analytical semantics intact while adopting the shared frame', () => {

@@ -24,7 +24,14 @@ import { ProjectForm } from './Projects'
 import { RootCauseFormModal, MitigationFormModal, PreventionFormModal, ResolutionManagerModal } from './shared/FARModals'
 import { EnhancedRcaDetails } from './Research'
 import { OperationalWorkspaceShell } from './shared/OperationalWorkspaceShells'
-import { OperationalDataGrid } from './shared/OperationalDataGrid'
+import { FARFilterBar, FAROperationalGridView } from './FARGoldenWorkspaceInteraction'
+import {
+  buildFarDelimitedText,
+  createDefaultFarQuickFilters,
+  filterFarModes,
+  type FarGroupBy,
+  type FarQuickFilters,
+} from './FAR.workspaceModel'
 import { OperationalBulkPreviewModal } from './shared/OperationalBulkPreviewModal'
 import { useOperationalBulkWorkflow } from './shared/useOperationalBulkWorkflow'
 import { ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
@@ -193,7 +200,8 @@ export default function FAR() {
   const [showWizard, setShowWizard] = useState(false)
   const [selectedModeId, setSelectedModeId] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedSystems, setSelectedSystems] = useState<string[]>([])
+  const [groupBy, setGroupBy] = useState<FarGroupBy>('raw')
+  const [quickFilters, setQuickFilters] = useState<FarQuickFilters>(() => createDefaultFarQuickFilters())
   const [showMaturityHelp, setShowMaturityHelp] = useState(false)
   const [showRpnHelp, setShowRpnHelp] = useState(false)
   const [activeMetricHelp, setActiveMetricHelp] = useState<string | null>(null)
@@ -206,7 +214,7 @@ export default function FAR() {
   const [fontSize, setFontSize] = useState(11)
   const [rowDensity, setRowDensity] = useState(8)
   const [showStyleLab, setShowStyleLab] = useState(false)
-  const [showSystemFilters, setShowSystemFilters] = useState(false)
+  const [showFilterBar, setShowFilterBar] = useState(true)
   const [showInsights, setShowInsights] = useState(false)
   const [showColumnPicker, setShowColumnPicker] = useState(false)
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
@@ -246,45 +254,69 @@ export default function FAR() {
   }, [idParam, modes])
 
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() })
-  const availableSystems = useMemo(() => {
-    return options?.filter((o: any) => o.category === 'LogicalSystem').map((s: any) => s.value) || []
-  }, [options])
+  const availableSystems = useMemo(() => Array.from(new Set([
+    ...(options?.filter((o: any) => o.category === 'LogicalSystem').map((s: any) => String(s.value || '')).filter(Boolean) || []),
+    ...(modes || []).map((mode: any) => String(mode.system_name || '')).filter(Boolean),
+  ])).sort(), [modes, options])
+  const availableFailureTypes = useMemo(() => Array.from(new Set([
+    ...FAILURE_TYPES.map((type) => type.value),
+    ...(modes || []).map((mode: any) => String(mode.failure_type || '')).filter(Boolean),
+  ])).sort(), [modes])
+  const availableStatuses = useMemo(() => Array.from(new Set(
+    (modes || []).map((mode: any) => String(mode.status || '')).filter(Boolean)
+  )).sort(), [modes])
 
-  const filteredModes = useMemo(() => {
-    let result = modes || []
-    if (selectedSystems.length > 0) result = result.filter((m: any) => selectedSystems.includes(m.system_name))
-    if (searchTerm) {
-      result = result.filter((m: any) => 
-        m.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        m.system_name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-    return result
-  }, [modes, searchTerm, selectedSystems])
+  const filteredModes = useMemo(
+    () => filterFarModes(modes, searchTerm, quickFilters),
+    [modes, quickFilters, searchTerm]
+  )
+  const selectionScopeKey = useMemo(() => JSON.stringify({
+    groupBy,
+    search: searchTerm.trim(),
+    quickFilters,
+    visibleIds: filteredModes.map((mode: any) => Number(mode.id)),
+  }), [filteredModes, groupBy, quickFilters, searchTerm])
 
   const selectedMode = useMemo(() => modes?.find((m: any) => m.id === selectedModeId), [modes, selectedModeId])
 
   const handleExportCSV = () => {
-    gridRef.current?.api?.exportDataAsCsv?.({
-      fileName: `SysGrid_FAR_${new Date().toISOString().split('T')[0]}.csv`,
-      allColumns: false,
-      onlySelected: false,
-    })
+    if (groupBy === 'raw' && gridRef.current?.api) {
+      gridRef.current.api.exportDataAsCsv({
+        fileName: `SysGrid_FAR_${new Date().toISOString().split('T')[0]}.csv`,
+        allColumns: false,
+        onlySelected: false,
+      })
+      return
+    }
+    const blob = new Blob([buildFarDelimitedText(filteredModes, ',')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `SysGrid_FAR_${new Date().toISOString().split('T')[0]}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
   }
 
   const handleCopyToClipboard = () => {
-    const csvData = gridRef.current?.api?.getDataAsCsv?.({
-      allColumns: false,
-      onlySelected: true,
-      suppressQuotes: true,
-    })
-    if (!csvData) return
+    let csvData = ''
+    if (groupBy === 'raw' && gridRef.current?.api) {
+      csvData = gridRef.current.api.getDataAsCsv?.({
+        allColumns: false,
+        onlySelected: true,
+        suppressQuotes: true,
+      }) || ''
+    } else {
+      const selected = new Set(selectedIds.map(Number))
+      csvData = buildFarDelimitedText(
+        (modes || []).filter((mode: any) => selected.has(Number(mode.id))),
+        '\t',
+      )
+    }
+    if (!csvData || selectedIds.length === 0) return
     navigator.clipboard.writeText(csvData)
       .then(() => toast.success('Selected failure vectors copied to clipboard'))
       .catch(() => toast.error('Failed to copy selected failure vectors'))
   }
-
-  const farGridRuntime = useMemo(() => ({}), [])
 
   const {
     bulkMutation,
@@ -695,10 +727,12 @@ export default function FAR() {
     setHiddenColumns,
     searchTerm,
     setSearchTerm,
-    selectedSystems,
-    setSelectedSystems,
-    showSystemFilters,
-    setShowSystemFilters,
+    groupBy,
+    setGroupBy,
+    quickFilters,
+    setQuickFilters,
+    showFilterBar,
+    setShowFilterBar,
     showInsights,
     setShowInsights,
     columnDefs,
@@ -737,13 +771,15 @@ export default function FAR() {
       toolbarActions={(
         goldenWorkspace.toolbarActions
       )}
-      secondaryToolbar={showSystemFilters ? (
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          <button onClick={() => setSelectedSystems([])} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all ${selectedSystems.length === 0 ? 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-500/20' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>ALL</button>
-          {availableSystems.map(sys => (
-            <button key={sys} onClick={() => setSelectedSystems(prev => prev.includes(sys) ? prev.filter(s => s !== sys) : [...prev, sys])} className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all whitespace-nowrap ${selectedSystems.includes(sys) ? 'bg-white/10 border-white/20 text-white shadow-lg' : 'bg-white/5 border-white/5 text-slate-500 hover:text-white'}`}>{sys}</button>
-          ))}
-        </div>
+      filterChips={goldenWorkspace.filterChips}
+      secondaryToolbar={showFilterBar ? (
+        <FARFilterBar
+          quickFilters={quickFilters}
+          setQuickFilters={setQuickFilters}
+          systems={availableSystems}
+          failureTypes={availableFailureTypes}
+          statuses={availableStatuses}
+        />
       ) : null}
     >
       <AnimatePresence>
@@ -809,16 +845,18 @@ export default function FAR() {
       {goldenWorkspace.compareModal}
 
       <div className="relative flex min-h-0 flex-1 flex-col">
-        <OperationalDataGrid
+        <FAROperationalGridView
           gridRef={gridRef}
           rows={filteredModes || []}
+          groupBy={groupBy}
+          selectionScopeKey={selectionScopeKey}
+          selectedIds={selectedIds}
+          setSelectedIds={setSelectedIds}
           columnDefs={columnDefs as any}
           runtime={goldenWorkspace.gridRuntime}
           contextMenu={goldenWorkspace.contextMenu}
-          quickFilterText={searchTerm}
           fontSize={fontSize}
           rowDensity={rowDensity}
-          noRowsLabel="No failure modes in scope"
           loading={modesLoading}
           loadingIcon={<RefreshCcw size={28} className="animate-spin text-rose-400" />}
           loadingLabel={<p className="text-[10px] font-semibold text-rose-300">Loading failure analysis registry...</p>}
@@ -831,10 +869,8 @@ export default function FAR() {
             kind: 'filtered-empty',
             noRowsLabel: 'No failure modes in scope',
             title: 'No failure modes in scope',
-            description: 'Create a failure mode or adjust the current system and search filters.',
+            description: 'Create a failure mode or adjust the current filters.',
           } : { kind: 'ready', noRowsLabel: 'No failure modes in scope' })}
-          onSelectionChanged={(event) => setSelectedIds(event?.api?.getSelectedNodes().map((node: any) => Number(node.data?.id)).filter(Boolean) || [])}
-          suppressRowClickSelection={false}
         />
         <AnimatePresence>
           {showColumnPicker && (

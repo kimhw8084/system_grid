@@ -48,6 +48,13 @@ import {
 } from './shared/OperationalGridSizing'
 import { FAR_PRESERVES_EXPLICIT_COLUMN_WIDTHS, getStableFarManualResizeLayout } from './FAR.gridStability'
 import {
+  FAR_GROUP_OPTIONS,
+  FAR_RISK_BAND_OPTIONS,
+  createDefaultFarQuickFilters,
+  type FarGroupBy,
+  type FarQuickFilters,
+} from './FAR.workspaceModel'
+import {
   isRemoteWorkspaceViewId,
   useCollaborativeWorkspaceViews,
 } from './shared/CollaborativeWorkspaceViews'
@@ -114,10 +121,12 @@ export function useFARGoldenWorkspaceControls({
   setHiddenColumns,
   searchTerm,
   setSearchTerm,
-  selectedSystems,
-  setSelectedSystems,
-  showSystemFilters,
-  setShowSystemFilters,
+  groupBy,
+  setGroupBy,
+  quickFilters,
+  setQuickFilters,
+  showFilterBar,
+  setShowFilterBar,
   showInsights,
   setShowInsights,
   columnDefs,
@@ -142,10 +151,12 @@ export function useFARGoldenWorkspaceControls({
   setHiddenColumns: React.Dispatch<React.SetStateAction<string[]>>
   searchTerm: string
   setSearchTerm: React.Dispatch<React.SetStateAction<string>>
-  selectedSystems: string[]
-  setSelectedSystems: React.Dispatch<React.SetStateAction<string[]>>
-  showSystemFilters: boolean
-  setShowSystemFilters: React.Dispatch<React.SetStateAction<boolean>>
+  groupBy: FarGroupBy
+  setGroupBy: React.Dispatch<React.SetStateAction<FarGroupBy>>
+  quickFilters: FarQuickFilters
+  setQuickFilters: React.Dispatch<React.SetStateAction<FarQuickFilters>>
+  showFilterBar: boolean
+  setShowFilterBar: React.Dispatch<React.SetStateAction<boolean>>
   showInsights: boolean
   setShowInsights: React.Dispatch<React.SetStateAction<boolean>>
   columnDefs: any[]
@@ -203,12 +214,14 @@ export function useFARGoldenWorkspaceControls({
     fontSize,
     rowDensity,
     hiddenColumns,
+    groupBy,
+    showFilterBar,
     quickFilter: searchTerm,
-    quickFilters: { system_name: selectedSystems },
+    quickFilters,
     filterModel: gridFilterModel,
     sortModel: gridSortModel,
     columnLayoutState,
-  }), [columnLayoutState, fontSize, gridFilterModel, gridSortModel, hiddenColumns, rowDensity, searchTerm, selectedSystems])
+  }), [columnLayoutState, fontSize, gridFilterModel, gridSortModel, groupBy, hiddenColumns, quickFilters, rowDensity, searchTerm, showFilterBar])
 
   const normalizedViews = useMemo(() => normalizeFarSavedViews(savedViews), [savedViews])
   const savedViewPanelModels = useMemo<FarSavedViewPanelModel[]>(() => normalizedViews.map((view) => ({
@@ -216,12 +229,14 @@ export function useFARGoldenWorkspaceControls({
     name: view.name,
     scope: view.scope,
     source: view.source,
-    config: { groupBy: 'raw' },
+    config: { groupBy: view.config.groupBy },
   })), [normalizedViews])
   const describeSavedView = useCallback((view: FarSavedViewPanelModel) => {
     const farView = normalizedViews.find((entry) => entry.id === view.id)
     if (!farView) return 'FAR view'
-    return `${farView.config.hiddenColumns.length} hidden · ${farView.config.quickFilters.system_name.length || 'all'} systems`
+    const groupLabel = FAR_GROUP_OPTIONS.find((option) => option.value === farView.config.groupBy)?.label || 'Raw Rows'
+    const quickFilterCount = Object.values(farView.config.quickFilters).reduce((total, values) => total + values.length, 0)
+    return `${groupLabel} · ${quickFilterCount} quick filters · ${farView.config.hiddenColumns.length} hidden`
   }, [normalizedViews])
 
   const collaborativeViews = useCollaborativeWorkspaceViews<FarWorkspaceViewConfig, FarSavedView>({
@@ -295,8 +310,10 @@ export function useFARGoldenWorkspaceControls({
     setFontSize(config.fontSize)
     setRowDensity(config.rowDensity)
     setHiddenColumns(config.hiddenColumns)
+    setGroupBy(config.groupBy)
+    setShowFilterBar(config.showFilterBar)
     setSearchTerm(config.quickFilter)
-    setSelectedSystems(config.quickFilters.system_name)
+    setQuickFilters(config.quickFilters)
     setGridFilterModel(config.filterModel)
     setGridSortModel(config.sortModel)
     setColumnLayoutState(config.columnLayoutState)
@@ -312,7 +329,7 @@ export function useFARGoldenWorkspaceControls({
       applyOrder: false,
     })
     scheduleGridOperabilityCheck(api, config.columnLayoutState)
-  }, [applyColumnLayoutState, gridRef, scheduleGridOperabilityCheck, setColumnLayoutState, setFontSize, setHiddenColumns, setRowDensity, setSearchTerm, setSelectedSystems, setTransientManualColumnWidths])
+  }, [applyColumnLayoutState, gridRef, scheduleGridOperabilityCheck, setColumnLayoutState, setFontSize, setGroupBy, setHiddenColumns, setQuickFilters, setRowDensity, setSearchTerm, setShowFilterBar, setTransientManualColumnWidths])
 
   const applyView = useCallback((id: string) => {
     const view = normalizedViews.find((entry) => entry.id === id)
@@ -509,6 +526,73 @@ export function useFARGoldenWorkspaceControls({
     ]
   }, [copyRow, onEdit, onOpenDetail, onRetireSelected, rowActionMenu])
 
+  const filterChips = useMemo(() => {
+    const chips: Array<{ id: string; label: string; onRemove: () => void }> = []
+    if (searchTerm.trim()) {
+      chips.push({
+        id: 'search',
+        label: `Search: ${searchTerm.trim()}`,
+        onRemove: () => setSearchTerm(''),
+      })
+    }
+
+    const addQuickFilterChips = (
+      key: keyof FarQuickFilters,
+      label: string,
+      values: string[],
+      resolveLabel: (value: string) => string = (value) => value,
+    ) => values.forEach((value) => {
+      chips.push({
+        id: `quick:${key}:${value}`,
+        label: `${label}: ${resolveLabel(value)}`,
+        onRemove: () => setQuickFilters((current) => ({
+          ...current,
+          [key]: current[key].filter((entry) => entry !== value),
+        })),
+      })
+    })
+
+    addQuickFilterChips('system_name', 'System', quickFilters.system_name)
+    addQuickFilterChips('failure_type', 'Type', quickFilters.failure_type)
+    addQuickFilterChips('status', 'Status', quickFilters.status)
+    addQuickFilterChips(
+      'risk_band',
+      'Risk',
+      quickFilters.risk_band,
+      (value) => FAR_RISK_BAND_OPTIONS.find((option) => option.value === value)?.label || value,
+    )
+
+    Object.keys(gridFilterModel).sort().forEach((field) => {
+      const column = columnDefs.find((entry) => (entry.field || entry.colId) === field)
+      chips.push({
+        id: `grid:${field}`,
+        label: `${column?.headerName || field} column filter`,
+        onRemove: () => {
+          setGridFilterModel((current) => {
+            const next = { ...current }
+            delete next[field]
+            gridRef.current?.api?.setFilterModel?.(next)
+            return next
+          })
+        },
+      })
+    })
+
+    if (chips.length) {
+      chips.push({
+        id: 'clear-all',
+        label: 'Clear All',
+        onRemove: () => {
+          setSearchTerm('')
+          setQuickFilters(createDefaultFarQuickFilters())
+          setGridFilterModel({})
+          gridRef.current?.api?.setFilterModel?.({})
+        },
+      })
+    }
+    return chips
+  }, [columnDefs, gridFilterModel, gridRef, quickFilters, searchTerm, setQuickFilters, setSearchTerm])
+
   const toolbarControls = (
     <>
       <ToolbarGroup>
@@ -528,8 +612,8 @@ export function useFARGoldenWorkspaceControls({
       </ToolbarGroup>
       <ToolbarGroup>
         <ToolbarButton onClick={onImport} title="Import Bulk Risk Data"><Upload size={14} /> Import</ToolbarButton>
-        <ToolbarButton active={showSystemFilters} onClick={() => setShowSystemFilters((current) => !current)} title="System filters">
-          {showSystemFilters ? <EyeOff size={14} /> : <Eye size={14} />} Filters
+        <ToolbarButton active={showFilterBar} onClick={() => setShowFilterBar((current) => !current)} title="Workspace filters">
+          {showFilterBar ? <EyeOff size={14} /> : <Eye size={14} />} Filters
         </ToolbarButton>
         <ToolbarButton active={showInsights} onClick={() => setShowInsights((current) => !current)} title="Reliability insights">
           <Activity size={14} /> Insights
@@ -612,6 +696,9 @@ export function useFARGoldenWorkspaceControls({
         onFontSizeChange={setFontSize}
         rowDensity={rowDensity}
         onRowDensityChange={setRowDensity}
+        groupBy={groupBy}
+        onGroupByChange={(value) => setGroupBy(value as FarGroupBy)}
+        groupOptions={FAR_GROUP_OPTIONS}
         columns={columnDefs}
         hiddenColumns={hiddenColumns}
         onToggleColumn={toggleColumn}
@@ -738,6 +825,7 @@ export function useFARGoldenWorkspaceControls({
   return {
     toolbarControls,
     toolbarActions,
+    filterChips,
     floatingPanels,
     activityPanel,
     compareModal,
