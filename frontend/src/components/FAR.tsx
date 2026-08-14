@@ -9,7 +9,7 @@ import {
   Activity, Server, FileText, Clipboard, ArrowRight, Shield, 
   CheckCircle2, ChevronRight, LayoutGrid, List, Sliders, Eye,
   Target, AlertCircle, Settings, Layers, Box, Link2, ExternalLink,
-  ChevronLeft, Book, Download, Copy, Terminal, Check, HelpCircle, EyeOff, MoreVertical, Monitor, Upload, Clock
+  ChevronLeft, Book, Download, Copy, Terminal, Check, HelpCircle, EyeOff, MoreVertical, Monitor, Upload, Clock, Undo2
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiFetch } from '../api/apiClient'
@@ -34,7 +34,8 @@ import {
 } from './FAR.workspaceModel'
 import { OperationalBulkPreviewModal } from './shared/OperationalBulkPreviewModal'
 import { useOperationalBulkWorkflow } from './shared/useOperationalBulkWorkflow'
-import { ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
+import { HeaderScopeSwitch, ToolbarButton, ToolbarGroup, ToolbarIconButton, ToolbarSearch } from './shared/LayoutPrimitives'
+import { FARVersionHistory } from './FARVersionHistory'
 import { useFARGoldenWorkspaceControls } from './FARGoldenWorkspaceControls'
 import { OPERATIONAL_GRID_WIDTHS } from './shared/OperationalGridContract'
 import {
@@ -226,14 +227,27 @@ export default function FAR() {
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([])
   const [showConfig, setShowConfig] = useState(false)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [lifecycleScope, setLifecycleScope] = useState<'active' | 'archived'>('active')
   
   const [bkmGuidanceModal, setBkmGuidanceModal] = useState<{show: boolean, cause: any}>({ show: false, cause: null })
 
   // Queries
   const { data: modes, isLoading: modesLoading, isError: modesError } = useQuery({ 
     queryKey: ['far', 'modes'], 
-    queryFn: () => fetchFarList('/api/v1/far/modes')
+    queryFn: () => fetchFarList('/api/v1/far/modes?include_deleted=true')
   })
+  const activeModes = useMemo(
+    () => (modes || []).filter((mode: any) => !mode.is_deleted),
+    [modes],
+  )
+  const lifecycleModes = useMemo(
+    () => (modes || []).filter((mode: any) => lifecycleScope === 'archived' ? Boolean(mode.is_deleted) : !mode.is_deleted),
+    [lifecycleScope, modes],
+  )
+  const lifecycleCounts = useMemo(() => ({
+    active: (modes || []).filter((mode: any) => !mode.is_deleted).length,
+    archived: (modes || []).filter((mode: any) => Boolean(mode.is_deleted)).length,
+  }), [modes])
 
   useEffect(() => {
     if (!idParam || !modes) return
@@ -245,6 +259,7 @@ export default function FAR() {
       return
     }
 
+    setLifecycleScope(mode.is_deleted ? 'archived' : 'active')
     setSearchTerm(mode.title)
     setSelectedModeId(targetId)
 
@@ -262,15 +277,15 @@ export default function FAR() {
   const { data: options } = useQuery({ queryKey: ['settings-options'], queryFn: async () => (await apiFetch('/api/v1/settings/options')).json() })
   const availableSystems = useMemo(() => Array.from(new Set([
     ...(options?.filter((o: any) => o.category === 'LogicalSystem').map((s: any) => String(s.value || '')).filter(Boolean) || []),
-    ...(modes || []).map((mode: any) => String(mode.system_name || '')).filter(Boolean),
-  ])).sort(), [modes, options])
+    ...lifecycleModes.map((mode: any) => String(mode.system_name || '')).filter(Boolean),
+  ])).sort(), [lifecycleModes, options])
   const availableFailureTypes = useMemo(() => Array.from(new Set([
     ...FAILURE_TYPES.map((type) => type.value),
-    ...(modes || []).map((mode: any) => String(mode.failure_type || '')).filter(Boolean),
-  ])).sort(), [modes])
+    ...lifecycleModes.map((mode: any) => String(mode.failure_type || '')).filter(Boolean),
+  ])).sort(), [lifecycleModes])
   const availableStatuses = useMemo(() => Array.from(new Set(
-    (modes || []).map((mode: any) => String(mode.status || '')).filter(Boolean)
-  )).sort(), [modes])
+    lifecycleModes.map((mode: any) => String(mode.status || '')).filter(Boolean)
+  )).sort(), [lifecycleModes])
 
   const farDefaultWidthsRef = React.useRef<{
     system_name: number
@@ -279,7 +294,7 @@ export default function FAR() {
     created_by_user_id: number
   } | null>(null)
   if (!farDefaultWidthsRef.current && modes !== undefined) {
-    const loadedModes = modes || []
+    const loadedModes = activeModes
     farDefaultWidthsRef.current = {
       system_name: getOperationalContentAwareWidth({
         headerName: 'System', values: loadedModes.map((mode: any) => mode.system_name), minWidth: 120, fallbackWidth: 132, maxDefaultWidth: 220,
@@ -303,8 +318,8 @@ export default function FAR() {
   }
 
   const filteredModes = useMemo(
-    () => filterFarModes(modes, searchTerm, quickFilters),
-    [modes, quickFilters, searchTerm]
+    () => filterFarModes(lifecycleModes, searchTerm, quickFilters),
+    [lifecycleModes, quickFilters, searchTerm]
   )
   const operatorIntelligence = useFarOperatorIntelligence({
     rows: filteredModes,
@@ -366,36 +381,43 @@ export default function FAR() {
   } = useOperationalBulkWorkflow<any>({
     selectedIds,
     fieldLabels: {},
-    selectionErrorMessage: 'Select at least one active failure vector.',
-    previewErrorMessage: 'Unable to prepare the FAR retirement preview.',
-    executionErrorMessage: 'Unable to retire the selected failure vectors.',
-    revertErrorMessage: 'FAR retirement cannot be undone.',
+    selectionErrorMessage: 'Select at least one failure vector.',
+    previewErrorMessage: 'Unable to prepare the FAR lifecycle preview.',
+    executionErrorMessage: 'Unable to update the selected failure vectors.',
+    revertErrorMessage: 'Unable to revert the FAR lifecycle change.',
     getSnapshots: (ids) => (modes || []).filter((mode: any) => ids.includes(Number(mode.id))),
     previewRequest: async ({ action, ids }) => {
-      if (action !== 'delete') throw new Error('Unsupported FAR bulk action.')
+      if (action !== 'delete' && action !== 'restore') throw new Error('Unsupported FAR lifecycle action.')
       const current = new Map((modes || []).map((mode: any) => [Number(mode.id), mode]))
-      const changedIds = ids.filter((id) => current.has(id))
+      const changedIds = ids.filter((id) => {
+        const mode = current.get(id)
+        if (!mode) return false
+        return action === 'restore' ? Boolean(mode.is_deleted) : !mode.is_deleted
+      })
+      const changed = new Set(changedIds)
+      const unchangedIds = ids.filter((id) => current.has(id) && !changed.has(id))
       const missingIds = ids.filter((id) => !current.has(id))
       return {
         action,
         selected_count: ids.length,
-        matched_count: changedIds.length,
+        matched_count: changedIds.length + unchangedIds.length,
         changed_count: changedIds.length,
-        unchanged_count: 0,
+        unchanged_count: unchangedIds.length,
         blocked_count: 0,
         missing_count: missingIds.length,
         changed_ids: changedIds,
-        unchanged_ids: [],
+        unchanged_ids: unchangedIds,
         missing_ids: missingIds,
         blockers: [],
         can_execute: changedIds.length > 0 && missingIds.length === 0,
       }
     },
     executeRequest: async ({ action, ids }) => {
-      if (action !== 'delete') throw new Error('Unsupported FAR bulk action.')
+      if (action !== 'delete' && action !== 'restore') throw new Error('Unsupported FAR lifecycle action.')
       operatorIntelligence.beginPending(ids)
       try {
-        const res = await apiFetch('/api/v1/far/modes/bulk-delete', {
+        const endpoint = action === 'restore' ? '/api/v1/far/modes/bulk-restore' : '/api/v1/far/modes/bulk-delete'
+        const res = await apiFetch(endpoint, {
           method: 'POST',
           body: JSON.stringify({ ids }),
         })
@@ -406,14 +428,20 @@ export default function FAR() {
           ...result,
           changed_count: changedCount,
           unchanged_count: Math.max(0, ids.length - changedCount),
-          changed_ids: changedCount === ids.length ? ids : [],
+          changed_ids: Array.isArray(result?.changed_ids) ? result.changed_ids.map(Number) : [],
         }
       } finally {
         operatorIntelligence.endPending(ids)
       }
     },
     refresh: () => queryClient.invalidateQueries({ queryKey: ['far', 'modes'] }),
-    buildRevertRequest: () => null,
+    buildRevertRequest: ({ action, changedIds }) => (
+      action === 'delete'
+        ? { action: 'restore', ids: changedIds }
+        : action === 'restore'
+          ? { action: 'delete', ids: changedIds }
+          : null
+    ),
     onExecutionSuccess: () => {
       setSelectedIds([])
       gridRef.current?.api?.deselectAll?.()
@@ -623,18 +651,27 @@ export default function FAR() {
       width: OPERATIONAL_GRID_WIDTHS.standardAction,
       renderActions: (row: any) => renderOperationalActionButtons([
         <button key="detail" onClick={() => row?.id && setSelectedModeId(row.id)} title="Matrix Detail" className="text-blue-400 hover:text-blue-200 transition-all"><Eye size={14}/></button>,
-        <button
-          key="edit"
-          onClick={() => { if (!row?.id) return; setSelectedModeId(row.id); setShowWizard(true) }}
-          title="Edit Matrix"
-          className="text-amber-400 hover:text-amber-200 transition-all"
-        ><Edit2 size={14}/></button>,
-        <button
-          key="retire"
-          onClick={() => row?.id && requestBulkPreview({ action: 'delete', ids: [row.id] })}
-          title="Retire failure vector"
-          className="text-rose-400 hover:text-rose-200 transition-all"
-        ><Trash2 size={14}/></button>,
+        ...(row?.is_deleted ? [
+          <button
+            key="restore"
+            onClick={() => row?.id && requestBulkPreview({ action: 'restore', ids: [row.id] })}
+            title="Restore failure vector"
+            className="text-emerald-400 hover:text-emerald-200 transition-all"
+          ><Undo2 size={14}/></button>,
+        ] : [
+          <button
+            key="edit"
+            onClick={() => { if (!row?.id) return; setSelectedModeId(row.id); setShowWizard(true) }}
+            title="Edit Matrix"
+            className="text-amber-400 hover:text-amber-200 transition-all"
+          ><Edit2 size={14}/></button>,
+          <button
+            key="retire"
+            onClick={() => row?.id && requestBulkPreview({ action: 'delete', ids: [row.id] })}
+            title="Retire failure vector"
+            className="text-rose-400 hover:text-rose-200 transition-all"
+          ><Trash2 size={14}/></button>,
+        ]),
       ]),
     })
   ], [farDefaultWidths, fontSize, hiddenColumns, operatorIntelligence.utilityColumnsConfig, requestBulkPreview]) as any
@@ -676,8 +713,8 @@ export default function FAR() {
 
   const goldenWorkspace = useFARGoldenWorkspaceControls({
     gridRef,
-    modes,
-    selectedIds,
+    modes: lifecycleModes,
+    selectedIds: lifecycleScope === 'active' ? selectedIds : [],
     fontSize,
     setFontSize,
     rowDensity,
@@ -720,6 +757,23 @@ export default function FAR() {
           </div>
         ),
         subtitle: 'Reliability Knowledge Engine // FMEA Studio',
+        actions: (
+          <HeaderScopeSwitch
+            label="Registry Scope"
+            summary={`${lifecycleCounts.active} active · ${lifecycleCounts.archived} archived`}
+            value={lifecycleScope}
+            onChange={(next) => {
+              setLifecycleScope(next as 'active' | 'archived')
+              setSelectedIds([])
+              setSelectedModeId(null)
+              gridRef.current?.api?.deselectAll?.()
+            }}
+            options={[
+              { label: 'Active', value: 'active' },
+              { label: 'Archived', value: 'archived' },
+            ]}
+          />
+        ),
       }}
       toolbarSearch={(
         <ToolbarSearch value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Scan risk vectors..." />
@@ -727,6 +781,16 @@ export default function FAR() {
       toolbarControls={(
         <>
           {goldenWorkspace.toolbarControls}
+          {lifecycleScope === 'archived' && selectedIds.length > 0 && (
+            <ToolbarGroup>
+              <ToolbarButton
+                onClick={() => requestBulkPreview({ action: 'restore' })}
+                title="Restore selected archived failure vectors"
+              >
+                <Undo2 size={14} /> Restore ({selectedIds.length})
+              </ToolbarButton>
+            </ToolbarGroup>
+          )}
           <ToolbarGroup>
             <ToolbarButton
               active={operatorIntelligence.isIntelligenceExpanded}
@@ -825,7 +889,7 @@ export default function FAR() {
           columnDefs={columnDefs as any}
           runtime={goldenWorkspace.gridRuntime}
           rowInteractions={operatorIntelligence.rowInteractions}
-          contextMenu={goldenWorkspace.contextMenu}
+          contextMenu={lifecycleScope === 'active' ? goldenWorkspace.contextMenu : undefined}
           gridContext={operatorIntelligence.gridContext}
           getRowClass={operatorIntelligence.getRowClass}
           fontSize={fontSize}
@@ -840,9 +904,11 @@ export default function FAR() {
             description: 'The FAR registry could not be loaded. Retry from the workspace navigation.',
           } : (!modesLoading && filteredModes.length === 0 ? {
             kind: 'filtered-empty',
-            noRowsLabel: 'No failure modes in scope',
-            title: 'No failure modes in scope',
-            description: 'Create a failure mode or adjust the current filters.',
+            noRowsLabel: lifecycleScope === 'archived' ? 'No archived failure modes' : 'No failure modes in scope',
+            title: lifecycleScope === 'archived' ? 'No archived failure modes' : 'No failure modes in scope',
+            description: lifecycleScope === 'archived'
+              ? 'Archived failure vectors will appear here and can be restored without losing forensic history.'
+              : 'Create a failure mode or adjust the current filters.',
           } : { kind: 'ready', noRowsLabel: 'No failure modes in scope' })}
         />
         <AnimatePresence>
@@ -874,6 +940,10 @@ export default function FAR() {
                 } else {
                   queryClient.invalidateQueries({ queryKey: ['far', 'modes'] });
                 }
+              }}
+              onRestore={() => {
+                setSelectedModeId(null)
+                requestBulkPreview({ action: 'restore', ids: [Number(selectedMode.id)] })
               }}
               setBkmGuidanceModal={setBkmGuidanceModal}
               setResolutionManagerModal={setResolutionManagerModal}
@@ -1032,7 +1102,7 @@ export default function FAR() {
       <OperationalBulkPreviewModal
         isOpen={Boolean(bulkOperationPreview)}
         workspaceLabel="FAR"
-        actionLabel="Retire failure vectors"
+        actionLabel={bulkOperationPreview?.action === 'restore' ? 'Restore failure vectors' : 'Retire failure vectors'}
         preview={bulkOperationPreview?.preview || null}
         previewBasis="workspace-snapshot"
         result={bulkOperationPreview?.result || null}
@@ -1168,19 +1238,20 @@ function StatCard({ id, label, value, suffix, color, onHelp }: any) {
   )
 }
 
-function FailureDetailView({ mode, onClose, onUpdate, setBkmGuidanceModal, setResolutionManagerModal }: { mode: any, onClose: () => void, onUpdate: (type: string) => void, setBkmGuidanceModal: any, setResolutionManagerModal: any }) {
+function FailureDetailView({ mode, onClose, onUpdate, onRestore, setBkmGuidanceModal, setResolutionManagerModal }: { mode: any, onClose: () => void, onUpdate: (type: string) => void, onRestore: () => void, setBkmGuidanceModal: any, setResolutionManagerModal: any }) {
   const [activeTab, setActiveTab] = useState('causal')
   const [showAllAssets, setShowAllAssets] = useState(false)
   const queryClient = useQueryClient()
   
   const { data: allModes } = useQuery({ 
     queryKey: ['far', 'modes'], 
-    queryFn: async () => (await apiFetch('/api/v1/far/modes')).json() 
+    queryFn: async () => (await apiFetch('/api/v1/far/modes?include_deleted=true')).json()
   })
 
   const systemRank = useMemo(() => {
     if (!allModes) return 0;
-    const sameSystem = allModes.filter((m: any) => m.system_name === mode.system_name)
+    const sameSystem = allModes
+      .filter((m: any) => m.system_name === mode.system_name && Boolean(m.is_deleted) === Boolean(mode.is_deleted))
       .sort((a: any, b: any) => b.rpn - a.rpn);
     return sameSystem.findIndex((m: any) => m.id === mode.id) + 1;
   }, [allModes, mode.id, mode.system_name]);
@@ -1205,6 +1276,7 @@ function FailureDetailView({ mode, onClose, onUpdate, setBkmGuidanceModal, setRe
                       <div className="px-2 py-0.5 rounded-lg bg-rose-600/10 border border-rose-500/20 text-[9px] font-bold text-rose-500  uppercase">VECTOR_{mode.id}</div>
                       <div className="px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold text-slate-400  uppercase tracking-widest">{mode.system_name}</div>
                       <div className="px-2 py-0.5 rounded-lg bg-blue-600/10 border border-blue-500/20 text-[9px] font-bold text-blue-400  uppercase tracking-widest">RANK #{systemRank}</div>
+                      {mode.is_deleted && <div className="px-2 py-0.5 rounded-lg bg-slate-700/40 border border-white/10 text-[9px] font-bold text-slate-300 uppercase tracking-widest">Archived</div>}
                   </div>
                   <h2 className="text-3xl font-bold text-white  tracking-tighter leading-none uppercase">{mode.title}</h2>
                   <p className="text-xs text-rose-400 italic font-medium lowercase tracking-normal mt-1">"{humanSummary}"</p>
@@ -1225,13 +1297,23 @@ function FailureDetailView({ mode, onClose, onUpdate, setBkmGuidanceModal, setRe
                       </div>
                   </div>
                   <div className="flex items-center gap-2 ml-2">
-                    <button 
-                      onClick={() => onUpdate('edit')} 
-                      className="p-2 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 rounded-lg text-amber-400 hover:text-white transition-all"
-                      title="Edit Matrix Configuration"
-                    >
-                      <Edit2 size={18}/>
-                    </button>
+                    {mode.is_deleted ? (
+                      <button
+                        onClick={onRestore}
+                        className="p-2 bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/30 rounded-lg text-emerald-400 hover:text-white transition-all"
+                        title="Restore Failure Vector"
+                      >
+                        <Undo2 size={18}/>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => onUpdate('edit')}
+                        className="p-2 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/30 rounded-lg text-amber-400 hover:text-white transition-all"
+                        title="Edit Matrix Configuration"
+                      >
+                        <Edit2 size={18}/>
+                      </button>
+                    )}
                     <button onClick={onClose} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all border border-white/10"><X size={20}/></button>
                   </div>
               </div>
@@ -1263,7 +1345,7 @@ function FailureDetailView({ mode, onClose, onUpdate, setBkmGuidanceModal, setRe
             {/* TABS ON OWN ROW */}
             <div className="mt-6 flex items-center relative z-10">
                <div className="flex space-x-1 bg-black/60 p-0.5 rounded-lg border border-white/5">
-                 {[{ id: 'causal', label: 'Causal Forensics', icon: Zap }, { id: 'roadmap', label: 'Strategic Roadmap', icon: ShieldCheck }, { id: 'history', label: 'Research History', icon: Activity }].map(t => (
+                 {[{ id: 'causal', label: 'Causal Forensics', icon: Zap }, { id: 'roadmap', label: 'Strategic Roadmap', icon: ShieldCheck }, { id: 'versions', label: 'Version History', icon: Clock }, { id: 'history', label: 'Research History', icon: Activity }].map(t => (
                    <button key={t.id} onClick={() => setActiveTab(t.id)} className={`px-6 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === t.id ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}><t.icon size={12} /> {t.label}</button>
                  ))}
                </div>
@@ -1274,6 +1356,7 @@ function FailureDetailView({ mode, onClose, onUpdate, setBkmGuidanceModal, setRe
             <AnimatePresence mode="wait">
                {activeTab === 'causal' && <CausalTab mode={mode} onUpdate={onUpdate} setBkmGuidanceModal={setBkmGuidanceModal} setResolutionManagerModal={setResolutionManagerModal} />}
                {activeTab === 'roadmap' && <RoadmapTab mode={mode} onUpdate={onUpdate} />}
+               {activeTab === 'versions' && <FARVersionHistory mode={mode} onUpdate={onUpdate} />}
                {activeTab === 'history' && <HistoryTab mode={mode} onUpdate={onUpdate} />}
             </AnimatePresence>
          </div>
@@ -1385,6 +1468,8 @@ function FARWizard({ initialData, onComplete }: any) {
       delete payload.created_at;
       delete payload.updated_at;
       delete payload.created_by_user_id;
+      delete payload.version;
+      delete payload.is_deleted;
 
       const res = await apiFetch(url, { 
         method: data.id ? 'PUT' : 'POST', 
@@ -1858,6 +1943,7 @@ function RoadmapTab({ mode, onUpdate }: any) {
     </motion.div>
   )
 }
+
   function HistoryTab({ mode, onUpdate }: any) {
     const [isLinking, setIsLinking] = useState(false)
     const [search, setSearch] = useState('')

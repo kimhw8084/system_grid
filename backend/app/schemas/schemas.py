@@ -808,6 +808,8 @@ class FarFailureModeResponse(BaseSchema):
     rpn: int = 1
     status: str = "Analyzing"
     has_incident_history: bool = False
+    is_deleted: bool = False
+    version: int = 1
     metadata_json: Optional[dict] = {}
     
     affected_assets: List[DeviceTinyResponse] = []
